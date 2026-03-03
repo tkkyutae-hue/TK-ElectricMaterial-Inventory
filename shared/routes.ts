@@ -1,147 +1,43 @@
 import { z } from 'zod';
-import { 
-  insertCategorySchema, 
-  insertLocationSchema, 
-  insertSupplierSchema, 
-  insertProjectSchema, 
-  insertItemSchema, 
-  categories,
-  locations,
-  suppliers,
-  projects,
-  items,
-  inventoryMovements
-} from './schema';
 
-export const errorSchemas = {
-  validation: z.object({
-    message: z.string(),
-    field: z.string().optional(),
-  }),
-  notFound: z.object({
-    message: z.string(),
-  }),
-  internal: z.object({
-    message: z.string(),
-  }),
-  unauthorized: z.object({
-    message: z.string(),
-  }),
-};
-
+// Minimal route definitions for queryKey references on the frontend
 export const api = {
-  categories: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/categories' as const,
-      responses: {
-        200: z.array(z.custom<typeof categories.$inferSelect>()),
-      },
-    },
-  },
-  locations: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/locations' as const,
-      responses: {
-        200: z.array(z.custom<typeof locations.$inferSelect>()),
-      },
-    },
-  },
+  categories: { list: { path: '/api/categories' as const } },
+  locations: { list: { path: '/api/locations' as const } },
   suppliers: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/suppliers' as const,
-      responses: {
-        200: z.array(z.custom<typeof suppliers.$inferSelect>()),
-      },
-    },
+    list: { path: '/api/suppliers' as const },
+    get: { path: '/api/suppliers/:id' as const },
   },
   projects: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/projects' as const,
-      responses: {
-        200: z.array(z.custom<typeof projects.$inferSelect>()),
-      },
-    },
+    list: { path: '/api/projects' as const },
+    get: { path: '/api/projects/:id' as const },
   },
   items: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/items' as const,
-      input: z.object({
-        search: z.string().optional(),
-        categoryId: z.string().optional(),
-        locationId: z.string().optional(),
-        status: z.string().optional(),
-      }).optional(),
-      responses: {
-        200: z.array(z.custom<any>()),
-      },
-    },
-    get: {
-      method: 'GET' as const,
-      path: '/api/items/:id' as const,
-      responses: {
-        200: z.custom<any>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/items' as const,
-      input: insertItemSchema,
-      responses: {
-        201: z.custom<typeof items.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
-    },
-    update: {
-      method: 'PUT' as const,
-      path: '/api/items/:id' as const,
-      input: insertItemSchema.partial(),
-      responses: {
-        200: z.custom<typeof items.$inferSelect>(),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
-      },
-    },
-    delete: {
-      method: 'DELETE' as const,
-      path: '/api/items/:id' as const,
-      responses: {
-        204: z.void(),
-        404: errorSchemas.notFound,
-      },
-    },
+    list: { path: '/api/items' as const },
+    get: { path: '/api/items/:id' as const },
+    create: { path: '/api/items' as const },
+    update: { path: '/api/items/:id' as const },
+    delete: { path: '/api/items/:id' as const },
   },
-  dashboard: {
-    stats: {
-      method: 'GET' as const,
-      path: '/api/dashboard/stats' as const,
-      responses: {
-        200: z.object({
-          totalSkus: z.number(),
-          totalQuantity: z.number(),
-          totalValue: z.string(),
-          lowStockCount: z.number(),
-          outOfStockCount: z.number(),
-          pendingReorderCount: z.number(),
-          recentActivity: z.array(z.custom<any>()),
-        }),
-      }
-    }
-  }
+  movements: {
+    list: { path: '/api/movements' as const },
+    create: { path: '/api/movements' as const },
+  },
+  dashboard: { stats: { path: '/api/dashboard/stats' as const } },
+  reorder: { recommendations: { path: '/api/reorder/recommendations' as const } },
+  reports: {
+    lowStock: { path: '/api/reports/low-stock' as const },
+    byLocation: { path: '/api/reports/by-location' as const },
+    valuation: { path: '/api/reports/valuation' as const },
+    usageByProject: { path: '/api/reports/usage-by-project' as const },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
   let url = path;
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      if (url.includes(`:${key}`)) {
-        url = url.replace(`:${key}`, String(value));
-      }
+      url = url.replace(`:${key}`, String(value));
     });
   }
   return url;

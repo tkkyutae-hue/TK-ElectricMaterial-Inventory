@@ -1,174 +1,163 @@
 import { useState } from "react";
-import { useTransactions, useCreateTransaction } from "@/hooks/use-transactions";
+import { useMovements } from "@/hooks/use-transactions";
 import { useItems } from "@/hooks/use-items";
-import { useProjects } from "@/hooks/use-reference-data";
+import { useLocations, useProjects } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
-import { Plus, ArrowRightLeft } from "lucide-react";
+import { MovementForm } from "@/components/MovementForm";
+import { Plus, Search, Filter, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInventoryMovementSchema } from "@shared/schema";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { format } from "date-fns";
-import { z } from "zod";
 
 export default function Transactions() {
-  const { data: transactions, isLoading } = useTransactions();
-  const { data: items } = useItems();
-  const { data: projects } = useProjects();
-  
-  const createMutation = useCreateTransaction();
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof insertInventoryMovementSchema>>({
-    resolver: zodResolver(insertInventoryMovementSchema),
-    defaultValues: {
-      movementType: "receive",
-      quantity: 1,
-    }
+  const { data: movements, isLoading } = useMovements(
+    typeFilter !== "all" ? { movementType: typeFilter } : {}
+  );
+  const { data: projects } = useProjects();
+
+  const filtered = movements?.filter((tx: any) => {
+    const matchSearch = !search || tx.item?.name?.toLowerCase().includes(search.toLowerCase()) || tx.item?.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchProject = projectFilter === "all" || tx.projectId === Number(projectFilter);
+    return matchSearch && matchProject;
   });
-
-  const watchMovementType = form.watch("movementType");
-
-  function onSubmit(data: z.infer<typeof insertInventoryMovementSchema>) {
-    createMutation.mutate(data, {
-      onSuccess: () => {
-        setDialogOpen(false);
-        form.reset();
-      }
-    });
-  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Transactions</h1>
-          <p className="text-slate-500 mt-1">Log and view all inventory movements.</p>
+          <h1 className="text-3xl font-display font-bold text-slate-900">Transaction History</h1>
+          <p className="text-slate-500 mt-1">Full log of all inventory movements.</p>
         </div>
-        
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20">
               <ArrowRightLeft className="w-4 h-4 mr-2" />
               Log Movement
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>Log Inventory Movement</DialogTitle>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                <FormField control={form.control} name="movementType" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Movement Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="receive">Receive Stock (In)</SelectItem>
-                        <SelectItem value="issue">Issue Stock (Out to Project)</SelectItem>
-                        <SelectItem value="return">Return to Stock (In from Project)</SelectItem>
-                        <SelectItem value="adjust">Adjustment (Correction)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="itemId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Item</FormLabel>
-                    <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select Item" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {items?.map(i => <SelectItem key={i.id} value={i.id.toString()}>{i.sku} - {i.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="quantity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                {(watchActionType === 'issue' || watchActionType === 'return') && (
-                  <FormField control={form.control} name="projectId" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project</FormLabel>
-                      <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select Project" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {projects?.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.code} - {p.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                )}
-
-                <FormField control={form.control} name="note" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Note (Optional)</FormLabel>
-                    <FormControl><Input placeholder="Reason or reference number" {...field} value={field.value || ''} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
-                    {createMutation.isPending ? "Logging..." : "Log Transaction"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+            <div className="pt-2">
+              <MovementForm onSuccess={() => setDialogOpen(false)} />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="premium-card bg-white overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 bg-slate-50/50">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Search by item name or SKU..."
+              className="pl-9 bg-white border-slate-200"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px] bg-white"><SelectValue placeholder="All types" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="receive">Receive</SelectItem>
+              <SelectItem value="issue">Issue</SelectItem>
+              <SelectItem value="return">Return</SelectItem>
+              <SelectItem value="adjust">Adjust</SelectItem>
+              <SelectItem value="transfer">Transfer</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-[180px] bg-white"><SelectValue placeholder="All projects" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects?.map((p: any) => (
+                <SelectItem key={p.id} value={String(p.id)}>{p.code}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/80">
-              <TableRow>
-                <TableHead className="font-semibold text-slate-600">Date</TableHead>
-                <TableHead className="font-semibold text-slate-600">Item</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-semibold text-slate-600 w-36">Date & Time</TableHead>
                 <TableHead className="font-semibold text-slate-600">Type</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Quantity</TableHead>
-                <TableHead className="font-semibold text-slate-600">Reference / Notes</TableHead>
+                <TableHead className="font-semibold text-slate-600">Item</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right">Qty</TableHead>
+                <TableHead className="font-semibold text-slate-600">From</TableHead>
+                <TableHead className="font-semibold text-slate-600">To</TableHead>
+                <TableHead className="font-semibold text-slate-600">Project</TableHead>
+                <TableHead className="font-semibold text-slate-600">Note</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-slate-500">Loading transactions...</TableCell></TableRow>
-              ) : transactions?.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-slate-500">No transactions found.</TableCell></TableRow>
+                [1,2,3,4,5].map(i => (
+                  <TableRow key={i}>
+                    {[...Array(8)].map((_, j) => (
+                      <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : filtered?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-12 text-slate-500">
+                    <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                    <p className="font-medium text-slate-900">No transactions found</p>
+                    <p className="text-sm">Try adjusting filters or log a new movement.</p>
+                  </TableCell>
+                </TableRow>
               ) : (
-                transactions?.map((tx) => (
+                filtered?.map((tx: any) => (
                   <TableRow key={tx.id} className="hover:bg-slate-50/50">
-                    <TableCell className="text-sm text-slate-600">{format(new Date(tx.createdAt), 'MMM d, yyyy HH:mm')}</TableCell>
-                    <TableCell className="font-medium text-slate-900">{tx.item?.name || `Item #${tx.itemId}`}</TableCell>
+                    <TableCell className="text-xs text-slate-500 whitespace-nowrap">
+                      {format(new Date(tx.createdAt), 'MMM d, yy')}<br />
+                      <span className="text-slate-400">{format(new Date(tx.createdAt), 'HH:mm')}</span>
+                    </TableCell>
                     <TableCell><TransactionTypeBadge type={tx.movementType} /></TableCell>
+                    <TableCell>
+                      <p className="font-medium text-slate-900 text-sm">{tx.item?.name || `Item #${tx.itemId}`}</p>
+                      <p className="text-xs font-mono text-slate-400">{tx.item?.sku}</p>
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {['issue'].includes(tx.movementType) ? <span className="text-red-600">-{tx.quantity}</span> : <span className="text-emerald-600">+{tx.quantity}</span>}
+                      {tx.movementType === 'issue' ? (
+                        <span className="text-rose-600">-{tx.quantity}</span>
+                      ) : tx.movementType === 'adjust' ? (
+                        <span className="text-amber-600">{tx.newQuantity}</span>
+                      ) : (
+                        <span className="text-emerald-600">+{tx.quantity}</span>
+                      )}
+                      <span className="text-slate-400 text-xs ml-1">{tx.item?.unitOfMeasure}</span>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500 max-w-xs truncate">
-                      {tx.note}
+                    <TableCell className="text-xs text-slate-500">{tx.sourceLocation?.name || '—'}</TableCell>
+                    <TableCell className="text-xs text-slate-500">{tx.destinationLocation?.name || '—'}</TableCell>
+                    <TableCell>
+                      {tx.project ? (
+                        <span className="text-xs font-mono bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{tx.project?.code}</span>
+                      ) : <span className="text-slate-300">—</span>}
                     </TableCell>
+                    <TableCell className="text-xs text-slate-500 max-w-[140px] truncate">{tx.note || tx.reason || '—'}</TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
+        </div>
+
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+          <p className="text-xs text-slate-500">{filtered?.length ?? 0} record{filtered?.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
     </div>

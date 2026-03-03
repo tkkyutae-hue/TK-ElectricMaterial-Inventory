@@ -6,13 +6,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-// Pages
 import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
 import ItemDetails from "@/pages/ItemDetails";
 import Transactions from "@/pages/Transactions";
 import Suppliers from "@/pages/Suppliers";
+import SupplierDetail from "@/pages/SupplierDetail";
 import Projects from "@/pages/Projects";
+import ProjectDetail from "@/pages/ProjectDetail";
+import Reorder from "@/pages/Reorder";
+import Reports from "@/pages/Reports";
 
 function Router() {
   return (
@@ -23,7 +26,11 @@ function Router() {
         <Route path="/inventory/:id" component={ItemDetails}/>
         <Route path="/transactions" component={Transactions}/>
         <Route path="/suppliers" component={Suppliers}/>
+        <Route path="/suppliers/:id" component={SupplierDetail}/>
         <Route path="/projects" component={Projects}/>
+        <Route path="/projects/:id" component={ProjectDetail}/>
+        <Route path="/reorder" component={Reorder}/>
+        <Route path="/reports" component={Reports}/>
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

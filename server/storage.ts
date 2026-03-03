@@ -1,66 +1,64 @@
 import { db } from "./db";
-import { eq, desc, asc, like, and, or } from "drizzle-orm";
+import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray } from "drizzle-orm";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages,
+  inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
+  type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem,
   type CreateCategoryRequest, type UpdateCategoryRequest,
-  type CreateLocationRequest, type UpdateLocationRequest,
-  type CreateSupplierRequest, type UpdateSupplierRequest,
+  type CreateLocationRequest, type CreateSupplierRequest, type UpdateSupplierRequest,
   type CreateProjectRequest, type UpdateProjectRequest,
   type CreateItemRequest, type UpdateItemRequest,
   type CreateInventoryMovementRequest,
-  type ItemWithRelations, type InventoryMovementWithRelations
+  type CreatePurchaseRecommendationRequest,
+  type ItemWithRelations, type InventoryMovementWithRelations,
+  type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations
 } from "@shared/schema";
 
 export interface IStorage {
-  // Categories
   getCategories(): Promise<Category[]>;
   createCategory(category: CreateCategoryRequest): Promise<Category>;
-  updateCategory(id: number, category: UpdateCategoryRequest): Promise<Category>;
 
-  // Locations
   getLocations(): Promise<Location[]>;
   createLocation(location: CreateLocationRequest): Promise<Location>;
 
-  // Suppliers
   getSuppliers(): Promise<Supplier[]>;
-  getSupplier(id: number): Promise<Supplier | undefined>;
+  getSupplier(id: number): Promise<SupplierWithStats | undefined>;
   createSupplier(supplier: CreateSupplierRequest): Promise<Supplier>;
   updateSupplier(id: number, supplier: UpdateSupplierRequest): Promise<Supplier>;
 
-  // Projects
   getProjects(): Promise<Project[]>;
-  getProject(id: number): Promise<Project | undefined>;
+  getProject(id: number): Promise<ProjectWithStats | undefined>;
   createProject(project: CreateProjectRequest): Promise<Project>;
   updateProject(id: number, project: UpdateProjectRequest): Promise<Project>;
 
-  // Items
-  getItems(filters?: { search?: string, categoryId?: number, locationId?: number, status?: string }): Promise<ItemWithRelations[]>;
+  getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]>;
   getItem(id: number): Promise<ItemWithRelations | undefined>;
   createItem(item: CreateItemRequest): Promise<Item>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
 
-  // Inventory Movements
-  getInventoryMovements(filters?: { itemId?: number, referenceId?: string, movementType?: string }): Promise<InventoryMovementWithRelations[]>;
-  createInventoryMovement(movement: CreateInventoryMovementRequest): Promise<InventoryMovement>;
+  getInventoryMovements(filters?: { itemId?: number; projectId?: number; movementType?: string; locationId?: number }): Promise<InventoryMovementWithRelations[]>;
+  createInventoryMovement(movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }): Promise<InventoryMovement>;
+  getLocationBalances(locationId?: number): Promise<(InventoryLocationBalance & { item?: Item; location?: Location })[]>;
 
-  // Dashboard Stats
-  getDashboardStats(): Promise<{
-    totalSkus: number,
-    totalQuantity: number,
-    totalValue: string,
-    lowStockCount: number,
-    outOfStockCount: number,
-    pendingReorderCount: number,
-    recentActivity: InventoryMovementWithRelations[]
-  }>;
+  getPurchaseRecommendations(): Promise<PurchaseRecommendationWithRelations[]>;
+  generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]>;
+  updateRecommendationStatus(id: number, status: string): Promise<PurchaseRecommendation>;
+
+  getDashboardStats(): Promise<any>;
+  getReportLowStock(): Promise<any>;
+  getReportByLocation(): Promise<any>;
+  getReportValuation(): Promise<any>;
+  getReportUsageByProject(): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // Categories
+
+  // ─── Categories ──────────────────────────────────────────────────────────────
+
   async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories).orderBy(categories.sortOrder, categories.name);
+    return await db.select().from(categories).orderBy(asc(categories.sortOrder), asc(categories.name));
   }
 
   async createCategory(category: CreateCategoryRequest): Promise<Category> {
@@ -68,14 +66,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateCategory(id: number, category: UpdateCategoryRequest): Promise<Category> {
-    const [updated] = await db.update(categories).set({ ...category, updatedAt: new Date() }).where(eq(categories.id, id)).returning();
-    return updated;
-  }
+  // ─── Locations ───────────────────────────────────────────────────────────────
 
-  // Locations
   async getLocations(): Promise<Location[]> {
-    return await db.select().from(locations).orderBy(locations.name);
+    return await db.select().from(locations).where(eq(locations.isActive, true)).orderBy(asc(locations.name));
   }
 
   async createLocation(location: CreateLocationRequest): Promise<Location> {
@@ -83,14 +77,36 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  // Suppliers
+  // ─── Suppliers ───────────────────────────────────────────────────────────────
+
   async getSuppliers(): Promise<Supplier[]> {
-    return await db.select().from(suppliers).orderBy(suppliers.name);
+    return await db.select().from(suppliers).orderBy(asc(suppliers.name));
   }
 
-  async getSupplier(id: number): Promise<Supplier | undefined> {
+  async getSupplier(id: number): Promise<SupplierWithStats | undefined> {
     const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
-    return supplier;
+    if (!supplier) return undefined;
+
+    const supplierItemRows = await db.select({ item: items })
+      .from(supplierItems)
+      .leftJoin(items, eq(supplierItems.itemId, items.id))
+      .where(eq(supplierItems.supplierId, id));
+
+    const linkedItems = supplierItemRows.map(r => r.item).filter(Boolean) as Item[];
+    const lowStockCount = linkedItems.filter(i => i && i.quantityOnHand <= i.reorderPoint).length;
+
+    // Also get items where this supplier is the primary
+    const primaryItems = await db.select().from(items)
+      .where(and(eq(items.supplierId, id), eq(items.isActive, true)));
+
+    const allItems = [...primaryItems];
+
+    return {
+      ...supplier,
+      itemCount: allItems.length,
+      lowStockCount,
+      items: allItems
+    };
   }
 
   async createSupplier(supplier: CreateSupplierRequest): Promise<Supplier> {
@@ -103,14 +119,43 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Projects
+  // ─── Projects ─────────────────────────────────────────────────────────────────
+
   async getProjects(): Promise<Project[]> {
-    return await db.select().from(projects).orderBy(projects.name);
+    return await db.select().from(projects).orderBy(asc(projects.name));
   }
 
-  async getProject(id: number): Promise<Project | undefined> {
+  async getProject(id: number): Promise<ProjectWithStats | undefined> {
     const [project] = await db.select().from(projects).where(eq(projects.id, id));
-    return project;
+    if (!project) return undefined;
+
+    const movements = await db.select({
+      movement: inventoryMovements,
+      item: items,
+      sourceLocation: locations,
+    })
+    .from(inventoryMovements)
+    .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+    .leftJoin(locations, eq(inventoryMovements.sourceLocationId, locations.id))
+    .where(eq(inventoryMovements.projectId, id))
+    .orderBy(desc(inventoryMovements.createdAt))
+    .limit(50);
+
+    const recentActivity = movements.map(r => ({
+      ...r.movement,
+      item: r.item,
+      sourceLocation: r.sourceLocation,
+    }));
+
+    const totalIssued = movements
+      .filter(r => r.movement.movementType === 'issue')
+      .reduce((sum, r) => sum + r.movement.quantity, 0);
+
+    const totalReturned = movements
+      .filter(r => r.movement.movementType === 'return')
+      .reduce((sum, r) => sum + r.movement.quantity, 0);
+
+    return { ...project, totalIssued, totalReturned, recentActivity };
   }
 
   async createProject(project: CreateProjectRequest): Promise<Project> {
@@ -123,62 +168,56 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Items
-  async getItems(filters?: { search?: string, categoryId?: number, locationId?: number, status?: string }): Promise<ItemWithRelations[]> {
-    let query = db.select({
+  // ─── Items ────────────────────────────────────────────────────────────────────
+
+  async getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]> {
+    const results = await db.select({
       item: items,
       category: categories,
       location: locations,
-      supplier: suppliers
+      supplier: suppliers,
     })
     .from(items)
     .leftJoin(categories, eq(items.categoryId, categories.id))
     .leftJoin(locations, eq(items.primaryLocationId, locations.id))
-    .leftJoin(suppliers, eq(items.supplierId, suppliers.id));
+    .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
+    .where(eq(items.isActive, true))
+    .orderBy(asc(items.name));
 
-    let conditions = [];
-
-    if (filters?.search) {
-      conditions.push(
-        or(
-          like(items.name, `%${filters.search}%`),
-          like(items.sku, `%${filters.search}%`),
-          like(items.description, `%${filters.search}%`)
-        )
-      );
-    }
-    if (filters?.categoryId) {
-      conditions.push(eq(items.categoryId, filters.categoryId));
-    }
-    if (filters?.locationId) {
-      conditions.push(eq(items.primaryLocationId, filters.locationId));
-    }
-    
-    // Status filter requires calculated logic usually, but here we can check the status_override or basic quantity
-    if (filters?.status) {
-      if (filters.status === 'low_stock') {
-        conditions.push(and(eq(items.isActive, true), sql`${items.quantityOnHand} <= ${items.reorderPoint}`, sql`${items.quantityOnHand} > 0`));
-      } else if (filters.status === 'out_of_stock') {
-        conditions.push(eq(items.quantityOnHand, 0));
-      } else if (filters.status === 'in_stock') {
-        conditions.push(sql`${items.quantityOnHand} > ${items.reorderPoint}`);
-      } else if (filters.status === 'ordered') {
-        conditions.push(eq(items.statusOverride, 'ORDERED'));
-      }
-    }
-
-    if (conditions.length > 0) {
-      query.where(and(...conditions)) as any;
-    }
-
-    const results = await query.orderBy(items.name);
-    
-    return results.map(row => ({
+    let mapped = results.map(row => ({
       ...row.item,
       category: row.category,
       location: row.location,
-      supplier: row.supplier
+      supplier: row.supplier,
     }));
+
+    if (filters?.search) {
+      const s = filters.search.toLowerCase();
+      mapped = mapped.filter(i =>
+        i.name.toLowerCase().includes(s) ||
+        i.sku.toLowerCase().includes(s) ||
+        (i.description || '').toLowerCase().includes(s)
+      );
+    }
+    if (filters?.categoryId) {
+      mapped = mapped.filter(i => i.categoryId === filters.categoryId);
+    }
+    if (filters?.locationId) {
+      mapped = mapped.filter(i => i.primaryLocationId === filters.locationId);
+    }
+    if (filters?.status) {
+      if (filters.status === 'low_stock') {
+        mapped = mapped.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.reorderPoint);
+      } else if (filters.status === 'out_of_stock') {
+        mapped = mapped.filter(i => i.quantityOnHand === 0);
+      } else if (filters.status === 'in_stock') {
+        mapped = mapped.filter(i => i.quantityOnHand > i.reorderPoint);
+      } else if (filters.status === 'ordered') {
+        mapped = mapped.filter(i => i.statusOverride === 'ORDERED');
+      }
+    }
+
+    return mapped;
   }
 
   async getItem(id: number): Promise<ItemWithRelations | undefined> {
@@ -186,7 +225,7 @@ export class DatabaseStorage implements IStorage {
       item: items,
       category: categories,
       location: locations,
-      supplier: suppliers
+      supplier: suppliers,
     })
     .from(items)
     .leftJoin(categories, eq(items.categoryId, categories.id))
@@ -194,11 +233,21 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
     .where(eq(items.id, id));
 
-    if (results.length === 0) return undefined;
-    
+    if (!results.length) return undefined;
+
     const row = results[0];
-    const images = await db.select().from(itemImages).where(eq(itemImages.itemId, id)).orderBy(itemImages.sortOrder);
-    const movements = await db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.createdAt)).limit(10);
+    const images = await db.select().from(itemImages).where(eq(itemImages.itemId, id)).orderBy(asc(itemImages.sortOrder));
+    const movementRows = await db.select({
+      movement: inventoryMovements,
+      item: items,
+      sourceLocation: locations,
+    })
+    .from(inventoryMovements)
+    .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+    .leftJoin(locations, eq(inventoryMovements.sourceLocationId, locations.id))
+    .where(eq(inventoryMovements.itemId, id))
+    .orderBy(desc(inventoryMovements.createdAt))
+    .limit(20);
 
     return {
       ...row.item,
@@ -206,12 +255,18 @@ export class DatabaseStorage implements IStorage {
       location: row.location,
       supplier: row.supplier,
       images,
-      movements
+      movements: movementRows.map(r => ({ ...r.movement, sourceLocation: r.sourceLocation })) as any,
     };
   }
 
   async createItem(item: CreateItemRequest): Promise<Item> {
     const [created] = await db.insert(items).values(item).returning();
+
+    // Create initial location balance if primaryLocationId is set
+    if (created.primaryLocationId && created.quantityOnHand > 0) {
+      await this._upsertLocationBalance(created.id, created.primaryLocationId, created.quantityOnHand);
+    }
+
     return created;
   }
 
@@ -221,95 +276,377 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteItem(id: number): Promise<void> {
-    // Soft delete
     await db.update(items).set({ isActive: false, updatedAt: new Date() }).where(eq(items.id, id));
   }
 
-  // Inventory Movements
-  async getInventoryMovements(filters?: { itemId?: number, referenceId?: string, movementType?: string }): Promise<InventoryMovementWithRelations[]> {
-    let query = db.select({
+  // ─── Inventory Movements ─────────────────────────────────────────────────────
+
+  async getInventoryMovements(filters?: {
+    itemId?: number; projectId?: number; movementType?: string; locationId?: number
+  }): Promise<InventoryMovementWithRelations[]> {
+    const allMovements = await db.select({
       movement: inventoryMovements,
       item: items,
-      sourceLocation: locations,
-      destinationLocation: locations
+      project: projects,
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
-    .leftJoin(locations, eq(inventoryMovements.sourceLocationId, locations.id))
-    // Note: This second join to locations needs an alias or handles carefully in Drizzle.
-    // For now we'll just join once and fetch the other if needed, or use a raw/complex join.
-    // Simpler: fetch movements and map related data.
-    
-    let conditions = [];
-    if (filters?.itemId) conditions.push(eq(inventoryMovements.itemId, filters.itemId));
-    if (filters?.referenceId) conditions.push(eq(inventoryMovements.referenceId, filters.referenceId));
-    if (filters?.movementType) conditions.push(eq(inventoryMovements.movementType, filters.movementType));
+    .leftJoin(projects, eq(inventoryMovements.projectId, projects.id))
+    .orderBy(desc(inventoryMovements.createdAt));
 
-    if (conditions.length > 0) {
-      query.where(and(...conditions)) as any;
-    }
-
-    const results = await query.orderBy(desc(inventoryMovements.createdAt));
-    
-    return results.map(row => ({
-      ...row.movement,
-      item: row.item,
-      sourceLocation: row.sourceLocation
+    let result = allMovements.map(r => ({
+      ...r.movement,
+      item: r.item,
+      project: r.project,
+      sourceLocation: null as any,
+      destinationLocation: null as any,
     }));
+
+    if (filters?.itemId) result = result.filter(r => r.itemId === filters.itemId);
+    if (filters?.projectId) result = result.filter(r => r.projectId === filters.projectId);
+    if (filters?.movementType) result = result.filter(r => r.movementType === filters.movementType);
+
+    return result;
   }
 
-  async createInventoryMovement(movement: CreateInventoryMovementRequest): Promise<InventoryMovement> {
-    const [created] = await db.insert(inventoryMovements).values(movement).returning();
-    
-    // Update item quantity
+  async createInventoryMovement(
+    movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }
+  ): Promise<InventoryMovement> {
+    const [created] = await db.insert(inventoryMovements).values({
+      itemId: movement.itemId,
+      movementType: movement.movementType,
+      quantity: movement.quantity,
+      previousQuantity: movement.previousQuantity,
+      newQuantity: movement.newQuantity,
+      sourceLocationId: movement.sourceLocationId ?? null,
+      destinationLocationId: movement.destinationLocationId ?? null,
+      projectId: movement.projectId ?? null,
+      unitCostSnapshot: movement.unitCostSnapshot ?? null,
+      note: movement.note ?? null,
+      reason: movement.reason ?? null,
+      referenceType: movement.referenceType ?? null,
+      referenceId: movement.referenceId ?? null,
+      createdBy: movement.createdBy ?? null,
+    }).returning();
+
+    // Update item's total quantity_on_hand
     await db.update(items)
-      .set({ 
-        quantityOnHand: movement.newQuantity,
-        updatedAt: new Date()
-      })
+      .set({ quantityOnHand: movement.newQuantity, updatedAt: new Date() })
       .where(eq(items.id, movement.itemId));
+
+    // Update location balances
+    if (movement.movementType === 'receive' && movement.destinationLocationId) {
+      await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
+    } else if (movement.movementType === 'issue' && movement.sourceLocationId) {
+      await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity);
+    } else if (movement.movementType === 'return' && movement.destinationLocationId) {
+      await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
+    } else if (movement.movementType === 'adjust') {
+      const locId = movement.destinationLocationId ?? movement.sourceLocationId;
+      if (locId) {
+        const delta = movement.newQuantity - movement.previousQuantity;
+        await this._adjustLocationBalance(movement.itemId, locId, delta);
+      }
+    } else if (movement.movementType === 'transfer') {
+      if (movement.sourceLocationId) {
+        await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity);
+      }
+      if (movement.destinationLocationId) {
+        await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
+      }
+    }
+
+    // Log project material transaction if project is linked
+    if (movement.projectId && (movement.movementType === 'issue' || movement.movementType === 'return')) {
+      await db.insert(projectMaterialTransactions).values({
+        projectId: movement.projectId,
+        itemId: movement.itemId,
+        movementId: created.id,
+        transactionType: movement.movementType,
+        quantity: movement.quantity,
+        note: movement.note ?? null,
+      });
+    }
 
     return created;
   }
 
-  // Dashboard Stats
-  async getDashboardStats() {
+  private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {
+    const [existing] = await db.select().from(inventoryLocationBalances)
+      .where(and(eq(inventoryLocationBalances.itemId, itemId), eq(inventoryLocationBalances.locationId, locationId)));
+
+    if (existing) {
+      await db.update(inventoryLocationBalances)
+        .set({ quantityOnHand: qty, updatedAt: new Date() })
+        .where(eq(inventoryLocationBalances.id, existing.id));
+    } else {
+      await db.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: qty });
+    }
+  }
+
+  private async _adjustLocationBalance(itemId: number, locationId: number, delta: number) {
+    const [existing] = await db.select().from(inventoryLocationBalances)
+      .where(and(eq(inventoryLocationBalances.itemId, itemId), eq(inventoryLocationBalances.locationId, locationId)));
+
+    if (existing) {
+      const newQty = Math.max(0, existing.quantityOnHand + delta);
+      await db.update(inventoryLocationBalances)
+        .set({ quantityOnHand: newQty, updatedAt: new Date() })
+        .where(eq(inventoryLocationBalances.id, existing.id));
+    } else if (delta > 0) {
+      await db.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: delta });
+    }
+  }
+
+  // ─── Location Balances ────────────────────────────────────────────────────────
+
+  async getLocationBalances(locationId?: number): Promise<(InventoryLocationBalance & { item?: Item; location?: Location })[]> {
+    const rows = await db.select({
+      balance: inventoryLocationBalances,
+      item: items,
+      location: locations,
+    })
+    .from(inventoryLocationBalances)
+    .leftJoin(items, eq(inventoryLocationBalances.itemId, items.id))
+    .leftJoin(locations, eq(inventoryLocationBalances.locationId, locations.id))
+    .orderBy(asc(items.name));
+
+    let result = rows.map(r => ({ ...r.balance, item: r.item ?? undefined, location: r.location ?? undefined }));
+    if (locationId) result = result.filter(r => r.locationId === locationId);
+
+    return result;
+  }
+
+  // ─── Purchase Recommendations ─────────────────────────────────────────────────
+
+  async getPurchaseRecommendations(): Promise<PurchaseRecommendationWithRelations[]> {
+    const rows = await db.select({
+      rec: purchaseRecommendations,
+      item: items,
+      supplier: suppliers,
+    })
+    .from(purchaseRecommendations)
+    .leftJoin(items, eq(purchaseRecommendations.itemId, items.id))
+    .leftJoin(suppliers, eq(purchaseRecommendations.supplierId, suppliers.id))
+    .where(eq(purchaseRecommendations.status, 'pending'))
+    .orderBy(
+      sql`CASE ${purchaseRecommendations.priorityLevel} WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`
+    );
+
+    return rows.map(r => ({ ...r.rec, item: r.item, supplier: r.supplier }));
+  }
+
+  async generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]> {
+    // Clear old pending recommendations
+    await db.delete(purchaseRecommendations).where(eq(purchaseRecommendations.status, 'pending'));
+
+    // Get all active items
     const allItems = await db.select().from(items).where(eq(items.isActive, true));
-    
-    const totalSkus = allItems.length;
+
+    const created: PurchaseRecommendation[] = [];
+
+    for (const item of allItems) {
+      let priority: string | null = null;
+      let reason: string | null = null;
+
+      if (item.quantityOnHand === 0) {
+        priority = 'critical';
+        reason = 'Out of stock';
+      } else if (item.quantityOnHand <= item.reorderPoint * 0.5) {
+        priority = 'high';
+        reason = `Critically low: ${item.quantityOnHand} ${item.unitOfMeasure} remaining`;
+      } else if (item.quantityOnHand <= item.reorderPoint) {
+        priority = 'medium';
+        reason = `Below reorder point: ${item.quantityOnHand} of ${item.reorderPoint} ${item.unitOfMeasure}`;
+      }
+
+      if (priority) {
+        const [rec] = await db.insert(purchaseRecommendations).values({
+          itemId: item.id,
+          supplierId: item.supplierId ?? null,
+          recommendedQuantity: item.reorderQuantity || Math.max(item.reorderPoint * 2, 10),
+          priorityLevel: priority,
+          reason,
+          status: 'pending',
+        }).returning();
+        created.push(rec);
+      }
+    }
+
+    return created;
+  }
+
+  async updateRecommendationStatus(id: number, status: string): Promise<PurchaseRecommendation> {
+    const [updated] = await db.update(purchaseRecommendations)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(purchaseRecommendations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ─── Dashboard Stats ──────────────────────────────────────────────────────────
+
+  async getDashboardStats(): Promise<any> {
+    const allItems = await db.select().from(items).where(eq(items.isActive, true));
+
     let totalQuantity = 0;
     let totalValue = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
-    let pendingReorderCount = 0;
 
     for (const item of allItems) {
       totalQuantity += item.quantityOnHand;
       const cost = item.unitCost ? parseFloat(item.unitCost) : 0;
       totalValue += cost * item.quantityOnHand;
-      
-      if (item.quantityOnHand === 0) {
-        outOfStockCount++;
-      } else if (item.quantityOnHand <= item.reorderPoint) {
-        lowStockCount++;
-      }
-
-      if (item.statusOverride === 'ORDERED') {
-        pendingReorderCount++;
-      }
+      if (item.quantityOnHand === 0) outOfStockCount++;
+      else if (item.quantityOnHand <= item.reorderPoint) lowStockCount++;
     }
 
-    const recentActivity = await this.getInventoryMovements();
+    const pendingRecs = await db.select().from(purchaseRecommendations).where(eq(purchaseRecommendations.status, 'pending'));
+
+    const movementRows = await db.select({ movement: inventoryMovements, item: items })
+      .from(inventoryMovements)
+      .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+      .orderBy(desc(inventoryMovements.createdAt))
+      .limit(10);
+
+    const recentActivity = movementRows.map(r => ({ ...r.movement, item: r.item }));
 
     return {
-      totalSkus,
+      totalSkus: allItems.length,
       totalQuantity,
       totalValue: totalValue.toFixed(2),
       lowStockCount,
       outOfStockCount,
-      pendingReorderCount,
-      recentActivity: recentActivity.slice(0, 10)
+      pendingReorderCount: pendingRecs.length,
+      recentActivity,
     };
+  }
+
+  // ─── Reports ──────────────────────────────────────────────────────────────────
+
+  async getReportLowStock(): Promise<any> {
+    const allItems = await db.select({
+      item: items,
+      category: categories,
+      location: locations,
+      supplier: suppliers,
+    })
+    .from(items)
+    .leftJoin(categories, eq(items.categoryId, categories.id))
+    .leftJoin(locations, eq(items.primaryLocationId, locations.id))
+    .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
+    .where(eq(items.isActive, true))
+    .orderBy(asc(items.quantityOnHand));
+
+    const outOfStock = allItems
+      .filter(r => r.item.quantityOnHand === 0)
+      .map(r => ({ ...r.item, category: r.category, location: r.location, supplier: r.supplier }));
+
+    const lowStock = allItems
+      .filter(r => r.item.quantityOnHand > 0 && r.item.quantityOnHand <= r.item.reorderPoint)
+      .map(r => ({ ...r.item, category: r.category, location: r.location, supplier: r.supplier }));
+
+    return { outOfStock, lowStock };
+  }
+
+  async getReportByLocation(): Promise<any> {
+    const allLocations = await db.select().from(locations).where(eq(locations.isActive, true));
+    const result = [];
+
+    for (const loc of allLocations) {
+      const balances = await db.select({
+        balance: inventoryLocationBalances,
+        item: items,
+      })
+      .from(inventoryLocationBalances)
+      .leftJoin(items, eq(inventoryLocationBalances.itemId, items.id))
+      .where(eq(inventoryLocationBalances.locationId, loc.id));
+
+      const itemCount = balances.filter(b => b.balance.quantityOnHand > 0).length;
+      const totalValue = balances.reduce((sum, b) => {
+        const cost = b.item?.unitCost ? parseFloat(b.item.unitCost) : 0;
+        return sum + cost * b.balance.quantityOnHand;
+      }, 0);
+
+      result.push({
+        location: loc,
+        itemCount,
+        totalValue: totalValue.toFixed(2),
+        balances: balances.map(b => ({ ...b.balance, item: b.item })),
+      });
+    }
+
+    return result;
+  }
+
+  async getReportValuation(): Promise<any> {
+    const allItems = await db.select({
+      item: items,
+      category: categories,
+    })
+    .from(items)
+    .leftJoin(categories, eq(items.categoryId, categories.id))
+    .where(eq(items.isActive, true))
+    .orderBy(desc(sql`CAST(${items.unitCost} AS DECIMAL) * ${items.quantityOnHand}`));
+
+    let totalValue = 0;
+    const byCategory: Record<string, { name: string; count: number; value: number }> = {};
+
+    const itemList = allItems.map(r => {
+      const cost = r.item.unitCost ? parseFloat(r.item.unitCost) : 0;
+      const value = cost * r.item.quantityOnHand;
+      totalValue += value;
+
+      const catName = r.category?.name || 'Uncategorized';
+      if (!byCategory[catName]) byCategory[catName] = { name: catName, count: 0, value: 0 };
+      byCategory[catName].count++;
+      byCategory[catName].value += value;
+
+      return { ...r.item, category: r.category, totalValue: value.toFixed(2) };
+    });
+
+    return {
+      totalValue: totalValue.toFixed(2),
+      byCategory: Object.values(byCategory).sort((a, b) => b.value - a.value),
+      items: itemList,
+    };
+  }
+
+  async getReportUsageByProject(): Promise<any> {
+    const allProjects = await db.select().from(projects).orderBy(asc(projects.name));
+    const result = [];
+
+    for (const proj of allProjects) {
+      const movements = await db.select({
+        movement: inventoryMovements,
+        item: items,
+      })
+      .from(inventoryMovements)
+      .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+      .where(eq(inventoryMovements.projectId, proj.id));
+
+      const issued = movements.filter(r => r.movement.movementType === 'issue');
+      const returned = movements.filter(r => r.movement.movementType === 'return');
+
+      const totalIssued = issued.reduce((s, r) => s + r.movement.quantity, 0);
+      const totalReturned = returned.reduce((s, r) => s + r.movement.quantity, 0);
+      const totalValue = issued.reduce((s, r) => {
+        const cost = r.item?.unitCost ? parseFloat(r.item.unitCost) : 0;
+        return s + cost * r.movement.quantity;
+      }, 0);
+
+      result.push({
+        project: proj,
+        totalIssued,
+        totalReturned,
+        netUsage: totalIssued - totalReturned,
+        totalValue: totalValue.toFixed(2),
+        movementCount: movements.length,
+      });
+    }
+
+    return result.filter(r => r.movementCount > 0 || true);
   }
 }
 

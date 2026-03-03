@@ -49,7 +49,9 @@ export interface IStorage {
   getCategorySummary(): Promise<any[]>;
   getCategoryGrouped(categoryId: number): Promise<any>;
 
+  updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement>;
   getDashboardStats(): Promise<any>;
+  getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>>;
   getReportLowStock(): Promise<any>;
   getReportByLocation(): Promise<any>;
   getReportValuation(): Promise<any>;
@@ -374,6 +376,72 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement> {
+    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+    if (!orig) throw new Error("Movement not found");
+
+    const effectiveItemId = changes.itemId ?? orig.itemId;
+
+    // Get current item quantity
+    const [itemRow] = await db.select().from(items).where(eq(items.id, effectiveItemId));
+    if (!itemRow) throw new Error("Item not found");
+
+    // Calculate old delta (what was applied to stock)
+    let oldDelta = 0;
+    if (orig.movementType === "receive" || orig.movementType === "return") oldDelta = orig.quantity;
+    else if (orig.movementType === "issue") oldDelta = -orig.quantity;
+
+    // Calculate new delta (what we want to apply)
+    let newDelta = 0;
+    if (changes.movementType === "receive" || changes.movementType === "return") newDelta = changes.quantity;
+    else if (changes.movementType === "issue") newDelta = -changes.quantity;
+
+    const netChange = newDelta - oldDelta;
+    const updatedQty = itemRow.quantityOnHand + netChange;
+    if (updatedQty < 0) throw new Error(`Insufficient stock. Cannot edit: would result in ${updatedQty} units.`);
+
+    // Reverse old location balance impacts
+    if (orig.movementType === "receive" || orig.movementType === "return") {
+      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
+    } else if (orig.movementType === "issue") {
+      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
+    } else if (orig.movementType === "transfer") {
+      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
+      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
+    }
+
+    // Apply new location balance impacts
+    const newSrc = changes.sourceLocationId !== undefined ? changes.sourceLocationId : orig.sourceLocationId;
+    const newDst = changes.destinationLocationId !== undefined ? changes.destinationLocationId : orig.destinationLocationId;
+    if (changes.movementType === "receive" || changes.movementType === "return") {
+      if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity);
+    } else if (changes.movementType === "issue") {
+      if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity);
+    } else if (changes.movementType === "transfer") {
+      if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity);
+      if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity);
+    }
+
+    // Update item quantity
+    await db.update(items).set({ quantityOnHand: updatedQty, updatedAt: new Date() }).where(eq(items.id, effectiveItemId));
+
+    // Update movement record
+    const [updated] = await db.update(inventoryMovements).set({
+      movementType: changes.movementType,
+      itemId: effectiveItemId,
+      quantity: changes.quantity,
+      newQuantity: updatedQty,
+      previousQuantity: itemRow.quantityOnHand,
+      sourceLocationId: newSrc ?? null,
+      destinationLocationId: newDst ?? null,
+      projectId: changes.projectId !== undefined ? changes.projectId : orig.projectId,
+      note: changes.note !== undefined ? changes.note : orig.note,
+      reason: changes.reason !== undefined ? changes.reason : orig.reason,
+    }).where(eq(inventoryMovements.id, id)).returning();
+
+    return updated;
+  }
+
   private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {
     const [existing] = await db.select().from(inventoryLocationBalances)
       .where(and(eq(inventoryLocationBalances.itemId, itemId), eq(inventoryLocationBalances.locationId, locationId)));
@@ -598,6 +666,53 @@ export class DatabaseStorage implements IStorage {
       pendingReorderCount: pendingRecs.length,
       recentActivity,
     };
+  }
+
+  async getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>> {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+    const allMovementsRaw = await db
+      .select({
+        movementType: inventoryMovements.movementType,
+        quantity: inventoryMovements.quantity,
+        createdAt: inventoryMovements.createdAt,
+        unitCost: items.unitCost,
+      })
+      .from(inventoryMovements)
+      .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+      .where(gte(inventoryMovements.createdAt, startDate));
+
+    const allItems = await db.select({ unitCost: items.unitCost, quantityOnHand: items.quantityOnHand })
+      .from(items).where(eq(items.isActive, true));
+
+    const currentValue = allItems.reduce((s, i) => s + parseFloat(i.unitCost || '0') * i.quantityOnHand, 0);
+
+    const months: Array<{ year: number; month: number; label: string; netValueDelta: number }> = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      months.push({ year: d.getFullYear(), month: d.getMonth(), label, netValueDelta: 0 });
+    }
+
+    for (const m of allMovementsRaw) {
+      const cost = parseFloat(m.unitCost || '0');
+      const valueChange = cost * m.quantity;
+      const d = new Date(m.createdAt);
+      const bucket = months.find(b => b.year === d.getFullYear() && b.month === d.getMonth());
+      if (bucket) {
+        if (m.movementType === 'receive' || m.movementType === 'return') bucket.netValueDelta += valueChange;
+        else if (m.movementType === 'issue') bucket.netValueDelta -= valueChange;
+      }
+    }
+
+    const monthValues: number[] = new Array(12).fill(0);
+    monthValues[11] = currentValue;
+    for (let i = 10; i >= 0; i--) {
+      monthValues[i] = monthValues[i + 1] - months[i + 1].netValueDelta;
+    }
+
+    return months.map((m, i) => ({ label: m.label, value: Math.max(0, Math.round(monthValues[i])) }));
   }
 
   // ─── Reports ──────────────────────────────────────────────────────────────────

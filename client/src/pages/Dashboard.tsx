@@ -3,8 +3,11 @@ import { useDashboardStats } from "@/hooks/use-dashboard";
 import {
   PackageSearch, AlertTriangle, AlertCircle, DollarSign,
   ArrowUpRight, ArrowDownRight, ShoppingCart, TrendingDown,
-  ChevronRight, XCircle, CheckCircle2, Activity
+  ChevronRight, XCircle, CheckCircle2, Activity, TrendingUp
 } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart
+} from "recharts";
 import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -36,6 +39,89 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "DP": "from-indigo-700 to-indigo-900",
   "GT": "from-teal-600 to-teal-900",
 };
+
+function MonthlyTrendChart() {
+  const { data: trend, isLoading } = useQuery<Array<{ label: string; value: number }>>({
+    queryKey: ["/api/dashboard/monthly-trend"],
+  });
+
+  const formatDollar = (v: number) => `$${(v / 1000).toFixed(0)}k`;
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-lg text-sm">
+        <p className="font-semibold text-slate-500 mb-0.5">{label}</p>
+        <p className="font-bold text-blue-600 text-base">
+          ${payload[0].value.toLocaleString()}
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" data-testid="chart-monthly-trend">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-blue-600" />
+          <h2 className="text-base font-semibold text-slate-900">Inventory Value — Last 12 Months</h2>
+        </div>
+        {trend && trend.length > 0 && (
+          <div className="text-xs text-slate-400">
+            {trend[0]?.label} → {trend[trend.length - 1]?.label}
+          </div>
+        )}
+      </div>
+      <div className="p-5">
+        {isLoading ? (
+          <div className="h-48 flex items-center justify-center">
+            <div className="w-full h-32 bg-slate-100 rounded-lg animate-pulse" />
+          </div>
+        ) : !trend?.length ? (
+          <div className="h-32 flex items-center justify-center text-sm text-slate-400">
+            No historical data available
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={trend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} />
+                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+                dy={6}
+              />
+              <YAxis
+                tickFormatter={formatDollar}
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+                width={45}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#2563EB"
+                strokeWidth={2.5}
+                fill="url(#blueGradient)"
+                dot={false}
+                activeDot={{ r: 4, fill: "#2563EB", strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href }: {
   title: string; value: string | number; icon: any;
@@ -137,6 +223,9 @@ export default function Dashboard() {
           />
         </div>
       )}
+
+      {/* Monthly inventory value chart */}
+      <MonthlyTrendChart />
 
       {/* Categories quicklinks */}
       <div>

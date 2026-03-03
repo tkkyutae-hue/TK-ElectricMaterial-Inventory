@@ -57,3 +57,27 @@ export function useCreateMovement() {
 export function useCreateTransaction() {
   return useCreateMovement();
 }
+
+export function useUpdateMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: any) => {
+      const res = await fetch(`/api/movements/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update movement");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [api.movements.list.path] });
+      qc.invalidateQueries({ queryKey: [api.items.list.path] });
+      qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
+    },
+  });
+}

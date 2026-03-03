@@ -58,6 +58,7 @@ export const projects = pgTable("projects", {
   state: text("state"),
   zipCode: text("zip_code"),
   status: text("status").notNull().default("active"), // active, completed, on_hold, cancelled
+  poNumber: text("po_number"),
   startDate: date("start_date"),
   endDate: date("end_date"),
   notes: text("notes"),

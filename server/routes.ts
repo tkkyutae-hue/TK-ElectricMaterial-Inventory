@@ -21,6 +21,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/dashboard/monthly-trend", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getDashboardMonthlyTrend());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Categories ─────────────────────────────────────────────────────────────
   app.get("/api/categories", isAuthenticated, async (_req, res) => {
     res.json(await storage.getCategories());
@@ -307,6 +315,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(201).json(movement);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Internal error" });
+    }
+  });
+
+  app.put("/api/movements/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { movementType, quantity, sourceLocationId, destinationLocationId, projectId, note, reason, itemId } = req.body;
+      if (!movementType || !quantity) return res.status(400).json({ message: "movementType and quantity are required" });
+      const updated = await storage.updateInventoryMovement(id, {
+        movementType, quantity: Number(quantity),
+        sourceLocationId: sourceLocationId ? Number(sourceLocationId) : null,
+        destinationLocationId: destinationLocationId ? Number(destinationLocationId) : null,
+        projectId: projectId ? Number(projectId) : null,
+        note: note ?? null,
+        reason: reason ?? null,
+        itemId: itemId ? Number(itemId) : undefined,
+      });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
     }
   });
 

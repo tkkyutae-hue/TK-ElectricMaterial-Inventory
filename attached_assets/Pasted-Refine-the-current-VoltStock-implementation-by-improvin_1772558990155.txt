@@ -1,0 +1,237 @@
+Refine the current VoltStock implementation by improving the existing workflows and fixing incomplete behavior.
+
+Do not redesign the app from scratch.
+Do not add more shallow pages.
+Work directly on the current codebase and improve the actual usability of the existing system.
+
+The current UI direction is good enough.
+Now focus on:
+
+* better operational visibility
+* fixing broken edit flows
+* improving movement logging usability
+* strengthening transaction editing
+* making project details more useful
+
+---
+
+## 1. Dashboard: add a monthly Inventory Value line chart
+
+Enhance the Dashboard by adding a **monthly inventory value trend chart**.
+
+### Requirements
+
+* Add a clear line chart section showing **Inventory Value by Month**
+* Place it in a readable location on the Dashboard without making the page feel crowded
+* Make it visually clean and easy to understand at a glance
+* Use readable axis labels and spacing
+* Show at least recent months such as the last 6–12 months if data exists
+* If historical data is limited, generate a sensible seeded trend based on transaction and inventory valuation history
+
+### UX expectation
+
+This should improve dashboard readability and decision-making, not just be decorative.
+
+---
+
+## 2. Inventory: fix item edit behavior
+
+Right now, clicking an item and then choosing edit does not properly allow editing.
+
+### Fix this completely
+
+* Make sure users can click an inventory item
+* Open the item detail or edit flow correctly
+* Ensure the Edit button actually opens a working edit form
+* The edit form must save updates correctly to the database
+* After save, the updated data should immediately reflect in the inventory list and item detail view
+
+### Required editable fields
+
+At minimum:
+
+* SKU
+* item name
+* size
+* category
+* supplier
+* location
+* quantity
+* reorder point
+* reorder quantity
+* notes
+* status-related fields if relevant
+
+Do not leave this as a broken partial workflow.
+
+---
+
+## 3. Log Inventory Movement: searchable item input
+
+The current item listing dropdown is acceptable, but it also needs type-to-search support.
+
+### Update the movement modal/form
+
+For the Item field:
+
+* keep the existing ability to browse/select items from the list
+* also allow users to type and search for items by:
+
+  * SKU
+  * item name
+  * size
+* filter the dropdown results as the user types
+* make the search responsive and practical for larger inventories
+
+### UX expectation
+
+Users should be able to either:
+
+* scroll the list
+  or
+* quickly type “EMT-100”, “1 inch EMT”, “Panelboard”, etc. and find the item
+
+---
+
+## 4. Movement Type changes
+
+Update the movement form logic as follows:
+
+### Receive movement
+
+When movement type = Receive:
+
+* change the location field label from **To Location** to **From Location**
+
+Use the exact wording requested.
+
+### Remove Adjust
+
+* Remove the **Adjust** movement type from the available options
+* Do not show it in the movement type list
+* Clean up any UI logic related to Adjust if it is no longer being used in the form
+
+Keep the remaining movement types practical, such as:
+
+* Receive
+* Issue
+* Return
+* Transfer
+
+Make sure the field visibility logic still works correctly after removing Adjust.
+
+---
+
+## 5. Transaction History: add edit capability
+
+Improve the Transaction History page so users can edit movement records.
+
+### Required behavior
+
+Add one of these workable solutions:
+
+* an **Edit** button next to **Log Movement**
+  or
+* allow clicking a transaction row to open a transaction edit modal/page
+
+Either approach is acceptable, but it must be clean and fully functional.
+
+### Transaction edit requirements
+
+Users must be able to update:
+
+* movement type
+* item
+* quantity
+* project
+* note
+* location fields as applicable
+
+### Data integrity
+
+If a transaction is edited:
+
+* related stock balances must update correctly
+* transaction history must remain accurate
+* do not allow the edit flow to corrupt totals
+
+This is important.
+Do not make it a fake UI-only editor.
+
+---
+
+## 6. Projects: improve project detail editing
+
+The New Project flow is okay.
+Now improve the Project Detail page.
+
+### Requirements
+
+When a user clicks a project card and opens the project detail page, make sure they can edit:
+
+* PO Number
+* Active status
+
+### Project detail improvements
+
+* Add visible editable fields or an Edit action for project metadata
+* Saving changes must update the database correctly
+* Updated values should reflect back in the project list and detail screen
+
+### At minimum, project detail should support:
+
+* project name
+* project code
+* customer
+* location
+* PO Number
+* Active / status field
+* notes if already supported
+
+The main requested fix is:
+
+* PO Number editable
+* Active status editable
+
+---
+
+## Additional implementation expectations
+
+Do not stop at UI changes only.
+Make sure all of these are fully connected and working end-to-end.
+
+### Focus on real usability
+
+* fix broken edit flows
+* improve searchability
+* reduce friction for daily use
+* preserve the current clean VoltStock UI style
+* keep layouts readable and uncluttered
+
+### Preserve design consistency
+
+Use the current design language:
+
+* same cards
+* same modal style
+* same button style
+* same clean spacing
+* same modern business dashboard feel
+
+---
+
+## Final output requirements
+
+When done, clearly explain:
+
+* what files were updated
+* what backend routes or handlers changed
+* what database fields or logic changed
+* how dashboard monthly inventory value is calculated
+* how item editing now works
+* how searchable movement item selection works
+* how transaction editing works
+* how project detail editing works
+
+Do not just describe a plan.
+Actually implement these changes in the existing codebase.

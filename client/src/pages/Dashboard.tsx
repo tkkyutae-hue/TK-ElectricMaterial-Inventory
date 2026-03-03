@@ -63,8 +63,8 @@ export default function Dashboard() {
                 stats?.recentActivity?.slice(0, 5).map((tx: any) => (
                   <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${tx.movementType === 'receive' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {tx.movementType === 'receive' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                      <div className={`p-2 rounded-lg ${tx.movementType === 'receive' || tx.movementType === 'return' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {tx.movementType === 'receive' || tx.movementType === 'return' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">{tx.item?.name || 'Unknown Item'}</p>

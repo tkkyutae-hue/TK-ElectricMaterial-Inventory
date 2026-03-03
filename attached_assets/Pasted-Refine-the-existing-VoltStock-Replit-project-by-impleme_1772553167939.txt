@@ -1,0 +1,366 @@
+Refine the existing VoltStock Replit project by implementing the Inventory UI/UX based on the current design direction.
+
+Do not restart the app.
+Do not replace the entire project.
+Apply these changes directly to the existing codebase and preserve the current clean modern VoltStock design language.
+
+## Main Goal
+
+Update the Inventory experience so it matches this UI direction:
+
+* a modern inventory page with category image cards at the top
+* a searchable and filterable inventory table below
+* visual category-based browsing
+* electrical-industry-specific inventory organization
+* SKU shown before Size in the inventory UI
+* grouped category inventory views for easier stock comparison by size
+
+The result must feel like a real internal inventory platform for a U.S. electrical contractor.
+
+---
+
+## 1. Inventory Page Layout
+
+Redesign the Inventory page into this structure:
+
+### Top section
+
+* page title: Inventory
+* short subtitle describing inventory management
+* primary action button: Add New Item
+
+### Filter / search row
+
+Include:
+
+* search input with placeholder like “Search by SKU or Name...”
+* status filter
+* location filter
+* supplier filter if practical
+
+Make the filters clean, compact, and aligned horizontally on desktop.
+Preserve responsive behavior for smaller screens.
+
+### Category card grid
+
+Below the filters, add a responsive grid of category cards.
+
+Each category card must include:
+
+* representative image
+* category name
+* total SKU count
+* total quantity summary
+* low-stock count indicator
+
+Use the existing electrical categories:
+
+* CABLE TRAY
+* CONDUIT / FITTINGS
+* CONDUIT SUPPORTS & STRUT SYSTEM
+* CABLE / WIRE
+* DEVICES
+* FASTENERS & HARDWARE
+* BOXES & COVER SYSTEM
+* DISTRIBUTION & POWER SYSTEM
+* GROUNDING & TERMINATION
+
+The cards must look modern and visually strong, but still fit a business dashboard.
+Use soft radius, subtle shadow, clean spacing, readable text, and image thumbnails.
+
+### Inventory table section
+
+Keep the inventory table below the category cards.
+
+Required visible columns:
+
+* SKU
+* Item Name
+* Size
+* Category
+* Quantity
+* Unit
+* Location
+* Status
+* Reorder Point
+
+Important:
+Display SKU before Size in the table.
+
+---
+
+## 2. Category Card Behavior
+
+When a user clicks a category card, open a dedicated category inventory page:
+
+/inventory/category/:categoryId
+
+Do not treat this as just a simple table filter.
+This should be a focused category browsing experience.
+
+---
+
+## 3. Category Inventory Detail Page
+
+Build a category detail page that feels operational and visual.
+
+### Top summary section
+
+Show:
+
+* category representative image
+* category name
+* category description
+* total SKUs
+* total inventory quantity
+* low-stock count
+* out-of-stock count
+
+### Grouped inventory section
+
+Below the summary, group materials by item family / base material type.
+
+Examples:
+
+* EMT Conduit
+* EMT Compression Connector
+* EMT Coupling
+* THHN Copper
+* Breaker
+
+Each group should show a clean table with columns in this exact order:
+
+* SKU
+* Size
+* Item Name
+* Quantity
+* Unit
+* Location
+* Supplier
+* Status
+* Reorder Point
+
+This grouped view must help users quickly compare size variants in the same item family.
+
+---
+
+## 4. Item Data Model Improvements
+
+Extend the existing data model to support grouped category inventory browsing.
+
+Update items to support:
+
+* base_item_name
+* size_label
+* size_sort_value
+* display_image_url (optional if useful)
+
+Update categories to support:
+
+* image_url
+* description
+
+Preserve current data where possible, but improve schema and seed data if needed.
+
+---
+
+## 5. Size Sorting Logic
+
+Implement real logical size sorting.
+
+Do not use alphabetical sorting for size-based grouped inventory.
+
+Examples of correct sorting:
+
+### Conduit / fittings
+
+* 1/2"
+* 3/4"
+* 1"
+* 1-1/4"
+* 1-1/2"
+* 2"
+* 2-1/2"
+* 3"
+* 4"
+
+### Wire
+
+* #14
+* #12
+* #10
+* #8
+* #6
+* #4
+* #2
+* 1/0
+* 2/0
+* 3/0
+* 4/0
+* 250 KCMIL
+* 350 KCMIL
+* 500 KCMIL
+
+### Breakers
+
+* 20A 1P
+* 30A 2P
+* 60A 3P
+* 100A 3P
+* 225A 3P
+* 400A 3P
+
+If helpful, add helper utilities to parse and sort sizes cleanly by category.
+
+---
+
+## 6. Naming Standardization
+
+Standardize the displayed inventory data so item naming feels realistic and consistent for electrical materials.
+
+Examples:
+
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 1-1/4" EMT Conduit
+* 3/4" EMT Compression Connector
+* 1" EMT Compression Connector
+* 3/4" EMT Coupling
+* THHN Copper #12 Black
+* THHN Copper #10 Red
+* Breaker 20A 1P
+* Breaker 30A 2P
+* Breaker 100A 3P
+
+Use practical industry naming, not generic placeholder labels.
+
+---
+
+## 7. Representative Category Images
+
+Use realistic electrical-material category imagery.
+
+Image direction by category:
+
+* CABLE TRAY: tray sections, elbows, covers on warehouse racks
+* CONDUIT / FITTINGS: EMT conduit bundles and fittings
+* CONDUIT SUPPORTS & STRUT SYSTEM: strut channel, beam clamps, threaded rod, spring nuts
+* CABLE / WIRE: wire spools and cable reels
+* DEVICES: receptacles, switches, small electrical devices
+* FASTENERS & HARDWARE: bolts, nuts, anchors, hardware bins
+* BOXES & COVER SYSTEM: square boxes, junction boxes, covers
+* DISTRIBUTION & POWER SYSTEM: panelboards, breakers, disconnects
+* GROUNDING & TERMINATION: ground rods, lugs, grounding bars
+
+If final image assets are not available yet, use seeded placeholder URLs with consistent styling.
+
+---
+
+## 8. Inventory Page UX Requirements
+
+The Inventory page should support two browsing modes at the same time:
+
+1. visual category browsing via image cards
+2. direct item lookup via table search and filters
+
+This is important.
+Do not remove the table just because category cards are added.
+
+The page should feel:
+
+* modern
+* highly readable
+* visually intuitive
+* fast to scan
+* practical for warehouse and field users
+
+---
+
+## 9. API / Backend Requirements
+
+Add or update endpoints as needed, such as:
+
+* GET /api/inventory/categories/summary
+* GET /api/inventory/category/:id/grouped
+
+The grouped category endpoint should return:
+
+* category summary
+* grouped item families
+* size-sorted inventory rows
+* low stock / out of stock counts
+
+---
+
+## 10. Seed Data Improvements
+
+Update the sample data so the grouped views look realistic.
+
+Include multiple size variants under the same family, such as:
+
+### Conduit
+
+* 1/2" EMT Conduit
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 1-1/4" EMT Conduit
+
+### Fittings
+
+* 3/4" EMT Compression Connector
+* 1" EMT Compression Connector
+* 3/4" EMT Coupling
+* 1" EMT Coupling
+* 90 Degree EMT Elbow 3/4"
+* 90 Degree EMT Elbow 1"
+
+### Wire
+
+* THHN Copper #12 Black
+* THHN Copper #10 Red
+* THHN Copper #6 Green
+
+### Breakers
+
+* Breaker 20A 1P
+* Breaker 30A 2P
+* Breaker 100A 3P
+* Breaker 225A 3P
+
+Distribute items across realistic suppliers and locations.
+
+---
+
+## 11. Visual Quality Standard
+
+Match the design direction shown in the current UI mockup:
+
+* category cards above table
+* clean white/light background
+* modern spacing
+* readable typography
+* soft shadows
+* rounded corners
+* subtle borders
+* clear status badges
+* stronger emphasis for low stock and out of stock
+
+Do not make the page overly dense.
+Do not clutter the layout.
+Preserve the premium B2B dashboard feel.
+
+---
+
+## 12. Final Implementation Requirement
+
+Do not just describe the changes.
+Actually update the current Replit codebase.
+
+At the end, clearly explain:
+
+* what files were updated
+* what schema changes were made
+* what routes were added
+* how grouped category browsing works
+* how size sorting works
+* what parts of the Inventory UI are now complete

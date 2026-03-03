@@ -11,6 +11,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull().unique(),
   code: text("code"),
   description: text("description"),
+  imageUrl: text("image_url"),
   sortOrder: integer("sort_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -84,6 +85,9 @@ export const items = pgTable("items", {
   unitCost: numeric("unit_cost", { precision: 12, scale: 2 }),
   supplierId: integer("supplier_id").references(() => suppliers.id),
   primaryLocationId: integer("primary_location_id").references(() => locations.id),
+  baseItemName: text("base_item_name"),
+  sizeLabel: text("size_label"),
+  sizeSortValue: integer("size_sort_value").default(0),
   binLocation: text("bin_location"),
   statusOverride: text("status_override"),
   isActive: boolean("is_active").default(true),
@@ -244,4 +248,31 @@ export type SupplierWithStats = Supplier & {
 export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {
   item?: Item | null;
   supplier?: Supplier | null;
+};
+
+export type CategorySummary = Category & {
+  skuCount: number;
+  totalQuantity: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+};
+
+export type CategoryGroupedItem = Item & {
+  location?: Location | null;
+  supplier?: Supplier | null;
+  status: string;
+};
+
+export type CategoryItemGroup = {
+  baseItemName: string;
+  items: CategoryGroupedItem[];
+};
+
+export type CategoryGroupedDetail = {
+  category: Category;
+  skuCount: number;
+  totalQuantity: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  groups: CategoryItemGroup[];
 };

@@ -238,10 +238,9 @@ export default function ProjectDetail() {
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-mono text-sm text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">{project.code}</span>
             <Badge variant="outline" className={`${statusCfg.className} text-xs font-semibold`}>{statusCfg.label}</Badge>
             {project.poNumber && (
-              <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded">
+              <span className="text-sm font-mono font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">
                 PO: {project.poNumber}
               </span>
             )}

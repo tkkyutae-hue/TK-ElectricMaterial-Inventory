@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useMovements, useUpdateMovement } from "@/hooks/use-transactions";
+import { useMovements, useUpdateMovement, useDeleteMovement } from "@/hooks/use-transactions";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
 import { SearchableItemSelect } from "@/components/MovementForm";
-import { Search, ArrowRightLeft, Edit2 } from "lucide-react";
+import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +43,8 @@ function EditTransactionDialog({
 }: { tx: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const updateMutation = useUpdateMovement();
+  const deleteMutation = useDeleteMovement();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: items } = useItems();
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
@@ -82,6 +84,16 @@ function EditTransactionDialog({
       onClose();
     } catch (err: any) {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMutation.mutateAsync(tx.id);
+      toast({ title: "Transaction deleted", description: "Stock balances have been updated." });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     }
   }
 
@@ -189,12 +201,55 @@ function EditTransactionDialog({
               </FormItem>
             )} />
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-transaction">
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
-              </Button>
-            </div>
+            {confirmDelete ? (
+              <div className="border border-rose-200 bg-rose-50 rounded-xl p-4 space-y-3" data-testid="confirm-delete-panel">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-rose-900 text-sm">Delete this transaction?</p>
+                    <p className="text-xs text-rose-700 mt-0.5">
+                      This will permanently remove Transaction #{tx.id} and reverse its stock impact. This cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleteMutation.isPending}>
+                    Keep it
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-rose-600 hover:bg-rose-700 text-white"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    data-testid="button-confirm-delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                  onClick={() => setConfirmDelete(true)}
+                  data-testid="button-delete-transaction"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Delete
+                </Button>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-transaction">
+                    {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </form>
         </Form>
       </DialogContent>

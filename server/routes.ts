@@ -338,6 +338,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/movements/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteMovement(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ─── Location Balances ────────────────────────────────────────────────────────
   app.get("/api/location-balances", isAuthenticated, async (req, res) => {
     const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;

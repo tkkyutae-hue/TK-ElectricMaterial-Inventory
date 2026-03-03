@@ -1,0 +1,109 @@
+Refine the current VoltStock implementation with these exact UI and workflow updates.
+
+Do not redesign the app.
+Do not change unrelated areas.
+Apply these fixes directly to the existing codebase.
+
+## 1. Project detail header / summary
+
+Remove **Project Code** from the project detail top area / summary display.
+
+Replace that position with:
+
+* **PO Number**
+
+So in the project detail header area, show:
+
+* project title
+* status
+* PO Number
+
+Do not show Project Code there anymore.
+
+If Project Code still exists in the data model, that is fine, but do not prioritize showing it in the main project detail header.
+
+---
+
+## 2. Inventory status display
+
+On the Inventory table, the current Status column is showing a plain white bar / placeholder style.
+
+Fix this so the status is clearly visible as text badges.
+
+Use actual visible labels such as:
+
+* In Stock
+* Low Stock
+* Out of Stock
+* Ordered
+
+Use colored status badges consistent with the rest of the app:
+
+* green = In Stock
+* yellow/orange = Low Stock
+* red = Out of Stock
+* blue = Ordered
+
+Do not leave the Inventory table status as a blank or minimal white indicator.
+Make the status readable at a glance.
+
+---
+
+## 3. Transaction History delete action
+
+The transaction edit flow is working.
+Now add a **Delete** action as well.
+
+### Requirements
+
+* Add a Delete button in the transaction edit modal/page
+  or
+* Add a Delete action from the transaction row actions
+
+Either is acceptable, but it must be clear and usable.
+
+### Behavior
+
+* deleting a transaction must remove the transaction record properly
+* inventory balances / totals must update correctly after deletion
+* show a confirmation step before delete
+* do not allow silent accidental deletion
+
+This must be a real delete workflow, not just a UI placeholder.
+
+---
+
+## 4. Inventory category cards simplification
+
+On the Inventory page category cards, simplify the card content.
+
+Only show:
+
+* category image
+* category name
+
+Remove:
+
+* SKUs
+* On Hand
+* any summary numbers
+* extra metadata under the card
+
+The card should become cleaner and more visual.
+The goal is a simpler category browsing UI with just image + category name.
+
+Keep the cards clickable and preserve the current layout quality.
+
+---
+
+## Final instruction
+
+Implement only these requested changes cleanly and consistently.
+
+At the end, clearly explain:
+
+* what files changed
+* how transaction deletion updates inventory correctly
+* how inventory status badges are now rendered
+* how the project detail header was updated
+* how the category cards were simplified

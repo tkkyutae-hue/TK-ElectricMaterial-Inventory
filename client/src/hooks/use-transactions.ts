@@ -81,3 +81,25 @@ export function useUpdateMovement() {
     },
   });
 }
+
+export function useDeleteMovement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/movements/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete movement");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [api.movements.list.path] });
+      qc.invalidateQueries({ queryKey: [api.items.list.path] });
+      qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
+    },
+  });
+}

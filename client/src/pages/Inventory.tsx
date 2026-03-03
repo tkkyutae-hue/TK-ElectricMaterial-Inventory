@@ -42,7 +42,6 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
 
 function CategoryCard({ cat }: { cat: CategorySummary }) {
   const gradient = CATEGORY_GRADIENTS[cat.code || ""] || "from-slate-600 to-slate-800";
-  const hasAlert = cat.outOfStockCount > 0 || cat.lowStockCount > 0;
 
   return (
     <Link href={`/inventory/category/${cat.id}`}>
@@ -50,8 +49,7 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
         data-testid={`card-category-${cat.id}`}
       >
-        {/* Image or gradient background */}
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative h-40 overflow-hidden">
           {cat.imageUrl ? (
             <img
               src={cat.imageUrl}
@@ -65,44 +63,10 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
             />
           ) : null}
           <div className={`fallback-grad ${cat.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradient}`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-          {/* Alert indicator */}
-          {hasAlert && (
-            <div className="absolute top-2.5 right-2.5 flex gap-1">
-              {cat.outOfStockCount > 0 && (
-                <span className="flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow">
-                  <XCircle className="w-3 h-3" />{cat.outOfStockCount}
-                </span>
-              )}
-              {cat.lowStockCount > 0 && (
-                <span className="flex items-center gap-1 bg-amber-400 text-amber-900 text-xs font-bold px-1.5 py-0.5 rounded-full shadow">
-                  <AlertTriangle className="w-3 h-3" />{cat.lowStockCount}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Category name over image */}
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
-            <p className="text-white font-semibold text-sm leading-tight">{cat.name}</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+            <p className="text-white font-semibold text-sm leading-tight drop-shadow">{cat.name}</p>
           </div>
-        </div>
-
-        {/* Stats bar */}
-        <div className="bg-white px-3 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="text-xs text-slate-400 font-medium">SKUs</p>
-              <p className="text-sm font-bold text-slate-900">{cat.skuCount}</p>
-            </div>
-            <div className="w-px h-7 bg-slate-100" />
-            <div>
-              <p className="text-xs text-slate-400 font-medium">On Hand</p>
-              <p className="text-sm font-bold text-slate-900">{cat.totalQuantity.toLocaleString()}</p>
-            </div>
-          </div>
-          <span className="text-xs text-blue-600 font-medium group-hover:underline">Browse →</span>
         </div>
       </div>
     </Link>

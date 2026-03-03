@@ -225,6 +225,7 @@ export type ItemWithRelations = Item & {
   supplier?: Supplier | null;
   images?: ItemImage[];
   movements?: InventoryMovement[];
+  status?: string;
 };
 
 export type InventoryMovementWithRelations = InventoryMovement & {

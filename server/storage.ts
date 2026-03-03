@@ -50,6 +50,7 @@ export interface IStorage {
   getCategoryGrouped(categoryId: number): Promise<any>;
 
   updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement>;
+  deleteMovement(id: number): Promise<void>;
   getDashboardStats(): Promise<any>;
   getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>>;
   getReportLowStock(): Promise<any>;
@@ -222,7 +223,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    return mapped;
+    return mapped.map(i => {
+      let status = "in_stock";
+      if (i.statusOverride === "ORDERED") status = "ordered";
+      else if (i.quantityOnHand === 0) status = "out_of_stock";
+      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      return { ...i, status };
+    });
   }
 
   async getItem(id: number): Promise<ItemWithRelations | undefined> {
@@ -440,6 +447,38 @@ export class DatabaseStorage implements IStorage {
     }).where(eq(inventoryMovements.id, id)).returning();
 
     return updated;
+  }
+
+  async deleteMovement(id: number): Promise<void> {
+    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+    if (!orig) throw new Error("Movement not found");
+
+    // Reverse the stock impact on the item
+    const [itemRow] = await db.select().from(items).where(eq(items.id, orig.itemId));
+    if (!itemRow) throw new Error("Item not found");
+
+    let delta = 0;
+    if (orig.movementType === "receive" || orig.movementType === "return") delta = -orig.quantity;
+    else if (orig.movementType === "issue") delta = orig.quantity;
+
+    const newQty = itemRow.quantityOnHand + delta;
+    if (newQty < 0) throw new Error(`Cannot delete: would result in negative stock (${newQty}).`);
+
+    // Reverse location balance impacts
+    if (orig.movementType === "receive" || orig.movementType === "return") {
+      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
+    } else if (orig.movementType === "issue") {
+      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
+    } else if (orig.movementType === "transfer") {
+      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
+      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
+    }
+
+    // Update item quantity
+    await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
+
+    // Delete the movement record
+    await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
   }
 
   private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {

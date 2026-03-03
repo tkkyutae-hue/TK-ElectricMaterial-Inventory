@@ -46,6 +46,9 @@ export interface IStorage {
   generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]>;
   updateRecommendationStatus(id: number, status: string): Promise<PurchaseRecommendation>;
 
+  getCategorySummary(): Promise<any[]>;
+  getCategoryGrouped(categoryId: number): Promise<any>;
+
   getDashboardStats(): Promise<any>;
   getReportLowStock(): Promise<any>;
   getReportByLocation(): Promise<any>;
@@ -482,6 +485,80 @@ export class DatabaseStorage implements IStorage {
       .where(eq(purchaseRecommendations.id, id))
       .returning();
     return updated;
+  }
+
+  // ─── Category Summary & Grouped ──────────────────────────────────────────────
+
+  async getCategorySummary(): Promise<any[]> {
+    const allCategories = await db.select().from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(asc(categories.sortOrder), asc(categories.name));
+
+    const allItems = await db.select().from(items).where(eq(items.isActive, true));
+
+    return allCategories.map(cat => {
+      const catItems = allItems.filter(i => i.categoryId === cat.id);
+      const totalQuantity = catItems.reduce((s, i) => s + i.quantityOnHand, 0);
+      const lowStockCount = catItems.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.reorderPoint).length;
+      const outOfStockCount = catItems.filter(i => i.quantityOnHand === 0).length;
+      return {
+        ...cat,
+        skuCount: catItems.length,
+        totalQuantity,
+        lowStockCount,
+        outOfStockCount,
+      };
+    });
+  }
+
+  async getCategoryGrouped(categoryId: number): Promise<any> {
+    const [cat] = await db.select().from(categories).where(eq(categories.id, categoryId));
+    if (!cat) return null;
+
+    const rows = await db.select({
+      item: items,
+      location: locations,
+      supplier: suppliers,
+    })
+    .from(items)
+    .leftJoin(locations, eq(items.primaryLocationId, locations.id))
+    .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
+    .where(and(eq(items.categoryId, categoryId), eq(items.isActive, true)))
+    .orderBy(asc(items.baseItemName), asc(items.sizeSortValue), asc(items.name));
+
+    const enriched = rows.map(r => {
+      const i = r.item;
+      let status = "in_stock";
+      if (i.quantityOnHand === 0) status = "out_of_stock";
+      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      return { ...i, location: r.location, supplier: r.supplier, status };
+    });
+
+    // Group by baseItemName (fall back to name if not set)
+    const groupMap = new Map<string, typeof enriched>();
+    for (const item of enriched) {
+      const key = item.baseItemName || item.name;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(item);
+    }
+
+    const groups = Array.from(groupMap.entries()).map(([baseItemName, items]) => ({
+      baseItemName,
+      items,
+    }));
+
+    const totalQuantity = enriched.reduce((s, i) => s + i.quantityOnHand, 0);
+    const lowStockCount = enriched.filter(i => i.status === "low_stock").length;
+    const outOfStockCount = enriched.filter(i => i.status === "out_of_stock").length;
+
+    return {
+      category: cat,
+      skuCount: enriched.length,
+      totalQuantity,
+      lowStockCount,
+      outOfStockCount,
+      groups,
+    };
   }
 
   // ─── Dashboard Stats ──────────────────────────────────────────────────────────

@@ -1,0 +1,554 @@
+Refine the existing VoltStock Replit project by updating both the **Dashboard** and **Inventory** experience into one unified, modern, operational UI/UX system.
+
+Do not restart the app.
+Do not rebuild from scratch.
+Extend the current codebase and preserve the existing architecture where possible.
+
+The goal is to make the app feel like a serious internal inventory platform for a **U.S. electrical contractor / electrical materials company**, with a cleaner and slightly darker modern UI direction.
+
+---
+
+## Overall Product Direction
+
+This app should feel:
+
+* modern
+* operational
+* visually intuitive
+* clean and premium
+* slightly darker and more grounded than the current bright version
+* appropriate for warehouse, purchasing, project management, and field inventory use
+
+Do not make it a fully dark mode app.
+Instead, use a **slightly darker professional tone**:
+
+* light charcoal / blue-gray accents
+* deeper card contrast
+* soft shadows
+* muted backgrounds
+* stronger hierarchy for important panels
+* still readable and business-friendly
+
+The result should feel like a premium B2B dashboard, not a generic starter template.
+
+---
+
+## Main UX Principle
+
+The Dashboard and Inventory pages must work together as one system:
+
+* **Dashboard** = operational control center
+* **Inventory** = detailed browsing and lookup workspace
+* **Category Detail** = fast category-specific stock comparison by size
+
+Users should be able to:
+
+* understand inventory health within 5 seconds
+* identify shortages quickly
+* jump into the correct category in 1–2 clicks
+* compare size-based stock levels easily
+* move naturally between Dashboard, Inventory, Reorder, and Transactions
+
+---
+
+# DASHBOARD REQUIREMENTS
+
+## 1. Dashboard layout
+
+Redesign the Dashboard so it matches the updated Inventory experience.
+
+### Top KPI row
+
+Keep and refine the KPI cards.
+Show:
+
+* Total Inventory Value
+* Active SKUs
+* Low Stock Items
+* Out of Stock Items
+* Pending Reorder
+* Weekly Movement Summary
+
+Make these cards:
+
+* slightly darker than the page background
+* compact and premium
+* easy to scan
+* visually consistent with Inventory cards and tables
+
+### Dashboard content sections
+
+Below the KPI row, structure the dashboard into these blocks:
+
+#### A. Critical Categories
+
+Show a row/grid of compact category cards for key electrical categories.
+Each card should show:
+
+* category representative image
+* category name
+* total SKU count
+* low stock indicator
+* quick health state
+
+Clicking a category card should navigate to:
+/inventory/category/:categoryId
+
+#### B. Action Required
+
+Create a strong action panel that highlights:
+
+* out-of-stock items
+* critical low-stock items
+* urgent reorder candidates
+
+This section should visually stand out more than regular cards.
+
+#### C. Top Low Stock Items
+
+Show the most urgent low-stock items with:
+
+* SKU
+* item name
+* quantity left
+* location
+* reorder point
+* status badge
+
+#### D. Recent Transactions
+
+Keep a recent transaction panel showing:
+
+* item
+* transaction type
+* quantity
+* timestamp
+* location/project if available
+
+#### E. Inventory Overview
+
+Include at least one visual summary such as:
+
+* inventory by category
+* inventory by location
+* weekly receive vs issue
+
+Use charts only where helpful and keep them clean.
+
+---
+
+## 2. Dashboard design consistency
+
+The dashboard must visually match the Inventory page:
+
+* same card radius
+* same spacing system
+* same badge design
+* same typography rhythm
+* same subtle darker card treatment
+* same electrical-business tone
+
+Avoid clutter.
+Avoid excessive charting.
+Focus on fast operational clarity.
+
+---
+
+# INVENTORY REQUIREMENTS
+
+## 3. Inventory page layout
+
+Redesign the Inventory page into a more visual, category-driven browsing experience while keeping the table view.
+
+### Page header
+
+Show:
+
+* Inventory title
+* short subtitle
+* Add New Item primary action button
+
+### Filter/search row
+
+Include:
+
+* search input with placeholder “Search by SKU or Name...”
+* status filter
+* location filter
+* supplier filter if practical
+
+These controls should be compact, horizontally aligned on desktop, and responsive on smaller screens.
+
+---
+
+## 4. Category card grid
+
+Below the filters, add a responsive category card grid.
+
+Each category card must include:
+
+* representative image
+* category name
+* total SKU count
+* total quantity summary
+* low-stock count indicator
+
+Use the electrical categories:
+
+* CABLE TRAY
+* CONDUIT / FITTINGS
+* CONDUIT SUPPORTS & STRUT SYSTEM
+* CABLE / WIRE
+* DEVICES
+* FASTENERS & HARDWARE
+* BOXES & COVER SYSTEM
+* DISTRIBUTION & POWER SYSTEM
+* GROUNDING & TERMINATION
+
+The cards must feel like a real inventory navigation tool, not decoration.
+
+Use realistic electrical-material imagery and a polished B2B dashboard style.
+
+---
+
+## 5. Inventory table below category cards
+
+Keep the inventory table below the category cards.
+
+Required visible columns:
+
+* SKU
+* Item Name
+* Size
+* Category
+* Quantity
+* Unit
+* Location
+* Status
+* Reorder Point
+
+Important:
+**Display SKU before Size in the table UI.**
+
+The inventory page must support both:
+
+1. visual category browsing
+2. direct table-based lookup and filtering
+
+Do not remove the table.
+
+---
+
+# CATEGORY DETAIL REQUIREMENTS
+
+## 6. Category detail page
+
+Build or refine:
+/inventory/category/:categoryId
+
+This page should feel like a category-specific inventory workspace, not a generic filtered list.
+
+### Top summary section
+
+Show:
+
+* large representative category image
+* category name
+* category description
+* total SKU count
+* total quantity on hand
+* low-stock count
+* out-of-stock count
+
+### Grouped inventory section
+
+Below the summary, group materials by **item family / base item name**.
+
+Examples:
+
+* EMT Conduit
+* EMT Compression Connector
+* EMT Coupling
+* THHN Copper
+* Breaker
+* Ground Rod
+* Cable Tray Cover
+
+Each family section should include a clean table with columns in this exact order:
+
+* SKU
+* Size
+* Item Name
+* Quantity
+* Unit
+* Location
+* Supplier
+* Status
+* Reorder Point
+
+This page must make it easy to compare multiple sizes of the same material family.
+
+---
+
+# DATA MODEL / LOGIC REQUIREMENTS
+
+## 7. Data model improvements
+
+Update the schema and data model to support grouped inventory browsing cleanly.
+
+### categories
+
+Add or use:
+
+* image_url
+* description
+
+### items
+
+Add or use:
+
+* base_item_name
+* size_label
+* size_sort_value
+* display_image_url (optional)
+
+Preserve existing data when possible, but improve the schema and seed data if needed.
+
+---
+
+## 8. Naming standardization
+
+Standardize item naming so the inventory feels realistic and consistent for U.S. electrical materials.
+
+Examples:
+
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 1-1/4" EMT Conduit
+* 3/4" EMT Compression Connector
+* 1" EMT Compression Connector
+* 3/4" EMT Coupling
+* THHN Copper #12 Black
+* THHN Copper #10 Red
+* Breaker 20A 1P
+* Breaker 30A 2P
+* Breaker 100A 3P
+* Ground Rod 5/8" x 8'
+
+Use realistic electrical naming, not placeholder labels.
+
+---
+
+## 9. Logical size sorting
+
+Do not use alphabetical sorting for size variants.
+
+Implement real logical sorting.
+
+### Conduit / fittings / tray sizes
+
+Correct order example:
+
+* 1/2"
+* 3/4"
+* 1"
+* 1-1/4"
+* 1-1/2"
+* 2"
+* 2-1/2"
+* 3"
+* 4"
+
+### Wire sizes
+
+Correct order example:
+
+* #14
+* #12
+* #10
+* #8
+* #6
+* #4
+* #2
+* 1/0
+* 2/0
+* 3/0
+* 4/0
+* 250 KCMIL
+* 350 KCMIL
+* 500 KCMIL
+
+### Breaker sizes
+
+Correct order example:
+
+* 20A 1P
+* 30A 2P
+* 60A 3P
+* 100A 3P
+* 225A 3P
+* 400A 3P
+
+If useful, add helpers that parse size values differently by category.
+
+---
+
+# CATEGORY IMAGE SYSTEM
+
+## 10. Category representative image direction
+
+Use realistic category imagery that matches electrical warehouse inventory.
+
+Image direction by category:
+
+* CABLE TRAY: tray sections, elbows, covers on racks
+* CONDUIT / FITTINGS: EMT conduit bundles, connectors, couplings, elbows
+* CONDUIT SUPPORTS & STRUT SYSTEM: strut channel, threaded rod, beam clamps, spring nuts
+* CABLE / WIRE: wire spools, cable reels, organized rolls
+* DEVICES: receptacles, switches, small electrical devices
+* FASTENERS & HARDWARE: bolts, nuts, washers, anchors, hardware bins
+* BOXES & COVER SYSTEM: 4" square boxes, covers, junction boxes
+* DISTRIBUTION & POWER SYSTEM: breakers, panelboards, disconnects
+* GROUNDING & TERMINATION: ground rods, lugs, grounding bars, bonding hardware
+
+If production image assets are not available yet, use high-quality placeholder URLs with consistent visual styling.
+
+---
+
+# VISUAL DESIGN SYSTEM REQUIREMENTS
+
+## 11. Updated color / styling direction
+
+Adjust the UI to be slightly darker and more premium than the current bright version.
+
+Use:
+
+* cool gray / slate / blue-gray surface tones
+* slightly darker cards than page background
+* soft but visible borders
+* subtle shadows
+* strong typography contrast
+* more defined alert colors for low stock and out of stock
+
+Do not make the interface too dark.
+Do not reduce readability.
+Keep it polished and professional.
+
+### Status styles
+
+Use consistent status badges:
+
+* In Stock = green
+* Low Stock = yellow/orange
+* Out of Stock = red
+* Ordered = blue
+
+Action panels and warning states should stand out more than regular informational cards.
+
+---
+
+# API / BACKEND REQUIREMENTS
+
+## 12. Add or update endpoints
+
+Add or refine routes such as:
+
+* GET /api/dashboard/summary
+* GET /api/dashboard/categories
+* GET /api/dashboard/low-stock
+* GET /api/dashboard/recent-transactions
+* GET /api/inventory/categories/summary
+* GET /api/inventory/category/:id/grouped
+
+The grouped category endpoint should return:
+
+* category summary
+* grouped item families
+* size-sorted item rows
+* low stock and out-of-stock counts
+
+---
+
+# SEED DATA REQUIREMENTS
+
+## 13. Improve seed data realism
+
+Update seed data so Dashboard and Inventory both feel like a real electrical business.
+
+Include realistic material families with multiple size variants:
+
+### Conduit
+
+* 1/2" EMT Conduit
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 1-1/4" EMT Conduit
+
+### Fittings
+
+* 3/4" EMT Compression Connector
+* 1" EMT Compression Connector
+* 3/4" EMT Coupling
+* 1" EMT Coupling
+* 90 Degree EMT Elbow 3/4"
+* 90 Degree EMT Elbow 1"
+
+### Wire
+
+* THHN Copper #12 Black
+* THHN Copper #10 Red
+* THHN Copper #6 Green
+
+### Breakers
+
+* Breaker 20A 1P
+* Breaker 30A 2P
+* Breaker 100A 3P
+* Breaker 225A 3P
+
+### Boxes / hardware / grounding
+
+* 4" Square Box
+* 4-11/16" Box
+* Ground Rod 5/8" x 8'
+* Mechanical Lug
+* Beam Clamp
+* All Thread Rod 3/8"
+* Wedge Anchor
+
+Use realistic suppliers and locations:
+
+* Graybar
+* Wesco
+* Grainger
+* Main Warehouse
+* Yard Storage
+* Tool Room
+* Job Trailer A
+
+---
+
+# FINAL IMPLEMENTATION INSTRUCTION
+
+## 14. Do not stop at visual mockups
+
+Do not implement this as a shallow UI-only redesign.
+
+Make sure:
+
+* Dashboard cards are connected to real data
+* category cards are connected to category summary data
+* category click-through works
+* grouped category inventory is real and size-sorted
+* Inventory table remains functional
+* Dashboard and Inventory look like parts of the same product
+
+At the end, clearly explain:
+
+* what files were updated
+* what schema changes were made
+* what routes were added or changed
+* how Dashboard and Inventory now work together
+* how grouped category browsing works
+* how logical size sorting works
+* what is fully completed and what still needs refinement

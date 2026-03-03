@@ -26,6 +26,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getCategories());
   });
 
+  app.get("/api/inventory/categories/summary", isAuthenticated, async (_req, res) => {
+    try {
+      res.json(await storage.getCategorySummary());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/inventory/category/:id/grouped", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getCategoryGrouped(Number(req.params.id));
+      if (!data) return res.status(404).json({ message: "Category not found" });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Locations ──────────────────────────────────────────────────────────────
   app.get("/api/locations", isAuthenticated, async (_req, res) => {
     res.json(await storage.getLocations());

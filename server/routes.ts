@@ -27,77 +27,14 @@ export async function registerRoutes(
     res.json(data);
   });
 
-  app.post(api.categories.create.path, isAuthenticated, async (req, res) => {
-    try {
-      const input = api.categories.create.input.parse(req.body);
-      const data = await storage.createCategory(input);
-      res.status(201).json(data);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal error" });
-    }
-  });
-
   app.get(api.locations.list.path, isAuthenticated, async (req, res) => {
     const data = await storage.getLocations();
     res.json(data);
   });
 
-  app.post(api.locations.create.path, isAuthenticated, async (req, res) => {
-    try {
-      const input = api.locations.create.input.parse(req.body);
-      const data = await storage.createLocation(input);
-      res.status(201).json(data);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal error" });
-    }
-  });
-
   app.get(api.suppliers.list.path, isAuthenticated, async (req, res) => {
     const data = await storage.getSuppliers();
     res.json(data);
-  });
-
-  app.get(api.suppliers.get.path, isAuthenticated, async (req, res) => {
-    const data = await storage.getSupplier(Number(req.params.id));
-    if (!data) return res.status(404).json({ message: "Not found" });
-    res.json(data);
-  });
-
-  app.post(api.suppliers.create.path, isAuthenticated, async (req, res) => {
-    try {
-      const input = api.suppliers.create.input.parse(req.body);
-      const data = await storage.createSupplier(input);
-      res.status(201).json(data);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal error" });
-    }
-  });
-
-  app.get(api.projects.list.path, isAuthenticated, async (req, res) => {
-    const data = await storage.getProjects();
-    res.json(data);
-  });
-
-  app.post(api.projects.create.path, isAuthenticated, async (req, res) => {
-    try {
-      const input = api.projects.create.input.parse(req.body);
-      const data = await storage.createProject(input);
-      res.status(201).json(data);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      res.status(500).json({ message: "Internal error" });
-    }
   });
 
   app.get(api.items.list.path, isAuthenticated, async (req, res) => {
@@ -118,13 +55,12 @@ export async function registerRoutes(
 
   app.post(api.items.create.path, isAuthenticated, async (req, res) => {
     try {
-      // Coerce numeric fields from strings if they arrive as such from FormData or simple JSON
       const bodySchema = api.items.create.input.extend({
         categoryId: z.coerce.number().optional(),
-        locationId: z.coerce.number().optional(),
+        primaryLocationId: z.coerce.number().optional(),
         supplierId: z.coerce.number().optional(),
         quantityOnHand: z.coerce.number().default(0),
-        minStock: z.coerce.number().default(0),
+        minimumStock: z.coerce.number().default(0),
         reorderPoint: z.coerce.number().default(0),
         reorderQuantity: z.coerce.number().default(0),
       });
@@ -144,10 +80,10 @@ export async function registerRoutes(
     try {
       const bodySchema = api.items.update.input.extend({
         categoryId: z.coerce.number().optional(),
-        locationId: z.coerce.number().optional(),
+        primaryLocationId: z.coerce.number().optional(),
         supplierId: z.coerce.number().optional(),
         quantityOnHand: z.coerce.number().optional(),
-        minStock: z.coerce.number().optional(),
+        minimumStock: z.coerce.number().optional(),
         reorderPoint: z.coerce.number().optional(),
         reorderQuantity: z.coerce.number().optional(),
       });
@@ -162,38 +98,45 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.transactions.list.path, isAuthenticated, async (req, res) => {
-    const itemId = req.query.itemId ? Number(req.query.itemId) : undefined;
-    const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
-    const actionType = req.query.actionType as string;
+  app.delete(api.items.delete.path, isAuthenticated, async (req, res) => {
+    await storage.deleteItem(Number(req.params.id));
+    res.status(204).end();
+  });
 
-    const data = await storage.getTransactions({ itemId, projectId, actionType });
+  app.get(`${api.items.list.path}/movements`, isAuthenticated, async (req, res) => {
+    const itemId = req.query.itemId ? Number(req.query.itemId) : undefined;
+    const movementType = req.query.movementType as string;
+
+    const data = await storage.getInventoryMovements({ itemId, movementType });
     res.json(data);
   });
 
-  app.post(api.transactions.create.path, isAuthenticated, async (req, res) => {
+  app.post(`${api.items.list.path}/movements`, isAuthenticated, async (req, res) => {
     try {
-      const bodySchema = api.transactions.create.input.extend({
-        itemId: z.coerce.number(),
-        quantity: z.coerce.number(),
-        sourceLocationId: z.coerce.number().optional(),
-        destinationLocationId: z.coerce.number().optional(),
-        projectId: z.coerce.number().optional(),
+      const item = await storage.getItem(Number(req.body.itemId));
+      if (!item) return res.status(404).json({ message: "Item not found" });
+
+      const qty = Number(req.body.quantity);
+      let newQty = item.quantityOnHand;
+      if (req.body.movementType === 'receive' || req.body.movementType === 'return') newQty += qty;
+      else if (req.body.movementType === 'issue') newQty -= qty;
+      else if (req.body.movementType === 'adjust') newQty = qty;
+
+      const movement = await storage.createInventoryMovement({
+        itemId: item.id,
+        movementType: req.body.movementType,
+        quantity: qty,
+        previousQuantity: item.quantityOnHand,
+        newQuantity: newQty,
+        sourceLocationId: req.body.sourceLocationId ? Number(req.body.sourceLocationId) : null,
+        destinationLocationId: req.body.destinationLocationId ? Number(req.body.destinationLocationId) : null,
+        note: req.body.note,
+        createdBy: (req as any).user?.claims?.sub,
+        referenceType: req.body.referenceType,
+        referenceId: req.body.referenceId
       });
-      
-      const input = bodySchema.parse(req.body);
-      // Ensure we record the user making the transaction
-      const user = (req as any).user;
-      if (user && user.claims) {
-        input.userId = user.claims.sub;
-      }
-      
-      const data = await storage.createTransaction(input);
-      res.status(201).json(data);
+      res.status(201).json(movement);
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
       res.status(500).json({ message: "Internal error" });
     }
   });

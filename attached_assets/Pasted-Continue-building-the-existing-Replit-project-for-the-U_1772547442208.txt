@@ -1,0 +1,537 @@
+Continue building the existing Replit project for the U.S. electrical inventory management system.
+
+You are now working on **Phase 1**.
+
+This is **not** a toy demo.
+Do **not** generate a shallow mockup.
+Build a **serious, polished, operational MVP** that already looks like internal software a real U.S. electrical contractor could demo to managers, warehouse staff, and field supervisors.
+
+## Phase 1 Mission
+
+Deliver a **high-quality, visually polished, functionally solid MVP** focused on:
+
+* app structure
+* modern design system
+* dashboard
+* inventory list
+* item details
+* inventory CRUD
+* clean seed data
+* realistic database schema
+* inventory status logic
+
+The result must already feel useful on day one.
+
+---
+
+## Hard Quality Standard
+
+Do not take shortcuts that reduce usability.
+
+### The app must:
+
+* look like a premium B2B SaaS dashboard
+* feel modern and clean
+* be easy to scan in under 5 seconds
+* be responsive on desktop and tablet, and reasonably usable on mobile
+* use realistic electrical inventory data
+* have clean file organization
+* use reusable components
+* avoid fake placeholder fluff
+* avoid ugly default browser styling
+* avoid inconsistent spacing and typography
+* avoid cluttered tables and oversized forms
+
+### Do not:
+
+* dump everything into one file
+* build only static mock screens
+* leave routes half-connected
+* create obviously fake demo text everywhere
+* use generic lorem ipsum business content
+* skip seed data quality
+* skip inventory status logic
+* skip real CRUD wiring
+
+---
+
+## Scope for Phase 1
+
+Build these parts fully and properly:
+
+### Pages
+
+1. Login
+2. Dashboard
+3. Inventory
+4. Item Details
+5. Add / Edit Item Modal or Page
+6. Settings placeholder with basic system info
+
+### Navigation
+
+Include:
+
+* left sidebar
+* top header
+* page titles
+* active nav state
+* quick search UI in header or inventory page
+* responsive layout behavior
+
+---
+
+## Required Tech Direction
+
+Use the existing Replit stack and keep the code maintainable.
+
+### Preferred stack
+
+* React
+* Node.js
+* Express
+* SQLite
+* Tailwind CSS
+* React Router
+* Lucide React
+* Recharts
+
+### Architecture expectations
+
+Organize the code into clear folders such as:
+
+* client/src/components
+* client/src/pages
+* client/src/layouts
+* client/src/lib
+* client/src/hooks
+* server/routes
+* server/controllers
+* server/db
+* server/services
+* shared or constants folder if helpful
+
+Keep naming clean and practical.
+
+---
+
+## Database Design for Phase 1
+
+Use a real relational structure, even if Phase 1 only exposes part of it in the UI.
+
+Create the following tables.
+
+### 1. categories
+
+Columns:
+
+* id
+* name
+* code
+* description
+* sort_order
+* is_active
+* created_at
+* updated_at
+
+Seed with:
+
+* CABLE TRAY
+* CONDUIT / FITTINGS
+* CONDUIT SUPPORTS & STRUT SYSTEM
+* CABLE / WIRE
+* DEVICES
+* FASTENERS & HARDWARE
+* BOXES & COVER SYSTEM
+* DISTRIBUTION & POWER SYSTEM
+* GROUNDING & TERMINATION
+
+### 2. suppliers
+
+Columns:
+
+* id
+* name
+* contact_name
+* phone
+* email
+* lead_time_days
+* preferred_vendor
+* notes
+* created_at
+* updated_at
+
+### 3. locations
+
+Columns:
+
+* id
+* name
+* code
+* location_type
+* description
+* is_active
+* created_at
+* updated_at
+
+Seed with:
+
+* Main Warehouse
+* Yard Storage
+* Tool Room
+* Job Trailer A
+* Job Trailer B
+
+### 4. items
+
+Columns:
+
+* id
+* sku
+* name
+* category_id
+* subcategory
+* description
+* brand
+* manufacturer
+* unit_of_measure
+* quantity_on_hand
+* minimum_stock
+* reorder_point
+* reorder_quantity
+* unit_cost
+* supplier_id
+* primary_location_id
+* bin_location
+* status_override
+* is_active
+* notes
+* created_at
+* updated_at
+
+### 5. item_images
+
+Columns:
+
+* id
+* item_id
+* image_url
+* alt_text
+* sort_order
+* created_at
+
+### 6. inventory_movements
+
+Create this table now even if only basic placeholder history is shown in Phase 1.
+
+Columns:
+
+* id
+* item_id
+* movement_type
+* quantity
+* previous_quantity
+* new_quantity
+* source_location_id
+* destination_location_id
+* reference_type
+* reference_id
+* note
+* created_by
+* created_at
+
+---
+
+## Relationships
+
+Implement and use proper relationships:
+
+* items.category_id -> categories.id
+* items.supplier_id -> suppliers.id
+* items.primary_location_id -> locations.id
+* item_images.item_id -> items.id
+* inventory_movements.item_id -> items.id
+
+Even in SQLite, structure it cleanly and query it properly.
+
+---
+
+## Inventory Status Logic
+
+This logic must be implemented centrally, not copied randomly in many places.
+
+### Rules
+
+* In Stock = quantity_on_hand > reorder_point
+* Low Stock = quantity_on_hand <= reorder_point and quantity_on_hand > 0
+* Out of Stock = quantity_on_hand = 0
+* Ordered = status_override = 'ORDERED' or similar explicit flag
+
+Create a clean helper/service for status calculation.
+
+Also expose:
+
+* computed status label
+* status color
+* whether reorder is recommended
+
+---
+
+## Inventory Seed Data Requirements
+
+Seed **at least 35 realistic electrical inventory items**.
+
+Use realistic U.S. electrical materials such as:
+
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 1-1/4" EMT Conduit
+* 3/4" EMT Compression Connector
+* 3/4" EMT Coupling
+* 90 Degree EMT Elbow
+* 4" Square Box
+* 4-11/16" Box
+* Duplex Receptacle
+* GFCI Receptacle
+* Single Pole Switch
+* THHN Copper #12 Black
+* THHN Copper #10 Red
+* THHN Copper #6 Green
+* XHHW Cable
+* Ground Rod 5/8" x 8'
+* Mechanical Lug
+* Panelboard 225A
+* Breaker 20A 1P
+* Breaker 30A 2P
+* Breaker 100A 3P
+* Strut Channel 1-5/8"
+* Spring Nut
+* Beam Clamp
+* All Thread Rod 3/8"
+* Hex Bolt
+* Flat Washer
+* Concrete Anchor
+* Cable Tray Straight Section
+* Cable Tray Elbow
+* Cable Tray Cover
+* Junction Box NEMA 1
+* Junction Box NEMA 3R
+* Ground Bar
+* Polaris Connector
+* Locknut
+* Bushing
+
+Use realistic units:
+
+* EA
+* FT
+* ROLL
+* BOX
+* SET
+
+Distribute data across multiple categories, suppliers, and locations.
+Make stock levels intentionally varied so dashboard warnings are meaningful.
+
+---
+
+## Dashboard Requirements
+
+The dashboard must look polished and immediately useful.
+
+### Show these widgets:
+
+* total SKUs
+* total on-hand quantity
+* low stock count
+* out-of-stock count
+* pending reorder count
+* estimated inventory value
+* recent activity feed
+* category distribution chart
+* low stock alert table
+
+### UX requirement
+
+A manager should understand inventory health within **5 seconds**.
+
+Do not make the dashboard crowded.
+Use hierarchy and spacing intelligently.
+
+---
+
+## Inventory Page Requirements
+
+Build a strong inventory table that is actually usable.
+
+### Required columns
+
+* Item Name
+* SKU
+* Category
+* Quantity
+* Unit
+* Reorder Point
+* Location
+* Supplier
+* Status
+* Last Updated
+
+### Required features
+
+* search by item name or SKU
+* filter by category
+* filter by status
+* filter by location
+* sort by name, quantity, status, updated date
+* clickable rows
+* clean status badges
+* add item button
+* edit action
+* delete action with confirmation
+
+### UX requirement
+
+The table must feel clean and fast, not cramped.
+
+---
+
+## Item Detail Page Requirements
+
+The item detail page must clearly tell the full story of the item.
+
+Show:
+
+* item name
+* SKU
+* category
+* subcategory
+* description
+* brand / manufacturer
+* quantity on hand
+* unit
+* minimum stock
+* reorder point
+* reorder quantity
+* supplier
+* primary location
+* bin/shelf
+* notes
+* computed status badge
+* recent movement history preview
+* cost and estimated total value for that item
+
+Add a photo placeholder area even if no image upload exists yet.
+
+---
+
+## CRUD Requirements
+
+Inventory CRUD must be fully connected to the database.
+
+### Create Item
+
+Support:
+
+* required validation
+* category select
+* supplier select
+* location select
+* numeric validation
+* unit of measure select
+
+### Edit Item
+
+Allow editing all key inventory fields.
+
+### Delete Item
+
+Use safe deletion behavior.
+Prefer soft delete with is_active where reasonable.
+
+### Read
+
+List view + detail view must both work correctly.
+
+---
+
+## UI / Design System Requirements
+
+Create consistent reusable UI patterns:
+
+* cards
+* badges
+* modals or drawers
+* table wrapper
+* stat blocks
+* form fields
+* select dropdowns
+* section headers
+* alert panels
+* empty states
+
+### Visual expectations
+
+* premium and clean
+* modern spacing
+* subtle shadows
+* soft radius
+* consistent typography scale
+* polished header/sidebar layout
+
+Do not leave the app looking like raw scaffolding.
+
+---
+
+## API / Backend Requirements
+
+Create clean API routes for Phase 1:
+
+* GET /api/dashboard/summary
+* GET /api/items
+* GET /api/items/:id
+* POST /api/items
+* PUT /api/items/:id
+* DELETE /api/items/:id
+* GET /api/categories
+* GET /api/suppliers
+* GET /api/locations
+
+Support filtering and sorting on the item listing endpoint if practical.
+
+---
+
+## Deliverables for This Phase
+
+Generate and wire up:
+
+1. database schema
+2. seed data
+3. backend routes/controllers
+4. reusable frontend components
+5. layout and navigation
+6. dashboard
+7. inventory list
+8. item detail page
+9. add/edit item flow
+10. delete item flow
+11. status logic helper
+12. instructions to run and test in Replit
+
+---
+
+## Final Output Instruction
+
+Do not summarize vaguely.
+Actually build the files and code needed.
+
+At the end, clearly explain:
+
+* folder structure
+* database tables created
+* seed data added
+* routes created
+* pages completed
+* what is fully working in Phase 1
+* what is intentionally deferred to Phase 2
+
+Make Phase 1 polished enough that I can demo it immediately to a warehouse manager or project manager.

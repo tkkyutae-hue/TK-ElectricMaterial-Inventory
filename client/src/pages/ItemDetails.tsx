@@ -77,11 +77,11 @@ export default function ItemDetails() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Quantity on Hand</p>
-                  <p className="text-3xl font-display font-bold text-slate-900">{item.quantityOnHand} <span className="text-lg font-normal text-slate-400">{item.unit}</span></p>
+                  <p className="text-3xl font-display font-bold text-slate-900">{item.quantityOnHand} <span className="text-lg font-normal text-slate-400">{item.unitOfMeasure}</span></p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Min Stock Level</p>
-                  <p className="text-xl font-semibold text-slate-700">{item.minStock}</p>
+                  <p className="text-xl font-semibold text-slate-700">{item.minimumStock}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Reorder Point</p>
@@ -89,7 +89,7 @@ export default function ItemDetails() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Unit Cost</p>
-                  <p className="text-xl font-semibold text-slate-700">${item.cost || '0.00'}</p>
+                  <p className="text-xl font-semibold text-slate-700">${item.unitCost || '0.00'}</p>
                 </div>
               </div>
             </CardContent>
@@ -100,18 +100,17 @@ export default function ItemDetails() {
               <CardTitle className="text-lg font-display text-slate-900">Recent History</CardTitle>
             </CardHeader>
             <div className="divide-y divide-slate-100">
-              {transactions?.length === 0 ? (
+              {!item.movements || item.movements.length === 0 ? (
                 <div className="p-8 text-center text-slate-500">No transaction history found.</div>
               ) : (
-                transactions?.map(tx => (
+                item.movements.map((tx: any) => (
                   <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div>
-                      <TransactionTypeBadge type={tx.actionType} />
+                      <TransactionTypeBadge type={tx.movementType} />
                       <p className="text-sm text-slate-500 mt-1">{format(new Date(tx.createdAt), 'MMM d, yyyy h:mm a')}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-slate-900">{tx.actionType === 'issue' ? '-' : '+'}{tx.quantity} {item.unit}</p>
-                      {tx.project && <p className="text-xs text-slate-500 mt-1">Project: {tx.project.name}</p>}
+                      <p className="font-semibold text-slate-900">{tx.movementType === 'issue' ? '-' : '+'}{tx.quantity} {item.unitOfMeasure}</p>
                     </div>
                   </div>
                 ))

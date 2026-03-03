@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertTransactionSchema } from "@shared/schema";
+import { insertInventoryMovementSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -24,17 +24,17 @@ export default function Transactions() {
   const createMutation = useCreateTransaction();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof insertTransactionSchema>>({
-    resolver: zodResolver(insertTransactionSchema),
+  const form = useForm<z.infer<typeof insertInventoryMovementSchema>>({
+    resolver: zodResolver(insertInventoryMovementSchema),
     defaultValues: {
-      actionType: "receive",
+      movementType: "receive",
       quantity: 1,
     }
   });
 
-  const watchActionType = form.watch("actionType");
+  const watchMovementType = form.watch("movementType");
 
-  function onSubmit(data: z.infer<typeof insertTransactionSchema>) {
+  function onSubmit(data: z.infer<typeof insertInventoryMovementSchema>) {
     createMutation.mutate(data, {
       onSuccess: () => {
         setDialogOpen(false);
@@ -64,11 +64,11 @@ export default function Transactions() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                <FormField control={form.control} name="actionType" render={({ field }) => (
+                <FormField control={form.control} name="movementType" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Action Type</FormLabel>
+                    <FormLabel>Movement Type</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select Action" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="receive">Receive Stock (In)</SelectItem>
                         <SelectItem value="issue">Issue Stock (Out to Project)</SelectItem>
@@ -116,9 +116,9 @@ export default function Transactions() {
                   )} />
                 )}
 
-                <FormField control={form.control} name="notes" render={({ field }) => (
+                <FormField control={form.control} name="note" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormLabel>Note (Optional)</FormLabel>
                     <FormControl><Input placeholder="Reason or reference number" {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -157,13 +157,12 @@ export default function Transactions() {
                   <TableRow key={tx.id} className="hover:bg-slate-50/50">
                     <TableCell className="text-sm text-slate-600">{format(new Date(tx.createdAt), 'MMM d, yyyy HH:mm')}</TableCell>
                     <TableCell className="font-medium text-slate-900">{tx.item?.name || `Item #${tx.itemId}`}</TableCell>
-                    <TableCell><TransactionTypeBadge type={tx.actionType} /></TableCell>
+                    <TableCell><TransactionTypeBadge type={tx.movementType} /></TableCell>
                     <TableCell className="text-right font-semibold">
-                      {['issue'].includes(tx.actionType) ? <span className="text-red-600">-{tx.quantity}</span> : <span className="text-emerald-600">+{tx.quantity}</span>}
+                      {['issue'].includes(tx.movementType) ? <span className="text-red-600">-{tx.quantity}</span> : <span className="text-emerald-600">+{tx.quantity}</span>}
                     </TableCell>
                     <TableCell className="text-sm text-slate-500 max-w-xs truncate">
-                      {tx.project && <span className="mr-2 font-medium text-slate-700">[{tx.project.code}]</span>}
-                      {tx.notes}
+                      {tx.note}
                     </TableCell>
                   </TableRow>
                 ))

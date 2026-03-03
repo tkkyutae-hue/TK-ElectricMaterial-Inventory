@@ -27,9 +27,12 @@ export default function Suppliers() {
                     <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
                       <Truck className="w-5 h-5 text-blue-600" />
                     </div>
-                    <h3 className="font-display font-bold text-lg text-slate-900">{supplier.name}</h3>
+                    <div>
+                      <h3 className="font-display font-bold text-lg text-slate-900">{supplier.name}</h3>
+                      <p className="text-xs text-slate-500">{supplier.contactName}</p>
+                    </div>
                   </div>
-                  {supplier.preferred && <Badge className="bg-amber-100 text-amber-800 border-none">Preferred</Badge>}
+                  {supplier.preferredVendor && <Badge className="bg-amber-100 text-amber-800 border-none">Preferred</Badge>}
                 </div>
                 
                 <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -43,7 +46,7 @@ export default function Suppliers() {
                   </div>
                   <div className="flex items-center gap-3 text-sm text-slate-600 mt-2">
                     <span className="font-medium text-slate-900 w-5 text-center">LT</span>
-                    Lead Time: {supplier.leadTime ? `${supplier.leadTime} days` : 'Unknown'}
+                    Lead Time: {supplier.leadTimeDays ? `${supplier.leadTimeDays} days` : 'Unknown'}
                   </div>
                 </div>
               </CardContent>

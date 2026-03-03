@@ -57,14 +57,14 @@ export default function Dashboard() {
             </div>
             
             <div className="space-y-4">
-              {stats?.recentTransactions?.length === 0 ? (
+              {stats?.recentActivity?.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">No recent transactions.</div>
               ) : (
-                stats?.recentTransactions?.slice(0, 5).map((tx: any) => (
+                stats?.recentActivity?.slice(0, 5).map((tx: any) => (
                   <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${tx.actionType === 'receive' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                        {tx.actionType === 'receive' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                      <div className={`p-2 rounded-lg ${tx.movementType === 'receive' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {tx.movementType === 'receive' ? <ArrowDownRight className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">{tx.item?.name || 'Unknown Item'}</p>
@@ -72,9 +72,9 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <TransactionTypeBadge type={tx.actionType} />
+                      <TransactionTypeBadge type={tx.movementType} />
                       <p className="text-sm font-semibold mt-1">
-                        {tx.actionType === 'issue' ? '-' : '+'}{tx.quantity} {tx.item?.unit}
+                        {tx.movementType === 'issue' ? '-' : '+'}{tx.quantity} {tx.item?.unitOfMeasure}
                       </p>
                     </div>
                   </div>
@@ -92,21 +92,24 @@ export default function Dashboard() {
             </h3>
             
             <div className="space-y-4">
-              {/* This would ideally map over a real low stock array from stats */}
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                <p className="font-semibold text-amber-900 mb-1">Copper Wire 12 AWG</p>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-amber-700">Only 50 ft left</span>
-                  <Link href="/inventory" className="font-medium text-amber-700 hover:text-amber-900 underline">Order Now</Link>
+              {stats?.recentActivity?.filter((tx: any) => tx.item?.quantityOnHand <= tx.item?.reorderPoint).slice(0, 3).map((tx: any) => (
+                <div key={tx.item?.id} className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                  <p className="font-semibold text-amber-900 mb-1">{tx.item?.name}</p>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-amber-700">Only {tx.item?.quantityOnHand} {tx.item?.unitOfMeasure} left</span>
+                    <Link href={`/inventory/${tx.item?.id}`} className="font-medium text-amber-700 hover:text-amber-900 underline">Order Now</Link>
+                  </div>
                 </div>
-              </div>
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
-                <p className="font-semibold text-rose-900 mb-1">Junction Box 4x4</p>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-rose-700">Out of stock!</span>
-                  <Link href="/inventory" className="font-medium text-rose-700 hover:text-rose-900 underline">Order Now</Link>
+              ))}
+              {stats?.outOfStockCount > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
+                  <p className="font-semibold text-rose-900 mb-1">Stock Alert</p>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-rose-700">{stats.outOfStockCount} items out of stock</span>
+                    <Link href="/inventory?status=out_of_stock" className="font-medium text-rose-700 hover:text-rose-900 underline">View Items</Link>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

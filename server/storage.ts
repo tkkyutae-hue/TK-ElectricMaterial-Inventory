@@ -1,15 +1,15 @@
 import { db } from "./db";
 import { eq, desc, asc, like, and, or } from "drizzle-orm";
 import {
-  categories, locations, suppliers, projects, items, transactions,
-  type Category, type Location, type Supplier, type Project, type Item, type Transaction,
+  categories, locations, suppliers, projects, items, inventoryMovements, itemImages,
+  type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type CreateCategoryRequest, type UpdateCategoryRequest,
   type CreateLocationRequest, type UpdateLocationRequest,
   type CreateSupplierRequest, type UpdateSupplierRequest,
   type CreateProjectRequest, type UpdateProjectRequest,
   type CreateItemRequest, type UpdateItemRequest,
-  type CreateTransactionRequest,
-  type ItemWithRelations, type TransactionWithRelations
+  type CreateInventoryMovementRequest,
+  type ItemWithRelations, type InventoryMovementWithRelations
 } from "@shared/schema";
 
 export interface IStorage {
@@ -41,24 +41,26 @@ export interface IStorage {
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
 
-  // Transactions
-  getTransactions(filters?: { itemId?: number, projectId?: number, actionType?: string }): Promise<TransactionWithRelations[]>;
-  createTransaction(transaction: CreateTransactionRequest): Promise<Transaction>;
+  // Inventory Movements
+  getInventoryMovements(filters?: { itemId?: number, referenceId?: string, movementType?: string }): Promise<InventoryMovementWithRelations[]>;
+  createInventoryMovement(movement: CreateInventoryMovementRequest): Promise<InventoryMovement>;
 
   // Dashboard Stats
   getDashboardStats(): Promise<{
     totalSkus: number,
+    totalQuantity: number,
     totalValue: string,
     lowStockCount: number,
     outOfStockCount: number,
-    recentTransactions: TransactionWithRelations[]
+    pendingReorderCount: number,
+    recentActivity: InventoryMovementWithRelations[]
   }>;
 }
 
 export class DatabaseStorage implements IStorage {
   // Categories
   async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories).orderBy(categories.name);
+    return await db.select().from(categories).orderBy(categories.sortOrder, categories.name);
   }
 
   async createCategory(category: CreateCategoryRequest): Promise<Category> {
@@ -67,7 +69,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateCategory(id: number, category: UpdateCategoryRequest): Promise<Category> {
-    const [updated] = await db.update(categories).set(category).where(eq(categories.id, id)).returning();
+    const [updated] = await db.update(categories).set({ ...category, updatedAt: new Date() }).where(eq(categories.id, id)).returning();
     return updated;
   }
 
@@ -97,7 +99,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSupplier(id: number, supplier: UpdateSupplierRequest): Promise<Supplier> {
-    const [updated] = await db.update(suppliers).set(supplier).where(eq(suppliers.id, id)).returning();
+    const [updated] = await db.update(suppliers).set({ ...supplier, updatedAt: new Date() }).where(eq(suppliers.id, id)).returning();
     return updated;
   }
 
@@ -117,7 +119,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProject(id: number, project: UpdateProjectRequest): Promise<Project> {
-    const [updated] = await db.update(projects).set(project).where(eq(projects.id, id)).returning();
+    const [updated] = await db.update(projects).set({ ...project, updatedAt: new Date() }).where(eq(projects.id, id)).returning();
     return updated;
   }
 
@@ -131,7 +133,7 @@ export class DatabaseStorage implements IStorage {
     })
     .from(items)
     .leftJoin(categories, eq(items.categoryId, categories.id))
-    .leftJoin(locations, eq(items.locationId, locations.id))
+    .leftJoin(locations, eq(items.primaryLocationId, locations.id))
     .leftJoin(suppliers, eq(items.supplierId, suppliers.id));
 
     let conditions = [];
@@ -149,10 +151,20 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(items.categoryId, filters.categoryId));
     }
     if (filters?.locationId) {
-      conditions.push(eq(items.locationId, filters.locationId));
+      conditions.push(eq(items.primaryLocationId, filters.locationId));
     }
+    
+    // Status filter requires calculated logic usually, but here we can check the status_override or basic quantity
     if (filters?.status) {
-      conditions.push(eq(items.status, filters.status));
+      if (filters.status === 'low_stock') {
+        conditions.push(and(eq(items.isActive, true), sql`${items.quantityOnHand} <= ${items.reorderPoint}`, sql`${items.quantityOnHand} > 0`));
+      } else if (filters.status === 'out_of_stock') {
+        conditions.push(eq(items.quantityOnHand, 0));
+      } else if (filters.status === 'in_stock') {
+        conditions.push(sql`${items.quantityOnHand} > ${items.reorderPoint}`);
+      } else if (filters.status === 'ordered') {
+        conditions.push(eq(items.statusOverride, 'ORDERED'));
+      }
     }
 
     if (conditions.length > 0) {
@@ -178,18 +190,23 @@ export class DatabaseStorage implements IStorage {
     })
     .from(items)
     .leftJoin(categories, eq(items.categoryId, categories.id))
-    .leftJoin(locations, eq(items.locationId, locations.id))
+    .leftJoin(locations, eq(items.primaryLocationId, locations.id))
     .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
     .where(eq(items.id, id));
 
     if (results.length === 0) return undefined;
     
     const row = results[0];
+    const images = await db.select().from(itemImages).where(eq(itemImages.itemId, id)).orderBy(itemImages.sortOrder);
+    const movements = await db.select().from(inventoryMovements).where(eq(inventoryMovements.itemId, id)).orderBy(desc(inventoryMovements.createdAt)).limit(10);
+
     return {
       ...row.item,
       category: row.category,
       location: row.location,
-      supplier: row.supplier
+      supplier: row.supplier,
+      images,
+      movements
     };
   }
 
@@ -199,103 +216,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {
-    const [updated] = await db.update(items).set({ ...item, lastUpdated: new Date() }).where(eq(items.id, id)).returning();
+    const [updated] = await db.update(items).set({ ...item, updatedAt: new Date() }).where(eq(items.id, id)).returning();
     return updated;
   }
 
   async deleteItem(id: number): Promise<void> {
-    await db.delete(items).where(eq(items.id, id));
+    // Soft delete
+    await db.update(items).set({ isActive: false, updatedAt: new Date() }).where(eq(items.id, id));
   }
 
-  // Transactions
-  async getTransactions(filters?: { itemId?: number, projectId?: number, actionType?: string }): Promise<TransactionWithRelations[]> {
+  // Inventory Movements
+  async getInventoryMovements(filters?: { itemId?: number, referenceId?: string, movementType?: string }): Promise<InventoryMovementWithRelations[]> {
     let query = db.select({
-      transaction: transactions,
+      movement: inventoryMovements,
       item: items,
-      project: projects
+      sourceLocation: locations,
+      destinationLocation: locations
     })
-    .from(transactions)
-    .leftJoin(items, eq(transactions.itemId, items.id))
-    .leftJoin(projects, eq(transactions.projectId, projects.id));
-
+    .from(inventoryMovements)
+    .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+    .leftJoin(locations, eq(inventoryMovements.sourceLocationId, locations.id))
+    // Note: This second join to locations needs an alias or handles carefully in Drizzle.
+    // For now we'll just join once and fetch the other if needed, or use a raw/complex join.
+    // Simpler: fetch movements and map related data.
+    
     let conditions = [];
-
-    if (filters?.itemId) {
-      conditions.push(eq(transactions.itemId, filters.itemId));
-    }
-    if (filters?.projectId) {
-      conditions.push(eq(transactions.projectId, filters.projectId));
-    }
-    if (filters?.actionType) {
-      conditions.push(eq(transactions.actionType, filters.actionType));
-    }
+    if (filters?.itemId) conditions.push(eq(inventoryMovements.itemId, filters.itemId));
+    if (filters?.referenceId) conditions.push(eq(inventoryMovements.referenceId, filters.referenceId));
+    if (filters?.movementType) conditions.push(eq(inventoryMovements.movementType, filters.movementType));
 
     if (conditions.length > 0) {
       query.where(and(...conditions)) as any;
     }
 
-    const results = await query.orderBy(desc(transactions.createdAt));
+    const results = await query.orderBy(desc(inventoryMovements.createdAt));
     
     return results.map(row => ({
-      ...row.transaction,
+      ...row.movement,
       item: row.item,
-      project: row.project
+      sourceLocation: row.sourceLocation
     }));
   }
 
-  async createTransaction(transaction: CreateTransactionRequest): Promise<Transaction> {
-    // We should also update the item quantity based on transaction type
-    const item = await db.select().from(items).where(eq(items.id, transaction.itemId)).then(res => res[0]);
+  async createInventoryMovement(movement: CreateInventoryMovementRequest): Promise<InventoryMovement> {
+    const [created] = await db.insert(inventoryMovements).values(movement).returning();
     
-    if (item) {
-      let newQuantity = item.quantityOnHand;
-      
-      switch (transaction.actionType) {
-        case 'receive':
-        case 'return':
-          newQuantity += transaction.quantity;
-          break;
-        case 'issue':
-          newQuantity -= transaction.quantity;
-          break;
-        case 'adjust':
-          newQuantity = transaction.quantity; // Adjust sets the exact quantity
-          break;
-      }
+    // Update item quantity
+    await db.update(items)
+      .set({ 
+        quantityOnHand: movement.newQuantity,
+        updatedAt: new Date()
+      })
+      .where(eq(items.id, movement.itemId));
 
-      // Determine new status
-      let newStatus = 'in_stock';
-      if (newQuantity === 0) {
-        newStatus = 'out_of_stock';
-      } else if (newQuantity <= item.reorderPoint) {
-        newStatus = 'low_stock';
-      }
-
-      // Update item quantity
-      await db.update(items)
-        .set({ 
-          quantityOnHand: newQuantity, 
-          status: newStatus,
-          lastUpdated: new Date() 
-        })
-        .where(eq(items.id, item.id));
-    }
-
-    const [created] = await db.insert(transactions).values(transaction).returning();
     return created;
   }
 
   // Dashboard Stats
   async getDashboardStats() {
-    const allItems = await db.select().from(items);
+    const allItems = await db.select().from(items).where(eq(items.isActive, true));
     
     const totalSkus = allItems.length;
+    let totalQuantity = 0;
     let totalValue = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
+    let pendingReorderCount = 0;
 
     for (const item of allItems) {
-      const cost = item.cost ? parseFloat(item.cost) : 0;
+      totalQuantity += item.quantityOnHand;
+      const cost = item.unitCost ? parseFloat(item.unitCost) : 0;
       totalValue += cost * item.quantityOnHand;
       
       if (item.quantityOnHand === 0) {
@@ -303,16 +293,22 @@ export class DatabaseStorage implements IStorage {
       } else if (item.quantityOnHand <= item.reorderPoint) {
         lowStockCount++;
       }
+
+      if (item.statusOverride === 'ORDERED') {
+        pendingReorderCount++;
+      }
     }
 
-    const recentTxs = await this.getTransactions();
+    const recentActivity = await this.getInventoryMovements();
 
     return {
       totalSkus,
+      totalQuantity,
       totalValue: totalValue.toFixed(2),
       lowStockCount,
       outOfStockCount,
-      recentTransactions: recentTxs.slice(0, 5) // Last 5 transactions
+      pendingReorderCount,
+      recentActivity: recentActivity.slice(0, 10)
     };
   }
 }

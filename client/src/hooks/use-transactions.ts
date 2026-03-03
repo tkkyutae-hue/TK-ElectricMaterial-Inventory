@@ -13,10 +13,10 @@ export function useTransactions(filters?: { itemId?: string; projectId?: string;
       if (filters?.projectId) params.append("projectId", filters.projectId);
       if (filters?.actionType) params.append("actionType", filters.actionType);
       
-      const url = `${api.transactions.list.path}${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `${api.items.list.path}/movements${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch transactions");
-      return api.transactions.list.responses[200].parse(await res.json());
+      return z.array(z.custom<any>()).parse(await res.json());
     },
   });
 }
@@ -25,14 +25,14 @@ export function useCreateTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateTransactionInput) => {
-      const res = await fetch(api.transactions.create.path, {
+      const res = await fetch(`${api.items.list.path}/movements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to log transaction");
-      return api.transactions.create.responses[201].parse(await res.json());
+      return z.custom<any>().parse(await res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.transactions.list.path] });

@@ -5,15 +5,13 @@ import {
   insertSupplierSchema, 
   insertProjectSchema, 
   insertItemSchema, 
-  insertTransactionSchema,
   categories,
   locations,
   suppliers,
   projects,
   items,
-  transactions
+  inventoryMovements
 } from './schema';
-import { users } from './models/auth';
 
 export const errorSchemas = {
   validation: z.object({
@@ -40,25 +38,6 @@ export const api = {
         200: z.array(z.custom<typeof categories.$inferSelect>()),
       },
     },
-    create: {
-      method: 'POST' as const,
-      path: '/api/categories' as const,
-      input: insertCategorySchema,
-      responses: {
-        201: z.custom<typeof categories.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
-    },
-    update: {
-      method: 'PUT' as const,
-      path: '/api/categories/:id' as const,
-      input: insertCategorySchema.partial(),
-      responses: {
-        200: z.custom<typeof categories.$inferSelect>(),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
-      },
-    },
   },
   locations: {
     list: {
@@ -66,15 +45,6 @@ export const api = {
       path: '/api/locations' as const,
       responses: {
         200: z.array(z.custom<typeof locations.$inferSelect>()),
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/locations' as const,
-      input: insertLocationSchema,
-      responses: {
-        201: z.custom<typeof locations.$inferSelect>(),
-        400: errorSchemas.validation,
       },
     },
   },
@@ -86,33 +56,6 @@ export const api = {
         200: z.array(z.custom<typeof suppliers.$inferSelect>()),
       },
     },
-    get: {
-      method: 'GET' as const,
-      path: '/api/suppliers/:id' as const,
-      responses: {
-        200: z.custom<typeof suppliers.$inferSelect>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/suppliers' as const,
-      input: insertSupplierSchema,
-      responses: {
-        201: z.custom<typeof suppliers.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
-    },
-    update: {
-      method: 'PUT' as const,
-      path: '/api/suppliers/:id' as const,
-      input: insertSupplierSchema.partial(),
-      responses: {
-        200: z.custom<typeof suppliers.$inferSelect>(),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
-      },
-    },
   },
   projects: {
     list: {
@@ -120,33 +63,6 @@ export const api = {
       path: '/api/projects' as const,
       responses: {
         200: z.array(z.custom<typeof projects.$inferSelect>()),
-      },
-    },
-    get: {
-      method: 'GET' as const,
-      path: '/api/projects/:id' as const,
-      responses: {
-        200: z.custom<typeof projects.$inferSelect>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/projects' as const,
-      input: insertProjectSchema,
-      responses: {
-        201: z.custom<typeof projects.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
-    },
-    update: {
-      method: 'PUT' as const,
-      path: '/api/projects/:id' as const,
-      input: insertProjectSchema.partial(),
-      responses: {
-        200: z.custom<typeof projects.$inferSelect>(),
-        400: errorSchemas.validation,
-        404: errorSchemas.notFound,
       },
     },
   },
@@ -161,14 +77,14 @@ export const api = {
         status: z.string().optional(),
       }).optional(),
       responses: {
-        200: z.array(z.custom<typeof items.$inferSelect & { category?: any, location?: any, supplier?: any }>()),
+        200: z.array(z.custom<any>()),
       },
     },
     get: {
       method: 'GET' as const,
       path: '/api/items/:id' as const,
       responses: {
-        200: z.custom<typeof items.$inferSelect & { category?: any, location?: any, supplier?: any }>(),
+        200: z.custom<any>(),
         404: errorSchemas.notFound,
       },
     },
@@ -200,29 +116,6 @@ export const api = {
       },
     },
   },
-  transactions: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/transactions' as const,
-      input: z.object({
-        itemId: z.string().optional(),
-        projectId: z.string().optional(),
-        actionType: z.string().optional(),
-      }).optional(),
-      responses: {
-        200: z.array(z.custom<typeof transactions.$inferSelect & { item?: any, user?: any, project?: any }>()),
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/transactions' as const,
-      input: insertTransactionSchema,
-      responses: {
-        201: z.custom<typeof transactions.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
-    },
-  },
   dashboard: {
     stats: {
       method: 'GET' as const,
@@ -230,10 +123,12 @@ export const api = {
       responses: {
         200: z.object({
           totalSkus: z.number(),
+          totalQuantity: z.number(),
           totalValue: z.string(),
           lowStockCount: z.number(),
           outOfStockCount: z.number(),
-          recentTransactions: z.array(z.custom<any>()),
+          pendingReorderCount: z.number(),
+          recentActivity: z.array(z.custom<any>()),
         }),
       }
     }

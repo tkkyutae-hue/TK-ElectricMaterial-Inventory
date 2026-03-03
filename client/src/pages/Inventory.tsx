@@ -34,7 +34,7 @@ export default function Inventory() {
   const form = useForm<z.infer<typeof insertItemSchema>>({
     resolver: zodResolver(insertItemSchema),
     defaultValues: {
-      name: "", sku: "", unit: "EA", quantityOnHand: 0, minStock: 0, reorderPoint: 0, reorderQuantity: 0, status: "in_stock"
+      name: "", sku: "", unitOfMeasure: "EA", quantityOnHand: 0, minimumStock: 0, reorderPoint: 0, reorderQuantity: 0, unitCost: "0.00"
     }
   });
 
@@ -75,7 +75,7 @@ export default function Inventory() {
                   <FormField control={form.control} name="sku" render={({ field }) => (
                     <FormItem><FormLabel>SKU / Part Number</FormLabel><FormControl><Input placeholder="CW-12-AWG" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
-                  <FormField control={form.control} name="unit" render={({ field }) => (
+                  <FormField control={form.control} name="unitOfMeasure" render={({ field }) => (
                     <FormItem><FormLabel>Unit of Measure</FormLabel><FormControl><Input placeholder="e.g. FT, EA, ROLL" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   
@@ -91,7 +91,7 @@ export default function Inventory() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="locationId" render={({ field }) => (
+                  <FormField control={form.control} name="primaryLocationId" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Location</FormLabel>
                       <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
@@ -107,7 +107,7 @@ export default function Inventory() {
                   <FormField control={form.control} name="quantityOnHand" render={({ field }) => (
                     <FormItem><FormLabel>Initial Quantity</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl><FormMessage /></FormItem>
                   )} />
-                  <FormField control={form.control} name="cost" render={({ field }) => (
+                  <FormField control={form.control} name="unitCost" render={({ field }) => (
                     <FormItem><FormLabel>Unit Cost ($)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
@@ -188,7 +188,7 @@ export default function Inventory() {
                     <TableCell className="font-semibold text-slate-900">{item.name}</TableCell>
                     <TableCell className="text-slate-600">{item.category?.name || '-'}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {item.quantityOnHand} <span className="text-slate-400 font-normal text-sm">{item.unit}</span>
+                      {item.quantityOnHand} <span className="text-slate-400 font-normal text-sm">{item.unitOfMeasure}</span>
                     </TableCell>
                     <TableCell><ItemStatusBadge status={item.status} /></TableCell>
                     <TableCell className="text-right">

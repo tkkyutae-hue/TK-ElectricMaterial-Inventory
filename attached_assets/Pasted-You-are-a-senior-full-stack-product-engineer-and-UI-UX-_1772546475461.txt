@@ -1,0 +1,351 @@
+You are a senior full-stack product engineer and UI/UX designer.
+
+Build a **production-style inventory management web app** in **Replit** for a **U.S. electrical contractor / electrical materials company**.
+
+This app is for managing real electrical inventory used in commercial and industrial construction projects in the United States.
+
+## Main Objective
+
+Create a **modern, highly intuitive, fast, visually clear inventory management system** that lets users instantly understand:
+
+* what materials are in stock
+* what is low
+* what is out of stock
+* what has been issued to jobsites
+* what has been received
+* what needs to be reordered
+* where every material is stored
+* which project consumed which material
+
+The app must feel like a **real internal business tool**, not a beginner demo.
+
+## Development Requirements
+
+Build this project directly in **Replit** with clean architecture and code organization.
+
+### Preferred Tech Stack
+
+* Frontend: React
+* Backend: Node.js + Express
+* Database: SQLite for initial Replit build
+* Styling: Tailwind CSS
+* Charts: Recharts
+* Icons: Lucide React
+* Routing: React Router
+* State management: simple and maintainable, prefer React hooks/context unless truly necessary
+* Form handling: clean and practical
+* Use reusable components throughout
+
+## Design Requirements
+
+The UI must be:
+
+* modern
+* minimal
+* professional
+* responsive
+* mobile-friendly
+* easy to scan quickly
+* optimized for operational use in warehouse + office + field environments
+
+Visual style:
+
+* clean white/light background
+* dark readable typography
+* rounded cards
+* subtle shadows
+* strong spacing and alignment
+* dashboard-style layout
+* clear sidebar navigation
+* sticky top search if useful
+* color-coded stock status
+
+Status colors:
+
+* green = healthy stock
+* yellow/orange = low stock
+* red = out of stock / urgent
+* blue = ordered / in transit
+
+Do not make it playful, flashy, or consumer-app styled.
+Make it feel like a premium B2B SaaS dashboard for construction materials.
+
+## Core User Types
+
+* Admin
+* Warehouse Manager
+* Purchasing Manager
+* Project Manager
+* Foreman / Field Supervisor
+* Viewer
+
+## Required Core Pages
+
+Build the following pages with working navigation:
+
+1. Login
+2. Dashboard
+3. Inventory
+4. Item Details
+5. Stock Transactions
+6. Projects
+7. Suppliers
+8. Reports
+9. Settings
+
+## Required Inventory Categories
+
+Preload categories relevant to an electrical company:
+
+* CABLE TRAY
+* CONDUIT / FITTINGS
+* CONDUIT SUPPORTS & STRUT SYSTEM
+* CABLE / WIRE
+* DEVICES
+* FASTENERS & HARDWARE
+* BOXES & COVER SYSTEM
+* DISTRIBUTION & POWER SYSTEM
+* GROUNDING & TERMINATION
+
+Allow custom categories and subcategories too.
+
+## Dashboard Requirements
+
+The dashboard must make inventory health understandable within 5 seconds.
+
+Include:
+
+* total SKUs
+* total on-hand quantity
+* low stock count
+* out-of-stock count
+* pending reorder count
+* recently received materials
+* recently issued materials
+* top used items
+* materials by category
+* materials by location
+* critical alerts widget
+
+Use summary cards, tables, simple charts, and alert sections.
+
+## Inventory Page Requirements
+
+Create a powerful but clean inventory table with:
+
+* item name
+* SKU
+* category
+* subcategory
+* description
+* brand
+* unit
+* quantity on hand
+* minimum stock
+* reorder point
+* reorder quantity
+* warehouse/location
+* bin/shelf
+* supplier
+* cost
+* status
+* last updated
+
+Include:
+
+* search
+* filter by category
+* filter by status
+* filter by location
+* sortable columns
+* quick actions
+* click row to open item details
+
+## Item Details Page
+
+Show:
+
+* item name
+* photo placeholder
+* SKU
+* full description
+* quantity on hand
+* stock status badge
+* reorder settings
+* supplier
+* storage location
+* stock movement history
+* project issue history
+* notes
+
+## Stock Transaction Module
+
+Support:
+
+* receive inventory
+* issue inventory
+* return inventory
+* adjust inventory
+* transfer inventory between locations
+
+Every transaction must create a movement log including:
+
+* date/time
+* action type
+* item
+* quantity
+* user
+* source location
+* destination location
+* project/job if applicable
+* notes
+
+## Project Tracking
+
+Allow materials to be assigned to projects/jobsites.
+
+Each project should include:
+
+* project name
+* project code
+* location
+* active/inactive status
+* issued materials history
+* returned materials
+* usage summary
+
+## Supplier Tracking
+
+Each supplier should include:
+
+* supplier name
+* contact person
+* phone
+* email
+* lead time
+* preferred vendor flag
+* notes
+
+## Reports
+
+Build a simple reports page with:
+
+* low stock report
+* out-of-stock report
+* inventory valuation summary
+* usage by project
+* recent movement history
+* category summary
+
+## Inventory Logic
+
+Implement practical business logic:
+
+* In Stock = quantity > reorder point
+* Low Stock = quantity <= reorder point and quantity > 0
+* Out of Stock = quantity == 0
+* Ordered = manually flagged or linked to pending replenishment
+
+Also support:
+
+* min stock
+* reorder point
+* suggested reorder quantity
+
+## Sample Seed Data
+
+Include realistic sample electrical items such as:
+
+* 3/4" EMT Conduit
+* 1" EMT Conduit
+* 3/4" EMT Compression Connector
+* 90 Degree EMT Elbow
+* Strut Channel 1-5/8"
+* All Thread Rod 3/8"
+* 4" Square Box
+* Duplex Receptacle
+* GFCI Receptacle
+* 20A Breaker
+* 30A Breaker
+* 100A Breaker
+* THHN Copper Wire #12
+* THHN Copper Wire #10
+* XHHW Cable
+* Ground Rod
+* Mechanical Lug
+* Cable Tray Cover
+* Cable Tray Elbow
+* Concrete Anchors
+* Hex Bolts / Nuts / Washers
+
+Also include realistic locations:
+
+* Main Warehouse
+* Yard Storage
+* Job Trailer A
+* Job Trailer B
+* Tool Room
+
+And realistic suppliers:
+
+* Graybar
+* Wesco
+* Grainger
+* Home Depot Pro
+* Local Vendor A
+
+## UX Priorities
+
+The app must be optimized for speed and clarity:
+
+* users should identify urgent shortages immediately
+* critical actions should take 2–3 clicks max
+* major tables must be readable and not cluttered
+* labels should be practical and industry-friendly
+* forms should feel simple and fast
+* mobile layout should still allow inventory lookup and stock issue
+
+## Code Quality
+
+Generate maintainable code with:
+
+* clear folder structure
+* reusable components
+* comments where useful
+* realistic naming
+* scalable patterns
+* no unnecessary complexity
+
+## Deliverables
+
+Generate:
+
+1. full project structure
+2. frontend and backend code
+3. database schema
+4. seed data
+5. responsive UI
+6. working dashboard
+7. inventory CRUD
+8. stock transaction logging
+9. project tracking basics
+10. supplier management basics
+11. reports page basics
+
+## Important Output Instructions
+
+* Create the project as if it will actually be used by a real electrical contractor.
+* Avoid placeholder fluff.
+* Focus on usability and visual clarity.
+* Make the initial build complete enough to demo immediately in Replit.
+* Show all files clearly.
+* Include setup/run instructions for Replit.
+* If needed, make reasonable assumptions and proceed without asking unnecessary questions.
+
+At the end, also provide:
+
+* recommended future upgrades
+* barcode/QR scanning integration idea
+* Excel import/export idea
+* purchase order workflow idea
+* mobile field issue workflow idea

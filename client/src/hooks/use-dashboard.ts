@@ -7,7 +7,7 @@ export function useDashboardStats() {
     queryFn: async () => {
       const res = await fetch(api.dashboard.stats.path, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch dashboard stats");
-      return api.dashboard.stats.responses[200].parse(await res.json());
+      return res.json();
     },
   });
 }

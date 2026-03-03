@@ -1,8 +1,9 @@
-import { useRoute, useLocation } from "wouter";
-import { useProject, useUpdateProject } from "@/hooks/use-reference-data";
+import { useState } from "react";
+import { useRoute } from "wouter";
+import { useProject } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
-import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Edit, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Users } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,10 +34,7 @@ export default function ProjectDetail() {
   if (!project) return <div className="p-8 text-center text-slate-500">Project not found.</div>;
 
   const statusCfg = statusConfig[project.status] || { label: project.status, className: "" };
-  const issued = project.recentActivity?.filter((tx: any) => tx.movementType === 'issue') || [];
-  const returned = project.recentActivity?.filter((tx: any) => tx.movementType === 'return') || [];
 
-  // Summarize usage by item
   const usageMap: Record<number, { itemName: string; sku: string; unit: string; issued: number; returned: number }> = {};
   project.recentActivity?.forEach((tx: any) => {
     if (!tx.item) return;
@@ -202,5 +200,3 @@ export default function ProjectDetail() {
     </div>
   );
 }
-
-import { useState } from "react";

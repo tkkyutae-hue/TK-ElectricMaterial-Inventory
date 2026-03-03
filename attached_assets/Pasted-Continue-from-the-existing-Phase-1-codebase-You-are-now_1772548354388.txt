@@ -1,0 +1,568 @@
+Continue from the existing Phase 1 codebase.
+
+You are now implementing **Phase 2** of the U.S. electrical inventory management system in Replit.
+
+Do not rebuild from scratch unless absolutely necessary.
+Extend the current architecture cleanly.
+
+This phase must turn the polished MVP into a much more operational system for:
+
+* warehouse control
+* field material issue/return
+* jobsite tracking
+* reorder support
+* supplier management
+* transaction visibility
+* multi-location accuracy
+
+This is still not a toy app.
+Do not add clutter.
+Do not make the UI messy.
+Add real operational depth while preserving the clean premium dashboard style.
+
+---
+
+## Phase 2 Mission
+
+Build practical workflows that real users would need every week:
+
+* receiving inventory
+* issuing inventory to jobs
+* returning inventory
+* adjusting counts
+* transferring inventory between locations
+* viewing transaction history
+* tracking project usage
+* managing suppliers
+* identifying reorder needs
+* seeing inventory by location and project
+
+---
+
+## Non-Negotiable Requirements
+
+### You must:
+
+* preserve the design language from Phase 1
+* keep file organization clean
+* use reusable components
+* maintain relational DB integrity
+* avoid duplicate business logic
+* avoid cluttered enterprise-looking screens
+* make workflows understandable in 2–3 clicks where possible
+* keep pages responsive and scan-friendly
+
+### You must not:
+
+* fake transaction logs without DB support
+* store critical operational data only in frontend state
+* add disconnected screens with no working backend
+* duplicate forms for similar workflows without abstraction
+* break Phase 1 inventory CRUD behavior
+
+---
+
+## Database Expansion for Phase 2
+
+Extend the schema with the following tables.
+
+### 1. projects
+
+Columns:
+
+* id
+* project_code
+* name
+* customer_name
+* address_line_1
+* address_line_2
+* city
+* state
+* zip_code
+* status
+* start_date
+* end_date
+* notes
+* created_at
+* updated_at
+
+Seed several realistic example projects.
+
+### 2. users
+
+For now this can be a simplified internal users table.
+
+Columns:
+
+* id
+* full_name
+* email
+* role
+* is_active
+* created_at
+* updated_at
+
+Seed example users for:
+
+* Admin
+* Manager
+* Warehouse
+* Field
+* Viewer
+
+### 3. purchase_recommendations
+
+Columns:
+
+* id
+* item_id
+* supplier_id
+* recommended_quantity
+* priority_level
+* reason
+* status
+* created_at
+* updated_at
+
+### 4. inventory_location_balances
+
+Use this to support true multi-location inventory instead of only one quantity bucket.
+
+Columns:
+
+* id
+* item_id
+* location_id
+* quantity_on_hand
+* minimum_stock
+* reorder_point
+* updated_at
+
+This table should become the source of truth for location-level stock.
+
+### 5. project_material_transactions
+
+This can be a specialization layer or relational support for jobsite-linked movement records.
+
+Columns:
+
+* id
+* project_id
+* item_id
+* movement_id
+* transaction_type
+* quantity
+* note
+* created_at
+
+### 6. supplier_items
+
+Optional but recommended for cleaner vendor relationships.
+
+Columns:
+
+* id
+* supplier_id
+* item_id
+* supplier_sku
+* lead_time_days
+* preferred_supplier
+* last_unit_cost
+* created_at
+* updated_at
+
+---
+
+## Upgrade Existing Tables / Logic
+
+### inventory_movements
+
+Expand usage of this table and ensure it supports:
+
+* RECEIVE
+* ISSUE
+* RETURN
+* ADJUST
+* TRANSFER
+
+Additional useful columns if not already present:
+
+* project_id
+* user_id
+* unit_cost_snapshot
+
+### items
+
+Keep master item data here, but do not rely only on items.quantity_on_hand once location balances are implemented.
+You may either:
+
+* keep items.quantity_on_hand as a derived summary, or
+* maintain it from location totals consistently
+
+Be explicit in the code about the chosen approach.
+
+---
+
+## Required Operational Workflows
+
+Implement the following workflows with proper DB writes.
+
+### 1. Receive Material
+
+Use case:
+
+* warehouse receives items from supplier
+* quantity increases at a selected location
+
+Must support:
+
+* item
+* quantity
+* destination location
+* supplier
+* note
+* user
+* date/time log
+
+### 2. Issue Material
+
+Use case:
+
+* material issued from warehouse or tool room to project/jobsite
+
+Must support:
+
+* item
+* quantity
+* source location
+* target project
+* user
+* note
+
+Must reduce stock correctly.
+
+### 3. Return Material
+
+Use case:
+
+* unused material returned from field/project to a location
+
+Must support:
+
+* item
+* quantity
+* destination location
+* related project if applicable
+* note
+
+### 4. Adjust Quantity
+
+Use case:
+
+* cycle count correction
+* damaged material
+* shrinkage
+* manual correction
+
+Must require:
+
+* reason
+* quantity delta or corrected final quantity
+* user
+* note
+
+### 5. Transfer Between Locations
+
+Use case:
+
+* move material from Main Warehouse to Job Trailer, Tool Room, etc.
+
+Must support:
+
+* item
+* quantity
+* source location
+* destination location
+* user
+* note
+
+All workflows must update balances and create movement logs.
+
+---
+
+## Transaction History Requirements
+
+Create a dedicated transaction history page or major section.
+
+### It must support:
+
+* search by item
+* filter by transaction type
+* filter by project
+* filter by location
+* sort by newest/oldest
+* clear date/time display
+* movement detail drilldown if practical
+
+### Each row should show:
+
+* timestamp
+* transaction type
+* item
+* quantity
+* source
+* destination
+* project
+* user
+* note
+
+Make it readable, not overloaded.
+
+---
+
+## Projects Module Requirements
+
+Build a practical Projects module.
+
+### Project List Page
+
+Show:
+
+* project code
+* project name
+* customer
+* location/city
+* status
+* total issued material count or summary
+* quick access to detail
+
+### Project Detail Page
+
+Show:
+
+* project identity info
+* status
+* material issued history
+* returned material history
+* summarized usage by item
+* recent project-related transactions
+
+Projects must connect to issue/return flows.
+
+---
+
+## Suppliers Module Requirements
+
+Build a real Suppliers module, not just a placeholder.
+
+### Supplier List
+
+Show:
+
+* supplier name
+* contact name
+* phone
+* email
+* preferred vendor flag
+* average lead time
+
+### Supplier Detail
+
+Show:
+
+* contact info
+* notes
+* linked items
+* low stock items supplied by this vendor
+* purchase recommendations related to this supplier
+
+---
+
+## Reorder / Purchasing Support
+
+Build a useful reorder experience.
+
+### Required logic
+
+Generate reorder recommendations from:
+
+* low stock
+* out of stock
+* reorder point
+* reorder quantity
+* preferred supplier if available
+
+### Required UI
+
+Show:
+
+* recommended items
+* current stock
+* reorder point
+* suggested quantity
+* supplier
+* priority level
+
+Priority can be:
+
+* Critical
+* High
+* Medium
+* Low
+
+Make this visible on dashboard and/or a dedicated reorder page.
+
+---
+
+## Reports Requirements
+
+Expand reports meaningfully.
+
+### Required reports
+
+* low stock report
+* out-of-stock report
+* inventory valuation
+* movement history
+* usage by project
+* stock by location
+* supplier summary
+* category summary
+
+Make reports readable with:
+
+* cards
+* tables
+* summary blocks
+* charts only where helpful
+
+Do not clutter the reports page with too many tiny widgets.
+
+---
+
+## Role-Based Access Basics
+
+Implement a simple but useful role model.
+
+Roles:
+
+* Admin
+* Manager
+* Warehouse
+* Field
+* Viewer
+
+At minimum:
+
+* Viewer cannot edit inventory
+* Field can view inventory and issue/return related pages as allowed
+* Warehouse can receive, adjust, transfer, and manage inventory
+* Manager/Admin can access all major areas
+* Admin can manage settings-level data
+
+UI-level permission handling is acceptable for now, but structure the code so backend enforcement can be expanded later.
+
+---
+
+## Phase 2 UI Requirements
+
+Preserve the design quality from Phase 1.
+
+### Add these pages or sections:
+
+* Stock Transactions
+* Transaction History
+* Projects
+* Project Detail
+* Suppliers
+* Supplier Detail
+* Reorder / Purchasing
+* Expanded Reports
+
+### UX expectations
+
+* alerts should stand out clearly
+* workflows should require minimal clicks
+* forms should be focused and role-appropriate
+* large tables should remain readable
+* project and transaction views should feel trustworthy and operational
+
+---
+
+## API / Backend Requirements
+
+Add or expand routes such as:
+
+* GET /api/transactions
+* POST /api/transactions/receive
+* POST /api/transactions/issue
+* POST /api/transactions/return
+* POST /api/transactions/adjust
+* POST /api/transactions/transfer
+* GET /api/projects
+* GET /api/projects/:id
+* POST /api/projects
+* PUT /api/projects/:id
+* GET /api/suppliers
+* GET /api/suppliers/:id
+* GET /api/reorder/recommendations
+* GET /api/reports/low-stock
+* GET /api/reports/usage-by-project
+* GET /api/reports/by-location
+
+Keep naming consistent with the existing architecture.
+
+---
+
+## Data Integrity Requirements
+
+Be careful with stock math.
+
+### Rules:
+
+* no issue/transfer should allow stock to go negative unless explicitly permitted
+* receives increase balances
+* issues decrease source balances
+* returns increase destination balances
+* transfers decrease source and increase destination
+* adjustments must be logged with reason
+* every stock-changing action must produce a movement record
+
+If you maintain summary quantity on items, keep it synchronized.
+
+---
+
+## Deliverables for Phase 2
+
+Generate and wire up:
+
+1. database migrations or schema updates
+2. new seed data
+3. transaction workflow forms
+4. transaction history page
+5. projects module
+6. suppliers module
+7. reorder recommendation logic
+8. reports expansion
+9. role-aware UI handling
+10. updated dashboard widgets if useful
+11. testing instructions for all Phase 2 workflows
+
+---
+
+## Final Output Instruction
+
+Do not just describe features.
+Actually implement them.
+
+At the end, clearly explain:
+
+* which new tables were added
+* which existing tables changed
+* how stock balances are calculated
+* which pages were added
+* which routes were added
+* what can be tested end-to-end in Replit
+* what should be done in Phase 3
+
+Keep the result polished, operational, and consistent with a serious internal inventory platform for an electrical contractor.

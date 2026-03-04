@@ -1,0 +1,135 @@
+Refine the existing VoltStock inventory UI by adding practical image support in two places.
+
+Do not redesign the app.
+Extend the current Inventory and Category Detail views cleanly and preserve the current design system.
+
+## Goal
+
+Make it easier for users to visually recognize materials at a glance.
+
+Implement these two image-based improvements:
+
+---
+
+## 1. Inventory table row thumbnails
+
+On the main Inventory page table, add a small item photo column between **SKU** and **Item Name**.
+
+### Required column order
+
+* SKU
+* Photo
+* Item Name
+* Size
+* Category
+* Quantity
+* Unit
+* Location
+* Status
+* Reorder Point
+
+### Requirements
+
+* show a small thumbnail image for each inventory item
+* use a clean square or rounded thumbnail style
+* keep the table readable and not cluttered
+* if an item has no image, show a clean placeholder icon or fallback thumbnail
+* make sure row height remains practical for scanning many items quickly
+
+### Data source
+
+Use the current item photo/image system if already created.
+If not, add support using the existing item image data model.
+
+---
+
+## 2. Category detail grouped item representative images
+
+On the category detail page, for grouped item families such as:
+
+* 90° EMT Elbow
+* Bushing
+* EMT Compression Connector
+* EMT Coupling
+* Ground Bushing
+* Plastic Bushing
+
+add one representative image for the **group header only**.
+
+### Important
+
+Do NOT show repeated images for every row in the grouped size table.
+Only show one representative image per grouped item family section.
+
+### Group header layout
+
+Each grouped item family header should show:
+
+* representative image thumbnail
+* group name
+* number of size variants
+
+Example:
+[image] 90° EMT Elbow   2 sizes
+[image] Bushing   2 sizes
+[image] EMT Compression Connector   2 sizes
+
+### Behavior
+
+* if a dedicated group image exists, use it
+* otherwise use the first available item image from that item family as the representative image
+* if no image exists, show a clean fallback placeholder
+
+---
+
+## 3. UX requirements
+
+These image additions must improve recognition without cluttering the UI.
+
+### Inventory list
+
+* make scanning easier
+* help users confirm materials visually
+* keep table density usable
+
+### Category detail
+
+* make grouped item families easier to identify at a glance
+* keep the grouped table layout clean
+* preserve current status badges and table readability
+
+---
+
+## 4. Technical requirements
+
+Implement this cleanly using the existing architecture.
+
+### Inventory page
+
+* update the inventory table component
+* add photo thumbnail rendering
+* keep sorting/filtering/search working
+
+### Category detail page
+
+* update grouped section headers
+* add representative image rendering for each item family
+* do not duplicate images inside every row
+
+### Data logic
+
+* use the item image table or image URL fields if already available
+* if needed, create a helper that resolves the best representative image for each grouped item family
+
+---
+
+## 5. Final requirement
+
+Actually implement these changes in the current VoltStock codebase.
+
+At the end, explain:
+
+* what files were updated
+* how row thumbnails work in Inventory
+* how grouped representative images work in Category Detail
+* what fallback behavior is used when no image exists

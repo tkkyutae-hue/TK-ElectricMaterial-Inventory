@@ -289,6 +289,7 @@ export default function Inventory() {
             <TableHeader className="bg-slate-50/80">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Photo</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item Name</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Size</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Category</TableHead>
@@ -304,14 +305,14 @@ export default function Inventory() {
               {isLoading ? (
                 [1,2,3,4,5,6,7].map(i => (
                   <TableRow key={i}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(j => (
+                    {[1,2,3,4,5,6,7,8,9,10,11].map(j => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse w-full max-w-[120px]"></div></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-16 text-slate-500">
+                  <TableCell colSpan={11} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-900">No items found</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters.</p>
@@ -325,6 +326,15 @@ export default function Inventory() {
                     data-testid={`row-item-${item.id}`}
                   >
                     <TableCell className="font-mono text-xs text-slate-500 font-medium">{item.sku}</TableCell>
+                    <TableCell>
+                      <div className="w-10 h-10 rounded-md overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="w-5 h-5 text-slate-300" />
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-semibold text-slate-900 max-w-[200px] truncate">{item.name}</TableCell>
                     <TableCell className="text-slate-600 text-sm">{(item as any).sizeLabel || "—"}</TableCell>
                     <TableCell className="text-slate-500 text-sm">{item.category?.name || "—"}</TableCell>

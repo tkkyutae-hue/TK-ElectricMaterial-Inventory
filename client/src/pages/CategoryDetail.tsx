@@ -22,6 +22,7 @@ type CategoryGroupedItem = {
 type CategoryItemGroup = {
   baseItemName: string;
   items: CategoryGroupedItem[];
+  representativeImage?: string | null;
 };
 
 type CategoryGroupedDetail = {
@@ -175,9 +176,18 @@ export default function CategoryDetail() {
             return (
               <div key={group.baseItemName} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50 border-b border-slate-200">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-slate-900">{group.baseItemName}</h3>
-                    <span className="text-xs text-slate-500 font-medium">{group.items.length} sizes</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm">
+                      {group.representativeImage ? (
+                        <img src={group.representativeImage} alt={group.baseItemName} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-6 h-6 text-slate-300" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 leading-tight">{group.baseItemName}</h3>
+                      <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">{group.items.length} sizes</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {groupOutOfStock > 0 && (

@@ -190,12 +190,21 @@ export class DatabaseStorage implements IStorage {
     .where(eq(items.isActive, true))
     .orderBy(asc(items.name));
 
-    let mapped = results.map(row => ({
-      ...row.item,
-      category: row.category,
-      location: row.location,
-      supplier: row.supplier,
-    }));
+    const itemIds = results.map(r => r.item.id);
+    const allImages = itemIds.length > 0 
+      ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
+      : [];
+
+    let mapped = results.map(row => {
+      const firstImage = allImages.find(img => img.itemId === row.item.id);
+      return {
+        ...row.item,
+        category: row.category,
+        location: row.location,
+        supplier: row.supplier,
+        imageUrl: firstImage?.imageUrl || null,
+      };
+    });
 
     if (filters?.search) {
       const s = filters.search.toLowerCase();
@@ -633,25 +642,38 @@ export class DatabaseStorage implements IStorage {
     .where(and(eq(items.categoryId, categoryId), eq(items.isActive, true)))
     .orderBy(asc(items.baseItemName), asc(items.sizeSortValue), asc(items.name));
 
+    const itemIds = rows.map(r => r.item.id);
+    const allImages = itemIds.length > 0
+      ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
+      : [];
+
     const enriched = rows.map(r => {
       const i = r.item;
+      const firstImage = allImages.find(img => img.itemId === i.id);
       let status = "in_stock";
       if (i.quantityOnHand === 0) status = "out_of_stock";
       else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
-      return { ...i, location: r.location, supplier: r.supplier, status };
+      return { ...i, location: r.location, supplier: r.supplier, status, imageUrl: firstImage?.imageUrl || null };
     });
 
     // Group by baseItemName (fall back to name if not set)
-    const groupMap = new Map<string, typeof enriched>();
+    const groupMap = new Map<string, { items: typeof enriched, representativeImage: string | null }>();
     for (const item of enriched) {
       const key = item.baseItemName || item.name;
-      if (!groupMap.has(key)) groupMap.set(key, []);
-      groupMap.get(key)!.push(item);
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { items: [], representativeImage: null });
+      }
+      const group = groupMap.get(key)!;
+      group.items.push(item);
+      if (!group.representativeImage && item.imageUrl) {
+        group.representativeImage = item.imageUrl;
+      }
     }
 
-    const groups = Array.from(groupMap.entries()).map(([baseItemName, items]) => ({
+    const groups = Array.from(groupMap.entries()).map(([baseItemName, data]) => ({
       baseItemName,
-      items,
+      items: data.items,
+      representativeImage: data.representativeImage,
     }));
 
     const totalQuantity = enriched.reduce((s, i) => s + i.quantityOnHand, 0);

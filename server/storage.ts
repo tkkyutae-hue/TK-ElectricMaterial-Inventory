@@ -35,6 +35,7 @@ export interface IStorage {
   getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]>;
   getItem(id: number): Promise<ItemWithRelations | undefined>;
   createItem(item: CreateItemRequest): Promise<Item>;
+  createItemImage(itemId: number, imageUrl: string): Promise<void>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
 
@@ -207,12 +208,19 @@ export class DatabaseStorage implements IStorage {
     });
 
     if (filters?.search) {
-      const s = filters.search.toLowerCase();
-      mapped = mapped.filter(i =>
-        i.name.toLowerCase().includes(s) ||
-        i.sku.toLowerCase().includes(s) ||
-        (i.description || '').toLowerCase().includes(s)
-      );
+      const tokens = filters.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      mapped = mapped.filter(i => {
+        const haystack = [
+          i.name,
+          i.sku,
+          (i as any).sizeLabel || '',
+          (i as any).baseItemName || '',
+          i.description || '',
+          i.category?.name || '',
+          i.supplier?.name || '',
+        ].join(' ').toLowerCase();
+        return tokens.every(token => haystack.includes(token));
+      });
     }
     if (filters?.categoryId) {
       mapped = mapped.filter(i => i.categoryId === filters.categoryId);
@@ -289,6 +297,10 @@ export class DatabaseStorage implements IStorage {
     }
 
     return created;
+  }
+
+  async createItemImage(itemId: number, imageUrl: string): Promise<void> {
+    await db.insert(itemImages).values({ itemId, imageUrl, sortOrder: 0 });
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {

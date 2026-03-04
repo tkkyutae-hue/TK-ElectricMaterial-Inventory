@@ -1,0 +1,207 @@
+Refine the current VoltStock implementation by improving the Inventory list, Item Detail, search behavior, and Transaction History workflow.
+
+Do not redesign the whole app.
+Keep the current UI style and layout direction.
+Focus on usability and make these existing workflows more complete.
+
+## 1. Inventory list pagination
+
+The Inventory list currently shows too many items at once and requires endless scrolling.
+
+### Required change
+
+Add pagination to the Inventory table.
+
+### Behavior
+
+* place a page size control next to the search/filter area
+* default page size should be **25 items per page**
+* allow simple pagination controls at the bottom:
+
+  * previous
+  * next
+  * page number(s) if practical
+
+### Goal
+
+Users should not have to endlessly scroll through the Inventory list.
+
+---
+
+## 2. Item name should open item detail
+
+Currently the item rows are visible, but clicking the item name should also open the item detail page.
+
+### Required change
+
+* make the **Item Name** clickable
+* clicking the item name should navigate to the same item detail page as row click or existing detail behavior
+* keep it intuitive and visually obvious that the name is clickable
+
+---
+
+## 3. Move Add New Item button
+
+The current Inventory page should not show the **Add New Item** button at the top level.
+
+### Required changes
+
+* remove **Add New Item** from the main Inventory page
+* when a user clicks a category card and enters the category detail page, add **Add New Item** at the far right of the search/filter row on that category page
+
+### Add New Item form requirements
+
+When Add New Item is opened from the category detail page:
+
+* allow creating a new inventory item
+* allow entering **subcategory / grouped family / base item name**
+* allow entering:
+
+  * SKU
+  * image_url if available
+  * item name
+  * size
+  * category
+  * subcategory / grouped family
+  * quantity
+  * unit
+  * supplier
+  * location
+  * reorder point
+  * reorder quantity
+  * notes
+
+This is important:
+Users must be able to create items under a category and also specify the subcategory/grouping correctly.
+
+---
+
+## 4. Item detail page: show stock status beside item name
+
+On the item detail page, show the current stock status next to the item name.
+
+### Required statuses
+
+* In Stock
+* Low Stock
+* Out of Stock
+
+### Behavior
+
+* render a visible status badge next to the item title
+* use the same color system already used elsewhere in the app:
+
+  * green = In Stock
+  * yellow/orange = Low Stock
+  * red = Out of Stock
+
+### Important
+
+Use **Out of Stock**, not “Out of Order”.
+
+---
+
+## 5. Improve Inventory search matching
+
+The current search is too strict.
+Users should be able to search by partial word combinations.
+
+### Example problem
+
+Searching:
+
+* `3/4"` works
+* but `3/4" conduit` does not return `3/4" EMT Conduit`
+
+### Required search behavior
+
+Make search more flexible so results match if the query terms appear anywhere in the item data, even if not as one exact phrase.
+
+### Search should match against:
+
+* SKU
+* item name
+* size
+* category
+* grouped family / base item name if available
+
+### Matching logic
+
+Tokenize the search phrase and match by contained terms.
+For example:
+
+* `3/4 conduit` should match `3/4" EMT Conduit`
+* `emt 3/4`
+* `compression 1`
+* `mc 12/2`
+* `ground lug`
+  should all work naturally.
+
+The goal is a practical fuzzy/contains-style search, not exact full-string matching only.
+
+---
+
+## 6. Transaction History improvements
+
+The current Log Movement form lets users enter From location on Receive, but that value does not show in the actual transaction log.
+Also, there needs to be a Project field.
+
+### Required fixes
+
+#### A. Show From / To correctly in transaction history
+
+* if a movement includes a From location, display it in the transaction history table
+* if a movement includes a To location, display it too
+* make sure the transaction log actually persists and shows those values correctly
+
+#### B. Add Project field
+
+In the Log Movement form, add a Project field where practical.
+
+### Project field behavior
+
+* allow selecting an existing project
+* save the project reference with the movement record
+* display the selected project in the Transaction History table
+
+### Movement types
+
+For each movement type, show relevant fields:
+
+* Receive → From location should still be supported if that is the current business rule
+* Issue → From, To, Project as relevant
+* Return → From, To, Project as relevant
+* Transfer → From and To
+* keep logic clean and only show necessary fields
+
+### Final transaction table
+
+Make sure the transaction history table can display:
+
+* Date & Time
+* Type
+* Item
+* Qty
+* From
+* To
+* Project
+* Note
+
+If values exist, they must actually show.
+
+---
+
+## Final implementation requirements
+
+Actually implement these changes in the current VoltStock codebase.
+
+At the end, clearly explain:
+
+* what files were updated
+* how Inventory pagination works
+* how item-name click navigation works
+* where Add New Item was moved
+* how subcategory/group input works
+* how item detail status badge is rendered
+* how improved search matching works
+* how From / To / Project are now saved and displayed in transaction history

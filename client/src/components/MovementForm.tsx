@@ -164,8 +164,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
   const needsSource      = ["issue", "transfer"].includes(movType);
   const needsDestination = ["receive", "return", "transfer"].includes(movType);
-  const needsProject     = ["issue", "return"].includes(movType);
-  const isReceive        = movType === "receive";
+  const needsProject     = ["receive", "issue", "return"].includes(movType);
 
   async function onSubmit(data: FormData) {
     try {
@@ -257,7 +256,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           {needsDestination && (
             <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
               <FormItem>
-                <FormLabel>{isReceive ? "From Location" : "To Location"}</FormLabel>
+                <FormLabel>To Location</FormLabel>
                 <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger></FormControl>
                   <SelectContent>

@@ -1,12 +1,21 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight, Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight, Search, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { useLocations, useSuppliers } from "@/hooks/use-reference-data";
+import { useCreateItem } from "@/hooks/use-items";
 
 type CategoryGroupedItem = {
   id: number;
@@ -61,11 +70,240 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
   "GT": "from-teal-600 to-teal-800",
 };
 
+const addItemSchema = z.object({
+  sku: z.string().min(1, "SKU is required"),
+  name: z.string().min(1, "Item name is required"),
+  baseItemName: z.string().optional(),
+  sizeLabel: z.string().optional(),
+  imageUrl: z.string().optional(),
+  categoryId: z.coerce.number(),
+  unitOfMeasure: z.string().min(1, "Unit is required"),
+  quantityOnHand: z.coerce.number().min(0),
+  supplierId: z.coerce.number().optional(),
+  primaryLocationId: z.coerce.number().optional(),
+  reorderPoint: z.coerce.number().min(0),
+  reorderQuantity: z.coerce.number().min(0),
+  notes: z.string().optional(),
+});
+
+type AddItemFormData = z.infer<typeof addItemSchema>;
+
+function AddItemDialog({
+  open,
+  onClose,
+  categoryId,
+  categoryName,
+  existingFamilies,
+}: {
+  open: boolean;
+  onClose: () => void;
+  categoryId: number;
+  categoryName: string;
+  existingFamilies: string[];
+}) {
+  const { toast } = useToast();
+  const createMutation = useCreateItem();
+  const { data: locations } = useLocations();
+  const { data: suppliers } = useSuppliers();
+  const qc = useQueryClient();
+
+  const form = useForm<AddItemFormData>({
+    resolver: zodResolver(addItemSchema),
+    defaultValues: {
+      sku: "",
+      name: "",
+      baseItemName: "",
+      sizeLabel: "",
+      imageUrl: "",
+      categoryId,
+      unitOfMeasure: "EA",
+      quantityOnHand: 0,
+      reorderPoint: 0,
+      reorderQuantity: 0,
+      notes: "",
+    },
+  });
+
+  async function onSubmit(data: AddItemFormData) {
+    try {
+      await createMutation.mutateAsync({
+        ...data,
+        categoryId,
+        imageUrl: data.imageUrl || undefined,
+        baseItemName: data.baseItemName || undefined,
+        sizeLabel: data.sizeLabel || undefined,
+        supplierId: data.supplierId || undefined,
+        primaryLocationId: data.primaryLocationId || undefined,
+        notes: data.notes || undefined,
+        minimumStock: 0,
+        unitCost: "0.00",
+      });
+      toast({ title: "Item created", description: `${data.name} has been added to ${categoryName}.` });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+      form.reset({ categoryId, unitOfMeasure: "EA", quantityOnHand: 0, reorderPoint: 0, reorderQuantity: 0 });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Failed to create item", description: err.message, variant: "destructive" });
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New Item — {categoryName}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="sku" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SKU / Part Number <span className="text-red-500">*</span></FormLabel>
+                  <FormControl><Input placeholder="e.g. EMT-075" data-testid="input-new-sku" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="unitOfMeasure" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit of Measure <span className="text-red-500">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-new-uom"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"].map(u => (
+                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <FormField control={form.control} name="name" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Item Name <span className="text-red-500">*</span></FormLabel>
+                <FormControl><Input placeholder='e.g. 3/4" EMT Conduit' data-testid="input-new-name" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="baseItemName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Family / Subcategory</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. EMT Conduit"
+                      list="family-suggestions"
+                      data-testid="input-new-family"
+                      {...field}
+                    />
+                  </FormControl>
+                  <datalist id="family-suggestions">
+                    {existingFamilies.map(f => <option key={f} value={f} />)}
+                  </datalist>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Groups items of the same type under one header.</p>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="sizeLabel" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Size</FormLabel>
+                  <FormControl><Input placeholder='e.g. 3/4", 12/2, 100A' data-testid="input-new-size" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="quantityOnHand" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Initial Quantity</FormLabel>
+                  <FormControl><Input type="number" min={0} data-testid="input-new-qty" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="primaryLocationId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl><SelectTrigger data-testid="select-new-location"><SelectValue placeholder="Select location" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {locations?.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="supplierId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Supplier</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl><SelectTrigger data-testid="select-new-supplier"><SelectValue placeholder="Select supplier" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {suppliers?.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="imageUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL (optional)</FormLabel>
+                  <FormControl><Input placeholder="https://…" data-testid="input-new-image-url" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="reorderPoint" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reorder Point</FormLabel>
+                  <FormControl><Input type="number" min={0} data-testid="input-new-reorder-pt" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="reorderQuantity" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reorder Quantity</FormLabel>
+                  <FormControl><Input type="number" min={0} data-testid="input-new-reorder-qty" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes (optional)</FormLabel>
+                <FormControl><Textarea placeholder="Any relevant notes…" rows={2} className="resize-none" data-testid="input-new-notes" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>Cancel</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={createMutation.isPending} data-testid="button-save-new-item">
+                {createMutation.isPending ? "Saving…" : "Add Item"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CategoryDetail() {
   const { id } = useParams<{ id: string }>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [familyFilter, setFamilyFilter] = useState("all");
+  const [addItemOpen, setAddItemOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery<CategoryGroupedDetail>({
     queryKey: ["/api/inventory/category", id, "grouped"],
@@ -75,18 +313,23 @@ export default function CategoryDetail() {
 
   const filteredGroups = useMemo(() => {
     if (!data) return [];
-    const q = search.trim().toLowerCase();
+    const tokens = search.trim().toLowerCase().split(/\s+/).filter(t => t.length > 0);
 
     return data.groups
       .filter(group => familyFilter === "all" || group.baseItemName === familyFilter)
       .map(group => {
         const filteredItems = group.items.filter(item => {
-          const matchesSearch = !q || (
-            item.sku.toLowerCase().includes(q) ||
-            item.name.toLowerCase().includes(q) ||
-            (item.sizeLabel || "").toLowerCase().includes(q) ||
-            group.baseItemName.toLowerCase().includes(q)
-          );
+          const matchesSearch = tokens.length === 0 || (() => {
+            const haystack = [
+              item.sku,
+              item.name,
+              item.sizeLabel || "",
+              group.baseItemName,
+              item.location?.name || "",
+              item.supplier?.name || "",
+            ].join(" ").toLowerCase();
+            return tokens.every(token => haystack.includes(token));
+          })();
           const matchesStatus = statusFilter === "all" || item.status === statusFilter;
           return matchesSearch && matchesStatus;
         });
@@ -122,6 +365,7 @@ export default function CategoryDetail() {
   const { category, skuCount, totalQuantity, lowStockCount, outOfStockCount, groups } = data;
   const gradientClass = CATEGORY_FALLBACK_COLORS[category.code || ""] || "from-slate-600 to-slate-800";
   const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || familyFilter !== "all";
+  const existingFamilies = groups.map(g => g.baseItemName).filter(Boolean) as string[];
 
   return (
     <div className="space-y-6">
@@ -192,7 +436,7 @@ export default function CategoryDetail() {
         </div>
       </div>
 
-      {/* Search + filter bar */}
+      {/* Search + filter bar with Add New Item */}
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -235,10 +479,18 @@ export default function CategoryDetail() {
             Clear filters
           </button>
         )}
-        <span className="text-xs text-slate-400 ml-auto whitespace-nowrap">
+        <span className="text-xs text-slate-400 whitespace-nowrap">
           {filteredGroups.reduce((n, g) => n + g.items.length, 0)} items
           {hasActiveFilters ? " matching" : ""}
         </span>
+        <Button
+          onClick={() => setAddItemOpen(true)}
+          className="ml-auto bg-blue-600 hover:bg-blue-700 text-white h-9 text-sm shrink-0"
+          data-testid="button-add-item"
+        >
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
+          Add New Item
+        </Button>
       </div>
 
       {/* Grouped inventory sections */}
@@ -251,7 +503,12 @@ export default function CategoryDetail() {
               <p className="text-sm mt-1">Try different keywords or clear the filters.</p>
             </>
           ) : (
-            <p className="text-base font-semibold text-slate-900">No items in this category</p>
+            <>
+              <p className="text-base font-semibold text-slate-900">No items in this category</p>
+              <p className="text-sm mt-1">
+                <button onClick={() => setAddItemOpen(true)} className="text-blue-600 hover:underline">Add the first item</button>
+              </p>
+            </>
           )}
         </div>
       ) : (
@@ -261,7 +518,7 @@ export default function CategoryDetail() {
             const groupOutOfStock = group.items.filter(i => i.status === "out_of_stock").length;
             return (
               <div key={group.baseItemName} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                {/* Group header — fixed height, consistent alignment */}
+                {/* Group header */}
                 <div className="flex items-center justify-between px-5 border-b border-slate-200 bg-slate-50/80 min-h-[60px]">
                   <div className="flex items-center gap-3 py-3">
                     <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
@@ -294,7 +551,7 @@ export default function CategoryDetail() {
                   </div>
                 </div>
 
-                {/* Group table — no Reorder Point column */}
+                {/* Group table */}
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -319,7 +576,13 @@ export default function CategoryDetail() {
                           <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5">{item.sku}</TableCell>
                           <TableCell className="font-semibold text-slate-800 text-sm py-2.5 whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
                           <TableCell className="text-slate-700 text-sm py-2.5">
-                            <Link href={`/inventory/${item.id}`} className="hover:text-blue-600 transition-colors">{item.name}</Link>
+                            <Link
+                              href={`/inventory/${item.id}`}
+                              className="hover:text-blue-600 hover:underline transition-colors"
+                              data-testid={`link-item-name-${item.id}`}
+                            >
+                              {item.name}
+                            </Link>
                           </TableCell>
                           <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">
                             {item.quantityOnHand.toLocaleString()}
@@ -338,6 +601,14 @@ export default function CategoryDetail() {
           })}
         </div>
       )}
+
+      <AddItemDialog
+        open={addItemOpen}
+        onClose={() => setAddItemOpen(false)}
+        categoryId={data.category.id}
+        categoryName={data.category.name}
+        existingFamilies={existingFamilies}
+      />
     </div>
   );
 }

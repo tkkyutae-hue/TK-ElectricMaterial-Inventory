@@ -132,17 +132,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/items", isAuthenticated, async (req, res) => {
     try {
+      const { imageUrl, ...rest } = req.body;
       const body = {
-        ...req.body,
-        categoryId: req.body.categoryId ? Number(req.body.categoryId) : undefined,
-        primaryLocationId: req.body.primaryLocationId ? Number(req.body.primaryLocationId) : undefined,
-        supplierId: req.body.supplierId ? Number(req.body.supplierId) : undefined,
-        quantityOnHand: Number(req.body.quantityOnHand ?? 0),
-        minimumStock: Number(req.body.minimumStock ?? 0),
-        reorderPoint: Number(req.body.reorderPoint ?? 0),
-        reorderQuantity: Number(req.body.reorderQuantity ?? 0),
+        ...rest,
+        categoryId: rest.categoryId ? Number(rest.categoryId) : undefined,
+        primaryLocationId: rest.primaryLocationId ? Number(rest.primaryLocationId) : undefined,
+        supplierId: rest.supplierId ? Number(rest.supplierId) : undefined,
+        quantityOnHand: Number(rest.quantityOnHand ?? 0),
+        minimumStock: Number(rest.minimumStock ?? 0),
+        reorderPoint: Number(rest.reorderPoint ?? 0),
+        reorderQuantity: Number(rest.reorderQuantity ?? 0),
       };
-      res.status(201).json(await storage.createItem(body));
+      const created = await storage.createItem(body);
+      if (imageUrl && typeof imageUrl === "string" && imageUrl.trim()) {
+        await storage.createItemImage(created.id, imageUrl.trim());
+      }
+      res.status(201).json(created);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }

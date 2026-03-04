@@ -1,0 +1,198 @@
+Refine the current VoltStock implementation by fixing the category detail layout, adding subcategory management, and correcting transaction history behavior.
+
+Do not redesign the whole app.
+Do not add placeholder-only UI.
+Work directly on the current codebase and make these workflows fully functional.
+
+## 1. Fix layout alignment and spacing on category detail page
+
+The grouped subcategory sections on the category detail page are still visually uneven.
+
+### Required fixes
+
+* make all grouped subcategory cards/sections use consistent horizontal and vertical spacing
+* align section headers, table headers, row spacing, and container padding consistently
+* make the left icon/thumb area the same width in every grouped section
+* keep title, size count, and right-side actions aligned on the same baseline
+* make the table columns line up consistently from section to section
+* use a consistent max width and inner padding across all grouped family blocks
+
+### Goal
+
+The entire category detail page should feel orderly and grid-aligned, not staggered or uneven.
+
+---
+
+## 2. Add Edit button for each subcategory/grouped family
+
+On the category detail page, each grouped family/subcategory header needs an **Edit** button on the far right.
+
+### Example grouped families
+
+* Back-to-Back Slotted Strut Channel
+* Beam Clamp Large
+* Conduit Clamp
+* EMT Compression Coupling
+* Bushing
+* 90 Degree EMT Elbow
+
+### Required behavior
+
+When the Edit button is clicked, open a subcategory/group edit modal or page that allows the user to:
+
+#### A. Rename the subcategory/grouped family
+
+* edit the grouped family name / base item family name
+
+#### B. Move items to another subcategory/group
+
+* allow selecting one or more items currently in that group
+* move them to another existing grouped family
+* or assign them to a newly typed grouped family name
+
+#### C. Delete items from that group
+
+* allow deleting selected items
+* require confirmation before delete
+
+#### D. Add items into that group
+
+* allow adding existing items into the grouped family
+* allow creating a new item directly from this grouped family editor if practical
+
+#### E. Add/Edit representative image link
+
+* include a field for the grouped family image URL
+* this should allow me to paste a photo link for the grouped family representative image
+* use that image in the grouped family header if present
+
+### Important
+
+This grouped family editor must be functional, not just a dummy modal.
+
+---
+
+## 3. Transaction history delete/edit must actually work
+
+The transaction delete flow is currently broken or incomplete.
+
+### Required fixes
+
+* transaction records must be editable
+* transaction records must be deletable
+* delete must actually remove the record and update related inventory totals correctly
+* require a confirmation step before delete
+* do not leave a non-working delete button in the UI
+
+### Data integrity
+
+If a transaction is edited or deleted:
+
+* inventory balances must be recalculated correctly
+* category/item totals must stay accurate
+* transaction history must immediately refresh
+
+---
+
+## 4. Correct movement direction labels and saved values
+
+The movement wording and saved location behavior must follow these exact rules:
+
+### Movement type rules
+
+* Receive = **Receive From**
+* Issue = **Issue To**
+* Return = **Return From**
+
+Use those meanings consistently in the form and in the saved data.
+
+### Required behavior
+
+* if the movement is Receive, the location entered should be saved and displayed in the **From** column
+* if the movement is Issue, the destination should be saved and displayed in the **To** column
+* if the movement is Return, the location entered should be saved and displayed in the **From** column
+
+### Important
+
+Right now the transaction history table is still not displaying From / To values correctly.
+Fix the persistence and rendering so the entered values actually appear in the table.
+
+---
+
+## 5. Transaction history table must display From / To / Project correctly
+
+The table should clearly display these columns:
+
+* Date
+* Type
+* Item
+* Qty
+* From
+* To
+* Project
+* Note
+
+### Required fixes
+
+* if a project is selected, show it clearly in the Project column
+* do not wrap the project code awkwardly in a broken narrow layout
+* improve the Project column width or rendering so project names/codes are readable
+* if From or To exists, actually show the saved value
+* do not leave those columns blank when values were entered in Log Movement
+
+---
+
+## 6. Improve Log Movement form
+
+Make the Log Movement form match the corrected transaction behavior.
+
+### Required fields
+
+* movement type
+* item
+* quantity
+* From or To field depending on movement type
+* Project field when practical
+* Note
+
+### Behavior
+
+* show only the relevant direction field based on movement type
+* Receive -> From field
+* Issue -> To field
+* Return -> From field
+* Transfer -> From and To if transfer is still supported
+
+### Search
+
+* keep item search usable by SKU, item name, and size
+
+---
+
+## 7. Grouped family image support
+
+The grouped family editor should also support representative image management.
+
+### Requirements
+
+* allow entering a grouped family image URL
+* if a grouped family image URL exists, use it in the grouped family header
+* if not, fall back to the first available item image in that group
+* if neither exists, use a placeholder
+
+---
+
+## Final output requirements
+
+Actually implement these changes.
+
+At the end, clearly explain:
+
+* what files were updated
+* how grouped section spacing/alignment was fixed
+* how grouped family Edit works
+* how items can be moved between subcategories
+* how grouped family image URLs are stored and used
+* how transaction edit/delete now works
+* how movement direction rules are now saved and displayed
+* how From / To / Project values are now rendered in transaction history

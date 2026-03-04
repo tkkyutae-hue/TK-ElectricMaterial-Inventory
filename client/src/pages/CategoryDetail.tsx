@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight, Search, Plus } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight, Search, Plus, Pencil, Trash2, MoveRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useLocations, useSuppliers } from "@/hooks/use-reference-data";
 import { useCreateItem } from "@/hooks/use-items";
+import { apiRequest } from "@/lib/queryClient";
 
 type CategoryGroupedItem = {
   id: number;
@@ -35,6 +36,7 @@ type CategoryItemGroup = {
   baseItemName: string;
   items: CategoryGroupedItem[];
   representativeImage?: string | null;
+  customImageUrl?: string | null;
 };
 
 type CategoryGroupedDetail = {
@@ -298,12 +300,274 @@ function AddItemDialog({
   );
 }
 
+// ─── Family Edit Dialog ────────────────────────────────────────────────────────
+
+function FamilyEditDialog({
+  open,
+  onClose,
+  categoryId,
+  group,
+  allFamilies,
+}: {
+  open: boolean;
+  onClose: () => void;
+  categoryId: number;
+  group: CategoryItemGroup;
+  allFamilies: string[];
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const [familyName, setFamilyName] = useState(group.baseItemName);
+  const [imageUrl, setImageUrl] = useState(group.representativeImage ?? "");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [moveTarget, setMoveTarget] = useState("");
+  const [showMoveInput, setShowMoveInput] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+  };
+
+  const saveMeta = useMutation({
+    mutationFn: () => apiRequest("PUT", `/api/inventory/category/${categoryId}/item-groups`, {
+      baseItemName: group.baseItemName,
+      imageUrl: imageUrl || null,
+      newName: familyName !== group.baseItemName ? familyName : undefined,
+    }),
+    onSuccess: () => {
+      toast({ title: "Family updated" });
+      invalidate();
+      onClose();
+    },
+    onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),
+  });
+
+  const moveItems = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/inventory/items/move-family`, {
+      itemIds: [...selectedIds],
+      newBaseItemName: moveTarget.trim(),
+    }),
+    onSuccess: () => {
+      toast({ title: `${selectedIds.size} item(s) moved to "${moveTarget}"` });
+      invalidate();
+      setSelectedIds(new Set());
+      setShowMoveInput(false);
+      setMoveTarget("");
+      onClose();
+    },
+    onError: (err: any) => toast({ title: "Move failed", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteItems = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/inventory/items/bulk-delete`, {
+      itemIds: [...selectedIds],
+    }),
+    onSuccess: () => {
+      toast({ title: `${selectedIds.size} item(s) removed` });
+      invalidate();
+      setSelectedIds(new Set());
+      setConfirmDelete(false);
+      onClose();
+    },
+    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleItem = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === group.items.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(group.items.map(i => i.id)));
+  };
+
+  const otherFamilies = allFamilies.filter(f => f !== group.baseItemName);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Family — {group.baseItemName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 pt-1">
+
+          {/* Family name + image */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Family Name</label>
+              <Input
+                value={familyName}
+                onChange={e => setFamilyName(e.target.value)}
+                placeholder="e.g. EMT Conduit"
+                data-testid="input-family-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Representative Image URL</label>
+              <Input
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                placeholder="https://…"
+                data-testid="input-family-image-url"
+              />
+            </div>
+          </div>
+          {imageUrl && (
+            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-2">
+              <img src={imageUrl} alt="preview" className="w-14 h-14 object-cover rounded-md border border-slate-200" onError={e => { e.currentTarget.style.opacity = "0.3"; }} />
+              <span className="text-xs text-slate-500">Image preview</span>
+            </div>
+          )}
+
+          {/* Items in this family */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === group.items.length && group.items.length > 0}
+                  onChange={toggleAll}
+                  className="rounded border-slate-300"
+                  data-testid="checkbox-select-all"
+                />
+                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                  {group.items.length} item{group.items.length !== 1 ? "s" : ""} in this family
+                </span>
+              </div>
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-blue-600 font-medium">{selectedIds.size} selected</span>
+              )}
+            </div>
+            <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
+              {group.items.map(item => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${selectedIds.has(item.id) ? "bg-blue-50/40" : ""}`}
+                  onClick={() => toggleItem(item.id)}
+                  data-testid={`row-family-item-${item.id}`}
+                >
+                  <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleItem(item.id)} className="rounded border-slate-300 pointer-events-none" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
+                    <p className="text-xs text-slate-400">{item.sku}{item.sizeLabel ? ` · ${item.sizeLabel}` : ""}</p>
+                  </div>
+                  <StatusBadge status={item.status} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions on selected items */}
+          {selectedIds.size > 0 && (
+            <div className="border border-slate-200 rounded-xl p-3 space-y-3 bg-slate-50/60">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Actions for {selectedIds.size} selected item{selectedIds.size !== 1 ? "s" : ""}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  onClick={() => { setShowMoveInput(!showMoveInput); setConfirmDelete(false); }}
+                  data-testid="button-move-items"
+                >
+                  <MoveRight className="w-3.5 h-3.5 mr-1.5" />
+                  Move to family…
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => { setConfirmDelete(!confirmDelete); setShowMoveInput(false); }}
+                  data-testid="button-delete-items"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Remove selected
+                </Button>
+              </div>
+
+              {showMoveInput && (
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-xs text-slate-600 font-medium">Target family name</label>
+                    <Input
+                      value={moveTarget}
+                      onChange={e => setMoveTarget(e.target.value)}
+                      placeholder="Existing or new family name…"
+                      list="move-target-suggestions"
+                      data-testid="input-move-target"
+                    />
+                    <datalist id="move-target-suggestions">
+                      {otherFamilies.map(f => <option key={f} value={f} />)}
+                    </datalist>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => moveItems.mutate()}
+                    disabled={!moveTarget.trim() || moveItems.isPending}
+                    data-testid="button-confirm-move"
+                  >
+                    {moveItems.isPending ? "Moving…" : "Move"}
+                  </Button>
+                </div>
+              )}
+
+              {confirmDelete && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-2.5">
+                  <span className="text-sm text-red-700 flex-1">Remove {selectedIds.size} item(s) from inventory permanently?</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => deleteItems.mutate()}
+                    disabled={deleteItems.isPending}
+                    data-testid="button-confirm-delete"
+                  >
+                    {deleteItems.isPending ? "Removing…" : "Confirm"}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer actions */}
+          <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saveMeta.isPending}>Cancel</Button>
+            <Button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => saveMeta.mutate()}
+              disabled={saveMeta.isPending || !familyName.trim()}
+              data-testid="button-save-family"
+            >
+              {saveMeta.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CategoryDetail() {
   const { id } = useParams<{ id: string }>();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [familyFilter, setFamilyFilter] = useState("all");
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
 
   const { data, isLoading, isError } = useQuery<CategoryGroupedDetail>({
     queryKey: ["/api/inventory/category", id, "grouped"],
@@ -548,6 +812,15 @@ export default function CategoryDetail() {
                         {groupLowStock} low
                       </span>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                      onClick={() => setEditingGroup(group)}
+                      data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
 
@@ -609,6 +882,16 @@ export default function CategoryDetail() {
         categoryName={data.category.name}
         existingFamilies={existingFamilies}
       />
+
+      {editingGroup && (
+        <FamilyEditDialog
+          open={!!editingGroup}
+          onClose={() => setEditingGroup(null)}
+          categoryId={data.category.id}
+          group={editingGroup}
+          allFamilies={existingFamilies}
+        />
+      )}
     </div>
   );
 }

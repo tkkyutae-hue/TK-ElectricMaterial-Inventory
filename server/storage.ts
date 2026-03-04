@@ -1,10 +1,11 @@
 import { db } from "./db";
 import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import {
-  categories, locations, suppliers, projects, items, inventoryMovements, itemImages,
+  categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
-  type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem,
+  type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type CreateCategoryRequest, type UpdateCategoryRequest,
   type CreateLocationRequest, type CreateSupplierRequest, type UpdateSupplierRequest,
   type CreateProjectRequest, type UpdateProjectRequest,
@@ -38,6 +39,10 @@ export interface IStorage {
   createItemImage(itemId: number, imageUrl: string): Promise<void>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
+  upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup>;
+  renameFamily(categoryId: number, oldName: string, newName: string): Promise<void>;
+  moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void>;
+  bulkSoftDeleteItems(itemIds: number[]): Promise<void>;
 
   getInventoryMovements(filters?: { itemId?: number; projectId?: number; movementType?: string; locationId?: number }): Promise<InventoryMovementWithRelations[]>;
   createInventoryMovement(movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }): Promise<InventoryMovement>;
@@ -317,22 +322,29 @@ export class DatabaseStorage implements IStorage {
   async getInventoryMovements(filters?: {
     itemId?: number; projectId?: number; movementType?: string; locationId?: number
   }): Promise<InventoryMovementWithRelations[]> {
-    const allMovements = await db.select({
+    const srcLoc = alias(locations, "src_loc");
+    const dstLoc = alias(locations, "dst_loc");
+
+    const rows = await db.select({
       movement: inventoryMovements,
       item: items,
       project: projects,
+      sourceLocation: srcLoc,
+      destinationLocation: dstLoc,
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
     .leftJoin(projects, eq(inventoryMovements.projectId, projects.id))
+    .leftJoin(srcLoc, eq(inventoryMovements.sourceLocationId, srcLoc.id))
+    .leftJoin(dstLoc, eq(inventoryMovements.destinationLocationId, dstLoc.id))
     .orderBy(desc(inventoryMovements.createdAt));
 
-    let result = allMovements.map(r => ({
+    let result = rows.map(r => ({
       ...r.movement,
       item: r.item,
       project: r.project,
-      sourceLocation: null as any,
-      destinationLocation: null as any,
+      sourceLocation: r.sourceLocation,
+      destinationLocation: r.destinationLocation,
     }));
 
     if (filters?.itemId) result = result.filter(r => r.itemId === filters.itemId);
@@ -368,24 +380,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(items.id, movement.itemId));
 
     // Update location balances
-    if (movement.movementType === 'receive' && movement.destinationLocationId) {
-      await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
-    } else if (movement.movementType === 'issue' && movement.sourceLocationId) {
-      await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity);
-    } else if (movement.movementType === 'return' && movement.destinationLocationId) {
-      await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
-    } else if (movement.movementType === 'adjust') {
-      const locId = movement.destinationLocationId ?? movement.sourceLocationId;
-      if (locId) {
-        const delta = movement.newQuantity - movement.previousQuantity;
-        await this._adjustLocationBalance(movement.itemId, locId, delta);
-      }
-    } else if (movement.movementType === 'transfer') {
+    // receive/issue/return: external locations (supplier / jobsite), no internal balance update
+    // transfer: moves between internal warehouse locations
+    if (movement.movementType === 'transfer') {
       if (movement.sourceLocationId) {
         await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity);
       }
       if (movement.destinationLocationId) {
         await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
+      }
+    } else if (movement.movementType === 'adjust') {
+      const locId = movement.destinationLocationId ?? movement.sourceLocationId;
+      if (locId) {
+        const delta = movement.newQuantity - movement.previousQuantity;
+        await this._adjustLocationBalance(movement.itemId, locId, delta);
       }
     }
 
@@ -428,24 +436,16 @@ export class DatabaseStorage implements IStorage {
     const updatedQty = itemRow.quantityOnHand + netChange;
     if (updatedQty < 0) throw new Error(`Insufficient stock. Cannot edit: would result in ${updatedQty} units.`);
 
-    // Reverse old location balance impacts
-    if (orig.movementType === "receive" || orig.movementType === "return") {
-      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
-    } else if (orig.movementType === "issue") {
-      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
-    } else if (orig.movementType === "transfer") {
+    // Reverse old location balance impacts (transfer only; receive/issue/return are external)
+    if (orig.movementType === "transfer") {
       if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
       if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
     }
 
-    // Apply new location balance impacts
+    // Apply new location balance impacts (transfer only)
     const newSrc = changes.sourceLocationId !== undefined ? changes.sourceLocationId : orig.sourceLocationId;
     const newDst = changes.destinationLocationId !== undefined ? changes.destinationLocationId : orig.destinationLocationId;
-    if (changes.movementType === "receive" || changes.movementType === "return") {
-      if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity);
-    } else if (changes.movementType === "issue") {
-      if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity);
-    } else if (changes.movementType === "transfer") {
+    if (changes.movementType === "transfer") {
       if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity);
       if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity);
     }
@@ -485,12 +485,8 @@ export class DatabaseStorage implements IStorage {
     const newQty = itemRow.quantityOnHand + delta;
     if (newQty < 0) throw new Error(`Cannot delete: would result in negative stock (${newQty}).`);
 
-    // Reverse location balance impacts
-    if (orig.movementType === "receive" || orig.movementType === "return") {
-      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
-    } else if (orig.movementType === "issue") {
-      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
-    } else if (orig.movementType === "transfer") {
+    // Reverse location balance impacts (transfer only; receive/issue/return are external)
+    if (orig.movementType === "transfer") {
       if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
       if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
     }
@@ -659,6 +655,13 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
+    // Load item group metadata (custom representative images)
+    const groupRecords = await db.select().from(itemGroups).where(eq(itemGroups.categoryId, categoryId));
+    const groupImageMap = new Map<string, string | null>();
+    for (const g of groupRecords) {
+      groupImageMap.set(g.baseItemName, g.imageUrl ?? null);
+    }
+
     const enriched = rows.map(r => {
       const i = r.item;
       const firstImage = allImages.find(img => img.itemId === i.id);
@@ -673,7 +676,9 @@ export class DatabaseStorage implements IStorage {
     for (const item of enriched) {
       const key = item.baseItemName || item.name;
       if (!groupMap.has(key)) {
-        groupMap.set(key, { items: [], representativeImage: null });
+        // Priority: custom group image, then first item image
+        const customImage = groupImageMap.get(key) ?? null;
+        groupMap.set(key, { items: [], representativeImage: customImage });
       }
       const group = groupMap.get(key)!;
       group.items.push(item);
@@ -686,6 +691,7 @@ export class DatabaseStorage implements IStorage {
       baseItemName,
       items: data.items,
       representativeImage: data.representativeImage,
+      customImageUrl: groupImageMap.get(baseItemName) ?? null,
     }));
 
     const totalQuantity = enriched.reduce((s, i) => s + i.quantityOnHand, 0);
@@ -700,6 +706,51 @@ export class DatabaseStorage implements IStorage {
       outOfStockCount,
       groups,
     };
+  }
+
+  // ─── Item Groups (family metadata) ────────────────────────────────────────────
+
+  async upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup> {
+    const [existing] = await db.select().from(itemGroups)
+      .where(and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, baseItemName)));
+    if (existing) {
+      const [updated] = await db.update(itemGroups)
+        .set({ imageUrl: data.imageUrl ?? null, updatedAt: new Date() })
+        .where(eq(itemGroups.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(itemGroups)
+      .values({ categoryId, baseItemName, imageUrl: data.imageUrl ?? null })
+      .returning();
+    return created;
+  }
+
+  async renameFamily(categoryId: number, oldName: string, newName: string): Promise<void> {
+    await db.update(items)
+      .set({ baseItemName: newName, updatedAt: new Date() })
+      .where(and(eq(items.categoryId, categoryId), eq(items.baseItemName, oldName), eq(items.isActive, true)));
+    const [existing] = await db.select().from(itemGroups)
+      .where(and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, oldName)));
+    if (existing) {
+      await db.update(itemGroups)
+        .set({ baseItemName: newName, updatedAt: new Date() })
+        .where(eq(itemGroups.id, existing.id));
+    }
+  }
+
+  async moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void> {
+    if (itemIds.length === 0) return;
+    await db.update(items)
+      .set({ baseItemName: newBaseItemName, updatedAt: new Date() })
+      .where(inArray(items.id, itemIds));
+  }
+
+  async bulkSoftDeleteItems(itemIds: number[]): Promise<void> {
+    if (itemIds.length === 0) return;
+    await db.update(items)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(inArray(items.id, itemIds));
   }
 
   // ─── Dashboard Stats ──────────────────────────────────────────────────────────

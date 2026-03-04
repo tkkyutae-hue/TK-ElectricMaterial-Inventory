@@ -106,6 +106,17 @@ export const itemImages = pgTable("item_images", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ─── Item Groups (grouped family / subcategory metadata) ─────────────────────
+// Stores per-family metadata: custom image URL for the group header
+export const itemGroups = pgTable("item_groups", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => categories.id),
+  baseItemName: text("base_item_name").notNull(),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ─── Inventory Location Balances ──────────────────────────────────────────────
 // Source of truth for per-location stock levels
 export const inventoryLocationBalances = pgTable("inventory_location_balances", {
@@ -186,6 +197,7 @@ export const insertItemSchema = createInsertSchema(items).omit({ id: true, creat
   unitCost: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
 });
 export const insertItemImageSchema = createInsertSchema(itemImages).omit({ id: true, createdAt: true });
+export const insertItemGroupSchema = createInsertSchema(itemGroups).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInventoryMovementSchema = createInsertSchema(inventoryMovements).omit({
   id: true, createdAt: true, previousQuantity: true, newQuantity: true, createdBy: true
 });
@@ -206,6 +218,7 @@ export type InventoryLocationBalance = typeof inventoryLocationBalances.$inferSe
 export type ProjectMaterialTransaction = typeof projectMaterialTransactions.$inferSelect;
 export type SupplierItem = typeof supplierItems.$inferSelect;
 export type PurchaseRecommendation = typeof purchaseRecommendations.$inferSelect;
+export type ItemGroup = typeof itemGroups.$inferSelect;
 
 export type CreateCategoryRequest = z.infer<typeof insertCategorySchema>;
 export type UpdateCategoryRequest = Partial<CreateCategoryRequest>;

@@ -162,9 +162,17 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
   const movType = form.watch("movementType");
   const selectedItem = items?.find((i: any) => i.id === form.watch("itemId"));
 
-  const needsSource      = ["issue", "transfer"].includes(movType);
-  const needsDestination = ["receive", "return", "transfer"].includes(movType);
+  // Direction semantics:
+  // Receive → "Receive From" = sourceLocationId (external supplier location)
+  // Issue → "Issue To" = destinationLocationId (jobsite/project location)
+  // Return → "Return From" = sourceLocationId (returning from jobsite)
+  // Transfer → From (sourceLocationId) + To (destinationLocationId)
+  const needsSource      = ["receive", "return", "transfer"].includes(movType);
+  const needsDestination = ["issue", "transfer"].includes(movType);
   const needsProject     = ["receive", "issue", "return"].includes(movType);
+
+  const sourceLabel      = movType === "receive" ? "Receive From" : movType === "return" ? "Return From" : "From Location";
+  const destLabel        = movType === "issue" ? "Issue To" : "To Location";
 
   async function onSubmit(data: FormData) {
     try {
@@ -239,9 +247,9 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           {needsSource && (
             <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
               <FormItem>
-                <FormLabel>From Location</FormLabel>
+                <FormLabel>{sourceLabel}</FormLabel>
                 <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger data-testid="select-source-location"><SelectValue placeholder="Select location…" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {locations?.map((l: any) => (
                       <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
@@ -256,9 +264,9 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           {needsDestination && (
             <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
               <FormItem>
-                <FormLabel>To Location</FormLabel>
+                <FormLabel>{destLabel}</FormLabel>
                 <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger data-testid="select-dest-location"><SelectValue placeholder="Select location…" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {locations?.map((l: any) => (
                       <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>

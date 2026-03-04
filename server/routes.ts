@@ -352,6 +352,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Item Groups (family metadata) ───────────────────────────────────────────
+  app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, async (req, res) => {
+    try {
+      const categoryId = Number(req.params.categoryId);
+      const { baseItemName, imageUrl, newName } = req.body;
+      if (!baseItemName) return res.status(400).json({ message: "baseItemName is required" });
+      if (newName && newName !== baseItemName) {
+        await storage.renameFamily(categoryId, baseItemName, newName);
+        await storage.upsertItemGroup(categoryId, newName, { imageUrl: imageUrl ?? null });
+        return res.json({ success: true });
+      }
+      const updated = await storage.upsertItemGroup(categoryId, baseItemName, { imageUrl: imageUrl ?? null });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/inventory/items/move-family", isAuthenticated, async (req, res) => {
+    try {
+      const { itemIds, newBaseItemName } = req.body;
+      if (!Array.isArray(itemIds) || itemIds.length === 0) return res.status(400).json({ message: "itemIds required" });
+      if (!newBaseItemName) return res.status(400).json({ message: "newBaseItemName required" });
+      await storage.moveFamilyItems(itemIds.map(Number), newBaseItemName);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/inventory/items/bulk-delete", isAuthenticated, async (req, res) => {
+    try {
+      const { itemIds } = req.body;
+      if (!Array.isArray(itemIds) || itemIds.length === 0) return res.status(400).json({ message: "itemIds required" });
+      await storage.bulkSoftDeleteItems(itemIds.map(Number));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ─── Location Balances ────────────────────────────────────────────────────────
   app.get("/api/location-balances", isAuthenticated, async (req, res) => {
     const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;

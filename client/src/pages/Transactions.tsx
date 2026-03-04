@@ -63,9 +63,17 @@ function EditTransactionDialog({
   });
 
   const movType = form.watch("movementType");
-  const needsSource      = ["issue", "transfer"].includes(movType);
-  const needsDestination = ["receive", "return", "transfer"].includes(movType);
+  // Matches MovementForm direction logic:
+  // Receive → "Receive From" = sourceLocationId
+  // Issue → "Issue To" = destinationLocationId
+  // Return → "Return From" = sourceLocationId
+  // Transfer → sourceLocationId (From) + destinationLocationId (To)
+  const needsSource      = ["receive", "return", "transfer"].includes(movType);
+  const needsDestination = ["issue", "transfer"].includes(movType);
   const needsProject     = ["receive", "issue", "return"].includes(movType);
+
+  const sourceLabel = movType === "receive" ? "Receive From" : movType === "return" ? "Return From" : "From Location";
+  const destLabel   = movType === "issue" ? "Issue To" : "To Location";
 
   async function onSubmit(data: EditFormData) {
     try {
@@ -148,7 +156,7 @@ function EditTransactionDialog({
               {needsSource && (
                 <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>From Location</FormLabel>
+                    <FormLabel>{sourceLabel}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger></FormControl>
                       <SelectContent>
@@ -162,7 +170,7 @@ function EditTransactionDialog({
               {needsDestination && (
                 <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>To Location</FormLabel>
+                    <FormLabel>{destLabel}</FormLabel>
                     <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Location" /></SelectTrigger></FormControl>
                       <SelectContent>

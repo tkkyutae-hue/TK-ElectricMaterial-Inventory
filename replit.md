@@ -7,12 +7,15 @@ VoltStock is a production-grade inventory management web application built for U
 **Core capabilities:**
 - Real-time inventory tracking (stock levels, status, location balances)
 - Inventory movements: receive, issue, return, adjust, transfer (with validation)
+  - Receive → sourceLocationId ("Receive From" = supplier); Issue → destinationLocationId ("Issue To" = jobsite); Return → sourceLocationId ("Return From"); Transfer affects internal location balances
 - Project/jobsite material tracking and usage summaries
 - Supplier management with preferred vendor support and detail pages
 - Reorder recommendations with priority levels (critical/high/medium/low)
 - Dashboard with KPIs: total value, active SKUs, low stock, out of stock, pending reorders
 - Reports: valuation by category, low-stock, by location, usage by project
 - Authentication via Replit Auth (OpenID Connect)
+- Category detail page: family grouping with edit dialog (rename family, update image, move items, bulk soft-delete)
+- `itemGroups` table: stores family-level representative image overrides per category
 
 The app is named **VoltStock** and targets a professional B2B SaaS aesthetic — premium, clean, and operational from day one.
 

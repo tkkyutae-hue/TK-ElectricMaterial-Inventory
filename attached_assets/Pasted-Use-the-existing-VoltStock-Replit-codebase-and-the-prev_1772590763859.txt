@@ -1,0 +1,292 @@
+Use the existing VoltStock Replit codebase and the previously updated expanded inventory item dataset/CSV.
+
+Do not redesign the app from scratch.
+Do not remove existing working features.
+Extend the current Inventory and Category Detail experience to support practical item images using the current expanded electrical materials list.
+
+## Main Goal
+
+Improve visual material recognition across the app by using:
+
+1. small item thumbnails in the Inventory list
+2. one representative image for each grouped item family in the Category Detail page
+
+This must work with the current expanded electrical inventory dataset, including the updated item naming and categories.
+
+---
+
+## 1. Use the current expanded inventory data
+
+Assume the current item list now includes many real electrical materials such as:
+
+### Conduit / Fittings
+
+* EMT Conduit
+* Rigid Conduit
+* PVC Conduit
+* EMT Set Screw Connector
+* EMT Set Screw Coupling
+* EMT Compression Connector
+* EMT Compression Coupling
+* Rigid Coupling
+* Rigid Compression Coupling
+* Rigid Compression Connector
+* 90 Degree EMT Elbow
+* 90 Degree Rigid Elbow
+* Plastic Bushing
+* Ground Bushing
+* Metal Flexible Conduit
+* Metal Flexible Conduit Connector Straight
+* Metal Flexible Conduit Connector 90D
+* Liquidtight Flexible Conduit
+* Liquidtight Flexible Conduit Connector Straight
+* Liquidtight Flexible Conduit Connector 90D
+
+### Cable Tray
+
+* Cable Tray Straight
+* Cable Tray Cover
+* Cable Tray Tee
+* Cable Tray Cross
+* Cable Tray Vertical In
+* Cable Tray Vertical Out
+* Cable Tray Reducer RR
+* Cable Tray Reducer RL
+* Cable Tray Reducer RC
+* Cable Tray Box Connector
+
+### Supports / Strut
+
+* Strut Channel Slotted
+* Strut Channel Solid
+* Thread Rod
+* Conduit Clamp
+* Corner Angle 2-Hole
+* Corner Angle 4-Hole
+* Spring Nut
+
+### Cable / Wire
+
+* Single Conductor THHN/THWN Stranded
+* Multi Conductor THHN/THWN-2 2C+G
+* Multi Conductor THHN/THWN-2 3C+G
+* Multi Conductor THHN/THWN-2 4C+G
+* Grounding Wire
+* MC Cable
+
+### Boxes / Covers
+
+* 4" Square Box
+* Weatherproof 4" Square Box
+* Weatherproof 2x4 Box
+* Weatherproof Box Cover
+* Indoor Junction Box
+* Outdoor Junction Box
+
+### Distribution / Power
+
+* Breaker
+* Fuse 240V
+* Fuse 600V
+* Disconnect Switch Indoor Fusible
+* Disconnect Switch Indoor Non-Fused
+* Disconnect Switch Outdoor Fusible
+* Disconnect Switch Outdoor Non-Fused
+* Transformer 480V-208Y/120V
+
+### Grounding / Termination
+
+* Mechanical Lug
+* Compression Lug
+* Ground Rod
+* Ground Bar
+* Lay-In Lug
+* Ground Bushing
+
+Use the current base item naming and grouping logic from this expanded dataset.
+
+---
+
+## 2. Inventory page: add item photo thumbnails
+
+On the main Inventory page table, add a small image column between SKU and Item Name.
+
+### Required table column order
+
+* SKU
+* Photo
+* Item Name
+* Size
+* Category
+* Quantity
+* Unit
+* Location
+* Status
+* Reorder Point
+
+### Requirements
+
+* render a thumbnail for each inventory item
+* use a practical thumbnail size like 40x40 or 48x48
+* keep the table clean and easy to scan
+* do not make the row height too large
+* keep search, filter, sort, and click behavior working
+
+### Fallback behavior
+
+If no image exists for an item:
+
+* show a clean placeholder thumbnail or icon
+* do not leave the cell blank
+
+---
+
+## 3. Category Detail page: add one representative image per grouped item family
+
+On the category detail page, the grouped item family sections currently show text-only headers.
+
+Improve them by adding one representative image to each group header.
+
+### Example grouped families
+
+* 90 Degree EMT Elbow
+* EMT Compression Connector
+* EMT Compression Coupling
+* Rigid Coupling
+* Plastic Bushing
+* Ground Bushing
+* Liquidtight Flexible Conduit Connector Straight
+* Cable Tray Tee
+* Cable Tray Vertical In
+* Mechanical Lug
+* Compression Lug
+
+### Group header layout
+
+Each grouped section header should show:
+
+* representative image thumbnail
+* grouped item family name
+* size count, such as “2 sizes” or “9 sizes”
+
+Example:
+[image] 90 Degree EMT Elbow   2 sizes
+[image] Plastic Bushing   9 sizes
+[image] Cable Tray Tee   4 sizes
+
+### Important rule
+
+Do NOT show an image for every row in the grouped size table.
+Only show one representative image in the grouped item family header.
+
+---
+
+## 4. Representative image logic
+
+Implement a clean image resolution strategy.
+
+### Preferred logic
+
+1. if a dedicated group/family image exists, use it
+2. otherwise use the first available image from an item in that item family
+3. if no image exists at all, use a clean placeholder
+
+### Suggested implementation
+
+You may use:
+
+* existing item_images table
+  or
+* image_url/display_image_url fields if already present
+
+If helpful, add a helper/service that resolves the best representative image for:
+
+* each item row
+* each grouped item family
+
+---
+
+## 5. Add practical sample image mappings for current electrical materials
+
+Seed or map representative images for major item families from the expanded item list.
+
+Examples:
+
+* EMT Conduit -> photo of EMT conduit bundle
+* Rigid Conduit -> photo of galvanized rigid conduit
+* PVC Conduit -> photo of gray PVC conduit
+* EMT Compression Connector -> photo of EMT compression connector
+* Ground Bushing -> photo of grounding bushing
+* Cable Tray Straight -> photo of cable tray straight section
+* Cable Tray Tee -> photo of cable tray tee fitting
+* Strut Channel Slotted -> photo of slotted strut channel
+* Mechanical Lug -> photo of mechanical lug
+* Compression Lug -> photo of compression lug
+* Disconnect Switch Outdoor Fusible -> photo of outdoor disconnect
+* Transformer 480V-208Y/120V -> photo of dry-type transformer
+
+If real production assets do not exist yet, use stable placeholder image URLs that are category-appropriate and consistent.
+
+---
+
+## 6. UX requirements
+
+These image features must improve recognition without clutter.
+
+### Inventory list
+
+* make it easier to visually identify the material
+* preserve table readability
+* keep density practical for many rows
+
+### Category detail
+
+* make grouped item families easier to identify at a glance
+* preserve grouped tables
+* do not turn the page into a gallery
+
+### Visual style
+
+* subtle
+* operational
+* warehouse-friendly
+* consistent with current VoltStock design language
+
+---
+
+## 7. Technical requirements
+
+Actually implement the changes.
+
+### Inventory page
+
+* update the row/table component
+* insert thumbnail column
+* preserve filters and sorting
+
+### Category detail page
+
+* update grouped family section header component
+* render one representative image per family
+* keep grouped size rows unchanged except for header improvement
+
+### Data
+
+* use the current expanded item dataset
+* respect current base_item_name and size grouping logic
+* do not break existing category grouping or size sorting
+
+---
+
+## 8. Final output requirements
+
+At the end, clearly explain:
+
+* what files were updated
+* how inventory row thumbnails are resolved
+* how grouped family representative images are resolved
+* what fallback is shown when images are missing
+* how this works with the expanded electrical materials dataset already added to the app
+
+Do not only describe the plan.
+Actually implement these changes in the current VoltStock codebase.

@@ -1,0 +1,153 @@
+Refine the current VoltStock category detail inventory page.
+
+Do not redesign the whole app.
+Do not change the overall visual style.
+Improve the category detail page so it becomes easier to search, cleaner to scan, and more aligned visually.
+
+## Main goal
+
+Improve the category inventory detail page by:
+
+1. adding search/filter capability inside the category page
+2. cleaning up uneven grouped section alignment
+3. removing Reorder Point from the grouped category tables
+4. showing Reorder Point only in the item detail page instead
+
+---
+
+## 1. Add search and filtering to the category detail page
+
+On the category detail page, add a search/filter bar above the grouped item family sections.
+
+### Required behavior
+
+Users should be able to search within the current category by:
+
+* SKU
+* item name
+* grouped family name / base item name
+* size label
+
+### Examples
+
+If the user types:
+
+* bushing
+* 3/4
+* ct-cvr
+* vertical
+* emt elbow
+
+the grouped results should narrow accordingly.
+
+### Optional filters
+
+If practical, also add:
+
+* subcategory / grouped family filter
+* status filter
+
+But the most important feature is a clean search box that works well.
+
+---
+
+## 2. Fix uneven grouped section alignment
+
+The current grouped family sections have inconsistent visual sizing and alignment.
+Clean this up so the page looks more structured and balanced.
+
+### Requirements
+
+* make grouped section cards/containers visually aligned
+* use consistent padding and spacing
+* use a consistent header height for each grouped family section
+* keep representative images a consistent size
+* keep the family title and “X sizes” label aligned consistently
+* make the page feel orderly, not uneven or staggered
+
+The page should feel clean and grid-aligned, even though different groups may contain different row counts.
+
+---
+
+## 3. Remove Reorder Point from grouped category tables
+
+On the category detail grouped item tables, remove the **Reorder Point** column.
+
+### New grouped table columns
+
+Use this order:
+
+* SKU
+* Size
+* Item Name
+* Qty
+* Unit
+* Location
+* Supplier
+* Status
+
+Do not show Reorder Point in this category-level browsing view.
+
+This page should stay focused on quick browsing and comparison.
+
+---
+
+## 4. Show Reorder Point only on Item Detail
+
+Make sure Reorder Point is still available in the item detail page.
+
+Item detail should continue to show:
+
+* SKU
+* item name
+* size
+* quantity
+* supplier
+* location
+* reorder point
+* reorder quantity
+* unit cost
+* notes
+* image/photos if supported
+
+So:
+
+* category detail = quick browse
+* item detail = full management details
+
+---
+
+## 5. Preserve usability
+
+Do not make the category page heavier or cluttered.
+
+### Keep the page focused on:
+
+* category summary
+* grouped family recognition
+* quick visual scanning
+* size comparison
+* item lookup
+
+### UX goal
+
+A user should be able to:
+
+* enter a category
+* search for a subcategory/family/item quickly
+* compare sizes
+* click into an item detail when needed
+
+---
+
+## 6. Final output
+
+Actually implement these improvements.
+
+At the end, explain:
+
+* what files were updated
+* how category search now works
+* how grouped family alignment was improved
+* that Reorder Point was removed from category tables
+* that Reorder Point remains in item detail only

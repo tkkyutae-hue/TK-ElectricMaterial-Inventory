@@ -1,0 +1,122 @@
+Fix deletion for Projects and Suppliers (currently failing with HTML response parsed as JSON), and upgrade Receive From / Project selects in Log Inventory Movement to be searchable (type-to-filter). Also allow creating new locations from typing so they appear in the list afterward.
+
+Do not redesign the UI. Keep current layout and theme. Make workflows reliable.
+
+====================================================
+
+1. FIX PROJECT/SUPPLIER DELETE FAILING (HTML INSTEAD OF JSON)
+   ====================================================
+
+Current issue:
+Delete actions show error:
+"Failed to execute 'json' on 'Response': Unexpected token '<', '<!DOCTYPE' ... is not valid JSON"
+This means the backend is returning HTML (error page/redirect) while frontend expects JSON.
+
+Requirements (backend):
+
+* Ensure DELETE endpoints for projects and suppliers always return JSON.
+* On success: return { ok: true }
+* On failure: return { ok: false, error: "...", code: "..." } with proper HTTP status.
+* Never return an HTML error page for API routes.
+
+Requirements (frontend):
+
+* Do not blindly call response.json().
+* Check response.headers content-type and response.ok.
+* If non-JSON, read response.text() and show a safe error message.
+* Show meaningful toast messages.
+
+Also ensure auth middleware does not redirect API calls to HTML login pages.
+If unauthenticated:
+
+* return 401 JSON { ok:false, error:"Unauthorized" }
+
+====================================================
+2) SAFE DELETE STRATEGY (FOREIGN KEYS)
+======================================
+
+Delete must not fail silently due to FK constraints.
+
+## Projects delete
+
+If a project is referenced by project_material_transactions or inventory_movements:
+
+* Prefer: BLOCK deletion with a clear message:
+  "Cannot delete: project is referenced by X transactions."
+* Return JSON with details (counts).
+
+Optionally provide "Archive project" instead of delete (recommended).
+
+## Suppliers delete
+
+If supplier is referenced by items:
+
+* Prefer: BLOCK deletion with message:
+  "Cannot delete: supplier is referenced by X items."
+* Return JSON with details (counts).
+
+Do NOT throw raw SQL errors to the UI.
+Always return clean JSON.
+
+====================================================
+3) LOG INVENTORY MOVEMENT: MAKE 'RECEIVE FROM' SEARCHABLE (TYPE TO FILTER)
+==========================================================================
+
+Current issue:
+Receive From is dropdown only. Make it searchable like Item selection.
+
+Requirements:
+
+* Convert Receive From select into a searchable combobox:
+
+  * user can type to filter existing locations
+  * user can select from the filtered list
+* Keep same field semantics (it represents the "From" location/source for Receive and Return).
+
+====================================================
+4) ALLOW CREATING NEW LOCATION FROM TYPING (RECEIVE FROM)
+=========================================================
+
+If user types a location name that does not exist:
+
+* Show an option: "Create location: <typed value>"
+* On selection, create the location record in DB
+* Then set it as selected value
+* Newly created location must appear in the location list for future use
+
+Validation:
+
+* prevent duplicates by normalizing (trim, case-insensitive check)
+* if already exists, select existing
+
+====================================================
+5) PROJECT SELECT: SEARCHABLE (TYPE TO FILTER)
+==============================================
+
+Convert Project (Optional) dropdown into a searchable combobox like Items:
+
+* type to filter projects
+* select a project
+
+Display format in the list:
+
+* "PO_NUMBER — Project Name"
+  If PO_NUMBER is missing:
+* "Project Name"
+
+Do NOT create new projects from this modal by default (projects have many fields).
+If user needs new project:
+
+* provide a small link/button: "Create new project" that navigates to Projects page.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement end-to-end and explain:
+
+* which API endpoints were fixed to always return JSON
+* how the frontend now handles non-JSON responses safely
+* how delete is blocked with FK reference counts (instead of breaking)
+* how Receive From searchable + create-new-location works
+* how Project searchable combobox works and displays PO number first

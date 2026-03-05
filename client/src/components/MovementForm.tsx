@@ -4,15 +4,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useItems } from "@/hooks/use-items";
-import { useLocations, useProjects } from "@/hooks/use-reference-data";
+import { useLocations, useProjects, useCreateLocation } from "@/hooks/use-reference-data";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Search, X, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Search, X, ChevronDown, Plus, Trash2, ExternalLink } from "lucide-react";
 import { api } from "@shared/routes";
+import { Link } from "wouter";
 
 const sharedSchema = z.object({
   movementType: z.string().min(1, "Movement type is required"),
@@ -44,6 +45,7 @@ function makeRow(): ItemRow {
   return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {} };
 }
 
+// ── Searchable Item Select ──────────────────────────────────────────────────
 export function SearchableItemSelect({
   value, onChange, items,
 }: {
@@ -148,6 +150,257 @@ export function SearchableItemSelect({
   );
 }
 
+// ── Searchable Location Select (with create-new) ────────────────────────────
+function SearchableLocationSelect({
+  value,
+  onChange,
+  locations,
+  placeholder = "Search or type to create…",
+  testId = "location-select",
+}: {
+  value?: number | null;
+  onChange: (id: number) => void;
+  locations: any[];
+  placeholder?: string;
+  testId?: string;
+}) {
+  const { toast } = useToast();
+  const createLocation = useCreateLocation();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = locations.find(l => l.id === value);
+
+  const filtered = search.trim()
+    ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
+    : locations;
+
+  const showCreate =
+    search.trim().length > 0 &&
+    !locations.some(l => l.name.trim().toLowerCase() === search.trim().toLowerCase());
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 60);
+  }, [open]);
+
+  async function handleCreate() {
+    const name = search.trim();
+    if (!name) return;
+    try {
+      const loc = await createLocation.mutateAsync(name);
+      onChange(loc.id);
+      setSearch("");
+      setOpen(false);
+      toast({ title: "Location created", description: `"${loc.name}" added and selected.` });
+    } catch (err: any) {
+      toast({ title: "Failed to create location", description: err.message, variant: "destructive" });
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative" data-testid={testId}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"
+        data-testid={`${testId}-trigger`}
+      >
+        {selected ? (
+          <span className="truncate text-slate-900">{selected.name}</span>
+        ) : (
+          <span className="text-muted-foreground">{placeholder}</span>
+        )}
+        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Type to filter or create…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              data-testid={`${testId}-search`}
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")} className="p-0.5">
+                <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.map(loc => (
+              <button
+                key={loc.id}
+                type="button"
+                onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
+                data-testid={`${testId}-option-${loc.id}`}
+              >
+                {loc.name}
+              </button>
+            ))}
+            {filtered.length === 0 && !showCreate && (
+              <p className="text-center text-sm text-slate-400 py-3">No locations found</p>
+            )}
+            {showCreate && (
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={createLocation.isPending}
+                className="w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"
+                data-testid={`${testId}-create`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {createLocation.isPending ? "Creating…" : `Create location "${search.trim()}"`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Searchable Project Select ───────────────────────────────────────────────
+function SearchableProjectSelect({
+  value,
+  onChange,
+  projects,
+}: {
+  value?: number | null;
+  onChange: (id: number | undefined) => void;
+  projects: any[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const activeProjects = projects.filter(p => p.status === "active");
+  const selected = activeProjects.find(p => p.id === value);
+
+  function label(p: any) {
+    return p.poNumber ? `${p.poNumber} — ${p.name}` : p.name;
+  }
+
+  const filtered = search.trim()
+    ? activeProjects.filter(p => {
+        const q = search.toLowerCase();
+        return p.name?.toLowerCase().includes(q) || p.poNumber?.toLowerCase().includes(q);
+      })
+    : activeProjects;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 60);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative" data-testid="project-select">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"
+        data-testid="project-select-trigger"
+      >
+        {selected ? (
+          <span className="truncate text-slate-900">{label(selected)}</span>
+        ) : (
+          <span className="text-muted-foreground">Select project…</span>
+        )}
+        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search by PO or project name…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              data-testid="project-search-input"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")} className="p-0.5">
+                <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+              </button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {value != null && (
+              <button
+                type="button"
+                onClick={() => { onChange(undefined); setSearch(""); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"
+                data-testid="project-clear"
+              >
+                Clear selection
+              </button>
+            )}
+            {filtered.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { onChange(p.id); setSearch(""); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${p.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
+                data-testid={`project-option-${p.id}`}
+              >
+                {p.poNumber && (
+                  <span className="font-mono text-xs text-slate-500 mr-1.5">{p.poNumber} —</span>
+                )}
+                {p.name}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-center text-sm text-slate-400 py-3">No active projects found</p>
+            )}
+          </div>
+          <div className="border-t border-slate-100 px-3 py-2">
+            <Link
+              href="/projects"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"
+              data-testid="project-create-link"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Create new project
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MovementForm ─────────────────────────────────────────────────────────────
 interface MovementFormProps {
   defaultType?: string;
   defaultItemId?: number;
@@ -261,12 +514,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
   return (
     <Form {...form}>
-      {/*
-        3-section flex column:
-          A) Shrink-to-fit top fields
-          B) Flex-1 scrollable items area
-          C) Sticky footer with Add Item + Cancel/Confirm
-      */}
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-col min-h-0"
@@ -304,18 +551,15 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{sourceLabel}</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-source-location">
-                        <SelectValue placeholder="Select…" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {locations?.map((l: any) => (
-                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableLocationSelect
+                      value={field.value ?? null}
+                      onChange={(id) => field.onChange(id)}
+                      locations={locations || []}
+                      placeholder="Search or type to create…"
+                      testId="select-source-location"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -324,18 +568,15 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{destLabel}</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-dest-location">
-                        <SelectValue placeholder="Select…" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {locations?.map((l: any) => (
-                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableLocationSelect
+                      value={field.value ?? null}
+                      onChange={(id) => field.onChange(id)}
+                      locations={locations || []}
+                      placeholder="Select destination…"
+                      testId="select-dest-location"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -346,20 +587,13 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <FormField control={form.control} name="projectId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Project (Optional)</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-project">
-                        <SelectValue placeholder="Select project…" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {projects?.filter((p: any) => p.status === "active").map((p: any) => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.poNumber ? `${p.poNumber} — ${p.name}` : p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableProjectSelect
+                      value={field.value ?? null}
+                      onChange={(id) => field.onChange(id)}
+                      projects={projects || []}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -368,18 +602,15 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{destLabel}</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-dest-location">
-                        <SelectValue placeholder="Select…" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {locations?.map((l: any) => (
-                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableLocationSelect
+                      value={field.value ?? null}
+                      onChange={(id) => field.onChange(id)}
+                      locations={locations || []}
+                      placeholder="Select destination…"
+                      testId="select-dest-location"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -406,18 +637,14 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         {/* ── SECTION B: Items header + scrollable list ── */}
         <div className="flex flex-col min-h-0 flex-1 border-t border-slate-100 pt-3">
 
-          {/* Items count header */}
           <div className="flex-shrink-0 flex items-center gap-2 mb-2">
-            <p className="text-sm font-semibold text-slate-700">
-              Items
-            </p>
+            <p className="text-sm font-semibold text-slate-700">Items</p>
             <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium">
               {itemRows.length}
             </span>
             <div className="h-px flex-1 bg-slate-100" />
           </div>
 
-          {/* Scrollable item rows — the ONLY scrollable region */}
           <div
             className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 -mr-1"
             style={{ minHeight: "120px" }}
@@ -430,7 +657,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                   className="flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
                   data-testid={`item-row-${idx}`}
                 >
-                  {/* Item selector — takes majority width */}
                   <div className="flex-[3] min-w-0">
                     <SearchableItemSelect
                       value={row.itemId}
@@ -444,7 +670,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     )}
                   </div>
 
-                  {/* Quantity input — narrow */}
                   <div className="flex-[0.8] min-w-0 shrink-0">
                     <div className="relative">
                       <Input
@@ -468,7 +693,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     )}
                   </div>
 
-                  {/* Remove icon */}
                   <div className="pt-1.5 shrink-0">
                     <button
                       type="button"
@@ -489,8 +713,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
         {/* ── SECTION C: Sticky footer ── */}
         <div className="flex-shrink-0 flex items-center justify-between pt-3 mt-2 border-t border-slate-100 bg-white">
-
-          {/* Left: Add Another Item */}
           <button
             type="button"
             onClick={addRow}
@@ -501,7 +723,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             Add Another Item
           </button>
 
-          {/* Right: Cancel + Confirm */}
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button

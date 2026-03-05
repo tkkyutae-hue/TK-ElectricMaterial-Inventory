@@ -81,6 +81,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getLocations());
   });
 
+  app.post("/api/locations", isAuthenticated, async (req, res) => {
+    try {
+      const { name, code, locationType, description } = req.body;
+      if (!name || !name.trim()) return res.status(400).json({ ok: false, error: "Name is required" });
+      const existing = await storage.getLocations();
+      const dup = existing.find(l => l.name.trim().toLowerCase() === name.trim().toLowerCase());
+      if (dup) return res.json(dup);
+      const created = await storage.createLocation({ name: name.trim(), code: code || name.trim().toUpperCase().replace(/\s+/g, "-").slice(0, 20), locationType: locationType || "warehouse", description: description || null });
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
   // ─── Suppliers ──────────────────────────────────────────────────────────────
   app.get("/api/suppliers", isAuthenticated, async (_req, res) => {
     res.json(await storage.getSuppliers());

@@ -1,0 +1,98 @@
+Fix category detail grouped-family tables so all column widths are consistent across every family section, and add a Photo column between SKU and Size.
+
+Current issues:
+
+1. Column widths are inconsistent between family sections (tables look misaligned).
+2. Photo column between SKU and Size is still missing.
+
+Do not redesign the page. Make targeted layout fixes.
+
+====================================================
+
+1. ENFORCE A SINGLE SHARED COLUMN LAYOUT FOR ALL FAMILY TABLES
+   ====================================================
+
+All grouped-family item tables on the category detail page must use the exact same column layout rules so that columns line up across sections.
+
+Required column order:
+
+* SKU
+* Photo
+* Size
+* Item Name
+* Qty
+* Unit
+* Location
+* Status
+
+Implementation requirement:
+
+* Use a consistent, fixed table layout for every family table:
+
+  * `width: 100%`
+  * `table-layout: fixed`
+* Apply the SAME column widths to EVERY family table (header + rows).
+
+Suggested widths (adjust slightly if needed, but keep consistent):
+
+* SKU: 140px
+* Photo: 56px (shows ~32px thumbnail centered)
+* Size: 110px
+* Item Name: auto / remaining space
+* Qty: 90px (right aligned)
+* Unit: 70px
+* Location: 170px
+* Status: 110px
+
+Rules:
+
+* Item Name should truncate with ellipsis (no wrapping) to preserve alignment:
+
+  * `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`
+* Prevent columns from shrinking differently per section.
+* Ensure header cells and body cells share the same widths.
+
+====================================================
+2) ADD PHOTO COLUMN BETWEEN SKU AND SIZE
+========================================
+
+Add a Photo column between SKU and Size for every grouped-family table.
+
+Behavior:
+
+* If item has `image_url`, display a small square thumbnail (e.g., 28–32px)
+* If missing, show a clean placeholder icon
+* Thumbnail must not increase row height noticeably
+* Center the thumbnail in the photo cell
+
+====================================================
+3) SYNC PHOTO WITH ITEM DETAIL IMAGE
+====================================
+
+The Photo column must reflect the same image used in Item Detail.
+When an image is uploaded/changed in Item Detail, the table thumbnail must update automatically.
+
+Source of truth:
+
+* read from item `image_url` (or equivalent field)
+
+====================================================
+4) CONSISTENT HEADER ACROSS SECTIONS
+====================================
+
+Ensure the header row is consistent across all family tables:
+
+* same typography
+* same spacing
+* same alignment (Qty right-aligned, others left-aligned)
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement and explain:
+
+* which component renders family tables
+* how a single column width template is enforced
+* how the Photo column is rendered
+* how thumbnails are sourced and updated

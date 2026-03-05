@@ -26,6 +26,7 @@ type CategoryGroupedItem = {
   reorderPoint: number;
   unitOfMeasure: string;
   status: string;
+  imageUrl?: string | null;
   location?: { name: string } | null;
   supplier?: { name: string } | null;
 };
@@ -171,6 +172,11 @@ function InlineAddRow({
           data-testid="inline-input-sku"
         />
         {skuError && <p className="text-red-500 text-[10px] mt-0.5 font-medium">{skuError}</p>}
+      </TableCell>
+      <TableCell className="py-2 align-middle">
+        <div className="w-8 h-8 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center mx-auto">
+          <ImageIcon className="w-3.5 h-3.5 text-slate-200" />
+        </div>
       </TableCell>
       <TableCell className="py-2 align-top">
         <input
@@ -827,10 +833,21 @@ export default function CategoryDetail() {
 
                 {/* Items table */}
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "760px" }}>
+                    <colgroup>
+                      <col style={{ width: "140px" }} />
+                      <col style={{ width: "56px" }} />
+                      <col style={{ width: "110px" }} />
+                      <col />
+                      <col style={{ width: "90px" }} />
+                      <col style={{ width: "70px" }} />
+                      <col style={{ width: "170px" }} />
+                      <col style={{ width: "110px" }} />
+                    </colgroup>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5">SKU</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Photo</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Size</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item Name</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
@@ -863,22 +880,35 @@ export default function CategoryDetail() {
                           className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                           data-testid={`row-item-${item.id}`}
                         >
-                          <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5">{item.sku}</TableCell>
-                          <TableCell className="font-semibold text-slate-800 text-sm py-2.5 whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
-                          <TableCell className="text-slate-700 text-sm py-2.5">
-                            <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors" data-testid={`link-item-name-${item.id}`}>
+                          <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
+                          <TableCell className="py-2.5">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt=""
+                                className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
+                                onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }}
+                              />
+                            ) : null}
+                            <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center mx-auto ${item.imageUrl ? "hidden" : ""}`}>
+                              <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
+                          <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
+                            <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>
                               {item.name}
                             </Link>
                           </TableCell>
                           <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
                           <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
-                          <TableCell className="text-slate-600 text-sm py-2.5 whitespace-nowrap">{item.location?.name || "—"}</TableCell>
+                          <TableCell className="text-slate-600 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.location?.name || "—"}</TableCell>
                           <TableCell className="py-2.5 pr-5"><StatusBadge status={item.status} /></TableCell>
                         </TableRow>
                       ))}
                       {group.items.length === 0 && !hasInlineRow && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
+                          <TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">
                             No items yet.{" "}
                             <button
                               className="text-brand-600 hover:underline"

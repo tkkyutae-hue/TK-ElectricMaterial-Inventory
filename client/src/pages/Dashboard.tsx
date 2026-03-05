@@ -35,7 +35,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "CW": "from-orange-600 to-orange-900",
   "DV": "from-violet-600 to-violet-900",
   "FH": "from-stone-600 to-stone-800",
-  "BC": "from-blue-600 to-blue-900",
+  "BC": "from-brand-600 to-brand-900",
   "DP": "from-indigo-700 to-indigo-900",
   "GT": "from-teal-600 to-teal-900",
 };
@@ -52,7 +52,7 @@ function MonthlyTrendChart() {
     return (
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-lg text-sm">
         <p className="font-semibold text-slate-500 mb-0.5">{label}</p>
-        <p className="font-bold text-blue-600 text-base">
+        <p className="font-bold text-brand-600 text-base">
           ${payload[0].value.toLocaleString()}
         </p>
       </div>
@@ -63,7 +63,7 @@ function MonthlyTrendChart() {
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" data-testid="chart-monthly-trend">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-blue-600" />
+          <TrendingUp className="w-4 h-4 text-brand-600" />
           <h2 className="text-base font-semibold text-slate-900">Inventory Value — Last 12 Months</h2>
         </div>
         {trend && trend.length > 0 && (
@@ -85,9 +85,9 @@ function MonthlyTrendChart() {
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={trend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
-                <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#08B028" stopOpacity={0.12} />
+                  <stop offset="95%" stopColor="#08B028" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -109,11 +109,11 @@ function MonthlyTrendChart() {
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="#2563EB"
+                stroke="#0A6B24"
                 strokeWidth={2.5}
-                fill="url(#blueGradient)"
+                fill="url(#brandGradient)"
                 dot={false}
-                activeDot={{ r: 4, fill: "#2563EB", strokeWidth: 0 }}
+                activeDot={{ r: 4, fill: "#0A6B24", strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -181,8 +181,8 @@ export default function Dashboard() {
             title="Inventory Value"
             value={totalValue}
             icon={DollarSign}
-            colorClass="text-blue-600"
-            bgClass="bg-blue-50"
+            colorClass="text-brand-600"
+            bgClass="bg-brand-50"
             subtext={`${stats?.totalSkus || 0} active SKUs`}
           />
           <KpiCard
@@ -231,10 +231,10 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-blue-600" />
+            <Activity className="w-4 h-4 text-brand-600" />
             Category Status
           </h2>
-          <Link href="/inventory" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+          <Link href="/inventory" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
             Full Inventory →
           </Link>
         </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
               const hasIssue = cat.outOfStockCount > 0 || cat.lowStockCount > 0;
               return (
                 <Link href={`/inventory/category/${cat.id}`} key={cat.id}>
-                  <div className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-blue-300 transition-all hover:shadow-md" data-testid={`card-category-dash-${cat.id}`}>
+                  <div className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-brand-300 transition-all hover:shadow-md" data-testid={`card-category-dash-${cat.id}`}>
                     <div className="relative h-20">
                       {cat.imageUrl ? (
                         <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
@@ -290,7 +290,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h3 className="text-base font-semibold text-slate-900">Recent Transactions</h3>
-            <Link href="/transactions" className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">View All →</Link>
+            <Link href="/transactions" className="text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors">View All →</Link>
           </div>
           <div className="divide-y divide-slate-50">
             {isLoading ? (
@@ -314,7 +314,7 @@ export default function Dashboard() {
                 return (
                   <div key={tx.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/60 transition-colors" data-testid={`row-tx-${tx.id}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'}`}>
                         {isIn ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                       </div>
                       <div>
@@ -324,7 +324,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-3">
                       <TransactionTypeBadge type={tx.movementType} />
-                      <span className={`text-sm font-bold tabular-nums ${isIn ? 'text-emerald-600' : 'text-blue-600'}`}>
+                      <span className={`text-sm font-bold tabular-nums ${isIn ? 'text-emerald-600' : 'text-brand-600'}`}>
                         {isIn ? '+' : '-'}{tx.quantity}
                         <span className="text-xs font-normal text-slate-400 ml-1">{tx.item?.unitOfMeasure}</span>
                       </span>
@@ -344,7 +344,7 @@ export default function Dashboard() {
               <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-slate-900">Action Required</h3>
-                <Link href="/reorder" className="ml-auto text-xs font-medium text-blue-600 hover:text-blue-700">Reorder →</Link>
+                <Link href="/reorder" className="ml-auto text-xs font-medium text-brand-600 hover:text-brand-700">Reorder →</Link>
               </div>
               <div className="p-4 space-y-2.5">
                 {lowStockReport?.outOfStock?.slice(0, 3).map((item: any) => (

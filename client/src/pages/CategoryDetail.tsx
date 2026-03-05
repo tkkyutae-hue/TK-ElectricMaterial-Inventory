@@ -65,7 +65,7 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
   "CW": "from-orange-600 to-orange-800",
   "DV": "from-violet-600 to-violet-800",
   "FH": "from-stone-600 to-stone-800",
-  "BC": "from-blue-600 to-blue-800",
+  "BC": "from-brand-600 to-brand-800",
   "DP": "from-indigo-600 to-indigo-800",
   "GT": "from-teal-600 to-teal-800",
 };
@@ -156,10 +156,10 @@ function InlineAddRow({
   }
 
   const inputCls = (err?: string) =>
-    `w-full text-xs bg-white border ${err ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"} rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400`;
+    `w-full text-xs bg-white border ${err ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"} rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400`;
 
   return (
-    <TableRow className="bg-blue-50/50 border-b border-blue-100" data-testid="row-inline-add">
+    <TableRow className="bg-brand-50/50 border-b border-brand-100" data-testid="row-inline-add">
       <TableCell className="pl-5 py-2 align-top">
         <input
           ref={skuRef}
@@ -190,7 +190,7 @@ function InlineAddRow({
           data-testid="inline-input-name"
         />
         {!nameManuallyEdited.current && sizeLabel.trim() && (
-          <p className="text-[10px] text-blue-500 mt-0.5">Auto-suggested</p>
+          <p className="text-[10px] text-brand-500 mt-0.5">Auto-suggested</p>
         )}
       </TableCell>
       <TableCell className="py-2 align-top text-right">
@@ -199,7 +199,7 @@ function InlineAddRow({
           onChange={e => setQty(e.target.value)}
           type="number"
           min="0"
-          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400"
           data-testid="inline-input-qty"
         />
       </TableCell>
@@ -207,7 +207,7 @@ function InlineAddRow({
         <select
           value={unit}
           onChange={e => setUnit(e.target.value)}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
           data-testid="inline-select-unit"
         >
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -217,7 +217,7 @@ function InlineAddRow({
         <select
           value={locationId}
           onChange={e => setLocationId(e.target.value)}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 min-w-[100px]"
+          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 min-w-[100px]"
           data-testid="inline-select-location"
         >
           <option value="">No location</option>
@@ -230,7 +230,7 @@ function InlineAddRow({
         <div className="flex gap-1 flex-wrap">
           <Button
             size="sm"
-            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 px-2.5"
+            className="h-7 text-xs bg-brand-700 hover:bg-brand-800 px-2.5"
             onClick={() => save(false)}
             disabled={createMutation.isPending}
             data-testid="inline-button-save"
@@ -240,7 +240,7 @@ function InlineAddRow({
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs px-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="h-7 text-xs px-2 border-brand-300 text-brand-700 hover:bg-brand-50"
             onClick={() => save(true)}
             disabled={createMutation.isPending}
             data-testid="inline-button-save-next"
@@ -370,13 +370,13 @@ function FamilyEditDialog({
                 <input type="checkbox" checked={selectedIds.size === group.items.length && group.items.length > 0} onChange={toggleAll} className="rounded border-slate-300" data-testid="checkbox-select-all" />
                 <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{group.items.length} item{group.items.length !== 1 ? "s" : ""} in this family</span>
               </div>
-              {selectedIds.size > 0 && <span className="text-xs text-blue-600 font-medium">{selectedIds.size} selected</span>}
+              {selectedIds.size > 0 && <span className="text-xs text-brand-600 font-medium">{selectedIds.size} selected</span>}
             </div>
             <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
               {group.items.map(item => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${selectedIds.has(item.id) ? "bg-blue-50/40" : ""}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${selectedIds.has(item.id) ? "bg-brand-50/40" : ""}`}
                   onClick={() => toggleItem(item.id)}
                   data-testid={`row-family-item-${item.id}`}
                 >
@@ -394,7 +394,7 @@ function FamilyEditDialog({
             <div className="border border-slate-200 rounded-xl p-3 space-y-3 bg-slate-50/60">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions for {selectedIds.size} selected item{selectedIds.size !== 1 ? "s" : ""}</p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setShowMoveInput(!showMoveInput); setConfirmDelete(false); }} data-testid="button-move-items">
+                <Button type="button" size="sm" variant="outline" className="text-brand-600 border-brand-200 hover:bg-brand-50" onClick={() => { setShowMoveInput(!showMoveInput); setConfirmDelete(false); }} data-testid="button-move-items">
                   <MoveRight className="w-3.5 h-3.5 mr-1.5" />Move to family…
                 </Button>
                 <Button type="button" size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => { setConfirmDelete(!confirmDelete); setShowMoveInput(false); }} data-testid="button-delete-items">
@@ -408,7 +408,7 @@ function FamilyEditDialog({
                     <Input value={moveTarget} onChange={e => setMoveTarget(e.target.value)} placeholder="Existing or new family name…" list="move-target-suggestions" data-testid="input-move-target" />
                     <datalist id="move-target-suggestions">{otherFamilies.map(f => <option key={f} value={f} />)}</datalist>
                   </div>
-                  <Button type="button" size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => moveItems.mutate()} disabled={!moveTarget.trim() || moveItems.isPending} data-testid="button-confirm-move">
+                  <Button type="button" size="sm" className="bg-brand-700 hover:bg-brand-800" onClick={() => moveItems.mutate()} disabled={!moveTarget.trim() || moveItems.isPending} data-testid="button-confirm-move">
                     {moveItems.isPending ? "Moving…" : "Move"}
                   </Button>
                 </div>
@@ -426,7 +426,7 @@ function FamilyEditDialog({
           )}
           <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={onClose} disabled={saveMeta.isPending}>Cancel</Button>
-            <Button type="button" className="bg-blue-600 hover:bg-blue-700" onClick={() => saveMeta.mutate()} disabled={saveMeta.isPending || !familyName.trim()} data-testid="button-save-family">
+            <Button type="button" className="bg-brand-700 hover:bg-brand-800" onClick={() => saveMeta.mutate()} disabled={saveMeta.isPending || !familyName.trim()} data-testid="button-save-family">
               {saveMeta.isPending ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -572,7 +572,7 @@ export default function CategoryDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/inventory" className="hover:text-blue-600 transition-colors">Inventory</Link>
+        <Link href="/inventory" className="hover:text-brand-600 transition-colors">Inventory</Link>
         <ChevronRight className="w-4 h-4" />
         <span className="text-slate-900 font-medium">{category.name}</span>
       </div>
@@ -603,7 +603,7 @@ export default function CategoryDetail() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-blue-600" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">SKUs</span></div>
+          <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-brand-600" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">SKUs</span></div>
           <p className="text-2xl font-bold text-slate-900" data-testid="stat-sku-count">{skuCount}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -649,7 +649,7 @@ export default function CategoryDetail() {
           </SelectContent>
         </Select>
         {hasActiveFilters && (
-          <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); }} className="text-xs text-slate-500 hover:text-blue-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">
+          <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); }} className="text-xs text-slate-500 hover:text-brand-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">
             Clear filters
           </button>
         )}
@@ -660,7 +660,7 @@ export default function CategoryDetail() {
           onClick={() => {
             if (!draftFamily) setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false });
           }}
-          className="ml-auto bg-blue-600 hover:bg-blue-700 text-white h-9 text-sm shrink-0"
+          className="ml-auto bg-brand-700 hover:bg-brand-800 text-white h-9 text-sm shrink-0"
           disabled={!!draftFamily && !draftFamily.confirmed}
           data-testid="button-new-family"
         >
@@ -671,8 +671,8 @@ export default function CategoryDetail() {
 
       {/* Draft family card (unconfirmed) */}
       {draftFamily && !draftFamily.confirmed && (
-        <div className="bg-white border-2 border-blue-300 border-dashed rounded-xl overflow-hidden shadow-sm" data-testid="draft-family-card">
-          <div className="flex items-start gap-3 px-5 py-4 bg-blue-50/30">
+        <div className="bg-white border-2 border-brand-300 border-dashed rounded-xl overflow-hidden shadow-sm" data-testid="draft-family-card">
+          <div className="flex items-start gap-3 px-5 py-4 bg-brand-50/30">
             <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center shrink-0 mt-0.5">
               {draftFamily.imageUrl ? (
                 <img src={draftFamily.imageUrl} alt="" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.opacity = "0.3"; }} />
@@ -686,7 +686,7 @@ export default function CategoryDetail() {
                 value={draftFamily.name}
                 onChange={e => setDraftFamily(prev => prev ? { ...prev, name: e.target.value } : null)}
                 placeholder="Enter family name…"
-                className="w-full font-semibold text-slate-900 bg-transparent border-b-2 border-blue-300 focus:border-blue-500 focus:outline-none py-0.5 text-sm placeholder-slate-400"
+                className="w-full font-semibold text-slate-900 bg-transparent border-b-2 border-brand-300 focus:border-brand-500 focus:outline-none py-0.5 text-sm placeholder-slate-400"
                 data-testid="input-draft-family-name"
                 onKeyDown={e => {
                   if (e.key === "Enter") handleConfirmDraftFamily();
@@ -695,7 +695,7 @@ export default function CategoryDetail() {
               />
               {!draftFamily.showImageInput ? (
                 <button
-                  className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                  className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-700 transition-colors"
                   onClick={() => setDraftFamily(prev => prev ? { ...prev, showImageInput: true } : null)}
                   data-testid="button-add-image-link"
                 >
@@ -707,7 +707,7 @@ export default function CategoryDetail() {
                   value={draftFamily.imageUrl}
                   onChange={e => setDraftFamily(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
                   placeholder="https://… (image URL)"
-                  className="w-full text-xs bg-white border border-blue-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-full text-xs bg-white border border-brand-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   data-testid="input-draft-family-image"
                 />
               )}
@@ -715,7 +715,7 @@ export default function CategoryDetail() {
             <div className="flex gap-2 shrink-0 mt-0.5">
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white h-7 text-xs gap-1"
+                className="bg-brand-700 hover:bg-brand-800 text-white h-7 text-xs gap-1"
                 onClick={handleConfirmDraftFamily}
                 disabled={!draftFamily.name.trim()}
                 data-testid="button-confirm-draft-family"
@@ -751,7 +751,7 @@ export default function CategoryDetail() {
               <p className="text-sm mt-1">
                 <button
                   onClick={() => setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false })}
-                  className="text-blue-600 hover:underline"
+                  className="text-brand-600 hover:underline"
                 >
                   Create the first family
                 </button>
@@ -771,7 +771,7 @@ export default function CategoryDetail() {
             return (
               <div
                 key={group.baseItemName}
-                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${isDraftConfirmed ? "border-blue-300 border-2" : "border-slate-200"}`}
+                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${isDraftConfirmed ? "border-brand-300 border-2" : "border-slate-200"}`}
                 data-testid={`family-card-${group.baseItemName.replace(/\s+/g, "-")}`}
               >
                 {/* Family header */}
@@ -788,7 +788,7 @@ export default function CategoryDetail() {
                       <h3 className="font-semibold text-slate-900 text-sm leading-snug truncate">{group.baseItemName}</h3>
                       <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider leading-none mt-0.5">
                         {group.items.length} {group.items.length === 1 ? "size" : "sizes"}
-                        {isDraftConfirmed && <span className="ml-2 text-blue-500 normal-case tracking-normal">New family</span>}
+                        {isDraftConfirmed && <span className="ml-2 text-brand-500 normal-case tracking-normal">New family</span>}
                       </p>
                     </div>
                   </div>
@@ -806,7 +806,7 @@ export default function CategoryDetail() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 gap-1"
+                      className="h-7 px-2 text-xs text-slate-500 hover:text-brand-600 hover:bg-brand-50 gap-1"
                       onClick={() => setEditingGroup(group)}
                       data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}
                     >
@@ -815,7 +815,7 @@ export default function CategoryDetail() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 gap-1"
+                      className="h-7 px-2 text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-200 gap-1"
                       onClick={() => openInlineAdd(group.baseItemName)}
                       disabled={hasInlineRow}
                       data-testid={`button-add-item-${group.baseItemName.replace(/\s+/g, "-")}`}
@@ -866,7 +866,7 @@ export default function CategoryDetail() {
                           <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5">{item.sku}</TableCell>
                           <TableCell className="font-semibold text-slate-800 text-sm py-2.5 whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
                           <TableCell className="text-slate-700 text-sm py-2.5">
-                            <Link href={`/inventory/${item.id}`} className="hover:text-blue-600 hover:underline transition-colors" data-testid={`link-item-name-${item.id}`}>
+                            <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors" data-testid={`link-item-name-${item.id}`}>
                               {item.name}
                             </Link>
                           </TableCell>
@@ -881,7 +881,7 @@ export default function CategoryDetail() {
                           <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
                             No items yet.{" "}
                             <button
-                              className="text-blue-600 hover:underline"
+                              className="text-brand-600 hover:underline"
                               onClick={() => openInlineAdd(group.baseItemName)}
                               data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}
                             >

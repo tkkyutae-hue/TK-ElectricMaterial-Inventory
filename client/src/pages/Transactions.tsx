@@ -251,7 +251,7 @@ function EditTransactionDialog({
                 </Button>
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-transaction">
+                  <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-transaction">
                     {updateMutation.isPending ? "Saving…" : "Save Changes"}
                   </Button>
                 </div>
@@ -302,7 +302,7 @@ export default function Transactions() {
 
         <Dialog open={logOpen} onOpenChange={setLogOpen}>
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20"
+            className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm shadow-brand-700/20"
             onClick={() => setLogOpen(true)}
             data-testid="button-log-movement"
           >
@@ -382,7 +382,7 @@ export default function Transactions() {
             {(startDate !== thirtyAgoStr() || endDate !== todayStr()) && (
               <button
                 onClick={() => { setStartDate(thirtyAgoStr()); setEndDate(todayStr()); }}
-                className="text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
                 data-testid="button-reset-dates"
               >
                 Reset to 30 days
@@ -447,7 +447,7 @@ export default function Transactions() {
                     <TableCell className="text-xs text-slate-500">{tx.destinationLocation?.name || '—'}</TableCell>
                     <TableCell>
                       {tx.project ? (
-                        <span className="text-xs font-mono bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{tx.project?.code}</span>
+                        <span className="text-xs font-mono bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded">{tx.project?.code}</span>
                       ) : <span className="text-slate-300">—</span>}
                     </TableCell>
                     <TableCell className="text-xs text-slate-500 max-w-[140px] truncate">{tx.note || tx.reason || '—'}</TableCell>

@@ -1,0 +1,70 @@
+Apply TK Electric branding and a green+white theme across the VoltStock app.
+
+## Branding
+
+* Company name: "TK Electric"
+* Use the provided logo image as the app logo (top-left sidebar branding area)
+
+### Sidebar brand block (top-left)
+
+Update the sidebar header so it shows:
+
+* Logo image (left)
+* "TK Electric" (right, bold)
+* Optional small subtitle under the name: "Inventory Management" (smaller, muted)
+
+Sizing:
+
+* Logo height ~ 28–32px
+* Keep it crisp and not blurry
+* The brand area should be clickable (navigates to Dashboard)
+
+Logo usage:
+
+* Add the logo file into the project (e.g., /public/brand/tk-electric-logo.png)
+* Use it in the sidebar header and (optionally) in the login/profile area
+
+## Theme (Green + White)
+
+The UI currently feels bland. Apply a clean green-white design system inspired by the logo.
+
+Use these CSS tokens (or equivalent in your styling system):
+
+* --brand-500: #08B028  (primary green)
+* --brand-700: #0A6B24  (deep green for primary buttons)
+* --brand-100: #DCFCE7  (soft green backgrounds / badges)
+* --bg:        #F5FBF6  (page background)
+* --card:      #FFFFFF  (card surfaces)
+* --border:    #D9E5DB  (borders)
+* --text:      #111827
+* --muted:     #6B7280
+
+## Apply theme consistently
+
+* Page background: --bg
+* Cards: white with subtle shadow + --border
+* Primary buttons: --brand-700 background with white text
+* Secondary buttons: white background, border/text --brand-700
+* Hover states: light --brand-100 tint
+* Focus ring: subtle brand green
+* Table header rows: very light green-gray (use --bg or a slightly darker tint)
+
+## Status colors (keep clear)
+
+* In Stock: green (use brand green)
+* Low Stock: amber/orange (keep as-is)
+* Out of Stock: red (keep as-is)
+  Do not turn everything green—use green as brand accent and keep alert colors distinct.
+
+## Do not redesign layouts
+
+Only update styling, spacing consistency, and the sidebar branding header.
+
+## Final output
+
+Explain:
+
+* where the logo file was placed
+* what component renders the sidebar brand block
+* what theme tokens were added
+* which UI areas were updated to use the new theme

@@ -9,26 +9,37 @@
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Plus Jakarta Sans', sans-serif;
 
-    --background: 210 40% 98%; /* slate-50 */
-    --foreground: 222 47% 11%;
+    --background: 132 40% 97%;      /* #F5FBF6 — green-tinted page bg */
+    --foreground: 220 14% 10%;      /* #111827 — text */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 14% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%; /* blue-600 */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 220 14% 10%;
+    --primary: 136 83% 23%;         /* #0A6B24 — deep green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 132 20% 95%;
+    --secondary-foreground: 136 83% 23%;
+    --muted: 132 20% 95%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
+    --accent: 141 84% 93%;          /* #DCFCE7 — soft green */
+    --accent-foreground: 136 83% 23%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 130 19% 87%;          /* #D9E5DB */
+    --input: 130 19% 87%;
+    --ring: 131 91% 36%;            /* #08B028 — focus ring */
     --radius: 0.75rem;
+
+    /* Brand scale */
+    --brand-50:  132 56% 97%;
+    --brand-100: 141 84% 93%;
+    --brand-200: 141 79% 85%;
+    --brand-300: 141 65% 70%;
+    --brand-500: 131 91% 36%;
+    --brand-600: 141 63% 36%;
+    --brand-700: 136 83% 23%;
+    --brand-800: 136 83% 18%;
+    --brand-900: 136 83% 13%;
   }
 
   .dark {
@@ -38,8 +49,8 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 131 91% 36%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
@@ -50,7 +61,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 131 91% 36%;
   }
 
   * {

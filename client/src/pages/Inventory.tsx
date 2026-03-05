@@ -29,7 +29,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "CW": "from-orange-600 to-orange-900",
   "DV": "from-violet-600 to-violet-900",
   "FH": "from-stone-600 to-stone-800",
-  "BC": "from-blue-600 to-blue-900",
+  "BC": "from-brand-600 to-brand-900",
   "DP": "from-indigo-700 to-indigo-900",
   "GT": "from-teal-600 to-teal-900",
 };
@@ -277,7 +277,7 @@ export default function Inventory() {
                     <TableCell className="max-w-[200px]">
                       <Link
                         href={`/inventory/${item.id}`}
-                        className="font-semibold text-slate-900 hover:text-blue-600 hover:underline transition-colors"
+                        className="font-semibold text-slate-900 hover:text-brand-600 hover:underline transition-colors"
                         data-testid={`link-item-name-${item.id}`}
                       >
                         {item.name}
@@ -335,7 +335,7 @@ export default function Inventory() {
                     key={pageNum}
                     variant={safePage === pageNum ? "default" : "outline"}
                     size="sm"
-                    className={`h-7 w-7 p-0 text-xs ${safePage === pageNum ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}`}
+                    className={`h-7 w-7 p-0 text-xs ${safePage === pageNum ? "bg-brand-700 hover:bg-brand-800 text-white" : ""}`}
                     onClick={() => setPage(pageNum)}
                     data-testid={`button-page-${pageNum}`}
                   >

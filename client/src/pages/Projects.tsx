@@ -79,7 +79,7 @@ export default function Projects() {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20">
+              <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm shadow-brand-700/20">
                 <Plus className="w-4 h-4 mr-2" />New Project
               </Button>
             </DialogTrigger>
@@ -126,7 +126,7 @@ export default function Projects() {
                     <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={2} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="flex justify-end pt-2">
-                    <Button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
+                    <Button type="submit" disabled={createMutation.isPending} className="bg-brand-700 hover:bg-brand-800">
                       {createMutation.isPending ? "Creating..." : "Create Project"}
                     </Button>
                   </div>
@@ -168,7 +168,7 @@ export default function Projects() {
                   <div className="flex justify-between items-start mb-3">
                     <ProjectStatusBadge status={project.status} />
                     {project.poNumber && (
-                      <span className="font-mono text-xs text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="font-mono text-xs text-brand-700 font-semibold bg-brand-50 px-2 py-0.5 rounded flex items-center gap-1">
                         <FileText className="w-3 h-3" />{project.poNumber}
                       </span>
                     )}

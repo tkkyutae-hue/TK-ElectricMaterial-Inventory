@@ -77,7 +77,7 @@ export default function Reorder() {
         <Button
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+          className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
           Refresh Recommendations
@@ -113,7 +113,7 @@ export default function Reorder() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${filter === f ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${filter === f ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               {f === "all" ? "All" : f}
             </button>
@@ -159,7 +159,7 @@ export default function Reorder() {
                   <TableCell><PriorityBadge level={rec.priorityLevel} /></TableCell>
                   <TableCell>
                     <Link href={`/inventory/${rec.item?.id}`}>
-                      <p className="font-medium text-slate-900 hover:text-blue-600">{rec.item?.name}</p>
+                      <p className="font-medium text-slate-900 hover:text-brand-600">{rec.item?.name}</p>
                       <p className="text-xs font-mono text-slate-400">{rec.item?.sku}</p>
                     </Link>
                   </TableCell>
@@ -170,7 +170,7 @@ export default function Reorder() {
                     <span className="text-slate-400 text-xs ml-1">{rec.item?.unitOfMeasure}</span>
                   </TableCell>
                   <TableCell className="text-right text-slate-600">{rec.item?.reorderPoint}</TableCell>
-                  <TableCell className="text-right font-semibold text-blue-700">{rec.recommendedQuantity}</TableCell>
+                  <TableCell className="text-right font-semibold text-brand-700">{rec.recommendedQuantity}</TableCell>
                   <TableCell className="text-sm text-slate-600">{rec.supplier?.name || <span className="text-slate-300">—</span>}</TableCell>
                   <TableCell className="text-xs text-slate-500 max-w-[120px] truncate">{rec.reason}</TableCell>
                   <TableCell>

@@ -17,7 +17,18 @@ VoltStock is a production-grade inventory management web application built for U
 - Category detail page: family grouping with edit dialog (rename family, update image, move items, bulk soft-delete)
 - `itemGroups` table: stores family-level representative image overrides per category
 
-The app is named **VoltStock** and targets a professional B2B SaaS aesthetic — premium, clean, and operational from day one.
+The app is named **VoltStock** and is branded for **TK Electric LLC** with a professional green-white design system.
+
+### Brand & Theme
+- **Company**: TK Electric LLC — logo at `public/brand/tk-electric-logo.png` (transparent PNG) and imported via `@assets/tk_logo_1772726610288.png`
+- **Primary brand green**: `#0A6B24` (deep) / `#08B028` (accent)
+- **Page background**: `hsl(132 40% 97%)` — subtle green tint (`--background`)
+- **Brand scale in tailwind**: `brand-50` through `brand-900` (via CSS vars in index.css)
+- **Primary buttons**: `bg-brand-700 hover:bg-brand-800`
+- **Active nav**: `bg-brand-100 text-brand-700`
+- **Status badge colors**: in_stock=emerald, low_stock=amber, out_of_stock=rose, ordered=sky
+- **Transaction badge colors**: receive=emerald, issue=violet, return=sky, adjust=amber, transfer=slate
+- **Chart gradient**: green (`#08B028` fill, `#0A6B24` stroke)
 
 ---
 

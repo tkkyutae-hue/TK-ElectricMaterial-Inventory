@@ -10,13 +10,13 @@ import {
   LogOut,
   Bell,
   Menu,
-  Zap
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -24,20 +24,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (isLoading) {
-    return <div className="h-screen w-full flex items-center justify-center bg-background"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md w-full premium-card p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Zap className="w-8 h-8 text-blue-600" />
+          <div className="flex items-center justify-center mb-2">
+            <img
+              src={tkLogo}
+              alt="TK Electric"
+              className="h-16 object-contain"
+              style={{ imageRendering: "crisp-edges" }}
+            />
           </div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">VoltStock</h1>
+          <div>
+            <h1 className="text-3xl font-display font-bold text-slate-900">TK Electric</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Inventory Management</p>
+          </div>
           <p className="text-slate-500">Premium inventory management for electrical contractors.</p>
-          <Button 
-            className="w-full h-12 text-lg font-semibold bg-blue-600 hover:bg-blue-700"
+          <Button
+            className="w-full h-12 text-lg font-semibold bg-brand-700 hover:bg-brand-800 text-white"
             onClick={() => window.location.href = '/api/login'}
           >
             Sign in with Replit
@@ -73,17 +85,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200 w-64">
-      <div className="p-6 flex items-center gap-3 border-b border-slate-100">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm shadow-blue-600/20">
-          <Zap className="w-5 h-5 text-white" />
+    <div className="flex flex-col h-full bg-white border-r border-border w-64">
+      {/* Brand block */}
+      <Link href="/" className="p-5 flex items-center gap-3 border-b border-border hover:bg-brand-50 transition-colors">
+        <img
+          src={tkLogo}
+          alt="TK Electric"
+          className="h-8 w-auto object-contain flex-shrink-0"
+          style={{ imageRendering: "crisp-edges" }}
+        />
+        <div className="min-w-0">
+          <span className="font-display font-bold text-lg tracking-tight text-slate-900 leading-none block">TK Electric</span>
+          <p className="text-[11px] text-muted-foreground leading-none mt-1">Inventory Management</p>
         </div>
-        <div>
-          <span className="font-display font-bold text-xl tracking-tight text-slate-900">VoltStock</span>
-          <p className="text-xs text-slate-400 leading-none mt-0.5">Inventory Management</p>
-        </div>
-      </div>
-      
+      </Link>
+
       <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label}>
@@ -97,11 +113,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                       isActive
-                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-brand-100 text-brand-700 font-semibold'
+                        : 'text-slate-600 hover:bg-brand-50 hover:text-slate-900'
                     }`}
                   >
-                    <item.icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} style={{ width: '18px', height: '18px' }} />
+                    <item.icon
+                      className={`flex-shrink-0 ${isActive ? 'text-brand-700' : 'text-slate-400'}`}
+                      style={{ width: '18px', height: '18px' }}
+                    />
                     <span className="text-sm">{item.label}</span>
                   </Link>
                 );
@@ -111,17 +130,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
       </div>
 
-      <div className="p-3 border-t border-slate-100">
+      <div className="p-3 border-t border-border">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
-          <Avatar className="w-8 h-8 border border-slate-200 flex-shrink-0">
+          <Avatar className="w-8 h-8 border border-border flex-shrink-0">
             <AvatarImage src={user?.profileImageUrl} />
-            <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold text-xs">
+            <AvatarFallback className="bg-brand-100 text-brand-700 font-semibold text-xs">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
         <Button
@@ -137,7 +156,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen bg-background font-sans">
       {/* Desktop Sidebar */}
       <div className="hidden md:block flex-shrink-0">
         <SidebarContent />
@@ -145,7 +164,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
+        <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -158,17 +177,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetContent>
             </Sheet>
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-blue-600" />
-              <span className="font-display font-bold text-base text-slate-900">VoltStock</span>
+              <img src={tkLogo} alt="TK Electric" className="h-7 w-auto object-contain" />
+              <span className="font-display font-bold text-base text-slate-900">TK Electric</span>
             </div>
           </div>
-          
-          <div className="hidden md:block text-sm text-slate-400">
+
+          <div className="hidden md:block text-sm text-muted-foreground">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-slate-100 relative w-9 h-9">
+            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </Button>

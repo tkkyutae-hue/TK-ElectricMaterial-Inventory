@@ -257,7 +257,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
               <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
                 <XIcon className="w-4 h-4 mr-1" /> Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-item">
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-item">
                 <Save className="w-4 h-4 mr-1" />
                 {updateMutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
@@ -347,10 +347,10 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
       <div
         className={`relative rounded-2xl overflow-hidden border-2 transition-all cursor-pointer group ${
           dragOver
-            ? "border-blue-400 bg-blue-50/60 shadow-lg shadow-blue-100"
+            ? "border-brand-400 bg-brand-50/60 shadow-lg shadow-brand-100"
             : currentImage
-            ? "border-slate-200 hover:border-blue-300"
-            : "border-dashed border-slate-300 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/30"
+            ? "border-slate-200 hover:border-brand-300"
+            : "border-dashed border-slate-300 bg-slate-50 hover:border-brand-300 hover:bg-brand-50/30"
         }`}
         style={{ aspectRatio: "1 / 1" }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -361,7 +361,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
       >
         {busy ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm">
-            <div className="w-9 h-9 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-9 h-9 border-[3px] border-brand-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-slate-500 mt-3 font-medium">
               {uploading ? "Uploading…" : "Saving…"}
             </p>
@@ -390,8 +390,8 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 select-none">
             {dragOver ? (
               <>
-                <UploadCloud className="w-14 h-14 text-blue-400 mb-2" />
-                <p className="text-sm font-semibold text-blue-500">Drop to upload</p>
+                <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
+                <p className="text-sm font-semibold text-brand-500">Drop to upload</p>
               </>
             ) : (
               <>
@@ -430,7 +430,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
           />
           <Button
             size="sm"
-            className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-xs shrink-0"
+            className="h-8 px-3 bg-brand-700 hover:bg-brand-800 text-xs shrink-0"
             onClick={handleUrlSet}
             disabled={!urlInput.trim() || busy}
           >
@@ -448,7 +448,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
       ) : (
         <div className="flex items-center gap-3">
           <button
-            className="text-xs text-blue-600 hover:underline transition-colors"
+            className="text-xs text-brand-600 hover:underline transition-colors"
             onClick={() => setShowUrlInput(true)}
             data-testid="button-set-image-url"
           >
@@ -528,7 +528,7 @@ export default function ItemDetails() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/inventory" className="hover:text-blue-600 transition-colors flex items-center gap-1">
+        <Link href="/inventory" className="hover:text-brand-600 transition-colors flex items-center gap-1">
           <ArrowLeft className="w-3.5 h-3.5" />Inventory
         </Link>
         {item.category && (
@@ -536,7 +536,7 @@ export default function ItemDetails() {
             <span>/</span>
             <Link
               href={`/inventory/category/${item.categoryId}`}
-              className="hover:text-blue-600 transition-colors"
+              className="hover:text-brand-600 transition-colors"
             >
               {item.category.name}
             </Link>
@@ -575,7 +575,7 @@ export default function ItemDetails() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-white border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                  className="bg-white border-slate-200 hover:border-brand-300 hover:text-brand-600"
                   onClick={() => setEditOpen(true)}
                   data-testid="button-edit-item"
                 >
@@ -583,7 +583,7 @@ export default function ItemDetails() {
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-brand-700 hover:bg-brand-800 text-white"
                   onClick={() => setMovementOpen(true)}
                   data-testid="button-log-movement"
                 >

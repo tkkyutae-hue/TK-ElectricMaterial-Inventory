@@ -212,7 +212,7 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
                 <X className="w-4 h-4 mr-1" /> Cancel
               </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-project">
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-project">
                 <Save className="w-4 h-4 mr-1" />
                 {updateMutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
@@ -263,7 +263,7 @@ export default function ProjectDetail() {
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="outline" className={`${statusCfg.className} text-xs font-semibold`}>{statusCfg.label}</Badge>
             {project.poNumber && (
-              <span className="text-sm font-mono font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">
+              <span className="text-sm font-mono font-bold text-brand-700 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-lg">
                 PO: {project.poNumber}
               </span>
             )}
@@ -276,7 +276,7 @@ export default function ProjectDetail() {
             <Edit className="w-4 h-4 mr-2" /> Edit
           </Button>
           <Dialog open={logOpen} onOpenChange={setLogOpen}>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm" onClick={() => setLogOpen(true)}>
+            <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm" onClick={() => setLogOpen(true)}>
               <ArrowUpRight className="w-4 h-4 mr-2" />Log Material
             </Button>
             <DialogContent className="sm:max-w-[550px]">
@@ -293,7 +293,7 @@ export default function ProjectDetail() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Issued",   value: project.totalIssued || 0,  icon: ArrowUpRight,   color: "text-blue-600",   bg: "bg-blue-50" },
+          { label: "Total Issued",   value: project.totalIssued || 0,  icon: ArrowUpRight,   color: "text-brand-600",   bg: "bg-brand-50" },
           { label: "Total Returned", value: project.totalReturned || 0, icon: ArrowDownRight, color: "text-emerald-600",bg: "bg-emerald-50" },
           { label: "Net Used",       value: (project.totalIssued || 0) - (project.totalReturned || 0), icon: Package, color: "text-slate-600", bg: "bg-slate-50" },
           { label: "Transactions",   value: project.recentActivity?.length || 0, icon: Users, color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -324,7 +324,7 @@ export default function ProjectDetail() {
                   ) : project.recentActivity.map((tx: any) => (
                     <div key={tx.id} className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors" data-testid={`project-tx-${tx.id}`}>
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${tx.movementType === 'issue' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <div className={`p-2 rounded-lg ${tx.movementType === 'issue' ? 'bg-brand-50 text-brand-600' : 'bg-emerald-50 text-emerald-600'}`}>
                           {tx.movementType === 'issue' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                         </div>
                         <div>
@@ -365,7 +365,7 @@ export default function ProjectDetail() {
                             <p className="font-medium text-slate-900">{row.itemName}</p>
                             <p className="text-xs font-mono text-slate-400">{row.sku}</p>
                           </td>
-                          <td className="p-4 text-right text-blue-600 font-semibold">{row.issued} {row.unit}</td>
+                          <td className="p-4 text-right text-brand-600 font-semibold">{row.issued} {row.unit}</td>
                           <td className="p-4 text-right text-emerald-600 font-semibold">{row.returned} {row.unit}</td>
                           <td className="p-4 text-right font-bold text-slate-900">{row.issued - row.returned} {row.unit}</td>
                         </tr>
@@ -387,7 +387,7 @@ export default function ProjectDetail() {
               {project.poNumber && (
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">PO Number</p>
-                  <p className="font-semibold text-blue-700">{project.poNumber}</p>
+                  <p className="font-semibold text-brand-700">{project.poNumber}</p>
                 </div>
               )}
               {project.ownerName && (

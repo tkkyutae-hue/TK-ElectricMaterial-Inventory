@@ -74,7 +74,7 @@ export default function Reports() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-slate-100 rounded-full">
-                            <div className="h-1.5 bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
+                            <div className="h-1.5 bg-brand-500 rounded-full" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="text-xs text-slate-400 w-9 text-right">{pct.toFixed(0)}%</span>
                         </div>
@@ -103,7 +103,7 @@ export default function Reports() {
                     {valuation?.items?.slice(0, 15).map((item: any) => (
                       <TableRow key={item.id} className="hover:bg-slate-50/50">
                         <TableCell>
-                          <Link href={`/inventory/${item.id}`} className="font-medium text-slate-900 hover:text-blue-600 text-sm">{item.name}</Link>
+                          <Link href={`/inventory/${item.id}`} className="font-medium text-slate-900 hover:text-brand-600 text-sm">{item.name}</Link>
                           <p className="text-xs font-mono text-slate-400">{item.sku}</p>
                         </TableCell>
                         <TableCell className="text-right text-sm">{item.quantityOnHand} <span className="text-slate-400">{item.unitOfMeasure}</span></TableCell>
@@ -237,7 +237,7 @@ export default function Reports() {
                   <TableRow key={row.project.id} className="hover:bg-slate-50/50">
                     <TableCell>
                       <Link href={`/projects/${row.project.id}`}>
-                        <p className="font-semibold text-blue-700 hover:underline">{row.project.code}</p>
+                        <p className="font-semibold text-brand-700 hover:underline">{row.project.code}</p>
                         <p className="text-xs text-slate-500">{row.project.name}</p>
                       </Link>
                     </TableCell>
@@ -245,7 +245,7 @@ export default function Reports() {
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">{row.project.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium text-blue-700">{row.totalIssued}</TableCell>
+                    <TableCell className="text-right font-medium text-brand-700">{row.totalIssued}</TableCell>
                     <TableCell className="text-right font-medium text-emerald-700">{row.totalReturned}</TableCell>
                     <TableCell className="text-right font-bold text-slate-900">{row.netUsage}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(row.totalValue)}</TableCell>
@@ -280,7 +280,7 @@ function StockTable({ items }: { items: any[] }) {
             <TableRow key={item.id} className="hover:bg-slate-50/50">
               <TableCell>
                 <Link href={`/inventory/${item.id}`}>
-                  <p className="font-medium text-slate-900 hover:text-blue-600 text-sm">{item.name}</p>
+                  <p className="font-medium text-slate-900 hover:text-brand-600 text-sm">{item.name}</p>
                   <p className="text-xs font-mono text-slate-400">{item.sku}</p>
                 </Link>
               </TableCell>

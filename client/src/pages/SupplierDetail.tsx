@@ -165,7 +165,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-supplier">
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-supplier">
                 {updateMutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
             </div>
@@ -201,8 +201,8 @@ export default function SupplierDetail() {
         <div className="flex-1">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Truck className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center">
+                <Truck className="w-6 h-6 text-brand-600" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ export default function SupplierDetail() {
                     <TableRow key={item.id} className="hover:bg-slate-50/50">
                       <TableCell className="font-mono text-xs text-slate-400">{item.sku}</TableCell>
                       <TableCell>
-                        <Link href={`/inventory/${item.id}`} className="font-medium text-slate-900 hover:text-blue-600">{item.name}</Link>
+                        <Link href={`/inventory/${item.id}`} className="font-medium text-slate-900 hover:text-brand-600">{item.name}</Link>
                       </TableCell>
                       <TableCell className="text-right font-medium">{item.quantityOnHand} <span className="text-slate-400 text-xs">{item.unitOfMeasure}</span></TableCell>
                       <TableCell className="text-right text-slate-600">{item.unitCost ? `$${parseFloat(item.unitCost).toFixed(2)}` : '—'}</TableCell>
@@ -298,17 +298,17 @@ export default function SupplierDetail() {
             </CardHeader>
             <CardContent className="p-5 space-y-4 text-sm">
               {supplier.phone && (
-                <a href={`tel:${supplier.phone}`} className="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                <a href={`tel:${supplier.phone}`} className="flex items-center gap-3 text-slate-600 hover:text-brand-600">
                   <Phone className="w-4 h-4 text-slate-400" />{supplier.phone}
                 </a>
               )}
               {supplier.email && (
-                <a href={`mailto:${supplier.email}`} className="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                <a href={`mailto:${supplier.email}`} className="flex items-center gap-3 text-slate-600 hover:text-brand-600">
                   <Mail className="w-4 h-4 text-slate-400" />{supplier.email}
                 </a>
               )}
               {supplier.website && (
-                <a href={supplier.website} target="_blank" rel="noopener" className="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                <a href={supplier.website} target="_blank" rel="noopener" className="flex items-center gap-3 text-slate-600 hover:text-brand-600">
                   <Globe className="w-4 h-4 text-slate-400" />{supplier.website}
                 </a>
               )}

@@ -51,7 +51,7 @@ export default function Suppliers() {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+              <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />Add Supplier
               </Button>
             </DialogTrigger>
@@ -89,7 +89,7 @@ export default function Suppliers() {
                     </FormItem>
                   )} />
                   <div className="flex justify-end pt-2">
-                    <Button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
+                    <Button type="submit" disabled={createMutation.isPending} className="bg-brand-700 hover:bg-brand-800">
                       {createMutation.isPending ? "Creating..." : "Add Supplier"}
                     </Button>
                   </div>
@@ -117,8 +117,8 @@ export default function Suppliers() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <Truck className="w-5 h-5 text-blue-600" />
+                      <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
+                        <Truck className="w-5 h-5 text-brand-600" />
                       </div>
                       <div>
                         <h3 className="font-display font-bold text-slate-900">{supplier.name}</h3>

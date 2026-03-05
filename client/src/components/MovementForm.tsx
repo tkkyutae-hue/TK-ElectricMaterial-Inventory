@@ -118,7 +118,7 @@ export function SearchableItemSelect({
                   key={item.id}
                   type="button"
                   onClick={() => { onChange(item.id); setOpen(false); setSearch(""); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-blue-50 transition-colors ${item.id === value ? 'bg-blue-50' : ''}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-50 transition-colors ${item.id === value ? 'bg-brand-50' : ''}`}
                   data-testid={`item-option-${item.id}`}
                 >
                   <span className="font-mono text-xs text-slate-400 w-24 shrink-0 truncate">{item.sku}</span>
@@ -307,7 +307,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         )} />
 
         <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700 min-w-[140px]" data-testid="button-submit-movement">
+          <Button type="submit" disabled={createMutation.isPending} className="bg-brand-700 hover:bg-brand-800 min-w-[140px]" data-testid="button-submit-movement">
             {createMutation.isPending ? "Logging…" : "Log Movement"}
           </Button>
         </div>

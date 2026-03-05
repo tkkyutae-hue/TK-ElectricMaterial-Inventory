@@ -1,0 +1,172 @@
+Refine the VoltStock item detail experience so it becomes more visual and product-focused, while still keeping inventory management data practical.
+
+Do not redesign the entire app.
+Keep the current overall style and admin workflow.
+But make the Item Detail page feel more intuitive, similar to a product detail page, while still serving warehouse/inventory use cases.
+
+====================================================
+
+1. ITEM DETAIL LAYOUT: PRODUCT-FIRST
+   ====================================================
+
+Redesign the Item Detail page into a cleaner 2-column layout.
+
+## Left column
+
+Use this area primarily for the item image:
+
+* large main image
+* if multiple images exist later, allow thumbnail support underneath (optional)
+* if no image exists, show a large clean placeholder
+
+## Right column
+
+Use this area for the most important item information:
+
+* Item Name
+* SKU
+* Stock Status badge
+* Size
+* Unit
+* Quantity on Hand
+* Location
+* Preferred Supplier
+* Brand
+* Unit Cost
+* Reorder Point
+* Reorder Quantity if available
+
+### Stock status badge
+
+Show clearly next to the item name:
+
+* In Stock
+* Low Stock
+* Out of Stock
+
+Use the same badge colors already used in the system.
+
+## Actions
+
+Place these near the top right or under the item summary:
+
+* Edit
+* Log Movement
+
+====================================================
+2) KEEP MANAGEMENT INFO, BUT MAKE IT FEEL CLEARER
+=================================================
+
+Do not hide inventory management data.
+But present it more like a product summary instead of only plain statistic cards.
+
+### The page should feel like:
+
+* visually recognizing the item first
+* quickly understanding stock status
+* then seeing management details
+
+====================================================
+3) IMAGE SUPPORT: URL + DRAG AND DROP UPLOAD
+============================================
+
+Support both of these image entry methods:
+
+### A. Image URL input
+
+* allow the user to paste an image URL manually
+* save that value into the database
+
+### B. Drag and Drop / File Upload
+
+* allow the user to drag and drop image files
+* allow normal file upload as well
+* upload the file to app storage
+* generate a usable file URL
+* automatically save the resulting URL into the database
+
+### Supported file types
+
+* jpg
+* jpeg
+* png
+* webp
+
+### Constraints
+
+* reject unsupported file types
+* reject large files with a reasonable size limit
+* show clear success / failure feedback
+
+====================================================
+4) DATABASE STORAGE RULE
+========================
+
+Even when using file upload, the final stored value should still be URL-based.
+
+### Item level
+
+Store the item image as:
+
+* `image_url`
+
+### Family / subcategory level
+
+If grouped family images are supported, store them as:
+
+* `family_image_url`
+  or the equivalent existing field
+
+The source of truth should remain a URL string in the database.
+
+====================================================
+5) IMAGE PREVIEW BEHAVIOR
+=========================
+
+Whenever an image URL exists or upload succeeds:
+
+* show the image preview immediately
+* update the Item Detail page image
+* if the URL is invalid or broken, show a placeholder
+
+====================================================
+6) EDIT ITEM IMAGE UX
+=====================
+
+Inside item edit (or image section), allow:
+
+* paste image URL
+* drag-and-drop image upload
+* choose file upload manually
+* preview current image
+* remove/clear current image
+
+This should feel simple and practical.
+
+====================================================
+7) RECENT HISTORY STILL STAYS
+=============================
+
+Keep the Recent History section on the item detail page.
+But the top of the page should now focus more on:
+
+* image
+* item name
+* stock status
+* core stock details
+
+====================================================
+8) FINAL REQUIREMENT
+====================
+
+Actually implement this end-to-end.
+
+At the end, clearly explain:
+
+* what files were updated
+* how the Item Detail layout changed
+* how image URL entry works
+* how drag-and-drop upload works
+* where uploaded images are stored
+* how the final image URL is saved to the database
+* how preview rendering works

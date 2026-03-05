@@ -238,14 +238,13 @@ export default function Inventory() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unit</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Location</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Reorder Pt.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 [1,2,3,4,5,6,7].map(i => (
                   <TableRow key={i}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(j => (
+                    {[1,2,3,4,5,6,7,8,9].map(j => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse w-full max-w-[120px]"></div></TableCell>
                     ))}
                   </TableRow>
@@ -292,7 +291,6 @@ export default function Inventory() {
                     <TableCell className="text-slate-500 text-sm">{item.unitOfMeasure}</TableCell>
                     <TableCell className="text-slate-500 text-sm">{item.location?.name || "—"}</TableCell>
                     <TableCell><ItemStatusBadge status={item.status} /></TableCell>
-                    <TableCell className="text-right text-slate-500 text-sm">{item.reorderPoint.toLocaleString()}</TableCell>
                   </TableRow>
                 ))
               )}

@@ -6,11 +6,13 @@ import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
 import { SearchableItemSelect } from "@/components/MovementForm";
 import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle, CalendarIcon } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, subDays } from "date-fns";
@@ -401,7 +403,7 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">Qty</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">From</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">To</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[80px]">Project</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">Project</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Note</TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>
@@ -445,9 +447,25 @@ export default function Transactions() {
                     </TableCell>
                     <TableCell className="text-xs text-slate-500">{tx.sourceLocation?.name || '—'}</TableCell>
                     <TableCell className="text-xs text-slate-500">{tx.destinationLocation?.name || '—'}</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {tx.project ? (
-                        <span className="text-xs font-mono bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded">{tx.project?.code}</span>
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link
+                                href={`/projects/${tx.project.id}`}
+                                className="inline-flex items-center text-xs font-mono bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded hover:bg-brand-100 hover:text-brand-800 transition-colors cursor-pointer"
+                                data-testid={`link-project-${tx.project.id}`}
+                              >
+                                {tx.project.code}
+                              </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px] text-xs">
+                              <p className="font-semibold">{tx.project.code}</p>
+                              <p className="text-slate-300 mt-0.5">{tx.project.name}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ) : <span className="text-slate-300">—</span>}
                     </TableCell>
                     <TableCell className="text-xs text-slate-500 max-w-[140px] truncate">{tx.note || tx.reason || '—'}</TableCell>

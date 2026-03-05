@@ -1,0 +1,127 @@
+Fix two issues in the family table:
+
+1. Make SKU auto-generation accurate and consistent (especially size parsing).
+2. Align PHOTO column and STATUS badge (header + rows) so everything is centered and columns line up.
+
+Keep the current layout and theme. No redesign.
+
+====================================================
+
+1. SKU AUTO-GENERATION: MAKE IT ACCURATE (SIZE-FIRST + CONSISTENT CODES)
+   ====================================================
+
+Current goal:
+When adding/editing a row, SKU should be generated automatically from the family prefix + normalized size code.
+
+## A) Use a strict size-to-code mapping for conduit-like inch sizes
+
+If Size matches any of the following EXACT sizes, convert to these codes:
+
+* 1/2"   -> 050
+* 3/4"   -> 075
+* 1"     -> 100
+* 1-1/4" -> 125
+* 1-1/2" -> 150
+* 2"     -> 200
+* 2-1/2" -> 250
+* 3"     -> 300
+* 3-1/2" -> 350
+* 4"     -> 400
+* 5"     -> 500
+* 6"     -> 600
+
+Also support equivalent representations:
+
+* "1 1/4" (space) == "1-1/4"
+* "1¼" == "1-1/4" (if present)
+* Trim spaces, normalize quotes.
+
+If Size is "1-5/8"" (strut size), convert to a readable code:
+
+* 1-5/8" -> 1625  (in thousandths of inch) OR "158" if you prefer short form
+  Pick ONE standard and use it consistently.
+  Recommended: 1625 for precision.
+
+## B) For non-inch sizes:
+
+If size looks like:
+
+* "#10", "#12" => normalize to "10", "12" and code like "AWG10"
+* "12/2C", "12/3C" => code like "MC122", "MC123" or your existing cable pattern
+* "18" x 12"" => code "18X12"
+  Use uppercase, remove spaces, keep it predictable.
+
+## C) Determine SKU prefix from family/category reliably
+
+Prefix should be determined from the family type (or family config), not from free text.
+Example:
+
+* "Column Support" => "CS"
+* "Cable Tray Cover" => "CT-CVR"
+* "Liquidtight Flexible Conduit Connector 90°" => "LQT-90"
+  Use a single source of truth for family->prefix.
+  If a family has no prefix configured, generate a safe prefix (first letters) and allow editing in Settings.
+
+## D) Final SKU format
+
+SKU = PREFIX + "-" + SIZECODE
+Example:
+
+* CS-1625  (for 1-5/8")
+* EMT-CON-075
+
+## E) Uniqueness
+
+If SKU exists, append -2, -3, etc. automatically.
+Never allow duplicates.
+
+====================================================
+2) TABLE ALIGNMENT: PHOTO COLUMN + STATUS BADGE CENTERING
+=========================================================
+
+Current issue:
+In the family table, PHOTO column and STATUS badge are not centered and header/body alignment is off.
+
+Requirements:
+
+* Header "PHOTO" should be horizontally centered over the photo cells.
+* Photo thumbnails should be centered both horizontally and vertically within the photo column.
+* Status badge (e.g., "Out of Stock") should be centered in its column (header/body aligned).
+* Ensure consistent row height and baseline alignment across columns.
+
+Implementation details (apply to ALL family tables):
+
+* Use a consistent table layout:
+
+  * table-layout: fixed; width: 100%;
+* Set fixed column widths:
+
+  * SKU: 140px
+  * PHOTO: 56px
+  * SIZE: 110px
+  * ITEM NAME: auto
+  * QTY: 90px (right aligned)
+  * UNIT: 70px (center)
+  * LOCATION: 170px
+  * STATUS: 120px (center)
+
+CSS rules:
+
+* PHOTO header + cells: text-align:center;
+* PHOTO cells: display:flex; align-items:center; justify-content:center;
+* STATUS header + cells: text-align:center;
+* STATUS badge wrapper: display:flex; align-items:center; justify-content:center;
+
+Do not allow the badge to stick to top/bottom; it must be vertically centered in row.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement end-to-end and explain:
+
+* the exact size parsing/normalization logic
+* the exact mapping used (especially for 1-5/8")
+* where family->prefix is stored and how it’s chosen
+* which component/CSS enforces PHOTO and STATUS alignment
+* confirm the PHOTO header, thumbnail, and Out-of-Stock badge are centered

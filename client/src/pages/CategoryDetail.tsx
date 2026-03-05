@@ -76,6 +76,7 @@ type NewRowDraft = {
   imageUrl: string | null;
   skuError: string;
   nameManuallyEdited: boolean;
+  skuManuallyEdited: boolean;
 };
 
 type DraftFamily = {
@@ -121,6 +122,87 @@ function sortItems(items: CategoryGroupedItem[], dir: "asc" | "desc"): CategoryG
     if (bn === Infinity) return -1;
     return mul * (an - bn);
   });
+}
+
+// ── SKU auto-generation ───────────────────────────────────────────────────────
+
+// Inch-size → 3–4 digit code mapping (thousandths-of-inch representation)
+const INCH_SIZE_CODES: Record<string, string> = {
+  "1/2": "050",   "3/4": "075",   "1": "100",
+  "1-1/4": "125", "1 1/4": "125",
+  "1-1/2": "150", "1 1/2": "150",
+  "2": "200",
+  "2-1/2": "250", "2 1/2": "250",
+  "3": "300",
+  "3-1/2": "350", "3 1/2": "350",
+  "4": "400",     "5": "500",     "6": "600",
+  "1-5/8": "1625","1 5/8": "1625",
+};
+
+function parseSizeToCode(size: string): string {
+  // Strip inch marks and surrounding whitespace
+  const s = size.trim().replace(/["""'']/g, "").trim();
+
+  // Exact match in inch-size table (try original and lowercase)
+  if (INCH_SIZE_CODES[s])           return INCH_SIZE_CODES[s];
+  if (INCH_SIZE_CODES[s.toLowerCase()]) return INCH_SIZE_CODES[s.toLowerCase()];
+
+  // #10, #12 AWG → "10", "12"
+  const hash = s.match(/^#\s*(\d+)/);
+  if (hash) return hash[1];
+
+  // 12/2C, 14/3G cable → "122C", "143G"
+  const cable = s.match(/^(\d+)\/(\d+)([A-Za-z]*)/);
+  if (cable) return `${cable[1]}${cable[2]}${cable[3].toUpperCase()}`;
+
+  // 18 x 12, 18" x 12" → "18X12"
+  const dims = s.match(/^(\d+)\s*[xX×]\s*(\d+)/);
+  if (dims) return `${dims[1]}X${dims[2]}`;
+
+  // Fallback: strip special chars, uppercase, max 6 chars
+  return s.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+}
+
+/**
+ * Extracts the family SKU prefix from existing items in that family.
+ * Strategy: take the first item's SKU and strip the trailing size-code segment.
+ * Falls back to generating initials from the family name.
+ */
+function getFamilyPrefix(familyName: string, existingItems: CategoryGroupedItem[]): string {
+  for (const item of existingItems) {
+    const parts = item.sku.split("-");
+    if (parts.length >= 2) {
+      const last = parts[parts.length - 1];
+      // If last segment is a pure number suffix (-2, -3) skip it and take one more off
+      if (/^\d$/.test(last) && parts.length >= 3) {
+        return parts.slice(0, parts.length - 2).join("-");
+      }
+      return parts.slice(0, parts.length - 1).join("-");
+    }
+  }
+  // Derive from family name: first 1–2 letters of each significant word
+  const words = familyName.trim().split(/\s+/).filter(w => w.length > 2);
+  if (!words.length) return familyName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return words.slice(0, 3).map(w => w.slice(0, 2).toUpperCase()).join("").slice(0, 6);
+}
+
+function generateAutoSku(
+  familyName: string,
+  existingItems: CategoryGroupedItem[],
+  sizeLabel: string,
+  allSkus: Set<string>,
+): string {
+  if (!sizeLabel.trim()) return "";
+  const prefix = getFamilyPrefix(familyName, existingItems);
+  const sizeCode = parseSizeToCode(sizeLabel);
+  if (!prefix || !sizeCode) return "";
+  const base = `${prefix}-${sizeCode}`;
+  if (!allSkus.has(base)) return base;
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${base}-${i}`;
+    if (!allSkus.has(candidate)) return candidate;
+  }
+  return base;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -276,25 +358,28 @@ function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
         <LocationCombobox value={draft.primaryLocationId} onChange={id => onChange({ primaryLocationId: id })} locations={locations} />
       </TableCell>
       <TableCell className="py-2 pr-5">
-        {confirmDelete ? (
-          <div className="flex gap-1 items-center">
-            <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>Confirm</button>
-            <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600">Cancel</button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete item" data-testid={`btn-delete-row-${item.id}`}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center justify-center">
+          {confirmDelete ? (
+            <div className="flex gap-1 items-center">
+              <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>Confirm</button>
+              <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600">Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete item" data-testid={`btn-delete-row-${item.id}`}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   );
 }
 
 // ── InlineNewRow (adding new items inside Edit Mode) ─────────────────────────
-function InlineNewRow({ draft, familyName, existingSkus, locations, onChange, onRemove }: {
+function InlineNewRow({ draft, familyName, existingItems, existingSkus, locations, onChange, onRemove }: {
   draft: NewRowDraft;
   familyName: string;
+  existingItems: CategoryGroupedItem[];
   existingSkus: Set<string>;
   locations: any[];
   onChange: (patch: Partial<NewRowDraft>) => void;
@@ -308,7 +393,15 @@ function InlineNewRow({ draft, familyName, existingSkus, locations, onChange, on
     if (!draft.nameManuallyEdited && v.trim() && familyName.trim()) {
       patch.name = `${v.trim()} ${familyName.trim()}`;
     }
+    if (!draft.skuManuallyEdited) {
+      patch.sku = generateAutoSku(familyName, existingItems, v, existingSkus);
+      patch.skuError = "";
+    }
     onChange(patch);
+  }
+
+  function handleSkuChange(v: string) {
+    onChange({ sku: v.toUpperCase(), skuManuallyEdited: true, skuError: "" });
   }
 
   function handleNameChange(v: string) {
@@ -322,14 +415,19 @@ function InlineNewRow({ draft, familyName, existingSkus, locations, onChange, on
     onChange({ skuError: "" }); return true;
   }
 
+  const skuIsAutoGenerated = !draft.skuManuallyEdited && !!draft.sku;
+
   return (
     <TableRow className="bg-brand-50/40 border-b border-brand-100" data-testid={`row-new-item-${draft.tmpId}`}>
       <TableCell className="pl-5 py-2 align-top">
-        <input value={draft.sku} placeholder="SKU *"
-          onChange={e => { onChange({ sku: e.target.value.toUpperCase() }); if (draft.skuError) validateSku(e.target.value); }}
+        <input value={draft.sku} placeholder="SKU (auto)"
+          onChange={e => handleSkuChange(e.target.value)}
           onBlur={e => validateSku(e.target.value)}
           className={inputCls(draft.skuError)} data-testid={`input-new-sku-${draft.tmpId}`} />
-        {draft.skuError && <p className="text-red-500 text-[10px] mt-0.5 font-medium">{draft.skuError}</p>}
+        {draft.skuError
+          ? <p className="text-red-500 text-[10px] mt-0.5 font-medium">{draft.skuError}</p>
+          : skuIsAutoGenerated && <p className="text-[10px] text-brand-500 mt-0.5">Auto-generated</p>
+        }
       </TableCell>
       <TableCell className="py-2 align-middle">
         <div className="w-8 h-8 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center mx-auto">
@@ -362,9 +460,11 @@ function InlineNewRow({ draft, familyName, existingSkus, locations, onChange, on
         <LocationCombobox value={draft.primaryLocationId} onChange={id => onChange({ primaryLocationId: id })} locations={locations} />
       </TableCell>
       <TableCell className="py-2 pr-5 align-top">
-        <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Remove row" data-testid={`btn-remove-new-row-${draft.tmpId}`}>
-          <XIcon className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center justify-center">
+          <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Remove row" data-testid={`btn-remove-new-row-${draft.tmpId}`}>
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -641,7 +741,7 @@ export default function CategoryDetail() {
       tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
-      skuError: "", nameManuallyEdited: false,
+      skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
     }]);
   }, []);
 
@@ -1028,9 +1128,9 @@ export default function CategoryDetail() {
                         </TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item Name</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Unit</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Unit</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Location</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5">
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5 text-center">
                           {isEditingThis ? "Delete" : "Status"}
                         </TableHead>
                       </TableRow>
@@ -1051,12 +1151,14 @@ export default function CategoryDetail() {
                             data-testid={`row-item-${item.id}`}>
                             <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
                             <TableCell className="py-2.5">
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
-                                  onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
-                              ) : null}
-                              <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center mx-auto ${item.imageUrl ? "hidden" : ""}`}>
-                                <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                              <div className="flex items-center justify-center">
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover rounded border border-slate-200 block"
+                                    onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
+                                ) : null}
+                                <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
+                                  <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
@@ -1064,9 +1166,11 @@ export default function CategoryDetail() {
                               <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
                             <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
-                            <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
+                            <TableCell className="text-slate-500 text-sm py-2.5 text-center">{item.unitOfMeasure}</TableCell>
                             <TableCell className="text-slate-600 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.location?.name || "—"}</TableCell>
-                            <TableCell className="py-2.5 pr-5"><StatusBadge status={item.status} /></TableCell>
+                            <TableCell className="py-2.5 pr-5">
+                              <div className="flex items-center justify-center"><StatusBadge status={item.status} /></div>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -1077,6 +1181,7 @@ export default function CategoryDetail() {
                           key={row.tmpId}
                           draft={row}
                           familyName={group.baseItemName}
+                          existingItems={group.items}
                           existingSkus={skusForNewRowCheck}
                           locations={locations || []}
                           onChange={patch => updateNewRow(row.tmpId, patch)}

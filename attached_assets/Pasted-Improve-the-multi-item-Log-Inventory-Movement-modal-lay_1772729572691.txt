@@ -1,0 +1,73 @@
+Improve the multi-item Log Inventory Movement modal layout to reduce vertical space usage.
+
+Current issue:
+Each item row uses too much vertical space (Item field on one line, Quantity on another).
+With 4+ items, the modal becomes too tall and forces awkward scrolling.
+
+## Goal
+
+Make each item row compact so users can add many items comfortably.
+
+====================================================
+
+1. MAKE EACH ITEM ROW A SINGLE HORIZONTAL ROW
+   ====================================================
+   Inside the Items section, render each item entry as one compact row:
+
+Row layout (left to right):
+
+* Item selector dropdown (wide)
+* Qty input (narrow, on the right)
+* Remove/trash icon button
+
+Do NOT place Qty under the Item dropdown.
+Place Qty to the right of Item on the same line.
+
+Recommended widths:
+
+* Item dropdown: ~70–75%
+* Qty input: ~15–20% (small numeric field)
+* Delete icon: ~5–10%
+
+====================================================
+2) COMPACT ROW HEIGHT + SPACING
+===============================
+
+* Reduce padding inside each item row card/container
+* Use smaller vertical gaps between rows
+* Keep the Items area readable but not tall
+
+====================================================
+3) SCROLLABLE ITEMS AREA (NOT WHOLE MODAL)
+==========================================
+
+If many items are added:
+
+* make ONLY the Items list area scrollable with a max height
+* keep the top fields (Movement Type, From/To, Project, Note) visible above
+* keep the bottom action area visible below
+
+====================================================
+4) STICKY FOOTER ACTIONS
+========================
+
+Keep the bottom actions visible even when the items list scrolls:
+
+* “+ Add Item” button (or link)
+* “Log Movement (N)” button
+  Make them sticky at the bottom of the modal if needed.
+
+====================================================
+5) VALIDATION STILL REQUIRED
+============================
+
+* Item required
+* Qty > 0 required
+  Show inline errors without expanding the row height too much.
+
+====================================================
+FINAL REQUIREMENT
+=================
+
+Implement these UI changes without breaking functionality.
+At the end, explain which component/styles were updated and how the Items list now handles many rows cleanly.

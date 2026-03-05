@@ -87,4 +87,19 @@
   .premium-card {
     @apply bg-card border border-border shadow-sm rounded-2xl transition-all duration-200 hover:shadow-md;
   }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
 }

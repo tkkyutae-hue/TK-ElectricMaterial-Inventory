@@ -1,0 +1,114 @@
+Refine the Log Inventory Movement form so users can add multiple items in one movement session.
+
+Do not redesign the whole app.
+Keep the current modal style, but make it support multi-item entry.
+
+## Main goal
+
+The current Log Inventory Movement form only handles one item at a time.
+Add an `+ Add Item` workflow so users can log multiple items in one action.
+
+====================================================
+
+1. KEEP SHARED TOP-LEVEL FIELDS
+   ====================================================
+
+At the top of the movement modal, keep these shared fields:
+
+* Movement Type
+* From or To location (depending on movement type)
+* Project (optional)
+* Note (optional)
+
+These values should be shared across all item rows by default.
+
+### Movement rules
+
+* Receive = shared From field
+* Issue = shared To field
+* Return = shared From field
+* Transfer = shared From + To if supported
+
+====================================================
+2) REPLACE SINGLE ITEM INPUT WITH MULTI-ITEM ROWS
+=================================================
+
+Instead of only one Item + Quantity input, create a repeatable item row list.
+
+Each row should contain:
+
+* Item selector
+* Quantity input
+* Remove row button
+
+### Default behavior
+
+* modal opens with 1 empty row already visible
+* user can click `+ Add Item` to insert another row
+* each row is independent
+
+====================================================
+3) ADD ITEM BUTTON
+==================
+
+Add a visible `+ Add Item` button below the item rows.
+
+When clicked:
+
+* append a new empty item row
+* focus into the new item selector
+
+====================================================
+4) VALIDATION
+=============
+
+For each row:
+
+* Item is required
+* Quantity is required
+* Quantity must be greater than 0
+
+On save:
+
+* validate all rows
+* do not save incomplete/invalid rows
+* show clear inline errors if any row is invalid
+
+====================================================
+5) SAVE BEHAVIOR
+================
+
+When user clicks `Log Movement`:
+
+* create one inventory movement record per item row
+* apply the shared Movement Type
+* apply the shared From / To location
+* apply the shared Project / Note if entered
+* update inventory balances for each item
+* refresh transaction history
+
+This should behave like one batch entry session that creates multiple movement records.
+
+====================================================
+6) OPTIONAL ENHANCEMENT
+=======================
+
+If practical, allow row-level override for Note or Location later.
+But first priority is:
+
+* shared fields at top
+* multiple item rows below
+
+====================================================
+7) FINAL REQUIREMENT
+====================
+
+Actually implement this end-to-end.
+
+At the end, explain:
+
+* what files/components were updated
+* how the shared top-level fields work
+* how `+ Add Item` works
+* how multiple rows are validated
+* how movement records are stored in the database

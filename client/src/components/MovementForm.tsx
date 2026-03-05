@@ -152,9 +152,10 @@ interface MovementFormProps {
   defaultType?: string;
   defaultItemId?: number;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess }: MovementFormProps) {
+export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel }: MovementFormProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: items } = useItems();
@@ -260,131 +261,153 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      {/*
+        3-section flex column:
+          A) Shrink-to-fit top fields
+          B) Flex-1 scrollable items area
+          C) Sticky footer with Add Item + Cancel/Confirm
+      */}
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col min-h-0"
+        style={{ maxHeight: "calc(85vh - 120px)" }}
+      >
 
-        {/* ── Shared top-level fields ── */}
-        <FormField control={form.control} name="movementType" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Movement Type</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-type">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {MOVEMENT_TYPES.map(t => (
-                  <SelectItem key={t.value} value={t.value}>
-                    <span className="font-medium">{t.label}</span>
-                    <span className="text-slate-400 text-xs ml-2">— {t.desc}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
+        {/* ── SECTION A: Shared fields (non-scroll) ── */}
+        <div className="flex-shrink-0 space-y-3 overflow-visible pb-3">
 
-        <div className="grid grid-cols-2 gap-4">
-          {needsSource && (
-            <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{sourceLabel}</FormLabel>
-                <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-source-location">
-                      <SelectValue placeholder="Select location…" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {locations?.map((l: any) => (
-                      <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
-
-          {needsDestination && (
-            <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{destLabel}</FormLabel>
-                <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-dest-location">
-                      <SelectValue placeholder="Select location…" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {locations?.map((l: any) => (
-                      <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
-        </div>
-
-        {needsProject && (
-          <FormField control={form.control} name="projectId" render={({ field }) => (
+          <FormField control={form.control} name="movementType" render={({ field }) => (
             <FormItem>
-              <FormLabel>Project (Optional)</FormLabel>
-              <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+              <FormLabel>Movement Type</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger data-testid="select-project">
-                    <SelectValue placeholder="Select project" />
+                  <SelectTrigger data-testid="select-movement-type">
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {projects?.filter((p: any) => p.status === "active").map((p: any) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>{p.code} — {p.name}</SelectItem>
+                  {MOVEMENT_TYPES.map(t => (
+                    <SelectItem key={t.value} value={t.value}>
+                      <span className="font-medium">{t.label}</span>
+                      <span className="text-slate-400 text-xs ml-2">— {t.desc}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )} />
-        )}
 
-        <FormField control={form.control} name="note" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Note (Optional)</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="Reference number, PO, reason…"
-                className="resize-none"
-                rows={2}
-                {...field}
-                data-testid="input-note"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+          <div className="grid grid-cols-2 gap-3">
+            {needsSource && (
+              <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{sourceLabel}</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-source-location">
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {locations?.map((l: any) => (
+                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
 
-        {/* ── Item rows ── */}
-        <div className="space-y-3 pt-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700">
-              Items <span className="text-xs font-normal text-slate-400 ml-1">({itemRows.length})</span>
-            </p>
-            <div className="h-px flex-1 bg-slate-100 mx-3" />
+            {needsDestination && (
+              <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{destLabel}</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-dest-location">
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {locations?.map((l: any) => (
+                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
           </div>
 
-          <div className="max-h-[280px] overflow-y-auto pr-2 -mr-2 space-y-2 custom-scrollbar">
+          {needsProject && (
+            <FormField control={form.control} name="projectId" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Project (Optional)</FormLabel>
+                <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-project">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {projects?.filter((p: any) => p.status === "active").map((p: any) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
+
+          <FormField control={form.control} name="note" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Note (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Reference number, PO, reason…"
+                  className="resize-none"
+                  rows={2}
+                  {...field}
+                  data-testid="input-note"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+
+        {/* ── SECTION B: Items header + scrollable list ── */}
+        <div className="flex flex-col min-h-0 flex-1 border-t border-slate-100 pt-3">
+
+          {/* Items count header */}
+          <div className="flex-shrink-0 flex items-center gap-2 mb-2">
+            <p className="text-sm font-semibold text-slate-700">
+              Items
+            </p>
+            <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium">
+              {itemRows.length}
+            </span>
+            <div className="h-px flex-1 bg-slate-100" />
+          </div>
+
+          {/* Scrollable item rows — the ONLY scrollable region */}
+          <div
+            className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 -mr-1"
+            style={{ minHeight: "120px" }}
+          >
             {itemRows.map((row, idx) => {
               const selectedItem = items?.find((i: any) => i.id === row.itemId);
               return (
                 <div
                   key={row.rowId}
-                  className="group flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
+                  className="flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
                   data-testid={`item-row-${idx}`}
                 >
-                  {/* Item selector - ~70-75% */}
+                  {/* Item selector — takes majority width */}
                   <div className="flex-[3] min-w-0">
                     <SearchableItemSelect
                       value={row.itemId}
@@ -392,19 +415,21 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       items={items || []}
                     />
                     {row.errors.itemId && (
-                      <p className="text-[10px] text-red-500 mt-1 ml-1" data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
+                      <p className="text-[10px] text-red-500 mt-1 ml-1" data-testid={`error-item-${idx}`}>
+                        {row.errors.itemId}
+                      </p>
                     )}
                   </div>
 
-                  {/* Quantity - ~15-20% */}
-                  <div className="flex-[0.8] min-w-0">
+                  {/* Quantity input — narrow */}
+                  <div className="flex-[0.8] min-w-0 shrink-0">
                     <div className="relative">
                       <Input
                         type="number"
                         min={1}
                         value={row.quantity}
                         onChange={(e) => updateRow(row.rowId, { quantity: Number(e.target.value) })}
-                        className="h-9 pr-7 text-xs sm:text-sm text-center px-1"
+                        className="h-9 text-sm text-center px-1 pr-6"
                         data-testid={`input-quantity-${idx}`}
                       />
                       {selectedItem && (
@@ -414,12 +439,14 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       )}
                     </div>
                     {row.errors.quantity && (
-                      <p className="text-[10px] text-red-500 mt-1 text-center truncate" data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+                      <p className="text-[10px] text-red-500 mt-1 text-center" data-testid={`error-qty-${idx}`}>
+                        {row.errors.quantity}
+                      </p>
                     )}
                   </div>
 
-                  {/* Remove - ~5-10% */}
-                  <div className="pt-1.5">
+                  {/* Remove icon */}
+                  <div className="pt-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => removeRow(row.rowId)}
@@ -435,33 +462,46 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               );
             })}
           </div>
+        </div>
 
+        {/* ── SECTION C: Sticky footer ── */}
+        <div className="flex-shrink-0 flex items-center justify-between pt-3 mt-2 border-t border-slate-100 bg-white">
+
+          {/* Left: Add Another Item */}
           <button
             type="button"
             onClick={addRow}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-slate-300 rounded-lg text-xs font-semibold text-brand-600 hover:border-brand-400 hover:bg-brand-50 transition-all"
+            className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2.5 py-1.5 rounded-md transition-all"
             data-testid="btn-add-item"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Another Item
           </button>
+
+          {/* Right: Cancel + Confirm */}
+          <div className="flex items-center gap-2">
+            {onCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={submitting}
+                data-testid="button-cancel-movement"
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
+              data-testid="button-submit-movement"
+            >
+              {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100 bg-white sticky bottom-0 z-10">
-          <span className="text-xs text-slate-400">
-            {itemRows.length} item{itemRows.length !== 1 ? "s" : ""} to log
-          </span>
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="bg-brand-700 hover:bg-brand-800 min-w-[140px]"
-            data-testid="button-submit-movement"
-          >
-            {submitting
-              ? `Logging...`
-              : `Log Movement${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
-          </Button>
-        </div>
       </form>
     </Form>
   );

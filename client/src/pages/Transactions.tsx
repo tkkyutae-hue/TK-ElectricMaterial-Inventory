@@ -311,12 +311,15 @@ export default function Transactions() {
             <ArrowRightLeft className="w-4 h-4 mr-2" />
             Log Movement
           </Button>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[550px] flex flex-col max-h-[90vh] gap-0 p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
               <DialogTitle>Log Inventory Movement</DialogTitle>
             </DialogHeader>
-            <div className="pt-2">
-              <MovementForm onSuccess={() => setLogOpen(false)} />
+            <div className="flex-1 flex flex-col min-h-0 px-6 pt-4 pb-6 overflow-hidden">
+              <MovementForm
+                onSuccess={() => setLogOpen(false)}
+                onCancel={() => setLogOpen(false)}
+              />
             </div>
           </DialogContent>
         </Dialog>

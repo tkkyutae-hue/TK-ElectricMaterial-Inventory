@@ -1,0 +1,135 @@
+Fix Log Inventory Movement modal layout issues (items list not visible + floating button) and implement proper footer actions (Cancel/Confirm).
+
+Do NOT remove multi-item support. Make the modal usable for 1–20 items without the screen breaking.
+
+====================================================
+
+1. REMOVE FLOATING/MID-PAGE PRIMARY BUTTON
+   ====================================================
+   Current issue:
+   The primary action button appears in the middle and covers the Items section.
+
+Requirements:
+
+* Do NOT render any primary action button in the middle of the modal.
+* The primary action must exist ONLY in the modal footer (sticky bottom).
+
+====================================================
+2) RESTRUCTURE MODAL INTO 3 CLEAR SECTIONS
+==========================================
+
+Inside the modal, structure content into:
+
+A) Top section (NON-SCROLL)
+
+* Movement Type
+* From/To location (based on movement type)
+* Project (optional)
+* Note (optional)
+
+B) Items section (SCROLLABLE AREA ONLY)
+
+* Multi-item rows list
+* This must always be visible when rows exist
+* This is the ONLY scrollable area inside the modal
+
+C) Footer section (STICKY)
+
+* Left: “+ Add Another Item”
+* Right: Cancel + Confirm buttons
+
+====================================================
+3) FIX ITEMS LIST VISIBILITY (HEIGHT / FLEX / OVERFLOW)
+=======================================================
+
+Current issue:
+Items list/rows disappear or get pushed out/clipped.
+
+Requirements:
+
+* Modal: max-height ~ 85–90vh
+* Use flex column layout inside modal body
+* Items container must be:
+
+  * flex: 1
+  * min-height: 200px (or reasonable)
+  * max-height: 40–55vh (depending on modal size)
+  * overflow-y: auto
+* Ensure the item rows render INSIDE this container (not outside) and are not clipped.
+
+Acceptance checks:
+
+* With 1 item row, it is visible without scrolling.
+* With 5–10 rows, ONLY the Items area scrolls.
+* Footer remains visible at all times.
+
+====================================================
+4) KEEP COMPACT ROW LAYOUT (ITEM + QTY SAME ROW)
+================================================
+
+To reduce vertical space:
+
+* Each item entry must be a single horizontal row:
+
+  * Item selector (wide)
+  * Qty input (narrow, to the right)
+  * Remove/trash icon
+
+Do not place Qty under Item.
+
+====================================================
+5) FOOTER: CANCEL + CONFIRM BUTTONS (BOTTOM-RIGHT)
+==================================================
+
+Add footer action buttons on the bottom-right:
+
+* Cancel (secondary)
+* Confirm (primary green)
+
+Behavior:
+
+* Cancel:
+
+  * closes modal
+  * discards unsaved inputs/rows
+* Confirm:
+
+  * validates all rows
+  * saves/logs movements (one DB movement per row)
+  * shows loading state while saving
+  * closes modal on success
+  * refreshes Transaction History + affected stock balances
+
+Text:
+
+* Replace any “Log Movement” button text with “Confirm”
+* Use “Cancel” for cancel
+
+Footer layout:
+
+* Left side: “+ Add Another Item”
+* Right side: [Cancel] [Confirm]
+
+Footer must be sticky (always visible).
+
+====================================================
+6) VALIDATION
+=============
+
+For each row:
+
+* Item required
+* Quantity required and > 0
+  Show inline row errors without breaking layout.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement this end-to-end and explain:
+
+* what components/styles were changed
+* how the 3-section layout is implemented (flex + scroll)
+* how Items visibility is guaranteed
+* how Cancel/Confirm works
+* confirm behavior with 10+ items

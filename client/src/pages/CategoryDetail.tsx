@@ -641,21 +641,22 @@ export default function CategoryDetail() {
       </div>
 
       {/* Category hero */}
-      <div className="relative rounded-2xl overflow-hidden h-56 shadow-lg">
+      <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ height: "200px" }}>
         {category.imageUrl ? (
           <img
             src={category.imageUrl}
             alt={category.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
+            style={{ objectPosition: "center 40%" }}
             onError={(e) => {
               const t = e.currentTarget;
               t.style.display = "none";
-              t.nextElementSibling?.classList.remove("hidden");
+              (t.nextElementSibling as HTMLElement)?.classList.remove("hidden");
             }}
           />
         ) : null}
         <div className={`${category.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradientClass}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <Link href="/inventory" className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-2 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -835,7 +836,6 @@ export default function CategoryDetail() {
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Unit</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Location</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Supplier</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5">Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -862,7 +862,6 @@ export default function CategoryDetail() {
                           </TableCell>
                           <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
                           <TableCell className="text-slate-600 text-sm py-2.5 whitespace-nowrap">{item.location?.name || "—"}</TableCell>
-                          <TableCell className="text-slate-600 text-sm py-2.5 whitespace-nowrap">{item.supplier?.name || "—"}</TableCell>
                           <TableCell className="py-2.5 pr-5"><StatusBadge status={item.status} /></TableCell>
                         </TableRow>
                       ))}

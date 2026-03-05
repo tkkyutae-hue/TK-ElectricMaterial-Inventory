@@ -29,10 +29,12 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 const editSchema = z.object({
   name:         z.string().min(1, "Project name is required"),
-  code:         z.string().min(1, "Project code is required"),
   customerName: z.string().optional(),
+  ownerName:    z.string().optional(),
   poNumber:     z.string().optional(),
   status:       z.string().min(1),
+  startDate:    z.string().optional(),
+  endDate:      z.string().optional(),
   addressLine1: z.string().optional(),
   city:         z.string().optional(),
   state:        z.string().optional(),
@@ -50,10 +52,12 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
     resolver: zodResolver(editSchema),
     defaultValues: {
       name:         project.name || "",
-      code:         project.code || "",
       customerName: project.customerName || "",
+      ownerName:    project.ownerName || "",
       poNumber:     project.poNumber || "",
       status:       project.status || "active",
+      startDate:    project.startDate || "",
+      endDate:      project.endDate || "",
       addressLine1: project.addressLine1 || "",
       city:         project.city || "",
       state:        project.state || "",
@@ -65,10 +69,12 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
   useEffect(() => {
     if (open) form.reset({
       name:         project.name || "",
-      code:         project.code || "",
       customerName: project.customerName || "",
+      ownerName:    project.ownerName || "",
       poNumber:     project.poNumber || "",
       status:       project.status || "active",
+      startDate:    project.startDate || "",
+      endDate:      project.endDate || "",
       addressLine1: project.addressLine1 || "",
       city:         project.city || "",
       state:        project.state || "",
@@ -79,7 +85,7 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
 
   async function onSubmit(data: EditFormData) {
     try {
-      await updateMutation.mutateAsync({ id: project.id, ...data });
+      await updateMutation.mutateAsync({ id: project.id, code: project.code, ...data });
       toast({ title: "Project updated", description: `${data.name} has been saved.` });
       onClose();
     } catch (err: any) {
@@ -91,22 +97,30 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Project — {project.code}</DialogTitle>
+          <DialogTitle>Edit Project</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Project Name</FormLabel>
+                  <FormLabel>Project Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl><Input {...field} data-testid="edit-project-name" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="code" render={({ field }) => (
+              <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Project Code</FormLabel>
-                  <FormControl><Input {...field} data-testid="edit-project-code" /></FormControl>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="edit-project-status"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -129,21 +143,30 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               )} />
             </div>
 
-            <FormField control={form.control} name="status" render={({ field }) => (
+            <FormField control={form.control} name="ownerName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger data-testid="edit-project-status"><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Project Owner / 담당자</FormLabel>
+                <FormControl><Input placeholder="e.g. John Kim" {...field} data-testid="edit-owner-name" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="startDate" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Date</FormLabel>
+                  <FormControl><Input type="date" {...field} data-testid="edit-start-date" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="endDate" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End Date</FormLabel>
+                  <FormControl><Input type="date" {...field} data-testid="edit-end-date" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
 
             <FormField control={form.control} name="addressLine1" render={({ field }) => (
               <FormItem>
@@ -364,7 +387,32 @@ export default function ProjectDetail() {
               {project.poNumber && (
                 <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">PO Number</p>
-                  <p className="font-semibold text-slate-900">{project.poNumber}</p>
+                  <p className="font-semibold text-blue-700">{project.poNumber}</p>
+                </div>
+              )}
+              {project.ownerName && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Project Owner</p>
+                  <p className="font-semibold text-slate-900">{project.ownerName}</p>
+                </div>
+              )}
+              {(project.startDate || project.endDate) && (
+                <div className="flex gap-3">
+                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-0.5">
+                    {project.startDate && (
+                      <p className="text-slate-600">
+                        <span className="text-slate-400">Start: </span>
+                        {format(new Date(project.startDate + "T00:00:00"), 'MMM d, yyyy')}
+                      </p>
+                    )}
+                    {project.endDate && (
+                      <p className="text-slate-600">
+                        <span className="text-slate-400">End: </span>
+                        {format(new Date(project.endDate + "T00:00:00"), 'MMM d, yyyy')}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               {project.addressLine1 && (
@@ -376,22 +424,13 @@ export default function ProjectDetail() {
                   </div>
                 </div>
               )}
-              {project.startDate && (
-                <div className="flex gap-3">
-                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-slate-500">Start: {format(new Date(project.startDate), 'MMM d, yyyy')}</p>
-                    {project.endDate && <p className="text-slate-500">End: {format(new Date(project.endDate), 'MMM d, yyyy')}</p>}
-                  </div>
-                </div>
-              )}
               {project.notes && (
                 <div className="pt-3 border-t border-slate-100">
                   <p className="text-xs text-slate-400 mb-1">Notes</p>
                   <p className="text-slate-600">{project.notes}</p>
                 </div>
               )}
-              {!project.poNumber && !project.addressLine1 && !project.startDate && !project.notes && (
+              {!project.poNumber && !project.ownerName && !project.addressLine1 && !project.startDate && !project.notes && (
                 <p className="text-slate-400 text-sm">No additional details. Click Edit to add project metadata.</p>
               )}
             </CardContent>

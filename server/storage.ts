@@ -494,7 +494,8 @@ export class DatabaseStorage implements IStorage {
     // Update item quantity
     await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
 
-    // Delete the movement record
+    // Delete dependent project_material_transactions first (FK constraint), then the movement
+    await db.delete(projectMaterialTransactions).where(eq(projectMaterialTransactions.movementId, id));
     await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
   }
 

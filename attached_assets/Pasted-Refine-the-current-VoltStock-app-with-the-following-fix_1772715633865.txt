@@ -1,0 +1,171 @@
+Refine the current VoltStock app with the following fixes and usability improvements.
+
+Do not redesign the entire UI.
+Keep the current look and structure.
+Focus on making these workflows production-usable.
+Do not implement UI-only placeholders—everything must persist to the database and work end-to-end.
+
+====================================================
+
+1. FIX TRANSACTION DELETE FAILURE (FOREIGN KEY)
+   ====================================================
+   Transaction delete still fails because dependent records exist (e.g., project_material_transactions referencing inventory_movements).
+
+Implement a correct delete strategy:
+
+* When deleting an inventory movement, delete dependent rows first:
+
+  * DELETE FROM project_material_transactions WHERE movement_id = :movementId
+  * Then DELETE FROM inventory_movements WHERE id = :movementId
+* Wrap the operation in a DB transaction (atomic).
+* After delete:
+
+  * recalculate/rebuild affected inventory balances correctly
+  * refresh the transaction list immediately
+  * show success toast
+
+Do not leave delete as broken.
+
+====================================================
+2) ADD DATE RANGE FILTER TO TRANSACTION HISTORY
+===============================================
+
+Add a date filtering capability to Transaction History.
+
+Requirements:
+
+* Provide a date range filter (Start date / End date) in the filter row.
+* Default behavior: show last 30 days (or show all if no dates selected).
+* Filtering must work together with existing filters (type and project).
+* Keep UI clean and not cluttered.
+
+====================================================
+3) FIX CATEGORY HEADER IMAGE (BLURRY/ZOOMED)
+============================================
+
+Category detail header banner image looks overly zoomed and blurry.
+
+Fix banner styling:
+
+* prevent excessive zoom/crop
+* use proper object-fit + sizing so image looks sharp and correctly framed
+* keep banner visually nice, but not blurred
+* ensure responsive behavior across screen sizes
+
+====================================================
+4) CATEGORY DETAIL TABLE SIMPLIFICATION
+=======================================
+
+On the category detail page (after clicking a category), simplify the grouped tables.
+
+Remove these columns from category detail tables:
+
+* Supplier
+* Reorder Point
+
+Category detail page should focus on browsing & comparing stock, not management fields.
+
+Keep columns (in this order):
+
+* SKU
+* Size
+* Item Name
+* Qty
+* Unit
+* Location
+* Status
+
+Reorder info must remain available on Item Detail only.
+
+====================================================
+5) SUPPLIER DETAIL: ADD EDIT BUTTON + EDIT FORM
+===============================================
+
+On Suppliers tab, when clicking into a Supplier detail page, add an Edit button.
+
+The Edit form must allow updating:
+
+* supplier name
+* contact person
+* phone
+* email
+* lead time
+* address
+* notes
+* preferred vendor flag
+
+Saving must persist to DB and update the supplier list + supplier detail immediately.
+
+====================================================
+6) PROJECTS PAGE: ADD SEARCH BAR
+================================
+
+Projects page currently lacks a search bar.
+
+Add a search bar similar to Suppliers:
+
+* allow searching by project name
+* customer
+* city/state
+* PO number
+* status
+* owner/담당자 (once added)
+* optionally project code if it still exists in DB (but do NOT emphasize it in UI)
+
+Filter results as the user types.
+
+====================================================
+7) PROJECT CODE: REMOVE FROM UI + EDIT FORM / PO NUMBER IS PRIMARY
+==================================================================
+
+Project code is not important. PO number is the most important identifier.
+
+Changes:
+
+* remove "Project Code" field from the Edit Project modal/form
+* remove project code display from project cards/details where possible
+* ensure PO Number is prominently shown instead
+
+If project code must remain in DB for internal reasons, keep it hidden/low priority and do not surface it in the main UI.
+
+====================================================
+8) PROJECT DETAIL: ADD OWNER + START/END DATE (EDITABLE)
+========================================================
+
+Add these fields to projects and allow editing them from Project Detail:
+
+* Project Owner / 담당자 (text field or user reference if users table exists)
+* Start Date (date)
+* End Date (date)
+
+Requirements:
+
+* Show these fields clearly in Project Detail page
+* Add them into the Edit Project modal/form
+* Saving must persist to DB and update both Project list and Project detail immediately
+* Start/End dates should display in a readable format (e.g., Jan 14, 2026)
+
+Data model:
+If projects table does not already include these columns, add:
+
+* owner_name (or owner_user_id if using users)
+* start_date
+* end_date
+
+====================================================
+FINAL OUTPUT REQUIREMENTS
+=========================
+
+Actually implement these changes end-to-end.
+
+At the end, clearly explain:
+
+* which files were updated
+* how transaction delete now works safely (including dependent records)
+* how date range filtering works
+* what banner image styling changed
+* what columns were removed from category detail tables
+* how supplier edit works
+* how project search works
+* where project code was removed and PO number emphasized
+* how owner/start/end date fields are stored and edited

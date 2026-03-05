@@ -5,7 +5,7 @@ import { useLocations, useProjects } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
 import { SearchableItemSelect } from "@/components/MovementForm";
-import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle } from "lucide-react";
+import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, subDays } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -264,10 +264,15 @@ function EditTransactionDialog({
   );
 }
 
+const todayStr = () => new Date().toISOString().split("T")[0];
+const thirtyAgoStr = () => subDays(new Date(), 30).toISOString().split("T")[0];
+
 export default function Transactions() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [startDate, setStartDate] = useState(thirtyAgoStr());
+  const [endDate, setEndDate] = useState(todayStr());
   const [logOpen, setLogOpen] = useState(false);
   const [editTx, setEditTx] = useState<any | null>(null);
 
@@ -281,7 +286,10 @@ export default function Transactions() {
       tx.item?.name?.toLowerCase().includes(search.toLowerCase()) ||
       tx.item?.sku?.toLowerCase().includes(search.toLowerCase());
     const matchProject = projectFilter === "all" || tx.projectId === Number(projectFilter);
-    return matchSearch && matchProject;
+    const txDate = new Date(tx.createdAt);
+    const matchStart = !startDate || txDate >= startOfDay(new Date(startDate + "T00:00:00"));
+    const matchEnd = !endDate || txDate <= endOfDay(new Date(endDate + "T00:00:00"));
+    return matchSearch && matchProject && matchStart && matchEnd;
   });
 
   return (
@@ -313,40 +321,74 @@ export default function Transactions() {
       </div>
 
       <div className="premium-card bg-white overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 bg-slate-50/50">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search by item name or SKU…"
-              className="pl-9 bg-white border-slate-200"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="input-tx-search"
-            />
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search by item name or SKU…"
+                className="pl-9 bg-white border-slate-200"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                data-testid="input-tx-search"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[150px] bg-white" data-testid="select-tx-type">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="receive">Receive</SelectItem>
+                <SelectItem value="issue">Issue</SelectItem>
+                <SelectItem value="return">Return</SelectItem>
+                <SelectItem value="transfer">Transfer</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-[170px] bg-white">
+                <SelectValue placeholder="All projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {projects?.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id.toString()}>{p.poNumber || p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[160px] bg-white" data-testid="select-tx-type">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="receive">Receive</SelectItem>
-              <SelectItem value="issue">Issue</SelectItem>
-              <SelectItem value="return">Return</SelectItem>
-              <SelectItem value="transfer">Transfer</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="w-[180px] bg-white">
-              <SelectValue placeholder="All projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {projects?.map((p: any) => (
-                <SelectItem key={p.id} value={p.id.toString()}>{p.code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span className="whitespace-nowrap text-xs font-medium text-slate-500">Date range:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                className="h-8 w-[140px] bg-white border-slate-200 text-sm"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                data-testid="input-tx-start-date"
+              />
+              <span className="text-slate-400 text-xs">to</span>
+              <Input
+                type="date"
+                className="h-8 w-[140px] bg-white border-slate-200 text-sm"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                data-testid="input-tx-end-date"
+              />
+            </div>
+            {(startDate !== thirtyAgoStr() || endDate !== todayStr()) && (
+              <button
+                onClick={() => { setStartDate(thirtyAgoStr()); setEndDate(todayStr()); }}
+                className="text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                data-testid="button-reset-dates"
+              >
+                Reset to 30 days
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">

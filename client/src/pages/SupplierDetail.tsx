@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
-import { useSupplier } from "@/hooks/use-reference-data";
-import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle } from "lucide-react";
+import { useSupplier, useUpdateSupplier } from "@/hooks/use-reference-data";
+import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useToast } from "@/hooks/use-toast";
 
 function computeStatus(item: any): string {
   if (item.quantityOnHand === 0) return "out_of_stock";
@@ -14,10 +23,164 @@ function computeStatus(item: any): string {
   return "in_stock";
 }
 
+const editSchema = z.object({
+  name:           z.string().min(1, "Supplier name is required"),
+  contactName:    z.string().optional(),
+  phone:          z.string().optional(),
+  email:          z.string().optional(),
+  address:        z.string().optional(),
+  leadTimeDays:   z.coerce.number().min(0).optional(),
+  preferredVendor: z.boolean().optional(),
+  notes:          z.string().optional(),
+});
+
+type EditFormData = z.infer<typeof editSchema>;
+
+function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const updateMutation = useUpdateSupplier();
+
+  const form = useForm<EditFormData>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      name:           supplier.name || "",
+      contactName:    supplier.contactName || "",
+      phone:          supplier.phone || "",
+      email:          supplier.email || "",
+      address:        supplier.address || "",
+      leadTimeDays:   supplier.leadTimeDays ?? 0,
+      preferredVendor: supplier.preferredVendor ?? false,
+      notes:          supplier.notes || "",
+    },
+  });
+
+  useEffect(() => {
+    if (open) form.reset({
+      name:           supplier.name || "",
+      contactName:    supplier.contactName || "",
+      phone:          supplier.phone || "",
+      email:          supplier.email || "",
+      address:        supplier.address || "",
+      leadTimeDays:   supplier.leadTimeDays ?? 0,
+      preferredVendor: supplier.preferredVendor ?? false,
+      notes:          supplier.notes || "",
+    });
+  }, [open, supplier.id]);
+
+  async function onSubmit(data: EditFormData) {
+    try {
+      await updateMutation.mutateAsync({ id: supplier.id, ...data });
+      toast({ title: "Supplier updated", description: `${data.name} has been saved.` });
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Supplier — {supplier.name}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <FormField control={form.control} name="name" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Supplier Name <span className="text-red-500">*</span></FormLabel>
+                <FormControl><Input data-testid="edit-supplier-name" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="contactName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Person</FormLabel>
+                  <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="leadTimeDays" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lead Time (days)</FormLabel>
+                  <FormControl><Input type="number" min={0} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="phone" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl><Input placeholder="555-0101" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl><Input type="email" placeholder="sales@supplier.com" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            <FormField control={form.control} name="address" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address</FormLabel>
+                <FormControl><Input placeholder="123 Main St, City, ST 00000" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="preferredVendor" render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                  <input
+                    type="checkbox"
+                    checked={field.value ?? false}
+                    onChange={e => field.onChange(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500"
+                    data-testid="checkbox-preferred-vendor"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Preferred Vendor</p>
+                    <p className="text-xs text-amber-700">Mark this supplier as preferred for purchasing decisions.</p>
+                  </div>
+                  <Star className="w-4 h-4 text-amber-500 ml-auto" />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl><Textarea rows={2} className="resize-none" placeholder="Any relevant notes…" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateMutation.isPending} data-testid="button-save-supplier">
+                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SupplierDetail() {
   const [, params] = useRoute("/suppliers/:id");
   const id = Number(params?.id || "0");
   const { data: supplier, isLoading } = useSupplier(id);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) return (
     <div className="space-y-4 animate-pulse">
@@ -27,7 +190,7 @@ export default function SupplierDetail() {
   );
   if (!supplier) return <div className="p-8 text-center text-slate-500">Supplier not found.</div>;
 
-  const lowStockItems = supplier.items?.filter(i => computeStatus(i) !== 'in_stock') || [];
+  const lowStockItems = supplier.items?.filter((i: any) => computeStatus(i) !== 'in_stock') || [];
 
   return (
     <div className="space-y-6">
@@ -36,21 +199,33 @@ export default function SupplierDetail() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Truck className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-display font-bold text-slate-900">{supplier.name}</h1>
-                {supplier.preferredVendor && (
-                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 border gap-1 text-xs">
-                    <Star className="w-3 h-3" />Preferred Vendor
-                  </Badge>
-                )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                <Truck className="w-6 h-6 text-blue-600" />
               </div>
-              {supplier.contactName && <p className="text-slate-500 mt-0.5">{supplier.contactName}</p>}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-display font-bold text-slate-900">{supplier.name}</h1>
+                  {supplier.preferredVendor && (
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 border gap-1 text-xs">
+                      <Star className="w-3 h-3" />Preferred Vendor
+                    </Badge>
+                  )}
+                </div>
+                {supplier.contactName && <p className="text-slate-500 mt-0.5">{supplier.contactName}</p>}
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() => setEditOpen(true)}
+              data-testid="button-edit-supplier"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
           </div>
         </div>
       </div>
@@ -64,7 +239,7 @@ export default function SupplierDetail() {
                 <p className="font-semibold text-amber-900">{lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} need reorder from this supplier</p>
               </div>
               <div className="space-y-2">
-                {lowStockItems.slice(0, 5).map(item => (
+                {lowStockItems.slice(0, 5).map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center text-sm">
                     <Link href={`/inventory/${item.id}`} className="text-amber-800 font-medium hover:underline">{item.name}</Link>
                     <span className="text-amber-700">{item.quantityOnHand} {item.unitOfMeasure} remaining</span>
@@ -99,7 +274,7 @@ export default function SupplierDetail() {
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-slate-500">No items linked to this supplier.</TableCell>
                     </TableRow>
-                  ) : supplier.items.map(item => (
+                  ) : supplier.items.map((item: any) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50">
                       <TableCell className="font-mono text-xs text-slate-400">{item.sku}</TableCell>
                       <TableCell>
@@ -162,6 +337,14 @@ export default function SupplierDetail() {
           </Card>
         </div>
       </div>
+
+      {editOpen && (
+        <EditSupplierDialog
+          supplier={supplier}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
     </div>
   );
 }

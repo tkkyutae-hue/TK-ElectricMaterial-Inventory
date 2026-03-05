@@ -1,0 +1,130 @@
+Enable inline editing for family/subcategory item tables on the category detail page.
+
+Goal:
+When user clicks "Edit" on a family card (e.g., CableTray Box Connector), allow editing item rows directly in place (no new modal window), including:
+
+* Photo
+* Size
+* Item Name
+* Quantity
+* Unit
+* Location
+
+Keep current UI style. Make workflow fast like a spreadsheet.
+
+====================================================
+
+1. FAMILY CARD EDIT MODE (INLINE)
+   ====================================================
+
+When user clicks the family card "Edit" button:
+
+* toggle the card into Edit Mode
+* table cells become editable inputs
+* show Save / Cancel controls in the card header (right side)
+
+Edit Mode UI:
+
+* Replace "Edit" button with:
+
+  * "Save Changes" (primary)
+  * "Cancel" (secondary)
+
+Cancel:
+
+* reverts any unsaved edits in the table
+
+====================================================
+2) EDITABLE COLUMNS (IN PLACE)
+==============================
+
+In Edit Mode, each row must allow editing:
+
+* Photo:
+
+  * show thumbnail
+  * allow updating image via:
+    A) Image URL input (small)
+    B) Upload/drag-drop (optional if already supported)
+  * saving updates item.image_url and thumbnail updates instantly
+
+* Size:
+
+  * text input
+
+* Item Name:
+
+  * text input
+
+* Quantity:
+
+  * numeric input
+
+* Unit:
+
+  * dropdown (EA, FT, etc.)
+
+* Location:
+
+  * searchable combobox (type-to-filter)
+  * selection must persist (location_id)
+  * optional: allow creating new location from typed value if not found
+
+====================================================
+3) SAVE BEHAVIOR
+================
+
+On "Save Changes":
+
+* validate all edited rows
+* persist changes to DB
+* show success toast
+* exit Edit Mode
+* refresh the family table data so it reflects saved values
+
+Validation:
+
+* Quantity must be >= 0
+* Unit required
+* Item Name required
+* Location required (if your system requires it)
+
+Avoid saving incomplete rows.
+
+====================================================
+4) ROW ACTIONS IN EDIT MODE
+===========================
+
+Add per-row actions when in Edit Mode:
+
+* Delete row button (trash icon)
+
+  * confirm delete
+  * perform safe deletion (respect FK constraints if item is referenced)
+
+Optional:
+
+* Add Row button (if not already present)
+
+  * adds a new blank row under this family
+
+====================================================
+5) DO NOT BREAK NORMAL BROWSE MODE
+==================================
+
+When not in Edit Mode:
+
+* keep table read-only as it is now
+* keep current styling
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement end-to-end and explain:
+
+* what components were updated
+* how edit mode toggles work
+* how photo updates persist to DB and reflect in thumbnails
+* how location combobox works
+* how save/cancel behavior works

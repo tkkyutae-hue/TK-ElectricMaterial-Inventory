@@ -3,7 +3,8 @@ import { useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
-  Search, Plus, Pencil, Trash2, MoveRight, Check, X as XIcon, ImageIcon,
+  Search, Plus, Pencil, Trash2, MoveRight, Check, X as XIcon, ImageIcon, Save,
+  ChevronDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useLocations } from "@/hooks/use-reference-data";
+import { useLocations, useCreateLocation } from "@/hooks/use-reference-data";
 import { useCreateItem } from "@/hooks/use-items";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -27,7 +28,8 @@ type CategoryGroupedItem = {
   unitOfMeasure: string;
   status: string;
   imageUrl?: string | null;
-  location?: { name: string } | null;
+  location?: { id?: number; name: string } | null;
+  primaryLocationId?: number | null;
   supplier?: { name: string } | null;
 };
 
@@ -53,6 +55,16 @@ type CategoryGroupedDetail = {
   groups: CategoryItemGroup[];
 };
 
+type EditDraft = {
+  sizeLabel: string;
+  name: string;
+  quantityOnHand: number;
+  unitOfMeasure: string;
+  primaryLocationId: number | null;
+  imageUrl: string | null;
+  _deleted?: boolean;
+};
+
 function StatusBadge({ status }: { status: string }) {
   if (status === "out_of_stock") return <Badge className="bg-red-50 text-red-700 border-red-200 border font-medium whitespace-nowrap">Out of Stock</Badge>;
   if (status === "low_stock") return <Badge className="bg-amber-50 text-amber-700 border-amber-200 border font-medium whitespace-nowrap">Low Stock</Badge>;
@@ -73,6 +85,124 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
 
 const UOM_OPTIONS = ["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"];
 
+// ── Inline Location Combobox ───────────────────────────────────────────────
+function LocationCombobox({
+  value,
+  onChange,
+  locations,
+}: {
+  value: number | null;
+  onChange: (id: number | null) => void;
+  locations: any[];
+}) {
+  const { toast } = useToast();
+  const createLocation = useCreateLocation();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = locations.find(l => l.id === value);
+  const filtered = search.trim()
+    ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
+    : locations;
+  const showCreate =
+    search.trim().length > 0 &&
+    !locations.some(l => l.name.trim().toLowerCase() === search.trim().toLowerCase());
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 40);
+  }, [open]);
+
+  async function handleCreate() {
+    const name = search.trim();
+    try {
+      const loc = await createLocation.mutateAsync(name);
+      onChange(loc.id);
+      setSearch(""); setOpen(false);
+      toast({ title: "Location created", description: `"${loc.name}" added.` });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative min-w-[120px]">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between text-xs border border-slate-300 rounded px-2 py-1.5 bg-white hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-500 text-left min-h-[30px]"
+        data-testid="inline-location-trigger"
+      >
+        <span className={selected ? "text-slate-900 truncate" : "text-slate-400"}>
+          {selected ? selected.name : "Select…"}
+        </span>
+        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-0.5 w-52 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+          <div className="p-1.5 border-b border-slate-100 flex items-center gap-1.5 bg-slate-50">
+            <Search className="w-3 h-3 text-slate-400 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Filter or create…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 text-xs outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+            />
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            {value != null && (
+              <button
+                type="button"
+                onClick={() => { onChange(null); setSearch(""); setOpen(false); }}
+                className="w-full text-left px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"
+              >
+                Clear
+              </button>
+            )}
+            {filtered.map(l => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => { onChange(l.id); setSearch(""); setOpen(false); }}
+                className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-brand-50 ${l.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
+              >
+                {l.name}
+              </button>
+            ))}
+            {filtered.length === 0 && !showCreate && (
+              <p className="text-center text-xs text-slate-400 py-2">No locations</p>
+            )}
+            {showCreate && (
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={createLocation.isPending}
+                className="w-full text-left px-2.5 py-1.5 text-xs text-brand-700 font-medium flex items-center gap-1 hover:bg-brand-50 border-t border-slate-100"
+              >
+                <Plus className="w-3 h-3" />
+                {createLocation.isPending ? "Creating…" : `Create "${search.trim()}"`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── InlineAddRow (for creating new items) ────────────────────────────────────
 function InlineAddRow({
   familyName,
   categoryId,
@@ -101,7 +231,7 @@ function InlineAddRow({
   const [name, setName] = useState("");
   const [qty, setQty] = useState("0");
   const [unit, setUnit] = useState("EA");
-  const [locationId, setLocationId] = useState(locations?.[0]?.id?.toString() ?? "");
+  const [locationId, setLocationId] = useState<number | null>(locations?.[0]?.id ?? null);
   const [skuError, setSkuError] = useState("");
 
   useEffect(() => { skuRef.current?.focus(); }, []);
@@ -141,7 +271,7 @@ function InlineAddRow({
         categoryId,
         unitOfMeasure: unit,
         quantityOnHand: Number(qty) || 0,
-        primaryLocationId: locationId ? Number(locationId) : undefined,
+        primaryLocationId: locationId ?? undefined,
         reorderPoint: 0,
         reorderQuantity: 0,
         minimumStock: 0,
@@ -220,17 +350,7 @@ function InlineAddRow({
         </select>
       </TableCell>
       <TableCell className="py-2 align-top">
-        <select
-          value={locationId}
-          onChange={e => setLocationId(e.target.value)}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 min-w-[100px]"
-          data-testid="inline-select-location"
-        >
-          <option value="">No location</option>
-          {locations?.map((l: any) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </select>
+        <LocationCombobox value={locationId} onChange={setLocationId} locations={locations || []} />
       </TableCell>
       <TableCell className="py-2 pr-5 align-top">
         <div className="flex gap-1 flex-wrap">
@@ -270,6 +390,158 @@ function InlineAddRow({
   );
 }
 
+// ── InlineEditRow (for editing existing items) ────────────────────────────────
+function InlineEditRow({
+  item,
+  draft,
+  locations,
+  onChange,
+  onDelete,
+}: {
+  item: CategoryGroupedItem;
+  draft: EditDraft;
+  locations: any[];
+  onChange: (patch: Partial<EditDraft>) => void;
+  onDelete: () => void;
+}) {
+  const [showImageInput, setShowImageInput] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const inputCls = "w-full text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400";
+
+  if (draft._deleted) return null;
+
+  return (
+    <TableRow className="bg-amber-50/30 border-b border-amber-100" data-testid={`row-edit-item-${item.id}`}>
+      {/* SKU (read-only in edit mode) */}
+      <TableCell className="font-mono text-xs text-slate-400 py-2 pl-5 whitespace-nowrap">{item.sku}</TableCell>
+
+      {/* Photo */}
+      <TableCell className="py-2">
+        <div className="flex flex-col items-center gap-1">
+          {draft.imageUrl ? (
+            <img
+              src={draft.imageUrl}
+              alt=""
+              className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
+              onError={e => { e.currentTarget.style.opacity = "0.3"; }}
+            />
+          ) : (
+            <div className="w-8 h-8 rounded border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center mx-auto">
+              <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowImageInput(v => !v)}
+            className="text-[9px] text-brand-600 hover:text-brand-800 leading-none"
+            data-testid={`btn-edit-photo-${item.id}`}
+          >
+            {showImageInput ? "hide" : "edit"}
+          </button>
+          {showImageInput && (
+            <input
+              type="text"
+              value={draft.imageUrl ?? ""}
+              onChange={e => onChange({ imageUrl: e.target.value || null })}
+              placeholder="Image URL…"
+              className="w-20 text-[10px] border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              data-testid={`input-edit-photo-${item.id}`}
+            />
+          )}
+        </div>
+      </TableCell>
+
+      {/* Size */}
+      <TableCell className="py-2">
+        <input
+          value={draft.sizeLabel}
+          onChange={e => onChange({ sizeLabel: e.target.value })}
+          className={inputCls}
+          data-testid={`input-edit-size-${item.id}`}
+        />
+      </TableCell>
+
+      {/* Item Name */}
+      <TableCell className="py-2">
+        <input
+          value={draft.name}
+          onChange={e => onChange({ name: e.target.value })}
+          className={`${inputCls} min-w-[140px]`}
+          data-testid={`input-edit-name-${item.id}`}
+        />
+      </TableCell>
+
+      {/* Qty */}
+      <TableCell className="py-2 text-right">
+        <input
+          type="number"
+          min="0"
+          value={draft.quantityOnHand}
+          onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
+          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400"
+          data-testid={`input-edit-qty-${item.id}`}
+        />
+      </TableCell>
+
+      {/* Unit */}
+      <TableCell className="py-2">
+        <select
+          value={draft.unitOfMeasure}
+          onChange={e => onChange({ unitOfMeasure: e.target.value })}
+          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          data-testid={`select-edit-unit-${item.id}`}
+        >
+          {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </TableCell>
+
+      {/* Location */}
+      <TableCell className="py-2">
+        <LocationCombobox
+          value={draft.primaryLocationId}
+          onChange={id => onChange({ primaryLocationId: id })}
+          locations={locations}
+        />
+      </TableCell>
+
+      {/* Delete */}
+      <TableCell className="py-2 pr-5">
+        {confirmDelete ? (
+          <div className="flex gap-1 items-center">
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap"
+              data-testid={`btn-confirm-delete-${item.id}`}
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="text-[10px] text-slate-400 hover:text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+            title="Delete item"
+            data-testid={`btn-delete-row-${item.id}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ── FamilyEditDialog (for family-level settings: rename, image, move/delete items) ──
 function FamilyEditDialog({
   open,
   onClose,
@@ -351,7 +623,7 @@ function FamilyEditDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Family — {group.baseItemName}</DialogTitle>
+          <DialogTitle>Family Settings — {group.baseItemName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 pt-1">
           <div className="grid grid-cols-2 gap-4">
@@ -433,7 +705,7 @@ function FamilyEditDialog({
           <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={onClose} disabled={saveMeta.isPending}>Cancel</Button>
             <Button type="button" className="bg-brand-700 hover:bg-brand-800" onClick={() => saveMeta.mutate()} disabled={saveMeta.isPending || !familyName.trim()} data-testid="button-save-family">
-              {saveMeta.isPending ? "Saving…" : "Save Changes"}
+              {saveMeta.isPending ? "Saving…" : "Save Settings"}
             </Button>
           </div>
         </div>
@@ -462,6 +734,11 @@ export default function CategoryDetail() {
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
   const [inlineAddFamilies, setInlineAddFamilies] = useState<Set<string>>(new Set());
   const [inlineRowVersions, setInlineRowVersions] = useState<Record<string, number>>({});
+
+  // ── Inline edit state ────────────────────────────────────────────────────
+  const [inlineEditFamily, setInlineEditFamily] = useState<string | null>(null);
+  const [editDrafts, setEditDrafts] = useState<Record<number, EditDraft>>({});
+  const [savingInline, setSavingInline] = useState(false);
 
   const { data, isLoading, isError } = useQuery<CategoryGroupedDetail>({
     queryKey: ["/api/inventory/category", id, "grouped"],
@@ -539,7 +816,6 @@ export default function CategoryDetail() {
       return;
     }
     setDraftFamily(prev => prev ? { ...prev, name: trimmed, confirmed: true } : null);
-    setInlineAddFamilies(prev => new Set([...prev, trimmed]));
   }, [draftFamily, data, toast]);
 
   const handleSaveDraftFamilyImage = useCallback(async (familyName: string, imageUrl: string) => {
@@ -549,6 +825,128 @@ export default function CategoryDetail() {
       qc.invalidateQueries({ queryKey: ["/api/inventory/category", id, "grouped"] });
     } catch (_) {}
   }, [id, qc]);
+
+  // ── Inline Edit handlers ─────────────────────────────────────────────────
+  const enterInlineEdit = useCallback((group: CategoryItemGroup) => {
+    const drafts: Record<number, EditDraft> = {};
+    group.items.forEach(item => {
+      drafts[item.id] = {
+        sizeLabel: item.sizeLabel ?? "",
+        name: item.name,
+        quantityOnHand: item.quantityOnHand,
+        unitOfMeasure: item.unitOfMeasure,
+        primaryLocationId: (item as any).primaryLocationId ?? item.location ? null : null,
+        imageUrl: item.imageUrl ?? null,
+      };
+      // Try to find locationId from the location object if primaryLocationId not available
+      if ((item as any).primaryLocationId) {
+        drafts[item.id].primaryLocationId = (item as any).primaryLocationId;
+      } else if (item.location && locations) {
+        const loc = locations.find((l: any) => l.name === item.location?.name);
+        if (loc) drafts[item.id].primaryLocationId = loc.id;
+      }
+    });
+    setEditDrafts(drafts);
+    setInlineEditFamily(group.baseItemName);
+  }, [locations]);
+
+  const cancelInlineEdit = useCallback(() => {
+    setInlineEditFamily(null);
+    setEditDrafts({});
+  }, []);
+
+  const updateDraft = useCallback((itemId: number, patch: Partial<EditDraft>) => {
+    setEditDrafts(prev => ({ ...prev, [itemId]: { ...prev[itemId], ...patch } }));
+  }, []);
+
+  const deleteRow = useCallback((itemId: number) => {
+    setEditDrafts(prev => ({ ...prev, [itemId]: { ...prev[itemId], _deleted: true } }));
+  }, []);
+
+  const saveInlineEdits = useCallback(async (group: CategoryItemGroup) => {
+    // Validate
+    const activeItems = group.items.filter(item => !editDrafts[item.id]?._deleted);
+    for (const item of activeItems) {
+      const d = editDrafts[item.id];
+      if (!d) continue;
+      if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name is required for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Quantity must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+      if (!d.unitOfMeasure) { toast({ title: "Validation error", description: `Unit is required for ${item.sku}`, variant: "destructive" }); return; }
+    }
+
+    setSavingInline(true);
+    try {
+      const promises: Promise<any>[] = [];
+
+      for (const item of group.items) {
+        const d = editDrafts[item.id];
+        if (!d) continue;
+
+        if (d._deleted) {
+          promises.push(fetch(`/api/items/${item.id}`, { method: "DELETE", credentials: "include" }));
+          continue;
+        }
+
+        // Update item properties
+        const changed = (
+          d.name !== item.name ||
+          d.sizeLabel !== (item.sizeLabel ?? "") ||
+          d.quantityOnHand !== item.quantityOnHand ||
+          d.unitOfMeasure !== item.unitOfMeasure ||
+          d.primaryLocationId !== ((item as any).primaryLocationId ?? null)
+        );
+        if (changed) {
+          promises.push(
+            fetch(`/api/items/${item.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                name: d.name.trim(),
+                sizeLabel: d.sizeLabel || null,
+                quantityOnHand: d.quantityOnHand,
+                unitOfMeasure: d.unitOfMeasure,
+                primaryLocationId: d.primaryLocationId || null,
+              }),
+            })
+          );
+        }
+
+        // Update image if changed
+        const origImage = item.imageUrl ?? null;
+        if (d.imageUrl !== origImage) {
+          promises.push(
+            fetch(`/api/inventory/${item.id}/image`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ imageUrl: d.imageUrl }),
+            })
+          );
+        }
+      }
+
+      await Promise.all(promises);
+
+      await qc.invalidateQueries({ queryKey: ["/api/inventory/category", id, "grouped"] });
+      await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+      await qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+
+      const deletedCount = group.items.filter(i => editDrafts[i.id]?._deleted).length;
+      const savedCount = group.items.length - deletedCount;
+      toast({
+        title: "Changes saved",
+        description: `${savedCount} item${savedCount !== 1 ? "s" : ""} updated${deletedCount > 0 ? `, ${deletedCount} removed` : ""}.`,
+      });
+
+      setInlineEditFamily(null);
+      setEditDrafts({});
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingInline(false);
+    }
+  }, [editDrafts, id, qc, toast]);
 
   if (isLoading) {
     return (
@@ -773,15 +1171,20 @@ export default function CategoryDetail() {
             const hasInlineRow = inlineAddFamilies.has(group.baseItemName);
             const rowKey = `inline-${group.baseItemName}-${inlineRowVersions[group.baseItemName] || 0}`;
             const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
+            const isEditingThis = inlineEditFamily === group.baseItemName;
 
             return (
               <div
                 key={group.baseItemName}
-                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${isDraftConfirmed ? "border-brand-300 border-2" : "border-slate-200"}`}
+                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${
+                  isDraftConfirmed ? "border-brand-300 border-2" :
+                  isEditingThis ? "border-amber-300 border-2" :
+                  "border-slate-200"
+                }`}
                 data-testid={`family-card-${group.baseItemName.replace(/\s+/g, "-")}`}
               >
                 {/* Family header */}
-                <div className="flex items-center justify-between px-5 border-b border-slate-200 bg-slate-50/80 min-h-[60px]">
+                <div className={`flex items-center justify-between px-5 border-b min-h-[60px] ${isEditingThis ? "bg-amber-50/60 border-amber-200" : "border-slate-200 bg-slate-50/80"}`}>
                   <div className="flex items-center gap-3 py-3 flex-1 min-w-0">
                     <div className="w-11 h-11 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
                       {group.representativeImage ? (
@@ -795,39 +1198,79 @@ export default function CategoryDetail() {
                       <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider leading-none mt-0.5">
                         {group.items.length} {group.items.length === 1 ? "size" : "sizes"}
                         {isDraftConfirmed && <span className="ml-2 text-brand-500 normal-case tracking-normal">New family</span>}
+                        {isEditingThis && <span className="ml-2 text-amber-600 normal-case tracking-normal font-semibold">● Editing</span>}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 pl-3">
-                    {groupOutOfStock > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                        <XCircle className="w-3 h-3" />{groupOutOfStock} out of stock
-                      </span>
+                    {!isEditingThis && (
+                      <>
+                        {groupOutOfStock > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                            <XCircle className="w-3 h-3" />{groupOutOfStock} out of stock
+                          </span>
+                        )}
+                        {groupLowStock > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3" />{groupLowStock} low
+                          </span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 gap-1"
+                          onClick={() => setEditingGroup(group)}
+                          data-testid={`button-family-settings-${group.baseItemName.replace(/\s+/g, "-")}`}
+                          title="Family settings (rename, move, delete items)"
+                        >
+                          <Pencil className="w-3 h-3" />Settings
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 gap-1"
+                          onClick={() => enterInlineEdit(group)}
+                          disabled={!!inlineEditFamily}
+                          data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}
+                        >
+                          <Pencil className="w-3 h-3" />Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-200 gap-1"
+                          onClick={() => openInlineAdd(group.baseItemName)}
+                          disabled={hasInlineRow || !!inlineEditFamily}
+                          data-testid={`button-add-item-${group.baseItemName.replace(/\s+/g, "-")}`}
+                        >
+                          <Plus className="w-3 h-3" />Add
+                        </Button>
+                      </>
                     )}
-                    {groupLowStock > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                        <AlertTriangle className="w-3 h-3" />{groupLowStock} low
-                      </span>
+                    {isEditingThis && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-3 text-xs text-slate-600 hover:bg-slate-100"
+                          onClick={cancelInlineEdit}
+                          disabled={savingInline}
+                          data-testid={`button-cancel-edit-${group.baseItemName.replace(/\s+/g, "-")}`}
+                        >
+                          <XIcon className="w-3 h-3 mr-1" />Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-brand-700 hover:bg-brand-800 gap-1"
+                          onClick={() => saveInlineEdits(group)}
+                          disabled={savingInline}
+                          data-testid={`button-save-edit-${group.baseItemName.replace(/\s+/g, "-")}`}
+                        >
+                          <Save className="w-3 h-3" />
+                          {savingInline ? "Saving…" : "Save Changes"}
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-slate-500 hover:text-brand-600 hover:bg-brand-50 gap-1"
-                      onClick={() => setEditingGroup(group)}
-                      data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}
-                    >
-                      <Pencil className="w-3 h-3" />Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-200 gap-1"
-                      onClick={() => openInlineAdd(group.baseItemName)}
-                      disabled={hasInlineRow}
-                      data-testid={`button-add-item-${group.baseItemName.replace(/\s+/g, "-")}`}
-                    >
-                      <Plus className="w-3 h-3" />Add
-                    </Button>
                   </div>
                 </div>
 
@@ -853,7 +1296,9 @@ export default function CategoryDetail() {
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Unit</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Location</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5">Status</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5">
+                          {isEditingThis ? "Delete" : "Status"}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -874,38 +1319,53 @@ export default function CategoryDetail() {
                           onCancel={() => handleInlineCancel(group.baseItemName)}
                         />
                       )}
-                      {group.items.map((item) => (
-                        <TableRow
-                          key={item.id}
-                          className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
-                          data-testid={`row-item-${item.id}`}
-                        >
-                          <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
-                          <TableCell className="py-2.5">
-                            {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt=""
-                                className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
-                                onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }}
-                              />
-                            ) : null}
-                            <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center mx-auto ${item.imageUrl ? "hidden" : ""}`}>
-                              <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
-                          <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
-                            <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>
-                              {item.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
-                          <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
-                          <TableCell className="text-slate-600 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.location?.name || "—"}</TableCell>
-                          <TableCell className="py-2.5 pr-5"><StatusBadge status={item.status} /></TableCell>
-                        </TableRow>
-                      ))}
+                      {group.items.map((item) => {
+                        if (isEditingThis && editDrafts[item.id]) {
+                          if (editDrafts[item.id]._deleted) return null;
+                          return (
+                            <InlineEditRow
+                              key={item.id}
+                              item={item}
+                              draft={editDrafts[item.id]}
+                              locations={locations || []}
+                              onChange={(patch) => updateDraft(item.id, patch)}
+                              onDelete={() => deleteRow(item.id)}
+                            />
+                          );
+                        }
+                        return (
+                          <TableRow
+                            key={item.id}
+                            className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                            data-testid={`row-item-${item.id}`}
+                          >
+                            <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
+                            <TableCell className="py-2.5">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt=""
+                                  className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
+                                  onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }}
+                                />
+                              ) : null}
+                              <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center mx-auto ${item.imageUrl ? "hidden" : ""}`}>
+                                <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
+                            <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
+                              <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>
+                                {item.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
+                            <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
+                            <TableCell className="text-slate-600 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.location?.name || "—"}</TableCell>
+                            <TableCell className="py-2.5 pr-5"><StatusBadge status={item.status} /></TableCell>
+                          </TableRow>
+                        );
+                      })}
                       {group.items.length === 0 && !hasInlineRow && (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">

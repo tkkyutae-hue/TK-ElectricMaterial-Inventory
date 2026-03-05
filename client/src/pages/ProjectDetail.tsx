@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useRoute } from "wouter";
-import { useProject, useUpdateProject } from "@/hooks/use-reference-data";
+import { useRoute, useLocation } from "wouter";
+import { useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
-import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Users, Edit, Save, X } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Users, Edit, Save, X, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,9 @@ type EditFormData = z.infer<typeof editSchema>;
 function EditProjectDialog({ project, open, onClose }: { project: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const updateMutation = useUpdateProject();
+  const deleteMutation = useDeleteProject();
+  const [, navigate] = useLocation();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -67,20 +70,23 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
   });
 
   useEffect(() => {
-    if (open) form.reset({
-      name:         project.name || "",
-      customerName: project.customerName || "",
-      ownerName:    project.ownerName || "",
-      poNumber:     project.poNumber || "",
-      status:       project.status || "active",
-      startDate:    project.startDate || "",
-      endDate:      project.endDate || "",
-      addressLine1: project.addressLine1 || "",
-      city:         project.city || "",
-      state:        project.state || "",
-      zipCode:      project.zipCode || "",
-      notes:        project.notes || "",
-    });
+    if (open) {
+      form.reset({
+        name:         project.name || "",
+        customerName: project.customerName || "",
+        ownerName:    project.ownerName || "",
+        poNumber:     project.poNumber || "",
+        status:       project.status || "active",
+        startDate:    project.startDate || "",
+        endDate:      project.endDate || "",
+        addressLine1: project.addressLine1 || "",
+        city:         project.city || "",
+        state:        project.state || "",
+        zipCode:      project.zipCode || "",
+        notes:        project.notes || "",
+      });
+      setShowDeleteConfirm(false);
+    }
   }, [open, project.id]);
 
   async function onSubmit(data: EditFormData) {
@@ -90,6 +96,18 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
       onClose();
     } catch (err: any) {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMutation.mutateAsync(project.id);
+      toast({ title: "Project deleted", description: `${project.name} has been removed.` });
+      onClose();
+      navigate("/projects");
+    } catch (err: any) {
+      toast({ title: "Cannot delete", description: err.message, variant: "destructive" });
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -208,15 +226,58 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               </FormItem>
             )} />
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
-                <X className="w-4 h-4 mr-1" /> Cancel
+            <div className="flex justify-between items-center pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={updateMutation.isPending || deleteMutation.isPending}
+                data-testid="button-delete-project"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
               </Button>
-              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-project">
-                <Save className="w-4 h-4 mr-1" />
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
-              </Button>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>
+                  <X className="w-4 h-4 mr-1" /> Cancel
+                </Button>
+                <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-save-project">
+                  <Save className="w-4 h-4 mr-1" />
+                  {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                </Button>
+              </div>
             </div>
+
+            {showDeleteConfirm && (
+              <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-900 mb-1">Delete "{project.name}"?</p>
+                <p className="text-xs text-red-700 mb-3">
+                  This action cannot be undone. Projects with logged movements cannot be deleted — set status to "Cancelled" instead.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    data-testid="button-confirm-delete-project"
+                  >
+                    {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </form>
         </Form>
       </DialogContent>
@@ -279,7 +340,7 @@ export default function ProjectDetail() {
             <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm" onClick={() => setLogOpen(true)}>
               <ArrowUpRight className="w-4 h-4 mr-2" />Log Material
             </Button>
-            <DialogContent className="sm:max-w-[550px] flex flex-col max-h-[90vh] gap-0 p-0">
+            <DialogContent className="sm:max-w-[760px] flex flex-col max-h-[90vh] gap-0 p-0">
               <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
                 <DialogTitle>Log Material for {project.code}</DialogTitle>
               </DialogHeader>

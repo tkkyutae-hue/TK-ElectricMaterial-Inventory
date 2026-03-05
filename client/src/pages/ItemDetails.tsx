@@ -686,7 +686,7 @@ export default function ItemDetails() {
       <EditItemDialog item={item} open={editOpen} onClose={() => setEditOpen(false)} />
 
       <Dialog open={movementOpen} onOpenChange={setMovementOpen}>
-        <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh] gap-0 p-0">
+        <DialogContent className="sm:max-w-[760px] flex flex-col max-h-[90vh] gap-0 p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
             <DialogTitle>Log Movement — {item.name}</DialogTitle>
           </DialogHeader>

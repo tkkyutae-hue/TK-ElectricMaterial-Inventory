@@ -27,11 +27,13 @@ export interface IStorage {
   getSupplier(id: number): Promise<SupplierWithStats | undefined>;
   createSupplier(supplier: CreateSupplierRequest): Promise<Supplier>;
   updateSupplier(id: number, supplier: UpdateSupplierRequest): Promise<Supplier>;
+  deleteSupplier(id: number): Promise<void>;
 
   getProjects(): Promise<Project[]>;
   getProject(id: number): Promise<ProjectWithStats | undefined>;
   createProject(project: CreateProjectRequest): Promise<Project>;
   updateProject(id: number, project: UpdateProjectRequest): Promise<Project>;
+  deleteProject(id: number): Promise<void>;
 
   getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]>;
   getItem(id: number): Promise<ItemWithRelations | undefined>;
@@ -132,6 +134,17 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deleteSupplier(id: number): Promise<void> {
+    const referencedItems = await db.select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.supplierId, id), eq(items.isActive, true)));
+    if (referencedItems.length > 0) {
+      throw new Error(`Cannot delete: ${referencedItems.length} active item(s) reference this supplier. Reassign them first.`);
+    }
+    await db.delete(supplierItems).where(eq(supplierItems.supplierId, id));
+    await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
   // ─── Projects ─────────────────────────────────────────────────────────────────
 
   async getProjects(): Promise<Project[]> {
@@ -179,6 +192,18 @@ export class DatabaseStorage implements IStorage {
   async updateProject(id: number, project: UpdateProjectRequest): Promise<Project> {
     const [updated] = await db.update(projects).set({ ...project, updatedAt: new Date() }).where(eq(projects.id, id)).returning();
     return updated;
+  }
+
+  async deleteProject(id: number): Promise<void> {
+    const referencedMovements = await db.select({ id: inventoryMovements.id })
+      .from(inventoryMovements)
+      .where(eq(inventoryMovements.projectId, id))
+      .limit(1);
+    if (referencedMovements.length > 0) {
+      throw new Error(`Cannot delete: this project has logged inventory movements. Set the status to "Cancelled" instead.`);
+    }
+    await db.delete(projectMaterialTransactions).where(eq(projectMaterialTransactions.projectId, id));
+    await db.delete(projects).where(eq(projects.id, id));
   }
 
   // ─── Items ────────────────────────────────────────────────────────────────────

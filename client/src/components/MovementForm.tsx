@@ -299,6 +299,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           )} />
 
           <div className="grid grid-cols-2 gap-3">
+            {/* Left column: Source location (receive/return/transfer) or Destination (issue only) */}
             {needsSource && (
               <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
                 <FormItem>
@@ -319,8 +320,51 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 </FormItem>
               )} />
             )}
+            {!needsSource && needsDestination && (
+              <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{destLabel}</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-dest-location">
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {locations?.map((l: any) => (
+                        <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
 
-            {needsDestination && (
+            {/* Right column: Project (receive/issue/return) or Destination (transfer) */}
+            {needsProject && (
+              <FormField control={form.control} name="projectId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project (Optional)</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-project">
+                        <SelectValue placeholder="Select project…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {projects?.filter((p: any) => p.status === "active").map((p: any) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>
+                          {p.poNumber ? `${p.poNumber} — ${p.name}` : p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+            {needsSource && needsDestination && (
               <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{destLabel}</FormLabel>
@@ -341,27 +385,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               )} />
             )}
           </div>
-
-          {needsProject && (
-            <FormField control={form.control} name="projectId" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Project (Optional)</FormLabel>
-                <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-project">
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {projects?.filter((p: any) => p.status === "active").map((p: any) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>{p.code} — {p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
-          )}
 
           <FormField control={form.control} name="note" render={({ field }) => (
             <FormItem>

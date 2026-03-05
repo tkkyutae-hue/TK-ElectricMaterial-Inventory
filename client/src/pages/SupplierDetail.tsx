@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useRoute } from "wouter";
-import { useSupplier, useUpdateSupplier } from "@/hooks/use-reference-data";
-import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil } from "lucide-react";
+import { useRoute, useLocation } from "wouter";
+import { useSupplier, useUpdateSupplier, useDeleteSupplier } from "@/hooks/use-reference-data";
+import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,9 @@ type EditFormData = z.infer<typeof editSchema>;
 function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const updateMutation = useUpdateSupplier();
+  const deleteMutation = useDeleteSupplier();
+  const [, navigate] = useLocation();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -55,16 +58,19 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
   });
 
   useEffect(() => {
-    if (open) form.reset({
-      name:           supplier.name || "",
-      contactName:    supplier.contactName || "",
-      phone:          supplier.phone || "",
-      email:          supplier.email || "",
-      address:        supplier.address || "",
-      leadTimeDays:   supplier.leadTimeDays ?? 0,
-      preferredVendor: supplier.preferredVendor ?? false,
-      notes:          supplier.notes || "",
-    });
+    if (open) {
+      form.reset({
+        name:           supplier.name || "",
+        contactName:    supplier.contactName || "",
+        phone:          supplier.phone || "",
+        email:          supplier.email || "",
+        address:        supplier.address || "",
+        leadTimeDays:   supplier.leadTimeDays ?? 0,
+        preferredVendor: supplier.preferredVendor ?? false,
+        notes:          supplier.notes || "",
+      });
+      setShowDeleteConfirm(false);
+    }
   }, [open, supplier.id]);
 
   async function onSubmit(data: EditFormData) {
@@ -74,6 +80,18 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
       onClose();
     } catch (err: any) {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMutation.mutateAsync(supplier.id);
+      toast({ title: "Supplier deleted", description: `${supplier.name} has been removed.` });
+      onClose();
+      navigate("/suppliers");
+    } catch (err: any) {
+      toast({ title: "Cannot delete", description: err.message, variant: "destructive" });
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -163,12 +181,55 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
               </FormItem>
             )} />
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
-              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-supplier">
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+            <div className="flex justify-between items-center pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={updateMutation.isPending || deleteMutation.isPending}
+                data-testid="button-delete-supplier"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
               </Button>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>Cancel</Button>
+                <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-save-supplier">
+                  {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                </Button>
+              </div>
             </div>
+
+            {showDeleteConfirm && (
+              <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-red-900 mb-1">Delete "{supplier.name}"?</p>
+                <p className="text-xs text-red-700 mb-3">
+                  This action cannot be undone. If items reference this supplier, deletion will be blocked.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    data-testid="button-confirm-delete-supplier"
+                  >
+                    {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </form>
         </Form>
       </DialogContent>

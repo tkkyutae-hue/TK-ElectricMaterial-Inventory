@@ -311,7 +311,7 @@ export default function Transactions() {
             <ArrowRightLeft className="w-4 h-4 mr-2" />
             Log Movement
           </Button>
-          <DialogContent className="sm:max-w-[550px] flex flex-col max-h-[90vh] gap-0 p-0">
+          <DialogContent className="sm:max-w-[760px] flex flex-col max-h-[90vh] gap-0 p-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
               <DialogTitle>Log Inventory Movement</DialogTitle>
             </DialogHeader>
@@ -457,14 +457,16 @@ export default function Transactions() {
                             <TooltipTrigger asChild>
                               <Link
                                 href={`/projects/${tx.project.id}`}
-                                className="inline-flex items-center text-xs font-mono bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded hover:bg-brand-100 hover:text-brand-800 transition-colors cursor-pointer"
+                                className="inline-flex items-center text-xs font-mono bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded hover:bg-brand-100 hover:text-brand-800 transition-colors cursor-pointer max-w-[120px] truncate"
                                 data-testid={`link-project-${tx.project.id}`}
                               >
-                                {tx.project.code}
+                                {tx.project.poNumber || tx.project.name}
                               </Link>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[200px] text-xs">
-                              <p className="font-semibold">{tx.project.code}</p>
+                            <TooltipContent side="top" className="max-w-[220px] text-xs">
+                              {tx.project.poNumber && (
+                                <p className="font-semibold font-mono">{tx.project.poNumber}</p>
+                              )}
                               <p className="text-slate-300 mt-0.5">{tx.project.name}</p>
                             </TooltipContent>
                           </Tooltip>

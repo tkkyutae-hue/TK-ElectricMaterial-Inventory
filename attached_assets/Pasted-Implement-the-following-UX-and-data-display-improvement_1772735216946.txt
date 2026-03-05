@@ -1,0 +1,142 @@
+Implement the following UX and data-display improvements across Transactions, Log Inventory Movement, Suppliers, and Projects.
+
+Do not redesign the entire app.
+Keep the current green/white theme.
+Make targeted layout and usability fixes.
+
+====================================================
+
+1. PROJECT DISPLAY: USE PO NUMBER (PRIMARY) EVERYWHERE
+   ====================================================
+
+Current issue:
+Transactions show project code (or wrap oddly), but the business needs PO Number as the primary identifier.
+
+## A) Transaction History table (Project column)
+
+Change Project display to show:
+
+* `PO_NUMBER` (primary)
+  Optionally show full label on hover:
+* `PO_NUMBER — Project Name`
+
+Rules:
+
+* In the Project column cell, display PO number in a single line (no wrapping).
+* If PO number is missing, fall back to project name.
+* Project code should not be shown or emphasized.
+
+Also:
+
+* Make the Project cell clickable to open Project detail (recommended).
+
+## B) Log Inventory Movement modal (Project dropdown)
+
+In the Project dropdown list, each option must display:
+
+* `PO_NUMBER — Project Name`
+
+If PO number missing:
+
+* `Project Name` only.
+
+Do not show project code as the primary identifier.
+
+====================================================
+2) LOG INVENTORY MOVEMENT MODAL: WIDER + BETTER FIELD LAYOUT
+============================================================
+
+Current issues:
+
+* Modal is too narrow; item selector feels cramped.
+* Project dropdown takes vertical space; item row is too tight.
+
+## A) Increase modal width
+
+* Make the modal wider on desktop (e.g., 720–860px max width depending on layout).
+* Keep it responsive; on smaller screens, allow it to shrink or go full width.
+
+## B) Move Project field to the right of Receive From / Issue To
+
+Re-layout the top fields into two columns on desktop:
+
+Row 1:
+
+* Movement Type (full width)
+
+Row 2 (two columns):
+
+* Left: Receive From (or Issue To / Return From)
+* Right: Project (Optional)
+
+Row 3:
+
+* Note (full width)
+
+This should free vertical space and allow the items area to be larger.
+
+## C) Items row should have enough horizontal space
+
+Keep compact item entry row:
+
+* Item selector (wide)
+* Qty input (narrow to the right)
+* Remove icon
+
+Ensure the item selector is wide enough to read item names properly.
+
+## D) Keep footer actions
+
+Footer stays at bottom:
+
+* Left: + Add Another Item
+* Right: Cancel / Confirm
+
+====================================================
+3) ADD DELETE BUTTONS IN EDIT FORMS (SUPPLIERS + PROJECTS)
+==========================================================
+
+Current issue:
+From Supplier detail / Project detail, edit exists but delete is missing.
+
+## A) Supplier detail edit
+
+Add a Delete button in the Supplier edit view/modal:
+
+* visually destructive (red)
+* require confirmation (e.g., “Type DELETE” or a confirm dialog)
+
+Delete behavior:
+
+* If supplier is referenced by items, prevent deletion OR implement a safe strategy:
+
+  * either block delete and show which items reference it
+  * OR set item supplier_id to NULL / “Unassigned” before delete (only if acceptable)
+    Do not allow silent FK errors.
+
+## B) Project detail edit
+
+Add a Delete button in the Project edit view/modal:
+
+* visually destructive (red)
+* require confirmation
+
+Delete behavior:
+
+* If project is referenced by project_material_transactions or inventory_movements, prevent deletion OR implement safe delete:
+
+  * either block delete with a clear message
+  * OR delete dependent rows first (ONLY if business rules allow)
+    Avoid foreign key constraint failures.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement end-to-end and explain:
+
+* where PO number is displayed in Transaction History and why
+* how project dropdown labels are formatted (PO — Name)
+* what modal width/layout changes were made (and which components)
+* where delete buttons were added (supplier/project)
+* how delete safety/constraints are handled (no FK failures)

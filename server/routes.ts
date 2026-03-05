@@ -110,6 +110,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/suppliers/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteSupplier(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ─── Projects ───────────────────────────────────────────────────────────────
   app.get("/api/projects", isAuthenticated, async (_req, res) => {
     res.json(await storage.getProjects());
@@ -134,6 +143,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const data = await storage.updateProject(Number(req.params.id), req.body);
       res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteProject(Number(req.params.id));
+      res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }

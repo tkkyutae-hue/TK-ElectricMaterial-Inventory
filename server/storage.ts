@@ -37,6 +37,7 @@ export interface IStorage {
   getItem(id: number): Promise<ItemWithRelations | undefined>;
   createItem(item: CreateItemRequest): Promise<Item>;
   createItemImage(itemId: number, imageUrl: string): Promise<void>;
+  setItemImage(itemId: number, imageUrl: string | null): Promise<void>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
   upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup>;
@@ -306,6 +307,13 @@ export class DatabaseStorage implements IStorage {
 
   async createItemImage(itemId: number, imageUrl: string): Promise<void> {
     await db.insert(itemImages).values({ itemId, imageUrl, sortOrder: 0 });
+  }
+
+  async setItemImage(itemId: number, imageUrl: string | null): Promise<void> {
+    await db.delete(itemImages).where(eq(itemImages.itemId, itemId));
+    if (imageUrl) {
+      await db.insert(itemImages).values({ itemId, imageUrl, sortOrder: 0 });
+    }
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {

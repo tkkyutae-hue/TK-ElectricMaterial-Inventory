@@ -4,6 +4,28 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { registerAuthRoutes } from "./replit_integrations/auth";
 import { isAuthenticated } from "./replit_integrations/auth/replitAuth";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import express from "express";
+
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadsDir,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub ?? null;
@@ -11,6 +33,8 @@ function getUserId(req: any): string | null {
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
+
+  app.use("/uploads", express.static(uploadsDir));
 
   // ─── Dashboard ──────────────────────────────────────────────────────────────
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
@@ -433,6 +457,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/reports/usage-by-project", isAuthenticated, async (_req, res) => {
     res.json(await storage.getReportUsageByProject());
+  });
+
+  app.post("/api/upload/item-image", isAuthenticated, upload.single("file"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file or unsupported file type. Allowed: jpg, jpeg, png, webp (max 8 MB)." });
+    }
+    res.json({ url: `/uploads/${req.file.filename}` });
+  });
+
+  app.patch("/api/inventory/:id/image", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { imageUrl } = req.body;
+      await storage.setItemImage(id, imageUrl ?? null);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   return httpServer;

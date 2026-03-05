@@ -1,0 +1,225 @@
+Refine the category detail page creation workflow to support a fully inline family-and-item creation flow.
+
+Do not use modals for this workflow if possible.
+Keep everything inside the category detail page.
+This must be fast for electrical inventory where many items repeat by size.
+
+====================================================
+A) UX / WIREFRAME SPEC (VISUAL BEHAVIOR)
+========================================
+
+## Page top bar (under KPI cards)
+
+Layout row (left to right):
+[ Search input (full width) ] [ Status dropdown ] [ Family dropdown ] [ + New Family button ]
+
+* Search input: placeholder “Search by SKU, name, size, or family…”
+* * New Family button: primary style, right aligned
+* Keep everything on one line on desktop; wrap nicely on smaller widths
+
+## Family card structure (repeated blocks)
+
+Each family is a card section with:
+
+* Header strip (fixed height, consistent padding)
+* Body table (rows of child items)
+
+### Family header layout (left to right)
+
+[ Thumbnail 44x44 ] [ Family name + meta text ] .................................. [ Edit ] [ Add ]
+
+* Thumbnail: square 44x44, rounded corners, subtle border
+* Family name: bold, single line with ellipsis if long
+* Meta text under name: “X sizes” or “0 items”
+* Right actions:
+
+  * “Edit” button (secondary)
+  * “Add” button (primary/outline)
+* Keep header height fixed (ex: 56–64px) so all cards align
+
+### Empty family state (body)
+
+If family has 0 items:
+
+* Show an empty message inside the table area:
+  “No items yet. Click Add to create the first item.”
+* Still show the table header row (optional) or a minimal empty panel
+
+## Inline New Family creation (NO modal)
+
+When user clicks “+ New Family”:
+
+* Insert a NEW family card at the TOP of the list (above existing families)
+* This card is in “draft mode” with:
+
+  * thumbnail placeholder
+  * Family Name input (empty)
+  * Image URL input (collapsed by default, expandable)
+  * Right actions: [Confirm] [Cancel]
+* The card body should be empty (no child rows yet)
+
+Draft Family header wireframe:
+[ Thumbnail placeholder ] [ Family Name input (placeholder: “Enter family name…”) ]
+[ optional small link/button: “Add image link” -> reveals Image URL input ]
+....................................................... [ Confirm ] [ Cancel ]
+
+When Confirm:
+
+* Save family
+* Convert Confirm/Cancel into Edit/Add buttons
+* Automatically insert ONE blank child item row and focus the cursor
+
+When Cancel:
+
+* Remove the draft card completely
+
+## Inline Add Item row (NO modal)
+
+When user clicks Add in a family header:
+
+* Insert one blank editable row at the TOP of that family table
+* Row background: subtle highlight (light blue/gray) to show “editing”
+* Editable cells should look like compact table inputs
+
+Row columns (in this order):
+SKU | Size | Item Name | Qty | Unit | Location | [Save] [Cancel]
+
+* Save and Cancel appear as small buttons at far right of the row
+* Allow TAB navigation across inputs
+* After Save, row becomes normal display row
+
+## Save + Next (optional but recommended)
+
+In the inline row actions:
+
+* Provide Save
+* Provide “Save + Next”
+  Save + Next should:
+* save current row
+* immediately open another blank row in the same family
+
+## Name suggestion behavior
+
+As user types Size or Family name exists:
+
+* Suggest Item Name = “{size} {family name}”
+  Example:
+  Family = “Cable Tray Box Connector”
+  Size = “12"”
+  Suggested = “12" Cable Tray Box Connector”
+  User can accept or override.
+
+## Alignment and spacing rules (must look clean)
+
+* All family cards must share the same max width and inner padding
+* Column widths must be consistent across families
+* Thumbnail column width fixed
+* Actions column fixed
+* Avoid “jagged” card edges or inconsistent table header spacing
+
+====================================================
+B) FUNCTIONAL REQUIREMENTS (IMPLEMENTATION)
+===========================================
+
+## 1) Rename top button
+
+Change the top-right button on category detail pages:
+
+* current: Add New Item
+* new: + New Family
+
+Reason:
+This button creates a new family/subcategory section first.
+
+## 2) + New Family creates an empty family section inline
+
+When clicked:
+
+* create a new empty family section inline at top of list
+* no modal
+* show draft mode with empty fields:
+
+  * family name (required)
+  * family image URL (optional)
+* Confirm saves to DB
+* Cancel discards without saving
+* After Confirm, automatically insert one blank child item row
+
+## 3) Family header actions
+
+Each family header must show:
+
+* Edit button
+* Add button
+
+## 4) Edit button (family-level)
+
+Edit allows:
+
+* rename family
+* update family image URL
+* Save / Cancel
+  Optional:
+* allow delete only if no child items exist
+
+## 5) Add button (child row creation)
+
+Add inserts a blank editable child row inside that family.
+
+Editable fields:
+
+* SKU (required, unique)
+* Size (required)
+* Item Name (required)
+* Qty (required, default 0)
+* Unit (required, default smart)
+* Location (required, default last used or Main Warehouse)
+
+Auto/inherited:
+
+* Category inherited from current category page
+* Family inherited from current family section
+* Status auto-computed
+
+Row actions:
+
+* Save
+* Cancel
+* (optional) Save + Next
+
+## 6) SKU uniqueness
+
+SKU must be unique:
+
+* validate immediately if possible
+* show inline error if duplicate
+* do not create duplicates
+
+## 7) Image handling
+
+Family-level image:
+
+* store a simple image_url for the family/group
+* show placeholder if empty
+* show thumbnail if provided
+
+## 8) Keep search/filter working
+
+Search and filters must continue to work.
+New family should remain visible immediately after creation (place at top).
+
+====================================================
+C) FINAL OUTPUT
+===============
+
+Actually implement this end-to-end.
+At the end, explain:
+
+* files changed
+* how + New Family works
+* how inline row creation works
+* how Save/Cancel works
+* how Save+Next works (if implemented)
+* how name suggestion works
+* how SKU uniqueness is enforced
+* how family image URL is stored and rendered

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
   Search, Plus, Pencil, Trash2, MoveRight, Check, X as XIcon, ImageIcon, Save,
-  ChevronDown,
+  ChevronDown, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocations, useCreateLocation } from "@/hooks/use-reference-data";
-import { useCreateItem } from "@/hooks/use-items";
 import { apiRequest } from "@/lib/queryClient";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 type CategoryGroupedItem = {
   id: number;
   sku: string;
@@ -65,12 +65,65 @@ type EditDraft = {
   _deleted?: boolean;
 };
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "out_of_stock") return <Badge className="bg-red-50 text-red-700 border-red-200 border font-medium whitespace-nowrap">Out of Stock</Badge>;
-  if (status === "low_stock") return <Badge className="bg-amber-50 text-amber-700 border-amber-200 border font-medium whitespace-nowrap">Low Stock</Badge>;
-  return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border font-medium whitespace-nowrap">In Stock</Badge>;
+type NewRowDraft = {
+  tmpId: string;
+  sku: string;
+  sizeLabel: string;
+  name: string;
+  quantityOnHand: number;
+  unitOfMeasure: string;
+  primaryLocationId: number | null;
+  imageUrl: string | null;
+  skuError: string;
+  nameManuallyEdited: boolean;
+};
+
+type DraftFamily = {
+  name: string;
+  imageUrl: string;
+  showImageInput: boolean;
+  confirmed: boolean;
+};
+
+// ── Size parser / sorter ──────────────────────────────────────────────────────
+function parseSizeToNumber(size: string | null | undefined): number {
+  if (!size) return Infinity;
+  const s = size.trim();
+
+  // compound fraction: 1-1/4, 1-1/2 (handles dashes and spaces)
+  const compound = s.match(/^(\d+)[-\s]+(\d+)\s*\/\s*(\d+)/);
+  if (compound) return +compound[1] + +compound[2] / +compound[3];
+
+  // simple fraction: 1/2, 3/4
+  const frac = s.match(/^(\d+)\s*\/\s*(\d+)/);
+  if (frac) return +frac[1] / +frac[2];
+
+  // #10 or #12 style
+  const hash = s.match(/^#\s*(\d+)/);
+  if (hash) return +hash[1];
+
+  // leading number (strips units like ", ft, mm…)
+  const num = s.match(/^(\d+\.?\d*)/);
+  if (num) return parseFloat(num[1]);
+
+  return Infinity; // fallback: sort alphabetically at end
 }
 
+function sortItems(items: CategoryGroupedItem[], dir: "asc" | "desc"): CategoryGroupedItem[] {
+  return [...items].sort((a, b) => {
+    const an = parseSizeToNumber(a.sizeLabel);
+    const bn = parseSizeToNumber(b.sizeLabel);
+    const mul = dir === "desc" ? -1 : 1;
+    if (an === Infinity && bn === Infinity) {
+      return mul * (a.sizeLabel || "").localeCompare(b.sizeLabel || "");
+    }
+    if (an === Infinity) return 1;
+    if (bn === Infinity) return -1;
+    return mul * (an - bn);
+  });
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
   "CT": "from-sky-600 to-sky-800",
   "CF": "from-slate-600 to-slate-800",
@@ -85,12 +138,14 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
 
 const UOM_OPTIONS = ["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"];
 
-// ── Inline Location Combobox ───────────────────────────────────────────────
-function LocationCombobox({
-  value,
-  onChange,
-  locations,
-}: {
+function StatusBadge({ status }: { status: string }) {
+  if (status === "out_of_stock") return <Badge className="bg-red-50 text-red-700 border-red-200 border font-medium whitespace-nowrap">Out of Stock</Badge>;
+  if (status === "low_stock") return <Badge className="bg-amber-50 text-amber-700 border-amber-200 border font-medium whitespace-nowrap">Low Stock</Badge>;
+  return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border font-medium whitespace-nowrap">In Stock</Badge>;
+}
+
+// ── LocationCombobox ──────────────────────────────────────────────────────────
+function LocationCombobox({ value, onChange, locations }: {
   value: number | null;
   onChange: (id: number | null) => void;
   locations: any[];
@@ -103,32 +158,22 @@ function LocationCombobox({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = locations.find(l => l.id === value);
-  const filtered = search.trim()
-    ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
-    : locations;
-  const showCreate =
-    search.trim().length > 0 &&
-    !locations.some(l => l.name.trim().toLowerCase() === search.trim().toLowerCase());
+  const filtered = search.trim() ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase())) : locations;
+  const showCreate = search.trim().length > 0 && !locations.some(l => l.name.trim().toLowerCase() === search.trim().toLowerCase());
 
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 40);
-  }, [open]);
+  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 40); }, [open]);
 
   async function handleCreate() {
-    const name = search.trim();
     try {
-      const loc = await createLocation.mutateAsync(name);
-      onChange(loc.id);
-      setSearch(""); setOpen(false);
+      const loc = await createLocation.mutateAsync(search.trim());
+      onChange(loc.id); setSearch(""); setOpen(false);
       toast({ title: "Location created", description: `"${loc.name}" added.` });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
@@ -137,62 +182,36 @@ function LocationCombobox({
 
   return (
     <div ref={ref} className="relative min-w-[120px]">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between text-xs border border-slate-300 rounded px-2 py-1.5 bg-white hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-500 text-left min-h-[30px]"
-        data-testid="inline-location-trigger"
-      >
-        <span className={selected ? "text-slate-900 truncate" : "text-slate-400"}>
-          {selected ? selected.name : "Select…"}
-        </span>
+        data-testid="inline-location-trigger">
+        <span className={selected ? "text-slate-900 truncate" : "text-slate-400"}>{selected ? selected.name : "Select…"}</span>
         <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
       </button>
       {open && (
         <div className="absolute z-50 mt-0.5 w-52 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
           <div className="p-1.5 border-b border-slate-100 flex items-center gap-1.5 bg-slate-50">
             <Search className="w-3 h-3 text-slate-400 shrink-0" />
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Filter or create…"
-              value={search}
+            <input ref={inputRef} type="text" placeholder="Filter or create…" value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 text-xs outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
-            />
+              className="flex-1 text-xs outline-none bg-transparent text-slate-900 placeholder:text-slate-400" />
           </div>
           <div className="max-h-40 overflow-y-auto">
             {value != null && (
-              <button
-                type="button"
-                onClick={() => { onChange(null); setSearch(""); setOpen(false); }}
-                className="w-full text-left px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"
-              >
-                Clear
-              </button>
+              <button type="button" onClick={() => { onChange(null); setSearch(""); setOpen(false); }}
+                className="w-full text-left px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100">Clear</button>
             )}
             {filtered.map(l => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => { onChange(l.id); setSearch(""); setOpen(false); }}
-                className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-brand-50 ${l.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
-              >
+              <button key={l.id} type="button" onClick={() => { onChange(l.id); setSearch(""); setOpen(false); }}
+                className={`w-full text-left px-2.5 py-1.5 text-xs hover:bg-brand-50 ${l.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}>
                 {l.name}
               </button>
             ))}
-            {filtered.length === 0 && !showCreate && (
-              <p className="text-center text-xs text-slate-400 py-2">No locations</p>
-            )}
+            {filtered.length === 0 && !showCreate && <p className="text-center text-xs text-slate-400 py-2">No locations</p>}
             {showCreate && (
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={createLocation.isPending}
-                className="w-full text-left px-2.5 py-1.5 text-xs text-brand-700 font-medium flex items-center gap-1 hover:bg-brand-50 border-t border-slate-100"
-              >
-                <Plus className="w-3 h-3" />
-                {createLocation.isPending ? "Creating…" : `Create "${search.trim()}"`}
+              <button type="button" onClick={handleCreate} disabled={createLocation.isPending}
+                className="w-full text-left px-2.5 py-1.5 text-xs text-brand-700 font-medium flex items-center gap-1 hover:bg-brand-50 border-t border-slate-100">
+                <Plus className="w-3 h-3" />{createLocation.isPending ? "Creating…" : `Create "${search.trim()}"`}
               </button>
             )}
           </div>
@@ -202,202 +221,8 @@ function LocationCombobox({
   );
 }
 
-// ── InlineAddRow (for creating new items) ────────────────────────────────────
-function InlineAddRow({
-  familyName,
-  categoryId,
-  existingSkus,
-  locations,
-  onSaved,
-  onSaveNext,
-  onCancel,
-}: {
-  familyName: string;
-  categoryId: number;
-  existingSkus: Set<string>;
-  locations: any[] | undefined;
-  onSaved: () => void;
-  onSaveNext: () => void;
-  onCancel: () => void;
-}) {
-  const { toast } = useToast();
-  const createMutation = useCreateItem();
-  const qc = useQueryClient();
-  const skuRef = useRef<HTMLInputElement>(null);
-  const nameManuallyEdited = useRef(false);
-
-  const [sku, setSku] = useState("");
-  const [sizeLabel, setSizeLabel] = useState("");
-  const [name, setName] = useState("");
-  const [qty, setQty] = useState("0");
-  const [unit, setUnit] = useState("EA");
-  const [locationId, setLocationId] = useState<number | null>(locations?.[0]?.id ?? null);
-  const [skuError, setSkuError] = useState("");
-
-  useEffect(() => { skuRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    if (!nameManuallyEdited.current && sizeLabel.trim() && familyName.trim()) {
-      setName(`${sizeLabel.trim()} ${familyName.trim()}`);
-    }
-  }, [sizeLabel, familyName]);
-
-  function handleNameChange(v: string) {
-    setName(v);
-    nameManuallyEdited.current = true;
-  }
-
-  function validateSku(value: string): boolean {
-    if (!value.trim()) { setSkuError("Required"); return false; }
-    if (existingSkus.has(value.trim().toUpperCase())) { setSkuError("Duplicate SKU"); return false; }
-    setSkuError("");
-    return true;
-  }
-
-  async function save(andNext: boolean) {
-    const trimmedSku = sku.trim().toUpperCase();
-    const trimmedName = name.trim();
-    const trimmedSize = sizeLabel.trim();
-    if (!validateSku(trimmedSku)) return;
-    if (!trimmedSize) { toast({ title: "Size is required", variant: "destructive" }); return; }
-    if (!trimmedName) { toast({ title: "Item name is required", variant: "destructive" }); return; }
-
-    try {
-      await createMutation.mutateAsync({
-        sku: trimmedSku,
-        name: trimmedName,
-        baseItemName: familyName,
-        sizeLabel: trimmedSize,
-        categoryId,
-        unitOfMeasure: unit,
-        quantityOnHand: Number(qty) || 0,
-        primaryLocationId: locationId ?? undefined,
-        reorderPoint: 0,
-        reorderQuantity: 0,
-        minimumStock: 0,
-        unitCost: "0.00",
-      });
-      qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-      if (andNext) onSaveNext();
-      else onSaved();
-    } catch (err: any) {
-      toast({ title: "Failed to create item", description: err.message, variant: "destructive" });
-    }
-  }
-
-  const inputCls = (err?: string) =>
-    `w-full text-xs bg-white border ${err ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"} rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400`;
-
-  return (
-    <TableRow className="bg-brand-50/50 border-b border-brand-100" data-testid="row-inline-add">
-      <TableCell className="pl-5 py-2 align-top">
-        <input
-          ref={skuRef}
-          value={sku}
-          onChange={e => { setSku(e.target.value.toUpperCase()); if (skuError) validateSku(e.target.value); }}
-          onBlur={e => validateSku(e.target.value)}
-          placeholder="SKU *"
-          className={inputCls(skuError)}
-          data-testid="inline-input-sku"
-        />
-        {skuError && <p className="text-red-500 text-[10px] mt-0.5 font-medium">{skuError}</p>}
-      </TableCell>
-      <TableCell className="py-2 align-middle">
-        <div className="w-8 h-8 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center mx-auto">
-          <ImageIcon className="w-3.5 h-3.5 text-slate-200" />
-        </div>
-      </TableCell>
-      <TableCell className="py-2 align-top">
-        <input
-          value={sizeLabel}
-          onChange={e => setSizeLabel(e.target.value)}
-          placeholder='e.g. 3/4"'
-          className={inputCls()}
-          data-testid="inline-input-size"
-        />
-      </TableCell>
-      <TableCell className="py-2 align-top">
-        <input
-          value={name}
-          onChange={e => handleNameChange(e.target.value)}
-          placeholder="Item name *"
-          className={`${inputCls()} min-w-[140px]`}
-          data-testid="inline-input-name"
-        />
-        {!nameManuallyEdited.current && sizeLabel.trim() && (
-          <p className="text-[10px] text-brand-500 mt-0.5">Auto-suggested</p>
-        )}
-      </TableCell>
-      <TableCell className="py-2 align-top text-right">
-        <input
-          value={qty}
-          onChange={e => setQty(e.target.value)}
-          type="number"
-          min="0"
-          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400"
-          data-testid="inline-input-qty"
-        />
-      </TableCell>
-      <TableCell className="py-2 align-top">
-        <select
-          value={unit}
-          onChange={e => setUnit(e.target.value)}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          data-testid="inline-select-unit"
-        >
-          {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-      </TableCell>
-      <TableCell className="py-2 align-top">
-        <LocationCombobox value={locationId} onChange={setLocationId} locations={locations || []} />
-      </TableCell>
-      <TableCell className="py-2 pr-5 align-top">
-        <div className="flex gap-1 flex-wrap">
-          <Button
-            size="sm"
-            className="h-7 text-xs bg-brand-700 hover:bg-brand-800 px-2.5"
-            onClick={() => save(false)}
-            disabled={createMutation.isPending}
-            data-testid="inline-button-save"
-          >
-            {createMutation.isPending ? "…" : "Save"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs px-2 border-brand-300 text-brand-700 hover:bg-brand-50"
-            onClick={() => save(true)}
-            disabled={createMutation.isPending}
-            data-testid="inline-button-save-next"
-            title="Save and add another"
-          >
-            +Next
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs px-2 text-slate-400 hover:text-slate-700"
-            onClick={onCancel}
-            disabled={createMutation.isPending}
-            data-testid="inline-button-cancel"
-          >
-            <XIcon className="w-3 h-3" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-// ── InlineEditRow (for editing existing items) ────────────────────────────────
-function InlineEditRow({
-  item,
-  draft,
-  locations,
-  onChange,
-  onDelete,
-}: {
+// ── InlineEditRow (editing existing items in Edit Mode) ───────────────────────
+function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
   item: CategoryGroupedItem;
   draft: EditDraft;
   locations: any[];
@@ -406,133 +231,58 @@ function InlineEditRow({
 }) {
   const [showImageInput, setShowImageInput] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
   const inputCls = "w-full text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400";
 
   if (draft._deleted) return null;
 
   return (
     <TableRow className="bg-amber-50/30 border-b border-amber-100" data-testid={`row-edit-item-${item.id}`}>
-      {/* SKU (read-only in edit mode) */}
       <TableCell className="font-mono text-xs text-slate-400 py-2 pl-5 whitespace-nowrap">{item.sku}</TableCell>
-
-      {/* Photo */}
       <TableCell className="py-2">
         <div className="flex flex-col items-center gap-1">
           {draft.imageUrl ? (
-            <img
-              src={draft.imageUrl}
-              alt=""
-              className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
-              onError={e => { e.currentTarget.style.opacity = "0.3"; }}
-            />
+            <img src={draft.imageUrl} alt="" className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block" onError={e => { e.currentTarget.style.opacity = "0.3"; }} />
           ) : (
             <div className="w-8 h-8 rounded border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center mx-auto">
               <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => setShowImageInput(v => !v)}
-            className="text-[9px] text-brand-600 hover:text-brand-800 leading-none"
-            data-testid={`btn-edit-photo-${item.id}`}
-          >
+          <button type="button" onClick={() => setShowImageInput(v => !v)} className="text-[9px] text-brand-600 hover:text-brand-800 leading-none" data-testid={`btn-edit-photo-${item.id}`}>
             {showImageInput ? "hide" : "edit"}
           </button>
           {showImageInput && (
-            <input
-              type="text"
-              value={draft.imageUrl ?? ""}
-              onChange={e => onChange({ imageUrl: e.target.value || null })}
-              placeholder="Image URL…"
-              className="w-20 text-[10px] border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              data-testid={`input-edit-photo-${item.id}`}
-            />
+            <input type="text" value={draft.imageUrl ?? ""} onChange={e => onChange({ imageUrl: e.target.value || null })} placeholder="Image URL…"
+              className="w-20 text-[10px] border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-edit-photo-${item.id}`} />
           )}
         </div>
       </TableCell>
-
-      {/* Size */}
       <TableCell className="py-2">
-        <input
-          value={draft.sizeLabel}
-          onChange={e => onChange({ sizeLabel: e.target.value })}
-          className={inputCls}
-          data-testid={`input-edit-size-${item.id}`}
-        />
+        <input value={draft.sizeLabel} onChange={e => onChange({ sizeLabel: e.target.value })} className={inputCls} data-testid={`input-edit-size-${item.id}`} />
       </TableCell>
-
-      {/* Item Name */}
       <TableCell className="py-2">
-        <input
-          value={draft.name}
-          onChange={e => onChange({ name: e.target.value })}
-          className={`${inputCls} min-w-[140px]`}
-          data-testid={`input-edit-name-${item.id}`}
-        />
+        <input value={draft.name} onChange={e => onChange({ name: e.target.value })} className={`${inputCls} min-w-[140px]`} data-testid={`input-edit-name-${item.id}`} />
       </TableCell>
-
-      {/* Qty */}
       <TableCell className="py-2 text-right">
-        <input
-          type="number"
-          min="0"
-          value={draft.quantityOnHand}
-          onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
-          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400"
-          data-testid={`input-edit-qty-${item.id}`}
-        />
+        <input type="number" min="0" value={draft.quantityOnHand} onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
+          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-qty-${item.id}`} />
       </TableCell>
-
-      {/* Unit */}
       <TableCell className="py-2">
-        <select
-          value={draft.unitOfMeasure}
-          onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          data-testid={`select-edit-unit-${item.id}`}
-        >
+        <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
+          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>
-
-      {/* Location */}
       <TableCell className="py-2">
-        <LocationCombobox
-          value={draft.primaryLocationId}
-          onChange={id => onChange({ primaryLocationId: id })}
-          locations={locations}
-        />
+        <LocationCombobox value={draft.primaryLocationId} onChange={id => onChange({ primaryLocationId: id })} locations={locations} />
       </TableCell>
-
-      {/* Delete */}
       <TableCell className="py-2 pr-5">
         {confirmDelete ? (
           <div className="flex gap-1 items-center">
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap"
-              data-testid={`btn-confirm-delete-${item.id}`}
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(false)}
-              className="text-[10px] text-slate-400 hover:text-slate-600"
-            >
-              Cancel
-            </button>
+            <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>Confirm</button>
+            <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600">Cancel</button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
-            title="Delete item"
-            data-testid={`btn-delete-row-${item.id}`}
-          >
+          <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete item" data-testid={`btn-delete-row-${item.id}`}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
@@ -541,14 +291,87 @@ function InlineEditRow({
   );
 }
 
-// ── FamilyEditDialog (for family-level settings: rename, image, move/delete items) ──
-function FamilyEditDialog({
-  open,
-  onClose,
-  categoryId,
-  group,
-  allFamilies,
-}: {
+// ── InlineNewRow (adding new items inside Edit Mode) ─────────────────────────
+function InlineNewRow({ draft, familyName, existingSkus, locations, onChange, onRemove }: {
+  draft: NewRowDraft;
+  familyName: string;
+  existingSkus: Set<string>;
+  locations: any[];
+  onChange: (patch: Partial<NewRowDraft>) => void;
+  onRemove: () => void;
+}) {
+  const inputCls = (err?: string) =>
+    `w-full text-xs bg-white border ${err ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"} rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400`;
+
+  function handleSizeChange(v: string) {
+    const patch: Partial<NewRowDraft> = { sizeLabel: v };
+    if (!draft.nameManuallyEdited && v.trim() && familyName.trim()) {
+      patch.name = `${v.trim()} ${familyName.trim()}`;
+    }
+    onChange(patch);
+  }
+
+  function handleNameChange(v: string) {
+    onChange({ name: v, nameManuallyEdited: true });
+  }
+
+  function validateSku(value: string): boolean {
+    const up = value.trim().toUpperCase();
+    if (!up) { onChange({ skuError: "Required" }); return false; }
+    if (existingSkus.has(up)) { onChange({ skuError: "Duplicate SKU" }); return false; }
+    onChange({ skuError: "" }); return true;
+  }
+
+  return (
+    <TableRow className="bg-brand-50/40 border-b border-brand-100" data-testid={`row-new-item-${draft.tmpId}`}>
+      <TableCell className="pl-5 py-2 align-top">
+        <input value={draft.sku} placeholder="SKU *"
+          onChange={e => { onChange({ sku: e.target.value.toUpperCase() }); if (draft.skuError) validateSku(e.target.value); }}
+          onBlur={e => validateSku(e.target.value)}
+          className={inputCls(draft.skuError)} data-testid={`input-new-sku-${draft.tmpId}`} />
+        {draft.skuError && <p className="text-red-500 text-[10px] mt-0.5 font-medium">{draft.skuError}</p>}
+      </TableCell>
+      <TableCell className="py-2 align-middle">
+        <div className="w-8 h-8 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center mx-auto">
+          <ImageIcon className="w-3.5 h-3.5 text-slate-200" />
+        </div>
+      </TableCell>
+      <TableCell className="py-2 align-top">
+        <input value={draft.sizeLabel} placeholder='e.g. 3/4"' onChange={e => handleSizeChange(e.target.value)}
+          className={inputCls()} data-testid={`input-new-size-${draft.tmpId}`} />
+      </TableCell>
+      <TableCell className="py-2 align-top">
+        <input value={draft.name} placeholder="Item name *" onChange={e => handleNameChange(e.target.value)}
+          className={`${inputCls()} min-w-[140px]`} data-testid={`input-new-name-${draft.tmpId}`} />
+        {!draft.nameManuallyEdited && draft.sizeLabel.trim() && (
+          <p className="text-[10px] text-brand-500 mt-0.5">Auto-suggested</p>
+        )}
+      </TableCell>
+      <TableCell className="py-2 align-top text-right">
+        <input type="number" min="0" value={draft.quantityOnHand}
+          onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
+          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
+      </TableCell>
+      <TableCell className="py-2 align-top">
+        <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
+          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-new-unit-${draft.tmpId}`}>
+          {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </TableCell>
+      <TableCell className="py-2 align-top">
+        <LocationCombobox value={draft.primaryLocationId} onChange={id => onChange({ primaryLocationId: id })} locations={locations} />
+      </TableCell>
+      <TableCell className="py-2 pr-5 align-top">
+        <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Remove row" data-testid={`btn-remove-new-row-${draft.tmpId}`}>
+          <XIcon className="w-3.5 h-3.5" />
+        </button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ── FamilyEditDialog (family-level settings) ──────────────────────────────────
+function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
   open: boolean;
   onClose: () => void;
   categoryId: number;
@@ -557,7 +380,6 @@ function FamilyEditDialog({
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-
   const [familyName, setFamilyName] = useState(group.baseItemName);
   const [imageUrl, setImageUrl] = useState(group.representativeImage ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -573,8 +395,7 @@ function FamilyEditDialog({
 
   const saveMeta = useMutation({
     mutationFn: () => apiRequest("PUT", `/api/inventory/category/${categoryId}/item-groups`, {
-      baseItemName: group.baseItemName,
-      imageUrl: imageUrl || null,
+      baseItemName: group.baseItemName, imageUrl: imageUrl || null,
       newName: familyName !== group.baseItemName ? familyName : undefined,
     }),
     onSuccess: () => { toast({ title: "Family updated" }); invalidate(); onClose(); },
@@ -582,15 +403,10 @@ function FamilyEditDialog({
   });
 
   const moveItems = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/inventory/items/move-family`, {
-      itemIds: [...selectedIds],
-      newBaseItemName: moveTarget.trim(),
-    }),
+    mutationFn: () => apiRequest("POST", `/api/inventory/items/move-family`, { itemIds: [...selectedIds], newBaseItemName: moveTarget.trim() }),
     onSuccess: () => {
       toast({ title: `${selectedIds.size} item(s) moved to "${moveTarget}"` });
-      invalidate();
-      setSelectedIds(new Set()); setShowMoveInput(false); setMoveTarget("");
-      onClose();
+      invalidate(); setSelectedIds(new Set()); setShowMoveInput(false); setMoveTarget(""); onClose();
     },
     onError: (err: any) => toast({ title: "Move failed", description: err.message, variant: "destructive" }),
   });
@@ -599,32 +415,19 @@ function FamilyEditDialog({
     mutationFn: () => apiRequest("POST", `/api/inventory/items/bulk-delete`, { itemIds: [...selectedIds] }),
     onSuccess: () => {
       toast({ title: `${selectedIds.size} item(s) removed` });
-      invalidate();
-      setSelectedIds(new Set()); setConfirmDelete(false);
-      onClose();
+      invalidate(); setSelectedIds(new Set()); setConfirmDelete(false); onClose();
     },
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 
-  const toggleItem = (id: number) => setSelectedIds(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
-  const toggleAll = () => {
-    if (selectedIds.size === group.items.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(group.items.map(i => i.id)));
-  };
-
+  const toggleItem = (id: number) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleAll = () => { if (selectedIds.size === group.items.length) setSelectedIds(new Set()); else setSelectedIds(new Set(group.items.map(i => i.id))); };
   const otherFamilies = allFamilies.filter(f => f !== group.baseItemName);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Family Settings — {group.baseItemName}</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Family Settings — {group.baseItemName}</DialogTitle></DialogHeader>
         <div className="space-y-5 pt-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -652,12 +455,8 @@ function FamilyEditDialog({
             </div>
             <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
               {group.items.map(item => (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${selectedIds.has(item.id) ? "bg-brand-50/40" : ""}`}
-                  onClick={() => toggleItem(item.id)}
-                  data-testid={`row-family-item-${item.id}`}
-                >
+                <div key={item.id} className={`flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${selectedIds.has(item.id) ? "bg-brand-50/40" : ""}`}
+                  onClick={() => toggleItem(item.id)} data-testid={`row-family-item-${item.id}`}>
                   <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleItem(item.id)} className="rounded border-slate-300 pointer-events-none" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
@@ -714,13 +513,7 @@ function FamilyEditDialog({
   );
 }
 
-type DraftFamily = {
-  name: string;
-  imageUrl: string;
-  showImageInput: boolean;
-  confirmed: boolean;
-};
-
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CategoryDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -732,12 +525,14 @@ export default function CategoryDetail() {
   const [familyFilter, setFamilyFilter] = useState("all");
   const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
-  const [inlineAddFamilies, setInlineAddFamilies] = useState<Set<string>>(new Set());
-  const [inlineRowVersions, setInlineRowVersions] = useState<Record<string, number>>({});
 
-  // ── Inline edit state ────────────────────────────────────────────────────
+  // Per-family size sort direction (default: asc = small → large)
+  const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
+
+  // Inline edit state
   const [inlineEditFamily, setInlineEditFamily] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<number, EditDraft>>({});
+  const [editNewRows, setEditNewRows] = useState<NewRowDraft[]>([]);
   const [savingInline, setSavingInline] = useState(false);
 
   const { data, isLoading, isError } = useQuery<CategoryGroupedDetail>({
@@ -775,8 +570,8 @@ export default function CategoryDetail() {
           return tokens.every(t => haystack.includes(t));
         }),
       }))
-      .filter(g => g.items.length > 0 || inlineAddFamilies.has(g.baseItemName));
-  }, [data, search, statusFilter, familyFilter, inlineAddFamilies]);
+      .filter(g => g.items.length > 0 || inlineEditFamily === g.baseItemName);
+  }, [data, search, statusFilter, familyFilter, inlineEditFamily]);
 
   const displayGroups = useMemo(() => {
     if (!draftFamily?.confirmed) return filteredGroups;
@@ -788,31 +583,11 @@ export default function CategoryDetail() {
     ];
   }, [filteredGroups, draftFamily]);
 
-  const openInlineAdd = useCallback((familyName: string) => {
-    setInlineAddFamilies(prev => new Set([...prev, familyName]));
-  }, []);
-
-  const handleInlineSaved = useCallback((familyName: string, andNext: boolean) => {
-    if (andNext) {
-      setInlineRowVersions(prev => ({ ...prev, [familyName]: (prev[familyName] || 0) + 1 }));
-    } else {
-      setInlineAddFamilies(prev => { const n = new Set(prev); n.delete(familyName); return n; });
-    }
-  }, []);
-
-  const handleInlineCancel = useCallback((familyName: string) => {
-    setInlineAddFamilies(prev => { const n = new Set(prev); n.delete(familyName); return n; });
-    setDraftFamily(prev => {
-      if (prev?.confirmed && prev.name === familyName) return null;
-      return prev;
-    });
-  }, []);
-
   const handleConfirmDraftFamily = useCallback(() => {
     if (!draftFamily?.name.trim()) return;
     const trimmed = draftFamily.name.trim();
     if (data?.groups.some(g => g.baseItemName === trimmed)) {
-      toast({ title: "Family already exists", description: `"${trimmed}" already exists. Use the Add button in that family instead.`, variant: "destructive" });
+      toast({ title: "Family already exists", description: `"${trimmed}" already exists. Click Edit in that family to add items.`, variant: "destructive" });
       return;
     }
     setDraftFamily(prev => prev ? { ...prev, name: trimmed, confirmed: true } : null);
@@ -826,33 +601,31 @@ export default function CategoryDetail() {
     } catch (_) {}
   }, [id, qc]);
 
-  // ── Inline Edit handlers ─────────────────────────────────────────────────
+  // ── Inline Edit handlers ──────────────────────────────────────────────────
   const enterInlineEdit = useCallback((group: CategoryItemGroup) => {
     const drafts: Record<number, EditDraft> = {};
     group.items.forEach(item => {
+      const locId = (item as any).primaryLocationId
+        ? (item as any).primaryLocationId
+        : locations?.find((l: any) => l.name === item.location?.name)?.id ?? null;
       drafts[item.id] = {
         sizeLabel: item.sizeLabel ?? "",
         name: item.name,
         quantityOnHand: item.quantityOnHand,
         unitOfMeasure: item.unitOfMeasure,
-        primaryLocationId: (item as any).primaryLocationId ?? item.location ? null : null,
+        primaryLocationId: locId,
         imageUrl: item.imageUrl ?? null,
       };
-      // Try to find locationId from the location object if primaryLocationId not available
-      if ((item as any).primaryLocationId) {
-        drafts[item.id].primaryLocationId = (item as any).primaryLocationId;
-      } else if (item.location && locations) {
-        const loc = locations.find((l: any) => l.name === item.location?.name);
-        if (loc) drafts[item.id].primaryLocationId = loc.id;
-      }
     });
     setEditDrafts(drafts);
+    setEditNewRows([]);
     setInlineEditFamily(group.baseItemName);
   }, [locations]);
 
   const cancelInlineEdit = useCallback(() => {
     setInlineEditFamily(null);
     setEditDrafts({});
+    setEditNewRows([]);
   }, []);
 
   const updateDraft = useCallback((itemId: number, patch: Partial<EditDraft>) => {
@@ -863,91 +636,133 @@ export default function CategoryDetail() {
     setEditDrafts(prev => ({ ...prev, [itemId]: { ...prev[itemId], _deleted: true } }));
   }, []);
 
+  const addNewRow = useCallback(() => {
+    setEditNewRows(prev => [...prev, {
+      tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
+      unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
+      skuError: "", nameManuallyEdited: false,
+    }]);
+  }, []);
+
+  const updateNewRow = useCallback((tmpId: string, patch: Partial<NewRowDraft>) => {
+    setEditNewRows(prev => prev.map(r => r.tmpId === tmpId ? { ...r, ...patch } : r));
+  }, []);
+
+  const removeNewRow = useCallback((tmpId: string) => {
+    setEditNewRows(prev => prev.filter(r => r.tmpId !== tmpId));
+  }, []);
+
   const saveInlineEdits = useCallback(async (group: CategoryItemGroup) => {
-    // Validate
+    // Collect all active SKUs for duplicate check
+    const allCurrentSkus = new Set(allSkus);
+
+    // Validate existing item edits
     const activeItems = group.items.filter(item => !editDrafts[item.id]?._deleted);
     for (const item of activeItems) {
       const d = editDrafts[item.id];
       if (!d) continue;
-      if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name is required for ${item.sku}`, variant: "destructive" }); return; }
-      if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Quantity must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
-      if (!d.unitOfMeasure) { toast({ title: "Validation error", description: `Unit is required for ${item.sku}`, variant: "destructive" }); return; }
+      if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Qty must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+    }
+
+    // Validate new rows
+    const newSkusSeen = new Set<string>();
+    for (const row of editNewRows) {
+      const sku = row.sku.trim().toUpperCase();
+      if (!sku) { toast({ title: "Validation error", description: "SKU is required for all new items", variant: "destructive" }); return; }
+      if (!row.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${sku}`, variant: "destructive" }); return; }
+      if (!row.sizeLabel.trim()) { toast({ title: "Validation error", description: `Size required for ${sku}`, variant: "destructive" }); return; }
+      if (allCurrentSkus.has(sku) || newSkusSeen.has(sku)) { toast({ title: "Duplicate SKU", description: `${sku} already exists`, variant: "destructive" }); return; }
+      newSkusSeen.add(sku);
     }
 
     setSavingInline(true);
     try {
       const promises: Promise<any>[] = [];
 
+      // Update / delete existing items
       for (const item of group.items) {
         const d = editDrafts[item.id];
         if (!d) continue;
-
         if (d._deleted) {
           promises.push(fetch(`/api/items/${item.id}`, { method: "DELETE", credentials: "include" }));
           continue;
         }
-
-        // Update item properties
-        const changed = (
-          d.name !== item.name ||
-          d.sizeLabel !== (item.sizeLabel ?? "") ||
-          d.quantityOnHand !== item.quantityOnHand ||
-          d.unitOfMeasure !== item.unitOfMeasure ||
-          d.primaryLocationId !== ((item as any).primaryLocationId ?? null)
-        );
+        const changed = d.name !== item.name || d.sizeLabel !== (item.sizeLabel ?? "") ||
+          d.quantityOnHand !== item.quantityOnHand || d.unitOfMeasure !== item.unitOfMeasure ||
+          d.primaryLocationId !== ((item as any).primaryLocationId ?? null);
         if (changed) {
-          promises.push(
-            fetch(`/api/items/${item.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({
-                name: d.name.trim(),
-                sizeLabel: d.sizeLabel || null,
-                quantityOnHand: d.quantityOnHand,
-                unitOfMeasure: d.unitOfMeasure,
-                primaryLocationId: d.primaryLocationId || null,
-              }),
-            })
-          );
+          promises.push(fetch(`/api/items/${item.id}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+            body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null }),
+          }));
         }
-
-        // Update image if changed
-        const origImage = item.imageUrl ?? null;
-        if (d.imageUrl !== origImage) {
-          promises.push(
-            fetch(`/api/inventory/${item.id}/image`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ imageUrl: d.imageUrl }),
-            })
-          );
+        if (d.imageUrl !== (item.imageUrl ?? null)) {
+          promises.push(fetch(`/api/inventory/${item.id}/image`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+            body: JSON.stringify({ imageUrl: d.imageUrl }),
+          }));
         }
       }
 
-      await Promise.all(promises);
+      // Create new rows
+      for (const row of editNewRows) {
+        promises.push(fetch("/api/items", {
+          method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+          body: JSON.stringify({
+            sku: row.sku.trim().toUpperCase(),
+            name: row.name.trim(),
+            baseItemName: group.baseItemName,
+            sizeLabel: row.sizeLabel.trim() || null,
+            categoryId: data?.category.id,
+            unitOfMeasure: row.unitOfMeasure,
+            quantityOnHand: row.quantityOnHand,
+            primaryLocationId: row.primaryLocationId || null,
+            reorderPoint: 0, reorderQuantity: 0, minimumStock: 0, unitCost: "0.00",
+          }),
+        }));
+      }
 
+      await Promise.all(promises);
       await qc.invalidateQueries({ queryKey: ["/api/inventory/category", id, "grouped"] });
       await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
       await qc.invalidateQueries({ queryKey: ["/api/inventory"] });
 
+      // Save draft family image if applicable
+      const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
+      if (isDraftConfirmed && draftFamily?.imageUrl) {
+        await handleSaveDraftFamilyImage(group.baseItemName, draftFamily.imageUrl);
+      }
+
       const deletedCount = group.items.filter(i => editDrafts[i.id]?._deleted).length;
-      const savedCount = group.items.length - deletedCount;
+      const updatedCount = group.items.length - deletedCount;
+      const createdCount = editNewRows.length;
       toast({
         title: "Changes saved",
-        description: `${savedCount} item${savedCount !== 1 ? "s" : ""} updated${deletedCount > 0 ? `, ${deletedCount} removed` : ""}.`,
+        description: [
+          updatedCount > 0 && `${updatedCount} updated`,
+          createdCount > 0 && `${createdCount} added`,
+          deletedCount > 0 && `${deletedCount} removed`,
+        ].filter(Boolean).join(", ") + ".",
       });
 
       setInlineEditFamily(null);
       setEditDrafts({});
+      setEditNewRows([]);
     } catch (err: any) {
       toast({ title: "Failed to save", description: err.message, variant: "destructive" });
     } finally {
       setSavingInline(false);
     }
-  }, [editDrafts, id, qc, toast]);
+  }, [editDrafts, editNewRows, allSkus, id, qc, toast, data, draftFamily, handleSaveDraftFamilyImage]);
 
+  // ── Toggle size sort for a family ─────────────────────────────────────────
+  const toggleFamilySort = useCallback((familyName: string) => {
+    setFamilySortDir(prev => ({ ...prev, [familyName]: prev[familyName] === "desc" ? "asc" : "desc" }));
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -975,24 +790,18 @@ export default function CategoryDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-500">
         <Link href="/inventory" className="hover:text-brand-600 transition-colors">Inventory</Link>
         <ChevronRight className="w-4 h-4" />
         <span className="text-slate-900 font-medium">{category.name}</span>
       </div>
 
+      {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden shadow-lg" style={{ height: "200px" }}>
         {category.imageUrl ? (
-          <img
-            src={category.imageUrl}
-            alt={category.name}
-            className="w-full h-full object-cover object-center"
-            style={{ objectPosition: "center 40%" }}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
-            }}
-          />
+          <img src={category.imageUrl} alt={category.name} className="w-full h-full object-cover object-center" style={{ objectPosition: "center 40%" }}
+            onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
         ) : null}
         <div className={`${category.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradientClass}`} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -1005,36 +814,27 @@ export default function CategoryDetail() {
         </div>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-brand-600" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">SKUs</span></div>
-          <p className="text-2xl font-bold text-slate-900" data-testid="stat-sku-count">{skuCount}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Qty</span></div>
-          <p className="text-2xl font-bold text-slate-900" data-testid="stat-total-qty">{totalQuantity.toLocaleString()}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4 text-amber-500" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Low Stock</span></div>
-          <p className="text-2xl font-bold text-amber-600" data-testid="stat-low-stock">{lowStockCount}</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1"><XCircle className="w-4 h-4 text-red-500" /><span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Out of Stock</span></div>
-          <p className="text-2xl font-bold text-red-600" data-testid="stat-out-of-stock">{outOfStockCount}</p>
-        </div>
+        {[
+          { icon: <Package className="w-4 h-4 text-brand-600" />, label: "SKUs", value: skuCount, cls: "text-slate-900", testid: "stat-sku-count" },
+          { icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, label: "Total Qty", value: totalQuantity.toLocaleString(), cls: "text-slate-900", testid: "stat-total-qty" },
+          { icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, label: "Low Stock", value: lowStockCount, cls: "text-amber-600", testid: "stat-low-stock" },
+          { icon: <XCircle className="w-4 h-4 text-red-500" />, label: "Out of Stock", value: outOfStockCount, cls: "text-red-600", testid: "stat-out-of-stock" },
+        ].map(card => (
+          <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">{card.icon}<span className="text-xs text-slate-500 font-medium uppercase tracking-wide">{card.label}</span></div>
+            <p className={`text-2xl font-bold ${card.cls}`} data-testid={card.testid}>{card.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Toolbar */}
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <Input
-            placeholder="Search by SKU, name, size, or family…"
-            className="pl-8 h-9 bg-slate-50 border-slate-200 text-sm focus:bg-white"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            data-testid="input-category-search"
-          />
+          <Input placeholder="Search by SKU, name, size, or family…" className="pl-8 h-9 bg-slate-50 border-slate-200 text-sm focus:bg-white"
+            value={search} onChange={e => setSearch(e.target.value)} data-testid="input-category-search" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[140px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-status-filter"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -1061,15 +861,12 @@ export default function CategoryDetail() {
           {filteredGroups.reduce((n, g) => n + g.items.length, 0)} items{hasActiveFilters ? " matching" : ""}
         </span>
         <Button
-          onClick={() => {
-            if (!draftFamily) setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false });
-          }}
+          onClick={() => { if (!draftFamily) setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false }); }}
           className="ml-auto bg-brand-700 hover:bg-brand-800 text-white h-9 text-sm shrink-0"
           disabled={!!draftFamily && !draftFamily.confirmed}
           data-testid="button-new-family"
         >
-          <Plus className="w-3.5 h-3.5 mr-1.5" />
-          New Family
+          <Plus className="w-3.5 h-3.5 mr-1.5" />New Family
         </Button>
       </div>
 
@@ -1078,61 +875,30 @@ export default function CategoryDetail() {
         <div className="bg-white border-2 border-brand-300 border-dashed rounded-xl overflow-hidden shadow-sm" data-testid="draft-family-card">
           <div className="flex items-start gap-3 px-5 py-4 bg-brand-50/30">
             <div className="w-11 h-11 rounded-lg overflow-hidden bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center shrink-0 mt-0.5">
-              {draftFamily.imageUrl ? (
-                <img src={draftFamily.imageUrl} alt="" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.opacity = "0.3"; }} />
-              ) : (
-                <Package className="w-5 h-5 text-slate-300" />
-              )}
+              {draftFamily.imageUrl ? <img src={draftFamily.imageUrl} alt="" className="w-full h-full object-cover" onError={e => { e.currentTarget.style.opacity = "0.3"; }} /> : <Package className="w-5 h-5 text-slate-300" />}
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
-              <input
-                autoFocus
-                value={draftFamily.name}
+              <input autoFocus value={draftFamily.name}
                 onChange={e => setDraftFamily(prev => prev ? { ...prev, name: e.target.value } : null)}
                 placeholder="Enter family name…"
                 className="w-full font-semibold text-slate-900 bg-transparent border-b-2 border-brand-300 focus:border-brand-500 focus:outline-none py-0.5 text-sm placeholder-slate-400"
                 data-testid="input-draft-family-name"
-                onKeyDown={e => {
-                  if (e.key === "Enter") handleConfirmDraftFamily();
-                  if (e.key === "Escape") setDraftFamily(null);
-                }}
+                onKeyDown={e => { if (e.key === "Enter") handleConfirmDraftFamily(); if (e.key === "Escape") setDraftFamily(null); }}
               />
               {!draftFamily.showImageInput ? (
-                <button
-                  className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-700 transition-colors"
-                  onClick={() => setDraftFamily(prev => prev ? { ...prev, showImageInput: true } : null)}
-                  data-testid="button-add-image-link"
-                >
+                <button className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-700 transition-colors" onClick={() => setDraftFamily(prev => prev ? { ...prev, showImageInput: true } : null)} data-testid="button-add-image-link">
                   <ImageIcon className="w-3 h-3" />Add image link
                 </button>
               ) : (
-                <input
-                  autoFocus
-                  value={draftFamily.imageUrl}
-                  onChange={e => setDraftFamily(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
-                  placeholder="https://… (image URL)"
-                  className="w-full text-xs bg-white border border-brand-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  data-testid="input-draft-family-image"
-                />
+                <input autoFocus value={draftFamily.imageUrl} onChange={e => setDraftFamily(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
+                  placeholder="https://… (image URL)" className="w-full text-xs bg-white border border-brand-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid="input-draft-family-image" />
               )}
             </div>
             <div className="flex gap-2 shrink-0 mt-0.5">
-              <Button
-                size="sm"
-                className="bg-brand-700 hover:bg-brand-800 text-white h-7 text-xs gap-1"
-                onClick={handleConfirmDraftFamily}
-                disabled={!draftFamily.name.trim()}
-                data-testid="button-confirm-draft-family"
-              >
+              <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white h-7 text-xs gap-1" onClick={handleConfirmDraftFamily} disabled={!draftFamily.name.trim()} data-testid="button-confirm-draft-family">
                 <Check className="w-3 h-3" />Confirm
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-slate-500 hover:text-slate-800"
-                onClick={() => setDraftFamily(null)}
-                data-testid="button-cancel-draft-family"
-              >
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-500 hover:text-slate-800" onClick={() => setDraftFamily(null)} data-testid="button-cancel-draft-family">
                 <XIcon className="w-3 h-3 mr-1" />Cancel
               </Button>
             </div>
@@ -1145,22 +911,10 @@ export default function CategoryDetail() {
         <div className="text-center py-16 text-slate-500 bg-white border border-slate-200 rounded-xl">
           <Package className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           {hasActiveFilters ? (
-            <>
-              <p className="text-base font-semibold text-slate-900">No items match your search</p>
-              <p className="text-sm mt-1">Try different keywords or clear the filters.</p>
-            </>
+            <><p className="text-base font-semibold text-slate-900">No items match your search</p><p className="text-sm mt-1">Try different keywords or clear the filters.</p></>
           ) : (
-            <>
-              <p className="text-base font-semibold text-slate-900">No items in this category</p>
-              <p className="text-sm mt-1">
-                <button
-                  onClick={() => setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false })}
-                  className="text-brand-600 hover:underline"
-                >
-                  Create the first family
-                </button>
-              </p>
-            </>
+            <><p className="text-base font-semibold text-slate-900">No items in this category</p>
+              <p className="text-sm mt-1"><button onClick={() => setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false })} className="text-brand-600 hover:underline">Create the first family</button></p></>
           )}
         </div>
       ) : (
@@ -1168,30 +922,26 @@ export default function CategoryDetail() {
           {displayGroups.map((group) => {
             const groupLowStock = group.items.filter(i => i.status === "low_stock").length;
             const groupOutOfStock = group.items.filter(i => i.status === "out_of_stock").length;
-            const hasInlineRow = inlineAddFamilies.has(group.baseItemName);
-            const rowKey = `inline-${group.baseItemName}-${inlineRowVersions[group.baseItemName] || 0}`;
             const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
             const isEditingThis = inlineEditFamily === group.baseItemName;
+            const sortDir = familySortDir[group.baseItemName] ?? "asc";
+            const sortedItems = sortItems(group.items, sortDir);
+
+            // Collect all SKUs for duplicate check in new rows (existing + other new rows within this session)
+            const skusForNewRowCheck = new Set(allSkus);
+            editNewRows.forEach(r => { if (r.sku.trim()) skusForNewRowCheck.add(r.sku.trim().toUpperCase()); });
 
             return (
               <div
                 key={group.baseItemName}
-                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${
-                  isDraftConfirmed ? "border-brand-300 border-2" :
-                  isEditingThis ? "border-amber-300 border-2" :
-                  "border-slate-200"
-                }`}
+                className={`bg-white border rounded-xl overflow-hidden shadow-sm ${isDraftConfirmed ? "border-brand-300 border-2" : isEditingThis ? "border-amber-300 border-2" : "border-slate-200"}`}
                 data-testid={`family-card-${group.baseItemName.replace(/\s+/g, "-")}`}
               >
-                {/* Family header */}
+                {/* Family card header */}
                 <div className={`flex items-center justify-between px-5 border-b min-h-[60px] ${isEditingThis ? "bg-amber-50/60 border-amber-200" : "border-slate-200 bg-slate-50/80"}`}>
                   <div className="flex items-center gap-3 py-3 flex-1 min-w-0">
                     <div className="w-11 h-11 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                      {group.representativeImage ? (
-                        <img src={group.representativeImage} alt={group.baseItemName} className="w-full h-full object-cover" />
-                      ) : (
-                        <Package className="w-5 h-5 text-slate-300" />
-                      )}
+                      {group.representativeImage ? <img src={group.representativeImage} alt={group.baseItemName} className="w-full h-full object-cover" /> : <Package className="w-5 h-5 text-slate-300" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-slate-900 text-sm leading-snug truncate">{group.baseItemName}</h3>
@@ -1202,72 +952,44 @@ export default function CategoryDetail() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Header buttons */}
                   <div className="flex items-center gap-2 shrink-0 pl-3">
                     {!isEditingThis && (
                       <>
                         {groupOutOfStock > 0 && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
                             <XCircle className="w-3 h-3" />{groupOutOfStock} out of stock
                           </span>
                         )}
                         {groupLowStock > 0 && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 whitespace-nowrap">
                             <AlertTriangle className="w-3 h-3" />{groupLowStock} low
                           </span>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 gap-1"
-                          onClick={() => setEditingGroup(group)}
-                          data-testid={`button-family-settings-${group.baseItemName.replace(/\s+/g, "-")}`}
-                          title="Family settings (rename, move, delete items)"
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 gap-1"
+                          onClick={() => setEditingGroup(group)} data-testid={`button-family-settings-${group.baseItemName.replace(/\s+/g, "-")}`} title="Family settings">
                           <Pencil className="w-3 h-3" />Settings
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 gap-1"
-                          onClick={() => enterInlineEdit(group)}
-                          disabled={!!inlineEditFamily}
-                          data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}
-                        >
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 gap-1"
+                          onClick={() => enterInlineEdit(group)} disabled={!!inlineEditFamily} data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}>
                           <Pencil className="w-3 h-3" />Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-200 gap-1"
-                          onClick={() => openInlineAdd(group.baseItemName)}
-                          disabled={hasInlineRow || !!inlineEditFamily}
-                          data-testid={`button-add-item-${group.baseItemName.replace(/\s+/g, "-")}`}
-                        >
-                          <Plus className="w-3 h-3" />Add
                         </Button>
                       </>
                     )}
                     {isEditingThis && (
                       <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-3 text-xs text-slate-600 hover:bg-slate-100"
-                          onClick={cancelInlineEdit}
-                          disabled={savingInline}
-                          data-testid={`button-cancel-edit-${group.baseItemName.replace(/\s+/g, "-")}`}
-                        >
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-brand-600 border-brand-200 hover:bg-brand-50 gap-1"
+                          onClick={addNewRow} disabled={savingInline} data-testid={`button-add-row-${group.baseItemName.replace(/\s+/g, "-")}`}>
+                          <Plus className="w-3 h-3" />Add Row
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 px-3 text-xs text-slate-600 hover:bg-slate-100"
+                          onClick={cancelInlineEdit} disabled={savingInline} data-testid={`button-cancel-edit-${group.baseItemName.replace(/\s+/g, "-")}`}>
                           <XIcon className="w-3 h-3 mr-1" />Cancel
                         </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs bg-brand-700 hover:bg-brand-800 gap-1"
-                          onClick={() => saveInlineEdits(group)}
-                          disabled={savingInline}
-                          data-testid={`button-save-edit-${group.baseItemName.replace(/\s+/g, "-")}`}
-                        >
-                          <Save className="w-3 h-3" />
-                          {savingInline ? "Saving…" : "Save Changes"}
+                        <Button size="sm" className="h-7 px-3 text-xs bg-brand-700 hover:bg-brand-800 gap-1"
+                          onClick={() => saveInlineEdits(group)} disabled={savingInline} data-testid={`button-save-edit-${group.baseItemName.replace(/\s+/g, "-")}`}>
+                          <Save className="w-3 h-3" />{savingInline ? "Saving…" : "Save Changes"}
                         </Button>
                       </>
                     )}
@@ -1291,7 +1013,19 @@ export default function CategoryDetail() {
                       <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5">SKU</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Photo</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Size</TableHead>
+                        <TableHead className="py-2">
+                          <button
+                            onClick={() => toggleFamilySort(group.baseItemName)}
+                            className="flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors group"
+                            title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
+                            data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
+                          >
+                            Size
+                            {sortDir === "asc"
+                              ? <ArrowUp className="w-3 h-3 text-brand-500" />
+                              : <ArrowDown className="w-3 h-3 text-brand-500" />}
+                          </button>
+                        </TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item Name</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Unit</TableHead>
@@ -1302,52 +1036,24 @@ export default function CategoryDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {hasInlineRow && (
-                        <InlineAddRow
-                          key={rowKey}
-                          familyName={group.baseItemName}
-                          categoryId={data.category.id}
-                          existingSkus={allSkus}
-                          locations={locations}
-                          onSaved={() => {
-                            handleInlineSaved(group.baseItemName, false);
-                            if (isDraftConfirmed && draftFamily?.imageUrl) {
-                              handleSaveDraftFamilyImage(group.baseItemName, draftFamily.imageUrl);
-                            }
-                          }}
-                          onSaveNext={() => handleInlineSaved(group.baseItemName, true)}
-                          onCancel={() => handleInlineCancel(group.baseItemName)}
-                        />
-                      )}
-                      {group.items.map((item) => {
+                      {/* Existing items (sorted) */}
+                      {sortedItems.map(item => {
                         if (isEditingThis && editDrafts[item.id]) {
                           if (editDrafts[item.id]._deleted) return null;
                           return (
-                            <InlineEditRow
-                              key={item.id}
-                              item={item}
-                              draft={editDrafts[item.id]}
-                              locations={locations || []}
-                              onChange={(patch) => updateDraft(item.id, patch)}
-                              onDelete={() => deleteRow(item.id)}
-                            />
+                            <InlineEditRow key={item.id} item={item} draft={editDrafts[item.id]}
+                              locations={locations || []} onChange={patch => updateDraft(item.id, patch)} onDelete={() => deleteRow(item.id)} />
                           );
                         }
                         return (
-                          <TableRow
-                            key={item.id}
+                          <TableRow key={item.id}
                             className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
-                            data-testid={`row-item-${item.id}`}
-                          >
+                            data-testid={`row-item-${item.id}`}>
                             <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
                             <TableCell className="py-2.5">
                               {item.imageUrl ? (
-                                <img
-                                  src={item.imageUrl}
-                                  alt=""
-                                  className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
-                                  onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }}
-                                />
+                                <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover rounded border border-slate-200 mx-auto block"
+                                  onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
                               ) : null}
                               <div className={`w-8 h-8 rounded border border-slate-100 bg-slate-50 flex items-center justify-center mx-auto ${item.imageUrl ? "hidden" : ""}`}>
                                 <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
@@ -1355,9 +1061,7 @@ export default function CategoryDetail() {
                             </TableCell>
                             <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
                             <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
-                              <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>
-                                {item.name}
-                              </Link>
+                              <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
                             <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
                             <TableCell className="text-slate-500 text-sm py-2.5">{item.unitOfMeasure}</TableCell>
@@ -1366,17 +1070,28 @@ export default function CategoryDetail() {
                           </TableRow>
                         );
                       })}
-                      {group.items.length === 0 && !hasInlineRow && (
+
+                      {/* New blank rows (only in Edit Mode) */}
+                      {isEditingThis && editNewRows.map(row => (
+                        <InlineNewRow
+                          key={row.tmpId}
+                          draft={row}
+                          familyName={group.baseItemName}
+                          existingSkus={skusForNewRowCheck}
+                          locations={locations || []}
+                          onChange={patch => updateNewRow(row.tmpId, patch)}
+                          onRemove={() => removeNewRow(row.tmpId)}
+                        />
+                      ))}
+
+                      {/* Empty state */}
+                      {group.items.length === 0 && !(isEditingThis && editNewRows.length > 0) && (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">
-                            No items yet.{" "}
-                            <button
-                              className="text-brand-600 hover:underline"
-                              onClick={() => openInlineAdd(group.baseItemName)}
-                              data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}
-                            >
-                              Click Add to create the first item.
-                            </button>
+                            {isEditingThis
+                              ? <span>Click <strong>Add Row</strong> above to add items to this family.</span>
+                              : <span>No items yet. <button className="text-brand-600 hover:underline" onClick={() => enterInlineEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>Click Edit to add items.</button></span>
+                            }
                           </TableCell>
                         </TableRow>
                       )}
@@ -1389,14 +1104,9 @@ export default function CategoryDetail() {
         </div>
       )}
 
+      {/* Family Settings dialog */}
       {editingGroup && (
-        <FamilyEditDialog
-          open={!!editingGroup}
-          onClose={() => setEditingGroup(null)}
-          categoryId={data.category.id}
-          group={editingGroup}
-          allFamilies={existingFamilies}
-        />
+        <FamilyEditDialog open={!!editingGroup} onClose={() => setEditingGroup(null)} categoryId={data.category.id} group={editingGroup} allFamilies={existingFamilies} />
       )}
     </div>
   );

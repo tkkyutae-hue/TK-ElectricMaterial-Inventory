@@ -1,0 +1,110 @@
+Refine the family/subcategory card actions and add size-based sorting/filtering.
+
+Do not redesign the whole page.
+Keep current look and table layout.
+Make the workflow faster and cleaner.
+
+====================================================
+
+1. REMOVE "ADD" BUTTON AND MERGE INTO EDIT MODE
+   ====================================================
+
+Current:
+Family card header has separate buttons: Settings / Edit / Add.
+
+Change:
+
+* Remove the standalone "+ Add" button from the family card header.
+* Keep only:
+
+  * Settings (optional)
+  * Edit (single primary action)
+
+New behavior:
+When user clicks "Edit":
+
+* the family card enters Edit Mode
+* In Edit Mode, user can BOTH:
+  A) edit existing rows inline
+  B) add new rows/items to this family
+
+In Edit Mode header controls should become:
+
+* "Add Row" (or "Add Item") button (visible only in Edit Mode)
+* "Save Changes"
+* "Cancel"
+
+Important:
+
+* Do not open a new modal window.
+* Adding rows should happen inline at the bottom of the table.
+
+====================================================
+2) INLINE ADD ROW (IN EDIT MODE)
+================================
+
+In Edit Mode:
+
+* show an "Add Row" button in the card header (right side) OR as a row at the bottom.
+* Clicking it inserts a new blank row with editable fields:
+
+  * SKU (optional if auto-generated; otherwise editable)
+  * Photo (optional)
+  * Size (editable)
+  * Item Name (editable)
+  * Qty (default 0)
+  * Unit (required)
+  * Location (required)
+  * Status auto-calculated (or defaults to In Stock if qty > 0)
+
+Allow multiple new rows before saving.
+On Save:
+
+* persist new items to DB
+* refresh the table
+
+====================================================
+3) SIZE ORDER: DEFAULT SMALL -> LARGE
+=====================================
+
+Current issue:
+Rows are not consistently ordered by size.
+
+Requirements:
+
+* Default sorting for each family table should be by Size ascending (smallest at top, largest at bottom).
+* This sorting must be stable and consistent.
+
+Implement a robust size parser so these sort correctly:
+
+* 1/2", 3/4", 1", 1-1/4", 1-1/2", 2", 3", 4", 6"
+* Also support other formats used in the app (e.g., #10, 12/2C, 18" x 12", etc.) without breaking.
+  If size cannot be parsed numerically, fall back to alphabetical at the end.
+
+====================================================
+4) ADD SIZE FILTER / SORT CONTROL NEXT TO SIZE
+==============================================
+
+Add a small control near the Size column (header area) that allows:
+
+* Sort: Asc (small->large) / Desc (large->small)
+* Optional quick filter: show only selected sizes (multi-select) if practical
+
+Keep UI minimal:
+
+* default is Asc
+* user can toggle to Desc easily
+
+This should apply within the current family table, not global page.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement end-to-end and explain:
+
+* where the "+ Add" button was removed
+* how Edit mode now supports both edit + add
+* how Add Row works and saves to DB
+* how size parsing/sorting works
+* how the Size sort/filter control works

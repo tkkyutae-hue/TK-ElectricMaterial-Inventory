@@ -87,16 +87,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">
       {/* Brand block */}
-      <Link href="/" className="p-5 flex items-center gap-3 border-b border-border hover:bg-brand-50 transition-colors">
+      <Link href="/" className="px-5 py-4 flex items-center gap-3 border-b border-border hover:bg-brand-50 transition-colors">
         <img
           src={tkLogo}
           alt="TK Electric"
-          className="h-8 w-auto object-contain flex-shrink-0"
+          className="h-11 w-auto object-contain flex-shrink-0"
           style={{ imageRendering: "crisp-edges" }}
         />
         <div className="min-w-0">
-          <span className="font-display font-bold text-lg tracking-tight text-slate-900 leading-none block">TK Electric</span>
-          <p className="text-[11px] text-muted-foreground leading-none mt-1">Inventory Management</p>
+          <span className="font-display font-bold text-xl tracking-tight text-slate-900 leading-none block">TK Electric</span>
+          <p className="text-[11px] text-muted-foreground leading-none mt-1.5">Inventory Management</p>
         </div>
       </Link>
 

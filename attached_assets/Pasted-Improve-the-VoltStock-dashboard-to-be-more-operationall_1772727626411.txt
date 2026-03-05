@@ -1,0 +1,130 @@
+Improve the VoltStock dashboard to be more operationally focused and adjust TK Electric branding. Keep the current overall layout and green-white theme, but refine hierarchy, contrast, and branding.
+
+Do not redesign the whole app from scratch.
+Make targeted changes that improve usability and readability.
+
+====================================================
+
+1. TK ELECTRIC LOGO: MAKE IT LARGER + CLEANER IN SIDEBAR
+   ====================================================
+
+Current issue:
+The TK logo in the top-left branding area is too small.
+
+Requirements:
+
+* Increase logo size so it is clearly visible and feels like real company branding.
+* Target logo height: ~40–48px (desktop)
+* Keep aspect ratio (no stretching)
+* Keep it crisp (no blur)
+* Align logo + “TK Electric” text vertically centered
+
+Layout suggestion:
+[ Larger Logo ]  TK Electric
+Inventory Management
+
+Also:
+
+* Increase brand block padding slightly so it doesn’t feel cramped
+* Make the company name slightly larger/bolder than before
+
+====================================================
+2) DASHBOARD: IMPROVE OPERATIONAL HIERARCHY (PROBLEM FIRST)
+===========================================================
+
+The dashboard should prioritize operational problems first (out/low/pending), then trends, then navigation.
+
+### A) KPI card priority reorder
+
+Reorder the KPI cards so they appear in this order:
+
+1. Out of Stock
+2. Low Stock
+3. Pending Reorders
+4. Active SKUs
+5. Inventory Value
+
+Make problem KPIs visually stronger:
+
+* Out of Stock: stronger red emphasis (still clean)
+* Low Stock: amber emphasis
+* Pending Reorders: subtle green/neutral emphasis
+* The remaining two can be more neutral
+
+### B) Reduce “flat” feeling & improve contrast
+
+The overall page background looks slightly too green and reduces contrast.
+Adjust the page background to be closer to white:
+
+* Use a very light off-white background (almost white)
+* Keep green as an accent (buttons, active nav, small highlights)
+* Cards remain white with subtle border
+
+====================================================
+3) ACTION REQUIRED: INCREASE VISIBILITY
+=======================================
+
+Action Required is important but currently feels small.
+
+Requirements:
+
+* Make the Action Required card more prominent:
+
+  * slightly larger header
+  * clearer list items
+  * ensure it visually stands out as “needs action”
+* Keep it on the right column area, but increase its weight vs other cards.
+* Each item should be clickable to open the relevant item detail or reorder view.
+
+====================================================
+4) CHART AREA: MAKE IT MORE PRACTICAL
+=====================================
+
+The Inventory Value line looks flat and not very informative.
+
+Add light controls above the chart:
+
+* Time range toggle: 30D / 90D / 12M
+* Metric toggle: Value / Transactions / Low+Out count (or similar)
+
+Defaults:
+
+* Time range: 90D
+* Metric: Value
+
+Keep styling minimal and consistent with theme.
+
+====================================================
+5) CATEGORY STATUS: SLIGHTLY MORE READABLE
+==========================================
+
+Category status cards are good but can be slightly improved:
+
+* Increase card size slightly (10–15%)
+* Make category names slightly more readable
+* Keep the “problem dot” indicators clear (red/orange) for categories that have issues
+* Ensure card spacing is consistent
+
+====================================================
+6) RECENT TRANSACTIONS: MORE COMPACT
+====================================
+
+Recent Transactions box can be more compact:
+
+* show last 5 transactions
+* if fewer than 5, reduce empty space (auto height)
+* keep “View All” visible but not too prominent
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement these changes.
+
+At the end, explain:
+
+* which components/files were updated
+* what the new logo sizing is (CSS or component props)
+* new KPI order and why
+* what background/contrast changes were made
+* what changed in Action Required, Chart controls, Category cards, and Recent Transactions

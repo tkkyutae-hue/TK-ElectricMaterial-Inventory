@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import {
@@ -6,7 +7,7 @@ import {
   ChevronRight, XCircle, CheckCircle2, Activity, TrendingUp
 } from "lucide-react";
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
 import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
@@ -40,10 +41,21 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "GT": "from-teal-600 to-teal-900",
 };
 
+type TimeRange = "30D" | "90D" | "12M";
+
 function MonthlyTrendChart() {
+  const [timeRange, setTimeRange] = useState<TimeRange>("90D");
+
   const { data: trend, isLoading } = useQuery<Array<{ label: string; value: number }>>({
     queryKey: ["/api/dashboard/monthly-trend"],
   });
+
+  const filteredData = (() => {
+    if (!trend?.length) return [];
+    if (timeRange === "12M") return trend;
+    if (timeRange === "90D") return trend.slice(-3);
+    return trend.slice(-1);
+  })();
 
   const formatDollar = (v: number) => `$${(v / 1000).toFixed(0)}k`;
 
@@ -52,9 +64,7 @@ function MonthlyTrendChart() {
     return (
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-lg text-sm">
         <p className="font-semibold text-slate-500 mb-0.5">{label}</p>
-        <p className="font-bold text-brand-600 text-base">
-          ${payload[0].value.toLocaleString()}
-        </p>
+        <p className="font-bold text-brand-600 text-base">${payload[0].value.toLocaleString()}</p>
       </div>
     );
   };
@@ -64,29 +74,42 @@ function MonthlyTrendChart() {
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-brand-600" />
-          <h2 className="text-base font-semibold text-slate-900">Inventory Value — Last 12 Months</h2>
+          <h2 className="text-base font-semibold text-slate-900">Inventory Value Trend</h2>
         </div>
-        {trend && trend.length > 0 && (
-          <div className="text-xs text-slate-400">
-            {trend[0]?.label} → {trend[trend.length - 1]?.label}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5" data-testid="chart-time-toggle">
+            {(["30D", "90D", "12M"] as TimeRange[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setTimeRange(r)}
+                data-testid={`btn-range-${r}`}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  timeRange === r
+                    ? "bg-white text-brand-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
       <div className="p-5">
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
             <div className="w-full h-32 bg-slate-100 rounded-lg animate-pulse" />
           </div>
-        ) : !trend?.length ? (
+        ) : !filteredData.length ? (
           <div className="h-32 flex items-center justify-center text-sm text-slate-400">
             No historical data available
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={trend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={190}>
+            <AreaChart data={filteredData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#08B028" stopOpacity={0.12} />
+                  <stop offset="5%" stopColor="#08B028" stopOpacity={0.14} />
                   <stop offset="95%" stopColor="#08B028" stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -123,12 +146,26 @@ function MonthlyTrendChart() {
   );
 }
 
-function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href }: {
+function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href, emphasis }: {
   title: string; value: string | number; icon: any;
   colorClass: string; bgClass: string; subtext?: string; href?: string;
+  emphasis?: "danger" | "warning" | "neutral";
 }) {
+  const borderClass =
+    emphasis === "danger"  ? "border-red-200 hover:border-red-300" :
+    emphasis === "warning" ? "border-amber-200 hover:border-amber-300" :
+    "border-slate-200 hover:border-slate-300";
+
+  const valueCls =
+    emphasis === "danger"  ? "text-red-700" :
+    emphasis === "warning" ? "text-amber-700" :
+    "text-slate-900";
+
   const inner = (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow" data-testid={`kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div
+      className={`bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all ${borderClass}`}
+      data-testid={`kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-lg ${bgClass}`}>
           <Icon className={`w-5 h-5 ${colorClass}`} />
@@ -136,7 +173,7 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href 
         {href && <ChevronRight className="w-4 h-4 text-slate-300 mt-1" />}
       </div>
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{title}</p>
-      <p className="text-2xl font-display font-bold text-slate-900">{value}</p>
+      <p className={`text-2xl font-display font-bold ${valueCls}`}>{value}</p>
       {subtext && <p className="text-xs text-slate-400 mt-1">{subtext}</p>}
     </div>
   );
@@ -155,7 +192,11 @@ export default function Dashboard() {
     queryKey: ["/api/reports/low-stock"],
   });
 
-  const totalValue = stats ? parseFloat(stats.totalValue || "0").toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }) : "$0";
+  const totalValue = stats
+    ? parseFloat(stats.totalValue || "0").toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    : "$0";
+
+  const hasActionItems = (stats?.outOfStockCount ?? 0) > 0 || (stats?.lowStockCount ?? 0) > 0;
 
   return (
     <div className="space-y-6 pb-12">
@@ -170,7 +211,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI cards — problem-first order */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[1,2,3,4,5].map(i => <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />)}
@@ -178,12 +219,33 @@ export default function Dashboard() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
-            title="Inventory Value"
-            value={totalValue}
-            icon={DollarSign}
-            colorClass="text-brand-600"
-            bgClass="bg-brand-50"
-            subtext={`${stats?.totalSkus || 0} active SKUs`}
+            title="Out of Stock"
+            value={stats?.outOfStockCount || 0}
+            icon={AlertCircle}
+            colorClass="text-red-600"
+            bgClass="bg-red-50"
+            subtext="Immediate action needed"
+            href="/reorder"
+            emphasis="danger"
+          />
+          <KpiCard
+            title="Low Stock"
+            value={stats?.lowStockCount || 0}
+            icon={AlertTriangle}
+            colorClass="text-amber-600"
+            bgClass="bg-amber-50"
+            subtext="Below reorder point"
+            href="/reorder"
+            emphasis="warning"
+          />
+          <KpiCard
+            title="Pending Reorders"
+            value={stats?.pendingReorderCount || 0}
+            icon={ShoppingCart}
+            colorClass="text-slate-600"
+            bgClass="bg-slate-100"
+            subtext="Awaiting order"
+            href="/reorder"
           />
           <KpiCard
             title="Active SKUs"
@@ -195,39 +257,20 @@ export default function Dashboard() {
             href="/inventory"
           />
           <KpiCard
-            title="Low Stock"
-            value={stats?.lowStockCount || 0}
-            icon={AlertTriangle}
-            colorClass="text-amber-500"
-            bgClass="bg-amber-50"
-            subtext="Below reorder point"
-            href="/reorder"
-          />
-          <KpiCard
-            title="Out of Stock"
-            value={stats?.outOfStockCount || 0}
-            icon={AlertCircle}
-            colorClass="text-red-500"
-            bgClass="bg-red-50"
-            subtext="Immediate action needed"
-            href="/reorder"
-          />
-          <KpiCard
-            title="Pending Reorders"
-            value={stats?.pendingReorderCount || 0}
-            icon={ShoppingCart}
-            colorClass="text-violet-600"
-            bgClass="bg-violet-50"
-            subtext="Awaiting order"
-            href="/reorder"
+            title="Inventory Value"
+            value={totalValue}
+            icon={DollarSign}
+            colorClass="text-brand-600"
+            bgClass="bg-brand-50"
+            subtext={`${stats?.totalSkus || 0} active SKUs`}
           />
         </div>
       )}
 
-      {/* Monthly inventory value chart */}
+      {/* Trend chart */}
       <MonthlyTrendChart />
 
-      {/* Categories quicklinks */}
+      {/* Category status */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
@@ -241,7 +284,7 @@ export default function Dashboard() {
 
         {!categories ? (
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
-            {[1,2,3,4,5,6,7,8,9].map(i => <div key={i} className="h-24 bg-slate-100 rounded-lg animate-pulse" />)}
+            {[1,2,3,4,5,6,7,8,9].map(i => <div key={i} className="h-28 bg-slate-100 rounded-lg animate-pulse" />)}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
@@ -250,10 +293,16 @@ export default function Dashboard() {
               const hasIssue = cat.outOfStockCount > 0 || cat.lowStockCount > 0;
               return (
                 <Link href={`/inventory/category/${cat.id}`} key={cat.id}>
-                  <div className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-brand-300 transition-all hover:shadow-md" data-testid={`card-category-dash-${cat.id}`}>
-                    <div className="relative h-20">
+                  <div
+                    className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-brand-300 transition-all hover:shadow-md"
+                    data-testid={`card-category-dash-${cat.id}`}
+                  >
+                    <div className="relative h-24">
                       {cat.imageUrl ? (
-                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        <img
+                          src={cat.imageUrl}
+                          alt={cat.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
                             const t = e.currentTarget;
                             t.style.display = "none";
@@ -264,16 +313,16 @@ export default function Dashboard() {
                       <div className={`${cat.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradient}`} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       {hasIssue && (
-                        <div className="absolute top-1 right-1">
+                        <div className="absolute top-1.5 right-1.5">
                           {cat.outOfStockCount > 0
-                            ? <span className="w-4 h-4 bg-red-500 rounded-full block border border-white" />
-                            : <span className="w-4 h-4 bg-amber-400 rounded-full block border border-white" />}
+                            ? <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-white shadow" />
+                            : <span className="w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center border border-white shadow" />}
                         </div>
                       )}
                     </div>
-                    <div className="p-1.5 bg-white">
-                      <p className="text-[10px] font-semibold text-slate-700 truncate leading-tight">{cat.name}</p>
-                      <p className="text-[10px] text-slate-400">{cat.skuCount} SKUs</p>
+                    <div className="px-2 py-2 bg-white">
+                      <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">{cat.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{cat.skuCount} SKUs</p>
                     </div>
                   </div>
                 </Link>
@@ -290,42 +339,46 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h3 className="text-base font-semibold text-slate-900">Recent Transactions</h3>
-            <Link href="/transactions" className="text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors">View All →</Link>
+            <Link href="/transactions" className="text-xs font-medium text-slate-400 hover:text-brand-600 transition-colors">View All →</Link>
           </div>
           <div className="divide-y divide-slate-50">
             {isLoading ? (
               [1,2,3,4,5].map(i => (
-                <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 animate-pulse flex-shrink-0" />
+                <div key={i} className="flex items-center gap-4 px-5 py-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 animate-pulse flex-shrink-0" />
                   <div className="flex-1 space-y-1.5">
-                    <div className="h-3.5 bg-slate-100 rounded w-48 animate-pulse" />
-                    <div className="h-3 bg-slate-100 rounded w-32 animate-pulse" />
+                    <div className="h-3 bg-slate-100 rounded w-44 animate-pulse" />
+                    <div className="h-3 bg-slate-100 rounded w-28 animate-pulse" />
                   </div>
-                  <div className="h-3.5 w-20 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-slate-100 rounded animate-pulse" />
                 </div>
               ))
             ) : stats?.recentActivity?.length === 0 ? (
-              <div className="text-center py-10 text-slate-500">
+              <div className="text-center py-8 text-slate-400">
                 <p className="text-sm">No transactions recorded yet.</p>
               </div>
             ) : (
-              stats?.recentActivity?.slice(0, 6).map((tx: any) => {
-                const isIn = tx.movementType === 'receive' || tx.movementType === 'return';
+              stats?.recentActivity?.slice(0, 5).map((tx: any) => {
+                const isIn = tx.movementType === "receive" || tx.movementType === "return";
                 return (
-                  <div key={tx.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/60 transition-colors" data-testid={`row-tx-${tx.id}`}>
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/60 transition-colors"
+                    data-testid={`row-tx-${tx.id}`}
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600'}`}>
+                      <div className={`p-1.5 rounded-lg flex-shrink-0 ${isIn ? "bg-emerald-50 text-emerald-600" : "bg-brand-50 text-brand-600"}`}>
                         {isIn ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 leading-tight">{tx.item?.name || 'Unknown'}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{format(new Date(tx.createdAt), 'MMM d, h:mm a')}</p>
+                        <p className="text-sm font-semibold text-slate-900 leading-tight">{tx.item?.name || "Unknown"}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{format(new Date(tx.createdAt), "MMM d, h:mm a")}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <TransactionTypeBadge type={tx.movementType} />
-                      <span className={`text-sm font-bold tabular-nums ${isIn ? 'text-emerald-600' : 'text-brand-600'}`}>
-                        {isIn ? '+' : '-'}{tx.quantity}
+                      <span className={`text-sm font-bold tabular-nums ${isIn ? "text-emerald-600" : "text-brand-600"}`}>
+                        {isIn ? "+" : "-"}{tx.quantity}
                         <span className="text-xs font-normal text-slate-400 ml-1">{tx.item?.unitOfMeasure}</span>
                       </span>
                     </div>
@@ -338,36 +391,43 @@ export default function Dashboard() {
 
         {/* Action Required — 1 col */}
         <div className="space-y-4">
-          {/* Out of stock alert */}
-          {(stats?.outOfStockCount > 0 || stats?.lowStockCount > 0) ? (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-semibold text-slate-900">Action Required</h3>
-                <Link href="/reorder" className="ml-auto text-xs font-medium text-brand-600 hover:text-brand-700">Reorder →</Link>
+          {hasActionItems ? (
+            <div className="bg-white border-2 border-red-200 rounded-xl shadow-sm overflow-hidden" data-testid="card-action-required">
+              <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <h3 className="text-base font-bold text-red-900">Action Required</h3>
+                <Link href="/reorder" className="ml-auto text-xs font-semibold text-red-600 hover:text-red-700 whitespace-nowrap">
+                  Reorder →
+                </Link>
               </div>
-              <div className="p-4 space-y-2.5">
-                {lowStockReport?.outOfStock?.slice(0, 3).map((item: any) => (
+              <div className="p-4 space-y-2">
+                {lowStockReport?.outOfStock?.slice(0, 4).map((item: any) => (
                   <Link href={`/inventory/${item.id}`} key={item.id}>
-                    <div className="flex items-start justify-between p-3 bg-red-50 border border-red-100 rounded-lg hover:border-red-200 transition-colors cursor-pointer" data-testid={`alert-out-${item.id}`}>
+                    <div
+                      className="flex items-start justify-between p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer"
+                      data-testid={`alert-out-${item.id}`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-mono text-red-400">{item.sku}</p>
-                        <p className="text-sm font-semibold text-red-900 truncate">{item.name}</p>
-                        <p className="text-xs text-red-600 mt-0.5">Out of Stock</p>
+                        <p className="text-[10px] font-mono text-red-400 uppercase tracking-wide">{item.sku}</p>
+                        <p className="text-sm font-bold text-red-900 truncate leading-tight mt-0.5">{item.name}</p>
+                        <p className="text-xs text-red-600 mt-0.5 font-medium">Out of Stock</p>
                       </div>
-                      <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5 ml-2" />
+                      <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-1 ml-2" />
                     </div>
                   </Link>
                 ))}
                 {lowStockReport?.lowStock?.slice(0, 4).map((item: any) => (
                   <Link href={`/inventory/${item.id}`} key={item.id}>
-                    <div className="flex items-start justify-between p-3 bg-amber-50 border border-amber-100 rounded-lg hover:border-amber-200 transition-colors cursor-pointer" data-testid={`alert-low-${item.id}`}>
+                    <div
+                      className="flex items-start justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 hover:border-amber-300 transition-colors cursor-pointer"
+                      data-testid={`alert-low-${item.id}`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-mono text-amber-500">{item.sku}</p>
-                        <p className="text-sm font-semibold text-amber-900 truncate">{item.name}</p>
-                        <p className="text-xs text-amber-700 mt-0.5">{item.quantityOnHand} {item.unitOfMeasure} left · Reorder at {item.reorderPoint}</p>
+                        <p className="text-[10px] font-mono text-amber-500 uppercase tracking-wide">{item.sku}</p>
+                        <p className="text-sm font-bold text-amber-900 truncate leading-tight mt-0.5">{item.name}</p>
+                        <p className="text-xs text-amber-700 mt-0.5">{item.quantityOnHand} {item.unitOfMeasure} · reorder at {item.reorderPoint}</p>
                       </div>
-                      <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5 ml-2" />
+                      <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-1 ml-2" />
                     </div>
                   </Link>
                 ))}
@@ -377,13 +437,13 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-sm font-semibold text-slate-900">Stock Health</h3>
+                <h3 className="text-sm font-bold text-slate-900">All Systems Clear</h3>
               </div>
               <p className="text-sm text-slate-500">All items are within normal stock levels. No immediate action required.</p>
             </div>
           )}
 
-          {/* Low Stock table */}
+          {/* Stock Summary mini card */}
           {lowStockReport && (lowStockReport.outOfStock.length + lowStockReport.lowStock.length) > 0 && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
@@ -401,16 +461,24 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-600">Healthy</span>
-                  <span className="font-bold text-emerald-600">{(stats?.totalSkus || 0) - lowStockReport.outOfStock.length - lowStockReport.lowStock.length}</span>
+                  <span className="font-bold text-emerald-600">
+                    {(stats?.totalSkus || 0) - lowStockReport.outOfStock.length - lowStockReport.lowStock.length}
+                  </span>
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-100">
-                  <div className="flex gap-1 h-2 rounded-full overflow-hidden">
-                    <div className="bg-red-400 rounded-l-full" style={{ width: `${(lowStockReport.outOfStock.length / (stats?.totalSkus || 1)) * 100}%` }} />
-                    <div className="bg-amber-400" style={{ width: `${(lowStockReport.lowStock.length / (stats?.totalSkus || 1)) * 100}%` }} />
+                  <div className="flex gap-0.5 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-red-400"
+                      style={{ width: `${(lowStockReport.outOfStock.length / (stats?.totalSkus || 1)) * 100}%` }}
+                    />
+                    <div
+                      className="bg-amber-400"
+                      style={{ width: `${(lowStockReport.lowStock.length / (stats?.totalSkus || 1)) * 100}%` }}
+                    />
                     <div className="bg-emerald-400 flex-1 rounded-r-full" />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                    <span>Out of Stock</span>
+                    <span>Out</span>
                     <span>Low</span>
                     <span>Healthy</span>
                   </div>

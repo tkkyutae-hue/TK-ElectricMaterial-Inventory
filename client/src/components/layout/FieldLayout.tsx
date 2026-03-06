@@ -1,64 +1,68 @@
 import { Link } from "wouter";
-import { Home, ChevronLeft } from "lucide-react";
+import { Home, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
+import { HardHat } from "lucide-react";
 
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] flex flex-col font-sans">
-      {/* Top header: Left = branding, Right = nav buttons */}
-      <header className="h-14 bg-white border-b border-[#D9E7DD] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-10 shadow-sm">
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: "#F0F2F5" }}>
+      {/* Top header */}
+      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 flex-shrink-0 shadow-sm">
 
-        {/* Left: TK logo + company name + Field badge */}
-        <div className="flex items-center gap-2.5 min-w-0">
+        {/* Left: logo + company + FIELD pill */}
+        <div className="flex items-center gap-3 min-w-0">
           <img src={tkLogo} alt="TK Electric" className="h-7 w-auto object-contain flex-shrink-0" />
-          <div className="hidden sm:block min-w-0">
-            <span className="font-display font-bold text-sm text-slate-900 leading-none block truncate">TK Electric</span>
-            <span className="text-[10px] text-slate-400 leading-none">VoltStock</span>
+          <div className="hidden sm:block leading-none min-w-0">
+            <span className="font-display font-bold text-sm text-slate-900 block">TK Electric</span>
+            <span className="text-[10px] text-slate-400">VoltStock</span>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#0A6B24] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#D9E7DD] flex-shrink-0">
-            Field
-          </span>
+          {/* FIELD pill — matches mockup */}
+          <div className="flex items-center gap-1.5 bg-[#EAF7EE] border border-[#b6dfc4] text-[#0A6B24] rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide flex-shrink-0">
+            <HardHat className="w-3.5 h-3.5" />
+            <span>Field</span>
+          </div>
         </div>
 
         {/* Right: Back + Home + user avatar */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => window.history.back()}
-            className="gap-1 text-slate-600 hover:text-slate-900 hover:bg-[#EAF7EE] px-2 h-8"
+            className="w-8 h-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             data-testid="btn-field-back"
+            title="Go back"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm font-medium">Back</span>
+            <LogOut className="w-4 h-4 rotate-180" />
           </Button>
 
           <Link href="/home">
             <Button
               variant="ghost"
-              size="sm"
-              className="gap-1 text-slate-600 hover:text-[#0A6B24] hover:bg-[#EAF7EE] px-2 h-8"
+              size="icon"
+              className="w-8 h-8 text-slate-500 hover:text-[#0A6B24] hover:bg-[#EAF7EE]"
               data-testid="btn-field-home"
+              title="Mode Select"
             >
               <Home className="w-4 h-4" />
-              <span className="hidden sm:inline text-sm font-medium">Home</span>
             </Button>
           </Link>
 
-          <div className="w-7 h-7 rounded-full bg-[#EAF7EE] border border-[#D9E7DD] flex items-center justify-center ml-1">
-            <span className="text-xs font-bold text-[#0A6B24]">
+          {/* User avatar */}
+          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center ml-1 flex-shrink-0">
+            <span className="text-xs font-bold text-slate-600">
               {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="max-w-3xl mx-auto">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           {children}
         </div>
       </main>

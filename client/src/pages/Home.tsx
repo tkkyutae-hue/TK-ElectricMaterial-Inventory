@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { HardHat, LayoutDashboard, LogOut } from "lucide-react";
+import { HardHat, Settings, LogOut } from "lucide-react";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export default function Home() {
@@ -11,7 +11,7 @@ export default function Home() {
   const displayName = user?.name ?? user?.firstName ?? user?.email ?? "User";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "#F0F2F5" }}>
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -30,36 +30,45 @@ export default function Home() {
             className="text-slate-500 hover:text-red-600 gap-1.5"
             data-testid="btn-home-logout"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sign Out</span>
           </Button>
         </div>
       </header>
 
       {/* Centered content */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-10">
-        <div className="w-full max-w-3xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 text-center mb-10">
-            Select Your Mode
-          </h1>
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-2xl mx-auto">
 
-          {/* Cards grid */}
-          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-[420px] mx-auto"}`}>
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">Select Your Mode</h1>
+            <p className="text-slate-500 text-sm">Choose the mode that matches your role for this session.</p>
+          </div>
+
+          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-1 sm:grid-cols-2" : "max-w-sm mx-auto"}`}>
 
             {/* ── Field Mode ── */}
             <button
               onClick={() => navigate("/field")}
               data-testid="btn-field-mode"
-              className="group bg-white rounded-3xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-6 cursor-pointer"
-              style={{ minHeight: "280px", padding: "40px 32px" }}
+              className="group rounded-2xl border border-green-100 hover:border-green-300 hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-5 cursor-pointer text-left w-full"
+              style={{
+                background: "linear-gradient(145deg, #e8f5ee 0%, #ffffff 60%)",
+                minHeight: "240px",
+                padding: "40px 32px",
+              }}
             >
+              {/* iOS-style icon badge */}
               <div
-                className="rounded-2xl bg-[#0A6B24] flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg"
-                style={{ width: "80px", height: "80px" }}
+                className="rounded-2xl bg-white flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-200"
+                style={{ width: "72px", height: "72px" }}
               >
-                <HardHat style={{ width: "44px", height: "44px" }} className="text-white" strokeWidth={1.5} />
+                <HardHat style={{ width: "40px", height: "40px", color: "#0A6B24" }} strokeWidth={1.8} />
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Field Mode</h2>
+              <div className="text-center">
+                <h2 className="text-xl font-bold" style={{ color: "#0A6B24" }}>Field Mode</h2>
+                <p className="text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
+              </div>
             </button>
 
             {/* ── Admin Mode ── */}
@@ -67,16 +76,23 @@ export default function Home() {
               <button
                 onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
-                className="group bg-white rounded-3xl border-2 border-slate-200 hover:border-amber-500 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-6 cursor-pointer"
-                style={{ minHeight: "280px", padding: "40px 32px" }}
+                className="group rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-5 cursor-pointer text-left w-full"
+                style={{
+                  background: "linear-gradient(145deg, #fef3dc 0%, #ffffff 60%)",
+                  minHeight: "240px",
+                  padding: "40px 32px",
+                }}
               >
                 <div
-                  className="rounded-2xl bg-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg"
-                  style={{ width: "80px", height: "80px" }}
+                  className="rounded-2xl bg-white flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-200"
+                  style={{ width: "72px", height: "72px" }}
                 >
-                  <LayoutDashboard style={{ width: "44px", height: "44px" }} className="text-white" strokeWidth={1.5} />
+                  <Settings style={{ width: "40px", height: "40px", color: "#d97706" }} strokeWidth={1.8} />
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">Admin Mode</h2>
+                <div className="text-center">
+                  <h2 className="text-xl font-bold" style={{ color: "#d97706" }}>Admin Mode</h2>
+                  <p className="text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
+                </div>
               </button>
             )}
           </div>

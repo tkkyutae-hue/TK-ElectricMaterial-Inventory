@@ -36,8 +36,8 @@ export default function Home() {
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-xl">
-          <div className="text-center mb-10">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 mb-2">
               Select Your Mode
             </h1>
@@ -46,19 +46,19 @@ export default function Home() {
             </p>
           </div>
 
-          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-2" : "grid-cols-1 max-w-[220px] mx-auto"}`}>
+          <div className={`grid gap-4 ${isAdminRole ? "grid-cols-2" : "grid-cols-1 max-w-[180px] mx-auto"}`}>
             {/* ── Field Mode tile ── */}
             <button
               onClick={() => navigate("/field")}
               data-testid="btn-field-mode"
-              className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-brand-500 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-4 p-6 cursor-pointer"
+              className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-brand-500 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-3 p-5 cursor-pointer"
             >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
-                <HardHat className="w-8 h-8 sm:w-10 sm:h-10 text-brand-700" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
+                <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-brand-700" />
               </div>
               <div className="text-center">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Field Mode</h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Field Mode</h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Receive · Issue · Inventory</p>
               </div>
             </button>
 
@@ -67,14 +67,14 @@ export default function Home() {
               <button
                 onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
-                className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-4 p-6 cursor-pointer"
+                className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-3 p-5 cursor-pointer"
               >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-                  <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                  <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
                 </div>
                 <div className="text-center">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">Admin Mode</h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">Admin Mode</h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Dashboard · Reports · Users</p>
                 </div>
               </button>
             )}

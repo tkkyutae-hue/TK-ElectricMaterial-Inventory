@@ -4,7 +4,7 @@ import { MovementForm } from "@/components/MovementForm";
 import { ArrowRightLeft } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
-  receive: "Receive",
+  receive: "Receive / Return",
   issue: "Issue / Ship",
   return: "Return",
 };

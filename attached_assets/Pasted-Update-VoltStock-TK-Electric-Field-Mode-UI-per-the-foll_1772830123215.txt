@@ -1,0 +1,90 @@
+Update VoltStock (TK Electric) Field Mode UI per the following requirements.
+Do NOT redesign the entire admin UI. Keep existing green/white theme.
+Implement fully end-to-end. No placeholders.
+
+====================================================
+A) MODE SELECTION PAGE (Select Your Mode)
+====================================================
+1) Icons too large -> reduce size to about 55~60% of current.
+   - Keep tile/click area the same, only reduce icon size and spacing.
+2) Keep “click tile to enter” behavior.
+3) Keep Admin Mode access control as-is (admin role required).
+
+====================================================
+B) FIELD MODE HOME (2nd screen) - CLEAN LAUNCHER (NO LEFT SIDEBAR)
+====================================================
+Current Field Home has left navigation and 4 tiles.
+Change it to look like Mode Selection: tiles only, no sidebar.
+
+Requirements:
+1) Remove/disable the left sidebar navigation in Field Mode pages.
+   - Field Mode should feel like a “simple field app”.
+   - Keep a single “Back to Home” button (top-left or top-right) that returns to /home.
+2) Layout:
+   - Place a large primary tile at the top: “Inventory” (largest, spans full width on desktop, big on mobile)
+   - Below it place 3 equal tiles in one row (or 2+1 on small screens):
+     - “Receive / Return”  (rename from Receive)
+     - “Issue / Ship”
+     - “Transactions”
+3) Tile content:
+   - Show icon + title only (no long bullet text).
+   - Icons should be about half of current (same sizing rule as Mode Selection).
+
+Routing:
+- Inventory tile -> /field/inventory
+- Receive / Return tile -> /field/movement?type=receive  (and include a toggle inside to switch Receive vs Return)
+- Issue / Ship tile -> /field/movement?type=issue
+- Transactions tile -> /field/transactions
+
+====================================================
+C) FIELD INVENTORY PAGE (3rd screen) -> ADMIN-LIKE CATEGORY BROWSE + LIST
+====================================================
+Current Field Inventory is a simple table.
+Change it to match Admin Inventory style:
+
+1) At top: show category cards with images (same as Admin Inventory).
+   - Clicking a category opens category detail view (same UI as admin category detail).
+2) Under category cards: show searchable item list with pagination.
+   - Search must match partial words (ex: '3/4" conduit' should match '3/4" EMT Conduit').
+   - Pagination dropdown: 15 / 20 / 25 / 30 per page.
+   - Default: 20 per page.
+3) Field permissions:
+   - Field users are read-only in inventory (no edit buttons, no add buttons).
+   - They can click an item row to view Item Detail (read-only view).
+4) Keep the field page header “Inventory” large and clearly visible at the top.
+
+====================================================
+D) RENAME “Receive” -> “Receive / Return”
+====================================================
+- Everywhere in Field Mode UI, rename the tile/label from “Receive” to “Receive / Return”.
+- The movement form should allow choosing Movement Type:
+  - Receive
+  - Return
+  - Issue (separate tile goes directly to Issue)
+
+====================================================
+E) ADD NEW CATEGORY: “TOOLS & MISC SUPPLIES”
+====================================================
+Add a new inventory category for tools & misc supplies.
+
+DB:
+- Insert into categories table:
+  - name: TOOLS & MISC SUPPLIES
+  - code: TM
+  - description: Tools, consumables, misc jobsite supplies
+  - sort_order: place after DEVICES (or near FASTENERS) — keep consistent ordering
+  - is_active: true
+  - image_url: allow nullable; if missing use a default placeholder image
+
+UI:
+- Show this category card in inventory category grid (both admin inventory and field inventory).
+- Ensure clicking works like other categories.
+
+====================================================
+FINAL OUTPUT
+====================================================
+After implementing:
+- list files changed
+- confirm Field Mode has no sidebar, uses launcher tiles
+- confirm Inventory in Field Mode now has category cards + paginated list
+- confirm new category appears in category grid

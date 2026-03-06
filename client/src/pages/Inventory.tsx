@@ -32,6 +32,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   "BC": "from-brand-600 to-brand-900",
   "DP": "from-indigo-700 to-indigo-900",
   "GT": "from-teal-600 to-teal-900",
+  "TM": "from-amber-600 to-amber-900",
 };
 
 function CategoryCard({ cat }: { cat: CategorySummary }) {

@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function useAdminAuth() {
-  const { data, isLoading, refetch } = useQuery<{ isAdmin: boolean }>({
+  const { data, isLoading, isFetching, refetch } = useQuery<{ isAdmin: boolean }>({
     queryKey: ["/api/admin/status"],
     staleTime: 60_000,
     retry: false,
@@ -22,6 +22,7 @@ export function useAdminAuth() {
   return {
     isAdmin: data?.isAdmin ?? false,
     isLoading,
+    isFetching,
     refetch,
     verify: verifyMutation.mutateAsync,
     verifyPending: verifyMutation.isPending,

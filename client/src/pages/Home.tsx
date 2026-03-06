@@ -11,7 +11,7 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 export default function Home() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { isAdmin, verify, verifyPending, verifyError } = useAdminAuth();
+  const { isAdmin, verify, verifyPending, verifyError, refetch } = useAdminAuth();
 
   const [showAdminGate, setShowAdminGate] = useState(false);
   const [adminId, setAdminId] = useState("");
@@ -24,6 +24,7 @@ export default function Home() {
     setLocalError("");
     try {
       await verify({ adminId, adminPassword });
+      await refetch();
       setShowAdminGate(false);
       navigate("/");
     } catch (err: any) {

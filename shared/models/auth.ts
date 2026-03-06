@@ -19,10 +19,11 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   name: varchar("name"),
   passwordHash: varchar("password_hash"),
-  role: varchar("role").default("staff"),
+  role: varchar("role").default("viewer"),
   status: varchar("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
 });
 
 export type UpsertUser = typeof users.$inferInsert;

@@ -1,9 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  PackageSearch, 
-  ArrowRightLeft, 
-  Truck, 
+import {
+  LayoutDashboard,
+  PackageSearch,
+  ArrowRightLeft,
+  Truck,
   Briefcase,
   ShoppingCart,
   BarChart3,
@@ -16,7 +16,6 @@ import {
   Download,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -26,7 +25,6 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const { logout: adminLogout } = useAdminAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navGroups = [
@@ -61,11 +59,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  async function handleBackToHome() {
-    await adminLogout();
-    window.location.href = "/home";
-  }
-
   const displayName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? user?.email ?? "User";
   const initials = displayName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
 
@@ -99,13 +92,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                       isActive
-                        ? 'bg-brand-100 text-brand-700 font-semibold'
-                        : 'text-slate-600 hover:bg-brand-50 hover:text-slate-900'
+                        ? "bg-brand-100 text-brand-700 font-semibold"
+                        : "text-slate-600 hover:bg-brand-50 hover:text-slate-900"
                     }`}
                   >
                     <item.icon
-                      className={`flex-shrink-0 ${isActive ? 'text-brand-700' : 'text-slate-400'}`}
-                      style={{ width: '18px', height: '18px' }}
+                      className={`flex-shrink-0 ${isActive ? "text-brand-700" : "text-slate-400"}`}
+                      style={{ width: "18px", height: "18px" }}
                     />
                     <span className="text-sm">{item.label}</span>
                   </Link>
@@ -117,14 +110,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="p-3 border-t border-border space-y-1">
-        <button
-          onClick={handleBackToHome}
+        <Link
+          href="/home"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-          data-testid="nav-admin-back-home"
+          data-testid="nav-back-home"
         >
           <Home className="w-4 h-4 flex-shrink-0" />
           Back to Home
-        </button>
+        </Link>
 
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
           <Avatar className="w-8 h-8 border border-border flex-shrink-0">
@@ -180,21 +173,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Shield className="w-3 h-3" /> Admin Mode
             </span>
             <span className="text-sm text-muted-foreground">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </span>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToHome}
-              className="gap-1.5 text-slate-600 border-slate-200"
-              data-testid="btn-header-admin-home"
-            >
-              <Home className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Home</span>
-            </Button>
+            <Link href="/home">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-slate-600 border-slate-200"
+                data-testid="btn-header-back-home"
+              >
+                <Home className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Home</span>
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
             </Button>

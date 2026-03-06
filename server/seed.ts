@@ -1,8 +1,6 @@
 import { db } from "./db";
 import { categories, locations } from "@shared/schema";
-import { users } from "@shared/models/auth";
-import { sql, eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
+import { sql } from "drizzle-orm";
 
 function seedLog(msg: string) {
   const t = new Date().toLocaleTimeString("en-US", { hour12: true, hour: "numeric", minute: "2-digit", second: "2-digit" });
@@ -38,7 +36,6 @@ async function countRows(table: string): Promise<number> {
 export async function runSeed() {
   seedLog("checking seed requirements…");
 
-  // ── Categories
   const catCount = await countRows("categories");
   if (catCount === 0) {
     seedLog(`categories empty — inserting ${DEFAULT_CATEGORIES.length} defaults`);
@@ -48,7 +45,6 @@ export async function runSeed() {
     seedLog(`categories already seeded (${catCount} rows) — skipping`);
   }
 
-  // ── Locations
   const locCount = await countRows("locations");
   if (locCount === 0) {
     seedLog(`locations empty — inserting ${DEFAULT_LOCATIONS.length} defaults`);
@@ -56,31 +52,6 @@ export async function runSeed() {
     seedLog(`inserted ${DEFAULT_LOCATIONS.length} locations`);
   } else {
     seedLog(`locations already seeded (${locCount} rows) — skipping`);
-  }
-
-  // ── Default admin user
-  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL ?? "admin@tkelectric.com";
-  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD ?? "Admin1234";
-  const [existing] = await db.select().from(users).where(eq(users.email, adminEmail));
-  if (!existing) {
-    seedLog(`creating default admin user (${adminEmail})`);
-    const passwordHash = await bcrypt.hash(adminPassword, 12);
-    await db.insert(users).values({
-      email: adminEmail,
-      passwordHash,
-      name: "Admin",
-      role: "admin",
-      status: "active",
-    }).onConflictDoNothing();
-    seedLog(`default admin user created — email: ${adminEmail}`);
-  } else if (!existing.passwordHash) {
-    // Existing Replit-auth user needs password hash
-    seedLog(`existing admin user found without password — setting default password`);
-    const passwordHash = await bcrypt.hash(adminPassword, 12);
-    await db.update(users).set({ passwordHash, name: existing.name ?? "Admin", role: "admin", status: "active" }).where(eq(users.email, adminEmail));
-    seedLog(`admin user updated`);
-  } else {
-    seedLog(`admin user already exists (${adminEmail}) — skipping`);
   }
 
   seedLog("seed complete");

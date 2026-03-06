@@ -30,7 +30,7 @@ export function registerAuthRoutes(app: Express): void {
       }
       const passwordHash = await bcrypt.hash(password, 12);
       await authStorage.createUser({ email: email.toLowerCase(), passwordHash, name });
-      res.status(201).json({ message: "Account created. Awaiting admin approval." });
+      res.status(201).json({ message: "Request submitted. Await admin approval." });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -54,9 +54,10 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(403).json({ message: "Your account is awaiting admin approval." });
       }
       if (user.status === "rejected") {
-        return res.status(403).json({ message: "Your account has been rejected. Contact an administrator." });
+        return res.status(403).json({ message: "Your account access has been rejected. Contact an administrator." });
       }
       req.session.userId = user.id;
+      await authStorage.updateLastLogin(user.id);
       const { passwordHash: _ph, ...safe } = user as any;
       res.json(safe);
     } catch (err: any) {
@@ -69,5 +70,40 @@ export function registerAuthRoutes(app: Express): void {
       res.clearCookie("connect.sid");
       res.json({ success: true });
     });
+  });
+
+  // ─── Seed Initial Admin (one-time setup, protected by ADMIN_SEED_TOKEN) ──────
+  app.post("/api/admin/seed-initial-admin", async (req: any, res) => {
+    const token = req.headers["x-seed-token"] ?? req.body?.token;
+    const expectedToken = process.env.ADMIN_SEED_TOKEN;
+
+    if (!expectedToken) {
+      return res.status(500).json({ message: "ADMIN_SEED_TOKEN env var is not set on this server" });
+    }
+    if (!token || token !== expectedToken) {
+      return res.status(401).json({ message: "Invalid or missing x-seed-token header" });
+    }
+
+    try {
+      const ADMIN_EMAIL = "michael_kim@tkelectricllc.us";
+      const existing = await authStorage.findUserByEmail(ADMIN_EMAIL);
+      if (existing) {
+        return res.status(409).json({ message: "Initial admin already exists — no changes made", email: existing.email });
+      }
+
+      const passwordHash = await bcrypt.hash("tk69956995!!", 12);
+      await authStorage.upsertUser({
+        email: ADMIN_EMAIL,
+        passwordHash,
+        name: "Michael Kim",
+        role: "admin",
+        status: "active",
+      });
+
+      console.log("[seed] Initial admin seeded:", ADMIN_EMAIL);
+      res.json({ ok: true, message: "Initial admin seeded", email: ADMIN_EMAIL });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 }

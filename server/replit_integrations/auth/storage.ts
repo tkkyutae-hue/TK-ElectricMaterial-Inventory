@@ -7,8 +7,10 @@ export interface IAuthStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   findUserByEmail(email: string): Promise<User | undefined>;
   createUser(data: { email: string; passwordHash: string; name: string }): Promise<User>;
-  listUsers(): Promise<User[]>;
+  listUsers(status?: string): Promise<User[]>;
   updateUserStatus(id: string, status: string): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<{ role: string; status: string; name: string }>): Promise<User | undefined>;
+  updateLastLogin(id: string): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -41,14 +43,17 @@ class AuthStorage implements IAuthStorage {
         email: data.email,
         passwordHash: data.passwordHash,
         name: data.name,
-        role: "staff",
+        role: "viewer",
         status: "pending",
       })
       .returning();
     return user;
   }
 
-  async listUsers(): Promise<User[]> {
+  async listUsers(status?: string): Promise<User[]> {
+    if (status) {
+      return db.select().from(users).where(eq(users.status, status));
+    }
     return db.select().from(users);
   }
 
@@ -59,6 +64,22 @@ class AuthStorage implements IAuthStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, data: Partial<{ role: string; status: string; name: string }>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id));
   }
 }
 

@@ -1,0 +1,168 @@
+Implement a complete authentication + approval + role-based access control system for TK Electric Inventory Management.
+
+IMPORTANT:
+- Do NOT redesign the UI layout.
+- Keep current styling (green/white theme + TK logo).
+- Everything must persist to DB and work end-to-end.
+- The published app and preview must use the SAME database (single source of truth).
+- All API routes must return JSON and never return HTML on error (avoid "Unexpected token <").
+
+====================================================
+0) SINGLE DATABASE (DEV + PROD MUST MATCH)
+====================================================
+Unify database usage:
+- Use ONLY one env var DATABASE_URL for all environments.
+- Remove any dev/prod DB switching.
+- Add GET /api/health -> { ok:true, db:"ok", env:"...", dbName:"..." } (safe db identifier only).
+- Log at boot: "DB Connected: <safe identifier>"
+
+====================================================
+1) USERS, ROLES, APPROVALS (ADMIN/STAFF/VIEWER)
+====================================================
+Create/ensure users table includes:
+- id (uuid or serial)
+- email (unique, lowercase)
+- password_hash (bcrypt)
+- full_name
+- role: 'admin' | 'staff' | 'viewer'
+- status: 'pending' | 'active' | 'rejected'
+- created_at, updated_at
+- last_login_at (optional)
+
+Behavior:
+- Only status='active' can login.
+- New signups must be status='pending' by default.
+- Admin can approve/reject and set role.
+- Admin can deactivate (set status='rejected' or 'pending').
+
+====================================================
+2) LOGIN + REQUEST ACCESS FLOW
+====================================================
+Routes:
+- /login (email + password)
+- /request-access (signup: email, password, full name)
+
+Flow:
+- Unauthenticated user visiting any route -> redirect to /login.
+- After login -> redirect to /home (mode selection).
+- Request Access creates user(status=pending, role=viewer by default).
+- Show message after request: "Request submitted. Await admin approval."
+- Pending/rejected users attempting login: show clear error.
+
+UI requirements (Login page):
+- Increase TK logo size.
+- Remove the "VoltStock" title.
+- Footer text: "Created by Michael Kim"
+- Keep clean.
+
+====================================================
+3) INITIAL ADMIN CREATION (NO MANUAL DB WORK)
+====================================================
+Implement a one-time admin seeding endpoint that creates the initial admin user:
+
+Initial admin:
+- email: Michael_Kim@tkelectricllc.us
+- password: tk69956995!!
+- full_name: Michael Kim
+- role: admin
+- status: active
+
+Security:
+- Create env var ADMIN_SEED_TOKEN.
+- Endpoint requires header: x-seed-token must match ADMIN_SEED_TOKEN.
+- If any admin user already exists, return 409 and do NOTHING.
+
+Endpoint:
+POST /api/admin/seed-initial-admin
+-> returns { ok:true } on success.
+
+After successful seed, log: "Initial admin seeded".
+
+====================================================
+4) HOME MODE SELECTION + NAV BACK HOME
+====================================================
+After login go to /home with two big clickable cards (no Enter button):
+A) Field Mode (for Staff/Viewer)
+B) Admin Mode (only admin)
+
+- Clicking Field -> /field (or /inventory/transactions views restricted)
+- Clicking Admin -> /admin
+- Add a visible "Back to Home" button in both modes.
+
+====================================================
+5) ROLE PERMISSIONS (ENFORCE SERVER-SIDE)
+====================================================
+Implement server-side RBAC middleware and use it for APIs and pages.
+
+Admin:
+- Full access: manage items, categories, families, suppliers, projects, users, transactions, delete, edits, import/export.
+
+Staff:
+- Operational access:
+  - Can log inventory movements (Receive/Issue/Return)
+  - Can view inventory + item details
+  - Can view transaction history
+  - Cannot delete transactions
+  - Cannot change master data (items/categories/families/suppliers/projects)
+  - Cannot approve users
+
+Viewer:
+- Read-only:
+  - Can view inventory + item details
+  - Can view transaction history
+  - Cannot log movements
+  - Cannot edit anything
+
+IMPORTANT:
+- Do NOT rely on frontend-only checks. Always enforce on backend.
+- Use session-based authentication.
+
+====================================================
+6) ADMIN APPROVAL PAGE (NO MANUAL WORK FOR ME)
+====================================================
+Create Admin-only page: /admin/users (or Admin -> User Approvals)
+
+Features:
+- Tabs or filters: Pending / Active / Rejected
+- For each pending user:
+  - Approve button
+  - Select role (admin/staff/viewer) before approving (default viewer)
+  - Reject button
+- For active users:
+  - Change role dropdown (admin/staff/viewer)
+  - Deactivate (set status to rejected or pending)
+- All updates persist immediately and reflect in UI without refresh.
+
+API endpoints (admin-only):
+- GET /api/admin/users?status=pending|active|rejected
+- PATCH /api/admin/users/:id  (update role/status)
+- POST /api/admin/users/:id/approve
+- POST /api/admin/users/:id/reject
+
+All return JSON.
+
+====================================================
+7) FIELD MODE: TRANSACTIONS VIEW ENABLED
+====================================================
+Field mode must allow viewing Transaction History (read-only).
+Staff can log movements; Viewer cannot.
+Ensure routes/APIs enforce.
+
+====================================================
+8) HARDEN PUBLISH (NO BLANK SCREEN)
+====================================================
+- Add global error boundary in frontend to display a friendly error if API fails.
+- Ensure API errors return JSON and frontend handles empty states safely.
+- Confirm that on publish, the app loads and redirects properly:
+  unauth -> /login
+  auth -> /home
+
+====================================================
+9) FINAL OUTPUT
+====================================================
+After implementing, clearly list:
+- Which DB env var is used and how it's unified (DATABASE_URL only).
+- How to seed initial admin (set ADMIN_SEED_TOKEN, call endpoint once).
+- Where the approval page is and how to approve users.
+- Exactly what Admin/Staff/Viewer can do.
+- Which files were changed.

@@ -1,5 +1,4 @@
-import { Switch, Route, Redirect, useLocation } from "wouter";
-import { useEffect } from "react";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
-import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAuth } from "@/hooks/use-auth";
 
 import Login from "@/pages/Login";
@@ -32,26 +30,18 @@ import FieldInventory from "@/pages/field/FieldInventory";
 import FieldTransactions from "@/pages/field/FieldTransactions";
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isLoading, isFetching } = useAdminAuth();
-  const [, navigate] = useLocation();
+  const { user, isLoading } = useAuth();
 
-  const pending = isLoading || isFetching;
-
-  useEffect(() => {
-    if (!pending && !isAdmin) {
-      navigate("/home");
-    }
-  }, [isAdmin, pending, navigate]);
-
-  if (pending) {
+  if (isLoading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700"></div>
+      <div className="h-screen w-full flex items-center justify-center bg-background" data-testid="admin-guard-loading">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
       </div>
     );
   }
 
-  if (!isAdmin) return null;
+  if (!user) return <Redirect to="/login" />;
+  if (user.role !== "admin") return <Redirect to="/home" />;
   return <>{children}</>;
 }
 
@@ -96,12 +86,11 @@ function FieldRouter() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
 
   if (isLoading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
       </div>
     );
   }
@@ -123,7 +112,7 @@ function Router() {
       <Route path="/home" component={Home} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
-      <Route path="/:rest*" component={AdminRouter} />
+      <Route component={AdminRouter} />
     </Switch>
   );
 }

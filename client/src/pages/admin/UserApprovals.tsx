@@ -1,21 +1,42 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Clock, Users } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, XCircle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/models/auth";
 
+type Tab = "pending" | "active" | "rejected";
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  staff: "Staff",
+  viewer: "Viewer",
+};
+
 export default function UserApprovals() {
   const { toast } = useToast();
+  const [tab, setTab] = useState<Tab>("pending");
+  const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({});
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
-    queryFn: () => apiRequest("GET", "/api/admin/users"),
+  });
+
+  const patchMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) =>
+      apiRequest("PATCH", `/api/admin/users/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("POST", `/api/admin/users/${id}/approve`),
+    mutationFn: ({ id, role }: { id: string; role: string }) =>
+      apiRequest("POST", `/api/admin/users/${id}/approve`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "User approved", description: "The user can now sign in." });
@@ -32,14 +53,25 @@ export default function UserApprovals() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const pending = users.filter(u => u.status === "pending");
-  const others = users.filter(u => u.status !== "pending");
+  const filtered = users.filter(u => u.status === tab);
+  const counts = {
+    pending: users.filter(u => u.status === "pending").length,
+    active: users.filter(u => u.status === "active").length,
+    rejected: users.filter(u => u.status === "rejected").length,
+  };
 
   function statusBadge(status: string | null | undefined) {
     if (status === "active") return <Badge className="bg-green-100 text-green-700 border-green-200">Active</Badge>;
     if (status === "pending") return <Badge className="bg-amber-100 text-amber-700 border-amber-200">Pending</Badge>;
-    if (status === "rejected") return <Badge className="bg-red-100 text-red-600 border-red-200">Rejected</Badge>;
-    return <Badge variant="outline">{status}</Badge>;
+    return <Badge className="bg-red-100 text-red-600 border-red-200">Rejected</Badge>;
+  }
+
+  function roleBadge(role: string | null | undefined) {
+    const r = role ?? "viewer";
+    const cls = r === "admin" ? "border-amber-300 text-amber-700 bg-amber-50"
+      : r === "staff" ? "border-blue-200 text-blue-700 bg-blue-50"
+      : "border-slate-200 text-slate-600 bg-slate-50";
+    return <Badge variant="outline" className={cls}>{ROLE_LABELS[r] ?? r}</Badge>;
   }
 
   if (isLoading) {
@@ -51,7 +83,7 @@ export default function UserApprovals() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
           <Users className="w-6 h-6 text-brand-700" />
@@ -60,114 +92,152 @@ export default function UserApprovals() {
         <p className="text-slate-500 text-sm mt-1">Manage user access requests and account statuses.</p>
       </div>
 
-      {/* Pending section */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-          <Clock className="w-4 h-4" /> Pending Approval ({pending.length})
-        </h2>
-        {pending.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm">
-            No pending approvals
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {pending.map(u => (
-              <div
-                key={u.id}
-                className="bg-white rounded-xl border border-amber-200 p-4 flex items-center justify-between gap-4"
-                data-testid={`row-user-${u.id}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 truncate">{u.name ?? "—"}</p>
-                  <p className="text-sm text-slate-500 truncate">{u.email}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Requested {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    onClick={() => approveMutation.mutate(u.id)}
-                    disabled={approveMutation.isPending}
-                    className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                    data-testid={`btn-approve-${u.id}`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => rejectMutation.mutate(u.id)}
-                    disabled={rejectMutation.isPending}
-                    className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
-                    data-testid={`btn-reject-${u.id}`}
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    Reject
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+        {(["pending", "active", "rejected"] as Tab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            data-testid={`tab-${t}`}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === t
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {counts[t] > 0 && (
+              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                t === "pending" ? "bg-amber-100 text-amber-700"
+                : t === "active" ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-600"
+              }`}>
+                {counts[t]}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* All users section */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">
-          All Users ({users.length})
-        </h2>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Email</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Role</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {users.map(u => (
-                <tr key={u.id} data-testid={`row-all-user-${u.id}`} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{u.name ?? u.firstName ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className={u.role === "admin" ? "border-amber-300 text-amber-700" : ""}>
-                      {u.role ?? "staff"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">{statusBadge(u.status)}</td>
-                  <td className="px-4 py-3">
-                    {u.status !== "active" && (
+      {/* Content */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
+          No {tab} users
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(u => (
+            <div
+              key={u.id}
+              className={`bg-white rounded-xl border p-4 ${
+                tab === "pending" ? "border-amber-200" : "border-slate-200"
+              }`}
+              data-testid={`row-user-${u.id}`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-slate-900">{u.name ?? "—"}</p>
+                    {roleBadge(u.role)}
+                    {statusBadge(u.status)}
+                  </div>
+                  <p className="text-sm text-slate-500">{u.email}</p>
+                  {u.createdAt && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Joined {new Date(u.createdAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                  {/* Pending: role selector + approve/reject */}
+                  {tab === "pending" && (
+                    <>
+                      <Select
+                        value={pendingRoles[u.id] ?? "viewer"}
+                        onValueChange={v => setPendingRoles(r => ({ ...r, [u.id]: v }))}
+                      >
+                        <SelectTrigger className="w-28 h-8 text-xs" data-testid={`select-role-${u.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button
                         size="sm"
-                        variant="ghost"
-                        onClick={() => approveMutation.mutate(u.id)}
-                        className="text-green-600 h-7 px-2 text-xs"
+                        onClick={() => approveMutation.mutate({ id: u.id, role: pendingRoles[u.id] ?? "viewer" })}
+                        disabled={approveMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5 h-8"
+                        data-testid={`btn-approve-${u.id}`}
                       >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                         Approve
                       </Button>
-                    )}
-                    {u.status !== "rejected" && (
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => rejectMutation.mutate(u.id)}
-                        className="text-red-500 h-7 px-2 text-xs"
+                        disabled={rejectMutation.isPending}
+                        className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5 h-8"
+                        data-testid={`btn-reject-${u.id}`}
                       >
+                        <XCircle className="w-3.5 h-3.5" />
                         Reject
                       </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </>
+                  )}
+
+                  {/* Active: change role + deactivate */}
+                  {tab === "active" && (
+                    <>
+                      <Select
+                        value={u.role ?? "viewer"}
+                        onValueChange={v => patchMutation.mutate({ id: u.id, data: { role: v } })}
+                      >
+                        <SelectTrigger className="w-28 h-8 text-xs" data-testid={`select-role-active-${u.id}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => patchMutation.mutate({ id: u.id, data: { status: "rejected" } })}
+                        disabled={patchMutation.isPending}
+                        className="text-red-600 border-red-200 hover:bg-red-50 h-8"
+                        data-testid={`btn-deactivate-${u.id}`}
+                      >
+                        Deactivate
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Rejected: re-activate */}
+                  {tab === "rejected" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => patchMutation.mutate({ id: u.id, data: { status: "active" } })}
+                      disabled={patchMutation.isPending}
+                      className="text-green-600 border-green-200 hover:bg-green-50 h-8"
+                      data-testid={`btn-reactivate-${u.id}`}
+                    >
+                      Re-activate
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

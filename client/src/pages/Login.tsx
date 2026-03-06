@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Eye, EyeOff, Zap } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
@@ -19,7 +19,8 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const user = await apiRequest("POST", "/api/auth/login", { email, password });
+      const resp = await apiRequest("POST", "/api/auth/login", { email, password });
+      const user = await resp.json();
       queryClient.setQueryData(["/api/auth/user"], user);
       navigate("/home");
     } catch (err: any) {
@@ -30,17 +31,17 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 space-y-6">
-          <div className="text-center space-y-3">
-            <div className="flex items-center justify-center gap-3">
-              <img src={tkLogo} alt="TK Electric" className="h-12 object-contain" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-slate-900">VoltStock</h1>
-              <p className="text-sm text-slate-500 mt-0.5">TK Electric Inventory Management</p>
-            </div>
+          <div className="flex flex-col items-center gap-2 pt-2 pb-1">
+            <img
+              src={tkLogo}
+              alt="TK Electric"
+              className="h-24 w-auto object-contain"
+              data-testid="img-tk-logo"
+            />
+            <p className="text-sm text-slate-500 font-medium">TK Electric Inventory Management</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,21 +101,21 @@ export default function Login() {
           </form>
 
           <div className="text-center text-sm text-slate-500">
-            Don't have an account?{" "}
+            Don't have access?{" "}
             <button
               onClick={() => navigate("/signup")}
               className="text-brand-700 font-semibold hover:underline"
-              data-testid="link-signup"
+              data-testid="link-request-access"
             >
               Request Access
             </button>
           </div>
         </div>
-
-        <p className="text-center text-xs text-slate-400 mt-4 flex items-center justify-center gap-1">
-          <Zap className="w-3 h-3" /> Powered by VoltStock
-        </p>
       </div>
+
+      <footer className="mt-6 text-xs text-slate-400">
+        Created by Michael Kim
+      </footer>
     </div>
   );
 }

@@ -529,43 +529,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return crypto.createHash("sha256").update(s).digest("hex");
   }
 
-  function isAdminSession(req: any): boolean {
-    return req.session?.adminVerified === true && (req.session?.adminExpiry ?? 0) > Date.now();
+  // ─── RBAC middleware ─────────────────────────────────────────────────────────
+  async function requireRole(role: string, req: any, res: any, next: any) {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ message: "Authentication required" });
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.getUser(userId);
+      if (!user || user.status !== "active") return res.status(401).json({ message: "Authentication required" });
+      if (role === "admin" && user.role !== "admin") return res.status(403).json({ message: "Admin access required" });
+      if (role === "staff" && user.role !== "admin" && user.role !== "staff") return res.status(403).json({ message: "Staff access required" });
+      (req as any).currentUser = user;
+      next();
+    } catch {
+      res.status(500).json({ message: "Authorization check failed" });
+    }
   }
 
+  const requireAdmin = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
+  const requireStaff = (req: any, res: any, next: any) => requireRole("staff", req, res, next);
+
+  // Keep legacy admin session endpoints for compatibility
   app.post("/api/admin/verify", isAuthenticated, (req: any, res) => {
-    const { adminId, adminPassword } = req.body ?? {};
-    const correctId   = process.env.ADMIN_ID            ?? "admin";
-    const correctHash = process.env.ADMIN_PASSWORD_HASH ?? sha256hex("1234");
-    const inputHash   = sha256hex(String(adminPassword ?? ""));
-    let pwMatch = false;
-    try { pwMatch = crypto.timingSafeEqual(Buffer.from(inputHash), Buffer.from(correctHash)); } catch { /* */ }
-    if (adminId === correctId && pwMatch) {
-      req.session.adminVerified = true;
-      req.session.adminExpiry   = Date.now() + 30 * 60 * 1000; // 30 min
-      return res.json({ success: true });
-    }
-    return res.status(401).json({ message: "Invalid admin ID or password." });
+    res.json({ success: true });
   });
 
-  app.get("/api/admin/status", isAuthenticated, (req: any, res) => {
-    res.json({ isAdmin: isAdminSession(req) });
+  app.get("/api/admin/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.json({ isAdmin: false });
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.getUser(userId);
+      res.json({ isAdmin: user?.role === "admin" && user?.status === "active" });
+    } catch {
+      res.json({ isAdmin: false });
+    }
   });
 
   app.post("/api/admin/logout", isAuthenticated, (req: any, res) => {
-    delete req.session.adminVerified;
-    delete req.session.adminExpiry;
     res.json({ success: true });
   });
 
   // ─── User Management (Admin Only) ────────────────────────────────────────────
-  app.get("/api/admin/users", isAuthenticated, (req: any, res, next) => {
-    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
-    next();
-  }, async (_req, res) => {
+  app.get("/api/admin/users", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const { authStorage } = await import("./replit_integrations/auth/storage");
-      const users = await authStorage.listUsers();
+      const status = req.query.status as string | undefined;
+      const users = await authStorage.listUsers(status);
       const safe = users.map(({ passwordHash: _ph, ...u }: any) => u);
       res.json(safe);
     } catch (err: any) {
@@ -573,13 +583,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/admin/users/:id/approve", isAuthenticated, (req: any, res, next) => {
-    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
-    next();
-  }, async (req, res) => {
+  app.patch("/api/admin/users/:id", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const { authStorage } = await import("./replit_integrations/auth/storage");
-      const user = await authStorage.updateUserStatus(req.params.id, "active");
+      const { role, status } = req.body ?? {};
+      const allowed: Record<string, string[]> = {
+        role: ["admin", "staff", "viewer"],
+        status: ["active", "pending", "rejected"],
+      };
+      const update: Record<string, string> = {};
+      if (role !== undefined) {
+        if (!allowed.role.includes(role)) return res.status(400).json({ message: "Invalid role" });
+        update.role = role;
+      }
+      if (status !== undefined) {
+        if (!allowed.status.includes(status)) return res.status(400).json({ message: "Invalid status" });
+        update.status = status;
+      }
+      if (Object.keys(update).length === 0) return res.status(400).json({ message: "Nothing to update" });
+      const user = await authStorage.updateUser(req.params.id, update);
       if (!user) return res.status(404).json({ message: "User not found" });
       const { passwordHash: _ph, ...safe } = user as any;
       res.json(safe);
@@ -588,10 +610,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/admin/users/:id/reject", isAuthenticated, (req: any, res, next) => {
-    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
-    next();
-  }, async (req, res) => {
+  app.post("/api/admin/users/:id/approve", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const { role } = req.body ?? {};
+      const update: any = { status: "active" };
+      if (role && ["admin", "staff", "viewer"].includes(role)) update.role = role;
+      const user = await authStorage.updateUser(req.params.id, update);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { passwordHash: _ph, ...safe } = user as any;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reject", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const user = await authStorage.updateUserStatus(req.params.id, "rejected");
@@ -604,10 +638,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
-  app.get("/api/admin/export/:table", isAuthenticated, (req: any, res, next) => {
-    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
-    next();
-  }, async (req, res) => {
+  app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
     const ALLOWED = ["categories", "locations", "suppliers", "projects", "items", "inventory_movements", "inventory_location_balances", "item_groups", "users"];
     const table = req.params.table;
     if (!ALLOWED.includes(table)) {

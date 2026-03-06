@@ -105,8 +105,35 @@ Preferred communication style: Simple, everyday language.
 - **Framework:** Express.js
 - **API style:** REST, all routes under `/api/`
 - **Data access:** Storage layer behind `IStorage` interface in `server/storage.ts` — all DB through this
-- **Authentication middleware:** `isAuthenticated` on all protected routes
+- **Authentication middleware:** `isAuthenticated` on all protected routes; `requireAdmin` / `requireStaff` RBAC middleware
 - **Session storage:** PostgreSQL-backed sessions via `connect-pg-simple`
+
+### Authentication System
+
+- **Strategy:** Email + password (bcryptjs), session-based
+- **Users table:** `users` in `shared/models/auth.ts` — fields: id, email, passwordHash, name, role (admin/staff/viewer), status (pending/active/rejected), lastLoginAt
+- **Roles:** `admin` (full access), `staff` (moderate access), `viewer` (read-only, default for new signups)
+- **Approval workflow:** New users sign up with status=pending; admin must approve via User Approvals page
+- **Initial admin:** `michael_kim@tkelectricllc.us` — seeded via `POST /api/admin/seed-initial-admin` with ADMIN_SEED_TOKEN
+- **Auth routes:** in `server/replit_integrations/auth/routes.ts` — login, signup, logout, seed-initial-admin
+- **Admin routes:** `GET /api/admin/users`, `PATCH /api/admin/users/:id`, `POST /api/admin/users/:id/approve`, `POST /api/admin/users/:id/reject`
+- **Frontend guard:** `AdminGuard` in `client/src/App.tsx` — redirects non-admin users to `/home`
+- **Home mode selector:** `/home` page lets users choose Field Mode (`/field/movement`) or Admin Mode (`/`) based on role
+
+### PWA Configuration
+
+- **Manifest:** `client/public/manifest.json` — name "VoltStock — TK Electric", display: standalone, theme: #0A6B24
+- **Icons:** `icon-192.png` (192×192), `icon-512.png` (512×512), `apple-touch-icon.png` (180×180) in `client/public/`
+- **Service worker:** `client/public/sw.js` — Cache-First for static assets, Network-First for API + HTML
+- **Registration:** `client/src/main.tsx` — `navigator.serviceWorker.register('/sw.js')`
+- **iOS support:** apple-mobile-web-app-capable meta tag in `client/index.html`
+
+### Routing Architecture (Wouter v3 Notes)
+
+- **IMPORTANT:** In wouter v3 with `regexparam`, `/:rest*` only matches single-segment paths (e.g., `/home`) — it does NOT match `/` or multi-segment paths like `/admin/users`
+- **Correct catch-all:** Use empty `<Route component={AdminRouter} />` (no path) as the last route in a Switch
+- **Outer Switch:** login → signup → /home → /field/:rest* → /field → [catch-all AdminRouter]
+- **Inner admin Switch:** uses absolute paths e.g. `<Route path="/admin/users" component={UserApprovals} />`
 
 ### API Endpoints
 

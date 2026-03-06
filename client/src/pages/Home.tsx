@@ -1,47 +1,12 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
-import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertCircle, Eye, EyeOff, HardHat, Shield, ArrowRightLeft, Search, ClipboardList, LayoutDashboard, Package, BarChart3, LogOut } from "lucide-react";
+import { HardHat, Shield, ArrowRightLeft, Search, ClipboardList, LayoutDashboard, Package, BarChart3, LogOut } from "lucide-react";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export default function Home() {
   const [, navigate] = useLocation();
   const { user, logout, isAdminRole } = useAuth();
-  const { isAdmin, verify, verifyPending, verifyError, refetch } = useAdminAuth();
-
-  const [showAdminGate, setShowAdminGate] = useState(false);
-  const [adminId, setAdminId] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
-  const [localError, setLocalError] = useState("");
-
-  async function handleAdminVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setLocalError("");
-    try {
-      await verify({ adminId, adminPassword });
-      await refetch();
-      setShowAdminGate(false);
-      navigate("/");
-    } catch (err: any) {
-      setLocalError(err?.message ?? "Invalid credentials");
-    }
-  }
-
-  function openAdminGate() {
-    if (isAdmin) {
-      navigate("/");
-    } else {
-      setAdminId("");
-      setAdminPassword("");
-      setLocalError("");
-      setShowAdminGate(true);
-    }
-  }
 
   const displayName = user?.name ?? user?.firstName ?? user?.email ?? "User";
 
@@ -82,9 +47,9 @@ export default function Home() {
           </div>
 
           <div className={`grid grid-cols-1 gap-5 ${isAdminRole ? "sm:grid-cols-2" : ""}`}>
-            {/* ── Field Mode card ── */}
+            {/* ── Field Mode ── */}
             <button
-              onClick={() => navigate("/field")}
+              onClick={() => navigate("/field/movement")}
               data-testid="btn-field-mode"
               className="text-left group bg-white rounded-2xl border-2 border-slate-200 hover:border-brand-500 shadow-sm hover:shadow-lg transition-all duration-200 p-7 flex flex-col gap-4"
             >
@@ -106,7 +71,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-brand-600 flex-shrink-0" />
-                  View transactions (read-only)
+                  View transaction history
                 </li>
               </ul>
               <div className="mt-auto pt-3 border-t border-slate-100">
@@ -116,10 +81,10 @@ export default function Home() {
               </div>
             </button>
 
-            {/* ── Admin Mode card — only for admin role users ── */}
+            {/* ── Admin Mode — only for admin role ── */}
             {isAdminRole && (
               <button
-                onClick={openAdminGate}
+                onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
                 className="text-left group bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-lg transition-all duration-200 p-7 flex flex-col gap-4"
               >
@@ -128,7 +93,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-0.5">Admin Mode</h2>
-                  <p className="text-sm text-slate-500 font-medium">Full management (edit inventory + master data)</p>
+                  <p className="text-sm text-slate-500 font-medium">Full management + master data</p>
                 </div>
                 <ul className="space-y-2 text-sm text-slate-600">
                   <li className="flex items-center gap-2">
@@ -141,87 +106,25 @@ export default function Home() {
                   </li>
                   <li className="flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                    Full transactions management (edit/delete)
+                    User management + full transactions
                   </li>
                 </ul>
                 <div className="mt-auto pt-3 border-t border-slate-100">
                   <span className="text-sm font-semibold text-amber-600 group-hover:text-amber-700">
-                    {isAdmin ? "Return to Admin →" : "Enter Admin Mode →"}
+                    Enter Admin Mode →
                   </span>
                 </div>
               </button>
             )}
           </div>
+
+          {!isAdminRole && (
+            <p className="text-center text-xs text-slate-400 mt-6">
+              Role: <strong>{user?.role ?? "viewer"}</strong> — Contact an admin to request elevated access.
+            </p>
+          )}
         </div>
       </div>
-
-      {/* ── Admin Gate Modal ── */}
-      <Dialog open={showAdminGate} onOpenChange={setShowAdminGate}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-5 h-5 text-amber-600" />
-              <DialogTitle>Admin Access Required</DialogTitle>
-            </div>
-            <p className="text-sm text-slate-500">
-              Enter your admin credentials to access Admin Mode.
-            </p>
-          </DialogHeader>
-
-          <form onSubmit={handleAdminVerify} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Admin ID</label>
-              <Input
-                value={adminId}
-                onChange={e => setAdminId(e.target.value)}
-                placeholder="Enter admin ID"
-                autoFocus
-                autoComplete="username"
-                data-testid="input-admin-id"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Admin Password</label>
-              <div className="relative">
-                <Input
-                  type={showPw ? "text" : "password"}
-                  value={adminPassword}
-                  onChange={e => setAdminPassword(e.target.value)}
-                  placeholder="Enter admin password"
-                  autoComplete="current-password"
-                  className="pr-10"
-                  data-testid="input-admin-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  tabIndex={-1}
-                >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {(localError || verifyError) && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {localError || (verifyError as Error)?.message}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              disabled={verifyPending || !adminId || !adminPassword}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-              data-testid="btn-admin-verify"
-            >
-              {verifyPending ? "Verifying…" : "Enter Admin Mode"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -3,15 +3,34 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
+import { pool } from "./db";
+import { runSeed } from "./seed";
 
 const app = express();
 const httpServer = createServer(app);
-
 
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
+}
+
+export function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
+
+// ─── Boot-time environment validation ────────────────────────────────────────
+const REQUIRED_ENV = ["DATABASE_URL", "SESSION_SECRET"] as const;
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`[boot] FATAL — missing required env vars: ${missing.join(", ")}`);
+  process.exit(1);
 }
 
 app.use(
@@ -23,17 +42,6 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
-
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -53,7 +61,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -62,25 +69,34 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // ─── Verify DB connectivity ─────────────────────────────────────────────
+  try {
+    const client = await pool.connect();
+    client.release();
+    log("database connection OK", "db");
+  } catch (err: any) {
+    console.error("[db] FATAL — cannot connect to database:", err.message);
+    process.exit(1);
+  }
+
+  // ─── Seed essential data (idempotent) ────────────────────────────────────
+  try {
+    await runSeed();
+  } catch (err: any) {
+    console.error("[seed] seed failed (non-fatal):", err.message);
+  }
+
   await setupAuth(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
+    if (res.headersSent) return next(err);
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -88,19 +104,9 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
+    { port, host: "0.0.0.0", reusePort: true },
+    () => { log(`serving on port ${port}`); },
   );
 })();

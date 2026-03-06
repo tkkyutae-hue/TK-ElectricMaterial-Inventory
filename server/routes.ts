@@ -37,6 +37,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.use("/uploads", express.static(uploadsDir));
 
+  // ─── Health ─────────────────────────────────────────────────────────────────
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const client = await pool.connect();
+      client.release();
+      res.json({ ok: true, db: "ok", ts: new Date().toISOString() });
+    } catch (err: any) {
+      res.status(503).json({ ok: false, db: "error", error: err.message });
+    }
+  });
+
   // ─── Dashboard ──────────────────────────────────────────────────────────────
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
     try {

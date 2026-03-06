@@ -12,56 +12,22 @@ import {
   Menu,
   Home,
   Shield,
+  Users,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, logout } = useAuth();
   const { logout: adminLogout } = useAdminAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  if (isLoading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full premium-card p-8 text-center space-y-6">
-          <div className="flex items-center justify-center mb-2">
-            <img
-              src={tkLogo}
-              alt="TK Electric"
-              className="h-16 object-contain"
-              style={{ imageRendering: "crisp-edges" }}
-            />
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-bold text-slate-900">TK Electric</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Inventory Management</p>
-          </div>
-          <p className="text-slate-500">Premium inventory management for electrical contractors.</p>
-          <Button
-            className="w-full h-12 text-lg font-semibold bg-brand-700 hover:bg-brand-800 text-white"
-            onClick={() => window.location.href = '/api/login'}
-          >
-            Sign in with Replit
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const navGroups = [
     {
@@ -86,6 +52,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/reports", label: "Reports", icon: BarChart3 },
       ],
     },
+    {
+      label: "Admin Tools",
+      items: [
+        { href: "/admin/users", label: "User Approvals", icon: Users },
+        { href: "/admin/export", label: "Export Backup", icon: Download },
+      ],
+    },
   ];
 
   async function handleBackToHome() {
@@ -93,9 +66,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     window.location.href = "/home";
   }
 
+  const displayName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? user?.email ?? "User";
+  const initials = displayName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">
-      {/* Brand block */}
       <Link href="/" className="px-5 py-4 flex items-center gap-3 border-b border-border hover:bg-brand-50 transition-colors">
         <img
           src={tkLogo}
@@ -142,7 +117,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="p-3 border-t border-border space-y-1">
-        {/* Back to Home */}
         <button
           onClick={handleBackToHome}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
@@ -154,13 +128,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
           <Avatar className="w-8 h-8 border border-border flex-shrink-0">
-            <AvatarImage src={user?.profileImageUrl} />
             <AvatarFallback className="bg-brand-100 text-brand-700 font-semibold text-xs">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{user?.firstName} {user?.lastName}</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{displayName}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
@@ -168,6 +141,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           variant="ghost"
           className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50 mt-1 text-sm h-9"
           onClick={() => logout()}
+          data-testid="btn-sign-out"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out
@@ -178,13 +152,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background font-sans">
-      {/* Desktop Sidebar */}
       <div className="hidden md:block flex-shrink-0">
         <SidebarContent />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header */}
         <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -225,12 +197,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Button>
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </Button>
           </div>
         </header>
 
-        {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {children}

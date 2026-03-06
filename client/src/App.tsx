@@ -1,4 +1,5 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,6 +10,8 @@ import { FieldLayout } from "@/components/layout/FieldLayout";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAuth } from "@/hooks/use-auth";
 
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
@@ -21,6 +24,8 @@ import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
 import Reorder from "@/pages/Reorder";
 import Reports from "@/pages/Reports";
+import UserApprovals from "@/pages/admin/UserApprovals";
+import Export from "@/pages/admin/Export";
 
 import FieldMovement from "@/pages/field/FieldMovement";
 import FieldInventory from "@/pages/field/FieldInventory";
@@ -47,7 +52,6 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAdmin) return null;
-
   return <>{children}</>;
 }
 
@@ -67,6 +71,8 @@ function AdminRouter() {
           <Route path="/projects/:id" component={ProjectDetail} />
           <Route path="/reorder" component={Reorder} />
           <Route path="/reports" component={Reports} />
+          <Route path="/admin/users" component={UserApprovals} />
+          <Route path="/admin/export" component={Export} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>
@@ -90,6 +96,7 @@ function FieldRouter() {
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -101,16 +108,18 @@ function Router() {
 
   if (!isAuthenticated) {
     return (
-      <AppLayout>
-        <Switch>
-          <Route path="*" component={() => null} />
-        </Switch>
-      </AppLayout>
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route component={() => <Redirect to="/login" />} />
+      </Switch>
     );
   }
 
   return (
     <Switch>
+      <Route path="/login" component={() => <Redirect to="/home" />} />
+      <Route path="/signup" component={() => <Redirect to="/home" />} />
       <Route path="/home" component={Home} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />

@@ -29,7 +29,7 @@ const upload = multer({
 });
 
 function getUserId(req: any): string | null {
-  return req.user?.claims?.sub ?? null;
+  return (req.session as any)?.userId ?? null;
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -43,7 +43,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { pool } = await import("./db");
       const client = await pool.connect();
       client.release();
-      res.json({ ok: true, db: "ok", ts: new Date().toISOString() });
+      const dbUrl = process.env.DATABASE_URL ?? "";
+      const dbName = dbUrl.split("/").pop()?.split("?")[0] ?? "unknown";
+      res.json({ ok: true, db: "ok", dbName, env: process.env.NODE_ENV ?? "development", ts: new Date().toISOString() });
     } catch (err: any) {
       res.status(503).json({ ok: false, db: "error", error: err.message });
     }
@@ -554,6 +556,85 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     delete req.session.adminVerified;
     delete req.session.adminExpiry;
     res.json({ success: true });
+  });
+
+  // ─── User Management (Admin Only) ────────────────────────────────────────────
+  app.get("/api/admin/users", isAuthenticated, (req: any, res, next) => {
+    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
+    next();
+  }, async (_req, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const users = await authStorage.listUsers();
+      const safe = users.map(({ passwordHash: _ph, ...u }: any) => u);
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/approve", isAuthenticated, (req: any, res, next) => {
+    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
+    next();
+  }, async (req, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.updateUserStatus(req.params.id, "active");
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { passwordHash: _ph, ...safe } = user as any;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reject", isAuthenticated, (req: any, res, next) => {
+    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
+    next();
+  }, async (req, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.updateUserStatus(req.params.id, "rejected");
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const { passwordHash: _ph, ...safe } = user as any;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
+  app.get("/api/admin/export/:table", isAuthenticated, (req: any, res, next) => {
+    if (!isAdminSession(req)) return res.status(403).json({ message: "Admin session required" });
+    next();
+  }, async (req, res) => {
+    const ALLOWED = ["categories", "locations", "suppliers", "projects", "items", "inventory_movements", "inventory_location_balances", "item_groups", "users"];
+    const table = req.params.table;
+    if (!ALLOWED.includes(table)) {
+      return res.status(400).json({ message: "Unknown table" });
+    }
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+      const result = await db.execute(sql.raw(`SELECT * FROM ${table} LIMIT 50000`));
+      const rows: any[] = (result as any).rows ?? [];
+      if (rows.length === 0) {
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="${table}.csv"`);
+        return res.send("");
+      }
+      const headers = Object.keys(rows[0]);
+      const escape = (v: any) => {
+        const s = v == null ? "" : String(v);
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const csv = [headers.join(","), ...rows.map(r => headers.map(h => escape(r[h])).join(","))].join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="${table}.csv"`);
+      res.send(csv);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   return httpServer;

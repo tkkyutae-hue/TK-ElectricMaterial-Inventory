@@ -1,0 +1,185 @@
+Implement a production-usable security + data strategy for VoltStock (TK Electric) by unifying databases and adding safety controls.
+
+DO NOT redesign the UI.
+Keep the current layout and features.
+All changes must work end-to-end and persist to DB.
+
+====================================================
+0) PRIMARY GOAL: SINGLE SOURCE OF TRUTH DB (DEV + PROD MUST MATCH)
+==================================================================
+
+Current problem:
+Published site uses Production DB (empty) while Development DB has data. This causes blank screen / missing data.
+
+Required outcome:
+
+* Both Development preview and Production deploy MUST read/write the SAME database.
+* When I receive/issue in production, I must see the same data immediately in dev preview and vice versa.
+
+Implementation rules:
+
+* Remove environment-based DB switching.
+* Use ONE env var only: DATABASE_URL (pointing to the Production database).
+* Ensure server always connects using DATABASE_URL in all environments.
+* Add clear startup logging: “DB Connected: <safe db identifier>”.
+
+Also add:
+GET /api/health
+
+* returns { ok: true, db: "ok", dbName: "...", env: "..." }
+* dbName must be safe info only (not full secrets)
+
+====================================================
+
+1. AUTH REQUIRED BEFORE ANY APP SCREEN (LOGIN GATE)
+   ====================================================
+
+User must log in first.
+Unauthenticated users should never see dashboard or data.
+
+* Visiting "/" when not logged in -> redirect to /login
+* After login -> redirect to /home (mode selection screen)
+
+====================================================
+2) SIGNUP WITH ADMIN APPROVAL (EMAIL SIGNUP + PENDING)
+======================================================
+
+Signup flow:
+
+* User signs up with email + password + name.
+* New accounts must be created as status="pending".
+* Pending users cannot access the app.
+* Only approved users can login and access /home.
+
+Admin approval UI:
+
+* Admin mode should have a simple “User Approvals” page listing pending users.
+* Admin can Approve / Reject.
+
+Users table must include:
+
+* email (unique)
+* password_hash
+* name
+* role: 'admin' | 'staff'
+* status: 'pending' | 'active' | 'rejected'
+* created_at
+
+====================================================
+3) HOME MODE SELECTION SCREEN (/home) WITH TWO LARGE CARDS
+==========================================================
+
+After login, show /home with two large clickable cards (no Enter button):
+A) Field Mode
+
+* Receive / Issue / Return
+* Stock lookup/search (read-only)
+* Transaction history view (read-only)
+
+B) Admin Mode
+
+* Full management: inventory edits, families, suppliers, projects, reports, reorder, transaction edit/delete, etc.
+
+Clicking a card navigates into that mode.
+
+Add a consistent “Back to Home” button visible in BOTH modes.
+
+====================================================
+4) ADMIN MODE REQUIRES 2ND GATE (ADMIN CREDENTIAL PROMPT)
+=========================================================
+
+Even after normal login, entering Admin Mode requires Admin Gate.
+
+Admin Gate behavior:
+
+* Clicking Admin Mode card prompts for admin credentials.
+* ID: admin
+* Password: 1234
+
+Security requirements:
+
+* Do NOT hardcode password in frontend.
+* Store admin credential securely server-side (bcrypt hash in DB or env var).
+* Validate via server endpoint: POST /api/admin/verify
+* If verified, set server session flag admin_session=true (expiry 30 minutes).
+* Without admin_session, all admin routes must block and redirect to /home.
+
+Role rules:
+
+* Only users with role='admin' can pass Admin Gate and access Admin routes.
+* staff users must never see Admin Mode entry.
+
+====================================================
+5) FIELD MODE PERMISSIONS (SAFE OPERATION MODE)
+===============================================
+
+Field Mode allowed:
+
+* Log Inventory Movement (Receive / Issue / Return)
+* Inventory search + item detail view (read-only)
+* Transaction History view (read-only)
+
+Field Mode not allowed:
+
+* Editing items, families, categories, suppliers, projects
+* Deleting transactions
+* Any master data changes
+
+====================================================
+6) BACKUP / EXPORT SAFETY (ADMIN ONLY)
+======================================
+
+Add an Admin-only backup/export feature:
+
+UI:
+
+* Admin Mode -> Settings (or Tools) -> “Export Backup (CSV)”
+
+API:
+GET /api/admin/export
+
+* requires admin_session
+* returns a zip or multiple CSV downloads
+
+Export tables (minimum):
+
+* categories
+* item_groups (families)
+* items
+* locations
+* suppliers
+* projects
+* inventory_movements
+* inventory_location_balances
+* users
+
+Also add a warning on destructive actions:
+
+* All delete actions require confirmation
+* For transactions, ensure dependent rows are deleted safely (FK safe delete)
+
+====================================================
+7) FIX BLANK SCREEN ON PUBLISH (MUST BE RESILIENT)
+==================================================
+
+Ensure app does not blank-screen when data is missing:
+
+* Add safe empty states (no categories/items -> show onboarding message)
+* Add global error boundary that shows a friendly error message + “Reload” button
+* Log server errors clearly
+
+====================================================
+FINAL OUTPUT REQUIREMENTS
+=========================
+
+Actually implement everything end-to-end.
+
+At the end, clearly explain:
+
+* how DB is unified (single DATABASE_URL)
+* what routes are protected and how
+* how signup approval works
+* how /home mode selection works
+* how Admin Gate works (server-side, session-based)
+* what Field Mode can/can’t do
+* how backup export works and where files come from

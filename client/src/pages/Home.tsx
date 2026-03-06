@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { HardHat, Shield, LogOut } from "lucide-react";
+import { HardHat, LayoutDashboard, LogOut } from "lucide-react";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export default function Home() {
@@ -38,47 +38,49 @@ export default function Home() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-xl">
           <div className="text-center mb-10">
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 mb-2">
               Select Your Mode
             </h1>
             <p className="text-slate-500 text-sm sm:text-base">
-              Choose the mode that matches your role for this session.
+              Choose the mode that matches your role.
             </p>
           </div>
 
-          {/* Mode cards */}
-          <div className={`grid gap-6 ${isAdminRole ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-sm mx-auto"}`}>
+          {/* Square cards — always 2 col for admin, 1 col centered for non-admin */}
+          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-2" : "grid-cols-1 max-w-[280px] mx-auto"}`}>
 
             {/* ── Field Mode card ── */}
             <button
               onClick={() => navigate("/field")}
               data-testid="btn-field-mode"
-              className="group bg-white rounded-2xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-4 p-8 cursor-pointer min-h-[220px] sm:min-h-[260px]"
+              className="group aspect-square bg-white rounded-3xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-5 p-6 cursor-pointer"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#EAF7EE] flex items-center justify-center group-hover:bg-[#d2f0dc] transition-colors">
-                <HardHat className="w-7 h-7 sm:w-8 sm:h-8 text-[#0A6B24]" />
+              {/* Icon circle — green */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#0A6B24] flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-900/20">
+                <HardHat className="w-10 h-10 sm:w-12 sm:h-12 text-white" strokeWidth={1.5} />
               </div>
               <div className="text-center">
                 <h2 className="text-lg sm:text-xl font-bold text-slate-900">Field Mode</h2>
-                <p className="text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
               </div>
             </button>
 
-            {/* ── Admin Mode card — only for admin role ── */}
+            {/* ── Admin Mode card ── */}
             {isAdminRole && (
               <button
                 onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
-                className="group bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-500 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-4 p-8 cursor-pointer min-h-[220px] sm:min-h-[260px]"
+                className="group aspect-square bg-white rounded-3xl border-2 border-slate-200 hover:border-amber-500 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-5 p-6 cursor-pointer"
               >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-                  <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-amber-600" />
+                {/* Icon circle — amber */}
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg shadow-amber-900/20">
+                  <LayoutDashboard className="w-10 h-10 sm:w-12 sm:h-12 text-white" strokeWidth={1.5} />
                 </div>
                 <div className="text-center">
                   <h2 className="text-lg sm:text-xl font-bold text-slate-900">Admin Mode</h2>
-                  <p className="text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
                 </div>
               </button>
             )}

@@ -13,7 +13,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <img src={tkLogo} alt="TK Electric" className="h-9 w-auto object-contain" data-testid="img-tk-logo" />
           <div>
@@ -36,52 +36,47 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-xl">
-          <div className="text-center mb-10">
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 mb-2">
-              Select Your Mode
-            </h1>
-            <p className="text-slate-500 text-sm sm:text-base">
-              Choose the mode that matches your role.
-            </p>
-          </div>
+      {/* Centered content */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-10">
+        <div className="w-full max-w-3xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 text-center mb-10">
+            Select Your Mode
+          </h1>
 
-          {/* Square cards — always 2 col for admin, 1 col centered for non-admin */}
-          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-2" : "grid-cols-1 max-w-[280px] mx-auto"}`}>
+          {/* Cards grid */}
+          <div className={`grid gap-5 ${isAdminRole ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-[420px] mx-auto"}`}>
 
-            {/* ── Field Mode card ── */}
+            {/* ── Field Mode ── */}
             <button
               onClick={() => navigate("/field")}
               data-testid="btn-field-mode"
-              className="group aspect-square bg-white rounded-3xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-5 p-6 cursor-pointer"
+              className="group bg-white rounded-3xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-6 cursor-pointer"
+              style={{ minHeight: "280px", padding: "40px 32px" }}
             >
-              {/* Icon circle — green */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#0A6B24] flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg shadow-green-900/20">
-                <HardHat className="w-10 h-10 sm:w-12 sm:h-12 text-white" strokeWidth={1.5} />
+              <div
+                className="rounded-2xl bg-[#0A6B24] flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg"
+                style={{ width: "80px", height: "80px" }}
+              >
+                <HardHat style={{ width: "44px", height: "44px" }} className="text-white" strokeWidth={1.5} />
               </div>
-              <div className="text-center">
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Field Mode</h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
-              </div>
+              <h2 className="text-xl font-bold text-slate-900">Field Mode</h2>
             </button>
 
-            {/* ── Admin Mode card ── */}
+            {/* ── Admin Mode ── */}
             {isAdminRole && (
               <button
                 onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
-                className="group aspect-square bg-white rounded-3xl border-2 border-slate-200 hover:border-amber-500 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-5 p-6 cursor-pointer"
+                className="group bg-white rounded-3xl border-2 border-slate-200 hover:border-amber-500 shadow-md hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-6 cursor-pointer"
+                style={{ minHeight: "280px", padding: "40px 32px" }}
               >
-                {/* Icon circle — amber */}
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg shadow-amber-900/20">
-                  <LayoutDashboard className="w-10 h-10 sm:w-12 sm:h-12 text-white" strokeWidth={1.5} />
+                <div
+                  className="rounded-2xl bg-amber-500 flex items-center justify-center group-hover:scale-105 transition-transform duration-200 shadow-lg"
+                  style={{ width: "80px", height: "80px" }}
+                >
+                  <LayoutDashboard style={{ width: "44px", height: "44px" }} className="text-white" strokeWidth={1.5} />
                 </div>
-                <div className="text-center">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">Admin Mode</h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
-                </div>
+                <h2 className="text-xl font-bold text-slate-900">Admin Mode</h2>
               </button>
             )}
           </div>

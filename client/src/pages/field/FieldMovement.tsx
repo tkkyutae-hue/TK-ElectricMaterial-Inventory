@@ -1,12 +1,17 @@
 import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { MovementForm } from "@/components/MovementForm";
-import { ArrowRightLeft } from "lucide-react";
 
-const TYPE_LABELS: Record<string, string> = {
-  receive: "Receive / Return",
-  issue: "Issue / Ship",
-  return: "Return",
+// Screen configs: each preset type maps to its allowed movement types
+const SCREEN_CONFIG: Record<string, { heading: string; allowedTypes: string[] }> = {
+  receive: {
+    heading: "Receive / Return",
+    allowedTypes: ["receive", "return"],
+  },
+  issue: {
+    heading: "Issue / Transfer",
+    allowedTypes: ["issue", "transfer"],
+  },
 };
 
 export default function FieldMovement() {
@@ -16,21 +21,22 @@ export default function FieldMovement() {
   const { user } = useAuth();
   const isViewer = user?.role === "viewer";
 
+  const config = SCREEN_CONFIG[presetType] ?? SCREEN_CONFIG.receive;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* F: Emphasise action, not "Log Movement" */}
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <ArrowRightLeft className="w-5 h-5 text-brand-700" />
-          <h1 className="text-2xl font-display font-bold text-slate-900">
-            Log Movement
-            {presetType in TYPE_LABELS && (
-              <span className="ml-2 text-base font-medium text-slate-400">— {TYPE_LABELS[presetType]}</span>
-            )}
-          </h1>
-        </div>
-        <p className="text-slate-500 text-sm">Record a Receive, Issue, or Return transaction.</p>
+        <h1 className="text-2xl font-display font-bold text-slate-900">{config.heading}</h1>
+        <p className="text-sm text-slate-400 mt-0.5">Log Movement</p>
       </div>
-      <MovementForm key={presetType} defaultType={presetType} readOnly={isViewer} />
+      <MovementForm
+        key={presetType}
+        defaultType={presetType}
+        allowedTypes={config.allowedTypes}
+        fieldMode
+        readOnly={isViewer}
+      />
     </div>
   );
 }

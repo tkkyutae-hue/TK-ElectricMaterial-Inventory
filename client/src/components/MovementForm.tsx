@@ -12,9 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, X, ChevronDown, Plus, Trash2, ExternalLink } from "lucide-react";
+import { Search, X, ChevronDown, Plus, Trash2, ImageOff } from "lucide-react";
 import { api } from "@shared/routes";
-import { Link } from "wouter";
 
 const sharedSchema = z.object({
   movementType: z.string().min(1, "Movement type is required"),
@@ -123,7 +122,8 @@ export function SearchableItemSelect({
               </button>
             )}
           </div>
-          <div className="max-h-52 overflow-y-auto">
+          {/* C: expanded height so many items are visible */}
+          <div className="max-h-[380px] overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-4">No items found</p>
             ) : (
@@ -132,10 +132,20 @@ export function SearchableItemSelect({
                   key={item.id}
                   type="button"
                   onClick={() => { onChange(item.id); setOpen(false); setSearch(""); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-50 transition-colors ${item.id === value ? "bg-brand-50" : ""}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-brand-50 transition-colors ${item.id === value ? "bg-brand-50" : ""}`}
                   data-testid={`item-option-${item.id}`}
                 >
-                  <span className="font-mono text-xs text-slate-400 w-24 shrink-0 truncate">{item.sku}</span>
+                  {/* SKU */}
+                  <span className="font-mono text-xs text-slate-400 w-20 shrink-0 truncate">{item.sku}</span>
+                  {/* D: photo thumbnail between SKU and name */}
+                  <span className="w-7 h-7 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageOff className="w-4 h-4 text-slate-300" />
+                    )}
+                  </span>
+                  {/* Name + size */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
                     {item.sizeLabel && <p className="text-xs text-slate-400">{item.sizeLabel}</p>}
@@ -283,10 +293,12 @@ function SearchableProjectSelect({
   value,
   onChange,
   projects,
+  hideCreate = false,
 }: {
   value?: number | null;
   onChange: (id: number | undefined) => void;
   projects: any[];
+  hideCreate?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -384,17 +396,19 @@ function SearchableProjectSelect({
               <p className="text-center text-sm text-slate-400 py-3">No active projects found</p>
             )}
           </div>
-          <div className="border-t border-slate-100 px-3 py-2">
-            <Link
-              href="/projects"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"
-              data-testid="project-create-link"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Create new project
-            </Link>
-          </div>
+          {!hideCreate && (
+            <div className="border-t border-slate-100 px-3 py-2">
+              <a
+                href="/projects"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"
+                data-testid="project-create-link"
+              >
+                <Plus className="w-3 h-3" />
+                Create new project
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -408,9 +422,11 @@ interface MovementFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   readOnly?: boolean;
+  allowedTypes?: string[];
+  fieldMode?: boolean;
 }
 
-export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false }: MovementFormProps) {
+export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false }: MovementFormProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: items } = useItems();
@@ -535,7 +551,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {MOVEMENT_TYPES.map(t => (
+                  {MOVEMENT_TYPES.filter(t => !allowedTypes || allowedTypes.includes(t.value)).map(t => (
                     <SelectItem key={t.value} value={t.value}>
                       <span className="font-medium">{t.label}</span>
                       <span className="text-slate-400 text-xs ml-2">— {t.desc}</span>
@@ -594,6 +610,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       value={field.value ?? null}
                       onChange={(id) => field.onChange(id)}
                       projects={projects || []}
+                      hideCreate={fieldMode}
                     />
                   </FormControl>
                   <FormMessage />
@@ -639,12 +656,22 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         {/* ── SECTION B: Items header + scrollable list ── */}
         <div className="flex flex-col min-h-0 flex-1 border-t border-slate-100 pt-3">
 
+          {/* E: "Add Another Item" moved to right side of header */}
           <div className="flex-shrink-0 flex items-center gap-2 mb-2">
             <p className="text-sm font-semibold text-slate-700">Items</p>
             <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium">
               {itemRows.length}
             </span>
             <div className="h-px flex-1 bg-slate-100" />
+            <button
+              type="button"
+              onClick={addRow}
+              className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-md transition-all shrink-0"
+              data-testid="btn-add-item"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Another Item
+            </button>
           </div>
 
           <div
@@ -714,17 +741,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
         {/* ── SECTION C: Sticky footer ── */}
-        <div className="flex-shrink-0 flex items-center justify-between pt-3 mt-2 border-t border-slate-100 bg-white">
-          <button
-            type="button"
-            onClick={addRow}
-            className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2.5 py-1.5 rounded-md transition-all"
-            data-testid="btn-add-item"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Another Item
-          </button>
-
+        <div className="flex-shrink-0 flex items-center justify-end pt-3 mt-2 border-t border-slate-100 bg-white">
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button

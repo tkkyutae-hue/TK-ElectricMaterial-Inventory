@@ -1,5 +1,5 @@
-import { Link } from "wouter";
-import { Home } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Home, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
@@ -7,6 +7,8 @@ import { HardHat } from "lucide-react";
 
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const [location] = useLocation();
+  const isFieldHome = location === "/field";
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: "#F0F2F5" }}>
@@ -27,8 +29,21 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Right: Home button + user avatar only */}
+        {/* Right: Back (if not on field home) + Home button + user avatar */}
         <div className="flex items-center gap-1">
+          {!isFieldHome && (
+            <Link href="/field">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8 text-slate-500 hover:text-[#0A6B24] hover:bg-[#EAF7EE]"
+                data-testid="btn-field-back"
+                title="Back to Field Actions"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            </Link>
+          )}
           <Link href="/home">
             <Button
               variant="ghost"

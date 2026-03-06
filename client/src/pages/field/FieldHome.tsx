@@ -27,7 +27,7 @@ const TILES: Tile[] = [
   },
   {
     testId: "tile-issue",
-    label: "Issue / Ship",
+    label: "Issue / Transfer",
     subtitle: "Send material out",
     icon: PackageMinus,
     iconColor: "#d97706",
@@ -89,14 +89,12 @@ export default function FieldHome() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = hoverBorder; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.10)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = cardBorder; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
             >
-              {/* iOS-style icon badge */}
               <div
                 className="rounded-2xl bg-white flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-200"
                 style={{ width: "68px", height: "68px", flexShrink: 0 }}
               >
                 <Icon style={{ width: "38px", height: "38px", color: iconColor }} strokeWidth={1.8} />
               </div>
-
               <div>
                 <h2 className="text-lg font-bold text-slate-900 leading-tight">{label}</h2>
                 <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>

@@ -1,0 +1,117 @@
+[VoltStock / TK Electric - Field Mode Log Movement UI Fixes (Receive/Return vs Issue/Transfer)]
+
+Goal:
+Fix Field Mode log movement UX to match intended flows and eliminate confusing options. Keep current design style (green/clean), but improve readability and navigation. Must be fully functional end-to-end (DB persistence).
+
+=====================================================
+A) Split Movement Type options by screen (VERY IMPORTANT)
+=====================================================
+1) In FIELD MODE "Receive/Return" screen:
+- Movement Type dropdown MUST ONLY show:
+  - Receive
+  - Return
+- REMOVE Issue, Transfer from this screen completely.
+
+2) In FIELD MODE "Issue/Transfer" screen (rename from Issue/Ship):
+- Rename UI label everywhere:
+  - "Issue/Ship" -> "Issue/Transfer"
+- Movement Type dropdown MUST ONLY show:
+  - Issue
+  - Transfer
+- REMOVE Receive, Return from this screen completely.
+
+(Implementation note)
+- Do NOT just hide in UI while API accepts others.
+- The backend should validate so wrong type cannot be submitted from wrong screen.
+
+=====================================================
+B) Remove "Create new project" entry from Project dropdown in Field Mode
+=====================================================
+On Field Mode Log Movement screen:
+- Project(Optional) dropdown currently includes "Create new project"
+- Clicking it incorrectly navigates into Admin Mode
+Fix:
+- REMOVE that option entirely in Field Mode.
+- Field Mode must never create new projects.
+- Only allow selecting existing projects.
+- Also allow typing search (already requested earlier), but NOT creation.
+
+=====================================================
+C) Item dropdown list is too short / items get hidden (increase visible area)
+=====================================================
+Problem:
+When clicking Item selector, results list shows only ~1 item because dropdown panel height is too small.
+
+Fix:
+- Increase dropdown menu max-height significantly (e.g. 320~420px)
+- Make it scrollable with a clear scrollbar
+- Ensure list is not clipped by parent containers (z-index / overflow hidden issues)
+- Keep the Item input height normal, but expand the dropdown list area.
+
+=====================================================
+D) Add item image thumbnail between SKU and Item Name in the item dropdown list
+=====================================================
+In the item search dropdown results list:
+- Show columns: [SKU] [PHOTO] [ITEM NAME] [SIZE] (optional) [On-hand/Unit optional]
+- PHOTO column should show a small square thumbnail (24~32px)
+- Use existing item image field (image_url or item_images) already used in Admin inventory.
+- If no image exists, show a neutral placeholder icon.
+
+This is NOT for the table; this is specifically inside the item picker dropdown list so users can visually confirm.
+
+=====================================================
+E) Move "Add Another Item" button to the far right of the Items header row
+=====================================================
+Current:
+- "+ Add Another Item" sits bottom-left and wastes space.
+
+Change:
+- On Items section header line:
+  - Left: "Items (N)"
+  - Right end: "+ Add Another Item" button
+- Keep the confirm button bottom-right.
+- Maintain current green style.
+
+=====================================================
+F) Title emphasis: highlight the action (Receive/Return or Issue/Transfer), not "Log Movement"
+=====================================================
+Current header:
+- "Log Movement — Receive/Return" (Log Movement is visually dominant)
+
+Change:
+- Make primary title be the action:
+  - "Receive / Return" (large/bold)
+  - Smaller subtitle: "Log Movement"
+Example:
+  H1: Receive / Return
+  Sub: Log Movement
+
+For Issue/Transfer screen:
+  H1: Issue / Transfer
+  Sub: Log Movement
+
+=====================================================
+G) Add Back button next to Home button in top-right (Field Mode only)
+=====================================================
+Add a Back button beside the Home icon in Field Mode pages:
+- Back should navigate to Field Actions screen (NOT browser back to random pages)
+- Behavior:
+  - From Receive/Return, Issue/Transfer, Inventory, Transactions -> Back goes to Field Actions
+- Keep Home button still available.
+
+Implementation:
+- Use a deterministic route (e.g., /field or /field/home) not history.back().
+- Do not remove Home.
+
+=====================================================
+Deliverables / Acceptance checks
+=====================================================
+1) Receive/Return screen shows ONLY Receive + Return types.
+2) Issue/Transfer screen shows ONLY Issue + Transfer types and label changed.
+3) Project dropdown has NO "Create new project" option in Field Mode.
+4) Item dropdown shows many results clearly with scroll, not clipped.
+5) Item dropdown results show thumbnail photo column between SKU and Item Name.
+6) "+ Add Another Item" is on Items header right side.
+7) Page header emphasizes Receive/Return or Issue/Transfer, not Log Movement.
+8) Back button exists next to Home and always returns to Field Actions screen.
+9) All changes persist correctly to DB and do not break current admin features.

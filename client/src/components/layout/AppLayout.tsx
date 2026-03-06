@@ -10,8 +10,11 @@ import {
   LogOut,
   Bell,
   Menu,
+  Home,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -21,6 +24,7 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { logout: adminLogout } = useAdminAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (isLoading) {
@@ -84,6 +88,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     },
   ];
 
+  async function handleBackToHome() {
+    await adminLogout();
+    window.location.href = "/home";
+  }
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">
       {/* Brand block */}
@@ -96,7 +105,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
         <div className="min-w-0">
           <span className="font-display font-bold text-xl tracking-tight text-slate-900 leading-none block">TK Electric</span>
-          <p className="text-[11px] text-muted-foreground leading-none mt-1.5">Inventory Management</p>
+          <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 block flex items-center gap-1">
+            <Shield className="w-2.5 h-2.5 inline" /> Admin Mode
+          </span>
         </div>
       </Link>
 
@@ -130,7 +141,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
       </div>
 
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-1">
+        {/* Back to Home */}
+        <button
+          onClick={handleBackToHome}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          data-testid="nav-admin-back-home"
+        >
+          <Home className="w-4 h-4 flex-shrink-0" />
+          Back to Home
+        </button>
+
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
           <Avatar className="w-8 h-8 border border-border flex-shrink-0">
             <AvatarImage src={user?.profileImageUrl} />
@@ -182,11 +203,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="hidden md:block text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <Shield className="w-3 h-3" /> Admin Mode
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBackToHome}
+              className="gap-1.5 text-slate-600 border-slate-200"
+              data-testid="btn-header-admin-home"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Home</span>
+            </Button>
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>

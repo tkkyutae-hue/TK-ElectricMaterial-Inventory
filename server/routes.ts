@@ -8,6 +8,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import crypto from "crypto";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -507,6 +508,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
+  });
+
+  // ─── Admin Gate ─────────────────────────────────────────────────────────────
+  function sha256hex(s: string): string {
+    return crypto.createHash("sha256").update(s).digest("hex");
+  }
+
+  function isAdminSession(req: any): boolean {
+    return req.session?.adminVerified === true && (req.session?.adminExpiry ?? 0) > Date.now();
+  }
+
+  app.post("/api/admin/verify", isAuthenticated, (req: any, res) => {
+    const { adminId, adminPassword } = req.body ?? {};
+    const correctId   = process.env.ADMIN_ID            ?? "admin";
+    const correctHash = process.env.ADMIN_PASSWORD_HASH ?? sha256hex("1234");
+    const inputHash   = sha256hex(String(adminPassword ?? ""));
+    let pwMatch = false;
+    try { pwMatch = crypto.timingSafeEqual(Buffer.from(inputHash), Buffer.from(correctHash)); } catch { /* */ }
+    if (adminId === correctId && pwMatch) {
+      req.session.adminVerified = true;
+      req.session.adminExpiry   = Date.now() + 30 * 60 * 1000; // 30 min
+      return res.json({ success: true });
+    }
+    return res.status(401).json({ message: "Invalid admin ID or password." });
+  });
+
+  app.get("/api/admin/status", isAuthenticated, (req: any, res) => {
+    res.json({ isAdmin: isAdminSession(req) });
+  });
+
+  app.post("/api/admin/logout", isAuthenticated, (req: any, res) => {
+    delete req.session.adminVerified;
+    delete req.session.adminExpiry;
+    res.json({ success: true });
   });
 
   return httpServer;

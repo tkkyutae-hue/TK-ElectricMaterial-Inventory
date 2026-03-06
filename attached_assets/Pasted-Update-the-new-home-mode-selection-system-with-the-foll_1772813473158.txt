@@ -1,0 +1,101 @@
+Update the new /home mode selection system with the following improvements.
+
+Keep UI style the same (big cards).
+Do not redesign everything. Implement working flows end-to-end.
+
+====================================================
+
+1. FIX DUPLICATED TEXT ON HOME CARDS + ADD TRANSACTIONS VIEW IN FIELD MODE
+   ====================================================
+
+A) Home card copy cleanup
+Current issue: descriptions are repeated/duplicated.
+
+Update the card text to be clean and non-redundant.
+
+Field Mode card text should be:
+Title: Field Mode
+Subtitle: Receive / Issue / Return + Stock Lookup
+Bullets:
+
+* Log Receive / Issue / Return
+* Search inventory (read-only)
+* View transactions (read-only)
+
+Admin Mode card text should be:
+Title: Admin Mode
+Subtitle: Full management (edit inventory + master data)
+Bullets:
+
+* Dashboard + full inventory editing
+* Suppliers / Projects / Reports / Reorder
+* Full transactions management (edit/delete)
+
+B) Field Mode: transactions visibility
+Field Mode must be able to VIEW transaction history (read-only):
+
+* Add a Transactions page inside Field Mode
+* Allow filtering and searching the same way as Admin mode (date range/type/project)
+* No transaction edit/delete in Field Mode (view only)
+
+====================================================
+2) ADD “BACK TO HOME” BUTTON INSIDE BOTH MODES
+==============================================
+
+Requirement:
+When user enters either Field Mode or Admin Mode, they must always have a clear way to return to /home.
+
+Implementation:
+
+* Add a "Home" button/link in the header or sidebar for BOTH modes.
+* It should navigate to /home.
+* Keep it consistent and easy on mobile.
+
+====================================================
+3) ADMIN MODE REQUIRES SECOND LOGIN (ADMIN GATE)
+================================================
+
+Requirement:
+Even after normal user login, entering Admin Mode must require an additional admin credential prompt.
+
+Behavior:
+
+* On /home, clicking the Admin Mode card opens an Admin Gate prompt (modal or dedicated page).
+* Admin Gate asks:
+
+  * Admin ID
+  * Admin Password
+* Only if correct:
+
+  * user may enter Admin Mode (/dashboard etc.)
+
+Credentials:
+
+* Admin ID: admin
+* Admin Password: 1234
+
+Security rules:
+
+* Do NOT hardcode plain text password in frontend.
+* Store admin credential securely on server side (bcrypt hash in DB or environment variable hash).
+* Validate on server via an endpoint (e.g., POST /api/admin/verify).
+* If verified, set an "admin_session" flag in the session (server-side), valid for the session (or 30 minutes).
+* Without admin_session, all Admin routes must block access and redirect back to /home with "Admin access required."
+
+Important:
+This is separate from normal user authentication:
+
+* Users still must log in first to access /home.
+* Admin Mode requires the second admin gate.
+
+====================================================
+FINAL OUTPUT
+============
+
+Implement and explain:
+
+* exactly what text changed on the Home cards
+* what pages are available in Field Mode (including transactions view)
+* where the "Back to Home" control appears in both modes
+* how the Admin Gate works (server-side verification + session flag)
+* where Admin routes are protected

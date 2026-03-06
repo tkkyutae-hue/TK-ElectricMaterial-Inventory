@@ -1,0 +1,170 @@
+You are working on the existing TK Electric VoltStock app.
+Do NOT redesign everything. Keep current style.
+Implement the following FIELD MODE refinements end-to-end (UI + behavior), keeping current look but fixing usability issues.
+No placeholders—must work with DB and existing flows.
+
+========================================================
+0) PAGES + NAMING (FIELD MODE)
+========================================================
+Field Mode must have separate pages:
+- Receive/Return
+- Issue/Transfer  (rename everywhere from "Issue/Ship" to "Issue/Transfer")
+
+Both pages share the same “Log Movement” form component style, but their Movement Types differ.
+
+========================================================
+A) MOVEMENT TYPE OPTIONS MUST DEPEND ON PAGE
+========================================================
+1) Receive/Return page:
+- Movement Type dropdown must show ONLY:
+  - Receive
+  - Return
+- Remove/hide Issue and Transfer from this page completely.
+
+2) Issue/Transfer page:
+- Movement Type dropdown must show ONLY:
+  - Issue
+  - Transfer
+- Remove/hide Receive and Return from this page completely.
+
+Implementation detail:
+- Enforce at the UI level and also in form submission validation (reject invalid type for that page).
+- Ensure the page title emphasizes the mode:
+  - “Receive / Return” emphasized (bolder) on Receive/Return page
+  - “Issue / Transfer” emphasized (bolder) on Issue/Transfer page
+  - “Log Movement” can be secondary/subtitle.
+
+========================================================
+B) REMOVE "CREATE NEW PROJECT" FROM FIELD MODE
+========================================================
+In Field Mode Log Movement, the Project (Optional) dropdown currently shows "Create new project" and navigates to admin mode.
+This must be removed completely in BOTH pages.
+
+Field Mode should NEVER create projects.
+Only select existing projects.
+
+Also, project display format everywhere in field mode must be:
+- "PO_NUMBER — Project Name"
+(PO number first)
+
+Project searching:
+- allow typing to search by PO number OR project name
+- but only selecting existing projects is allowed
+
+========================================================
+C) CONSISTENT LAYOUT FOR BOTH PAGES (RECEIVE/RETURN + ISSUE/TRANSFER)
+========================================================
+Current issues:
+- Items section too cramped vertically → dropdown results get hidden.
+- Note and Items order not ideal.
+- Page too wide → reduce width, center it.
+- Item results show photos too small.
+- Add Another Item placement inconsistent.
+
+Apply the SAME layout rules to BOTH pages:
+
+--------------------------------------------------------
+C1) Centered width (not full width)
+--------------------------------------------------------
+- Wrap the entire form in a centered container:
+  - max-width ~ 1100–1200px
+  - width: 100%
+  - good padding on small screens
+- No “edge-to-edge” full width layout.
+
+--------------------------------------------------------
+C2) Field arrangement (top → bottom)
+--------------------------------------------------------
+1) Movement Type
+2) From/To + Project (Optional) on the SAME row (2 columns)
+   - Receive/Return page: left = Receive From (or Return From depending on type)
+   - Issue/Transfer page: left = Issue To / Transfer To (depending on type)
+   - right = Project (Optional)
+3) Items section (BIG + readable)
+4) Note (Optional) BELOW Items
+
+Notes:
+- “Note” should always be BELOW Items on both pages.
+- Keep Confirm button bottom-right.
+- Make sure spacing is consistent and not overly tall/empty.
+
+--------------------------------------------------------
+C3) Items section: must show 9–10 results visibly
+--------------------------------------------------------
+- Item dropdown results panel must be tall enough to show at least 9–10 items without being cut off.
+- Increase dropdown results max-height (target 360–420px).
+- The panel itself scrolls internally.
+- Ensure it is not clipped by parent containers (no overflow hidden issues).
+- Keep results readable (line height & padding).
+
+--------------------------------------------------------
+C4) Item results row layout: add PHOTO + increase size
+--------------------------------------------------------
+In the item search results list and selected row:
+- Show thumbnail between SKU and Item Name.
+- Thumbnail size: 36–44px square, rounded corners.
+- Each result row should display:
+  SKU | PHOTO | ITEM NAME | ON HAND + UNIT (right aligned)
+- The selected item row (the input / chosen item) should also show the thumbnail.
+
+--------------------------------------------------------
+C5) “Add Another Item” placement
+--------------------------------------------------------
+- Move “Add Another Item” to the FAR RIGHT side of the Items header row.
+- Items header row layout:
+  left: “Items” label + count
+  right: “+ Add Another Item”
+- Confirm button stays bottom-right.
+- If multiple items exist, Confirm button can show count: “Confirm (N)”.
+
+========================================================
+D) NAVIGATION BUTTONS (FIELD MODE)
+========================================================
+Top-right currently has Home icon. Add a BACK button next to it.
+
+Rules:
+- Keep Home button.
+- Add Back button (left arrow) next to Home in BOTH pages.
+- Back should ALWAYS return to Field Actions screen (not browser back randomness).
+- Remove any duplicate back buttons elsewhere; only keep top-right Back + Home.
+
+========================================================
+E) PAGE-SPECIFIC FROM/TO LABELS (FIELD MODE)
+========================================================
+The left “location” field label should adapt to the movement type:
+
+Receive/Return page:
+- If type = Receive → label “Receive From”
+- If type = Return → label “Return From”
+
+Issue/Transfer page:
+- If type = Issue → label “Issue To”
+- If type = Transfer → label “Transfer To”
+
+Also:
+- This field should be searchable/typable (like item search).
+- If user types a new value and confirms, it should be saved as a selectable option for next time (persist to DB or existing locations table pattern).
+
+========================================================
+F) COPY PROMPT BUTTON (ADMIN ONLY) — REQUIRED
+========================================================
+Add a small "Copy Prompt" button in the app UI for admins ONLY (admin mode header or approvals page header is fine).
+
+Behavior:
+- Clicking "Copy Prompt" copies a predefined multi-line text to clipboard.
+- The copied text should be the current "Field Mode UI Change Request" instructions (store in a constant string).
+- Show toast "Copied" on success.
+
+Purpose:
+- User can one-click copy instructions instead of manual highlight.
+
+========================================================
+G) OUTPUT REQUIREMENTS
+========================================================
+- Ensure Movement Type dropdown is truly restricted based on which page user is on.
+- Ensure Project dropdown never offers "create new project" in field mode.
+- Ensure Items dropdown shows 9–10 results and photo size is larger.
+- Ensure Note is below Items in BOTH pages.
+- Ensure centered max-width container (1100–1200px) in BOTH pages.
+- Ensure Back + Home navigation works and returns to Field Actions reliably.
+- At the end of your response, list which files were changed.

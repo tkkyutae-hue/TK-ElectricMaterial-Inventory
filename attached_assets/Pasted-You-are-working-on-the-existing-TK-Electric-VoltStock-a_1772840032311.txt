@@ -1,0 +1,103 @@
+You are working on the existing TK Electric VoltStock app.
+Do NOT redesign everything. Keep current style.
+Implement the following UI/UX + layout fixes for FIELD MODE > Log Movement (Receive/Return page) and ensure everything works end-to-end.
+
+========================================================
+A) MOVEMENT TYPE OPTIONS MUST DEPEND ON PAGE
+========================================================
+We have two separate pages:
+1) Receive/Return page
+2) Issue/Transfer page (rename from Issue/Ship)
+
+Rules:
+- On Receive/Return page, Movement Type dropdown must show ONLY:
+  - Receive
+  - Return
+  (Remove Issue and Transfer from this page)
+- On Issue/Transfer page, Movement Type dropdown must show ONLY:
+  - Issue
+  - Transfer
+  (Remove Receive and Return from this page)
+- Rename "Issue/Ship" to "Issue/Transfer" everywhere in field mode UI.
+
+========================================================
+B) REMOVE "CREATE NEW PROJECT" FROM FIELD MODE
+========================================================
+In Field Mode Log Movement, the Project (Optional) dropdown currently shows "Create new project" and it navigates user to admin mode.
+This must be removed completely.
+Field mode should NEVER create projects.
+Only select existing projects.
+
+Also, project display format everywhere in field mode must be:
+- "PO_NUMBER — Project Name"
+(PO number first)
+
+========================================================
+C) LAYOUT FIXES INSIDE LOG MOVEMENT PAGE
+========================================================
+Current issues:
+- Items section is too cramped vertically, item dropdown list is hidden (only 1 row visible).
+- Note and Items order is not ideal.
+- Page is too wide. Reduce horizontal width slightly (centered container).
+- Item result rows show photos too small.
+
+Do this layout order (top → bottom):
+1) Movement Type
+2) Receive From / Project (Optional) on the same row (2 columns)
+3) Items section (BIG and visible)
+4) Note (Optional) section (move BELOW Items)
+
+Details:
+1) Container width:
+   - Wrap the whole form inside a centered container
+   - max-width about 1100~1200px (not full width)
+   - add responsive padding for smaller screens
+
+2) Items section vertical space:
+   - The item dropdown results panel must be tall enough to show at least 9~10 items without being cut off.
+   - Increase the dropdown list max-height (e.g., 360~420px) and ensure it can scroll inside that panel.
+   - Do NOT let the panel be hidden by other sections.
+
+3) Item results row layout:
+   - Show an item thumbnail between SKU and item name (like Admin inventory list).
+   - Increase the thumbnail size (ex: 36~44px square) with rounded corners.
+   - Each result row should show:
+     SKU | PHOTO | ITEM NAME | ON HAND + UNIT (right aligned)
+   - The currently selected item row (input area) should also show the thumbnail.
+
+4) Items header controls:
+   - Move "Add Another Item" to the FAR RIGHT of the Items header row.
+   - Keep Confirm button bottom-right as is.
+
+========================================================
+D) NAVIGATION BUTTONS (FIELD MODE)
+========================================================
+Top-right currently has Home icon. Add a BACK button next to it.
+
+Rules:
+- Keep Home button.
+- Add Back button (left arrow) next to Home.
+- Back should return to Field Actions screen (not browser back randomness).
+- Remove any extra duplicate back buttons elsewhere; only keep the top-right Back + Home.
+
+========================================================
+E) COPY PROMPT BUTTON (IMPORTANT)
+========================================================
+Add a small "Copy Prompt" button in the app UI for admins ONLY (admin mode or approvals page header is fine).
+
+Behavior:
+- Clicking "Copy Prompt" copies a predefined multi-line text to clipboard.
+- The copied text should be the current "Field Mode UI Change Request" instructions (store in a constant string).
+- Show toast "Copied" on success.
+
+This is required so user can copy instructions with one click instead of manual highlight.
+
+========================================================
+F) OUTPUT REQUIREMENTS
+========================================================
+- Ensure the dropdown filtering is truly enforced based on which page user is on.
+- Ensure Project dropdown never offers "create new project" in field mode.
+- Ensure Items dropdown list visibly shows 9~10 items and photo size is bigger.
+- Ensure Note is below Items.
+- Ensure the form is centered and not overly wide.
+- List which files were changed at the end of your response.

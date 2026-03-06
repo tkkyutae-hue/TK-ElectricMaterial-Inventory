@@ -89,12 +89,20 @@ export function SearchableItemSelect({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"
+        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[42px]"
         data-testid="item-select-trigger"
       >
         {selected ? (
-          <span className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-xs text-slate-400 shrink-0">{selected.sku}</span>
+          <span className="flex items-center gap-2.5 min-w-0">
+            <span className="font-mono text-xs text-slate-400 shrink-0 w-20 truncate">{selected.sku}</span>
+            {/* thumbnail in trigger */}
+            <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+              {selected.imageUrl ? (
+                <img src={selected.imageUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <ImageOff className="w-4 h-4 text-slate-300" />
+              )}
+            </span>
             <span className="truncate text-slate-900">{selected.name}</span>
           </span>
         ) : (
@@ -137,12 +145,12 @@ export function SearchableItemSelect({
                 >
                   {/* SKU */}
                   <span className="font-mono text-xs text-slate-400 w-20 shrink-0 truncate">{item.sku}</span>
-                  {/* D: photo thumbnail between SKU and name */}
-                  <span className="w-7 h-7 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                  {/* D: photo thumbnail between SKU and name — 40px */}
+                  <span className="w-10 h-10 shrink-0 rounded-md overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <ImageOff className="w-4 h-4 text-slate-300" />
+                      <ImageOff className="w-5 h-5 text-slate-300" />
                     )}
                   </span>
                   {/* Name + size */}
@@ -636,21 +644,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             )}
           </div>
 
-          <FormField control={form.control} name="note" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Note (Optional)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Reference number, PO, reason…"
-                  className="resize-none"
-                  rows={2}
-                  {...field}
-                  data-testid="input-note"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
         </div>
 
         {/* ── SECTION B: Items header + scrollable list ── */}
@@ -738,6 +731,25 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               );
             })}
           </div>
+        </div>
+
+        {/* ── NOTE: below Items ── */}
+        <div className="flex-shrink-0 pt-3 border-t border-slate-100 mt-2">
+          <FormField control={form.control} name="note" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Note (Optional)</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Reference number, PO, reason…"
+                  className="resize-none"
+                  rows={2}
+                  {...field}
+                  data-testid="input-note"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
         </div>
 
         {/* ── SECTION C: Sticky footer ── */}

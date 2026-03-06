@@ -12,6 +12,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
+      {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img src={tkLogo} alt="TK Electric" className="h-9 w-auto object-contain" data-testid="img-tk-logo" />
@@ -35,9 +36,10 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
+        <div className="w-full max-w-3xl">
+          <div className="text-center mb-10">
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 mb-2">
               Select Your Mode
             </h1>
@@ -46,35 +48,37 @@ export default function Home() {
             </p>
           </div>
 
-          <div className={`grid gap-4 ${isAdminRole ? "grid-cols-2" : "grid-cols-1 max-w-[180px] mx-auto"}`}>
-            {/* ── Field Mode tile ── */}
+          {/* Mode cards */}
+          <div className={`grid gap-6 ${isAdminRole ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-sm mx-auto"}`}>
+
+            {/* ── Field Mode card ── */}
             <button
               onClick={() => navigate("/field")}
               data-testid="btn-field-mode"
-              className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-brand-500 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-3 p-5 cursor-pointer"
+              className="group bg-white rounded-2xl border-2 border-slate-200 hover:border-[#0A6B24] shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-4 p-8 cursor-pointer min-h-[220px] sm:min-h-[260px]"
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
-                <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-brand-700" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#EAF7EE] flex items-center justify-center group-hover:bg-[#d2f0dc] transition-colors">
+                <HardHat className="w-7 h-7 sm:w-8 sm:h-8 text-[#0A6B24]" />
               </div>
               <div className="text-center">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">Field Mode</h2>
-                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Receive · Issue · Inventory</p>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Field Mode</h2>
+                <p className="text-sm text-slate-500 mt-1">Receive · Issue · Inventory</p>
               </div>
             </button>
 
-            {/* ── Admin Mode tile — only for admin role ── */}
+            {/* ── Admin Mode card — only for admin role ── */}
             {isAdminRole && (
               <button
                 onClick={() => navigate("/")}
                 data-testid="btn-admin-mode"
-                className="group aspect-square bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-400 shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col items-center justify-center gap-3 p-5 cursor-pointer"
+                className="group bg-white rounded-2xl border-2 border-slate-200 hover:border-amber-500 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col items-center justify-center gap-4 p-8 cursor-pointer min-h-[220px] sm:min-h-[260px]"
               >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
-                  <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                  <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-amber-600" />
                 </div>
                 <div className="text-center">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900">Admin Mode</h2>
-                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Dashboard · Reports · Users</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">Admin Mode</h2>
+                  <p className="text-sm text-slate-500 mt-1">Dashboard · Reports · Users</p>
                 </div>
               </button>
             )}

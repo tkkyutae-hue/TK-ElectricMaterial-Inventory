@@ -66,6 +66,7 @@ Preferred communication style: Simple, everyday language.
 
 | Route | Page | Description |
 |---|---|---|
+| `/home` | Home | Mode selector — square tile cards for Field Mode / Admin Mode |
 | `/` | Dashboard | KPI stat cards, recent activity feed, stock alerts |
 | `/inventory` | Inventory | Searchable/filterable item catalog table |
 | `/inventory/:id` | ItemDetails | Item detail with movement history |
@@ -76,6 +77,12 @@ Preferred communication style: Simple, everyday language.
 | `/projects/:id` | ProjectDetail | Project detail with tabs (history, usage summary) |
 | `/reorder` | Reorder | Auto-generated purchase recommendations |
 | `/reports` | Reports | 4-tab analytics: Valuation, Low Stock, By Location, By Project |
+| `/admin/users` | UserApprovals | Pending/Active/Rejected tabs + Approve/Reject/Deactivate actions |
+| `/admin/export` | Export | CSV export tool |
+| `/field` | FieldHome | 4 launcher tiles: Receive, Issue/Ship, Inventory, Transactions |
+| `/field/movement?type=receive\|issue\|return` | FieldMovement | Movement form with preset type; viewer role shows disabled Confirm |
+| `/field/inventory` | FieldInventory | Inventory search (read-only) |
+| `/field/transactions` | FieldTransactions | Transaction history |
 
 ### Frontend Architecture
 

@@ -1,0 +1,79 @@
+Update VoltStock (TK Electric) UI + flows with the following changes.
+Do NOT redesign the whole app. Keep current green/white theme and layout style.
+All changes must work end-to-end (no UI-only placeholders).
+
+====================================================
+1) USER APPROVALS: ADD APPROVE (ACCEPT) ACTION ICON
+====================================================
+Problem:
+- User Approvals page has no clear "Accept/Approve" icon/button in Pending list.
+
+Fix:
+- In Pending tab list rows/cards, add two clear actions:
+  - Approve (green check icon) ✅
+  - Reject (red X icon) ❌
+- Approve must:
+  - Set user.status = 'active'
+  - Keep role selectable before approve (default viewer)
+  - Immediately update counts and move user to Active tab
+- Reject must set status='rejected' and move to Rejected tab.
+- Ensure buttons are visible and aligned consistently.
+
+====================================================
+2) MODE SELECTION PAGE: SQUARE ICON CARDS + CLICK-TO-ENTER
+====================================================
+Problem:
+- Mode selection shows “Enter Field Mode → / Enter Admin Mode →” text links.
+Requirement:
+- Remove "Enter ... Mode" wording completely.
+- Replace with two large square cards (like app launcher tiles) and the whole tile is clickable.
+- Tiles:
+  - Field Mode (green icon, label + short description)
+  - Admin Mode (orange/green accent, label + short description)
+- Clicking a tile navigates immediately (no extra button).
+- Admin tile should still require admin role (non-admin gets blocked or hidden).
+
+Design:
+- Square/near-square tiles (desktop: 2 columns, mobile: stacked)
+- Big icon centered, title below, 1-line description
+- Hover/focus states and pointer cursor
+
+====================================================
+3) FIELD MODE: ADD FIELD HOME WITH 3 BIG ICONS (RECEIVE / ISSUE / INVENTORY)
+====================================================
+Current:
+- Entering Field Mode goes straight to Log Movement form.
+
+Change:
+- When entering Field Mode, show a Field Home screen first with 3 large tiles:
+  1) Receive (입고)  -> opens Log Movement with Movement Type preselected to Receive
+  2) Issue/Ship (출하) -> opens Log Movement with Movement Type preselected to Issue
+  3) Inventory Search (재고 검색) -> opens Inventory search (read-only for viewer, limited for staff)
+- Each tile is big and tap-friendly (mobile first), like the mode selection tiles.
+- Keep Transactions accessible in Field mode too (read-only for viewer, normal view for staff).
+
+Routing suggestion:
+- /field -> FieldHome (3 tiles)
+- /field/movement?type=receive|issue|return -> the movement page/form
+- /field/inventory -> inventory search page
+- /field/transactions -> transaction history
+
+Permissions:
+- staff: can Receive/Issue/Return
+- viewer: can open Inventory Search + Transactions, but cannot submit movements (disable confirm button + show tooltip “Viewer role is read-only”)
+
+UI details:
+- Add "Back to Home" button persists (already exists) and must return to /home.
+- Field Home should feel like a simple launcher, minimal text.
+
+====================================================
+FINAL CHECKS
+====================================================
+- Approve/Reject icons work and persist.
+- Mode selection tiles are clickable and no "Enter mode" text remains.
+- Field Mode now lands on Field Home with 3 tiles.
+- Receive/Issue buttons open movement form with type preset.
+- Viewer cannot confirm movement.
+- Mobile layout works (tiles stack, big tap areas).
+
+At the end, list files changed and routes added/updated.

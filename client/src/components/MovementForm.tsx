@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, X, ChevronDown, Plus, Trash2, ExternalLink } from "lucide-react";
 import { api } from "@shared/routes";
 import { Link } from "wouter";
@@ -406,9 +407,10 @@ interface MovementFormProps {
   defaultItemId?: number;
   onSuccess?: () => void;
   onCancel?: () => void;
+  readOnly?: boolean;
 }
 
-export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel }: MovementFormProps) {
+export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false }: MovementFormProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: items } = useItems();
@@ -735,14 +737,34 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 Cancel
               </Button>
             )}
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
-              data-testid="button-submit-movement"
-            >
-              {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
-            </Button>
+            {readOnly ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button
+                      type="button"
+                      disabled
+                      className="bg-slate-300 text-slate-500 min-w-[100px] cursor-not-allowed"
+                      data-testid="button-submit-movement"
+                    >
+                      Confirm
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Viewer role is read-only
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
+                data-testid="button-submit-movement"
+              >
+                {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
+              </Button>
+            )}
           </div>
         </div>
 

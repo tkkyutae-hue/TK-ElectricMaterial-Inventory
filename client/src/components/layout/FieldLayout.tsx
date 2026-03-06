@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ArrowRightLeft, Search, ClipboardList, Home, Menu } from "lucide-react";
+import { LayoutGrid, ArrowRightLeft, Search, ClipboardList, Home, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -7,6 +7,7 @@ import { useState } from "react";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 const NAV = [
+  { href: "/field",              label: "Field Home",     icon: LayoutGrid },
   { href: "/field/movement",     label: "Log Movement",   icon: ArrowRightLeft },
   { href: "/field/inventory",    label: "Inventory",      icon: Search },
   { href: "/field/transactions", label: "Transactions",   icon: ClipboardList },
@@ -17,7 +18,10 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
-  const isActive = (href: string) => location === href || location.startsWith(href + "/");
+  const isActive = (href: string) => {
+    if (href === "/field") return location === "/field";
+    return location === href || location.startsWith(href + "/");
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">

@@ -25,6 +25,7 @@ import Reports from "@/pages/Reports";
 import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
 
+import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
 import FieldInventory from "@/pages/field/FieldInventory";
 import FieldTransactions from "@/pages/field/FieldTransactions";
@@ -74,7 +75,7 @@ function FieldRouter() {
   return (
     <FieldLayout>
       <Switch>
-        <Route path="/field" component={() => <Redirect to="/field/movement" />} />
+        <Route path="/field" component={FieldHome} />
         <Route path="/field/movement" component={FieldMovement} />
         <Route path="/field/inventory" component={FieldInventory} />
         <Route path="/field/transactions" component={FieldTransactions} />

@@ -1,0 +1,210 @@
+Refine the existing VoltStock / TK Electric app UI/UX for Field Mode without redesigning the whole app. Keep current style system, but make Field Mode practical and clean for mobile/jobsite usage. Implement end-to-end (not UI placeholders).
+
+0) Global Constraints
+
+Do NOT redesign Admin Mode pages (Dashboard/Inventory/Projects/etc).
+
+Focus changes on Field Mode screens and shared components used by Field Mode.
+
+All UI changes must be functional and not break DB logic.
+
+Make sure “Back” vs “Home” navigation works consistently.
+
+1) Field Mode Branding / Header (Logo + Company name)
+Requirements
+
+On every Field Mode screen, show top-left branding like Admin Mode:
+
+TK logo + “TK Electric”
+
+Add a clear navigation control:
+
+Back (←) = goes to previous screen in Field flow
+
+Home (🏠) = goes to Mode Select screen
+
+Important: Current “home button” is acting like back sometimes. Fix:
+
+Back must be real history back (navigate(-1) or stored previous route)
+
+Home always goes to /mode (Mode Select)
+
+2) Mode Select Screen (Field/Admin)
+Requirements
+
+Remove any “Enter Mode” text/buttons.
+
+Make the square cards clickable (clicking card navigates).
+
+Fix duplicated description text (no repeated phrases).
+
+Card layout should be centered, simple:
+
+Field Mode card
+
+Admin Mode card
+
+Keep icons but scale them slightly bigger than text (not huge).
+
+3) Field Mode Home (Field Actions) – Layout update
+
+Current Field Home has 4 cards and feels oversized/weird. Change it:
+
+Layout
+
+Top: one large primary card: Inventory
+
+Bottom row: 3 cards:
+
+Receive / Return (rename from Receive to Receive/Return)
+
+Issue / Ship
+
+Transactions
+
+Style
+
+Icons should be smaller than now (about 60–70% of current size).
+
+Cards should have stronger visual separation (not all white).
+
+Use a clean TK-green palette:
+
+Primary: #0A6B24
+
+Light green background: #EAF7EE
+
+Soft gray background: #F6F7F9
+
+Border: #D9E7DD
+
+Muted text: #64748B
+
+Each card must be fully clickable (no extra “enter” labels).
+
+4) Field Mode Inventory Page – Category tiles + list
+4.1 Fix category image “squished” look
+
+Category tiles look vertically squashed.
+
+Increase tile height (more vertical space) and keep image sharp:
+
+Use object-fit: cover
+
+Avoid blur/zoomed banner effect
+
+Aim for a visually pleasing ratio like 16:7 or 16:8
+
+Keep bottom gradient overlay for category name readability.
+
+4.2 Pagination: default 10 items
+
+The list under categories is too long.
+
+Add page size dropdown:
+
+10 / 15 / 20 / 25
+
+Default: 10 per page
+
+Add pagination controls:
+
+Prev / Next + page number indicator
+
+4.3 Add PHOTO column + more columns (Field Inventory list)
+
+In Field Inventory list table, show columns in this order:
+
+SKU
+
+PHOTO (thumbnail) ← insert between SKU and ITEM
+
+ITEM (name)
+
+CATEGORY
+
+LOCATION
+
+QTY
+
+STATUS
+
+Rules:
+
+Photo uses item image_url field from DB (or items.image_url).
+
+Thumbnail size: 28–32px square, rounded corners (6–8px).
+
+If no image_url: show placeholder icon.
+
+Fix alignment issues:
+
+Header and row cells must align perfectly
+
+PHOTO column centered
+
+STATUS badge centered (currently “Out of Stock” badge not centered)
+
+Keep table readable on smaller screens (responsive).
+
+4.4 Category filter + Family(subcategory) filter
+
+Clicking a category tile currently applies category filter — keep this behavior.
+
+After category filter is applied, allow filtering by Family/Subcategory too:
+
+Add “All Families” dropdown
+
+Dropdown values come from existing item_groups/families (whatever table you use)
+
+Search must work together with category + family filters + pagination.
+
+5) Field Mode Navigation (Back vs Home) – fix everywhere
+
+Field Actions → Inventory → Back returns to Field Actions
+
+Field Actions → Receive/Return → Back returns to Field Actions
+
+Field Actions → Issue/Ship → Back returns to Field Actions
+
+Field Actions → Transactions → Back returns to Field Actions
+
+Home (🏠) always returns to Mode Select screen
+
+6) Add new category: “TOOLS & MISC SUPPLIES”
+
+Insert into categories table:
+
+name: TOOLS & MISC SUPPLIES
+
+code: choose a short code like TM
+
+sort_order: last
+
+is_active: true
+
+Ensure it shows in Admin + Field category tiles.
+
+Use existing categories.image_url support for its tile image.
+
+7) Deliverables / Verification
+
+After implementing:
+
+List all files changed
+
+Explain how:
+
+Field Home layout changed (Inventory large + 3 cards)
+
+Category tile ratio fixed (no squished)
+
+Pagination works (default 10)
+
+PHOTO column pulls from DB + alignment fixed
+
+Category + family filtering works
+
+Back vs Home navigation is consistent
+
+Do not leave any partially wired UI. Everything must work end-to-end.

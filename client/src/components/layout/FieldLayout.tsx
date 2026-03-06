@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Home, LogOut } from "lucide-react";
+import { Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
@@ -27,19 +27,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Right: Back + Home + user avatar */}
+        {/* Right: Home button + user avatar only */}
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => window.history.back()}
-            className="w-8 h-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-            data-testid="btn-field-back"
-            title="Go back"
-          >
-            <LogOut className="w-4 h-4 rotate-180" />
-          </Button>
-
           <Link href="/home">
             <Button
               variant="ghost"
@@ -61,8 +50,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 flex flex-col w-full max-w-3xl mx-auto px-4 sm:px-6">
           {children}
         </div>
       </main>

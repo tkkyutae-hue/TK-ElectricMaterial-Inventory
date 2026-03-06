@@ -64,7 +64,7 @@ export default function FieldHome() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="min-h-[calc(100vh-56px)] flex flex-col items-center justify-center px-6 py-10">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-6 pb-16">
       <div className="w-full max-w-2xl mx-auto">
 
         <div className="text-center mb-8">

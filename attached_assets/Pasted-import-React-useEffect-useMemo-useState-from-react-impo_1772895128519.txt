@@ -1,0 +1,745 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
+
+/**
+ * Inventory page replacement component
+ *
+ * How to use:
+ * 1) Replace your current inventory content area with <InventoryPage items={items} />
+ * 2) items should be your existing inventory dataset array
+ * 3) Each item can already have category/family/type/size/etc.
+ * 4) If subcategory does not exist in data, this component derives it from item name
+ *
+ * Expected item shape:
+ * {
+ *   id: string
+ *   sku: string
+ *   name: string
+ *   item?: string
+ *   photoUrl?: string
+ *   image?: string
+ *   size?: string
+ *   category: string
+ *   family?: string
+ *   type?: string
+ *   location?: string
+ *   qty?: number
+ *   status?: string
+ * }
+ */
+
+type InventoryItem = {
+  id: string;
+  sku: string;
+  name?: string;
+  item?: string;
+  photoUrl?: string;
+  image?: string;
+  size?: string;
+  category: string;
+  family?: string;
+  type?: string;
+  subcategory?: string;
+  location?: string;
+  qty?: number;
+  status?: string;
+};
+
+type FilterState = {
+  category: string | null;
+  family: string | null;
+  type: string | null;
+  subcategory: string | null;
+  size: string | null;
+  status: string | null;
+  search: string;
+};
+
+type InventoryPageProps = {
+  items: InventoryItem[];
+};
+
+const CATEGORY_META: Record<
+  string,
+  {
+    label: string;
+    image: string;
+  }
+> = {
+  "CABLE TRAY": {
+    label: "CABLE TRAY",
+    image:
+      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
+  },
+  "CONDUIT / FITTINGS": {
+    label: "CONDUIT / FITTINGS",
+    image:
+      "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1200&q=80",
+  },
+  "CONDUIT SUPPORTS & STRUT SYSTEM": {
+    label: "CONDUIT SUPPORTS & STRUT SYSTEM",
+    image:
+      "https://images.unsplash.com/photo-1581092918484-8313b5d6a3f1?auto=format&fit=crop&w=1200&q=80",
+  },
+  "CABLE / WIRE": {
+    label: "CABLE / WIRE",
+    image:
+      "https://images.unsplash.com/photo-1567427018141-0584cfcbf1b8?auto=format&fit=crop&w=1200&q=80",
+  },
+  DEVICES: {
+    label: "DEVICES",
+    image:
+      "https://images.unsplash.com/photo-1581091215367-59ab6dcef10f?auto=format&fit=crop&w=1200&q=80",
+  },
+  "FASTENERS & HARDWARE": {
+    label: "FASTENERS & HARDWARE",
+    image:
+      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
+  },
+  "BOXES & COVER SYSTEM": {
+    label: "BOXES & COVER SYSTEM",
+    image:
+      "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80",
+  },
+  "DISTRIBUTION & POWER SYSTEM": {
+    label: "DISTRIBUTION & POWER SYSTEM",
+    image:
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
+  },
+  "GROUNDING & TERMINATION": {
+    label: "GROUNDING & TERMINATION",
+    image:
+      "https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?auto=format&fit=crop&w=1200&q=80",
+  },
+  "TOOLS & MISC SUPPLIES": {
+    label: "TOOLS & MISC SUPPLIES",
+    image:
+      "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1200&q=80",
+  },
+};
+
+const ALL = "All";
+
+function normalizeText(value?: string | null) {
+  return (value ?? "").trim();
+}
+
+function normalizeCompare(value?: string | null) {
+  return normalizeText(value).toLowerCase();
+}
+
+function titleToDisplay(value?: string | null) {
+  return normalizeText(value);
+}
+
+function getItemName(item: InventoryItem) {
+  return item.item || item.name || "";
+}
+
+function parseCategory(value?: string | null) {
+  return normalizeText(value).toUpperCase();
+}
+
+function parseStatus(value?: string | null, qty?: number) {
+  if (value && normalizeText(value)) return normalizeText(value);
+  return (qty ?? 0) > 0 ? "In Stock" : "Out of Stock";
+}
+
+function extractSubcategory(item: InventoryItem) {
+  if (item.subcategory && normalizeText(item.subcategory)) {
+    return normalizeText(item.subcategory).toUpperCase();
+  }
+
+  const type = normalizeCompare(item.type);
+  const name = getItemName(item).trim();
+
+  if (!name) return "";
+
+  const reducerMatch = name.match(/\b(RC|RL|RR)\b$/i);
+  if (type === "reducer" && reducerMatch) {
+    return reducerMatch[1].toUpperCase();
+  }
+
+  const elbowMatch = name.match(/\b(H90|V90|45|90|LL|LR|UL|UR)\b$/i);
+  if (type === "elbow" && elbowMatch) {
+    return elbowMatch[1].toUpperCase();
+  }
+
+  const teeMatch = name.match(/\b(HT|VT|LT|RT)\b$/i);
+  if (type === "tee" && teeMatch) {
+    return teeMatch[1].toUpperCase();
+  }
+
+  return "";
+}
+
+function enrichItem(item: InventoryItem) {
+  const qty = Number(item.qty ?? 0);
+  const category = parseCategory(item.category);
+  const family = normalizeText(item.family);
+  const type = normalizeText(item.type);
+  const subcategory = extractSubcategory(item);
+  const size = normalizeText(item.size);
+  const itemName = getItemName(item);
+  const location = normalizeText(item.location);
+  const status = parseStatus(item.status, qty);
+  const photoUrl = item.photoUrl || item.image || "";
+
+  return {
+    ...item,
+    category,
+    family,
+    type,
+    subcategory,
+    size,
+    itemName,
+    location,
+    qty,
+    status,
+    photoUrl,
+  };
+}
+
+function uniqueSorted(values: string[]) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
+
+function matchesSearch(item: ReturnType<typeof enrichItem>, search: string) {
+  const q = normalizeCompare(search);
+  if (!q) return true;
+
+  const haystack = [
+    item.sku,
+    item.itemName,
+    item.size,
+    item.category,
+    item.family,
+    item.type,
+    item.subcategory,
+    item.location,
+    item.status,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(q);
+}
+
+function filterItems(
+  items: ReturnType<typeof enrichItem>[],
+  filters: FilterState
+) {
+  return items.filter((item) => {
+    if (filters.category && item.category !== filters.category) return false;
+    if (filters.family && normalizeCompare(item.family) !== normalizeCompare(filters.family)) return false;
+    if (filters.type && normalizeCompare(item.type) !== normalizeCompare(filters.type)) return false;
+    if (
+      filters.subcategory &&
+      normalizeCompare(item.subcategory) !== normalizeCompare(filters.subcategory)
+    )
+      return false;
+    if (filters.size && normalizeCompare(item.size) !== normalizeCompare(filters.size)) return false;
+    if (filters.status && normalizeCompare(item.status) !== normalizeCompare(filters.status)) return false;
+    if (!matchesSearch(item, filters.search)) return false;
+    return true;
+  });
+}
+
+function Pill({
+  active,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+        active
+          ? "border-green-600 bg-green-600 text-white shadow-sm"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FilterSection({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  if (!options.length) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="flex flex-wrap gap-2">
+        <Pill active={!value} onClick={() => onChange(null)}>
+          {ALL}
+        </Pill>
+        {options.map((option) => (
+          <Pill
+            key={option}
+            active={value === option}
+            onClick={() => onChange(option)}
+          >
+            {option}
+          </Pill>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InventoryTable({ items }: { items: ReturnType<typeof enrichItem>[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[110px]" />
+            <col className="w-[84px]" />
+            <col className="w-[110px]" />
+            <col />
+            <col className="w-[130px]" />
+            <col className="w-[140px]" />
+            <col className="w-[80px]" />
+            <col className="w-[130px]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left">
+              {[
+                "SKU",
+                "Photo",
+                "Size",
+                "Item",
+                "Category",
+                "Location",
+                "Qty",
+                "Status",
+              ].map((header, idx) => (
+                <th
+                  key={header}
+                  className={[
+                    "px-4 py-3 align-middle text-[11px] font-bold uppercase tracking-wide text-slate-500",
+                    idx === 1 || idx === 6 || idx === 7 ? "text-center" : "text-left",
+                  ].join(" ")}
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-14 text-center text-sm text-slate-500">
+                  No items match the current filters.
+                </td>
+              </tr>
+            ) : (
+              items.map((item) => (
+                <tr key={item.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70">
+                  <td className="px-4 py-3 align-middle text-sm font-medium text-slate-600">
+                    {item.sku}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                      {item.photoUrl ? (
+                        <img
+                          src={item.photoUrl}
+                          alt={item.itemName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-[10px] font-medium text-slate-400">No Img</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 align-middle text-sm font-medium text-slate-700">
+                    {item.size || "-"}
+                  </td>
+                  <td className="px-4 py-3 align-middle text-sm font-semibold text-slate-800">
+                    {item.itemName}
+                  </td>
+                  <td className="px-4 py-3 align-middle text-sm text-slate-600">
+                    <div className="leading-5">{item.category || "-"}</div>
+                  </td>
+                  <td className="px-4 py-3 align-middle text-sm text-slate-600">
+                    <div className="leading-5">{item.location || "-"}</div>
+                  </td>
+                  <td className="px-4 py-3 text-center align-middle text-sm font-bold text-slate-800">
+                    {item.qty}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <div className="flex items-center justify-center">
+                      <span
+                        className={[
+                          "inline-flex min-w-[92px] items-center justify-center rounded-full border px-3 py-1 text-xs font-bold",
+                          item.qty > 0
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-rose-200 bg-rose-50 text-rose-600",
+                        ].join(" ")}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default function InventoryPage({ items }: InventoryPageProps) {
+  const enrichedItems = useMemo(() => items.map(enrichItem), [items]);
+
+  const [filters, setFilters] = useState<FilterState>({
+    category: null,
+    family: null,
+    type: null,
+    subcategory: null,
+    size: null,
+    status: null,
+    search: "",
+  });
+
+  const categoryOptions = useMemo(() => {
+    const categories = uniqueSorted(enrichedItems.map((item) => item.category));
+    return categories;
+  }, [enrichedItems]);
+
+  const familyBase = useMemo(() => {
+    return enrichedItems.filter((item) => {
+      if (!filters.category) return true;
+      return item.category === filters.category;
+    });
+  }, [enrichedItems, filters.category]);
+
+  const familyOptions = useMemo(() => {
+    return uniqueSorted(familyBase.map((item) => item.family));
+  }, [familyBase]);
+
+  const typeBase = useMemo(() => {
+    return familyBase.filter((item) => {
+      if (!filters.family) return true;
+      return normalizeCompare(item.family) === normalizeCompare(filters.family);
+    });
+  }, [familyBase, filters.family]);
+
+  const typeOptions = useMemo(() => {
+    return uniqueSorted(typeBase.map((item) => item.type));
+  }, [typeBase]);
+
+  const subcategoryBase = useMemo(() => {
+    return typeBase.filter((item) => {
+      if (!filters.type) return true;
+      return normalizeCompare(item.type) === normalizeCompare(filters.type);
+    });
+  }, [typeBase, filters.type]);
+
+  const subcategoryOptions = useMemo(() => {
+    return uniqueSorted(subcategoryBase.map((item) => item.subcategory));
+  }, [subcategoryBase]);
+
+  const sizeBase = useMemo(() => {
+    return subcategoryBase.filter((item) => {
+      if (filters.subcategory) {
+        return normalizeCompare(item.subcategory) === normalizeCompare(filters.subcategory);
+      }
+      return true;
+    });
+  }, [subcategoryBase, filters.subcategory]);
+
+  const searchedBase = useMemo(() => {
+    return sizeBase.filter((item) => matchesSearch(item, filters.search));
+  }, [sizeBase, filters.search]);
+
+  const sizeOptions = useMemo(() => {
+    return uniqueSorted(searchedBase.map((item) => item.size));
+  }, [searchedBase]);
+
+  const statusOptions = useMemo(() => {
+    return uniqueSorted(searchedBase.map((item) => item.status));
+  }, [searchedBase]);
+
+  const finalItems = useMemo(() => {
+    return filterItems(enrichedItems, filters);
+  }, [enrichedItems, filters]);
+
+  useEffect(() => {
+    if (filters.family && !familyOptions.includes(filters.family)) {
+      setFilters((prev) => ({
+        ...prev,
+        family: null,
+        type: null,
+        subcategory: null,
+        size: null,
+      }));
+    }
+  }, [filters.family, familyOptions]);
+
+  useEffect(() => {
+    if (filters.type && !typeOptions.includes(filters.type)) {
+      setFilters((prev) => ({
+        ...prev,
+        type: null,
+        subcategory: null,
+        size: null,
+      }));
+    }
+  }, [filters.type, typeOptions]);
+
+  useEffect(() => {
+    if (filters.subcategory && !subcategoryOptions.includes(filters.subcategory)) {
+      setFilters((prev) => ({
+        ...prev,
+        subcategory: null,
+        size: null,
+      }));
+    }
+  }, [filters.subcategory, subcategoryOptions]);
+
+  useEffect(() => {
+    if (filters.size && !sizeOptions.includes(filters.size)) {
+      setFilters((prev) => ({
+        ...prev,
+        size: null,
+      }));
+    }
+  }, [filters.size, sizeOptions]);
+
+  const activeChips = useMemo(() => {
+    return [filters.category, filters.family, filters.type, filters.subcategory, filters.size]
+      .filter(Boolean)
+      .map((value) => String(value));
+  }, [filters]);
+
+  const clearAll = () => {
+    setFilters({
+      category: null,
+      family: null,
+      type: null,
+      subcategory: null,
+      size: null,
+      status: null,
+      search: "",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <div className="mx-auto max-w-[1200px] px-6 py-8">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 rounded-md border border-green-600 bg-white text-green-700" />
+              <h1 className="text-4xl font-bold tracking-tight text-slate-900">Inventory</h1>
+            </div>
+            <p className="mt-2 text-base text-slate-500">
+              Tap a category, then filter by family, type, subcategory, size, or status.
+            </p>
+          </div>
+
+          {activeChips.length > 0 && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="mt-2 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+            Browse by Category
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+            {categoryOptions.map((category) => {
+              const meta = CATEGORY_META[category] || {
+                label: category,
+                image:
+                  "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80",
+              };
+              const active = filters.category === category;
+
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      category: category,
+                      family: null,
+                      type: null,
+                      subcategory: null,
+                      size: null,
+                    }))
+                  }
+                  className={[
+                    "group relative overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                    active ? "border-green-600 ring-2 ring-green-500/30" : "border-slate-200",
+                  ].join(" ")}
+                >
+                  <div className="absolute inset-0">
+                    <img src={meta.image} alt={meta.label} className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-white/10" />
+                  </div>
+                  <div className="relative flex h-[120px] items-end p-4">
+                    <div className="text-sm font-bold uppercase tracking-wide text-white drop-shadow">
+                      {meta.label}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mb-5 space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <FilterSection
+            label="Family"
+            options={familyOptions}
+            value={filters.family}
+            onChange={(value) =>
+              setFilters((prev) => ({
+                ...prev,
+                family: value,
+                type: null,
+                subcategory: null,
+                size: null,
+              }))
+            }
+          />
+
+          <FilterSection
+            label="Type"
+            options={typeOptions}
+            value={filters.type}
+            onChange={(value) =>
+              setFilters((prev) => ({
+                ...prev,
+                type: value,
+                subcategory: null,
+                size: null,
+              }))
+            }
+          />
+
+          {subcategoryOptions.length > 0 && (
+            <FilterSection
+              label="Subcategory"
+              options={subcategoryOptions}
+              value={filters.subcategory}
+              onChange={(value) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  subcategory: value,
+                  size: null,
+                }))
+              }
+            />
+          )}
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_140px_140px]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={filters.search}
+                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                placeholder="Search name, SKU, size..."
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
+              />
+            </div>
+
+            <select
+              value={filters.size ?? ""}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  size: e.target.value || null,
+                }))
+              }
+              className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
+            >
+              <option value="">All Sizes</option>
+              {sizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filters.status ?? ""}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: e.target.value || null,
+                }))
+              }
+              className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-green-500 focus:ring-4 focus:ring-green-500/10"
+            >
+              <option value="">All Status</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(activeChips.length > 0 || filters.search) && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {activeChips.map((chip) => (
+                <span
+                  key={chip}
+                  className="inline-flex items-center rounded-lg border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700"
+                >
+                  {titleToDisplay(chip)}
+                </span>
+              ))}
+              {filters.search && (
+                <span className="text-sm text-slate-500">
+                  {finalItems.length} item{finalItems.length === 1 ? "" : "s"}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-sm font-semibold text-slate-400 hover:text-slate-600"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+        </div>
+
+        <InventoryTable items={finalItems} />
+      </div>
+    </div>
+  );
+}

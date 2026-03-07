@@ -39,7 +39,10 @@ The project is organized as a monorepo, separating client-side (React), server-s
 
 ### Backend Architecture
 -   **Runtime & Framework**: Node.js with Express.js.
--   **API**: RESTful API design with all endpoints under `/api/`.
+-   **API**: RESTful API design with all endpoints under `/api/`. Field-specific endpoints under `/api/field/`:
+    -   `GET /api/field/families?category=` — returns families (subcategories) with item counts for a category
+    -   `GET /api/field/sizes?category=&family=` — returns sorted unique size labels for scope
+    -   `GET /api/field/items?category=&family=&size=&status=&q=&page=&perPage=` — server-side filtered + paginated field inventory
 -   **Data Access**: A dedicated storage layer (`IStorage` interface) abstracts database interactions using Drizzle ORM.
 -   **Authentication & Authorization**: Session-based authentication with PostgreSQL-backed sessions. Role-Based Access Control (RBAC) is implemented with `isAuthenticated`, `requireAdmin`, and `requireStaff` middleware to protect routes. New user sign-ups require admin approval.
 -   **Database**: PostgreSQL is used as the primary database, managed by Drizzle ORM.

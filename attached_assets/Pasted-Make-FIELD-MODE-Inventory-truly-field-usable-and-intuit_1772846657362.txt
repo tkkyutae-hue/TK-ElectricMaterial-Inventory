@@ -1,0 +1,147 @@
+Make FIELD MODE → Inventory truly field-usable and intuitive.
+Do NOT redesign the whole app.
+Keep current visual language (TK green, clean cards).
+Everything must work end-to-end with DB + API (no UI-only placeholders).
+
+====================================================
+GOAL (FIELD USABILITY)
+====================================================
+Current Field Inventory is “category image → filter chip → end”.
+Field crew needs fast drill-down and quick lookup on phone/tablet:
+- Category → Subcategory(Family) → Size → Status
+- Search always works (partial match)
+- 10/page pagination
+- Fast “tap-tap” workflow, minimal typing
+
+====================================================
+A) FIELD INVENTORY: DRILL-DOWN FILTER FLOW
+====================================================
+Implement a clear drill-down flow with 4 filters in one row:
+1) Category (tap image card)  ✅ already exists but stops
+2) Family/Subcategory dropdown (dependent on category)
+3) Size dropdown (dependent on category + optional family)
+4) Status dropdown (All / In Stock / Low / Out)
+
+Rules:
+- Changing Category resets Family + Size to All, page=1
+- Changing Family resets Size to All, page=1
+- Status can remain when Category changes (ok) but page=1
+- Search text persists unless user clears it
+
+UI behavior:
+- After Category is selected, auto-focus the Family dropdown (or highlight it) so user knows next step.
+- Show active filters as chips above the table: Category, Family, Size, Status, Search
+  - Each chip has an X to clear that specific filter.
+- Add one “Clear All” button next to chips.
+
+====================================================
+B) SEARCH MUST BE FIELD-FRIENDLY (PARTIAL MATCH)
+====================================================
+Fix search so it matches words contained anywhere (case-insensitive):
+- Query should match if ALL tokens are found in name/SKU/size/family/category text.
+Example:
+- Searching `3/4 conduit` must match `3/4" EMT Conduit`.
+Implement tokenization: split by spaces, trim, ignore empty tokens.
+Server-side filtering (SQL ILIKE with AND across tokens).
+
+====================================================
+C) TABLE: ADD PHOTO + CATEGORY + LOCATION (FIELD VIEW)
+====================================================
+Field table must show at a glance what it is:
+Columns (fixed order):
+- SKU
+- PHOTO (small thumbnail)
+- ITEM (name + size under name if available)
+- CATEGORY
+- LOCATION
+- QTY
+- STATUS badge
+
+Requirements:
+- PHOTO column uses item image_url if available; fallback to placeholder.
+- STATUS badge vertically centered in cell.
+- Column widths consistent, no wrapping that breaks readability.
+- Keep 10/page selector. Options: 10 / 15 / 20 / 25 (Field needs small pages).
+
+====================================================
+D) CATEGORY CARDS: FIX “SQUISHED” IMAGES + BETTER TAPS
+====================================================
+Category image cards currently look squished.
+Fix card image styling:
+- Maintain correct aspect ratio (use object-cover and a consistent container height).
+- Make cards taller on field inventory page (so images are readable).
+- Entire card is clickable; show selected state with border + subtle glow.
+
+====================================================
+E) SUBCATEGORY (FAMILY) VISIBILITY (MORE INTUITIVE)
+====================================================
+After a category is selected:
+- Provide a secondary “Family quick bar” right under category cards:
+  - top 6 most common families (based on item count) as pill chips
+  - plus “More…” opens dropdown (the existing All Families dropdown).
+This prevents digging into dropdown for common ones.
+
+====================================================
+F) SIZE FILTER UX
+====================================================
+Size dropdown should be auto-populated based on current scope:
+- If Category selected: sizes from that category
+- If Category + Family selected: sizes from that family
+- Respect search text if present (sizes from filtered result)
+Keep size display exactly as stored; no conversions.
+
+Also add a quick sort toggle:
+- “Size ↑/↓” (smallest-to-largest and reverse)
+If size is not numeric (like “Standard”), sort those after numeric sizes.
+
+====================================================
+G) STATUS FILTER RULES (CONSISTENT)
+====================================================
+Status logic must match the app’s existing badges:
+- Out of Stock: qty_on_hand <= 0
+- Low Stock: qty_on_hand > 0 AND qty_on_hand <= (reorder_point or min_stock_level)
+- In Stock: qty_on_hand > threshold
+Use the same threshold field used elsewhere in the app.
+
+====================================================
+H) URL STATE + BACK/FORWARD + SHARE
+====================================================
+Persist filters into query params:
+- category=CT
+- family=CableTrayCover
+- size=12%22
+- status=in_stock
+- q=search
+- page=1
+- perPage=10
+On load, restore state from URL.
+
+====================================================
+I) PERFORMANCE REQUIREMENTS
+====================================================
+- Server-side filtering + pagination (no client filtering huge lists)
+- Debounce search 300ms
+- Add endpoints for:
+  1) GET /api/field/families?category=...
+  2) GET /api/field/sizes?category=...&family=...&q=...
+  3) GET /api/field/items?category=...&family=...&size=...&status=...&q=...&page=...&perPage=...
+
+====================================================
+J) FIELD HOME NAV (QUALITY OF LIFE)
+====================================================
+Field mode must feel like a simple app:
+- Add a clear “Back to Field Actions” button on every field page (top right beside Home icon).
+- Back button returns to Field Actions screen (not browser history randomness).
+
+====================================================
+DELIVERABLES / DONE WHEN
+====================================================
+1) Tap category → user can immediately pick Family (chips or dropdown) → pick Size → pick Status → list updates every step.
+2) Search works with partial tokens (e.g., `3/4 conduit` matches).
+3) Table shows PHOTO + CATEGORY + LOCATION + QTY + STATUS, readable on field devices.
+4) Category images not squished; selected state obvious.
+5) Filters persist in URL and restore correctly.
+6) Pagination 10/page default with selectable 10/15/20/25.
+7) Performance: server-side filtering + debounce.
+
+At the end, list updated files + endpoints, and confirm SQL query strategy for token search + filter joins.

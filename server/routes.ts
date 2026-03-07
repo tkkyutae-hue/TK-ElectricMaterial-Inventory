@@ -91,6 +91,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Field Inventory API ────────────────────────────────────────────────────
+  app.get("/api/field/families", isAuthenticated, async (req, res) => {
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    res.json(await storage.getFieldFamilies({ categoryId }));
+  });
+
+  app.get("/api/field/sizes", isAuthenticated, async (req, res) => {
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    const family = req.query.family as string | undefined;
+    res.json(await storage.getFieldSizes({ categoryId, family }));
+  });
+
+  app.get("/api/field/items", isAuthenticated, async (req, res) => {
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    const family = req.query.family as string | undefined;
+    const size = req.query.size as string | undefined;
+    const status = req.query.status as string | undefined;
+    const search = req.query.q as string | undefined;
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const perPage = req.query.perPage ? Number(req.query.perPage) : 10;
+    res.json(await storage.getFieldItems({ categoryId, family, size, status, search, page, perPage }));
+  });
+
   // ─── Locations ──────────────────────────────────────────────────────────────
   app.get("/api/locations", isAuthenticated, async (_req, res) => {
     res.json(await storage.getLocations());

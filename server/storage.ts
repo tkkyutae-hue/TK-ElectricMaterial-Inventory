@@ -66,6 +66,18 @@ export interface IStorage {
   getReportByLocation(): Promise<any>;
   getReportValuation(): Promise<any>;
   getReportUsageByProject(): Promise<any>;
+
+  getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]>;
+  getFieldSizes(params: { categoryId?: number; family?: string }): Promise<string[]>;
+  getFieldItems(params: {
+    categoryId?: number;
+    family?: string;
+    size?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<{ items: (ItemWithRelations & { status: string })[]; total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -997,6 +1009,142 @@ export class DatabaseStorage implements IStorage {
     }
 
     return result.filter(r => r.movementCount > 0 || true);
+  }
+
+  // ─── Field Inventory ─────────────────────────────────────────────────────────
+
+  async getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]> {
+    const allItems = await db.select({
+      subcategory: items.subcategory,
+      categoryId: items.categoryId,
+    }).from(items).where(eq(items.isActive, true));
+
+    const filtered = params.categoryId
+      ? allItems.filter(i => i.categoryId === params.categoryId)
+      : allItems;
+
+    const counts: Record<string, number> = {};
+    for (const i of filtered) {
+      if (i.subcategory) {
+        counts[i.subcategory] = (counts[i.subcategory] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  async getFieldSizes(params: { categoryId?: number; family?: string }): Promise<string[]> {
+    const allItems = await db.select({
+      sizeLabel: items.sizeLabel,
+      sizeSortValue: items.sizeSortValue,
+      categoryId: items.categoryId,
+      subcategory: items.subcategory,
+    }).from(items).where(eq(items.isActive, true));
+
+    let filtered = allItems;
+    if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
+    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
+
+    const seen = new Set<string>();
+    const result: { label: string; sortVal: number | null }[] = [];
+    for (const i of filtered) {
+      if (i.sizeLabel && !seen.has(i.sizeLabel)) {
+        seen.add(i.sizeLabel);
+        result.push({ label: i.sizeLabel, sortVal: (i as any).sizeSortValue ?? null });
+      }
+    }
+    result.sort((a, b) => {
+      if (a.sortVal !== null && b.sortVal !== null) return a.sortVal - b.sortVal;
+      if (a.sortVal !== null) return -1;
+      if (b.sortVal !== null) return 1;
+      return a.label.localeCompare(b.label);
+    });
+    return result.map(r => r.label);
+  }
+
+  async getFieldItems(params: {
+    categoryId?: number;
+    family?: string;
+    size?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<{ items: (ItemWithRelations & { status: string })[]; total: number }> {
+    const results = await db.select({
+      item: items,
+      category: categories,
+      location: locations,
+      supplier: suppliers,
+    })
+    .from(items)
+    .leftJoin(categories, eq(items.categoryId, categories.id))
+    .leftJoin(locations, eq(items.primaryLocationId, locations.id))
+    .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
+    .where(eq(items.isActive, true))
+    .orderBy(asc(items.name));
+
+    const itemIds = results.map(r => r.item.id);
+    const allImages = itemIds.length > 0
+      ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
+      : [];
+
+    let mapped = results.map(row => {
+      const firstImage = allImages.find(img => img.itemId === row.item.id);
+      return {
+        ...row.item,
+        category: row.category,
+        location: row.location,
+        supplier: row.supplier,
+        imageUrl: firstImage?.imageUrl || null,
+      };
+    });
+
+    if (params.categoryId) {
+      mapped = mapped.filter(i => i.categoryId === params.categoryId);
+    }
+    if (params.family) {
+      mapped = mapped.filter(i => i.subcategory === params.family);
+    }
+    if (params.size) {
+      mapped = mapped.filter(i => (i as any).sizeLabel === params.size);
+    }
+    if (params.search) {
+      const tokens = params.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      mapped = mapped.filter(i => {
+        const haystack = [
+          i.name, i.sku,
+          (i as any).sizeLabel || '',
+          (i as any).baseItemName || '',
+          i.description || '',
+          i.category?.name || '',
+          i.supplier?.name || '',
+        ].join(' ').toLowerCase();
+        return tokens.every(token => haystack.includes(token));
+      });
+    }
+
+    const withStatus = mapped.map(i => {
+      let status = "in_stock";
+      if ((i as any).statusOverride === "ORDERED") status = "ordered";
+      else if (i.quantityOnHand === 0) status = "out_of_stock";
+      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      return { ...i, status };
+    });
+
+    let statusFiltered = withStatus;
+    if (params.status && params.status !== "all") {
+      statusFiltered = withStatus.filter(i => i.status === params.status);
+    }
+
+    const total = statusFiltered.length;
+    const page = Math.max(1, params.page || 1);
+    const perPage = Math.min(100, Math.max(1, params.perPage || 10));
+    const start = (page - 1) * perPage;
+    const pageItems = statusFiltered.slice(start, start + perPage);
+
+    return { items: pageItems, total };
   }
 }
 

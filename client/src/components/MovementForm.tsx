@@ -130,8 +130,7 @@ export function SearchableItemSelect({
               </button>
             )}
           </div>
-          {/* C: expanded height so many items are visible */}
-          <div className="max-h-[380px] overflow-y-auto">
+          <div className="max-h-[560px] overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-4">No items found</p>
             ) : (
@@ -542,12 +541,11 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col min-h-0"
-        style={{ maxHeight: "calc(85vh - 120px)" }}
+        className="space-y-0"
       >
 
-        {/* ── SECTION A: Shared fields (non-scroll) ── */}
-        <div className="flex-shrink-0 space-y-3 overflow-visible pb-3">
+        {/* ── SECTION A: Shared fields ── */}
+        <div className="space-y-3 pb-3">
 
           <FormField control={form.control} name="movementType" render={({ field }) => (
             <FormItem>
@@ -646,11 +644,10 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
         </div>
 
-        {/* ── SECTION B: Items header + scrollable list ── */}
-        <div className="flex flex-col min-h-0 flex-1 border-t border-slate-100 pt-3">
+        {/* ── SECTION B: Items ── */}
+        <div className="border-t border-slate-100 pt-3">
 
-          {/* E: "Add Another Item" moved to right side of header */}
-          <div className="flex-shrink-0 flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2">
             <p className="text-sm font-semibold text-slate-700">Items</p>
             <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium">
               {itemRows.length}
@@ -667,10 +664,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             </button>
           </div>
 
-          <div
-            className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 -mr-1"
-            style={{ minHeight: "120px" }}
-          >
+          <div className="space-y-2">
             {itemRows.map((row, idx) => {
               const selectedItem = items?.find((i: any) => i.id === row.itemId);
               return (
@@ -752,8 +746,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           )} />
         </div>
 
-        {/* ── SECTION C: Sticky footer ── */}
-        <div className="flex-shrink-0 flex items-center justify-end pt-3 mt-2 border-t border-slate-100 bg-white">
+        {/* ── Confirm footer ── */}
+        <div className="flex items-center justify-end pt-4 mt-2">
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button

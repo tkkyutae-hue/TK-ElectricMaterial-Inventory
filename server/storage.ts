@@ -68,18 +68,20 @@ export interface IStorage {
   getReportUsageByProject(): Promise<any>;
 
   getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]>;
-  getFieldSizes(params: { categoryId?: number; family?: string }): Promise<string[]>;
+  getFieldSizes(params: { categoryId?: number; family?: string; detailType?: string; subcategory?: string; status?: string; search?: string }): Promise<string[]>;
   getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]>;
+  getFieldSubcategories(params: { categoryId?: number; family?: string; detailType?: string }): Promise<{ name: string; count: number }[]>;
   getFieldItems(params: {
     categoryId?: number;
     family?: string;
     detailType?: string;
+    subcategory?: string;
     size?: string;
     status?: string;
     search?: string;
     page?: number;
     perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string })[]; total: number }>;
+  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1036,24 +1038,56 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.count - a.count);
   }
 
-  async getFieldSizes(params: { categoryId?: number; family?: string }): Promise<string[]> {
+  async getFieldSizes(params: {
+    categoryId?: number;
+    family?: string;
+    detailType?: string;
+    subcategory?: string;
+    status?: string;
+    search?: string;
+  }): Promise<string[]> {
     const allItems = await db.select({
       sizeLabel: items.sizeLabel,
       sizeSortValue: items.sizeSortValue,
       categoryId: items.categoryId,
       subcategory: items.subcategory,
+      detailType: items.detailType,
+      name: items.name,
+      quantityOnHand: items.quantityOnHand,
+      reorderPoint: items.reorderPoint,
+      statusOverride: items.statusOverride,
     }).from(items).where(eq(items.isActive, true));
 
-    let filtered = allItems;
+    let filtered = allItems as any[];
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
     if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
+    if (params.detailType) filtered = filtered.filter(i => i.detailType === params.detailType);
+    if (params.subcategory) {
+      filtered = filtered.filter(i => extractSubcategory(i.name, i.detailType) === params.subcategory);
+    }
+    if (params.search) {
+      const tokens = params.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+      filtered = filtered.filter(i => {
+        const hay = (i.name || '').toLowerCase();
+        return tokens.every((t: string) => hay.includes(t));
+      });
+    }
+    if (params.status && params.status !== "all") {
+      filtered = filtered.filter(i => {
+        let st = "in_stock";
+        if (i.statusOverride === "ORDERED") st = "ordered";
+        else if (i.quantityOnHand === 0) st = "out_of_stock";
+        else if (i.quantityOnHand <= i.reorderPoint) st = "low_stock";
+        return st === params.status;
+      });
+    }
 
     const seen = new Set<string>();
     const result: { label: string; sortVal: number | null }[] = [];
     for (const i of filtered) {
       if (i.sizeLabel && !seen.has(i.sizeLabel)) {
         seen.add(i.sizeLabel);
-        result.push({ label: i.sizeLabel, sortVal: (i as any).sizeSortValue ?? null });
+        result.push({ label: i.sizeLabel, sortVal: i.sizeSortValue ?? null });
       }
     }
     result.sort((a, b) => {
@@ -1087,16 +1121,46 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.count - a.count);
   }
 
+  async getFieldSubcategories(params: {
+    categoryId?: number;
+    family?: string;
+    detailType?: string;
+  }): Promise<{ name: string; count: number }[]> {
+    const allItems = await db.select({
+      name: items.name,
+      detailType: items.detailType,
+      subcategory: items.subcategory,
+      categoryId: items.categoryId,
+    }).from(items).where(eq(items.isActive, true));
+
+    let filtered = allItems;
+    if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
+    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
+    if (params.detailType) filtered = filtered.filter(i => i.detailType === params.detailType);
+
+    const counts: Record<string, number> = {};
+    for (const i of filtered) {
+      const sc = extractSubcategory(i.name || '', i.detailType);
+      if (sc) {
+        counts[sc] = (counts[sc] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   async getFieldItems(params: {
     categoryId?: number;
     family?: string;
     detailType?: string;
+    subcategory?: string;
     size?: string;
     status?: string;
     search?: string;
     page?: number;
     perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string })[]; total: number }> {
+  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }> {
     const results = await db.select({
       item: items,
       category: categories,
@@ -1117,12 +1181,14 @@ export class DatabaseStorage implements IStorage {
 
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
+      const sc = extractSubcategory(row.item.name || '', (row.item as any).detailType);
       return {
         ...row.item,
         category: row.category,
         location: row.location,
         supplier: row.supplier,
         imageUrl: firstImage?.imageUrl || null,
+        extractedSubcategory: sc,
       };
     });
 
@@ -1134,6 +1200,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (params.detailType) {
       mapped = mapped.filter(i => (i as any).detailType === params.detailType);
+    }
+    if (params.subcategory) {
+      mapped = mapped.filter(i => i.extractedSubcategory === params.subcategory);
     }
     if (params.size) {
       mapped = mapped.filter(i => (i as any).sizeLabel === params.size);
@@ -1174,6 +1243,31 @@ export class DatabaseStorage implements IStorage {
 
     return { items: pageItems, total };
   }
+}
+
+// ─── Subcategory extraction helper ───────────────────────────────────────────
+// Derives a subcategory string from the item name + detail_type.
+// Rules (in priority order):
+//   1) Name ends with 2-3 uppercase letters (RC, RL, RR, HT, VT, LT, RT, …)
+//   2) Name ends with "In" or "Out"
+//   3) detail_type === "Tee": "Vertical" if name contains "Vertical", else "Horizontal"
+export function extractSubcategory(name: string, detailType: string | null | undefined): string {
+  if (!name) return '';
+
+  // Rule 1: short uppercase suffix code
+  const shortCode = name.match(/\s([A-Z]{2,3})$/);
+  if (shortCode) return shortCode[1];
+
+  // Rule 2: ends with "In" or "Out"
+  const inOut = name.match(/\s(In|Out)$/i);
+  if (inOut) return inOut[1].charAt(0).toUpperCase() + inOut[1].slice(1).toLowerCase();
+
+  // Rule 3: Tee type → Vertical vs Horizontal
+  if (detailType === 'Tee') {
+    return /Vertical/i.test(name) ? 'Vertical' : 'Horizontal';
+  }
+
+  return '';
 }
 
 export const storage = new DatabaseStorage();

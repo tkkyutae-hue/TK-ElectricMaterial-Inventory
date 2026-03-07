@@ -8,12 +8,11 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 type CategorySummary = {
   id: number;
@@ -38,6 +37,7 @@ type FieldItem = {
   categoryId?: number | null;
   subcategory?: string | null;
   detailType?: string | null;
+  extractedSubcategory?: string;
   imageUrl?: string | null;
   location?: { name: string } | null;
   category?: { name: string } | null;
@@ -49,8 +49,7 @@ type FieldItemsResponse = {
   total: number;
 };
 
-type FamilyEntry = { name: string; count: number };
-type TypeEntry = { name: string; count: number };
+type PillEntry = { name: string; count: number };
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -76,7 +75,6 @@ const STATUS_OPTIONS = [
   { value: "out_of_stock", label: "Out of Stock" },
 ];
 
-// Family display name mapping (DB value → UI label)
 const FAMILY_DISPLAY_NAMES: Record<string, string> = {
   "Flex Conduit": "Flexible",
   "EMT Conduit": "EMT",
@@ -99,99 +97,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
-  if (!imageUrl) {
-    return (
-      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-        <ImageOff className="w-4 h-4 text-slate-300" />
-      </div>
-    );
-  }
-  return (
-    <img
-      src={imageUrl}
-      alt={name}
-      className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-slate-100"
-      onError={(e) => {
-        const t = e.currentTarget;
-        t.style.display = "none";
-        const sib = t.nextElementSibling as HTMLElement | null;
-        if (sib) sib.style.display = "flex";
-      }}
-    />
-  );
-}
-
-function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => void }) {
-  return (
-    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">{item.name}</DialogTitle>
-        </DialogHeader>
-        {item.imageUrl && (
-          <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover rounded-xl mb-2" />
-        )}
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-500">SKU</span>
-            <span className="font-mono font-medium">{item.sku}</span>
-          </div>
-          {item.sizeLabel && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Size</span>
-              <span>{item.sizeLabel}</span>
-            </div>
-          )}
-          {item.subcategory && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Family</span>
-              <span>{getFamilyDisplay(item.subcategory)}</span>
-            </div>
-          )}
-          {item.detailType && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Type</span>
-              <span>{item.detailType}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <span className="text-slate-500">Status</span>
-            <ItemStatusBadge status={item.status} />
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Qty on Hand</span>
-            <span className="font-bold text-slate-900">{item.quantityOnHand.toLocaleString()} {item.unitOfMeasure}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Reorder Point</span>
-            <span>{item.reorderPoint.toLocaleString()}</span>
-          </div>
-          {item.location && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Location</span>
-              <span>{item.location.name}</span>
-            </div>
-          )}
-          {item.category && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Category</span>
-              <span>{item.category.name}</span>
-            </div>
-          )}
-          {item.supplier && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">Supplier</span>
-              <span>{item.supplier.name}</span>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Pill Row ────────────────────────────────────────────────────────────────
+// ─── PillBar ────────────────────────────────────────────────────────────────
 
 function PillBar({
   label,
@@ -202,7 +108,7 @@ function PillBar({
   displayFn,
 }: {
   label: string;
-  entries: { name: string; count: number }[];
+  entries: PillEntry[];
   selected: string;
   onSelect: (v: string) => void;
   testIdPrefix: string;
@@ -264,6 +170,110 @@ function PillBar({
   );
 }
 
+// ─── Photo Cell ─────────────────────────────────────────────────────────────
+
+function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+  if (!imageUrl) {
+    return (
+      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+        <ImageOff className="w-4 h-4 text-slate-300" />
+      </div>
+    );
+  }
+  return (
+    <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+      <img
+        src={imageUrl}
+        alt={name}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          const p = e.currentTarget.parentElement;
+          if (p) {
+            p.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Item Detail Dialog ──────────────────────────────────────────────────────
+
+function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold">{item.name}</DialogTitle>
+        </DialogHeader>
+        {item.imageUrl && (
+          <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover rounded-xl mb-2" />
+        )}
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-slate-500">SKU</span>
+            <span className="font-mono font-medium">{item.sku}</span>
+          </div>
+          {item.sizeLabel && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Size</span>
+              <span>{item.sizeLabel}</span>
+            </div>
+          )}
+          {item.subcategory && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Family</span>
+              <span>{getFamilyDisplay(item.subcategory)}</span>
+            </div>
+          )}
+          {item.detailType && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Type</span>
+              <span>{item.detailType}</span>
+            </div>
+          )}
+          {item.extractedSubcategory && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Subcategory</span>
+              <span>{item.extractedSubcategory}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500">Status</span>
+            <ItemStatusBadge status={item.status} />
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Qty on Hand</span>
+            <span className="font-bold text-slate-900">{item.quantityOnHand.toLocaleString()} {item.unitOfMeasure}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Reorder Point</span>
+            <span>{item.reorderPoint.toLocaleString()}</span>
+          </div>
+          {item.location && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Location</span>
+              <span>{item.location.name}</span>
+            </div>
+          )}
+          {item.category && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Category</span>
+              <span>{item.category.name}</span>
+            </div>
+          )}
+          {item.supplier && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Supplier</span>
+              <span>{item.supplier.name}</span>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function FieldInventory() {
@@ -272,32 +282,28 @@ export default function FieldInventory() {
 
   const urlParams = useMemo(() => new URLSearchParams(rawSearch), [rawSearch]);
 
-  const getCatId = () => urlParams.get("category") ? Number(urlParams.get("category")) : null;
-  const getFamily = () => urlParams.get("family") || "all";
-  const getType = () => urlParams.get("type") || "all";
-  const getSize = () => urlParams.get("size") || "all";
-  const getStatus = () => urlParams.get("status") || "all";
-  const getSearch = () => urlParams.get("q") || "";
-  const getPage = () => urlParams.get("page") ? Number(urlParams.get("page")) : 1;
-  const getPerPage = () => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : 10;
-
-  const [selectedCatId, setSelectedCatId] = useState<number | null>(getCatId);
-  const [selectedFamily, setSelectedFamily] = useState(getFamily);
-  const [selectedType, setSelectedType] = useState(getType);
-  const [selectedSize, setSelectedSize] = useState(getSize);
-  const [selectedStatus, setSelectedStatus] = useState(getStatus);
-  const [searchInput, setSearchInput] = useState(getSearch);
-  const [page, setPage] = useState(getPage);
-  const [pageSize, setPageSize] = useState(getPerPage);
+  const [selectedCatId, setSelectedCatId] = useState<number | null>(
+    () => urlParams.get("category") ? Number(urlParams.get("category")) : null
+  );
+  const [selectedFamily, setSelectedFamily] = useState(() => urlParams.get("family") || "all");
+  const [selectedType, setSelectedType] = useState(() => urlParams.get("type") || "all");
+  const [selectedSubcategory, setSelectedSubcategory] = useState(() => urlParams.get("subcategory") || "all");
+  const [selectedSize, setSelectedSize] = useState(() => urlParams.get("size") || "all");
+  const [selectedStatus, setSelectedStatus] = useState(() => urlParams.get("status") || "all");
+  const [searchInput, setSearchInput] = useState(() => urlParams.get("q") || "");
+  const [page, setPage] = useState(() => urlParams.get("page") ? Number(urlParams.get("page")) : 1);
+  const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : 10);
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 300);
 
+  // Sync state → URL
   useEffect(() => {
     const next = new URLSearchParams();
     if (selectedCatId) next.set("category", String(selectedCatId));
     if (selectedFamily !== "all") next.set("family", selectedFamily);
     if (selectedType !== "all") next.set("type", selectedType);
+    if (selectedSubcategory !== "all") next.set("subcategory", selectedSubcategory);
     if (selectedSize !== "all") next.set("size", selectedSize);
     if (selectedStatus !== "all") next.set("status", selectedStatus);
     if (debouncedSearch) next.set("q", debouncedSearch);
@@ -305,7 +311,9 @@ export default function FieldInventory() {
     if (pageSize !== 10) next.set("perPage", String(pageSize));
     const qs = next.toString();
     navigate("/field/inventory" + (qs ? "?" + qs : ""), { replace: true });
-  }, [selectedCatId, selectedFamily, selectedType, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
+  }, [selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
+
+  // ── Queries ──
 
   const { data: categorySummary } = useQuery<CategorySummary[]>({
     queryKey: ["/api/inventory/categories/summary"],
@@ -316,7 +324,7 @@ export default function FieldInventory() {
     [categorySummary, selectedCatId]
   );
 
-  const { data: families = [] } = useQuery<FamilyEntry[]>({
+  const { data: families = [] } = useQuery<PillEntry[]>({
     queryKey: ["/api/field/families", selectedCatId],
     queryFn: async () => {
       const qs = selectedCatId ? `?category=${selectedCatId}` : "";
@@ -325,46 +333,71 @@ export default function FieldInventory() {
     },
   });
 
-  const { data: types = [] } = useQuery<TypeEntry[]>({
+  const { data: types = [] } = useQuery<PillEntry[]>({
     queryKey: ["/api/field/types", selectedCatId, selectedFamily],
     queryFn: async () => {
       if (!selectedCatId || selectedFamily === "all") return [];
       const p = new URLSearchParams();
       p.set("category", String(selectedCatId));
       p.set("family", selectedFamily);
-      const r = await fetch("/api/field/types?" + p.toString(), { credentials: "include" });
+      const r = await fetch("/api/field/types?" + p, { credentials: "include" });
       return r.json();
     },
     enabled: selectedCatId !== null && selectedFamily !== "all",
   });
 
-  const showTypePills = selectedFamily !== "all" && types.length >= 2;
-
-  const { data: sizes = [] } = useQuery<string[]>({
-    queryKey: ["/api/field/sizes", selectedCatId, selectedFamily],
+  const { data: subcategories = [], isFetching: subcatFetching } = useQuery<PillEntry[]>({
+    queryKey: ["/api/field/subcategories", selectedCatId, selectedFamily, selectedType],
     queryFn: async () => {
+      if (!selectedCatId || selectedType === "all") return [];
       const p = new URLSearchParams();
-      if (selectedCatId) p.set("category", String(selectedCatId));
+      p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
-      const qs = p.toString();
-      const r = await fetch("/api/field/sizes" + (qs ? "?" + qs : ""), { credentials: "include" });
+      p.set("type", selectedType);
+      const r = await fetch("/api/field/subcategories?" + p, { credentials: "include" });
       return r.json();
     },
+    enabled: selectedCatId !== null && selectedType !== "all",
+    staleTime: 0,
   });
 
-  const { data: fieldData, isLoading } = useQuery<FieldItemsResponse>({
-    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedType, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
+  // Dynamic sizes: recalculate from current filtered result (excluding size filter)
+  const { data: sizes = [] } = useQuery<string[]>({
+    queryKey: ["/api/field/sizes", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedStatus, debouncedSearch],
     queryFn: async () => {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
       if (selectedType !== "all") p.set("type", selectedType);
+      if (selectedSubcategory !== "all") p.set("subcategory", selectedSubcategory);
+      if (selectedStatus !== "all") p.set("status", selectedStatus);
+      if (debouncedSearch) p.set("q", debouncedSearch);
+      const r = await fetch("/api/field/sizes?" + p, { credentials: "include" });
+      return r.json();
+    },
+  });
+
+  // Auto-reset size if it no longer exists in new sizes list
+  useEffect(() => {
+    if (selectedSize !== "all" && sizes.length > 0 && !sizes.includes(selectedSize)) {
+      setSelectedSize("all");
+    }
+  }, [sizes, selectedSize]);
+
+  const { data: fieldData, isLoading } = useQuery<FieldItemsResponse>({
+    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (selectedCatId) p.set("category", String(selectedCatId));
+      if (selectedFamily !== "all") p.set("family", selectedFamily);
+      if (selectedType !== "all") p.set("type", selectedType);
+      if (selectedSubcategory !== "all") p.set("subcategory", selectedSubcategory);
       if (selectedSize !== "all") p.set("size", selectedSize);
       if (selectedStatus !== "all") p.set("status", selectedStatus);
       if (debouncedSearch) p.set("q", debouncedSearch);
       p.set("page", String(page));
       p.set("perPage", String(pageSize));
-      const r = await fetch("/api/field/items?" + p.toString(), { credentials: "include" });
+      const r = await fetch("/api/field/items?" + p, { credentials: "include" });
       return r.json();
     },
   });
@@ -372,6 +405,12 @@ export default function FieldInventory() {
   const pageItems = fieldData?.items || [];
   const totalItems = fieldData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  // ── Computed flags ──
+  const showTypePills = selectedFamily !== "all" && types.length >= 2;
+  const showSubcategoryPills = selectedType !== "all" && !subcatFetching && subcategories.length >= 1;
+
+  // ── Handlers with cascade resets ──
 
   function handleCategoryClick(cat: CategorySummary) {
     if (selectedCatId === cat.id) {
@@ -381,6 +420,7 @@ export default function FieldInventory() {
     }
     setSelectedFamily("all");
     setSelectedType("all");
+    setSelectedSubcategory("all");
     setSelectedSize("all");
     setPage(1);
   }
@@ -388,12 +428,20 @@ export default function FieldInventory() {
   function handleFamilyChange(v: string) {
     setSelectedFamily(v);
     setSelectedType("all");
+    setSelectedSubcategory("all");
     setSelectedSize("all");
     setPage(1);
   }
 
   function handleTypeChange(v: string) {
     setSelectedType(v);
+    setSelectedSubcategory("all");
+    setSelectedSize("all");
+    setPage(1);
+  }
+
+  function handleSubcategoryChange(v: string) {
+    setSelectedSubcategory(v);
     setPage(1);
   }
 
@@ -416,13 +464,14 @@ export default function FieldInventory() {
     setSelectedCatId(null);
     setSelectedFamily("all");
     setSelectedType("all");
+    setSelectedSubcategory("all");
     setSelectedSize("all");
     setSelectedStatus("all");
     setSearchInput("");
     setPage(1);
   }
 
-  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
+  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSubcategory !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
 
   return (
     <div className="space-y-4">
@@ -434,7 +483,7 @@ export default function FieldInventory() {
             <Package className="w-5 h-5 text-[#0A6B24]" />
             <h1 className="text-2xl font-display font-bold text-slate-900">Inventory</h1>
           </div>
-          <p className="text-[#64748B] text-sm">Tap a category, then filter by family, type, size, or status.</p>
+          <p className="text-[#64748B] text-sm">카테고리 선택 후 Family, Type, Subcategory, Size로 세분화합니다.</p>
         </div>
         <Button
           variant="ghost"
@@ -454,7 +503,7 @@ export default function FieldInventory() {
           <h2 className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">Browse by Category</h2>
           {selectedCatId !== null && (
             <button
-              onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }}
+              onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }}
               className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-red-500 transition-colors"
               data-testid="btn-clear-category"
             >
@@ -486,17 +535,9 @@ export default function FieldInventory() {
                   <div className="absolute inset-0">
                     {cat.imageUrl ? (
                       <>
-                        <img
-                          src={cat.imageUrl}
-                          alt={cat.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            const fallback = e.currentTarget.parentElement?.querySelector(".cat-fallback") as HTMLElement;
-                            if (fallback) fallback.style.display = "block";
-                          }}
-                        />
-                        <div className={`cat-fallback hidden absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover"
+                          onError={e => { e.currentTarget.style.display = "none"; }} />
+                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
                       </>
                     ) : (
                       <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
@@ -518,7 +559,7 @@ export default function FieldInventory() {
         )}
       </div>
 
-      {/* ── Level 2: Family Quick-Bar ── */}
+      {/* ── Level 2: Family ── */}
       {selectedCatId !== null && families.length > 0 && (
         <PillBar
           label="Family"
@@ -530,7 +571,7 @@ export default function FieldInventory() {
         />
       )}
 
-      {/* ── Level 3: Type Pills (only when 2+ types exist for selected cat+family) ── */}
+      {/* ── Level 3: Type (shows when family selected + ≥2 types) ── */}
       {showTypePills && (
         <PillBar
           label="Type"
@@ -541,7 +582,18 @@ export default function FieldInventory() {
         />
       )}
 
-      {/* ── Filter Row: Search + Size + Status + Page size ── */}
+      {/* ── Level 4: Subcategory (shows when type selected + ≥1 subcategory exists) ── */}
+      {showSubcategoryPills && (
+        <PillBar
+          label="Subcategory"
+          entries={subcategories}
+          selected={selectedSubcategory}
+          onSelect={handleSubcategoryChange}
+          testIdPrefix="chip-subcategory"
+        />
+      )}
+
+      {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -553,15 +605,13 @@ export default function FieldInventory() {
             data-testid="field-inv-search"
           />
           {searchInput && (
-            <button
-              onClick={() => handleSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
-            >
+            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
+        {/* Size dropdown — dynamic options based on current filters */}
         {selectedCatId !== null && sizes.length > 0 && (
           <Select value={selectedSize} onValueChange={handleSizeChange}>
             <SelectTrigger className="w-32 h-9 text-sm bg-white border-[#D9E7DD]" data-testid="field-inv-size-filter">
@@ -605,7 +655,7 @@ export default function FieldInventory() {
           {selectedCat && (
             <Badge className="bg-[#EAF7EE] text-[#0A6B24] border-[#D9E7DD] gap-1 pl-2 pr-1 py-1 text-xs">
               {selectedCat.name}
-              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500 rounded-full">
+              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500 rounded-full">
                 <X className="w-3 h-3" />
               </button>
             </Badge>
@@ -613,7 +663,7 @@ export default function FieldInventory() {
           {selectedFamily !== "all" && (
             <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
               {getFamilyDisplay(selectedFamily)}
-              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
+              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
                 <X className="w-3 h-3" />
               </button>
             </Badge>
@@ -621,7 +671,15 @@ export default function FieldInventory() {
           {selectedType !== "all" && (
             <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
               {selectedType}
-              <button onClick={() => { setSelectedType("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
+              <button onClick={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {selectedSubcategory !== "all" && (
+            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+              {selectedSubcategory}
+              <button onClick={() => { setSelectedSubcategory("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
                 <X className="w-3 h-3" />
               </button>
             </Badge>
@@ -664,82 +722,117 @@ export default function FieldInventory() {
       {/* ── Item Table ── */}
       <div className="bg-white border border-[#D9E7DD] rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#F6F7F9] border-b border-[#D9E7DD]">
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 pl-4 w-[120px] whitespace-nowrap">SKU</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 w-10 text-center">Photo</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 w-[90px] whitespace-nowrap hidden sm:table-cell">Size</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5">Item</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 hidden sm:table-cell w-[100px]">Category</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 hidden md:table-cell w-[120px]">Location</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 text-center w-[60px]">Qty</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 text-center pr-4 w-[90px]">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "108px" }} />  {/* SKU */}
+              <col style={{ width: "52px" }} />   {/* Photo */}
+              <col style={{ width: "88px" }} />   {/* Size */}
+              <col />                              {/* Item — widest */}
+              <col style={{ width: "120px" }} />  {/* Category */}
+              <col style={{ width: "110px" }} />  {/* Location */}
+              <col style={{ width: "56px" }} />   {/* Qty */}
+              <col style={{ width: "96px" }} />   {/* Status */}
+            </colgroup>
+            <thead>
+              <tr className="bg-[#F6F7F9] border-b border-[#D9E7DD]">
+                {[
+                  { label: "SKU",      align: "left"   },
+                  { label: "Photo",    align: "center" },
+                  { label: "Size",     align: "left"   },
+                  { label: "Item",     align: "left"   },
+                  { label: "Category", align: "left",  cls: "hidden sm:table-cell" },
+                  { label: "Location", align: "left",  cls: "hidden md:table-cell" },
+                  { label: "Qty",      align: "center" },
+                  { label: "Status",   align: "center" },
+                ].map(col => (
+                  <th
+                    key={col.label}
+                    className={`px-3 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : "text-left"} ${col.cls || ""}`}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
               {isLoading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
-                  <TableRow key={i} className="border-b border-slate-50">
-                    {[120, 40, 90, 200, 100, 120, 60, 90].map((w, j) => (
-                      <TableCell key={j} className="py-2.5">
-                        <div className="h-4 bg-slate-100 animate-pulse rounded" style={{ width: `${w * 0.6}px` }} />
-                      </TableCell>
+                  <tr key={i} className="border-b border-slate-50">
+                    {[1,2,3,4,5,6,7,8].map(j => (
+                      <td key={j} className="px-3 py-3 align-middle">
+                        <div className="h-4 bg-slate-100 animate-pulse rounded" />
+                      </td>
                     ))}
-                  </TableRow>
+                  </tr>
                 ))
               ) : pageItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-[#64748B]">
+                <tr>
+                  <td colSpan={8} className="text-center py-14 text-sm text-[#64748B]">
                     {hasFilters ? "No items match your filters." : "No items found."}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : pageItems.map((item: FieldItem) => (
-                <TableRow
+                <tr
                   key={item.id}
-                  className="hover:bg-[#EAF7EE]/40 transition-colors cursor-pointer border-b border-slate-50 last:border-0"
+                  className="border-b border-slate-50 last:border-0 hover:bg-[#EAF7EE]/40 transition-colors cursor-pointer"
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
                 >
-                  <TableCell className="py-2.5 pl-4 whitespace-nowrap">
+                  {/* SKU */}
+                  <td className="px-3 py-3 align-middle whitespace-nowrap">
                     <span className="font-mono text-[11px] text-[#64748B]">{item.sku}</span>
-                  </TableCell>
-                  <TableCell className="py-2.5">
+                  </td>
+
+                  {/* Photo */}
+                  <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
                       <PhotoCell imageUrl={item.imageUrl} name={item.name} />
                     </div>
-                  </TableCell>
-                  <TableCell className="py-2.5 hidden sm:table-cell">
-                    <span className="text-xs text-slate-700 whitespace-nowrap font-medium">
+                  </td>
+
+                  {/* Size */}
+                  <td className="px-3 py-3 align-middle">
+                    <span className="text-xs font-medium text-slate-700 whitespace-nowrap">
                       {item.sizeLabel ?? "—"}
                     </span>
-                  </TableCell>
-                  <TableCell className="py-2.5">
-                    <p className="text-sm font-medium text-slate-800 leading-snug">{item.name}</p>
-                  </TableCell>
-                  <TableCell className="py-2.5 hidden sm:table-cell text-xs text-[#64748B]">
-                    {item.category?.name ?? "—"}
-                  </TableCell>
-                  <TableCell className="py-2.5 hidden md:table-cell text-xs text-[#64748B]">
-                    {item.location?.name ?? "—"}
-                  </TableCell>
-                  <TableCell className="py-2.5 text-center">
-                    <span className="font-semibold text-slate-900 tabular-nums text-sm">
-                      {item.quantityOnHand.toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2.5 pr-4">
-                    <div className="flex justify-center items-center">
+                  </td>
+
+                  {/* Item — widest, may wrap */}
+                  <td className="px-3 py-3 align-middle">
+                    <p className="text-sm font-semibold text-slate-800 leading-snug">{item.name}</p>
+                    {item.extractedSubcategory && (
+                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{item.extractedSubcategory}</p>
+                    )}
+                  </td>
+
+                  {/* Category */}
+                  <td className="px-3 py-3 align-middle hidden sm:table-cell">
+                    <span className="text-xs text-[#64748B] leading-snug">{item.category?.name ?? "—"}</span>
+                  </td>
+
+                  {/* Location */}
+                  <td className="px-3 py-3 align-middle hidden md:table-cell">
+                    <span className="text-xs text-[#64748B]">{item.location?.name ?? "—"}</span>
+                  </td>
+
+                  {/* Qty */}
+                  <td className="px-3 py-3 align-middle text-center">
+                    <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-3 py-3 align-middle">
+                    <div className="flex items-center justify-center">
                       <ItemStatusBadge status={item.status} />
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
 
-        {/* Pagination footer */}
+        {/* Pagination */}
         {totalItems > 0 && (
           <div className="px-4 py-2.5 border-t border-[#D9E7DD] flex items-center justify-between">
             <span className="text-xs text-[#64748B]">

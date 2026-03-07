@@ -1,0 +1,210 @@
+Inventory 화면 필터/테이블 구조를 아래 요구사항 기준으로 전체 수정해줘. 기존 디자인 톤은 유지하고, 현재 데이터셋 기반으로 동작하게 구현해줘.
+
+[목표]
+현재 Inventory 화면에서 필터 계층과 테이블 정렬을 개선한다.
+
+--------------------------------------------------
+1. 필터 구조 확장
+--------------------------------------------------
+
+현재 구조:
+- Category
+- Family
+- Type
+- Size
+- Status
+- Search
+
+변경 후 구조:
+- Category
+- Family
+- Type
+- Subcategory
+- Size
+- Status
+- Search
+
+동작 요구사항:
+1) Field mode > Inventory 진입
+2) 카테고리에서 Cable Tray 클릭
+3) Family에서 Fittings 클릭
+4) Type에서 Reducer 클릭
+5) 그러면 Subcategory 필터가 추가로 나타나야 함
+6) Reducer 하위 서브카테고리는 예를 들어 다음처럼 표시:
+   - All
+   - RC
+   - RL
+   - RR
+7) Subcategory 선택 시 테이블 데이터, item count, active filter chips 모두 즉시 갱신
+8) 어떤 Type은 하위 서브카테고리가 없을 수 있으므로, 그런 경우에는 Subcategory 섹션 자체를 숨김
+9) Subcategory는 하드코딩하지 말고 item 데이터에서 자동 추출
+
+subcategory 추출 규칙 예시:
+- "18 x 12 Cable Tray Reducer RC" -> subcategory = "RC"
+- "18 x 12 Cable Tray Reducer RL" -> subcategory = "RL"
+- "18 x 12 Cable Tray Reducer RR" -> subcategory = "RR"
+
+가능하면 inventory item에 아래 파생 필드를 생성해서 사용:
+- category
+- family
+- type
+- subcategory
+- size
+
+Reducer 외에도 동일 패턴으로 마지막 suffix가 의미 있는 값이면 subcategory로 분리 가능하게 유연하게 구현해줘.
+
+--------------------------------------------------
+2. Size 필터를 동적으로 갱신
+--------------------------------------------------
+
+현재 문제:
+Family / Type / Search 등으로 세분화해도, 실제 결과에 없는 size가 Size filter에 그대로 남아 있음.
+
+변경 요구사항:
+1) Size filter 옵션은 항상 "현재 필터링된 결과" 기준으로 다시 계산
+2) 아래 조건을 모두 반영한 결과에서 실제 존재하는 사이즈만 Size 옵션으로 표시
+   - Category
+   - Family
+   - Type
+   - Subcategory
+   - Search
+   - Status
+3) 현재 조건에서 존재하지 않는 Size는 표시하지 않음
+4) 필터가 바뀔 때마다 Size 옵션도 즉시 갱신
+5) 현재 선택된 size가 더 이상 유효하지 않으면 자동으로 All Sizes로 reset
+6) All Sizes는 항상 첫 옵션으로 유지
+
+예시:
+Cable Tray > Fittings > Reducer > RC 상태라면
+그 결과 데이터에 실제 존재하는 size만 보여야 함
+
+--------------------------------------------------
+3. 필터 chip / count 동기화
+--------------------------------------------------
+
+요구사항:
+1) 상단 결과 개수(item count)는 Subcategory까지 반영해서 정확히 표시
+2) active filter chips에도 Subcategory가 있으면 같이 표시
+3) 예:
+   - CABLE TRAY
+   - Fittings
+   - Reducer
+   - RC
+4) Clear all 누르면 category/family/type/subcategory/size/status/search 전부 초기화
+5) 상위 필터가 바뀌면 하위 필터 자동 reset
+   - category 바뀌면 family/type/subcategory/size reset
+   - family 바뀌면 type/subcategory/size reset
+   - type 바뀌면 subcategory/size reset
+   - subcategory 바뀌면 size 재계산
+
+--------------------------------------------------
+4. 테이블 정렬 / 가독성 개선
+--------------------------------------------------
+
+현재 문제:
+SKU / Photo / Size / Item / Category / Location / Qty / Status 컬럼과 row 내용이 삐뚤고 정렬이 일정하지 않음.
+
+아래 기준으로 전체 정리해줘.
+
+공통:
+1) 헤더와 바디 셀 모두 vertical-align: middle
+2) 각 컬럼 padding 통일
+3) row height 일정하게 유지
+4) 텍스트, 이미지, badge 정렬 기준을 통일
+5) table header와 body column width가 정확히 일치해야 함
+6) table-layout: fixed 또는 colgroup 사용해서 컬럼 흔들림 방지
+7) line-height 정리해서 멀티라인 텍스트도 보기 좋게 정렬
+
+컬럼별 정렬:
+- SKU: left
+- Photo: center
+- Size: left
+- Item: left
+- Category: left
+- Location: left
+- Qty: center
+- Status: center
+
+추가 요구사항:
+- Photo는 고정 크기 썸네일 박스 안에서 정확히 중앙 정렬
+- Item 컬럼은 가장 넓게
+- SKU / Photo / Qty / Status는 고정폭으로 너무 넓지 않게
+- Qty 숫자는 수평/수직 중앙 정렬
+- Status badge는 셀 정중앙
+- Category / Location이 2줄이 되어도 어색하지 않게 정렬
+- 헤더 텍스트와 바디 텍스트의 시작선이 맞도록 정리
+- 전체적으로 "깔끔하고 반듯한 인벤토리 테이블" 느낌으로 정렬
+
+--------------------------------------------------
+5. 구현 방식
+--------------------------------------------------
+
+React + TypeScript + Tailwind 기준으로 구현해줘.
+현재 구조를 최대한 유지하면서 아래를 반영해줘:
+
+1) 필터 상태 예시:
+type Filters = {
+  category: string | null
+  family: string | null
+  type: string | null
+  subcategory: string | null
+  size: string | null
+  status: string | null
+  search: string
+}
+
+2) 파생 옵션 계산 규칙:
+- family options: category 기준
+- type options: category + family 기준
+- subcategory options: category + family + type 기준
+- size options: category + family + type + subcategory + search + status 기준
+- final rows: category + family + type + subcategory + search + size + status 최종 반영
+
+3) 상위 필터 변경 시 하위 필터 자동 초기화
+
+4) subcategory 추출 helper 함수 분리
+
+5) table column width 고정 및 정렬 스타일 분리
+
+--------------------------------------------------
+6. 필요한 코드 작업
+--------------------------------------------------
+
+아래 작업을 실제 코드로 전부 반영해줘.
+
+1) Inventory page / Inventory component 수정
+2) filter state 로직 수정
+3) subcategory pill UI 추가
+4) size option 재계산 로직 추가
+5) active chips 반영
+6) item count 반영
+7) table column 정렬 / width / cell layout 수정
+8) 관련 helper 함수 정리
+9) 필요하면 useMemo 사용해서 성능 최적화
+10) 빈 결과일 때 empty state 유지 또는 개선
+
+--------------------------------------------------
+7. 기대 결과
+--------------------------------------------------
+
+최종적으로 아래가 가능해야 함:
+
+- Cable Tray 클릭
+- Family에서 Fittings 클릭
+- Type에서 Reducer 클릭
+- Subcategory에서 RC / RL / RR 선택 가능
+- Size dropdown은 현재 결과에 존재하는 size만 표시
+- 테이블 컬럼이 반듯하게 정렬됨
+- active filter chip과 결과 count가 정확히 맞음
+
+--------------------------------------------------
+8. 중요한 조건
+--------------------------------------------------
+
+- 기존 UI 톤 유지
+- 과한 리디자인 금지
+- 하드코딩 최소화
+- 현재 inventory dataset 기준으로 동작
+- 타입 에러 없이 마무리
+- 관련 파일들을 직접 수정하는 방식으로 구현
+- 변경한 핵심 파일과 주요 수정 포인트를 마지막에 간단히 요약해줘

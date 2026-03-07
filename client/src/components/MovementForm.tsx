@@ -707,7 +707,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                           const val = parseInt(e.target.value, 10);
                           if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
                         }}
-                        className="h-9 w-16 text-sm text-center border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        style={{ textAlign: "center", padding: 0 }}
+                        className="h-9 w-16 text-sm border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         data-testid={`input-quantity-${idx}`}
                       />
                       <button
@@ -720,7 +721,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         <ChevronRight className="w-4 h-4" />
                       </button>
                       {selectedItem && (
-                        <span className="ml-1.5 text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">
+                        <span className="ml-2 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap min-w-[28px] text-center">
                           {selectedItem.unitOfMeasure}
                         </span>
                       )}

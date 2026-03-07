@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, X, ChevronDown, Plus, Trash2, ImageOff } from "lucide-react";
+import { Search, X, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, ImageOff } from "lucide-react";
 import { api } from "@shared/routes";
 
 const sharedSchema = z.object({
@@ -130,7 +130,7 @@ export function SearchableItemSelect({
               </button>
             )}
           </div>
-          <div className="max-h-[620px] overflow-y-auto">
+          <div className="max-h-[336px] overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-4">No items found</p>
             ) : (
@@ -686,18 +686,43 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     )}
                   </div>
 
-                  <div className="flex-[0.8] min-w-0 shrink-0">
-                    <div className="relative">
-                      <Input
+                  <div className="shrink-0">
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.rowId, { quantity: Math.max(0, row.quantity - 1) })}
+                        className="w-9 h-9 flex items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"
+                        data-testid={`btn-qty-dec-${idx}`}
+                        title="Decrease"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <input
                         type="number"
-                        min={1}
+                        min={0}
                         value={row.quantity}
-                        onChange={(e) => updateRow(row.rowId, { quantity: Number(e.target.value) })}
-                        className="h-9 text-sm text-center px-1 pr-6"
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          updateRow(row.rowId, { quantity: isNaN(val) || val < 0 ? 0 : val });
+                        }}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
+                        }}
+                        className="h-9 w-12 text-sm text-center border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         data-testid={`input-quantity-${idx}`}
                       />
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.rowId, { quantity: row.quantity + 1 })}
+                        className="w-9 h-9 flex items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"
+                        data-testid={`btn-qty-inc-${idx}`}
+                        title="Increase"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
                       {selectedItem && (
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 pointer-events-none uppercase">
+                        <span className="ml-1.5 text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">
                           {selectedItem.unitOfMeasure}
                         </span>
                       )}

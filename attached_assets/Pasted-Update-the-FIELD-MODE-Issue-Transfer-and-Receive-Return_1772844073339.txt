@@ -1,0 +1,61 @@
+Update the FIELD MODE “Issue / Transfer” and “Receive / Return” log movement pages with the following UI + behavior changes.
+Do NOT redesign everything. Keep current styling, just adjust layout and inputs exactly as requested.
+
+====================================================
+A) PAGE WIDTH: LOCK CONTENT TO 960px
+====================================================
+On both pages:
+- Wrap the entire main form content in a centered container with max-width: 960px
+- Use width: 100%, maxWidth: 960px, margin: 0 auto
+- Add reasonable side padding for small screens (px-4)
+- Ensure the dropdown panels and the item list also respect the 960px container and do not overflow full screen width.
+
+====================================================
+B) ITEM DROPDOWN: SHOW ONLY 6 RESULTS (SCROLL AFTER)
+====================================================
+When user clicks the Item selector dropdown:
+- The dropdown list panel must show exactly 6 visible item rows (not 1–2).
+- If more than 6 matches exist, the dropdown becomes scrollable (overflow-y-auto).
+- Keep the dropdown panel aligned to the input field and within the 960px container.
+- Do NOT cover the list with other sections; ensure enough z-index and spacing so 6 items are always visible.
+
+Implementation hints:
+- Set dropdown panel maxHeight = (rowHeight * 6) + header/search padding
+- Use overflow-y: auto
+
+====================================================
+C) QUANTITY CONTROL: LEFT/RIGHT ARROWS (NO UP/DOWN), MIN 0
+====================================================
+Replace the current quantity control (up/down or plain input) with a horizontal stepper:
+
+Layout:
+[  ◀  ]  [  number  ]  [  ▶  ]
+
+Rules:
+- Clicking ◀ decreases quantity by 1
+- Clicking ▶ increases quantity by 1
+- Quantity must NEVER go below 0 (clamp at 0)
+- Default quantity = 1 when an item is newly added (but allow user to reduce to 0)
+- Arrows should be “reasonably big” and easy to tap:
+  - at least 36px height, 36px width per arrow button
+  - clear icon (chevron-left / chevron-right)
+  - keep consistent with existing green/gray style
+- Number field should still allow typing, but typing negative numbers must be prevented:
+  - sanitize input onChange: if <0 => set to 0
+  - allow empty while typing, but on blur enforce >=0
+
+Also:
+- Keep the quantity stepper aligned with each item row (same row as item selector).
+- Ensure it looks good when multiple items are added (no overflow outside 960px).
+
+====================================================
+DELIVERABLE
+====================================================
+Apply these changes to BOTH:
+- Receive/Return page
+- Issue/Transfer page
+
+After changes:
+- verify width stays 960px centered
+- dropdown shows 6 rows visible
+- quantity arrows work, never below 0

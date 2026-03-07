@@ -1,0 +1,72 @@
+FIX FIELD MODE Log Movement UI precisely. Do NOT guess. Apply exactly these changes.
+
+Target pages:
+- Field Receive/Return log movement page
+- Field Issue/Transfer log movement page
+(Apply width + dropdown + quantity alignment to BOTH. The title icon applies to each page header title.)
+
+====================================================
+1) HARD LIMIT PAGE WIDTH TO 1100px (NO FULL-WIDTH)
+====================================================
+The current layout still spans too wide.
+- Wrap the entire form content (everything under the top header bar) inside a centered container:
+  - width: 100%
+  - max-width: 1100px
+  - margin-left/right: auto
+  - padding-left/right: 16px (mobile: 12px)
+- Ensure ALL inner grids and sections respect this container:
+  - remove any w-full wrappers that escape the container
+  - no element should exceed 1100px except the top navigation bar
+- Confirm visually: the right-side empty space is gone and the form does NOT stretch across the whole screen.
+
+====================================================
+2) ITEM DROPDOWN RESULTS: EXACTLY 6 VISIBLE ROWS
+====================================================
+Currently shows too many rows.
+For the Item selector dropdown list:
+- The dropdown panel must show EXACTLY 6 item rows visible at once.
+- If more results exist, it must scroll (overflow-y-auto).
+- Ensure the dropdown has a fixed max-height based on row height:
+  - Each row height = 44px
+  - Visible rows = 6
+  - Dropdown maxHeight = 44 * 6 = 264px (+ small padding ok, but visible rows must remain 6)
+- Do the same for the searchable list inside the dropdown if there is a nested search area.
+- Keep z-index high enough so the dropdown is not hidden.
+- Apply to BOTH Receive/Return and Issue/Transfer pages.
+
+====================================================
+3) QUANTITY STEPPER: CENTER THE NUMBER
+====================================================
+The quantity number is left-shifted. Fix alignment so the number sits dead center.
+For the quantity control:
+- Use a 3-column layout: [left arrow] [number input] [right arrow]
+- The number input must be CENTER aligned:
+  - text-align: center
+  - justify-content: center (if flex)
+  - input width consistent (e.g., 64–72px)
+- The whole stepper must be vertically centered with the item row.
+
+Constraints remain:
+- decrement cannot go below 0
+- arrows are clickable and at least 36x36
+
+====================================================
+4) ADD ICON TO LEFT OF PAGE TITLE (Receive/Return / Issue/Transfer)
+====================================================
+In the page header (where "Receive / Return" is shown):
+- Add a relevant icon to the LEFT of the title text.
+  - Receive/Return: use a “box/receive” style icon (package/inbox)
+  - Issue/Transfer: use a “send/arrow” style icon
+- Icon size: 24px (desktop), 22px (mobile)
+- Align icon + title baseline nicely with a small gap (8px)
+- Keep the title as the primary emphasis.
+
+====================================================
+DONE CHECKLIST
+====================================================
+After changes:
+- Form content is centered and never wider than 1100px.
+- Item dropdown shows 6 rows max before scrolling.
+- Quantity number is perfectly centered.
+- Title has an icon on the left.
+Apply consistently to BOTH pages.

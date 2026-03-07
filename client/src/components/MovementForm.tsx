@@ -130,32 +130,30 @@ export function SearchableItemSelect({
               </button>
             )}
           </div>
-          <div className="max-h-[336px] overflow-y-auto">
+          <div className="max-h-[264px] overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-4">No items found</p>
+              <p className="text-center text-sm text-slate-400 py-3">No items found</p>
             ) : (
               filtered.map(item => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => { onChange(item.id); setOpen(false); setSearch(""); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-brand-50 transition-colors ${item.id === value ? "bg-brand-50" : ""}`}
+                  style={{ minHeight: "44px", height: "44px" }}
+                  className={`w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors ${item.id === value ? "bg-brand-50" : ""}`}
                   data-testid={`item-option-${item.id}`}
                 >
-                  {/* SKU */}
-                  <span className="font-mono text-xs text-slate-400 w-20 shrink-0 truncate">{item.sku}</span>
-                  {/* D: photo thumbnail between SKU and name — 40px */}
-                  <span className="w-10 h-10 shrink-0 rounded-md overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                  <span className="font-mono text-xs text-slate-400 w-16 shrink-0 truncate">{item.sku}</span>
+                  <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <ImageOff className="w-5 h-5 text-slate-300" />
+                      <ImageOff className="w-4 h-4 text-slate-300" />
                     )}
                   </span>
-                  {/* Name + size */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
-                    {item.sizeLabel && <p className="text-xs text-slate-400">{item.sizeLabel}</p>}
+                    <p className="text-sm font-medium text-slate-900 truncate leading-tight">{item.name}</p>
+                    {item.sizeLabel && <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>}
                   </div>
                   <span className="text-xs text-slate-400 shrink-0">{item.quantityOnHand} {item.unitOfMeasure}</span>
                 </button>
@@ -670,7 +668,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               return (
                 <div
                   key={row.rowId}
-                  className="flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
+                  className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
                   data-testid={`item-row-${idx}`}
                 >
                   <div className="flex-[3] min-w-0">
@@ -709,7 +707,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                           const val = parseInt(e.target.value, 10);
                           if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
                         }}
-                        className="h-9 w-12 text-sm text-center border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="h-9 w-16 text-sm text-center border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         data-testid={`input-quantity-${idx}`}
                       />
                       <button
@@ -734,7 +732,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     )}
                   </div>
 
-                  <div className="pt-1.5 shrink-0">
+                  <div className="shrink-0">
                     <button
                       type="button"
                       onClick={() => removeRow(row.rowId)}

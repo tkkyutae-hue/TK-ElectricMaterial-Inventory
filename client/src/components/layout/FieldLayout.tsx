@@ -70,7 +70,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           location.startsWith("/field/inventory") || location.startsWith("/field/transactions")
             ? "max-w-7xl"
             : location.startsWith("/field/movement")
-            ? "max-w-[960px]"
+            ? "max-w-[1100px]"
             : "max-w-6xl"
         }`}>
           {children}

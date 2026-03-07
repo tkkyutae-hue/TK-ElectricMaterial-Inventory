@@ -1,0 +1,253 @@
+[A안 - 전체 카테고리 고정밀 자동 Family(Subcategory) 재분류 + Field Inventory 필터 정상화]
+
+목표:
+- Field Mode > Inventory에서 Category 클릭 후 Family(Subcategory) 필터가 의미 있게 여러 개 뜨도록,
+  DB의 items.subcategory를 SKU 패턴 + name 키워드 기반으로 고정밀 자동 분류하여 일괄 업데이트한다.
+- “카테고리 → Family → Size → Status” 필터가 전 카테고리에서 정상 작동해야 한다.
+- UI만 바꾸지 말고 DB 데이터까지 실제로 수정한다.
+- 분류는 “중복 실행해도 같은 결과”가 나오게(멱등성) 구현한다.
+
+========================================================
+0) 전제 (하드코딩 금지)
+========================================================
+- categories 테이블에서 name으로 category_id를 조회해서 사용 (id 하드코딩 금지)
+- items 테이블에서 subcategory 컬럼명이 다르면 실제 컬럼명으로 매핑
+- 분류 결과는 items.subcategory에 저장
+
+필수 출력(완료 후):
+- 카테고리별 subcategory count 요약
+- 특히 CABLE TRAY / CONDUIT / CABLE-WIRE / POWER / BOXES는 상세 출력
+
+========================================================
+1) 분류 엔진 구현 방식 (정확도 향상)
+========================================================
+각 카테고리는 아래 순서로 subcategory를 결정한다:
+
+(1) SKU prefix 규칙 (가장 우선, 신뢰도 최고)
+(2) name 키워드 규칙 (정규식/ILIKE)
+(3) 폴백: "Other"
+
+우선순위는 카테고리별로 명확히 둔다 (예: Cover가 Tray보다 먼저).
+
+분류는 admin-only 스크립트 또는 endpoint로 구현:
+- 실행 시 해당 카테고리 items만 UPDATE
+- 변경된 row 수 및 서브카테고리별 집계 로그 출력
+- 재실행해도 결과 동일 (멱등)
+
+========================================================
+2) CABLE TRAY (CABLE TRAY)
+========================================================
+목표 subcategory:
+- Tray
+- Covers
+- Fittings
+- Connectors
+- Supports
+- Accessories
+- Other
+
+(1) SKU 기반 (가능한 범위에서 적용)
+- CT-CVR-*  -> Covers
+- CT-COV-*  -> Covers
+- CT-STR-*  -> Tray
+- CT-TRAY-* -> Tray
+- CT-TEE-*  -> Fittings
+- CT-ELB-*  -> Fittings
+- CT-CRS-*  -> Fittings
+- CT-WYE-*  -> Fittings
+- CT-RED-*  -> Fittings
+- CT-VIN-* / CT-VOU-* -> Fittings
+- CT-CON-* / CT-BC-* / CT-SPL-* / CT-JNT-* / CT-COU-* -> Connectors
+- CT-HNG-* / CT-BKT-* / CT-CLP-* / CT-SUP-* -> Supports
+- CT-END-* / CT-DIV-* / CT-DRO-* / CT-BND-* -> Accessories
+
+(2) name 기반 우선순위: Covers > Fittings > Connectors > Supports > Accessories > Tray > Other
+- Covers: cover|lid
+- Fittings: elbow|tee|cross|wye|reducer|vertical|horizontal|inside|outside
+- Connectors: splice|connector|coupler|coupling|joint
+- Supports: hanger|support|bracket|trapeze|hold down|clamp|strap
+- Accessories: end cap|divider|drop out|bond|bonding|jumper
+- Tray: tray|ladder|wireway
+
+========================================================
+3) CONDUIT / FITTINGS (CONDUIT / FITTINGS)
+========================================================
+목표 subcategory:
+- EMT Conduit
+- RMC/IMC Conduit
+- PVC Conduit
+- Flex Conduit (LFMC/Liquidtight/ENT)
+- Conduit Bodies (LB/LL/LR)
+- Fittings (connectors/couplings/adapters/bushings/locknuts)
+- Supports (straps/clamps)
+- Other
+
+우선순위: Flex > Conduit Bodies > Supports > Fittings > EMT > RMC/IMC > PVC > Other
+
+(1) SKU 기반 예시
+- EMT-* -> EMT Conduit
+- RMC-* / IMC-* -> RMC/IMC Conduit
+- PVC-* -> PVC Conduit
+- LQT-* / LFMC-* / FLEX-* -> Flex Conduit
+- *-LB-* / *-LL-* / *-LR-* -> Conduit Bodies
+
+(2) name 기반
+- Flex: liquidtight|lfmc|flex|ent
+- Bodies: conduit body| LB | LL | LR
+- Supports: strap|clamp|hanger
+- Fittings: coupling|connector|adapter|bushing|locknut|compression|set screw|elbow
+- EMT/RMC/IMC/PVC: emt|rmc|imc|pvc|sch 40|sch 80
+
+========================================================
+4) CONDUIT SUPPORTS & STRUT SYSTEM (SUPPORTS)
+========================================================
+목표 subcategory:
+- Strut Channel
+- Strut Fittings
+- Thread Rod
+- Clamps/Straps
+- Hardware/Accessories
+- Other
+
+키워드:
+- Strut Channel: unistrut|strut channel|slotted|solid|back-to-back|1-5/8
+- Strut Fittings: angle|corner|4 hole|2 hole|fitting
+- Thread Rod: thread rod|all thread
+- Clamps/Straps: conduit clamp|strap|beam clamp
+- Accessories: spring nut|hold down|washer
+
+========================================================
+5) CABLE / WIRE (CABLE / WIRE)
+========================================================
+목표 subcategory:
+- THHN/THWN Single
+- THHN/THWN Multi (2C+G / 3C+G / 4C+G)
+- Ground Wire
+- MC Cable
+- Lugs/Terminations (NOTE: if you already moved lugs to a different category, then skip here)
+- Other
+
+우선순위: Ground > MC > Multi > Single > Other
+- Ground: ground|bond|bonding
+- MC: mc cable| 12/2 | 12/3 | 10/3
+- Multi: (2C+G)|(3C+G)|(4C+G)|multi conductor
+- Single: single conductor|thhn|thwn
+
+========================================================
+6) DEVICES
+========================================================
+목표 subcategory:
+- Receptacles
+- Switches
+- Sensors/Controls
+- Disconnect/Local Control (if devices includes small disconnects)
+- Other
+
+키워드:
+- receptacle|outlet|gfcI
+- switch
+- sensor|control|push button
+
+========================================================
+7) FASTENERS & HARDWARE
+========================================================
+목표 subcategory:
+- Anchors
+- Screws
+- Bolts
+- Nuts
+- Washers
+- Cable Tray Hardware (hold down clamp / spring nuts)
+- Other
+
+우선순위: Cable Tray Hardware > Anchors > Screws > Bolts > Nuts > Washers > Other
+- tray hardware: hold down|spring nut|tray clamp
+- anchors: anchor|wedge|drop in
+- screws: screw|tek
+- bolts/nuts/washers
+
+========================================================
+8) BOXES & COVER SYSTEM (BOXES)
+========================================================
+목표 subcategory:
+- 4" Square Boxes
+- 2x4 Boxes
+- Junction Boxes (6x6/8x8/12x12/24x24 indoor/outdoor)
+- Weatherproof Boxes
+- Covers
+- Other
+
+키워드:
+- 4" square|4 square
+- 2x4
+- junction box|6x6|8x8|12x12|24x24|indoor|outdoor
+- weatherproof|wp box
+- cover|blank cover
+
+========================================================
+9) DISTRIBUTION & POWER SYSTEM (POWER)
+========================================================
+목표 subcategory:
+- Disconnect Switches (NEMA1 / NEMA3R / fusible / non-fused / 240V / 600V)
+- Breakers
+- Fuses
+- Transformers (480-208)
+- Panels/Switchgear (if present)
+- Other
+
+키워드:
+- disconnect
+- breaker
+- fuse
+- transformer|kVA|480|208
+- panel|switchgear
+
+========================================================
+10) GROUNDING & TERMINATION
+========================================================
+목표 subcategory:
+- Ground Bushings
+- Mechanical Lugs
+- Compression Lugs
+- Ground Wire Accessories
+- Other
+
+키워드:
+- bushing
+- mechanical lug
+- compression lug
+- ground lug
+
+========================================================
+11) TOOLS & MISC SUPPLIES (새 카테고리)
+========================================================
+- categories에 "TOOLS & MISC SUPPLIES" 없으면 생성
+목표 subcategory:
+- Tools
+- Consumables
+- PPE
+- Other
+
+키워드:
+- tools: tool|drill|meter
+- consumables: tape|glove|blade|bit|marker
+- ppe: helmet|glasses|vest|ppe
+
+========================================================
+12) 실행 후 Field Inventory 검증
+========================================================
+- 각 카테고리 클릭 시 Family 드롭다운에 최소 3개 이상(가능한 경우) 의미 있는 옵션이 떠야 한다.
+- Cable Tray에서 Tray만 뜨면 실패 (Covers/Fittings/Connectors/Supports 등 떠야 함)
+- Conduit에서 EMT/RMC/PVC/Fittings/Supports 등이 떠야 함
+- Family 선택 → Size 필터 옵션이 해당 scope로 좁혀져야 함
+- Status 필터도 정상 동작
+
+========================================================
+13) 결과 리포트 필수
+========================================================
+- categories별 subcategory count top 10 출력
+- CABLE TRAY, CONDUIT, POWER, BOXES는 subcategory별 전체 count 출력
+- 변경된 row 수 출력
+"""
+Run this safely and confirm in UI that family filtering is now meaningful for all categories.
+"""

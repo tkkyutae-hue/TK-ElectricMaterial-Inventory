@@ -1,0 +1,81 @@
+Fix the Field Mode pages layout width (too wide) and make the UI feel compact + centered.
+
+DO NOT redesign components.
+Only adjust layout/container widths, spacing, and the bottom action bar style.
+Keep current colors and styling.
+
+====================================================
+GOAL
+====================================================
+All Field Mode screens (Field Actions, Receive/Return, Issue/Transfer, Inventory, Transactions)
+must use a centered container with a reasonable max width so the UI doesn’t stretch across ultra-wide screens.
+
+====================================================
+1) APPLY A CONSISTENT CENTERED CONTAINER (FIELD MODE)
+====================================================
+For all Field Mode routes/pages, wrap main content with:
+
+- a centered container: mx-auto
+- responsive padding: px-4 md:px-6
+- max width limit:
+  - default: max-w-6xl
+  - for heavy list pages (Inventory/Transactions): max-w-7xl
+
+Implementation details:
+- Add a shared layout wrapper in FieldLayout (or the top-level Field pages wrapper):
+  <main className="mx-auto w-full max-w-6xl px-4 md:px-6">
+- For Inventory/Transactions pages use max-w-7xl (either via prop or conditional class).
+
+Make sure the content is visually centered with equal left/right whitespace.
+
+====================================================
+2) RECEIVE/RETURN + ISSUE/TRANSFER FORM WIDTH + GRID
+====================================================
+On Receive/Return and Issue/Transfer pages:
+- Keep the form fields full width within the new container.
+- Prevent fields from stretching edge-to-edge of the browser.
+- The “Receive From” and “Project” row should be 2 columns on desktop:
+  grid grid-cols-1 md:grid-cols-2 gap-4
+- On mobile it must stack.
+
+====================================================
+3) REMOVE THE WEIRD WHITE BOX AROUND CONFIRM
+====================================================
+The bottom area around the Confirm button currently looks like a large white rectangle.
+
+Fix:
+- Replace the big white container with a slim sticky action bar:
+  - sticky bottom-0
+  - subtle border-top (border-t)
+  - background: white with slight transparency or the same page background
+  - padding: py-3
+- Align the Confirm button to the right.
+- Do NOT create a large empty white panel.
+
+Example behavior:
+- The page scrolls normally,
+- Only a thin action bar stays at the bottom with the Confirm button.
+
+====================================================
+4) KEEP ITEMS LIST VISIBLE (HEIGHT)
+====================================================
+After narrowing the width:
+- Ensure the item dropdown/list area still shows ~9–10 items.
+- Increase the dropdown panel max-height (e.g., 360–420px) and allow scroll inside the dropdown.
+- Do not let the list be clipped by surrounding containers.
+
+====================================================
+5) APPLY SAME WIDTH RULES TO FIELD ACTIONS SCREEN
+====================================================
+Field Actions screen should also use the same max width and remain centered:
+- max-w-5xl or max-w-6xl is fine
+- cards stay centered and not stretched across the entire page
+
+====================================================
+ACCEPTANCE CHECK
+====================================================
+- On a wide monitor, Field pages no longer stretch full width.
+- All content is centered with comfortable margins.
+- Confirm button area is clean (no big white empty block).
+- Items dropdown shows ~9–10 rows without being cut off.
+- Receive/Return and Issue/Transfer look consistent.

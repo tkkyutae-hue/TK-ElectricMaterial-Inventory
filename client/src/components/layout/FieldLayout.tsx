@@ -66,7 +66,11 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="flex-1 overflow-y-auto flex flex-col">
-        <div className="flex-1 flex flex-col w-full max-w-4xl mx-auto px-4 sm:px-6">
+        <div className={`flex-1 flex flex-col w-full mx-auto px-4 md:px-6 ${
+          location.startsWith("/field/inventory") || location.startsWith("/field/transactions")
+            ? "max-w-7xl"
+            : "max-w-6xl"
+        }`}>
           {children}
         </div>
       </main>

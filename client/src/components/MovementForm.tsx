@@ -130,7 +130,7 @@ export function SearchableItemSelect({
               </button>
             )}
           </div>
-          <div className="max-h-[560px] overflow-y-auto">
+          <div className="max-h-[620px] overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-4">No items found</p>
             ) : (
@@ -569,7 +569,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             </FormItem>
           )} />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left column: Source location (receive/return/transfer) or Destination (issue only) */}
             {needsSource && (
               <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
@@ -746,8 +746,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           )} />
         </div>
 
-        {/* ── Confirm footer ── */}
-        <div className="flex items-center justify-end pt-4 mt-2">
+        {/* ── Confirm footer: slim sticky action bar ── */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 border-t border-slate-200 bg-white/90 backdrop-blur-sm -mx-4 md:-mx-6 px-4 md:px-6">
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button

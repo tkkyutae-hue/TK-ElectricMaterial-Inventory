@@ -24,7 +24,7 @@ export default function FieldMovement() {
   const config = SCREEN_CONFIG[presetType] ?? SCREEN_CONFIG.receive;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-6">
       {/* F: Emphasise action, not "Log Movement" */}
       <div>
         <h1 className="text-2xl font-display font-bold text-slate-900">{config.heading}</h1>

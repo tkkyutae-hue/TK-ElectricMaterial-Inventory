@@ -1,0 +1,179 @@
+Inventory 필터 구조를 아래 기준으로 수정해줘. 기존 UI 스타일은 유지하고, 현재 inventory dataset 기준으로 동작하게 구현해줘.
+
+[1. Cable Tray family 구조 수정]
+Cable Tray 카테고리의 Family를 아래처럼 변경해줘.
+
+기존:
+- Tray
+- General
+- Connectors
+- Covers
+
+변경:
+- Cable Tray
+- Fittings
+- Covers
+
+세부 규칙:
+1) 기존 Tray family 이름을 "Cable Tray"로 변경
+2) 기존 General family 이름을 "Fittings"로 변경
+3) 기존 Connectors family는 따로 분리하지 말고 "Fittings"에 포함
+4) 즉 Cable Tray 카테고리의 family는 최종적으로
+   - Cable Tray
+   - Fittings
+   - Covers
+   이 3개만 보이게 해줘
+
+[2. Cable Tray family 순서 변경]
+Cable Tray 카테고리에서 Family 표시 순서를 아래처럼 고정해줘:
+1) Cable Tray
+2) Fittings
+3) Covers
+
+[3. Conduit / Fittings family 이름 및 분류 수정]
+Conduit / Fittings 카테고리의 Family를 아래 기준으로 수정해줘.
+
+기존 문제:
+- General 이라는 이름이 모호함
+- Body 명칭이 모호함
+- Supports 안에서 strap 종류가 구분되지 않음
+
+변경:
+1) General family 이름을 "Bushing / Locknut" 으로 변경
+2) Body family 이름을 "Conduit Body" 로 변경
+3) Supports family 클릭 시 strap류가 한꺼번에 섞여 보이지 말고 type 또는 subcategory 단계에서 최소 아래처럼 구분되게 해줘:
+   - One Hole Strap
+   - Two Hole Strap
+
+즉 Supports family 안에서는 strap 데이터를 실제 품목명 기준으로 분류해서,
+One Hole Strap과 Two Hole Strap을 각각 따로 필터링 가능하게 구현해줘.
+
+[4. Family에 More... 표시 제거]
+현재 Family 영역에서 일부 항목이 "More..." 로 접혀서 보이는데,
+이 동작을 제거해줘.
+
+변경:
+- Family 항목은 전부 한 번에 표시
+- More...
+- 드롭다운식 축약
+- 숨김 처리
+전부 제거
+
+줄바꿈이 필요하면 줄바꿈해서라도 전체 family를 모두 표시해줘.
+
+[5. Conduit / Fittings family 순서 고정]
+Conduit / Fittings 카테고리에서 Family 순서를 아래처럼 정확히 고정해줘:
+
+1) EMT
+2) Rigid
+3) Flexible
+4) PVC
+5) Bushing / Locknut
+6) Conduit Body
+7) Supports
+
+현재 데이터셋에 해당 family가 존재하면 위 순서대로 표시하고,
+존재하지 않는 family만 제외해줘.
+임의 정렬하지 말고 위 순서를 우선 적용해줘.
+
+[6. Conduit / Fittings type 순서 고정]
+Conduit / Fittings 카테고리에서 Family 선택 후 Type 순서를 아래처럼 고정해줘:
+
+1) Conduit
+2) Coupling
+3) Connector
+4) Elbow
+
+중요:
+- type은 위 4개를 우선 기준으로 노출
+- 현재 결과 데이터에 실제 존재하는 type만 보여줘
+- 순서는 반드시 Conduit > Coupling > Connector > Elbow
+- 알파벳순 정렬 금지
+
+[7. Supports 세부 분류 규칙]
+Conduit / Fittings > Supports 선택 시
+One Hole Strap, Two Hole Strap을 구분 가능하게 해줘.
+
+구현 방식:
+- 가능하면 Type 또는 Subcategory 단계에서 구분
+- 추천 방식:
+  - Family: Supports
+  - Type: Strap
+  - Subcategory:
+    - One Hole Strap
+    - Two Hole Strap
+
+또는 현재 구조상 type을 따로 쓰기 애매하면
+Supports 선택 후 바로 subcategory로 분기해도 됨.
+
+핵심은:
+- One Hole Strap / Two Hole Strap이 같은 목록에 뒤섞여 보이지 않게
+- 각각 개별 필터 선택 가능해야 함
+
+[8. 기존 동적 필터 규칙 유지]
+아래 규칙은 계속 유지해줘:
+1) 상위 필터 변경 시 하위 필터 자동 reset
+2) Size filter는 현재 필터 결과 기준으로만 표시
+3) active filter chip과 item count는 현재 필터 결과와 정확히 동기화
+4) 실제 데이터에 없는 옵션은 표시하지 않음
+
+[9. 데이터 매핑 규칙]
+이름 변경/통합은 UI 라벨 기준으로만 하지 말고 실제 분류에도 반영해줘.
+
+예시:
+- Cable Tray category:
+  - Tray items -> Cable Tray family
+  - General + Connectors items -> Fittings family
+  - Cover items -> Covers family
+
+- Conduit / Fittings category:
+  - General items 중 bushing/locknut 관련 -> Bushing / Locknut family
+  - Body items -> Conduit Body family
+  - Strap/support 관련 -> Supports family
+
+가능하면 item name, tags, existing metadata를 이용해서 분류하고,
+기존 분류값이 애매하면 helper 함수로 normalize해서 처리해줘.
+
+[10. 구현 조건]
+React + TypeScript + Tailwind 기준으로 수정해줘.
+
+반영할 작업:
+1) Inventory page/component의 family mapping 수정
+2) category별 family order 고정 로직 추가
+3) category별 type order 고정 로직 추가
+4) Cable Tray family 통합 로직 추가
+5) Conduit / Fittings family rename 로직 추가
+6) Supports > strap 세부분류 로직 추가
+7) Family "More..." 제거하고 전체 노출 처리
+8) active chips / count / size filter 동기화 유지
+9) 타입 에러 없이 마무리
+
+[11. 최종 기대 결과]
+최종적으로 아래처럼 보여야 함.
+
+Cable Tray:
+- Cable Tray
+- Fittings
+- Covers
+
+Conduit / Fittings:
+- EMT
+- Rigid
+- Flexible
+- PVC
+- Bushing / Locknut
+- Conduit Body
+- Supports
+
+Conduit / Fittings의 Type:
+- Conduit
+- Coupling
+- Connector
+- Elbow
+
+Supports 선택 시:
+- One Hole Strap
+- Two Hole Strap
+구분 가능
+
+작업 끝나면 변경한 핵심 파일과 수정 포인트를 간단히 요약해줘.

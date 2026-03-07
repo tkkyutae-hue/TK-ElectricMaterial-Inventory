@@ -4,7 +4,7 @@ import { useSearch, useLocation } from "wouter";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
-  ImageOff, ChevronDown, Home,
+  ImageOff, Home,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -107,8 +107,6 @@ function PillBar({
   testIdPrefix: string;
   displayFn?: (name: string) => string;
 }) {
-  const top = entries.slice(0, 6);
-  const rest = entries.slice(6);
   const getLabel = displayFn ?? ((n: string) => n);
 
   return (
@@ -126,7 +124,7 @@ function PillBar({
         >
           All
         </button>
-        {top.map(f => (
+        {entries.map(f => (
           <button
             key={f.name}
             onClick={() => onSelect(f.name)}
@@ -141,23 +139,6 @@ function PillBar({
             <span className="ml-1 opacity-60">({f.count})</span>
           </button>
         ))}
-        {rest.length > 0 && (
-          <Select value={selected} onValueChange={onSelect}>
-            <SelectTrigger
-              className="h-[28px] px-2.5 text-xs rounded-full border-[#D9E7DD] bg-white gap-1 w-auto"
-              data-testid={`${testIdPrefix}-more`}
-            >
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-              <span className="text-slate-500">More…</span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {rest.map(f => (
-                <SelectItem key={f.name} value={f.name}>{getLabel(f.name)} ({f.count})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
     </div>
   );

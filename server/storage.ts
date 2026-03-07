@@ -1022,6 +1022,7 @@ export class DatabaseStorage implements IStorage {
       name: items.name,
       subcategory: items.subcategory,
       detailType: items.detailType,
+      baseItemName: items.baseItemName,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
 
@@ -1031,12 +1032,22 @@ export class DatabaseStorage implements IStorage {
 
     const counts: Record<string, number> = {};
     for (const i of filtered) {
-      const fam = derivedFamily(i.subcategory, i.detailType, i.name || '');
+      const fam = derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName);
       if (fam) counts[fam] = (counts[fam] || 0) + 1;
     }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+
+    const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
+
+    // Apply category-specific ordering if we know the category code
+    if (params.categoryId) {
+      const catRow = await db.select({ code: categories.code })
+        .from(categories).where(eq(categories.id, params.categoryId)).limit(1);
+      const code = catRow[0]?.code || '';
+      if (code === 'CT') return applyOrder(entries, CT_FAMILY_ORDER);
+      if (code === 'CF') return applyOrder(entries, CF_FAMILY_ORDER);
+    }
+
+    return entries.sort((a, b) => b.count - a.count);
   }
 
   async getFieldSizes(params: {
@@ -1063,7 +1074,7 @@ export class DatabaseStorage implements IStorage {
     let filtered = allItems as any[];
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
     if (params.family) filtered = filtered.filter(i =>
-      derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+      derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
     );
     if (params.type) filtered = filtered.filter(i =>
       derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '') === params.type
@@ -1120,7 +1131,7 @@ export class DatabaseStorage implements IStorage {
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
     if (params.family) {
       filtered = filtered.filter(i =>
-        derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+        derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
       );
     }
 
@@ -1129,9 +1140,21 @@ export class DatabaseStorage implements IStorage {
       const t = derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '');
       if (t) counts[t] = (counts[t] || 0) + 1;
     }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+
+    const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
+
+    // Apply CF type ordering for conduit/fittings families
+    const cfFamilies = new Set(['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body', 'Supports']);
+    if (params.family && cfFamilies.has(params.family)) {
+      return applyOrder(entries, CF_TYPE_ORDER);
+    }
+    if (params.categoryId) {
+      const catRow = await db.select({ code: categories.code })
+        .from(categories).where(eq(categories.id, params.categoryId)).limit(1);
+      if (catRow[0]?.code === 'CF') return applyOrder(entries, CF_TYPE_ORDER);
+    }
+
+    return entries.sort((a, b) => b.count - a.count);
   }
 
   async getFieldSubcategories(params: {
@@ -1151,7 +1174,7 @@ export class DatabaseStorage implements IStorage {
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
     if (params.family) {
       filtered = filtered.filter(i =>
-        derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+        derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
       );
     }
     if (params.type) {
@@ -1202,7 +1225,7 @@ export class DatabaseStorage implements IStorage {
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
       const it = row.item as any;
-      const famName = derivedFamily(it.subcategory, it.detailType, it.name || '');
+      const famName = derivedFamily(it.subcategory, it.detailType, it.name || '', it.baseItemName);
       const typeName = derivedType(it.subcategory, it.detailType, it.baseItemName, it.name || '');
       const sc = extractSubcategory(it.name || '', it.detailType, it.subcategory, it.baseItemName);
       return {
@@ -1272,46 +1295,80 @@ export class DatabaseStorage implements IStorage {
 
 // ─── Field data extraction helpers ───────────────────────────────────────────
 //
-// These three functions derive display-ready metadata from raw DB fields.
-// They work across ALL categories (Cable Tray, Conduit/Fittings, etc.).
+// Category-specific family ordering constants.
+// Items that exist in the data are shown in this order; missing ones are skipped.
 //
+const CT_FAMILY_ORDER = ['Cable Tray', 'Fittings', 'Covers'];
+const CF_FAMILY_ORDER = ['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body', 'Supports'];
+const CF_TYPE_ORDER = ['Conduit', 'Coupling', 'Connector', 'Elbow'];
+
+// Applies a predefined sort order to a list of { name, count } entries.
+// Items not in the order list are appended alphabetically at the end.
+function applyOrder(entries: { name: string; count: number }[], order: string[]): { name: string; count: number }[] {
+  const ordered = order
+    .map(n => entries.find(e => e.name === n))
+    .filter((e): e is { name: string; count: number } => e !== undefined);
+  const rest = entries
+    .filter(e => !order.includes(e.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...ordered, ...rest];
+}
+
 // ── derivedFamily ─────────────────────────────────────────────────────────────
 // Maps DB subcategory + detailType + name → display family name.
 //
-// Cable Tray:
-//   subcategory="Fittings"  → "Fittings"    (no change needed)
+// Cable Tray (CT):
+//   sub="Tray"       → "Cable Tray"
+//   sub="Connectors" → "Fittings"   (merged into Fittings)
+//   sub="Fittings"   → "Fittings"
+//   sub="Covers"     → "Covers"
 //
 // Conduit/Fittings (CF):
-//   subcategory="EMT Conduit"              → "EMT"
-//   subcategory="RMC/IMC Conduit"          → "Rigid"
-//   subcategory="PVC Conduit"              → "PVC"
-//   subcategory="Flex Conduit"             → "Flexible"
-//   subcategory="Conduit Bodies"           → "Body"
-//   subcategory="Fittings", dt="EMT"       → "EMT"
-//   subcategory="Fittings", dt="Rigid"     → "Rigid"
-//   subcategory="Fittings", dt="PVC"       → "PVC"
-//   subcategory="Fittings", dt="General"   → "General"
+//   sub="EMT Conduit"              → "EMT"
+//   sub="RMC/IMC Conduit"          → "Rigid"
+//   sub="PVC Conduit"              → "PVC"
+//   sub="Flex Conduit"             → "Flexible"
+//   sub="Conduit Bodies"           → "Conduit Body"
+//   sub="Supports" or Strap items  → "Supports"
+//   sub="Fittings", dt="EMT"       → "EMT"
+//   sub="Fittings", dt="Rigid"     → "Rigid"
+//   sub="Fittings", dt="PVC"       → "PVC"
+//   sub="Fittings", dt="Flexible"  → "Flexible"
+//   sub="Fittings", dt="General"   → "Bushing / Locknut"
 export function derivedFamily(
   subcategory: string | null | undefined,
   detailType: string | null | undefined,
-  name: string
+  name: string,
+  baseItemName?: string | null
 ): string {
   const sub = subcategory || '';
   const dt = detailType || '';
   const n = name || '';
+  const base = baseItemName || n;
 
+  // ── Cable Tray ──
+  if (sub === 'Tray') return 'Cable Tray';
+  if (sub === 'Connectors') return 'Fittings';
+  if (sub === 'Covers') return 'Covers';
+
+  // ── Conduit / Fittings ──
   if (sub === 'EMT Conduit') return 'EMT';
   if (sub === 'RMC/IMC Conduit') return 'Rigid';
   if (sub === 'PVC Conduit') return 'PVC';
   if (sub === 'Flex Conduit') return 'Flexible';
-  if (sub === 'Conduit Bodies') return 'Body';
+  if (sub === 'Conduit Bodies') return 'Conduit Body';
+  if (sub === 'Supports') return 'Supports';
+
+  // Unclassified strap items (no subcategory in DB)
+  if (!sub && /\bStrap\b/i.test(base)) return 'Supports';
 
   if (sub === 'Fittings') {
+    if (dt === 'General') return 'Bushing / Locknut';
     if (dt === 'EMT' || (/\bEMT\b/i.test(n) && dt !== 'Rigid' && dt !== 'PVC')) return 'EMT';
     if (dt === 'Rigid' || /\bRigid\b/i.test(n)) return 'Rigid';
     if (dt === 'PVC' || /\bPVC\b/i.test(n)) return 'PVC';
     if (dt === 'Flex' || /\bFlex\b|\bLiquidtight\b/i.test(n)) return 'Flexible';
-    return 'General';
+    return 'Fittings';
   }
 
   return sub;
@@ -1320,9 +1377,10 @@ export function derivedFamily(
 // ── derivedType ───────────────────────────────────────────────────────────────
 // Maps DB fields → product type string.
 //
-// Conduit family subcategories: detailType IS the product type (Conduit, Elbow, Connector…)
-// Fittings subcategory: parse base_item_name for Connector, Coupling, Bushing, Locknut…
-// Other categories (CT): fall back to detailType (Reducer, Tee, Cross…)
+// Conduit family subcategories → detailType (Conduit, Elbow, Connector…)
+// Fittings subcategory → parse base_item_name
+// Supports → One Hole Strap / Two Hole Strap from base_item_name
+// CT Fittings → detailType (Reducer, Tee, Cross…)
 export function derivedType(
   subcategory: string | null | undefined,
   detailType: string | null | undefined,
@@ -1336,7 +1394,14 @@ export function derivedType(
   if (['EMT Conduit', 'RMC/IMC Conduit', 'PVC Conduit', 'Flex Conduit'].includes(sub)) {
     return dt || 'Conduit';
   }
-  if (sub === 'Conduit Bodies') return 'Body';
+  if (sub === 'Conduit Bodies') return 'Conduit Body';
+
+  // Supports / Straps: subdivide by One Hole vs Two Hole
+  if (sub === 'Supports' || (!sub && /\bStrap\b/i.test(base))) {
+    if (/One.Hole/i.test(base)) return 'One Hole Strap';
+    if (/Two.Hole/i.test(base)) return 'Two Hole Strap';
+    return 'Strap';
+  }
 
   if (/\bConnector\b/i.test(base)) return 'Connector';
   if (/\bCoupling\b/i.test(base)) return 'Coupling';
@@ -1344,7 +1409,7 @@ export function derivedType(
   if (/\bBushing\b/i.test(base)) return 'Bushing';
   if (/\bLocknut\b/i.test(base)) return 'Locknut';
   if (/\bNipple\b/i.test(base)) return 'Nipple';
-  if (/\bStrap\b|\bClamp\b/i.test(base)) return 'Support';
+  if (/\bStrap\b|\bClamp\b/i.test(base)) return 'Strap';
 
   return dt || 'Other';
 }
@@ -1352,11 +1417,10 @@ export function derivedType(
 // ── extractSubcategory ────────────────────────────────────────────────────────
 // Derives the subcategory string from item name + derived type context.
 //
-// Priority order (most specific first):
 //   Connector  → Compression | Set Screw | Rain Tight | Threaded | 90° | Straight | Standard
 //   Coupling   → Compression | Set Screw | Rain Tight | Threaded | Standard
 //   Elbow/Tee  → Horizontal | Vertical
-//   Body       → LB | C | T | X | etc.
+//   Conduit Body → LB | C | T | X | etc.
 //   Bushing    → Ground | Plastic | Standard
 //   Cable Tray → uppercase suffix code (RC, RL, RR…) | In | Out
 export function extractSubcategory(
@@ -1393,7 +1457,7 @@ export function extractSubcategory(
     return '';
   }
 
-  if (type === 'Body') {
+  if (type === 'Conduit Body') {
     const bodyCode = name.match(/\b(LB|LL|LR|TB|CB|T|C|X)\b/);
     if (bodyCode) return bodyCode[1];
     return '';

@@ -74,73 +74,108 @@ export function SearchableItemSelect({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
-  }, [open]);
+  function handleOpen() {
+    setOpen(true);
+    setSearch("");
+    setTimeout(() => inputRef.current?.focus(), 20);
+  }
+
+  function handleSelect(id: number) {
+    onChange(id);
+    setOpen(false);
+    setSearch("");
+  }
 
   return (
     <div ref={ref} className="relative" data-testid="searchable-item-select">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[42px]"
+
+      {/* ── Trigger: input-like container that toggles search mode ── */}
+      <div
+        className={`w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-text transition-colors ${
+          open
+            ? "border-brand-400 ring-1 ring-brand-300 bg-white"
+            : "border-input hover:bg-slate-50"
+        }`}
+        onClick={handleOpen}
         data-testid="item-select-trigger"
       >
-        {selected ? (
-          <span className="flex items-center gap-2.5 min-w-0">
-            <span className="font-mono text-xs text-slate-400 shrink-0 w-20 truncate">{selected.sku}</span>
-            {/* thumbnail in trigger */}
-            <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-              {selected.imageUrl ? (
-                <img src={selected.imageUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <ImageOff className="w-4 h-4 text-slate-300" />
-              )}
-            </span>
-            <span className="truncate text-slate-900">{selected.name}</span>
-          </span>
-        ) : (
-          <span className="text-muted-foreground">Search or select an item…</span>
-        )}
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        {open ? (
+          /* ── Search mode: input appears directly in the trigger ── */
+          <>
+            <Search className="w-4 h-4 text-slate-400 shrink-0 mr-2" />
             <input
               ref={inputRef}
               type="text"
               placeholder="Search by name, SKU, or size…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              onClick={e => e.stopPropagation()}
+              className="flex-1 py-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
               data-testid="item-search-input"
             />
             {search && (
-              <button type="button" onClick={() => setSearch("")} className="p-0.5">
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }}
+                className="p-0.5 ml-1"
+              >
                 <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
               </button>
             )}
-          </div>
-          <div className="max-h-[264px] overflow-y-auto">
+          </>
+        ) : selected ? (
+          /* ── Closed + item selected ── */
+          <>
+            <span className="flex items-center gap-2.5 min-w-0 flex-1 py-1">
+              <span className="font-mono text-xs text-slate-400 shrink-0 w-20 truncate">{selected.sku}</span>
+              <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                {selected.imageUrl ? (
+                  <img src={selected.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageOff className="w-4 h-4 text-slate-300" />
+                )}
+              </span>
+              <span className="truncate text-slate-900 text-sm">{selected.name}</span>
+            </span>
+            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+          </>
+        ) : (
+          /* ── Closed + no selection ── */
+          <>
+            <span className="text-muted-foreground py-2 flex-1 text-sm">Search by name, SKU, or size…</span>
+            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+          </>
+        )}
+      </div>
+
+      {/* ── Dropdown list: max 6 items, internal scroll only ── */}
+      {open && (
+        <div
+          className="absolute z-[60] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"
+          style={{ maxHeight: `${6 * 44}px` }}
+        >
+          <div className="overflow-y-auto h-full" style={{ maxHeight: `${6 * 44}px` }}>
             {filtered.length === 0 ? (
-              <p className="text-center text-sm text-slate-400 py-3">No items found</p>
+              <div className="flex items-center justify-center h-11">
+                <p className="text-sm text-slate-400">No items found</p>
+              </div>
             ) : (
               filtered.map(item => (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => { onChange(item.id); setOpen(false); setSearch(""); }}
-                  style={{ minHeight: "44px", height: "44px" }}
-                  className={`w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors ${item.id === value ? "bg-brand-50" : ""}`}
+                  onClick={() => handleSelect(item.id)}
+                  style={{ height: "44px", minHeight: "44px" }}
+                  className={`w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors border-b border-slate-50 last:border-0 ${item.id === value ? "bg-brand-50" : ""}`}
                   data-testid={`item-option-${item.id}`}
                 >
                   <span className="font-mono text-xs text-slate-400 w-16 shrink-0 truncate">{item.sku}</span>
@@ -155,7 +190,7 @@ export function SearchableItemSelect({
                     <p className="text-sm font-medium text-slate-900 truncate leading-tight">{item.name}</p>
                     {item.sizeLabel && <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>}
                   </div>
-                  <span className="text-xs text-slate-400 shrink-0">{item.quantityOnHand} {item.unitOfMeasure}</span>
+                  <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">{item.quantityOnHand} {item.unitOfMeasure}</span>
                 </button>
               ))
             )}
@@ -707,8 +742,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                           const val = parseInt(e.target.value, 10);
                           if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
                         }}
-                        style={{ textAlign: "center", padding: 0 }}
-                        className="h-9 w-16 text-sm border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        style={{ textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0, MozAppearance: "textfield" } as React.CSSProperties}
+                        className="h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         data-testid={`input-quantity-${idx}`}
                       />
                       <button

@@ -1,0 +1,350 @@
+Inventory 필터 구조를 실제 전기자재 분류 방식에 맞게 다시 정리해줘. 기존 UI 톤은 유지하고, 현재 데이터셋 기준으로 동작하게 구현해줘.
+
+[핵심 목표]
+Conduit / Fittings 카테고리에서
+Category > Family > Type > Subcategory
+구조가 실제 자재 체계에 맞게 동적으로 바뀌도록 수정.
+
+--------------------------------------------------
+1. Elbow 하위 분류 수정
+--------------------------------------------------
+
+현재 문제:
+- Elbow에 대한 하위 분류가 부정확하거나 부족함
+
+수정 요구사항:
+- Elbow type을 선택하면 subcategory에 최소한 아래 항목이 보여야 함
+  - Horizontal
+  - Vertical
+
+동작 예시:
+- Category: Conduit / Fittings
+- Family: EMT 또는 Rigid
+- Type: Elbow
+- Subcategory:
+  - All
+  - Horizontal
+  - Vertical
+
+Item 이름/설명/메타데이터에 horizontal / vertical 정보가 있으면 그걸 기준으로 자동 분류해줘.
+
+예:
+- EMT 90 Elbow Horizontal -> Horizontal
+- Rigid Elbow Vertical -> Vertical
+
+하드코딩 최소화하고, item name / tags / parsed fields 기준으로 최대한 유연하게 분류해줘.
+
+--------------------------------------------------
+2. Family에 따라 맞는 fittings만 나오게 수정
+--------------------------------------------------
+
+현재 문제:
+- Conduit / Fittings 클릭 시 Family에 Fittings 같은 애매한 항목이 뜨거나,
+  Family 선택 후 하위 분류가 실제 자재 기준과 다르게 표시됨
+
+수정 요구사항:
+- Category가 Conduit / Fittings일 때 Family는 실제 시스템 기준으로 보여줘
+- 예시:
+  - EMT
+  - Rigid
+  - PVC
+  - Flexible
+  - Supports
+  등
+
+중요:
+- Family에서 EMT 클릭 시 EMT 관련 fittings만 표시
+- Family에서 Rigid 클릭 시 Rigid 관련 fittings만 표시
+- Family에서 PVC 클릭 시 PVC 관련 fittings만 표시
+
+즉,
+Family 자체가 "EMT fittings", "Rigid fittings" 역할을 하도록 동작해야 함.
+
+예시:
+- Family = EMT
+  -> EMT Conduit, EMT Connector, EMT Coupling, EMT Elbow 등만 포함
+- Family = Rigid
+  -> Rigid Conduit, Rigid Connector, Rigid Coupling, Rigid Elbow 등만 포함
+
+기존에 Family에 "Fittings" 같은 중복/모호한 값이 있다면
+Conduit / Fittings 카테고리에서는 숨기거나 정리해서
+실제 의미 있는 family만 노출해줘.
+
+--------------------------------------------------
+3. Type 구조 확장
+--------------------------------------------------
+
+현재 문제:
+- Family = Rigid 선택 시 type에 conduit, elbow 정도만 보이는데,
+  connector, coupling도 같이 분리되어야 함
+
+수정 요구사항:
+Family를 선택했을 때 Type에 실제 자재 유형이 나오게 수정:
+- Conduit
+- Elbow
+- Connector
+- Coupling
+
+필요 시 추가 가능:
+- Bushing
+- Nipple
+- Locknut
+- Strap
+- Clamp
+등
+
+최소 요구:
+- Conduit
+- Elbow
+- Connector
+- Coupling
+
+예시:
+- Category: Conduit / Fittings
+- Family: Rigid
+- Type:
+  - All
+  - Conduit
+  - Coupling
+  - Connector
+  - Elbow
+
+- Category: Conduit / Fittings
+- Family: EMT
+- Type:
+  - All
+  - Conduit
+  - Coupling
+  - Connector
+  - Elbow
+
+--------------------------------------------------
+4. Coupling / Connector / EMT / Rigid 세부 구분 추가
+--------------------------------------------------
+
+핵심 요구:
+Type까지만 끝나면 안 되고,
+Coupling / Connector / Elbow 등은 Subcategory에서 더 세분화되어야 함.
+
+예시 요구사항:
+
+A) Coupling 선택 시
+- Compression인지
+- Set Screw인지
+- 일반 Coupling인지
+구분 가능해야 함
+
+Subcategory 예시:
+- All
+- Compression
+- Set Screw
+- Standard
+
+B) Connector 선택 시
+- Compression인지
+- Set Screw인지
+- Rain Tight인지
+- 일반 Connector인지
+구분 가능해야 함
+
+Subcategory 예시:
+- All
+- Compression
+- Set Screw
+- Rain Tight
+- Standard
+
+C) Elbow 선택 시
+- Horizontal
+- Vertical
+
+D) Conduit 선택 시
+- 필요하다면 subtype 또는 spec 기준으로 추가 분류 가능
+- 다만 우선순위는 Coupling / Connector / Elbow 세분화가 우선
+
+중요:
+EMT / Rigid 각각에서 이 구조가 다르게 보여도 됨.
+즉 family에 따라 subcategory 옵션은 달라져야 함.
+
+예시:
+- Family = EMT
+- Type = Connector
+- Subcategory:
+  - Compression
+  - Set Screw
+
+- Family = Rigid
+- Type = Connector
+- Subcategory:
+  - Threaded
+  - Rain Tight
+  - Standard
+  또는 데이터에 맞는 실제 값들
+
+데이터에서 실제 존재하는 값만 노출해줘.
+현재 결과에 없는 subcategory는 표시하지 않음.
+
+--------------------------------------------------
+5. 동적 필터 계산 규칙
+--------------------------------------------------
+
+필터 구조:
+- Category
+- Family
+- Type
+- Subcategory
+- Size
+- Status
+- Search
+
+옵션 계산 규칙:
+1) Family options:
+   - Category 기준으로 계산
+2) Type options:
+   - Category + Family 기준으로 계산
+3) Subcategory options:
+   - Category + Family + Type 기준으로 계산
+4) Size options:
+   - Category + Family + Type + Subcategory + Search + Status 기준으로 계산
+5) 최종 rows:
+   - Category + Family + Type + Subcategory + Size + Status + Search 전부 반영
+
+중요:
+- 상위 필터가 바뀌면 하위 필터 자동 reset
+- category 바뀌면 family/type/subcategory/size reset
+- family 바뀌면 type/subcategory/size reset
+- type 바뀌면 subcategory/size reset
+- subcategory 바뀌면 size 재계산
+
+--------------------------------------------------
+6. 파싱 / 매핑 규칙
+--------------------------------------------------
+
+inventory item에서 아래 파생 필드를 만들 수 있으면 만들어서 사용:
+- category
+- family
+- type
+- subcategory
+- size
+
+가능한 경우 item 이름, description, tags, existing metadata에서 추출.
+
+예시 매핑 규칙:
+
+Family 추출 예시:
+- "EMT Compression Connector" -> family: EMT
+- "Rigid Threaded Coupling" -> family: Rigid
+- "PVC Elbow" -> family: PVC
+
+Type 추출 예시:
+- "EMT Compression Connector" -> type: Connector
+- "Rigid Coupling" -> type: Coupling
+- "EMT 90 Elbow" -> type: Elbow
+- "3/4 EMT Conduit" -> type: Conduit
+
+Subcategory 추출 예시:
+- "EMT Compression Connector" -> subcategory: Compression
+- "EMT Set Screw Connector" -> subcategory: Set Screw
+- "Rigid Threaded Coupling" -> subcategory: Threaded or Standard
+- "EMT Elbow Horizontal" -> subcategory: Horizontal
+- "EMT Elbow Vertical" -> subcategory: Vertical
+
+우선순위:
+1) existing structured field
+2) tags/metadata
+3) item name parsing
+
+--------------------------------------------------
+7. Size 필터도 현재 결과 기준으로 변경
+--------------------------------------------------
+
+기존 요구 유지:
+- Size dropdown은 현재 필터 결과에 실제 존재하는 사이즈만 보여줘
+- Family / Type / Subcategory / Search / Status가 바뀌면 즉시 재계산
+- 현재 선택된 size가 결과에 없으면 All Sizes로 reset
+
+예:
+- Category = Conduit / Fittings
+- Family = EMT
+- Type = Connector
+- Subcategory = Compression
+이면
+그 결과에 존재하는 size만 size filter에 보여야 함
+
+--------------------------------------------------
+8. UI 표시 방식
+--------------------------------------------------
+
+- Family / Type / Subcategory는 현재 pill/chip 스타일 유지
+- Subcategory는 Type 아래에 표시
+- subcategory가 없으면 섹션 숨김
+- active filter chips에도 선택값 반영
+예:
+  - CONDUIT / FITTINGS
+  - EMT
+  - Connector
+  - Compression
+
+- item count도 subcategory까지 반영해서 정확히 표시
+- Clear all 누르면 전부 초기화
+
+--------------------------------------------------
+9. 구현 방식
+--------------------------------------------------
+
+React + TypeScript + Tailwind 기준으로 구현
+
+필수 작업:
+1) Inventory page / component 수정
+2) filter state 수정
+3) conduit/fittings 전용 분류 로직 정리
+4) family -> type -> subcategory 동적 옵션 계산
+5) size option 재계산
+6) active chips / count 동기화
+7) helper 함수 분리
+8) useMemo로 성능 최적화
+9) 타입 에러 없이 마무리
+
+--------------------------------------------------
+10. 기대 동작 예시
+--------------------------------------------------
+
+예시 1:
+- Category: Conduit / Fittings
+- Family: Rigid
+- Type: Coupling
+- Subcategory:
+  - All
+  - Compression
+  - Standard
+  - Threaded
+  (데이터에 실제 있는 값만)
+
+예시 2:
+- Category: Conduit / Fittings
+- Family: EMT
+- Type: Connector
+- Subcategory:
+  - All
+  - Compression
+  - Set Screw
+
+예시 3:
+- Category: Conduit / Fittings
+- Family: EMT
+- Type: Elbow
+- Subcategory:
+  - All
+  - Horizontal
+  - Vertical
+
+--------------------------------------------------
+11. 주의사항
+--------------------------------------------------
+
+- 기존 디자인은 유지
+- 과한 리디자인 금지
+- 하드코딩 최소화
+- 현재 inventory dataset에 맞게 동작
+- 실제 존재하지 않는 옵션은 노출하지 않음
+- 변경한 핵심 파일과 주요 수정 포인트를 마지막에 요약해줘

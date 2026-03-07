@@ -1019,7 +1019,9 @@ export class DatabaseStorage implements IStorage {
 
   async getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
+      name: items.name,
       subcategory: items.subcategory,
+      detailType: items.detailType,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
 
@@ -1029,9 +1031,8 @@ export class DatabaseStorage implements IStorage {
 
     const counts: Record<string, number> = {};
     for (const i of filtered) {
-      if (i.subcategory) {
-        counts[i.subcategory] = (counts[i.subcategory] || 0) + 1;
-      }
+      const fam = derivedFamily(i.subcategory, i.detailType, i.name || '');
+      if (fam) counts[fam] = (counts[fam] || 0) + 1;
     }
     return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
@@ -1041,7 +1042,7 @@ export class DatabaseStorage implements IStorage {
   async getFieldSizes(params: {
     categoryId?: number;
     family?: string;
-    detailType?: string;
+    type?: string;
     subcategory?: string;
     status?: string;
     search?: string;
@@ -1052,6 +1053,7 @@ export class DatabaseStorage implements IStorage {
       categoryId: items.categoryId,
       subcategory: items.subcategory,
       detailType: items.detailType,
+      baseItemName: items.baseItemName,
       name: items.name,
       quantityOnHand: items.quantityOnHand,
       reorderPoint: items.reorderPoint,
@@ -1060,10 +1062,16 @@ export class DatabaseStorage implements IStorage {
 
     let filtered = allItems as any[];
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
-    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
-    if (params.detailType) filtered = filtered.filter(i => i.detailType === params.detailType);
+    if (params.family) filtered = filtered.filter(i =>
+      derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+    );
+    if (params.type) filtered = filtered.filter(i =>
+      derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '') === params.type
+    );
     if (params.subcategory) {
-      filtered = filtered.filter(i => extractSubcategory(i.name, i.detailType) === params.subcategory);
+      filtered = filtered.filter(i =>
+        extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName) === params.subcategory
+      );
     }
     if (params.search) {
       const tokens = params.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
@@ -1101,20 +1109,25 @@ export class DatabaseStorage implements IStorage {
 
   async getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
+      name: items.name,
       detailType: items.detailType,
       subcategory: items.subcategory,
+      baseItemName: items.baseItemName,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
 
     let filtered = allItems;
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
-    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
+    if (params.family) {
+      filtered = filtered.filter(i =>
+        derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+      );
+    }
 
     const counts: Record<string, number> = {};
     for (const i of filtered) {
-      if (i.detailType) {
-        counts[i.detailType] = (counts[i.detailType] || 0) + 1;
-      }
+      const t = derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '');
+      if (t) counts[t] = (counts[t] || 0) + 1;
     }
     return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
@@ -1124,26 +1137,33 @@ export class DatabaseStorage implements IStorage {
   async getFieldSubcategories(params: {
     categoryId?: number;
     family?: string;
-    detailType?: string;
+    type?: string;
   }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
       name: items.name,
       detailType: items.detailType,
       subcategory: items.subcategory,
+      baseItemName: items.baseItemName,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
 
     let filtered = allItems;
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
-    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
-    if (params.detailType) filtered = filtered.filter(i => i.detailType === params.detailType);
+    if (params.family) {
+      filtered = filtered.filter(i =>
+        derivedFamily(i.subcategory, i.detailType, i.name || '') === params.family
+      );
+    }
+    if (params.type) {
+      filtered = filtered.filter(i =>
+        derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '') === params.type
+      );
+    }
 
     const counts: Record<string, number> = {};
     for (const i of filtered) {
-      const sc = extractSubcategory(i.name || '', i.detailType);
-      if (sc) {
-        counts[sc] = (counts[sc] || 0) + 1;
-      }
+      const sc = extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
+      if (sc) counts[sc] = (counts[sc] || 0) + 1;
     }
     return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
@@ -1153,14 +1173,14 @@ export class DatabaseStorage implements IStorage {
   async getFieldItems(params: {
     categoryId?: number;
     family?: string;
-    detailType?: string;
+    type?: string;
     subcategory?: string;
     size?: string;
     status?: string;
     search?: string;
     page?: number;
     perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }> {
+  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string; derivedFamilyName: string; derivedTypeName: string })[]; total: number }> {
     const results = await db.select({
       item: items,
       category: categories,
@@ -1181,7 +1201,10 @@ export class DatabaseStorage implements IStorage {
 
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
-      const sc = extractSubcategory(row.item.name || '', (row.item as any).detailType);
+      const it = row.item as any;
+      const famName = derivedFamily(it.subcategory, it.detailType, it.name || '');
+      const typeName = derivedType(it.subcategory, it.detailType, it.baseItemName, it.name || '');
+      const sc = extractSubcategory(it.name || '', it.detailType, it.subcategory, it.baseItemName);
       return {
         ...row.item,
         category: row.category,
@@ -1189,6 +1212,8 @@ export class DatabaseStorage implements IStorage {
         supplier: row.supplier,
         imageUrl: firstImage?.imageUrl || null,
         extractedSubcategory: sc,
+        derivedFamilyName: famName,
+        derivedTypeName: typeName,
       };
     });
 
@@ -1196,10 +1221,10 @@ export class DatabaseStorage implements IStorage {
       mapped = mapped.filter(i => i.categoryId === params.categoryId);
     }
     if (params.family) {
-      mapped = mapped.filter(i => i.subcategory === params.family);
+      mapped = mapped.filter(i => i.derivedFamilyName === params.family);
     }
-    if (params.detailType) {
-      mapped = mapped.filter(i => (i as any).detailType === params.detailType);
+    if (params.type) {
+      mapped = mapped.filter(i => i.derivedTypeName === params.type);
     }
     if (params.subcategory) {
       mapped = mapped.filter(i => i.extractedSubcategory === params.subcategory);
@@ -1245,27 +1270,148 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// ─── Subcategory extraction helper ───────────────────────────────────────────
-// Derives a subcategory string from the item name + detail_type.
-// Rules (in priority order):
-//   1) Name ends with 2-3 uppercase letters (RC, RL, RR, HT, VT, LT, RT, …)
-//   2) Name ends with "In" or "Out"
-//   3) detail_type === "Tee": "Vertical" if name contains "Vertical", else "Horizontal"
-export function extractSubcategory(name: string, detailType: string | null | undefined): string {
-  if (!name) return '';
+// ─── Field data extraction helpers ───────────────────────────────────────────
+//
+// These three functions derive display-ready metadata from raw DB fields.
+// They work across ALL categories (Cable Tray, Conduit/Fittings, etc.).
+//
+// ── derivedFamily ─────────────────────────────────────────────────────────────
+// Maps DB subcategory + detailType + name → display family name.
+//
+// Cable Tray:
+//   subcategory="Fittings"  → "Fittings"    (no change needed)
+//
+// Conduit/Fittings (CF):
+//   subcategory="EMT Conduit"              → "EMT"
+//   subcategory="RMC/IMC Conduit"          → "Rigid"
+//   subcategory="PVC Conduit"              → "PVC"
+//   subcategory="Flex Conduit"             → "Flexible"
+//   subcategory="Conduit Bodies"           → "Body"
+//   subcategory="Fittings", dt="EMT"       → "EMT"
+//   subcategory="Fittings", dt="Rigid"     → "Rigid"
+//   subcategory="Fittings", dt="PVC"       → "PVC"
+//   subcategory="Fittings", dt="General"   → "General"
+export function derivedFamily(
+  subcategory: string | null | undefined,
+  detailType: string | null | undefined,
+  name: string
+): string {
+  const sub = subcategory || '';
+  const dt = detailType || '';
+  const n = name || '';
 
-  // Rule 1: short uppercase suffix code
+  if (sub === 'EMT Conduit') return 'EMT';
+  if (sub === 'RMC/IMC Conduit') return 'Rigid';
+  if (sub === 'PVC Conduit') return 'PVC';
+  if (sub === 'Flex Conduit') return 'Flexible';
+  if (sub === 'Conduit Bodies') return 'Body';
+
+  if (sub === 'Fittings') {
+    if (dt === 'EMT' || (/\bEMT\b/i.test(n) && dt !== 'Rigid' && dt !== 'PVC')) return 'EMT';
+    if (dt === 'Rigid' || /\bRigid\b/i.test(n)) return 'Rigid';
+    if (dt === 'PVC' || /\bPVC\b/i.test(n)) return 'PVC';
+    if (dt === 'Flex' || /\bFlex\b|\bLiquidtight\b/i.test(n)) return 'Flexible';
+    return 'General';
+  }
+
+  return sub;
+}
+
+// ── derivedType ───────────────────────────────────────────────────────────────
+// Maps DB fields → product type string.
+//
+// Conduit family subcategories: detailType IS the product type (Conduit, Elbow, Connector…)
+// Fittings subcategory: parse base_item_name for Connector, Coupling, Bushing, Locknut…
+// Other categories (CT): fall back to detailType (Reducer, Tee, Cross…)
+export function derivedType(
+  subcategory: string | null | undefined,
+  detailType: string | null | undefined,
+  baseItemName: string | null | undefined,
+  name: string
+): string {
+  const sub = subcategory || '';
+  const dt = detailType || '';
+  const base = baseItemName || name || '';
+
+  if (['EMT Conduit', 'RMC/IMC Conduit', 'PVC Conduit', 'Flex Conduit'].includes(sub)) {
+    return dt || 'Conduit';
+  }
+  if (sub === 'Conduit Bodies') return 'Body';
+
+  if (/\bConnector\b/i.test(base)) return 'Connector';
+  if (/\bCoupling\b/i.test(base)) return 'Coupling';
+  if (/\bElbow\b/i.test(base)) return 'Elbow';
+  if (/\bBushing\b/i.test(base)) return 'Bushing';
+  if (/\bLocknut\b/i.test(base)) return 'Locknut';
+  if (/\bNipple\b/i.test(base)) return 'Nipple';
+  if (/\bStrap\b|\bClamp\b/i.test(base)) return 'Support';
+
+  return dt || 'Other';
+}
+
+// ── extractSubcategory ────────────────────────────────────────────────────────
+// Derives the subcategory string from item name + derived type context.
+//
+// Priority order (most specific first):
+//   Connector  → Compression | Set Screw | Rain Tight | Threaded | 90° | Straight | Standard
+//   Coupling   → Compression | Set Screw | Rain Tight | Threaded | Standard
+//   Elbow/Tee  → Horizontal | Vertical
+//   Body       → LB | C | T | X | etc.
+//   Bushing    → Ground | Plastic | Standard
+//   Cable Tray → uppercase suffix code (RC, RL, RR…) | In | Out
+export function extractSubcategory(
+  name: string,
+  detailType: string | null | undefined,
+  subcategory?: string | null,
+  baseItemName?: string | null
+): string {
+  if (!name) return '';
+  const type = derivedType(subcategory || null, detailType || null, baseItemName || null, name);
+
+  if (type === 'Connector') {
+    if (/\bCompression\b/i.test(name)) return 'Compression';
+    if (/\bSet\s*Screw\b/i.test(name)) return 'Set Screw';
+    if (/\bRain\s*Tight\b/i.test(name)) return 'Rain Tight';
+    if (/\bThreaded\b/i.test(name)) return 'Threaded';
+    if (/\b90[°º]?\b/.test(name) || /\b90\s*deg/i.test(name)) return '90°';
+    if (/\bStraight\b/i.test(name)) return 'Straight';
+    return 'Standard';
+  }
+
+  if (type === 'Coupling') {
+    if (/\bCompression\b/i.test(name)) return 'Compression';
+    if (/\bSet\s*Screw\b/i.test(name)) return 'Set Screw';
+    if (/\bRain\s*Tight\b/i.test(name)) return 'Rain Tight';
+    if (/\bThreaded\b/i.test(name)) return 'Threaded';
+    return 'Standard';
+  }
+
+  if (type === 'Elbow' || detailType === 'Tee') {
+    if (/\bHorizontal\b/i.test(name)) return 'Horizontal';
+    if (/\bVertical\b/i.test(name)) return 'Vertical';
+    if (detailType === 'Tee') return 'Horizontal';
+    return '';
+  }
+
+  if (type === 'Body') {
+    const bodyCode = name.match(/\b(LB|LL|LR|TB|CB|T|C|X)\b/);
+    if (bodyCode) return bodyCode[1];
+    return '';
+  }
+
+  if (type === 'Bushing') {
+    if (/\bGround\b/i.test(name)) return 'Ground';
+    if (/\bPlastic\b/i.test(name)) return 'Plastic';
+    return 'Standard';
+  }
+
+  // Cable Tray: trailing uppercase code (RC, RL, RR…)
   const shortCode = name.match(/\s([A-Z]{2,3})$/);
   if (shortCode) return shortCode[1];
 
-  // Rule 2: ends with "In" or "Out"
+  // Cable Tray covers: In / Out
   const inOut = name.match(/\s(In|Out)$/i);
   if (inOut) return inOut[1].charAt(0).toUpperCase() + inOut[1].slice(1).toLowerCase();
-
-  // Rule 3: Tee type → Vertical vs Horizontal
-  if (detailType === 'Tee') {
-    return /Vertical/i.test(name) ? 'Vertical' : 'Horizontal';
-  }
 
   return '';
 }

@@ -75,15 +75,8 @@ const STATUS_OPTIONS = [
   { value: "out_of_stock", label: "Out of Stock" },
 ];
 
-const FAMILY_DISPLAY_NAMES: Record<string, string> = {
-  "Flex Conduit": "Flexible",
-  "EMT Conduit": "EMT",
-  "RMC/IMC Conduit": "Rigid",
-  "PVC Conduit": "PVC",
-};
-
 function getFamilyDisplay(name: string): string {
-  return FAMILY_DISPLAY_NAMES[name] ?? name;
+  return name;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

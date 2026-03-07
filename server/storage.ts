@@ -69,9 +69,11 @@ export interface IStorage {
 
   getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]>;
   getFieldSizes(params: { categoryId?: number; family?: string }): Promise<string[]>;
+  getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]>;
   getFieldItems(params: {
     categoryId?: number;
     family?: string;
+    detailType?: string;
     size?: string;
     status?: string;
     search?: string;
@@ -1063,9 +1065,32 @@ export class DatabaseStorage implements IStorage {
     return result.map(r => r.label);
   }
 
+  async getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]> {
+    const allItems = await db.select({
+      detailType: items.detailType,
+      subcategory: items.subcategory,
+      categoryId: items.categoryId,
+    }).from(items).where(eq(items.isActive, true));
+
+    let filtered = allItems;
+    if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
+    if (params.family) filtered = filtered.filter(i => i.subcategory === params.family);
+
+    const counts: Record<string, number> = {};
+    for (const i of filtered) {
+      if (i.detailType) {
+        counts[i.detailType] = (counts[i.detailType] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
   async getFieldItems(params: {
     categoryId?: number;
     family?: string;
+    detailType?: string;
     size?: string;
     status?: string;
     search?: string;
@@ -1106,6 +1131,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (params.family) {
       mapped = mapped.filter(i => i.subcategory === params.family);
+    }
+    if (params.detailType) {
+      mapped = mapped.filter(i => (i as any).detailType === params.detailType);
     }
     if (params.size) {
       mapped = mapped.filter(i => (i as any).sizeLabel === params.size);

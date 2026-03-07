@@ -1,0 +1,100 @@
+[Field Mode > Inventory] Improve filtering + table layout (Cable Tray + Conduit/Fittings)
+
+Do NOT redesign the whole UI. Keep current look.
+This must work end-to-end and persist properly.
+
+=====================================================
+A) ADD 3-LEVEL FILTER: Category -> Family -> Type
+=====================================================
+Goal:
+- Keep current Category + Family filter.
+- Add a 3rd filter row "Type" (pills) that appears after selecting Category + Family.
+- Type pills must filter the list instantly and combine with Search / Size / Status / Pagination.
+
+Implementation approach:
+1) DB-backed (preferred for accuracy + performance):
+- Add column to items table: detail_type (text) (or subtype).
+- Populate detail_type deterministically from SKU + name + existing family/subcategory.
+- Must be safe to re-run (idempotent). Provide a backfill script or API endpoint.
+
+2) UI:
+- Under FAMILY pills, show TYPE pills only when there are 2+ distinct detail_type values for the selected (Category + Family).
+- Pills: "All" + each detail_type with count (ex: Elbow (12)).
+- Changing Category or Family resets Type to "All".
+- Clear button should clear Category/Family/Type.
+
+=====================================================
+B) CABLE TRAY TYPE RULES (when Category=CABLE TRAY)
+=====================================================
+Family examples: Tray / Covers / Fittings / Connectors
+
+For Cable Tray -> Family=Fittings (and related):
+Set items.detail_type by priority:
+1) Cross:
+   - SKU starts with "CT-CRS-" OR name ILIKE '%cross%'
+2) Tee:
+   - SKU starts with "CT-TEE-" OR name ILIKE '%tee%'
+3) Elbow:
+   - SKU contains 'ELB' OR name ILIKE '%elbow%'
+4) Reducer:
+   - name ILIKE '%reducer%' OR '%reduce%'
+5) Vertical:
+   - name ILIKE '%vertical%'
+6) Horizontal:
+   - name ILIKE '%horizontal%'
+7) Other
+
+For Cable Tray -> Family=Covers:
+- detail_type = 'Cover' (or optionally split by Ventilated/Solid if detectable)
+
+For Cable Tray -> Family=Connectors:
+- detail_type = 'Connector' (or split if you can detect Box Connector vs etc)
+
+If a Family only produces 1 meaningful type, hide the TYPE row.
+
+=====================================================
+C) CONDUIT / FITTINGS FAMILY RENAMING + TYPE RULES
+=====================================================
+1) Rename Family labels (UI-level) as follows:
+- "Flex Conduit" => "Flexible"
+- "EMT Conduit" => "EMT"
+- "RMC/IMC Conduit" => "Rigid"
+- "PVC Conduit" => "PVC"
+
+This is a display rename (keep DB values if needed, but UI must show the renamed labels).
+
+2) For Category=CONDUIT / FITTINGS:
+- When Family is one of the conduit families above (Flexible/EMT/Rigid/PVC),
+  set items.detail_type using reasonable keywords/SKU patterns (idempotent), e.g.:
+  - If Family=EMT: detail_type can be 'Conduit' or split into 'Conduit / Elbow / Coupling / Connector' if those items exist inside that family.
+  - If Family=Flexible: allow 'Conduit / Connector / Fitting' split based on name keywords (flex, liquidtight, connector, coupling, etc).
+  - If Family=Rigid: split based on 'RMC', 'IMC', 'Elbow', 'Coupling', etc.
+  - If Family=PVC: split based on 'PVC', 'Sch 40/80', 'Elbow', 'Coupling', etc.
+If you cannot confidently split beyond 1 type, store a single type and hide TYPE row.
+
+=====================================================
+D) TABLE LAYOUT FIXES (Field Inventory list)
+=====================================================
+1) Prevent SKU wrapping
+- Make SKU column wider so it stays on one line.
+- Enforce no-wrap styling for SKU cells (truncate with ellipsis if needed, but prefer width increase first).
+
+2) Add SIZE column between PHOTO and ITEM
+- Table column order must be:
+  SKU | PHOTO | SIZE | ITEM | CATEGORY | LOCATION | QTY | STATUS
+- SIZE should be a compact column, non-wrapping.
+
+3) Keep alignment consistent
+- PHOTO centered in its column.
+- STATUS badge vertically and horizontally centered in its column.
+- QTY right-aligned (or centered) consistently across rows.
+
+=====================================================
+E) ACCEPTANCE CHECKLIST
+=====================================================
+- Selecting Cable Tray -> Family=Fittings shows Type pills (Cross/Elbow/Tee etc) and filters correctly.
+- Conduit/Fittings families display as Flexible / EMT / Rigid / PVC (not old names).
+- SKU never wraps to a second line.
+- SIZE column appears between PHOTO and ITEM.
+- Type filter works together with Size dropdown, Status dropdown, Search, and pagination (10 per page).
+- Works on field devices without modals or clutter.

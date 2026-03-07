@@ -75,6 +75,7 @@ export const items = pgTable("items", {
   name: text("name").notNull(),
   categoryId: integer("category_id").references(() => categories.id),
   subcategory: text("subcategory"),
+  detailType: text("detail_type"),
   description: text("description"),
   brand: text("brand"),
   manufacturer: text("manufacturer"),

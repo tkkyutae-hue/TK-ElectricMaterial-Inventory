@@ -37,6 +37,7 @@ type FieldItem = {
   reorderPoint: number;
   categoryId?: number | null;
   subcategory?: string | null;
+  detailType?: string | null;
   imageUrl?: string | null;
   location?: { name: string } | null;
   category?: { name: string } | null;
@@ -49,6 +50,7 @@ type FieldItemsResponse = {
 };
 
 type FamilyEntry = { name: string; count: number };
+type TypeEntry = { name: string; count: number };
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -73,6 +75,18 @@ const STATUS_OPTIONS = [
   { value: "low_stock", label: "Low Stock" },
   { value: "out_of_stock", label: "Out of Stock" },
 ];
+
+// Family display name mapping (DB value → UI label)
+const FAMILY_DISPLAY_NAMES: Record<string, string> = {
+  "Flex Conduit": "Flexible",
+  "EMT Conduit": "EMT",
+  "RMC/IMC Conduit": "Rigid",
+  "PVC Conduit": "PVC",
+};
+
+function getFamilyDisplay(name: string): string {
+  return FAMILY_DISPLAY_NAMES[name] ?? name;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -132,7 +146,13 @@ function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => v
           {item.subcategory && (
             <div className="flex justify-between">
               <span className="text-slate-500">Family</span>
-              <span>{item.subcategory}</span>
+              <span>{getFamilyDisplay(item.subcategory)}</span>
+            </div>
+          )}
+          {item.detailType && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Type</span>
+              <span>{item.detailType}</span>
             </div>
           )}
           <div className="flex justify-between items-center">
@@ -171,6 +191,79 @@ function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => v
   );
 }
 
+// ─── Pill Row ────────────────────────────────────────────────────────────────
+
+function PillBar({
+  label,
+  entries,
+  selected,
+  onSelect,
+  testIdPrefix,
+  displayFn,
+}: {
+  label: string;
+  entries: { name: string; count: number }[];
+  selected: string;
+  onSelect: (v: string) => void;
+  testIdPrefix: string;
+  displayFn?: (name: string) => string;
+}) {
+  const top = entries.slice(0, 6);
+  const rest = entries.slice(6);
+  const getLabel = displayFn ?? ((n: string) => n);
+
+  return (
+    <div>
+      <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => onSelect("all")}
+          data-testid={`${testIdPrefix}-all`}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            selected === "all"
+              ? "bg-[#0A6B24] text-white shadow-sm"
+              : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
+          }`}
+        >
+          All
+        </button>
+        {top.map(f => (
+          <button
+            key={f.name}
+            onClick={() => onSelect(f.name)}
+            data-testid={`${testIdPrefix}-${f.name}`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              selected === f.name
+                ? "bg-[#0A6B24] text-white shadow-sm"
+                : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
+            }`}
+          >
+            {getLabel(f.name)}
+            <span className="ml-1 opacity-60">({f.count})</span>
+          </button>
+        ))}
+        {rest.length > 0 && (
+          <Select value={selected} onValueChange={onSelect}>
+            <SelectTrigger
+              className="h-[28px] px-2.5 text-xs rounded-full border-[#D9E7DD] bg-white gap-1 w-auto"
+              data-testid={`${testIdPrefix}-more`}
+            >
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <span className="text-slate-500">More…</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {rest.map(f => (
+                <SelectItem key={f.name} value={f.name}>{getLabel(f.name)} ({f.count})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function FieldInventory() {
@@ -181,6 +274,7 @@ export default function FieldInventory() {
 
   const getCatId = () => urlParams.get("category") ? Number(urlParams.get("category")) : null;
   const getFamily = () => urlParams.get("family") || "all";
+  const getType = () => urlParams.get("type") || "all";
   const getSize = () => urlParams.get("size") || "all";
   const getStatus = () => urlParams.get("status") || "all";
   const getSearch = () => urlParams.get("q") || "";
@@ -189,6 +283,7 @@ export default function FieldInventory() {
 
   const [selectedCatId, setSelectedCatId] = useState<number | null>(getCatId);
   const [selectedFamily, setSelectedFamily] = useState(getFamily);
+  const [selectedType, setSelectedType] = useState(getType);
   const [selectedSize, setSelectedSize] = useState(getSize);
   const [selectedStatus, setSelectedStatus] = useState(getStatus);
   const [searchInput, setSearchInput] = useState(getSearch);
@@ -202,6 +297,7 @@ export default function FieldInventory() {
     const next = new URLSearchParams();
     if (selectedCatId) next.set("category", String(selectedCatId));
     if (selectedFamily !== "all") next.set("family", selectedFamily);
+    if (selectedType !== "all") next.set("type", selectedType);
     if (selectedSize !== "all") next.set("size", selectedSize);
     if (selectedStatus !== "all") next.set("status", selectedStatus);
     if (debouncedSearch) next.set("q", debouncedSearch);
@@ -209,7 +305,7 @@ export default function FieldInventory() {
     if (pageSize !== 10) next.set("perPage", String(pageSize));
     const qs = next.toString();
     navigate("/field/inventory" + (qs ? "?" + qs : ""), { replace: true });
-  }, [selectedCatId, selectedFamily, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
+  }, [selectedCatId, selectedFamily, selectedType, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
 
   const { data: categorySummary } = useQuery<CategorySummary[]>({
     queryKey: ["/api/inventory/categories/summary"],
@@ -229,6 +325,21 @@ export default function FieldInventory() {
     },
   });
 
+  const { data: types = [] } = useQuery<TypeEntry[]>({
+    queryKey: ["/api/field/types", selectedCatId, selectedFamily],
+    queryFn: async () => {
+      if (!selectedCatId || selectedFamily === "all") return [];
+      const p = new URLSearchParams();
+      p.set("category", String(selectedCatId));
+      p.set("family", selectedFamily);
+      const r = await fetch("/api/field/types?" + p.toString(), { credentials: "include" });
+      return r.json();
+    },
+    enabled: selectedCatId !== null && selectedFamily !== "all",
+  });
+
+  const showTypePills = selectedFamily !== "all" && types.length >= 2;
+
   const { data: sizes = [] } = useQuery<string[]>({
     queryKey: ["/api/field/sizes", selectedCatId, selectedFamily],
     queryFn: async () => {
@@ -242,11 +353,12 @@ export default function FieldInventory() {
   });
 
   const { data: fieldData, isLoading } = useQuery<FieldItemsResponse>({
-    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
+    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedType, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
     queryFn: async () => {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
+      if (selectedType !== "all") p.set("type", selectedType);
       if (selectedSize !== "all") p.set("size", selectedSize);
       if (selectedStatus !== "all") p.set("status", selectedStatus);
       if (debouncedSearch) p.set("q", debouncedSearch);
@@ -268,13 +380,20 @@ export default function FieldInventory() {
       setSelectedCatId(cat.id);
     }
     setSelectedFamily("all");
+    setSelectedType("all");
     setSelectedSize("all");
     setPage(1);
   }
 
   function handleFamilyChange(v: string) {
     setSelectedFamily(v);
+    setSelectedType("all");
     setSelectedSize("all");
+    setPage(1);
+  }
+
+  function handleTypeChange(v: string) {
+    setSelectedType(v);
     setPage(1);
   }
 
@@ -296,16 +415,14 @@ export default function FieldInventory() {
   function clearAll() {
     setSelectedCatId(null);
     setSelectedFamily("all");
+    setSelectedType("all");
     setSelectedSize("all");
     setSelectedStatus("all");
     setSearchInput("");
     setPage(1);
   }
 
-  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
-
-  const topFamilies = useMemo(() => families.slice(0, 6), [families]);
-  const hasMoreFamilies = families.length > 6;
+  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
 
   return (
     <div className="space-y-4">
@@ -317,7 +434,7 @@ export default function FieldInventory() {
             <Package className="w-5 h-5 text-[#0A6B24]" />
             <h1 className="text-2xl font-display font-bold text-slate-900">Inventory</h1>
           </div>
-          <p className="text-[#64748B] text-sm">Tap a category, then filter by family, size, or status.</p>
+          <p className="text-[#64748B] text-sm">Tap a category, then filter by family, type, size, or status.</p>
         </div>
         <Button
           variant="ghost"
@@ -337,7 +454,7 @@ export default function FieldInventory() {
           <h2 className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">Browse by Category</h2>
           {selectedCatId !== null && (
             <button
-              onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedSize("all"); setPage(1); }}
+              onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }}
               className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-red-500 transition-colors"
               data-testid="btn-clear-category"
             >
@@ -401,56 +518,27 @@ export default function FieldInventory() {
         )}
       </div>
 
-      {/* ── Family Quick-Bar (after category selected) ── */}
+      {/* ── Level 2: Family Quick-Bar ── */}
       {selectedCatId !== null && families.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide mb-2">Family</p>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => handleFamilyChange("all")}
-              data-testid="chip-family-all"
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                selectedFamily === "all"
-                  ? "bg-[#0A6B24] text-white shadow-sm"
-                  : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
-              }`}
-            >
-              All
-            </button>
-            {topFamilies.map(f => (
-              <button
-                key={f.name}
-                onClick={() => handleFamilyChange(f.name)}
-                data-testid={`chip-family-${f.name}`}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  selectedFamily === f.name
-                    ? "bg-[#0A6B24] text-white shadow-sm"
-                    : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
-                }`}
-              >
-                {f.name}
-                <span className="ml-1 opacity-60">({f.count})</span>
-              </button>
-            ))}
-            {hasMoreFamilies && (
-              <Select value={selectedFamily} onValueChange={handleFamilyChange}>
-                <SelectTrigger
-                  className="h-[28px] px-2.5 text-xs rounded-full border-[#D9E7DD] bg-white gap-1 w-auto"
-                  data-testid="select-family-more"
-                >
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
-                  <span className="text-slate-500">More…</span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Families</SelectItem>
-                  {families.slice(6).map(f => (
-                    <SelectItem key={f.name} value={f.name}>{f.name} ({f.count})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </div>
+        <PillBar
+          label="Family"
+          entries={families}
+          selected={selectedFamily}
+          onSelect={handleFamilyChange}
+          testIdPrefix="chip-family"
+          displayFn={getFamilyDisplay}
+        />
+      )}
+
+      {/* ── Level 3: Type Pills (only when 2+ types exist for selected cat+family) ── */}
+      {showTypePills && (
+        <PillBar
+          label="Type"
+          entries={types}
+          selected={selectedType}
+          onSelect={handleTypeChange}
+          testIdPrefix="chip-type"
+        />
       )}
 
       {/* ── Filter Row: Search + Size + Status + Page size ── */}
@@ -474,13 +562,12 @@ export default function FieldInventory() {
           )}
         </div>
 
-        {/* Size filter — only show when category selected and sizes available */}
         {selectedCatId !== null && sizes.length > 0 && (
           <Select value={selectedSize} onValueChange={handleSizeChange}>
             <SelectTrigger className="w-32 h-9 text-sm bg-white border-[#D9E7DD]" data-testid="field-inv-size-filter">
               <SelectValue placeholder="All Sizes" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[264px] overflow-y-auto">
               <SelectItem value="all">All Sizes</SelectItem>
               {sizes.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -518,15 +605,23 @@ export default function FieldInventory() {
           {selectedCat && (
             <Badge className="bg-[#EAF7EE] text-[#0A6B24] border-[#D9E7DD] gap-1 pl-2 pr-1 py-1 text-xs">
               {selectedCat.name}
-              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500 rounded-full">
+              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500 rounded-full">
                 <X className="w-3 h-3" />
               </button>
             </Badge>
           )}
           {selectedFamily !== "all" && (
             <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
-              {selectedFamily}
-              <button onClick={() => { setSelectedFamily("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
+              {getFamilyDisplay(selectedFamily)}
+              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {selectedType !== "all" && (
+            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+              {selectedType}
+              <button onClick={() => { setSelectedType("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
                 <X className="w-3 h-3" />
               </button>
             </Badge>
@@ -572,12 +667,13 @@ export default function FieldInventory() {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#F6F7F9] border-b border-[#D9E7DD]">
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 pl-4 w-[80px]">SKU</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 pl-4 w-[120px] whitespace-nowrap">SKU</TableHead>
                 <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 w-10 text-center">Photo</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 w-[90px] whitespace-nowrap hidden sm:table-cell">Size</TableHead>
                 <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5">Item</TableHead>
                 <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 hidden sm:table-cell w-[100px]">Category</TableHead>
                 <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 hidden md:table-cell w-[120px]">Location</TableHead>
-                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 text-right w-[60px]">Qty</TableHead>
+                <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 text-center w-[60px]">Qty</TableHead>
                 <TableHead className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide py-2.5 text-center pr-4 w-[90px]">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -585,7 +681,7 @@ export default function FieldInventory() {
               {isLoading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
                   <TableRow key={i} className="border-b border-slate-50">
-                    {[80, 40, 200, 100, 120, 60, 90].map((w, j) => (
+                    {[120, 40, 90, 200, 100, 120, 60, 90].map((w, j) => (
                       <TableCell key={j} className="py-2.5">
                         <div className="h-4 bg-slate-100 animate-pulse rounded" style={{ width: `${w * 0.6}px` }} />
                       </TableCell>
@@ -594,7 +690,7 @@ export default function FieldInventory() {
                 ))
               ) : pageItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-[#64748B]">
+                  <TableCell colSpan={8} className="text-center py-12 text-[#64748B]">
                     {hasFilters ? "No items match your filters." : "No items found."}
                   </TableCell>
                 </TableRow>
@@ -605,7 +701,7 @@ export default function FieldInventory() {
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
                 >
-                  <TableCell className="py-2.5 pl-4">
+                  <TableCell className="py-2.5 pl-4 whitespace-nowrap">
                     <span className="font-mono text-[11px] text-[#64748B]">{item.sku}</span>
                   </TableCell>
                   <TableCell className="py-2.5">
@@ -613,9 +709,13 @@ export default function FieldInventory() {
                       <PhotoCell imageUrl={item.imageUrl} name={item.name} />
                     </div>
                   </TableCell>
+                  <TableCell className="py-2.5 hidden sm:table-cell">
+                    <span className="text-xs text-slate-700 whitespace-nowrap font-medium">
+                      {item.sizeLabel ?? "—"}
+                    </span>
+                  </TableCell>
                   <TableCell className="py-2.5">
                     <p className="text-sm font-medium text-slate-800 leading-snug">{item.name}</p>
-                    {item.sizeLabel && <p className="text-xs text-[#64748B] leading-snug">{item.sizeLabel}</p>}
                   </TableCell>
                   <TableCell className="py-2.5 hidden sm:table-cell text-xs text-[#64748B]">
                     {item.category?.name ?? "—"}
@@ -623,13 +723,13 @@ export default function FieldInventory() {
                   <TableCell className="py-2.5 hidden md:table-cell text-xs text-[#64748B]">
                     {item.location?.name ?? "—"}
                   </TableCell>
-                  <TableCell className="py-2.5 text-right">
+                  <TableCell className="py-2.5 text-center">
                     <span className="font-semibold text-slate-900 tabular-nums text-sm">
                       {item.quantityOnHand.toLocaleString()}
                     </span>
                   </TableCell>
                   <TableCell className="py-2.5 pr-4">
-                    <div className="flex justify-center items-center h-full">
+                    <div className="flex justify-center items-center">
                       <ItemStatusBadge status={item.status} />
                     </div>
                   </TableCell>

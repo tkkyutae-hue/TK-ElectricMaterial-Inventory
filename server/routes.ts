@@ -103,15 +103,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getFieldSizes({ categoryId, family }));
   });
 
+  app.get("/api/field/types", isAuthenticated, async (req, res) => {
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    const family = req.query.family as string | undefined;
+    res.json(await storage.getFieldTypes({ categoryId, family }));
+  });
+
   app.get("/api/field/items", isAuthenticated, async (req, res) => {
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
     const family = req.query.family as string | undefined;
+    const detailType = req.query.type as string | undefined;
     const size = req.query.size as string | undefined;
     const status = req.query.status as string | undefined;
     const search = req.query.q as string | undefined;
     const page = req.query.page ? Number(req.query.page) : 1;
     const perPage = req.query.perPage ? Number(req.query.perPage) : 10;
-    res.json(await storage.getFieldItems({ categoryId, family, size, status, search, page, perPage }));
+    res.json(await storage.getFieldItems({ categoryId, family, detailType, size, status, search, page, perPage }));
   });
 
   // ─── Locations ──────────────────────────────────────────────────────────────

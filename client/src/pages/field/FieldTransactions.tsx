@@ -1,17 +1,11 @@
 import { useState, useMemo } from "react";
 import { useMovements } from "@/hooks/use-transactions";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
-import { Search, ClipboardList, ImageOff } from "lucide-react";
+import { Search, ClipboardList, ImageOff, ArrowRightLeft, Navigation, FolderKanban, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, subDays, startOfDay } from "date-fns";
-
-const DATE_PRESETS = [
-  { label: "Last 7 days",  days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-];
+import { format, startOfDay, endOfDay } from "date-fns";
 
 const TH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest py-3 px-2 whitespace-nowrap";
 
@@ -41,11 +35,10 @@ export default function FieldTransactions() {
   const [fromFilter, setFrom]     = useState("all");
   const [toFilter, setTo]         = useState("all");
   const [projectFilter, setProj]  = useState("all");
-  const [datePreset, setPreset]   = useState("30");
+  const [dateFrom, setDateFrom]   = useState("");
+  const [dateTo, setDateTo]       = useState("");
 
   const { data: movements, isLoading } = useMovements();
-
-  const cutoff = startOfDay(subDays(new Date(), parseInt(datePreset)));
 
   // Derive unique from/to/project options from movement data
   const { fromOptions, toOptions, projectOptions } = useMemo(() => {
@@ -78,7 +71,14 @@ export default function FieldTransactions() {
     if (toFilter   !== "all" && String(mx.destinationLocation?.id) !== toFilter) return false;
     if (projectFilter !== "all" && String(mx.project?.id) !== projectFilter) return false;
     const moved = new Date(m.createdAt ?? "");
-    if (moved < cutoff) return false;
+    if (dateFrom) {
+      const from = startOfDay(new Date(dateFrom + "T00:00:00"));
+      if (moved < from) return false;
+    }
+    if (dateTo) {
+      const to = endOfDay(new Date(dateTo + "T00:00:00"));
+      if (moved > to) return false;
+    }
     return true;
   });
 
@@ -109,12 +109,15 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* Filters row 2: From | To | Project/PO | Date */}
+      {/* Filters row 2: From | To | Project/PO */}
       <div className="flex flex-wrap gap-2">
         {/* From */}
         <Select value={fromFilter} onValueChange={setFrom}>
           <SelectTrigger className="flex-1 min-w-[130px] h-9 text-sm" data-testid="field-tx-from-filter">
-            <SelectValue placeholder="From" />
+            <span className="flex items-center gap-1.5 min-w-0">
+              <Navigation className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <SelectValue placeholder="All From" />
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All From</SelectItem>
@@ -127,7 +130,10 @@ export default function FieldTransactions() {
         {/* To */}
         <Select value={toFilter} onValueChange={setTo}>
           <SelectTrigger className="flex-1 min-w-[130px] h-9 text-sm" data-testid="field-tx-to-filter">
-            <SelectValue placeholder="To" />
+            <span className="flex items-center gap-1.5 min-w-0">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <SelectValue placeholder="All To" />
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All To</SelectItem>
@@ -140,7 +146,10 @@ export default function FieldTransactions() {
         {/* Project / PO */}
         <Select value={projectFilter} onValueChange={setProj}>
           <SelectTrigger className="flex-1 min-w-[160px] h-9 text-sm" data-testid="field-tx-project-filter">
-            <SelectValue placeholder="Project / PO" />
+            <span className="flex items-center gap-1.5 min-w-0">
+              <FolderKanban className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+              <SelectValue placeholder="All Projects" />
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
@@ -149,18 +158,42 @@ export default function FieldTransactions() {
             ))}
           </SelectContent>
         </Select>
+      </div>
 
-        {/* Date */}
-        <Select value={datePreset} onValueChange={setPreset}>
-          <SelectTrigger className="flex-1 min-w-[130px] h-9 text-sm" data-testid="field-tx-date-filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DATE_PRESETS.map(p => (
-              <SelectItem key={p.days} value={String(p.days)}>{p.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Filters row 3: Date range */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[150px]">
+          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            placeholder="Start date"
+            data-testid="field-tx-date-from"
+            className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+          />
+        </div>
+        <span className="flex items-center text-slate-400 text-sm select-none">—</span>
+        <div className="relative flex-1 min-w-[150px]">
+          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            placeholder="End date"
+            data-testid="field-tx-date-to"
+            className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            className="h-9 px-3 text-xs text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            data-testid="field-tx-date-clear"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Table — no horizontal scroll */}
@@ -182,7 +215,7 @@ export default function FieldTransactions() {
           <TableHeader>
             <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
               <TableHead className={`${TH} pl-4`}>No.</TableHead>
-              <TableHead className={TH}>Type</TableHead>
+              <TableHead className={`${TH} text-center`}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
               <TableHead className={TH}>Size</TableHead>
               <TableHead className={TH}>Item</TableHead>
@@ -228,7 +261,7 @@ export default function FieldTransactions() {
                   </TableCell>
 
                   {/* Type */}
-                  <TableCell className="py-3 px-2">
+                  <TableCell className="py-3 px-2 text-center">
                     <TransactionTypeBadge type={m.movementType} />
                   </TableCell>
 
@@ -304,9 +337,18 @@ export default function FieldTransactions() {
                     {m.note || <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Date */}
-                  <TableCell className="py-3 px-2 pr-4 text-xs font-medium text-slate-600 whitespace-nowrap group-hover:text-slate-800 transition-colors">
-                    {m.createdAt ? format(new Date(m.createdAt), "MMM d, yyyy HH:mm") : "—"}
+                  {/* Date — date on top, time below */}
+                  <TableCell className="py-3 px-2 pr-4 group-hover:text-slate-800 transition-colors">
+                    {m.createdAt ? (
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-medium text-slate-600">
+                          {format(new Date(m.createdAt), "MMM d, yyyy")}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {format(new Date(m.createdAt), "HH:mm")}
+                        </span>
+                      </div>
+                    ) : "—"}
                   </TableCell>
                 </TableRow>
               );

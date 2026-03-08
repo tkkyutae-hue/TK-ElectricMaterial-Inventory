@@ -711,7 +711,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-[860px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[860px] w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Family Settings — {group.baseItemName}</DialogTitle></DialogHeader>
         <div className="space-y-5 pt-1">
 
@@ -738,15 +738,15 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
             {/* Table header */}
             <div className="grid gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200"
               style={{ gridTemplateColumns: FAMILY_TABLE_COLS }}>
-              <div className="flex items-center">
+              <div className="flex items-center justify-center">
                 <input type="checkbox" checked={selectedIds.size === group.items.length && group.items.length > 0}
                   onChange={toggleAll} className="rounded border-slate-300" data-testid="checkbox-select-all" />
               </div>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">SKU</span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Name</span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Family</span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Type</span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-right">Status</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">SKU</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Name</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Family</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Type</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Status</span>
             </div>
 
             {/* Item rows */}
@@ -759,30 +759,32 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
                     className={`grid gap-2 px-3 py-2 items-center hover:bg-slate-50 ${selectedIds.has(item.id) ? "bg-brand-50/30" : ""} ${isChanged ? "bg-amber-50/50" : ""}`}
                     style={{ gridTemplateColumns: FAMILY_TABLE_COLS }}
                     data-testid={`row-family-item-${item.id}`}>
-                    <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleItem(item.id)}
-                      className="rounded border-slate-300" onClick={e => e.stopPropagation()} />
-                    <span className="text-xs text-slate-500 font-mono truncate" title={item.sku}>{item.sku}</span>
+                    <div className="flex items-center justify-center">
+                      <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleItem(item.id)}
+                        className="rounded border-slate-300" onClick={e => e.stopPropagation()} />
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono truncate text-center" title={item.sku}>{item.sku}</span>
                     <input
-                      className="text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
+                      className="min-w-0 text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
                       value={d.name}
                       onChange={e => patchDraft(item.id, { name: e.target.value })}
                       data-testid={`input-item-name-${item.id}`}
                     />
                     <input
-                      className="text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
+                      className="min-w-0 text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
                       value={d.subcategory}
                       onChange={e => patchDraft(item.id, { subcategory: e.target.value })}
                       placeholder="e.g. EMT Conduit"
                       data-testid={`input-item-family-${item.id}`}
                     />
                     <input
-                      className="text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
+                      className="min-w-0 text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
                       value={d.detailType}
                       onChange={e => patchDraft(item.id, { detailType: e.target.value })}
                       placeholder="e.g. Connector"
                       data-testid={`input-item-type-${item.id}`}
                     />
-                    <div className="flex justify-end">
+                    <div className="flex justify-center">
                       <StatusBadge status={item.status} />
                     </div>
                   </div>

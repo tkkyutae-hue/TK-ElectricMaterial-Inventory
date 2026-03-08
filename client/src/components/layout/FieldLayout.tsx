@@ -32,7 +32,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           <img
             src={tkLogo}
             alt="TK Electric"
-            className="h-8 w-auto object-contain flex-shrink-0"
+            className="h-12 w-auto object-contain flex-shrink-0"
             style={{ filter: "brightness(0) invert(1)" }}
           />
           {/* Field Mode pill */}

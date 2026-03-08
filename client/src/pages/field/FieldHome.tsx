@@ -95,7 +95,7 @@ function ActionRow({
       onMouseUp={() => setPressed(false)}
       className="w-full text-left flex items-center gap-4 rounded-xl transition-all"
       style={{
-        padding: "20px 22px",
+        padding: "22px 24px",
         background: hovered ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
         border: `1.5px solid ${hovered ? accentColor : "rgba(255,255,255,0.09)"}`,
         boxShadow: hovered ? `0 6px 24px ${accentShadow}` : "none",
@@ -114,9 +114,9 @@ function ActionRow({
       {/* Icon */}
       <div
         className="flex items-center justify-center rounded-xl flex-shrink-0 transition-colors duration-150"
-        style={{ width: 52, height: 52, background: hovered ? iconBgHover : iconBg }}
+        style={{ width: 100, height: 100, background: hovered ? iconBgHover : iconBg }}
       >
-        <Icon style={{ width: 26, height: 26, color: iconColor }} strokeWidth={1.8} />
+        <Icon style={{ width: 50, height: 50, color: iconColor }} strokeWidth={1.6} />
       </div>
 
       {/* Text */}

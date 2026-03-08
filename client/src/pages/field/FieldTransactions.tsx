@@ -279,15 +279,24 @@ export default function FieldTransactions() {
                     {toLoc?.name ?? <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Project / PO — split visual */}
-                  <TableCell className="py-3 px-2 truncate">
-                    {projectName ? (
-                      <span className="text-xs font-semibold text-slate-700">{projectName}</span>
-                    ) : null}
-                    {projectPo ? (
-                      <span className="text-xs text-slate-400 ml-1">/ {projectPo}</span>
-                    ) : null}
-                    {!projectName && !projectPo && <span className="text-slate-300 text-xs">—</span>}
+                  {/* Project / PO — stacked */}
+                  <TableCell className="py-3 px-2">
+                    {projectName || projectPo ? (
+                      <div className="flex flex-col gap-0.5">
+                        {projectName && (
+                          <span className="text-xs font-semibold text-slate-700 leading-tight break-words">
+                            {projectName}
+                          </span>
+                        )}
+                        {projectPo && (
+                          <span className="text-[11px] text-slate-400 leading-tight">
+                            {projectPo}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-300 text-xs">—</span>
+                    )}
                   </TableCell>
 
                   {/* Note */}

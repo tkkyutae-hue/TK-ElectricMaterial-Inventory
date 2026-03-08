@@ -1571,6 +1571,9 @@ export function derivedType(
     if (/Liquidtight/i.test(base)) return 'Liquidtight Flexible';
     return 'Metal Flexible';
   }
+  // After migration subcategory is stored as the derived family name ("Flexible").
+  // detailType already holds the correct type: "Metal Flexible" or "Liquidtight Flexible".
+  if (sub === 'Flexible') return dt || 'Metal Flexible';
 
   // ── Cable / Wire ──
   if (sub === 'Multi Conductor') {

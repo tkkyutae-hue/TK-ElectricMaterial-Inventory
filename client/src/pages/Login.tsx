@@ -56,18 +56,12 @@ export default function Login() {
           <img
             src={tkLogo}
             alt="TK Electric"
-            className="h-10 w-auto object-contain mb-6"
+            className="h-20 w-auto object-contain mb-4"
             style={{ filter: "brightness(0) invert(1)" }}
             data-testid="img-tk-logo"
           />
-          <h1
-            className="font-display font-extrabold text-white text-center leading-none tracking-tight"
-            style={{ fontSize: "clamp(40px, 10vw, 52px)", letterSpacing: "-0.02em" }}
-          >
-            VoltStock
-          </h1>
-          <p className="text-sm mt-2 font-medium" style={{ color: "#4D7A61" }}>
-            TK Electric · Field Inventory
+          <p className="text-sm font-medium" style={{ color: "#4D7A61" }}>
+            TK Electric Material Inventory
           </p>
         </div>
 
@@ -175,14 +169,11 @@ export default function Login() {
             Request Access
           </button>
         </p>
-      </div>
 
-      <p
-        className="absolute bottom-6 text-xs"
-        style={{ color: "#2D4A3A" }}
-      >
-        Created by Michael Kim
-      </p>
+        <p className="text-center text-xs mt-4" style={{ color: "#2D4A3A" }}>
+          Created by Kyutae Kim (Michael)
+        </p>
+      </div>
     </div>
   );
 }

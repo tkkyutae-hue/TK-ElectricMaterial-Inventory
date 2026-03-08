@@ -172,11 +172,11 @@ export default function FieldTransactions() {
             <col style={{ width: "42px" }} />
             <col style={{ width: "44px" }} />
             <col />
-            <col style={{ width: "44px" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "15%" }} />
-            <col style={{ width: "9%" }} />
+            <col style={{ width: "72px" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "7%" }} />
             <col style={{ width: "118px" }} />
           </colgroup>
           <TableHeader>
@@ -186,7 +186,7 @@ export default function FieldTransactions() {
               <TableHead className={TH}>Photo</TableHead>
               <TableHead className={TH}>Size</TableHead>
               <TableHead className={TH}>Item</TableHead>
-              <TableHead className={`${TH} text-right`}>Qty</TableHead>
+              <TableHead className={`${TH} text-right`}>Qty / Unit</TableHead>
               <TableHead className={TH}>From</TableHead>
               <TableHead className={TH}>To</TableHead>
               <TableHead className={TH}>Project / PO</TableHead>
@@ -249,14 +249,24 @@ export default function FieldTransactions() {
                     </p>
                   </TableCell>
 
-                  {/* Qty */}
+                  {/* Qty + Unit */}
                   <TableCell className="py-3 px-2 text-right tabular-nums">
-                    <span
-                      className="text-sm font-bold"
-                      style={{ color: m.quantity > 1 ? "#0A6B24" : "#64748B" }}
-                    >
-                      {m.quantity}
-                    </span>
+                    {(() => {
+                      const isIncrease = m.movementType === "receive" || m.movementType === "return";
+                      const color = isIncrease ? "#0A6B24" : "#DC2626";
+                      return (
+                        <div className="flex items-baseline justify-end gap-1">
+                          <span className="text-sm font-bold" style={{ color }}>
+                            {m.quantity}
+                          </span>
+                          {item?.unitOfMeasure && (
+                            <span className="text-[10px] font-medium text-slate-400 uppercase">
+                              {item.unitOfMeasure}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
 
                   {/* From */}

@@ -93,6 +93,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/inventory/category/:id/classification-options", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getClassificationOptions(Number(req.params.id)));
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Field Inventory API ────────────────────────────────────────────────────
   app.get("/api/field/families", isAuthenticated, async (req, res) => {
     const categoryId = req.query.category ? Number(req.query.category) : undefined;

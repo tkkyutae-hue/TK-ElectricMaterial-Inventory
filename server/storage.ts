@@ -82,6 +82,7 @@ export interface IStorage {
     page?: number;
     perPage?: number;
   }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }>;
+  getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1223,6 +1224,22 @@ export class DatabaseStorage implements IStorage {
     }
 
     return entries.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[] }> {
+    const rows = await db
+      .select({ subcategory: items.subcategory, detailType: items.detailType })
+      .from(items)
+      .where(and(eq(items.categoryId, categoryId), eq(items.isActive, true)));
+
+    const subcategories = [...new Set(
+      rows.map(r => r.subcategory).filter((s): s is string => !!s && s.trim() !== '')
+    )].sort();
+    const detailTypes = [...new Set(
+      rows.map(r => r.detailType).filter((s): s is string => !!s && s.trim() !== '')
+    )].sort();
+
+    return { subcategories, detailTypes };
   }
 
   async getFieldItems(params: {

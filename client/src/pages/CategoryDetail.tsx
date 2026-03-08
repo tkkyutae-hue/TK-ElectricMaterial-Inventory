@@ -610,6 +610,12 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  const { data: classOptions } = useQuery<{ subcategories: string[]; detailTypes: string[] }>({
+    queryKey: ["/api/inventory/category", String(categoryId), "classification-options"],
+    enabled: open,
+  });
+
   const [familyName, setFamilyName] = useState(group.baseItemName);
   const [imageUrl, setImageUrl] = useState(group.representativeImage ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -815,6 +821,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
                       value={d.subcategory}
                       onChange={e => patchDraft(item.id, { subcategory: e.target.value })}
                       placeholder="e.g. EMT Conduit"
+                      list={`dl-subcategory-${categoryId}`}
                       data-testid={`input-item-family-${item.id}`}
                     />
                     <input
@@ -822,6 +829,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
                       value={d.detailType}
                       onChange={e => patchDraft(item.id, { detailType: e.target.value })}
                       placeholder="e.g. Connector"
+                      list={`dl-detailtype-${categoryId}`}
                       data-testid={`input-item-type-${item.id}`}
                     />
                     <div className="flex justify-center">
@@ -839,6 +847,14 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
               </div>
             )}
           </div>
+
+          {/* Datalists for Family and Type autocomplete — declared once, shared by all row inputs */}
+          <datalist id={`dl-subcategory-${categoryId}`}>
+            {classOptions?.subcategories.map(s => <option key={s} value={s}>{s}</option>)}
+          </datalist>
+          <datalist id={`dl-detailtype-${categoryId}`}>
+            {classOptions?.detailTypes.map(s => <option key={s} value={s}>{s}</option>)}
+          </datalist>
 
           {/* Bulk actions */}
           {selectedIds.size > 0 && (

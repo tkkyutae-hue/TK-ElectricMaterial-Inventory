@@ -38,7 +38,7 @@ function ModeRow({ testId, onClick, icon, iconBg, iconBgHover, label, sub, accen
       onMouseUp={() => setPressed(false)}
       className="w-full text-left flex items-center gap-5 rounded-xl transition-all"
       style={{
-        padding: "20px 22px",
+        padding: "22px 24px",
         background: hovered ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
         border: `1.5px solid ${hovered ? accentColor : "rgba(255,255,255,0.09)"}`,
         boxShadow: hovered ? `0 6px 24px ${accentShadow}` : "none",
@@ -50,8 +50,8 @@ function ModeRow({ testId, onClick, icon, iconBg, iconBgHover, label, sub, accen
       <div
         className="flex items-center justify-center rounded-xl flex-shrink-0 transition-colors duration-150"
         style={{
-          width: 60,
-          height: 60,
+          width: 80,
+          height: 80,
           background: hovered ? iconBgHover : iconBg,
         }}
       >
@@ -157,7 +157,7 @@ export default function Home() {
             <ModeRow
               testId="btn-field-mode"
               onClick={() => navigate("/field")}
-              icon={<HardHat className="w-7 h-7" style={{ color: "#3DD68C" }} strokeWidth={2} />}
+              icon={<HardHat className="w-10 h-10" style={{ color: "#3DD68C" }} strokeWidth={1.8} />}
               iconBg="rgba(10,107,36,0.25)"
               iconBgHover="rgba(10,107,36,0.40)"
               label="Field Mode"
@@ -170,7 +170,7 @@ export default function Home() {
               <ModeRow
                 testId="btn-admin-mode"
                 onClick={() => navigate("/")}
-                icon={<Settings className="w-7 h-7" style={{ color: "#FBBF24" }} strokeWidth={2} />}
+                icon={<Settings className="w-10 h-10" style={{ color: "#FBBF24" }} strokeWidth={1.8} />}
                 iconBg="rgba(180,83,9,0.20)"
                 iconBgHover="rgba(180,83,9,0.35)"
                 label="Admin Mode"

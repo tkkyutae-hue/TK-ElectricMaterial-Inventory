@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
 
@@ -13,6 +12,7 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pressed, setPressed] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,126 +34,155 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4"
-      style={{ background: "linear-gradient(160deg, #EAF7EE 0%, #F7FBF8 50%, #FFFFFF 100%)" }}
+      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      style={{ background: "#0E1512" }}
     >
-      <div className="w-full max-w-sm">
-        {/* Card */}
-        <div
-          className="bg-white rounded-3xl overflow-hidden"
-          style={{
-            boxShadow: "0 4px 24px rgba(10,107,36,0.10), 0 1px 4px rgba(0,0,0,0.06)",
-            border: "1px solid #D9E7DD",
-          }}
-        >
-          {/* ── Brand header ── */}
-          <div
-            className="flex flex-col items-center gap-2 px-8 py-8"
-            style={{ background: "linear-gradient(160deg, #EAF7EE 0%, #F3FAF5 100%)", borderBottom: "1px solid #D9E7DD" }}
+      {/* Subtle radial glow behind content */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: "50%", left: "50%",
+          transform: "translate(-50%, -60%)",
+          width: 600, height: 600,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(10,107,36,0.12) 0%, transparent 65%)",
+        }}
+      />
+
+      <div className="w-full max-w-sm px-6 relative z-10">
+
+        {/* Logo + Brand */}
+        <div className="flex flex-col items-center mb-10">
+          <img
+            src={tkLogo}
+            alt="TK Electric"
+            className="h-10 w-auto object-contain mb-6"
+            style={{ filter: "brightness(0) invert(1)" }}
+            data-testid="img-tk-logo"
+          />
+          <h1
+            className="font-display font-extrabold text-white text-center leading-none tracking-tight"
+            style={{ fontSize: "clamp(40px, 10vw, 52px)", letterSpacing: "-0.02em" }}
           >
-            <img
-              src={tkLogo}
-              alt="TK Electric"
-              className="h-16 w-auto object-contain"
-              data-testid="img-tk-logo"
-            />
-            <div className="text-center">
-              <p className="text-base font-display font-bold text-slate-800">TK Electric</p>
-              <p className="text-[11px] font-bold tracking-[0.18em] text-[#0A6B24] uppercase mt-0.5">VoltStock · Field Operations</p>
-            </div>
-          </div>
-
-          {/* ── Form section ── */}
-          <div className="px-8 py-7 space-y-5">
-            <div className="text-center">
-              <h1 className="text-xl font-display font-bold text-slate-900">Welcome back 👋</h1>
-              <p className="text-sm text-slate-400 mt-1">Sign in to continue</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-600">Email</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@tkelectricllc.us"
-                  autoComplete="email"
-                  autoFocus
-                  required
-                  className="h-11 rounded-xl text-sm"
-                  style={{ borderColor: "#D9E7DD" }}
-                  data-testid="input-email"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-600">Password</label>
-                <div className="relative">
-                  <Input
-                    type={showPw ? "text" : "password"}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••••"
-                    autoComplete="current-password"
-                    required
-                    className="h-11 rounded-xl pr-10 text-sm"
-                    style={{ borderColor: "#D9E7DD" }}
-                    data-testid="input-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(p => !p)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 px-3 py-2.5 rounded-xl border border-red-100">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                data-testid="btn-login"
-                className="w-full h-12 rounded-xl text-base font-bold text-white transition-all duration-150 select-none"
-                style={{
-                  background: canSubmit
-                    ? "linear-gradient(135deg, #0A6B24 0%, #0f8c30 100%)"
-                    : "#d1d5db",
-                  boxShadow: canSubmit ? "0 4px 14px rgba(10,107,36,0.30)" : "none",
-                  transform: "scale(1)",
-                }}
-                onMouseDown={e => { if (canSubmit) (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
-                onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
-              >
-                {loading ? "Signing in…" : "Sign In →"}
-              </button>
-            </form>
-
-            <div className="text-center text-sm text-slate-400">
-              Don't have access?{" "}
-              <button
-                onClick={() => navigate("/signup")}
-                className="text-[#0A6B24] font-semibold hover:underline"
-                data-testid="link-request-access"
-              >
-                Request Access
-              </button>
-            </div>
-          </div>
+            VoltStock
+          </h1>
+          <p className="text-sm mt-2 font-medium" style={{ color: "#4D7A61" }}>
+            TK Electric · Field Inventory
+          </p>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-5">Created by Michael Kim</p>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: "#5A7A68" }}>
+              Email
+            </label>
+            <Input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@tkelectricllc.us"
+              autoComplete="email"
+              autoFocus
+              required
+              data-testid="input-email"
+              className="h-11 text-sm font-medium border-0 rounded-lg"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                color: "white",
+                outline: "1px solid rgba(255,255,255,0.10)",
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: "#5A7A68" }}>
+              Password
+            </label>
+            <div className="relative">
+              <Input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••••"
+                autoComplete="current-password"
+                required
+                data-testid="input-password"
+                className="h-11 pr-10 text-sm font-medium border-0 rounded-lg"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  color: "white",
+                  outline: "1px solid rgba(255,255,255,0.10)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(p => !p)}
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                style={{ color: "#4D7A61" }}
+              >
+                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div
+              className="flex items-start gap-2 text-sm px-3 py-2.5 rounded-lg"
+              style={{ background: "rgba(239,68,68,0.12)", color: "#FCA5A5", border: "1px solid rgba(239,68,68,0.25)" }}
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              data-testid="btn-login"
+              className="w-full h-12 rounded-lg font-bold text-white flex items-center justify-center gap-2 transition-all select-none"
+              style={{
+                background: canSubmit ? "#0A6B24" : "rgba(255,255,255,0.08)",
+                color: canSubmit ? "white" : "#4D7A61",
+                transform: pressed && canSubmit ? "scale(0.97)" : "scale(1)",
+                boxShadow: canSubmit ? "0 0 24px rgba(10,107,36,0.35)" : "none",
+                transition: "transform 0.1s, box-shadow 0.2s, background 0.2s",
+              }}
+              onMouseDown={() => setPressed(true)}
+              onMouseUp={() => setPressed(false)}
+              onMouseLeave={() => setPressed(false)}
+            >
+              {loading ? "Signing in…" : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        <p className="text-center text-sm mt-6" style={{ color: "#3D6050" }}>
+          No account?{" "}
+          <button
+            onClick={() => navigate("/signup")}
+            className="font-semibold transition-colors hover:underline"
+            style={{ color: "#5DA873" }}
+            data-testid="link-request-access"
+          >
+            Request Access
+          </button>
+        </p>
       </div>
+
+      <p
+        className="absolute bottom-6 text-xs"
+        style={{ color: "#2D4A3A" }}
+      >
+        Created by Michael Kim
+      </p>
     </div>
   );
 }

@@ -1066,6 +1066,7 @@ export class DatabaseStorage implements IStorage {
       categoryId: items.categoryId,
       subcategory: items.subcategory,
       detailType: items.detailType,
+      subType: items.subType,
       baseItemName: items.baseItemName,
       name: items.name,
       quantityOnHand: items.quantityOnHand,
@@ -1082,9 +1083,10 @@ export class DatabaseStorage implements IStorage {
       derivedType(i.subcategory, i.detailType, i.baseItemName, i.name || '') === params.type
     );
     if (params.subcategory) {
-      filtered = filtered.filter(i =>
-        extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName) === params.subcategory
-      );
+      filtered = filtered.filter(i => {
+        const sc = i.subType?.trim() || extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
+        return sc === params.subcategory;
+      });
     }
     if (params.search) {
       const tokens = params.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);

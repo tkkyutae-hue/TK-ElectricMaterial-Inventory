@@ -1111,10 +1111,9 @@ export class DatabaseStorage implements IStorage {
       }
     }
     result.sort((a, b) => {
-      if (a.sortVal !== null && b.sortVal !== null) return a.sortVal - b.sortVal;
-      if (a.sortVal !== null) return -1;
-      if (b.sortVal !== null) return 1;
-      return a.label.localeCompare(b.label);
+      const aEff = (a.sortVal !== null && a.sortVal > 0) ? a.sortVal : parseSizeLabelForSort(a.label);
+      const bEff = (b.sortVal !== null && b.sortVal > 0) ? b.sortVal : parseSizeLabelForSort(b.label);
+      return aEff - bEff;
     });
     return result.map(r => r.label);
   }
@@ -1145,10 +1144,19 @@ export class DatabaseStorage implements IStorage {
     const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
 
     // Apply CF type ordering for conduit/fittings families
-    const cfFamilies = new Set(['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body']);
+    const cfFamilies = new Set(['EMT', 'Rigid', 'PVC', 'Bushing / Locknut', 'Conduit Body']);
     if (params.family && cfFamilies.has(params.family)) {
       return applyOrder(entries, CF_TYPE_ORDER);
     }
+
+    // Flexible conduit: Metal Flexible before Liquidtight Flexible
+    if (params.family === 'Flexible') return applyOrder(entries, CF_FLEXIBLE_TYPE_ORDER);
+
+    // CT Fittings type ordering
+    if (params.family === 'Fittings') return applyOrder(entries, CT_FITTINGS_TYPE_ORDER);
+
+    // Cable / Wire type ordering
+    if (params.family === 'Multi Conductor') return applyOrder(entries, CW_MULTI_CONDUCTOR_TYPE_ORDER);
 
     // Apply CS type ordering per family
     if (params.family === 'Conduit Support') return applyOrder(entries, CS_CONDUIT_SUPPORT_TYPE_ORDER);
@@ -1195,9 +1203,26 @@ export class DatabaseStorage implements IStorage {
       const sc = extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
       if (sc) counts[sc] = (counts[sc] || 0) + 1;
     }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
+
+    // EMT / Rigid: Set Screw before Compression, etc.
+    if (params.family === 'EMT' || params.family === 'Rigid') {
+      return applyOrder(entries, CF_SUBCAT_ORDER);
+    }
+    // Flexible conduit subcategories: Conduit → Connector → Coupling
+    if (params.type === 'Metal Flexible' || params.type === 'Liquidtight Flexible') {
+      return applyOrder(entries, CF_FLEX_SUBCAT_ORDER);
+    }
+    // CS Conduit Support straps / pipe clamps: EMT → Rigid
+    if (
+      params.type === 'One Hole Strap' ||
+      params.type === 'Two Hole Strap' ||
+      params.type === 'Unistrut Pipe Clamp'
+    ) {
+      return applyOrder(entries, CS_SUPPORT_SUBCAT_ORDER);
+    }
+
+    return entries.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getFieldItems(params: {
@@ -1306,14 +1331,49 @@ export class DatabaseStorage implements IStorage {
 // Items that exist in the data are shown in this order; missing ones are skipped.
 //
 const CT_FAMILY_ORDER = ['Cable Tray', 'Fittings', 'Covers'];
+const CT_FITTINGS_TYPE_ORDER = ['Reducer', 'Tee', 'Cross', 'Horizontal Elbow', 'Vertical Elbow', 'Connector'];
 const CF_FAMILY_ORDER = ['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body'];
 const CF_TYPE_ORDER = ['Conduit', 'Coupling', 'Connector', 'Elbow'];
+const CF_FLEXIBLE_TYPE_ORDER = ['Metal Flexible', 'Liquidtight Flexible'];
+const CF_SUBCAT_ORDER = ['Set Screw', 'Compression', 'Rain Tight', 'Threaded', '90°', 'Straight', 'Standard'];
 
 // Conduit Supports & Strut System (CS) ordering
 const CS_FAMILY_ORDER = ['Conduit Support', 'Hardware/Accessories', 'Strut Channel', 'Threaded Rod', 'Beam Clamp'];
 const CS_CONDUIT_SUPPORT_TYPE_ORDER = ['Conduit Clamp', 'Unistrut Pipe Clamp', 'One Hole Strap', 'Two Hole Strap'];
 const CS_STRUT_CHANNEL_TYPE_ORDER = ['Unistrut', 'Column Support', 'Post Base', 'Corner Angle', 'Joiner'];
 const CS_THREADED_ROD_TYPE_ORDER = ['Threaded Rod', 'Rod Coupling'];
+const CS_SUPPORT_SUBCAT_ORDER = ['EMT', 'Rigid'];
+const CF_FLEX_SUBCAT_ORDER = ['Conduit', 'Connector', 'Coupling'];
+
+// Cable/Wire (CW) ordering
+const CW_MULTI_CONDUCTOR_TYPE_ORDER = ['2C+G', '3C+G', '4C+G'];
+
+// ── Cable size sort helper ───────────────────────────────────────────────────
+// Sorts cable (AWG/kcmil) sizes per user-specified order: 14, 12, 10, 8, 6, 4, 2, 1, 1/0, 2/0, 3/0, 4/0, 250, 350, 400, 500, 600, 750
+const CABLE_SIZE_ORDER = ['14','12','10','8','6','4','2','1','1/0','2/0','3/0','4/0','250','350','400','500','600','750'];
+
+function parseSizeLabelForSort(label: string): number {
+  if (!label) return 999999;
+  const s = label.trim();
+  // Cable: starts with # or contains KCMIL or is a/0 fraction (1/0, 2/0 etc.)
+  if (s.startsWith('#') || /kcmil/i.test(s) || /^\d+\/0$/i.test(s.replace(/[^0-9/]/g, ''))) {
+    const core = s.replace(/^#/, '').replace(/\s*kcmil\s*/i, '').replace(/[^0-9/]/g, '').trim().match(/^[\d/]+/)?.[0] ?? s;
+    const idx = CABLE_SIZE_ORDER.indexOf(core);
+    return idx >= 0 ? idx : (100 + (parseFloat(core) || 999));
+  }
+  // Conduit / inch-based size: parse to decimal inches * 1000 to match DB sizeSortValue
+  const clean = s.replace(/['"]/g, '').trim();
+  // compound fraction: 1-1/4, 1-1/2
+  const compound = clean.match(/^(\d+)[-\s](\d+)\/(\d+)$/);
+  if (compound) return (+compound[1] + +compound[2] / +compound[3]) * 1000;
+  // simple fraction: 1/2, 3/4
+  const frac = clean.match(/^(\d+)\/(\d+)$/);
+  if (frac) return (+frac[1] / +frac[2]) * 1000;
+  // plain number
+  const num = parseFloat(clean);
+  if (!isNaN(num)) return num * 1000;
+  return 999999;
+}
 
 // Applies a predefined sort order to a list of { name, count } entries.
 // Items not in the order list are appended alphabetically at the end.
@@ -1372,6 +1432,9 @@ export function derivedFamily(
   if (sub === 'Conduit Bodies') return 'Conduit Body';
   if (sub === 'Supports') return 'Supports';
 
+  // ── Cable / Wire ──
+  if (sub === 'THHN/THWN Single') return 'Single Conductor';
+
   // Unclassified strap items (no subcategory in DB)
   if (!sub && /\bStrap\b/i.test(base)) return 'Supports';
 
@@ -1404,8 +1467,19 @@ export function derivedType(
   const dt = detailType || '';
   const base = baseItemName || name || '';
 
-  if (['EMT Conduit', 'RMC/IMC Conduit', 'PVC Conduit', 'Flex Conduit'].includes(sub)) {
+  if (['EMT Conduit', 'RMC/IMC Conduit', 'PVC Conduit'].includes(sub)) {
     return dt || 'Conduit';
+  }
+  if (sub === 'Flex Conduit') {
+    if (/Liquidtight/i.test(base)) return 'Liquidtight Flexible';
+    return 'Metal Flexible';
+  }
+
+  // ── Cable / Wire ──
+  if (sub === 'Multi Conductor') {
+    const coreMatch = base.match(/\((\d+C\+G)\)/i) || base.match(/(\d+C\+G)/i);
+    if (coreMatch) return coreMatch[1].toUpperCase();
+    return dt || 'Multi Conductor';
   }
   if (sub === 'Conduit Bodies') return 'Conduit Body';
 
@@ -1428,6 +1502,10 @@ export function derivedType(
   if (sub === 'Threaded Rod')   return dt || 'Threaded Rod';
   if (sub === 'Beam Clamp')     return 'Beam Clamp';
   if (sub === 'Hardware/Accessories') return dt || base;
+
+  // CT Fittings: Elbow → Horizontal Elbow, Vertical → Vertical Elbow
+  if (sub === 'Fittings' && dt === 'Elbow') return 'Horizontal Elbow';
+  if (dt === 'Vertical') return 'Vertical Elbow';
 
   if (/\bConnector\b/i.test(base)) return 'Connector';
   if (/\bCoupling\b/i.test(base)) return 'Coupling';
@@ -1474,6 +1552,21 @@ export function extractSubcategory(
     if (/\bTee\b/i.test(name)) return 'Tee';
     if (/\bStraight\b/i.test(name)) return 'Straight';
     return '';
+  }
+
+  // ── CS Conduit Support: EMT vs Rigid for straps & pipe clamps ──────────────
+  if (type === 'One Hole Strap' || type === 'Two Hole Strap' || type === 'Unistrut Pipe Clamp') {
+    const b = baseItemName || name;
+    if (/\bEMT\b/i.test(b)) return 'EMT';
+    if (/\bRigid\b/i.test(b)) return 'Rigid';
+    return '';
+  }
+
+  // ── Flexible Conduit: Conduit / Connector / Coupling subcategory ───────────
+  if (type === 'Metal Flexible' || type === 'Liquidtight Flexible') {
+    if (/\bConnector\b/i.test(name)) return 'Connector';
+    if (/\bCoupling\b/i.test(name)) return 'Coupling';
+    return 'Conduit';
   }
 
   if (type === 'Connector') {

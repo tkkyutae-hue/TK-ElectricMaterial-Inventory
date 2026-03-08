@@ -40,9 +40,18 @@ The project is organized as a monorepo, separating client-side (React), server-s
 ### Backend Architecture
 -   **Runtime & Framework**: Node.js with Express.js.
 -   **API**: RESTful API design with all endpoints under `/api/`. Field-specific endpoints under `/api/field/`:
-    -   `GET /api/field/families?category=` — returns families (subcategories) with item counts for a category
-    -   `GET /api/field/sizes?category=&family=` — returns sorted unique size labels for scope
-    -   `GET /api/field/items?category=&family=&size=&status=&q=&page=&perPage=` — server-side filtered + paginated field inventory
+    -   `GET /api/field/families?categoryId=` — derived families with counts (e.g. EMT, Rigid, Flexible, Single Conductor, Multi Conductor)
+    -   `GET /api/field/types?categoryId=&family=` — derived types within a family (e.g. Metal Flexible / Liquidtight Flexible; 2C+G / 3C+G / 4C+G; Horizontal Elbow / Vertical Elbow)
+    -   `GET /api/field/subcategories?categoryId=&family=&type=` — derived subcategories (e.g. Set Screw / Compression; Conduit / Connector / Coupling; EMT / Rigid)
+    -   `GET /api/field/sizes?categoryId=&family=&type=&subcategory=` — sorted size labels (conduit inch-based or cable AWG order)
+    -   `GET /api/field/items?categoryId=&family=&type=&subcategory=&size=&status=&q=&page=&perPage=` — filtered + paginated items
+    -   `POST /api/items/classify` — AI-powered auto-classification preview
+-   **Auto-Classification** (`server/storage.ts` exported helpers + `shared/classifyItem.ts`):
+    -   `derivedFamily()` — maps DB subcategory → display family. THHN/THWN Single → "Single Conductor"; Flex Conduit → "Flexible"; CS families in CS_FAMILY_ORDER
+    -   `derivedType()` — maps DB fields → type. Flex Conduit → "Metal Flexible" / "Liquidtight Flexible" (from baseItemName); Multi Conductor → "2C+G"/"3C+G"/"4C+G" (from base_item_name pattern); CT Fittings dt=Elbow → "Horizontal Elbow", dt=Vertical → "Vertical Elbow"; CS sub=Conduit Support → One Hole Strap / Two Hole Strap / Unistrut Pipe Clamp
+    -   `extractSubcategory()` — derives display subcategory. One Hole Strap / Two Hole Strap / Unistrut Pipe Clamp → EMT or Rigid (from baseItemName); Metal/Liquidtight Flexible → Conduit / Connector / Coupling; EMT Connector/Coupling → Set Screw / Compression / Rain Tight / Threaded / 90° / Straight / Standard; CS Strut Channel → Slotted/Solid, 2-Hole/4-Hole, Straight/Elbow/Tee Joiner
+    -   `parseSizeLabelForSort()` — smart size sorting: conduit inches (1/2"=500, 3/4"=750…) or cable AWG (14→12→10→8→6→4→2→1→1/0→2/0→3/0→4/0→250→350 kcmil)
+    -   Ordering constants: CT_FITTINGS_TYPE_ORDER, CF_FLEXIBLE_TYPE_ORDER, CF_SUBCAT_ORDER, CW_MULTI_CONDUCTOR_TYPE_ORDER, CS_SUPPORT_SUBCAT_ORDER, CF_FLEX_SUBCAT_ORDER
 -   **Data Access**: A dedicated storage layer (`IStorage` interface) abstracts database interactions using Drizzle ORM.
 -   **Authentication & Authorization**: Session-based authentication with PostgreSQL-backed sessions. Role-Based Access Control (RBAC) is implemented with `isAuthenticated`, `requireAdmin`, and `requireStaff` middleware to protect routes. New user sign-ups require admin approval.
 -   **Database**: PostgreSQL is used as the primary database, managed by Drizzle ORM.

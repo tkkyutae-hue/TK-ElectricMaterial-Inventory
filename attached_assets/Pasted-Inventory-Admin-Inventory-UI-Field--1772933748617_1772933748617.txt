@@ -1,0 +1,383 @@
+Inventory / Admin Inventory 구조를 아래 기준으로 수정해줘. 기존 UI 톤은 유지하고, 현재 데이터셋 기준으로 동작하게 구현해줘.
+
+[목표]
+Field mode Inventory의 분류/정렬/표시 로직과
+Admin mode Inventory의 편집 기능을 같이 개선한다.
+
+--------------------------------------------------
+1. Cable Tray Type 라벨 변경
+--------------------------------------------------
+
+현재 Cable Tray에서
+- Vertical
+- Elbow
+이런 식으로 표시되는 부분을 아래처럼 바꿔줘.
+
+변경:
+- "Vertical" -> "Vertical Elbow"
+- "Elbow" -> "Horizontal Elbow"
+
+즉 Cable Tray fittings 쪽 type 또는 subcategory 표시가
+사용자가 바로 이해되게 정확한 명칭으로 보여야 함.
+
+예:
+- Reducer
+- Tee
+- Cross
+- Horizontal Elbow
+- Vertical Elbow
+- Connector
+
+주의:
+기존 "Vertical" 단독 표기는 제거
+기존 "Elbow" 단독 표기는 Horizontal Elbow로 표기
+
+--------------------------------------------------
+2. EMT 자재에서 Set Screw를 Compression보다 앞에 배치
+--------------------------------------------------
+
+현재 EMT fittings에서 Connector / Coupling 등의 하위 세부 타입 정렬 시
+Compression이 먼저 오는 구조를 바꿔줘.
+
+변경:
+EMT 자재에서는 subcategory 또는 하위 정렬 순서를 아래처럼 우선 적용:
+1) Set Screw
+2) Compression
+3) 그 외 기타
+
+예시:
+Family: EMT
+Type: Connector
+Subcategory:
+- All
+- Set Screw
+- Compression
+
+Family: EMT
+Type: Coupling
+Subcategory:
+- All
+- Set Screw
+- Compression
+
+실제 데이터에 존재하는 항목만 보여주되,
+존재하면 Set Screw가 Compression보다 항상 먼저 오게 해줘.
+
+--------------------------------------------------
+3. Conduit 사이즈 정렬을 작은 사이즈 -> 큰 사이즈로 변경
+--------------------------------------------------
+
+현재 필터 결과 배치에서 conduit size 정렬을 수정해줘.
+
+요구사항:
+- 사이즈는 문자열 정렬 말고 실제 전기 자재 사이즈 순서대로 정렬
+- conduit 관련 size는 작은 것부터 큰 것으로 정렬
+
+예시:
+1/2"
+3/4"
+1"
+1-1/4"
+1-1/2"
+2"
+2-1/2"
+3"
+3-1/2"
+4"
+5"
+6"
+
+중요:
+- 검색 결과 / 필터 결과 / size dropdown 모두 같은 정렬 규칙 적용
+- 단순 alphabet 정렬 금지
+- size parser / sort helper 함수로 처리
+
+--------------------------------------------------
+4. Flexible 분류 세분화
+--------------------------------------------------
+
+현재 Flexible family 클릭 시
+Metal Flexible인지 Liquidtight Flexible인지 구분되게 수정해줘.
+
+원하는 구조:
+Category: Conduit / Fittings
+Family: Flexible
+Type 또는 Subcategory에서 최소 아래 구분 가능:
+- Metal Flexible
+- Liquidtight Flexible
+
+그리고 하위 항목도 같은 방식으로 반영:
+예:
+- Flexible > Metal Flexible > Connector / Coupling / Conduit
+- Flexible > Liquidtight Flexible > Connector / Coupling / Conduit
+
+구현 방식 추천:
+A안
+- Family: Flexible
+- Type:
+  - Metal Flexible
+  - Liquidtight Flexible
+- Subcategory:
+  - Conduit
+  - Connector
+  - Coupling
+
+또는
+
+B안
+- Family: Flexible
+- Type:
+  - Conduit
+  - Connector
+  - Coupling
+- Subcategory:
+  - Metal Flexible
+  - Liquidtight Flexible
+
+더 자연스러운 쪽으로 구현해도 되지만,
+핵심은 Flexible 클릭 시
+Metal Flexible / Liquidtight Flexible가 구분되어야 하고
+하위 품목도 그 기준으로 필터링되어야 한다는 것.
+
+--------------------------------------------------
+5. Conduit Support / Strut System에서 EMT / Rigid 구분 반영
+--------------------------------------------------
+
+현재 Conduit Support & Strut System에서
+- Unistrut Pipe Clamp
+- One Hole Strap
+- Two Hole Strap
+이 EMT용 / Rigid용 구분 없이 섞여 보임
+
+이걸 구분되게 수정해줘.
+
+원하는 구조:
+Category: Conduit Supports & Strut System
+Family: Conduit Support
+
+그리고 하위에서 EMT / Rigid 구분이 가능해야 함.
+
+추천 구조:
+Family: Conduit Support
+Type:
+- Conduit Clamp
+- Unistrut Pipe Clamp
+- One Hole Strap
+- Two Hole Strap
+
+Subcategory 또는 추가 세부 분류:
+- EMT
+- Rigid
+
+예시:
+- Unistrut Pipe Clamp > EMT / Rigid
+- One Hole Strap > EMT / Rigid
+- Two Hole Strap > EMT / Rigid
+
+핵심:
+같은 one hole strap이라도 EMT용 / Rigid용 구분 가능해야 하고,
+필터 선택 시 각각 따로 볼 수 있어야 함.
+
+--------------------------------------------------
+6. Cable 카테고리에서 Multi Conductor 하위 코어 수 구분
+--------------------------------------------------
+
+현재 Cable / Wire 카테고리에서
+Multi Conductor 클릭 시 코어케이블별 구분이 가능하게 수정해줘.
+
+원하는 구조:
+Category: Cable / Wire
+Family: Multi Conductor
+
+하위 구분:
+- 2C+G
+- 3C+G
+- 4C+G
+
+즉 Multi Conductor 선택 후
+type 또는 subcategory에서 코어 수별로 필터 가능해야 함.
+
+예시:
+- #10 (2C+G) Cable -> 2C+G
+- #10 (3C+G) Cable -> 3C+G
+- #10 (4C+G) Cable -> 4C+G
+
+실제 데이터에 있는 core count만 표시해줘.
+
+--------------------------------------------------
+7. THHN/THWN Single 라벨 변경
+--------------------------------------------------
+
+Cable / Wire 카테고리의 Family에서
+"THHN/THWN Single" 을 아래처럼 변경해줘.
+
+변경:
+- "THHN/THWN Single" -> "Single Conductor"
+
+UI 라벨과 필터 chip에도 동일하게 반영해줘.
+
+--------------------------------------------------
+8. Cable size 정렬 규칙 적용
+--------------------------------------------------
+
+Cable / Wire 카테고리의 cable size는
+작은 크기에서 큰 크기 순으로 정렬되게 수정해줘.
+
+정렬 우선순위는 아래 기준으로 고정:
+14
+12
+10
+8
+6
+4
+2
+1
+1/0
+2/0
+3/0
+4/0
+250kcmil
+350kcmil
+400kcmil
+500kcmil
+600kcmil
+750kcmil
+
+중요:
+- table row 정렬
+- size dropdown 옵션
+- 필터 결과 정렬
+전부 동일한 규칙 적용
+
+주의:
+- 문자열 비교 금지
+- 전선 규격 전용 sizeSort helper 함수로 구현
+
+--------------------------------------------------
+9. Admin mode에서 family / type / subcategory 직접 수정 가능하게
+--------------------------------------------------
+
+현재 Admin mode Inventory에서 아이템 수정 시
+Field mode Inventory 필터와 연결되는
+family / type / subcategory를 직접 수정할 수 있게 해줘.
+
+요구사항:
+1) Admin inventory item edit UI에 아래 editable fields 추가
+   - category
+   - family
+   - type
+   - subcategory
+2) 자동 분류가 있더라도 admin이 수동 override 가능해야 함
+3) 저장하면 field mode inventory 필터에 즉시 반영
+4) 기존 item name / sku / size / qty / unit / location 편집과 충돌 없이 동작
+5) empty 값도 허용하되, 가능한 경우 자동 추천값 표시 가능
+6) Family / Type / Subcategory 드롭다운 또는 searchable select 형태로 구현 가능
+
+핵심:
+Admin에서 수정한 분류값이 Field mode의 실제 필터 기준 데이터로 저장되어야 함.
+
+--------------------------------------------------
+10. Admin mode 우측 상단 버튼 변경
+--------------------------------------------------
+
+4번째 사진 기준 Admin mode Inventory 우측 상단에 있는
+프롬프트 복사 버튼을 제거하고,
+뒤로가기 버튼으로 변경해줘.
+
+요구사항:
+1) 기존 prompt copy / clipboard 성격 버튼 삭제
+2) 그 위치에 back button 배치
+3) back button 클릭 시 이전 페이지로 이동
+   - 가능하면 browser history back
+   - fallback으로 inventory 목록 또는 admin 이전 화면으로 이동
+4) 기존 아이콘 스타일과 UI 톤 유지
+
+--------------------------------------------------
+11. 정렬 / 옵션 계산 공통 규칙
+--------------------------------------------------
+
+아래 기존 규칙들은 계속 유지해줘:
+1) 상위 필터 바뀌면 하위 필터 reset
+2) 실제 데이터에 없는 옵션은 표시하지 않음
+3) item count / active chips 정확히 동기화
+4) size filter는 현재 필터 결과 기준으로 계산
+5) category별 custom sort order 적용 가능
+6) family / type / subcategory 라벨 normalize 반영
+
+--------------------------------------------------
+12. 데이터 분류 / 파싱 규칙
+--------------------------------------------------
+
+가능하면 아래 규칙을 helper 함수로 분리해서 구현해줘.
+
+예시:
+- "EMT Set Screw Connector" -> family: EMT / type: Connector / subcategory: Set Screw
+- "EMT Compression Connector" -> family: EMT / type: Connector / subcategory: Compression
+- "Liquidtight Flexible Connector" -> family: Flexible / type or subcategory에 Liquidtight Flexible 반영
+- "Metal Flexible Coupling" -> family: Flexible / type or subcategory에 Metal Flexible 반영
+- "1\" EMT One-Hole Strap" -> family: Conduit Support / type: One Hole Strap / subcategory: EMT
+- "1\" Rigid One-Hole Strap" -> family: Conduit Support / type: One Hole Strap / subcategory: Rigid
+- "#10(2C+G) Cable" -> family: Multi Conductor / type or subcategory: 2C+G
+- "#10 THHN/THWN Wire" -> family: Single Conductor
+
+--------------------------------------------------
+13. 구현 방식
+--------------------------------------------------
+
+React + TypeScript + Tailwind 기준으로 구현
+
+필수 작업:
+1) Inventory field mode filter config 수정
+2) size sorting helpers 추가
+   - conduit size sort
+   - cable size sort
+3) flexible classification 로직 추가
+4) conduit support EMT/rigid 구분 로직 추가
+5) cable multi-conductor core 분류 추가
+6) family label rename 반영
+7) admin inventory edit form에 classification fields 추가
+8) admin header action button 교체
+9) 관련 helper 함수 분리
+10) useMemo 등으로 성능 최적화
+11) 타입 에러 없이 마무리
+
+--------------------------------------------------
+14. 기대 결과 예시
+--------------------------------------------------
+
+예시 1:
+Conduit / Fittings > EMT > Connector
+Subcategory:
+- Set Screw
+- Compression
+
+예시 2:
+Conduit / Fittings > Flexible
+Metal Flexible / Liquidtight Flexible 구분 가능
+
+예시 3:
+Conduit Supports & Strut System > Conduit Support > One Hole Strap
+Subcategory:
+- EMT
+- Rigid
+
+예시 4:
+Cable / Wire > Multi Conductor
+하위:
+- 2C+G
+- 3C+G
+- 4C+G
+
+예시 5:
+Cable / Wire > Single Conductor
+기존 THHN/THWN Single 대신 새 라벨 적용
+
+--------------------------------------------------
+15. 작업 완료 후
+--------------------------------------------------
+
+작업 끝나면 아래를 간단히 요약해줘:
+- 수정한 핵심 파일
+- 추가한 size sort / classification helper
+- admin edit에서 추가된 필드
+- 변경된 라벨 / 정렬 규칙

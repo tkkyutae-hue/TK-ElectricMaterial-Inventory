@@ -28,8 +28,11 @@ import { MovementForm } from "@/components/MovementForm";
 const editSchema = z.object({
   sku:               z.string().min(1, "SKU is required"),
   name:              z.string().min(1, "Name is required"),
+  baseItemName:      z.string().optional(),
   sizeLabel:         z.string().optional(),
   categoryId:        z.coerce.number().min(1, "Category is required"),
+  subcategory:       z.string().optional(),
+  detailType:        z.string().optional(),
   supplierId:        z.coerce.number().optional(),
   primaryLocationId: z.coerce.number().optional(),
   quantityOnHand:    z.coerce.number().min(0),
@@ -55,8 +58,11 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
   const makeDefaults = (i: any): EditFormData => ({
     sku:               i.sku || "",
     name:              i.name || "",
+    baseItemName:      i.baseItemName || "",
     sizeLabel:         i.sizeLabel || "",
     categoryId:        i.categoryId || 0,
+    subcategory:       i.subcategory || "",
+    detailType:        i.detailType || "",
     supplierId:        i.supplierId || undefined,
     primaryLocationId: i.primaryLocationId || undefined,
     quantityOnHand:    i.quantityOnHand ?? 0,
@@ -84,6 +90,9 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
       await updateMutation.mutateAsync({
         id: item.id,
         ...data,
+        baseItemName:      data.baseItemName || null,
+        subcategory:       data.subcategory || null,
+        detailType:        data.detailType || null,
         supplierId:        data.supplierId || null,
         primaryLocationId: data.primaryLocationId || null,
         statusOverride:    (data.statusOverride && data.statusOverride !== "auto") ? data.statusOverride : null,
@@ -122,14 +131,37 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
                 </FormItem>
               )} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="sizeLabel" render={({ field }) => (
+            <FormField control={form.control} name="baseItemName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Base Item Name <span className="text-xs font-normal text-muted-foreground">(for grouping)</span></FormLabel>
+                <FormControl><Input placeholder="e.g. EMT Set Screw Connector" {...field} data-testid="edit-base-item-name" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="grid grid-cols-3 gap-4">
+              <FormField control={form.control} name="subcategory" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Size Label</FormLabel>
-                  <FormControl><Input placeholder='e.g. 3/4", #12, 20A 1P' {...field} /></FormControl>
+                  <FormLabel>Subcategory</FormLabel>
+                  <FormControl><Input placeholder="e.g. EMT Conduit" {...field} data-testid="edit-subcategory" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="detailType" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Detail Type</FormLabel>
+                  <FormControl><Input placeholder="e.g. Connector" {...field} data-testid="edit-detail-type" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="sizeLabel" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Size Label</FormLabel>
+                  <FormControl><Input placeholder='e.g. 3/4", #12' {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="brand" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Brand</FormLabel>

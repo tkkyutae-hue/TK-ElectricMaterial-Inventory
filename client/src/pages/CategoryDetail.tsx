@@ -637,10 +637,43 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
     }
   }, [open, group.baseItemName, group.items]);
 
+  // When subcategory (Family) or detailType (Type) changes for one item, sync the
+  // same value to every other item in this group that currently shares the same
+  // original value.  This keeps all related items in the same filter bucket in
+  // Field Mode so no item is left stranded under the old family/type after a save.
   const patchDraft = (id: number, patch: Partial<ItemClassDraft>) => {
-    setItemDrafts(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+    setItemDrafts(prev => {
+      const next = { ...prev };
+      next[id] = { ...next[id], ...patch };
+
+      if ('subcategory' in patch || 'detailType' in patch) {
+        // Find the original value for the changed field on the item being edited
+        const targetItem = group.items.find(i => i.id === id);
+        if (targetItem) {
+          const origSub = targetItem.subcategory ?? "";
+          const origDt  = targetItem.detailType ?? "";
+
+          // Propagate to sibling items that share the same original classification
+          for (const sibling of group.items) {
+            if (sibling.id === id) continue;
+            const sibSub = sibling.subcategory ?? "";
+            const sibDt  = sibling.detailType  ?? "";
+            if ('subcategory' in patch && sibSub === origSub) {
+              next[sibling.id] = { ...next[sibling.id], subcategory: patch.subcategory! };
+            }
+            if ('detailType' in patch && sibDt === origDt) {
+              next[sibling.id] = { ...next[sibling.id], detailType: patch.detailType! };
+            }
+          }
+        }
+      }
+
+      return next;
+    });
   };
 
+  // Invalidate all queries that depend on item classification so every view
+  // (Field Mode item list, filters, sizes) reflects the saved changes immediately.
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
@@ -648,6 +681,8 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
     qc.invalidateQueries({ queryKey: ["/api/field/families"] });
     qc.invalidateQueries({ queryKey: ["/api/field/types"] });
     qc.invalidateQueries({ queryKey: ["/api/field/subcategories"] });
+    qc.invalidateQueries({ queryKey: ["/api/field/items"] });
+    qc.invalidateQueries({ queryKey: ["/api/field/sizes"] });
   };
 
   const saveMeta = useMutation({
@@ -656,6 +691,9 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
         baseItemName: group.baseItemName, imageUrl: imageUrl || null,
         newName: familyName !== group.baseItemName ? familyName : undefined,
       });
+      // Save every item whose draft differs from the DB value.  Because patchDraft
+      // already propagated subcategory/detailType changes to siblings, the full
+      // group ends up consistent after one save — no item is left behind.
       const changedItems = group.items.filter(item => {
         const d = itemDrafts[item.id];
         if (!d) return false;
@@ -682,6 +720,8 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
       qc.invalidateQueries({ queryKey: ["/api/field/families"] });
       qc.invalidateQueries({ queryKey: ["/api/field/types"] });
       qc.invalidateQueries({ queryKey: ["/api/field/subcategories"] });
+      qc.invalidateQueries({ queryKey: ["/api/field/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/field/sizes"] });
       onClose();
     },
     onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),

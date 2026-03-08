@@ -381,7 +381,7 @@ export default function FieldInventory() {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   // ── Computed flags ──
-  const showTypePills = selectedFamily !== "all" && types.length >= 2;
+  const showTypePills = selectedFamily !== "all" && types.length >= 1;
   const showSubcategoryPills = selectedType !== "all" && !subcatFetching && subcategories.length >= 1;
 
   // ── Handlers with cascade resets ──

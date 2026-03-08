@@ -1045,6 +1045,7 @@ export class DatabaseStorage implements IStorage {
       const code = catRow[0]?.code || '';
       if (code === 'CT') return applyOrder(entries, CT_FAMILY_ORDER);
       if (code === 'CF') return applyOrder(entries, CF_FAMILY_ORDER);
+      if (code === 'CS') return applyOrder(entries, CS_FAMILY_ORDER);
     }
 
     return entries.sort((a, b) => b.count - a.count);
@@ -1144,10 +1145,16 @@ export class DatabaseStorage implements IStorage {
     const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
 
     // Apply CF type ordering for conduit/fittings families
-    const cfFamilies = new Set(['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body', 'Supports']);
+    const cfFamilies = new Set(['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body']);
     if (params.family && cfFamilies.has(params.family)) {
       return applyOrder(entries, CF_TYPE_ORDER);
     }
+
+    // Apply CS type ordering per family
+    if (params.family === 'Conduit Support') return applyOrder(entries, CS_CONDUIT_SUPPORT_TYPE_ORDER);
+    if (params.family === 'Strut Channel')   return applyOrder(entries, CS_STRUT_CHANNEL_TYPE_ORDER);
+    if (params.family === 'Threaded Rod')    return applyOrder(entries, CS_THREADED_ROD_TYPE_ORDER);
+
     if (params.categoryId) {
       const catRow = await db.select({ code: categories.code })
         .from(categories).where(eq(categories.id, params.categoryId)).limit(1);
@@ -1299,8 +1306,14 @@ export class DatabaseStorage implements IStorage {
 // Items that exist in the data are shown in this order; missing ones are skipped.
 //
 const CT_FAMILY_ORDER = ['Cable Tray', 'Fittings', 'Covers'];
-const CF_FAMILY_ORDER = ['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body', 'Supports'];
+const CF_FAMILY_ORDER = ['EMT', 'Rigid', 'Flexible', 'PVC', 'Bushing / Locknut', 'Conduit Body'];
 const CF_TYPE_ORDER = ['Conduit', 'Coupling', 'Connector', 'Elbow'];
+
+// Conduit Supports & Strut System (CS) ordering
+const CS_FAMILY_ORDER = ['Conduit Support', 'Hardware/Accessories', 'Strut Channel', 'Threaded Rod', 'Beam Clamp'];
+const CS_CONDUIT_SUPPORT_TYPE_ORDER = ['Conduit Clamp', 'Unistrut Pipe Clamp', 'One Hole Strap', 'Two Hole Strap'];
+const CS_STRUT_CHANNEL_TYPE_ORDER = ['Unistrut', 'Column Support', 'Post Base', 'Corner Angle', 'Joiner'];
+const CS_THREADED_ROD_TYPE_ORDER = ['Threaded Rod', 'Rod Coupling'];
 
 // Applies a predefined sort order to a list of { name, count } entries.
 // Items not in the order list are appended alphabetically at the end.
@@ -1396,12 +1409,25 @@ export function derivedType(
   }
   if (sub === 'Conduit Bodies') return 'Conduit Body';
 
-  // Supports / Straps: subdivide by One Hole vs Two Hole
+  // Supports / Straps (legacy CF): subdivide by One Hole vs Two Hole
   if (sub === 'Supports' || (!sub && /\bStrap\b/i.test(base))) {
     if (/One.Hole/i.test(base)) return 'One Hole Strap';
     if (/Two.Hole/i.test(base)) return 'Two Hole Strap';
     return 'Strap';
   }
+
+  // ── Conduit Supports & Strut System (CS) ─────────────────────────────────
+  // These subcategory values are unique to CS — handle before generic fallbacks
+  // to prevent "Rod Coupling" from matching /Coupling/ etc.
+  if (sub === 'Conduit Support') {
+    if (/One.Hole/i.test(base)) return 'One Hole Strap';
+    if (/Two.Hole/i.test(base)) return 'Two Hole Strap';
+    return dt || 'Conduit Support';
+  }
+  if (sub === 'Strut Channel') return dt || 'Unistrut';
+  if (sub === 'Threaded Rod')   return dt || 'Threaded Rod';
+  if (sub === 'Beam Clamp')     return 'Beam Clamp';
+  if (sub === 'Hardware/Accessories') return dt || base;
 
   if (/\bConnector\b/i.test(base)) return 'Connector';
   if (/\bCoupling\b/i.test(base)) return 'Coupling';
@@ -1431,6 +1457,24 @@ export function extractSubcategory(
 ): string {
   if (!name) return '';
   const type = derivedType(subcategory || null, detailType || null, baseItemName || null, name);
+
+  // ── CS Strut Channel subtypes ──────────────────────────────────────────────
+  if (type === 'Unistrut') {
+    if (/\bSlotted\b/i.test(name)) return 'Slotted';
+    if (/\bSolid\b/i.test(name)) return 'Solid Strut';
+    return '';
+  }
+  if (type === 'Corner Angle') {
+    if (/\b2\s*Hole\b/i.test(name)) return '2 Hole';
+    if (/\b4\s*Hole\b/i.test(name)) return '4 Hole';
+    return '';
+  }
+  if (type === 'Joiner') {
+    if (/\bElbow\b/i.test(name)) return 'Elbow';
+    if (/\bTee\b/i.test(name)) return 'Tee';
+    if (/\bStraight\b/i.test(name)) return 'Straight';
+    return '';
+  }
 
   if (type === 'Connector') {
     if (/\bCompression\b/i.test(name)) return 'Compression';

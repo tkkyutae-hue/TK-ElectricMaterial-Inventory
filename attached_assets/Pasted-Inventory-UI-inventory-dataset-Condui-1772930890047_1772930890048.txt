@@ -1,0 +1,327 @@
+Inventory 분류 구조를 아래 기준으로 수정해줘. 기존 UI 스타일은 유지하고, 현재 inventory dataset 기준으로 동작하게 구현해줘.
+
+[목표]
+Conduit Supports & Strut System 카테고리의 Family / Type / Subcategory 구조를 실제 자재 분류 방식에 맞게 재정리한다.
+
+--------------------------------------------------
+1. Supports 통합 및 Family 이름 변경
+--------------------------------------------------
+
+현재 문제:
+- Conduit / Fittings 쪽 Supports와
+- Conduit Supports & Strut System 쪽 Clamps/Straps가 분리되어 있음
+
+변경:
+1) Conduit / Fittings에 있던 Supports 관련 자재는
+   Conduit Supports & Strut System 카테고리로 이동/통합
+2) Conduit Supports & Strut System의
+   "Clamps/Straps" family 이름을
+   "Conduit Support" 로 변경
+3) 즉 Conduit Support family 안에
+   conduit support 관련 clamp / strap 자재를 모아줘
+
+최종적으로:
+- Conduit / Fittings에서는 Supports family 제거
+- Conduit Supports & Strut System에서 Conduit Support family로 통합 관리
+
+--------------------------------------------------
+2. Conduit Support family 하위 Type 구성
+--------------------------------------------------
+
+Conduit Support family 클릭 시 Type에 아래 품목들이 표시되게 해줘.
+현재 데이터에 실제 존재하는 것만 노출하고, 순서는 아래 기준 우선 적용:
+
+- Conduit Clamp
+- Unistrut Pipe Clamp
+- One Hole Strap
+- Two Hole Strap
+
+필요하면 추가 가능:
+- Minerallac
+- Clevis Hanger
+- U-Bolt
+- Split Ring
+등 supports류가 있으면 같은 family 안에서 type으로 확장 가능
+
+중요:
+- One Hole Strap / Two Hole Strap을 별도 구분
+- Conduit Clamp / Unistrut Pipe Clamp도 별도 구분
+- Type 단계에서 구분되게 구현
+
+예:
+Family: Conduit Support
+Type:
+- Conduit Clamp
+- Unistrut Pipe Clamp
+- One Hole Strap
+- Two Hole Strap
+
+--------------------------------------------------
+3. Hardware/Accessories -> Threaded Rod 구조 수정
+--------------------------------------------------
+
+현재 문제:
+- Rod Coupling이 Hardware/Accessories에 섞여 있음
+
+변경:
+1) Rod Coupling은 Threaded Rod family로 이동
+2) Threaded Rod family 클릭 시 하위 Type에 아래가 표시되게 해줘:
+   - Threaded Rod
+   - Rod Coupling
+
+즉:
+Family: Threaded Rod
+Type:
+- Threaded Rod
+- Rod Coupling
+
+Rod Coupling은 더 이상 Hardware/Accessories family에 남지 않게 해줘.
+
+--------------------------------------------------
+4. Strut Channel 구조 수정
+--------------------------------------------------
+
+Strut Channel family 클릭 시,
+Type / Subcategory 구조를 아래처럼 구성해줘.
+
+기본 원칙:
+- Unistrut channel 관련 자재는 Strut Channel family에 포함
+- channel 본체와 관련 부속도 이 family 기준으로 정리
+
+최소 요구:
+Family: Strut Channel
+Type:
+- Unistrut
+
+그리고 Unistrut 선택 시 Subcategory에서 구분:
+- Slotted
+- Solid Strut
+
+즉 예:
+Family: Strut Channel
+Type: Unistrut
+Subcategory:
+- All
+- Slotted
+- Solid Strut
+
+--------------------------------------------------
+5. Column Support / Post Base 포함
+--------------------------------------------------
+
+현재 요구:
+- Column Support
+- Post Base
+도 unistrut channel 관련 자재이므로 Strut Channel family 하위에 포함
+
+구현 요구:
+Strut Channel family 안에 아래 자재도 포함되게 해줘:
+- Column Support
+- Post Base
+
+분류 방식은 아래 중 자연스러운 구조로 구현:
+추천:
+Family: Strut Channel
+Type:
+- Unistrut
+- Column Support
+- Post Base
+
+또는 데이터 구조상 더 자연스러우면
+Strut Channel family 안에서 type/subcategory로 유연하게 처리해도 됨.
+
+핵심:
+- Column Support / Post Base는 Hardware/Accessories로 빠지지 말고
+- Strut Channel family 하위에서 필터링 가능해야 함
+
+--------------------------------------------------
+6. Strut Fittings를 Strut Channel 하위로 통합
+--------------------------------------------------
+
+현재 문제:
+- Strut Fittings family가 별도로 떨어져 있음
+
+변경:
+1) Strut Fittings는 독립 family로 두지 말고
+   Strut Channel family 하위로 통합
+2) Strut fitting 관련 자재는 Strut Channel family 선택 시 함께 보이게 해줘
+
+세부 요구:
+A) 2 hole / 4 hole corner angle
+- Type에서 "Corner Angle" 로 표시
+- 필요 시 subcategory로
+  - 2 Hole
+  - 4 Hole
+  구분
+
+예:
+Family: Strut Channel
+Type: Corner Angle
+Subcategory:
+- 2 Hole
+- 4 Hole
+
+B) Joiner 종류도 포함
+- joiner 관련 자재도 Strut Channel family 하위에 포함
+- Type 또는 Subcategory로 분리 가능
+
+추천 구조:
+Type: Joiner
+Subcategory:
+- Straight
+- Elbow
+- Tee
+
+즉:
+Family: Strut Channel
+Type:
+- Unistrut
+- Column Support
+- Post Base
+- Corner Angle
+- Joiner
+
+예시:
+Type: Joiner
+Subcategory:
+- Straight
+- Elbow
+- Tee
+
+--------------------------------------------------
+7. Beam Clamp는 독립 Family로 분리
+--------------------------------------------------
+
+Beam Clamp는 별도 family로 빼줘.
+
+즉 Conduit Supports & Strut System 카테고리의 family에
+아래 새 항목 추가:
+- Beam Clamp
+
+Beam Clamp 관련 자재는
+Strut Channel / Hardware / Conduit Support에 섞지 말고
+독립 family로 분류해줘.
+
+--------------------------------------------------
+8. 최종 Family 구조
+--------------------------------------------------
+
+Conduit Supports & Strut System 카테고리에서
+family는 아래 구조를 기준으로 정리해줘.
+현재 데이터에 존재하는 항목만 표시하되, 순서는 아래 우선:
+
+1) Conduit Support
+2) Hardware/Accessories
+3) Strut Channel
+4) Threaded Rod
+5) Beam Clamp
+
+주의:
+- Clamps/Straps -> Conduit Support 로 rename
+- Strut Fittings는 별도 family 제거, Strut Channel로 통합
+- Rod Coupling은 Threaded Rod 쪽으로 이동
+- Beam Clamp는 독립 family
+
+--------------------------------------------------
+9. Type / Subcategory 예시 구조
+--------------------------------------------------
+
+예시 1:
+Category: Conduit Supports & Strut System
+Family: Conduit Support
+Type:
+- Conduit Clamp
+- Unistrut Pipe Clamp
+- One Hole Strap
+- Two Hole Strap
+
+예시 2:
+Category: Conduit Supports & Strut System
+Family: Threaded Rod
+Type:
+- Threaded Rod
+- Rod Coupling
+
+예시 3:
+Category: Conduit Supports & Strut System
+Family: Strut Channel
+Type:
+- Unistrut
+- Column Support
+- Post Base
+- Corner Angle
+- Joiner
+
+Subcategory examples:
+- Unistrut -> Slotted / Solid Strut
+- Corner Angle -> 2 Hole / 4 Hole
+- Joiner -> Straight / Elbow / Tee
+
+--------------------------------------------------
+10. 데이터 분류 규칙
+--------------------------------------------------
+
+가능하면 inventory item name, sku, description, tags, existing metadata를 이용해 자동 분류해줘.
+
+예시 매핑:
+- "1” Conduit Clamp" -> Family: Conduit Support / Type: Conduit Clamp
+- "1” EMT Unistrut Pipe Clamp" -> Family: Conduit Support / Type: Unistrut Pipe Clamp
+- "1 Hole Strap" -> Family: Conduit Support / Type: One Hole Strap
+- "Two Hole Strap" -> Family: Conduit Support / Type: Two Hole Strap
+
+- "3/8 Threaded Rod" -> Family: Threaded Rod / Type: Threaded Rod
+- "3/8 Rod Coupling" -> Family: Threaded Rod / Type: Rod Coupling
+
+- "1-5/8 Slotted Strut Channel" -> Family: Strut Channel / Type: Unistrut / Subcategory: Slotted
+- "1-5/8 Solid Strut Channel" -> Family: Strut Channel / Type: Unistrut / Subcategory: Solid Strut
+- "Post Base" -> Family: Strut Channel / Type: Post Base
+- "Column Support" -> Family: Strut Channel / Type: Column Support
+- "2 Hole Corner Angle" -> Family: Strut Channel / Type: Corner Angle / Subcategory: 2 Hole
+- "4 Hole Corner Angle" -> Family: Strut Channel / Type: Corner Angle / Subcategory: 4 Hole
+- "Straight Joiner" -> Family: Strut Channel / Type: Joiner / Subcategory: Straight
+- "Elbow Joiner" -> Family: Strut Channel / Type: Joiner / Subcategory: Elbow
+- "Tee Joiner" -> Family: Strut Channel / Type: Joiner / Subcategory: Tee
+
+- "Beam Clamp" -> Family: Beam Clamp
+
+우선순위:
+1) existing structured fields
+2) tags / metadata
+3) item name parsing
+
+--------------------------------------------------
+11. 동적 필터 규칙 유지
+--------------------------------------------------
+
+기존 규칙 유지:
+1) 상위 필터 변경 시 하위 필터 자동 reset
+2) Size filter는 현재 필터 결과 기준으로만 표시
+3) active filter chips / item count 정확히 동기화
+4) 실제 데이터에 없는 옵션은 표시하지 않음
+5) More... 없이 family 전부 표시
+
+--------------------------------------------------
+12. 구현 방식
+--------------------------------------------------
+
+React + TypeScript + Tailwind 기준으로 구현
+
+필수 작업:
+1) Inventory page/component의 supports & strut classification 로직 수정
+2) family rename / merge 로직 추가
+3) strut channel 하위 type/subcategory 구조 추가
+4) threaded rod / rod coupling 재분류
+5) beam clamp family 분리
+6) active chips / count / size filter 연동 유지
+7) helper 함수 분리
+8) useMemo로 최적화
+9) 타입 에러 없이 마무리
+
+--------------------------------------------------
+13. 작업 완료 후
+--------------------------------------------------
+
+작업 끝나면 아래를 간단히 요약해줘:
+- 수정한 핵심 파일
+- 변경한 family/type/subcategory 구조
+- 어떤 매핑 규칙을 추가했는지

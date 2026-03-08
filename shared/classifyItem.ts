@@ -68,5 +68,25 @@ export function classifyInventoryItem(params: ClassificationInput): Classificati
     }
   }
 
+  // ── Conduit Supports & Strut System (CS) ─────────────────────────────────
+  if (code === 'CS') {
+    if (/\bBeam\s*Clamp\b/i.test(bl)) return { subcategory: 'Beam Clamp', detailType: 'Beam Clamp' };
+    if (/\bColumn\s*Support\b/i.test(bl)) return { subcategory: 'Strut Channel', detailType: 'Column Support' };
+    if (/\bPost\s*Base\b/i.test(bl)) return { subcategory: 'Strut Channel', detailType: 'Post Base' };
+    if (/\bCorner\s*Angle\b/i.test(bl)) return { subcategory: 'Strut Channel', detailType: 'Corner Angle' };
+    if (/\bJoiner\b/i.test(bl)) return { subcategory: 'Strut Channel', detailType: 'Joiner' };
+    if (/\bStrut\s*Channel\b|\bUnistrut\b|\bSlotted\s*Strut\b|\bSolid\s*Strut\b/i.test(bl)) {
+      return { subcategory: 'Strut Channel', detailType: 'Unistrut' };
+    }
+    if (/\bRod\s*Coupling\b/i.test(bl)) return { subcategory: 'Threaded Rod', detailType: 'Rod Coupling' };
+    if (/\bThreaded\s*Rod\b/i.test(bl)) return { subcategory: 'Threaded Rod', detailType: 'Threaded Rod' };
+    if (/\bConduit\s*Clamp\b/i.test(bl)) return { subcategory: 'Conduit Support', detailType: 'Conduit Clamp' };
+    if (/\bPipe\s*Clamp\b/i.test(bl)) return { subcategory: 'Conduit Support', detailType: 'Unistrut Pipe Clamp' };
+    if (/One.Hole.*Strap|Strap.*One.Hole/i.test(bl)) return { subcategory: 'Conduit Support', detailType: 'Strap' };
+    if (/Two.Hole.*Strap|Strap.*Two.Hole/i.test(bl)) return { subcategory: 'Conduit Support', detailType: 'Strap' };
+    if (/\bStrap\b/i.test(bl)) return { subcategory: 'Conduit Support', detailType: 'Strap' };
+    if (/\bSpring\s*Nut\b|\bStrut\s*Washer\b/i.test(bl)) return { subcategory: 'Hardware/Accessories', detailType: null };
+  }
+
   return { subcategory: null, detailType: null };
 }

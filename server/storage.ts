@@ -1315,6 +1315,16 @@ export class DatabaseStorage implements IStorage {
       statusFiltered = withStatus.filter(i => i.status === params.status);
     }
 
+    // Sort by sizeSortValue (numeric wire/conduit order) then by name alphabetically.
+    // sizeSortValue is set correctly in the DB for all cable/wire items using AWG order.
+    // Items with no size (sizeSortValue=0 or null) fall back to name-only sort.
+    statusFiltered.sort((a, b) => {
+      const aSize = (a as any).sizeSortValue ?? 0;
+      const bSize = (b as any).sizeSortValue ?? 0;
+      if (aSize !== bSize) return aSize - bSize;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
     const total = statusFiltered.length;
     const page = Math.max(1, params.page || 1);
     const perPage = Math.min(100, Math.max(1, params.perPage || 10));
@@ -1349,18 +1359,36 @@ const CF_FLEX_SUBCAT_ORDER = ['Conduit', 'Connector', 'Coupling'];
 const CW_MULTI_CONDUCTOR_TYPE_ORDER = ['2C+G', '3C+G', '4C+G'];
 
 // ── Cable size sort helper ───────────────────────────────────────────────────
-// Sorts cable (AWG/kcmil) sizes per user-specified order: 14, 12, 10, 8, 6, 4, 2, 1, 1/0, 2/0, 3/0, 4/0, 250, 350, 400, 500, 600, 750
-const CABLE_SIZE_ORDER = ['14','12','10','8','6','4','2','1','1/0','2/0','3/0','4/0','250','350','400','500','600','750'];
+// U.S. electrical wire size ascending order (smallest → largest conductor):
+// #14 → #12 → #10 → #8 → #6 → #4 → #3 → #2 → #1 → 1/0 → 2/0 → 3/0 → 4/0
+// → 250 KCMIL → 300 KCMIL → 350 KCMIL → 400 KCMIL → 500 KCMIL → 600 KCMIL → 750 KCMIL → 1000 KCMIL
+const CABLE_SIZE_ORDER = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','750','1000'];
+
+// Maps each AWG/KCMIL size label to its canonical sort value (100-step spacing).
+// Matches what is stored in DB size_sort_value for category_id=4 items.
+const WIRE_SORT_MAP: Record<string, number> = {
+  '#14': 100, '#12': 200, '#10': 300,
+  '#8': 400, '#6': 500, '#4': 600, '#3': 700, '#2': 800, '#1': 900,
+  '1/0': 1000, '2/0': 1100, '3/0': 1200, '4/0': 1300,
+  '250 KCMIL': 1400, '300 KCMIL': 1500, '350 KCMIL': 1600, '400 KCMIL': 1700,
+  '500 KCMIL': 1800, '600 KCMIL': 1900, '750 KCMIL': 2000, '1000 KCMIL': 2100,
+};
 
 function parseSizeLabelForSort(label: string): number {
   if (!label) return 999999;
   const s = label.trim();
-  // Cable: starts with # or contains KCMIL or is a/0 fraction (1/0, 2/0 etc.)
-  if (s.startsWith('#') || /kcmil/i.test(s) || /^\d+\/0$/i.test(s.replace(/[^0-9/]/g, ''))) {
-    const core = s.replace(/^#/, '').replace(/\s*kcmil\s*/i, '').replace(/[^0-9/]/g, '').trim().match(/^[\d/]+/)?.[0] ?? s;
+
+  // Known wire size label — return exact map value for perfect alignment with DB
+  if (WIRE_SORT_MAP[s] !== undefined) return WIRE_SORT_MAP[s];
+
+  // Cable: starts with # or contains KCMIL or is an /0 fraction (1/0, 2/0 etc.)
+  if (s.startsWith('#') || /kcmil/i.test(s) || /^\d+\/0$/.test(s)) {
+    const core = s.replace(/^#/, '').replace(/\s*kcmil\s*/i, '').trim();
     const idx = CABLE_SIZE_ORDER.indexOf(core);
-    return idx >= 0 ? idx : (100 + (parseFloat(core) || 999));
+    // Index-based: multiply by 100 to keep same scale as WIRE_SORT_MAP values
+    return idx >= 0 ? (idx + 1) * 100 : 9999;
   }
+
   // Conduit / inch-based size: parse to decimal inches * 1000 to match DB sizeSortValue
   const clean = s.replace(/['"]/g, '').trim();
   // compound fraction: 1-1/4, 1-1/2

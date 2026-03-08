@@ -39,6 +39,7 @@ type ItemClassDraft = {
   name: string;
   subcategory: string;
   detailType: string;
+  subType: string;
 };
 
 type CategoryItemGroup = {
@@ -597,8 +598,8 @@ function InlineNewRow({ draft, familyName, categoryId, categoryCode, existingIte
 
 // Shared column layout for the Family Settings item table.
 // Single source of truth — change here and it applies to every category's dialog.
-// Columns: checkbox | SKU | Name (editable) | Family (editable) | Type (editable) | Status
-const FAMILY_TABLE_COLS = "1.2rem 4.5rem 2fr 1fr 1fr 7rem";
+// Columns: checkbox | SKU | Name (editable) | Family (editable) | Type (editable) | Subcategory (editable) | Status
+const FAMILY_TABLE_COLS = "1.2rem 4.5rem 2fr 1fr 1fr 1fr 6.5rem";
 
 // ── FamilyEditDialog (family-level settings) ──────────────────────────────────
 function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
@@ -611,7 +612,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: classOptions } = useQuery<{ subcategories: string[]; detailTypes: string[] }>({
+  const { data: classOptions } = useQuery<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>({
     queryKey: ["/api/inventory/category", String(categoryId), "classification-options"],
     enabled: open,
   });
@@ -637,6 +638,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
           name: item.name,
           subcategory: item.subcategory ?? "",
           detailType: item.detailType ?? "",
+          subType: (item as any).subType ?? "",
         };
       }
       setItemDrafts(drafts);
@@ -705,7 +707,8 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
         if (!d) return false;
         return d.name !== item.name ||
           d.subcategory !== (item.subcategory ?? "") ||
-          d.detailType !== (item.detailType ?? "");
+          d.detailType !== (item.detailType ?? "") ||
+          d.subType !== ((item as any).subType ?? "");
       });
       if (changedItems.length > 0) {
         await Promise.all(changedItems.map(item => {
@@ -714,6 +717,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
             name: d.name,
             subcategory: d.subcategory || null,
             detailType: d.detailType || null,
+            subType: d.subType || null,
           }).then(r => r.json());
         }));
       }
@@ -792,14 +796,15 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Name</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Family</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Type</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Subcategory</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-center">Status</span>
             </div>
 
             {/* Item rows */}
             <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
               {group.items.map(item => {
-                const d = itemDrafts[item.id] ?? { name: item.name, subcategory: item.subcategory ?? "", detailType: item.detailType ?? "" };
-                const isChanged = d.name !== item.name || d.subcategory !== (item.subcategory ?? "") || d.detailType !== (item.detailType ?? "");
+                const d = itemDrafts[item.id] ?? { name: item.name, subcategory: item.subcategory ?? "", detailType: item.detailType ?? "", subType: (item as any).subType ?? "" };
+                const isChanged = d.name !== item.name || d.subcategory !== (item.subcategory ?? "") || d.detailType !== (item.detailType ?? "") || d.subType !== ((item as any).subType ?? "");
                 return (
                   <div key={item.id}
                     className={`grid gap-2 px-3 py-2 items-center hover:bg-slate-50 ${selectedIds.has(item.id) ? "bg-brand-50/30" : ""} ${isChanged ? "bg-amber-50/50" : ""}`}
@@ -832,6 +837,14 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
                       list={`dl-detailtype-${categoryId}`}
                       data-testid={`input-item-type-${item.id}`}
                     />
+                    <input
+                      className="min-w-0 text-xs border border-slate-200 rounded px-1.5 py-1 w-full focus:outline-none focus:border-brand-400 bg-white"
+                      value={d.subType}
+                      onChange={e => patchDraft(item.id, { subType: e.target.value })}
+                      placeholder="e.g. Set Screw"
+                      list={`dl-subtype-${categoryId}`}
+                      data-testid={`input-item-subtype-${item.id}`}
+                    />
                     <div className="flex justify-center">
                       <StatusBadge status={item.status} />
                     </div>
@@ -848,12 +861,15 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
             )}
           </div>
 
-          {/* Datalists for Family and Type autocomplete — declared once, shared by all row inputs */}
+          {/* Datalists for Family, Type, and Subcategory autocomplete — declared once, shared by all row inputs */}
           <datalist id={`dl-subcategory-${categoryId}`}>
             {classOptions?.subcategories.map(s => <option key={s} value={s}>{s}</option>)}
           </datalist>
           <datalist id={`dl-detailtype-${categoryId}`}>
             {classOptions?.detailTypes.map(s => <option key={s} value={s}>{s}</option>)}
+          </datalist>
+          <datalist id={`dl-subtype-${categoryId}`}>
+            {classOptions?.subTypes.map(s => <option key={s} value={s}>{s}</option>)}
           </datalist>
 
           {/* Bulk actions */}

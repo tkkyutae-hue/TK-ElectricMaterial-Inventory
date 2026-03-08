@@ -82,7 +82,7 @@ export interface IStorage {
     page?: number;
     perPage?: number;
   }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }>;
-  getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[] }>;
+  getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1182,6 +1182,7 @@ export class DatabaseStorage implements IStorage {
       name: items.name,
       detailType: items.detailType,
       subcategory: items.subcategory,
+      subType: items.subType,
       baseItemName: items.baseItemName,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
@@ -1201,7 +1202,7 @@ export class DatabaseStorage implements IStorage {
 
     const counts: Record<string, number> = {};
     for (const i of filtered) {
-      const sc = extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
+      const sc = i.subType?.trim() || extractSubcategory(i.name || '', i.detailType, i.subcategory, i.baseItemName);
       if (sc) counts[sc] = (counts[sc] || 0) + 1;
     }
     const entries = Object.entries(counts).map(([name, count]) => ({ name, count }));
@@ -1226,9 +1227,9 @@ export class DatabaseStorage implements IStorage {
     return entries.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[] }> {
+  async getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }> {
     const rows = await db
-      .select({ subcategory: items.subcategory, detailType: items.detailType })
+      .select({ subcategory: items.subcategory, detailType: items.detailType, subType: items.subType })
       .from(items)
       .where(and(eq(items.categoryId, categoryId), eq(items.isActive, true)));
 
@@ -1238,8 +1239,11 @@ export class DatabaseStorage implements IStorage {
     const detailTypes = [...new Set(
       rows.map(r => r.detailType).filter((s): s is string => !!s && s.trim() !== '')
     )].sort();
+    const subTypes = [...new Set(
+      rows.map(r => r.subType).filter((s): s is string => !!s && s.trim() !== '')
+    )].sort();
 
-    return { subcategories, detailTypes };
+    return { subcategories, detailTypes, subTypes };
   }
 
   async getFieldItems(params: {
@@ -1276,7 +1280,7 @@ export class DatabaseStorage implements IStorage {
       const it = row.item as any;
       const famName = derivedFamily(it.subcategory, it.detailType, it.name || '', it.baseItemName);
       const typeName = derivedType(it.subcategory, it.detailType, it.baseItemName, it.name || '');
-      const sc = extractSubcategory(it.name || '', it.detailType, it.subcategory, it.baseItemName);
+      const sc = it.subType?.trim() || extractSubcategory(it.name || '', it.detailType, it.subcategory, it.baseItemName);
       return {
         ...row.item,
         category: row.category,

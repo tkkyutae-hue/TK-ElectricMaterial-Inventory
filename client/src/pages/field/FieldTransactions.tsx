@@ -13,12 +13,12 @@ const DATE_PRESETS = [
   { label: "Last 90 days", days: 90 },
 ];
 
-const TH = "text-xs font-semibold text-slate-400 uppercase tracking-wide py-2.5 px-2 whitespace-nowrap";
+const TH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest py-3 px-2 whitespace-nowrap";
 
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   if (!imageUrl) {
     return (
-      <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-md bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center flex-shrink-0">
         <ImageOff className="w-3.5 h-3.5 text-slate-300" />
       </div>
     );
@@ -27,10 +27,10 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
     <img
       src={imageUrl}
       alt={name}
-      className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+      className="w-8 h-8 rounded-md object-cover flex-shrink-0 ring-1 ring-slate-200"
       onError={e => {
         const p = e.currentTarget.parentElement;
-        if (p) p.innerHTML = '<div class="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+        if (p) p.innerHTML = '<div class="w-8 h-8 rounded-md bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
       }}
     />
   );
@@ -164,23 +164,23 @@ export default function FieldTransactions() {
       </div>
 
       {/* Table — no horizontal scroll */}
-      <div className="premium-card overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <Table className="w-full table-fixed">
           <colgroup>
-            <col style={{ width: "46px" }} />   {/* No. */}
-            <col style={{ width: "88px" }} />   {/* Type */}
-            <col style={{ width: "42px" }} />   {/* Photo */}
-            <col style={{ width: "44px" }} />   {/* Size */}
-            <col />                              {/* Item — flex */}
-            <col style={{ width: "40px" }} />   {/* Qty */}
-            <col style={{ width: "9%" }} />      {/* From */}
-            <col style={{ width: "9%" }} />      {/* To */}
-            <col style={{ width: "15%" }} />     {/* Project/PO */}
-            <col style={{ width: "9%" }} />      {/* Note */}
-            <col style={{ width: "118px" }} />  {/* Date */}
+            <col style={{ width: "46px" }} />
+            <col style={{ width: "92px" }} />
+            <col style={{ width: "42px" }} />
+            <col style={{ width: "44px" }} />
+            <col />
+            <col style={{ width: "44px" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "118px" }} />
           </colgroup>
           <TableHeader>
-            <TableRow className="bg-slate-50 border-b border-slate-200">
+            <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
               <TableHead className={`${TH} pl-4`}>No.</TableHead>
               <TableHead className={TH}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
@@ -194,7 +194,7 @@ export default function FieldTransactions() {
               <TableHead className={`${TH} pr-4`}>Date</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="divide-y divide-slate-100">
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">Loading…</TableCell>
@@ -210,72 +210,83 @@ export default function FieldTransactions() {
               const toLoc   = mx.destinationLocation;
               const project = mx.project;
 
-              const projectPoLabel = project
-                ? project.poNumber
-                  ? `${project.name} / ${project.poNumber}`
-                  : project.name
-                : "—";
+              const projectName = project?.name ?? null;
+              const projectPo   = project?.poNumber ?? null;
 
               return (
                 <TableRow
                   key={m.id}
-                  className="hover:bg-slate-50/60 transition-colors"
+                  className="group transition-colors duration-100 cursor-default"
+                  style={{ borderLeft: "3px solid transparent" }}
+                  onMouseEnter={e => (e.currentTarget.style.borderLeft = "3px solid #0A6B24")}
+                  onMouseLeave={e => (e.currentTarget.style.borderLeft = "3px solid transparent")}
                   data-testid={`field-tx-row-${m.id}`}
                 >
                   {/* No. */}
-                  <TableCell className="py-2.5 pl-4 font-mono text-xs text-slate-400">
+                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-300 group-hover:text-slate-400 transition-colors">
                     #{m.id}
                   </TableCell>
 
                   {/* Type */}
-                  <TableCell className="py-2.5 px-2">
+                  <TableCell className="py-3 px-2">
                     <TransactionTypeBadge type={m.movementType} />
                   </TableCell>
 
                   {/* Photo */}
-                  <TableCell className="py-2.5 px-2">
+                  <TableCell className="py-3 px-2">
                     <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
                   </TableCell>
 
                   {/* Size */}
-                  <TableCell className="py-2.5 px-2 text-xs text-slate-600 font-medium">
-                    {item?.sizeLabel || "—"}
+                  <TableCell className="py-3 px-2 text-xs font-semibold text-slate-500">
+                    {item?.sizeLabel || <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Item — name only, no SKU */}
-                  <TableCell className="py-2.5 px-2">
-                    <p className="text-sm font-medium text-slate-800 leading-tight truncate">
+                  {/* Item */}
+                  <TableCell className="py-3 px-2">
+                    <p className="text-sm font-semibold text-slate-800 leading-tight truncate group-hover:text-slate-900 transition-colors">
                       {item?.name ?? `#${m.itemId}`}
                     </p>
                   </TableCell>
 
                   {/* Qty */}
-                  <TableCell className="py-2.5 px-2 text-right font-semibold text-slate-900 tabular-nums text-sm">
-                    {m.quantity}
+                  <TableCell className="py-3 px-2 text-right tabular-nums">
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color: m.quantity > 1 ? "#0A6B24" : "#64748B" }}
+                    >
+                      {m.quantity}
+                    </span>
                   </TableCell>
 
                   {/* From */}
-                  <TableCell className="py-2.5 px-2 text-xs text-slate-600 truncate">
-                    {fromLoc?.name ?? "—"}
+                  <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
+                    {fromLoc?.name ?? <span className="text-slate-300">—</span>}
                   </TableCell>
 
                   {/* To */}
-                  <TableCell className="py-2.5 px-2 text-xs text-slate-600 truncate">
-                    {toLoc?.name ?? "—"}
+                  <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
+                    {toLoc?.name ?? <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Project / PO */}
-                  <TableCell className="py-2.5 px-2 text-xs text-slate-700 font-medium truncate">
-                    {projectPoLabel}
+                  {/* Project / PO — split visual */}
+                  <TableCell className="py-3 px-2 truncate">
+                    {projectName ? (
+                      <span className="text-xs font-semibold text-slate-700">{projectName}</span>
+                    ) : null}
+                    {projectPo ? (
+                      <span className="text-xs text-slate-400 ml-1">/ {projectPo}</span>
+                    ) : null}
+                    {!projectName && !projectPo && <span className="text-slate-300 text-xs">—</span>}
                   </TableCell>
 
                   {/* Note */}
-                  <TableCell className="py-2.5 px-2 text-xs text-slate-500 truncate">
-                    {m.note || "—"}
+                  <TableCell className="py-3 px-2 text-xs text-slate-400 truncate">
+                    {m.note || <span className="text-slate-300">—</span>}
                   </TableCell>
 
                   {/* Date */}
-                  <TableCell className="py-2.5 px-2 pr-4 text-xs text-slate-500 whitespace-nowrap">
+                  <TableCell className="py-3 px-2 pr-4 text-xs font-medium text-slate-600 whitespace-nowrap group-hover:text-slate-800 transition-colors">
                     {m.createdAt ? format(new Date(m.createdAt), "MMM d, yyyy HH:mm") : "—"}
                   </TableCell>
                 </TableRow>
@@ -284,8 +295,8 @@ export default function FieldTransactions() {
           </TableBody>
         </Table>
         {filtered.length > 0 && (
-          <div className="px-4 py-2 border-t border-slate-100 text-xs text-slate-400">
-            Showing {filtered.length} transaction{filtered.length !== 1 ? "s" : ""}
+          <div className="px-4 py-2.5 border-t border-slate-100 text-xs text-slate-400 bg-slate-50/50">
+            Showing <span className="font-semibold text-slate-600">{filtered.length}</span> transaction{filtered.length !== 1 ? "s" : ""}
           </div>
         )}
       </div>

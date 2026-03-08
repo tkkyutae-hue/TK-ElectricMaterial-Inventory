@@ -1315,13 +1315,16 @@ export class DatabaseStorage implements IStorage {
       statusFiltered = withStatus.filter(i => i.status === params.status);
     }
 
-    // Sort by sizeSortValue (numeric wire/conduit order) then by name alphabetically.
-    // sizeSortValue is set correctly in the DB for all cable/wire items using AWG order.
-    // Items with no size (sizeSortValue=0 or null) fall back to name-only sort.
+    // Sort by sizeSortValue (correct electrical wire order) then by name alphabetically.
+    // When sizeSortValue=0 (unset), fall back to parseSizeLabelForSort so that any
+    // wire-sized items (AWG, KCMIL, mixed ranges) still sort correctly even if the
+    // DB value wasn't precomputed.
     statusFiltered.sort((a, b) => {
-      const aSize = (a as any).sizeSortValue ?? 0;
-      const bSize = (b as any).sizeSortValue ?? 0;
-      if (aSize !== bSize) return aSize - bSize;
+      const aDbVal = (a as any).sizeSortValue ?? 0;
+      const bDbVal = (b as any).sizeSortValue ?? 0;
+      const aEff = aDbVal !== 0 ? aDbVal : parseSizeLabelForSort((a as any).sizeLabel || '');
+      const bEff = bDbVal !== 0 ? bDbVal : parseSizeLabelForSort((b as any).sizeLabel || '');
+      if (aEff !== bEff) return aEff - bEff;
       return (a.name || '').localeCompare(b.name || '');
     });
 
@@ -1378,18 +1381,61 @@ function parseSizeLabelForSort(label: string): number {
   if (!label) return 999999;
   const s = label.trim();
 
-  // Known wire size label — return exact map value for perfect alignment with DB
+  // Direct lookup (exact known wire size like "#12", "1/0", "250 KCMIL")
   if (WIRE_SORT_MAP[s] !== undefined) return WIRE_SORT_MAP[s];
 
-  // Cable: starts with # or contains KCMIL or is an /0 fraction (1/0, 2/0 etc.)
+  // ── Mixed wire range patterns (sort by primary / largest conductor) ──────
+
+  // Pattern: N/0-M  or  N/0-MAWG  (e.g. "1/0-14AWG", "2/0-14AWG", "4/0-14")
+  const slashORange = s.match(/^(\d+\/0)-/);
+  if (slashORange) {
+    const v = WIRE_SORT_MAP[slashORange[1]];
+    if (v !== undefined) return v;
+  }
+
+  // Pattern: NNNMCM-MAWG  (e.g. "250MCM-6AWG", "500MCM-4AWG", "600MCM-2AWG")
+  const mcmRange = s.match(/^(\d+)MCM-/i);
+  if (mcmRange) {
+    const key = `${mcmRange[1]} KCMIL`;
+    if (WIRE_SORT_MAP[key] !== undefined) return WIRE_SORT_MAP[key];
+    // Extrapolate for sizes outside the map (e.g. 800 MCM)
+    return 2000 + (parseInt(mcmRange[1]) - 750) / 5;
+  }
+
+  // Pattern: N-MMMKCMIL or N-MMMCM (e.g. "1000-500MCM", "800-300MCM")
+  const kcmilSuffix = s.match(/^(\d+)-\d+(MCM|KCMIL)/i);
+  if (kcmilSuffix) {
+    const key = `${kcmilSuffix[1]} KCMIL`;
+    if (WIRE_SORT_MAP[key] !== undefined) return WIRE_SORT_MAP[key];
+    return 2000 + (parseInt(kcmilSuffix[1]) - 750) / 5;
+  }
+
+  // Pattern: N-MAWG  or  N-M  where N is AWG gauge (e.g. "2-14AWG", "4-14AWG", "2-14")
+  // Primary conductor = first number (#N)
+  const awgRange = s.match(/^(\d+)-(\d+)(AWG)?$/i);
+  if (awgRange) {
+    const first = parseInt(awgRange[1]);
+    if (first >= 200) {
+      // Large first number → KCMIL range like "250-6"
+      const key = `${first} KCMIL`;
+      if (WIRE_SORT_MAP[key] !== undefined) return WIRE_SORT_MAP[key];
+      return 2000 + (first - 750) / 5;
+    }
+    // Small first number → AWG gauge like "2-14" (primary is #2)
+    const v = WIRE_SORT_MAP[`#${first}`];
+    if (v !== undefined) return v;
+  }
+
+  // ── Simple wire size patterns ─────────────────────────────────────────────
+
+  // Starts with # (AWG gauge), contains KCMIL, or plain N/0
   if (s.startsWith('#') || /kcmil/i.test(s) || /^\d+\/0$/.test(s)) {
     const core = s.replace(/^#/, '').replace(/\s*kcmil\s*/i, '').trim();
     const idx = CABLE_SIZE_ORDER.indexOf(core);
-    // Index-based: multiply by 100 to keep same scale as WIRE_SORT_MAP values
     return idx >= 0 ? (idx + 1) * 100 : 9999;
   }
 
-  // Conduit / inch-based size: parse to decimal inches * 1000 to match DB sizeSortValue
+  // ── Conduit / inch-based size ─────────────────────────────────────────────
   const clean = s.replace(/['"]/g, '').trim();
   // compound fraction: 1-1/4, 1-1/2
   const compound = clean.match(/^(\d+)[-\s](\d+)\/(\d+)$/);

@@ -24,7 +24,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
 
       {/* Top header */}
       <header
-        className="relative z-10 h-14 flex items-center justify-between px-5 flex-shrink-0"
+        className="relative z-10 flex items-center justify-between px-6 py-4 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
         {/* Left: logo + Field Mode pill */}

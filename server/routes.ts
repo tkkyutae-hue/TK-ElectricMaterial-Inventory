@@ -733,6 +733,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/admin/users/:id", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.status !== "rejected") return res.status(400).json({ message: "Only rejected users can be deleted" });
+      await authStorage.deleteUser(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
   app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
     const ALLOWED = ["categories", "locations", "suppliers", "projects", "items", "inventory_movements", "inventory_location_balances", "item_groups", "users"];

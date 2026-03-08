@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, Users } from "lucide-react";
+import { CheckCircle2, XCircle, Users, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/models/auth";
 
@@ -20,6 +20,7 @@ export default function UserApprovals() {
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("pending");
   const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -51,6 +52,19 @@ export default function UserApprovals() {
       toast({ title: "User rejected" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/admin/users/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setConfirmDeleteId(null);
+      toast({ title: "User deleted", description: "The account has been permanently removed." });
+    },
+    onError: (err: any) => {
+      setConfirmDeleteId(null);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
   });
 
   const filtered = users.filter(u => u.status === tab);
@@ -219,18 +233,51 @@ export default function UserApprovals() {
                     </>
                   )}
 
-                  {/* Rejected: re-activate */}
+                  {/* Rejected: re-activate + delete */}
                   {tab === "rejected" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => patchMutation.mutate({ id: u.id, data: { status: "active" } })}
-                      disabled={patchMutation.isPending}
-                      className="text-green-600 border-green-200 hover:bg-green-50 h-8"
-                      data-testid={`btn-reactivate-${u.id}`}
-                    >
-                      Re-activate
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => patchMutation.mutate({ id: u.id, data: { status: "active" } })}
+                        disabled={patchMutation.isPending}
+                        className="text-green-600 border-green-200 hover:bg-green-50 h-8"
+                        data-testid={`btn-reactivate-${u.id}`}
+                      >
+                        Re-activate
+                      </Button>
+                      {confirmDeleteId === u.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => deleteMutation.mutate(u.id)}
+                            disabled={deleteMutation.isPending}
+                            className="text-[11px] font-semibold text-red-600 hover:text-red-800 whitespace-nowrap"
+                            data-testid={`btn-confirm-delete-${u.id}`}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-[11px] text-slate-400 hover:text-slate-600"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setConfirmDeleteId(u.id)}
+                          className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 p-0"
+                          data-testid={`btn-delete-${u.id}`}
+                          title="Delete user permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

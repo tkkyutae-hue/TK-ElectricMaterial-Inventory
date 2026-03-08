@@ -11,6 +11,7 @@ export interface IAuthStorage {
   updateUserStatus(id: string, status: string): Promise<User | undefined>;
   updateUser(id: string, data: Partial<{ role: string; status: string; name: string }>): Promise<User | undefined>;
   updateLastLogin(id: string): Promise<void>;
+  deleteUser(id: string): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -80,6 +81,10 @@ class AuthStorage implements IAuthStorage {
       .update(users)
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id));
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 }
 

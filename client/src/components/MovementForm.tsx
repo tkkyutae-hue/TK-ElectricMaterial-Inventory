@@ -703,6 +703,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               return (
                 <div
                   key={row.rowId}
+                  style={{ position: 'relative', zIndex: itemRows.length - idx }}
                   className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
                   data-testid={`item-row-${idx}`}
                 >
@@ -731,19 +732,20 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                       <input
-                        type="number"
-                        min={0}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={row.quantity}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
+                          const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
                           updateRow(row.rowId, { quantity: isNaN(val) || val < 0 ? 0 : val });
                         }}
                         onBlur={(e) => {
                           const val = parseInt(e.target.value, 10);
                           if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
                         }}
-                        style={{ textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0, MozAppearance: "textfield" } as React.CSSProperties}
-                        className="h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        style={{ textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0 }}
+                        className="h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300"
                         data-testid={`input-quantity-${idx}`}
                       />
                       <button

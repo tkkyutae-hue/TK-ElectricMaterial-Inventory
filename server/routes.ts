@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { derivedFamily, derivedType, extractSubcategory } from "./storage";
+import { classifyInventoryItem } from "../shared/classifyItem";
 import { z } from "zod";
 import { registerAuthRoutes } from "./replit_integrations/auth";
 import { isAuthenticated } from "./replit_integrations/auth/replitAuth";
@@ -243,12 +245,56 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(data);
   });
 
+  // ── Auto-classify helper ──────────────────────────────────────────────────
+  async function autoClassify(name: string, baseItemName: string | null | undefined, categoryId: number | undefined): Promise<{ subcategory?: string; detailType?: string }> {
+    if (!categoryId) return {};
+    const cats = await storage.getCategories();
+    const cat = cats.find(c => c.id === categoryId);
+    const categoryCode = cat?.code || '';
+    const result = classifyInventoryItem({ name, baseItemName, categoryCode });
+    return {
+      subcategory: result.subcategory ?? undefined,
+      detailType: result.detailType ?? undefined,
+    };
+  }
+
+  // ── Classify preview endpoint ──────────────────────────────────────────────
+  app.post("/api/items/classify", isAuthenticated, async (req, res) => {
+    try {
+      const { name = '', baseItemName, categoryId, sizeLabel } = req.body;
+      const cats = await storage.getCategories();
+      const cat = cats.find(c => c.id === Number(categoryId));
+      const categoryCode = cat?.code || '';
+
+      const classification = classifyInventoryItem({ name, baseItemName, categoryCode, sizeLabel });
+      const { subcategory, detailType } = classification;
+
+      const family    = derivedFamily(subcategory, detailType, name, baseItemName);
+      const type      = derivedType(subcategory, detailType, baseItemName, name);
+      const subcatDisp = extractSubcategory(name, detailType, subcategory, baseItemName);
+
+      res.json({ subcategory, detailType, family, type, subcategoryDisplay: subcatDisp, categoryCode });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.post("/api/items", isAuthenticated, async (req, res) => {
     try {
       const { imageUrl, ...rest } = req.body;
+      const catId = rest.categoryId ? Number(rest.categoryId) : undefined;
+
+      // Auto-classify subcategory/detailType when not explicitly provided
+      const autoFields = (!rest.subcategory || !rest.detailType)
+        ? await autoClassify(rest.name || '', rest.baseItemName, catId)
+        : {};
+
       const body = {
         ...rest,
-        categoryId: rest.categoryId ? Number(rest.categoryId) : undefined,
+        ...autoFields,
+        subcategory: rest.subcategory || autoFields.subcategory || null,
+        detailType: rest.detailType || autoFields.detailType || null,
+        categoryId: catId,
         primaryLocationId: rest.primaryLocationId ? Number(rest.primaryLocationId) : undefined,
         supplierId: rest.supplierId ? Number(rest.supplierId) : undefined,
         quantityOnHand: Number(rest.quantityOnHand ?? 0),

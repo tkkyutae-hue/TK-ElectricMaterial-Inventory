@@ -52,18 +52,19 @@ export default function Login() {
       <div className="w-full max-w-sm px-6 relative z-10">
 
         {/* Logo + Brand */}
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-8">
           <img
             src={tkLogo}
             alt="TK Electric"
-            className="h-20 w-auto object-contain mb-4"
+            className="h-32 w-auto object-contain"
             style={{ filter: "brightness(0) invert(1)" }}
             data-testid="img-tk-logo"
           />
-          <p className="text-sm font-medium" style={{ color: "#4D7A61" }}>
-            TK Electric Material Inventory
-          </p>
         </div>
+
+        <p className="text-sm font-medium text-center mb-5" style={{ color: "#4D7A61" }}>
+          TK Electric Material Inventory
+        </p>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">

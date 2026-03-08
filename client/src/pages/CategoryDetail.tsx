@@ -731,8 +731,8 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
           {/* Item classification table */}
           <div className="border border-slate-200 rounded-xl overflow-hidden">
             {/* Table header */}
-            <div className="grid gap-1 px-3 py-2 bg-slate-50 border-b border-slate-200"
-              style={{ gridTemplateColumns: "1.5rem 5.5rem 1fr 6.5rem 6.5rem 4.5rem" }}>
+            <div className="grid gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200"
+              style={{ gridTemplateColumns: "1.5rem 5.5rem 1.5fr 1fr 1fr 7rem" }}>
               <div className="flex items-center">
                 <input type="checkbox" checked={selectedIds.size === group.items.length && group.items.length > 0}
                   onChange={toggleAll} className="rounded border-slate-300" data-testid="checkbox-select-all" />
@@ -741,7 +741,7 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Name</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Family</span>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Type</span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center">Status</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide self-center text-right">Status</span>
             </div>
 
             {/* Item rows */}
@@ -751,8 +751,8 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
                 const isChanged = d.name !== item.name || d.subcategory !== (item.subcategory ?? "") || d.detailType !== (item.detailType ?? "");
                 return (
                   <div key={item.id}
-                    className={`grid gap-1 px-3 py-2 items-center hover:bg-slate-50 ${selectedIds.has(item.id) ? "bg-brand-50/30" : ""} ${isChanged ? "bg-amber-50/50" : ""}`}
-                    style={{ gridTemplateColumns: "1.5rem 5.5rem 1fr 6.5rem 6.5rem 4.5rem" }}
+                    className={`grid gap-2 px-3 py-2 items-center hover:bg-slate-50 ${selectedIds.has(item.id) ? "bg-brand-50/30" : ""} ${isChanged ? "bg-amber-50/50" : ""}`}
+                    style={{ gridTemplateColumns: "1.5rem 5.5rem 1.5fr 1fr 1fr 7rem" }}
                     data-testid={`row-family-item-${item.id}`}>
                     <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleItem(item.id)}
                       className="rounded border-slate-300" onClick={e => e.stopPropagation()} />

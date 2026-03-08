@@ -11,32 +11,53 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const isFieldHome = location === "/field";
 
   return (
-    <div className="min-h-screen flex flex-col font-sans" style={{ background: "#F0F2F5" }}>
-      {/* Top header */}
-      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 flex-shrink-0 shadow-sm">
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: "#0E1512" }}>
 
-        {/* Left: logo + company + FIELD pill */}
+      {/* Subtle radial glow */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background: "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(10,107,36,0.16) 0%, transparent 70%)",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Top header */}
+      <header
+        className="relative z-10 h-14 flex items-center justify-between px-5 flex-shrink-0"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+      >
+        {/* Left: logo + Field Mode pill */}
         <div className="flex items-center gap-3 min-w-0">
-          <img src={tkLogo} alt="TK Electric" className="h-7 w-auto object-contain flex-shrink-0" />
-          <div className="hidden sm:block leading-none min-w-0">
-            <span className="font-display font-bold text-sm text-slate-900 block">TK Electric</span>
-            <span className="text-[10px] text-slate-400">VoltStock</span>
-          </div>
-          {/* FIELD pill — matches mockup */}
-          <div className="flex items-center gap-1.5 bg-[#EAF7EE] border border-[#b6dfc4] text-[#0A6B24] rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide flex-shrink-0">
+          <img
+            src={tkLogo}
+            alt="TK Electric"
+            className="h-8 w-auto object-contain flex-shrink-0"
+            style={{ filter: "brightness(0) invert(1)" }}
+          />
+          {/* Field Mode pill */}
+          <div
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold tracking-wide flex-shrink-0"
+            style={{
+              background: "rgba(10,107,36,0.25)",
+              border: "1px solid rgba(61,214,140,0.25)",
+              color: "#3DD68C",
+            }}
+          >
             <HardHat className="w-3.5 h-3.5" />
-            <span>Field</span>
+            <span>Field Mode</span>
           </div>
         </div>
 
-        {/* Right: Back (if not on field home) + Home button + user avatar */}
+        {/* Right: Back + Home + user avatar */}
         <div className="flex items-center gap-1">
           {!isFieldHome && (
             <Link href="/field">
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-8 h-8 text-slate-500 hover:text-[#0A6B24] hover:bg-[#EAF7EE]"
+                className="w-8 h-8"
+                style={{ color: "rgba(255,255,255,0.40)" }}
                 data-testid="btn-field-back"
                 title="Back to Field Actions"
               >
@@ -48,7 +69,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="w-8 h-8 text-slate-500 hover:text-[#0A6B24] hover:bg-[#EAF7EE]"
+              className="w-8 h-8"
+              style={{ color: "rgba(255,255,255,0.40)" }}
               data-testid="btn-field-home"
               title="Mode Select"
             >
@@ -57,15 +79,21 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* User avatar */}
-          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center ml-1 flex-shrink-0">
-            <span className="text-xs font-bold text-slate-600">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center ml-1 flex-shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
+          >
+            <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>
               {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto flex flex-col">
+      <main className="relative z-10 flex-1 overflow-y-auto flex flex-col">
         <div className={`flex-1 flex flex-col w-full mx-auto px-4 md:px-6 ${
           location.startsWith("/field/inventory") || location.startsWith("/field/transactions")
             ? "max-w-7xl"

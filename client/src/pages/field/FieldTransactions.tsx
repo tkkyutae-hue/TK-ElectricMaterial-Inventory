@@ -109,12 +109,12 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* Filters — all 4 in one row */}
-      <div className="flex flex-wrap gap-2 items-center">
+      {/* Filters — grid: From | To | Project | Date range */}
+      <div className="grid grid-cols-[1fr_1fr_1fr_1.6fr] gap-2 items-center">
         {/* From */}
         <Select value={fromFilter} onValueChange={setFrom}>
-          <SelectTrigger className="flex-1 min-w-[110px] h-8 text-xs" data-testid="field-tx-from-filter">
-            <span className="flex items-center gap-1 min-w-0">
+          <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-from-filter">
+            <span className="flex items-center gap-1 min-w-0 overflow-hidden">
               <Navigation className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All From" />
             </span>
@@ -129,8 +129,8 @@ export default function FieldTransactions() {
 
         {/* To */}
         <Select value={toFilter} onValueChange={setTo}>
-          <SelectTrigger className="flex-1 min-w-[110px] h-8 text-xs" data-testid="field-tx-to-filter">
-            <span className="flex items-center gap-1 min-w-0">
+          <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-to-filter">
+            <span className="flex items-center gap-1 min-w-0 overflow-hidden">
               <ArrowRightLeft className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All To" />
             </span>
@@ -145,8 +145,8 @@ export default function FieldTransactions() {
 
         {/* Project / PO */}
         <Select value={projectFilter} onValueChange={setProj}>
-          <SelectTrigger className="flex-1 min-w-[130px] h-8 text-xs" data-testid="field-tx-project-filter">
-            <span className="flex items-center gap-1 min-w-0">
+          <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-project-filter">
+            <span className="flex items-center gap-1 min-w-0 overflow-hidden">
               <FolderKanban className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All Projects" />
             </span>
@@ -159,27 +159,27 @@ export default function FieldTransactions() {
           </SelectContent>
         </Select>
 
-        {/* Date range — inline */}
-        <div className="flex items-center gap-1 flex-1 min-w-[240px]">
-          <div className="relative flex-1">
+        {/* Date range */}
+        <div className="flex items-center gap-1">
+          <div className="relative flex-1 min-w-0">
             <CalendarDays className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
               data-testid="field-tx-date-from"
-              className="w-full h-8 pl-6 pr-2 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+              className="w-full h-8 pl-6 pr-1 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
             />
           </div>
           <span className="text-slate-400 text-xs select-none flex-shrink-0">—</span>
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <CalendarDays className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
               data-testid="field-tx-date-to"
-              className="w-full h-8 pl-6 pr-2 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+              className="w-full h-8 pl-6 pr-1 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
             />
           </div>
           {(dateFrom || dateTo) && (
@@ -212,7 +212,7 @@ export default function FieldTransactions() {
           </colgroup>
           <TableHeader>
             <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
-              <TableHead className={`${TH} pl-4`}>No.</TableHead>
+              <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
               <TableHead className={`${TH} text-center`}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
               <TableHead className={TH}>Size</TableHead>
@@ -254,13 +254,15 @@ export default function FieldTransactions() {
                   data-testid={`field-tx-row-${m.id}`}
                 >
                   {/* No. */}
-                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors">
+                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors text-center">
                     {idx + 1}
                   </TableCell>
 
                   {/* Type */}
-                  <TableCell className="py-3 px-2 text-center">
-                    <TransactionTypeBadge type={m.movementType} />
+                  <TableCell className="py-3 px-1 text-center">
+                    <span className="inline-block scale-[0.85] origin-center">
+                      <TransactionTypeBadge type={m.movementType} />
+                    </span>
                   </TableCell>
 
                   {/* Photo */}

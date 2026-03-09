@@ -6,7 +6,6 @@ import { ItemStatusBadge } from "@/components/StatusBadge";
 import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 
@@ -247,75 +246,116 @@ export default function Inventory() {
         </div>
 
         <div className="overflow-x-auto">
-          <Table style={{ minWidth: 900 }}>
-            <TableHeader className="bg-slate-50/80">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[120px] whitespace-nowrap">SKU</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[52px]">Photo</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[80px] whitespace-nowrap">Size</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[150px]">Category</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[110px] text-right whitespace-nowrap">Qty / Unit</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px] whitespace-nowrap">Location</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[110px] text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 900 }}>
+            <colgroup>
+              <col style={{ width: "120px" }} /> {/* SKU */}
+              <col style={{ width: "52px" }} />  {/* Photo */}
+              <col style={{ width: "80px" }} />  {/* Size */}
+              <col />                             {/* Item — widest */}
+              <col style={{ width: "140px" }} /> {/* Category */}
+              <col style={{ width: "110px" }} /> {/* Qty/Unit */}
+              <col style={{ width: "130px" }} /> {/* Location */}
+              <col style={{ width: "110px" }} /> {/* Status */}
+            </colgroup>
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100">
+                {[
+                  { label: "SKU",       align: "left"   },
+                  { label: "Photo",     align: "left"   },
+                  { label: "Size",      align: "left"   },
+                  { label: "Item",      align: "left"   },
+                  { label: "Category",  align: "left"   },
+                  { label: "Qty / Unit",align: "right"  },
+                  { label: "Location",  align: "left"   },
+                  { label: "Status",    align: "center" },
+                ].map(col => (
+                  <th
+                    key={col.label}
+                    className={`px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"}`}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
               {isLoading ? (
-                [1,2,3,4,5,6,7].map(i => (
-                  <TableRow key={i}>
+                Array.from({ length: 7 }).map((_, i) => (
+                  <tr key={i} className="border-b border-slate-50">
                     {[1,2,3,4,5,6,7,8].map(j => (
-                      <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse w-full max-w-[120px]"></div></TableCell>
+                      <td key={j} className="px-3 py-3 align-middle">
+                        <div className="h-4 bg-slate-100 animate-pulse rounded" />
+                      </td>
                     ))}
-                  </TableRow>
+                  </tr>
                 ))
               ) : items?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <tr>
+                  <td colSpan={8} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-900">No items found</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters.</p>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : (
                 pageItems.map((item) => (
-                  <TableRow
+                  <tr
                     key={item.id}
-                    className={`hover:bg-slate-50/60 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                    className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                     data-testid={`row-item-${item.id}`}
                   >
-                    <TableCell className="font-mono text-xs text-slate-500 font-medium whitespace-nowrap">{item.sku}</TableCell>
-                    <TableCell className="pr-0">
-                      <div className="w-9 h-9 rounded-md overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                    {/* SKU */}
+                    <td className="px-3 py-3 align-middle">
+                      <span className="font-mono text-[11px] text-slate-500 whitespace-nowrap">{item.sku}</span>
+                    </td>
+                    {/* Photo */}
+                    <td className="px-3 py-3 align-middle">
+                      <div className="w-9 h-9 rounded-md overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="w-4 h-4 text-slate-300" />
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-slate-600 text-sm whitespace-nowrap">{(item as any).sizeLabel || "—"}</TableCell>
-                    <TableCell>
+                    </td>
+                    {/* Size */}
+                    <td className="px-3 py-3 align-middle">
+                      <span className="text-xs font-medium text-slate-700 whitespace-nowrap">{(item as any).sizeLabel || "—"}</span>
+                    </td>
+                    {/* Item */}
+                    <td className="px-3 py-3 align-middle">
                       <Link
                         href={`/inventory/${item.id}`}
-                        className="font-semibold text-slate-900 hover:text-brand-600 hover:underline transition-colors text-sm"
+                        className="text-sm font-semibold text-slate-900 hover:text-brand-600 hover:underline transition-colors leading-snug"
                         data-testid={`link-item-name-${item.id}`}
                       >
                         {item.name}
                       </Link>
-                    </TableCell>
-                    <TableCell className="text-slate-500 text-xs leading-snug">{item.category?.name || "—"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
+                    </td>
+                    {/* Category */}
+                    <td className="px-3 py-3 align-middle">
+                      <span className="text-xs text-slate-500 leading-snug">{item.category?.name || "—"}</span>
+                    </td>
+                    {/* Qty / Unit */}
+                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
+                      <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
                       <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
-                    </TableCell>
-                    <TableCell className="text-slate-500 text-sm whitespace-nowrap">{item.location?.name || "—"}</TableCell>
-                    <TableCell className="text-center"><ItemStatusBadge status={item.status} /></TableCell>
-                  </TableRow>
+                    </td>
+                    {/* Location */}
+                    <td className="px-3 py-3 align-middle">
+                      <span className="text-xs text-slate-500 whitespace-nowrap">{item.location?.name || "—"}</span>
+                    </td>
+                    {/* Status */}
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center">
+                        <ItemStatusBadge status={item.status} />
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
 
         {/* Footer: count + pagination */}

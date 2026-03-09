@@ -14,7 +14,6 @@ import {
   Shield,
   Users,
   Download,
-  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -181,25 +180,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-slate-500 hover:text-slate-800"
-              onClick={() => window.history.back()}
-              data-testid="btn-header-back"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Back</span>
-            </Button>
             <Link href="/home">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-1.5 text-slate-600 border-slate-200"
+                className="gap-1.5 text-slate-600"
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Home</span>
+                <span className="hidden sm:inline">Mode Select</span>
               </Button>
             </Link>
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">

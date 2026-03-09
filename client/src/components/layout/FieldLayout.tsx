@@ -93,7 +93,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
               data-testid="btn-field-home"
             >
               <Home className="w-3.5 h-3.5" />
-              <span>Home</span>
+              <span>Mode Select</span>
             </Button>
           </Link>
 

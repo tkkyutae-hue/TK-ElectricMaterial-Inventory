@@ -138,62 +138,19 @@ export default function FieldTransactions() {
     }
   }
 
-  const COLS = selectMode ? 12 : 11;
+  const COLS = selectMode ? 13 : 12;
 
   return (
     <div className="space-y-4 pt-5 pb-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <ClipboardList className="w-5 h-5 text-brand-700" />
-            <h1 className="text-2xl font-display font-bold text-slate-900">Transactions</h1>
-          </div>
-          <p className="text-slate-500 text-sm">
-            {selectMode ? `${selectedIds.size} selected` : "View-only transaction history."}
-          </p>
+      <div>
+        <div className="flex items-center gap-2 mb-0.5">
+          <ClipboardList className="w-5 h-5 text-brand-700" />
+          <h1 className="text-2xl font-display font-bold text-slate-900">Transactions</h1>
         </div>
-        {canDelete && (
-          <div className="flex items-center gap-2 shrink-0 mt-1">
-            {selectMode ? (
-              <>
-                {selectedIds.size > 0 && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={() => setConfirmOpen(true)}
-                    data-testid="button-delete-selected"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete ({selectedIds.size})
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={exitSelectMode}
-                  data-testid="button-cancel-select"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => setSelectMode(true)}
-                data-testid="button-select-mode"
-              >
-                <CheckSquare className="w-3.5 h-3.5" />
-                Select
-              </Button>
-            )}
-          </div>
-        )}
+        <p className="text-slate-500 text-sm">
+          {selectMode ? `${selectedIds.size} selected` : "View-only transaction history."}
+        </p>
       </div>
 
       {/* Filters row 1: search */}

@@ -1208,24 +1208,27 @@ export default function CategoryDetail() {
       </div>
 
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden shadow-lg bg-slate-900" style={{ height: "200px" }}>
-        {/* Blurred background fill */}
+      <div className="relative rounded-2xl overflow-hidden shadow-xl bg-[#16202e]" style={{ height: "210px" }}>
+        {/* Blurred ambient fill */}
         {category.imageUrl && (
-          <img src={category.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+          <img src={category.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-70 saturate-200 pointer-events-none" />
         )}
-        {/* Main image */}
+        {/* Primary sharp image */}
         {category.imageUrl ? (
           <img src={category.imageUrl} alt={category.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
             onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
         ) : null}
         <div className={`${category.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradientClass}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <Link href="/inventory" className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4" />Back to Inventory
+        {/* Left vignette for text area contrast */}
+        <div className="absolute inset-0 z-20 bg-gradient-to-r from-black/70 via-black/20 to-transparent pointer-events-none" />
+        {/* Bottom gradient for legibility */}
+        <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 z-30 p-6">
+          <Link href="/inventory" className="inline-flex items-center gap-1.5 text-white/65 hover:text-white text-xs font-medium mb-2 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />Back to Inventory
           </Link>
-          <h1 className="text-2xl font-display font-bold text-white">{category.name}</h1>
-          {category.description && <p className="text-white/70 text-sm mt-0.5 max-w-2xl">{category.description}</p>}
+          <h1 className="text-2xl font-display font-bold text-white" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.6)" }}>{category.name}</h1>
+          {category.description && <p className="text-white/65 text-sm mt-1 max-w-2xl leading-relaxed">{category.description}</p>}
         </div>
       </div>
 

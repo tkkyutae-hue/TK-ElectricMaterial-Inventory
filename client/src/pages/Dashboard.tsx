@@ -297,15 +297,15 @@ export default function Dashboard() {
                     className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-brand-300 transition-all hover:shadow-md"
                     data-testid={`card-category-dash-${cat.id}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-[#16202e]">
                       {cat.imageUrl && (
-                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
                       )}
                       {cat.imageUrl ? (
                         <img
                           src={cat.imageUrl}
                           alt={cat.name}
-                          className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-105 transition-transform duration-200"
+                          className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-[1.04] transition-transform duration-500 ease-out"
                           onError={(e) => {
                             const t = e.currentTarget;
                             t.style.display = "none";
@@ -315,9 +315,9 @@ export default function Dashboard() {
                         />
                       ) : null}
                       <div className={`${cat.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
                       {hasIssue && (
-                        <div className="absolute top-1.5 right-1.5">
+                        <div className="absolute top-1.5 right-1.5 z-30">
                           {cat.outOfStockCount > 0
                             ? <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center border border-white shadow" />
                             : <span className="w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center border border-white shadow" />}

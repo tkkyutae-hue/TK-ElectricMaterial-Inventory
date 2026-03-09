@@ -41,19 +41,24 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
   return (
     <Link href={`/inventory/category/${cat.id}`}>
       <div
-        className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+        className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-200 hover:-translate-y-0.5"
         data-testid={`card-category-${cat.id}`}
       >
-        <div className="relative aspect-[16/7] overflow-hidden bg-slate-900">
-          {/* Blurred background fill */}
+        <div className="relative aspect-[16/8] overflow-hidden bg-[#16202e]">
+          {/* Blurred ambient fill — hides letterbox bars */}
           {cat.imageUrl && (
-            <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+            <img
+              src={cat.imageUrl}
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none"
+            />
           )}
+          {/* Primary sharp image */}
           {cat.imageUrl ? (
             <img
               src={cat.imageUrl}
               alt={cat.name}
-              className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-[1.04] transition-transform duration-500 ease-out"
               onError={(e) => {
                 const t = e.currentTarget;
                 t.style.display = "none";
@@ -63,10 +68,20 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
             />
           ) : null}
           <div className={`fallback-grad ${cat.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradient}`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
-            <p className="text-white font-semibold text-sm leading-tight drop-shadow">{cat.name}</p>
+          {/* Gradient for text legibility */}
+          <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+          {/* Bottom text */}
+          <div className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3 pt-6">
+            <p className="text-white font-semibold text-sm leading-snug" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>{cat.name}</p>
+            {cat.code && (
+              <p className="text-white/55 text-[10px] font-medium tracking-widest uppercase mt-0.5">{cat.code}</p>
+            )}
           </div>
+        </div>
+        {/* Stock status strip */}
+        <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-100">
+          <span className="text-[11px] text-slate-500">{cat.skuCount} SKUs</span>
+          <span className="text-[11px] text-slate-500">{cat.totalQuantity.toLocaleString()} units</span>
         </div>
       </div>
     </Link>

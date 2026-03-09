@@ -504,12 +504,12 @@ export default function FieldInventory() {
                       ? "border-[#0A6B24] ring-2 ring-[#0A6B24]/30 shadow-lg"
                       : "border-transparent hover:border-[#D9E7DD] hover:shadow-md"
                   }`}
-                  style={{ aspectRatio: "16/8", background: "#1e293b" }}
+                  style={{ aspectRatio: "16/8", background: "#16202e" }}
                 >
                   <div className="absolute inset-0">
                     {cat.imageUrl ? (
                       <>
-                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
                         <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
                           onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
                         <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
@@ -517,14 +517,14 @@ export default function FieldInventory() {
                     ) : (
                       <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 px-2 pb-1.5">
-                      <p className="text-white font-semibold text-[10px] sm:text-xs leading-tight line-clamp-2 drop-shadow">
+                    <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
+                      <p className="text-white font-semibold text-[10px] sm:text-xs leading-tight line-clamp-2" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
                         {cat.name}
                       </p>
                     </div>
                     {isActive && (
-                      <div className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-[#0A6B24] border-2 border-white shadow" />
+                      <div className="absolute top-1.5 right-1.5 z-30 w-3 h-3 rounded-full bg-[#0A6B24] border-2 border-white shadow" />
                     )}
                   </div>
                 </button>

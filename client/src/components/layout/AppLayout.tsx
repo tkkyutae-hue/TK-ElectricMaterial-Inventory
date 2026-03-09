@@ -14,6 +14,7 @@ import {
   Shield,
   Users,
   Download,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -152,7 +153,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
+        <header className="h-[76px] bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -180,6 +181,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-slate-500 hover:text-slate-800"
+              onClick={() => window.history.back()}
+              data-testid="btn-header-back"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Back</span>
+            </Button>
             <Link href="/home">
               <Button
                 variant="outline"

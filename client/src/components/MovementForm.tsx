@@ -529,6 +529,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
   const [submitting, setSubmitting] = useState(false);
+  const saveOnlyRef = useRef(false);
 
   const initialRow = makeRow();
   if (defaultItemId) initialRow.itemId = defaultItemId;
@@ -661,8 +662,12 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       dismissRef.fn = dismiss;
 
       setItemRows([makeRow()]);
-      form.reset({ movementType: shared.movementType });
-      onSuccess?.();
+      if (saveOnlyRef.current) {
+        saveOnlyRef.current = false;
+      } else {
+        form.reset({ movementType: shared.movementType });
+        onSuccess?.();
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -983,14 +988,29 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
-                data-testid="button-submit-movement"
-              >
-                {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  disabled={submitting}
+                  variant="outline"
+                  className="min-w-[80px]"
+                  data-testid="button-save-movement"
+                  onClick={() => {
+                    saveOnlyRef.current = true;
+                    form.handleSubmit(onSubmit)();
+                  }}
+                >
+                  {submitting && saveOnlyRef.current ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
+                  data-testid="button-submit-movement"
+                >
+                  {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
+                </Button>
+              </>
             )}
           </div>
         </div>

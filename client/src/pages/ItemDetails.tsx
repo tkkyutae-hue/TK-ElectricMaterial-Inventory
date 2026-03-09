@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
-  ArrowLeft, Edit, Trash2, Box, MapPin, Tag, Truck, Save, X as XIcon,
+  ArrowLeft, Edit, Trash2, Tag, Save, X as XIcon,
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
   ClipboardList, Layers, Plus,
 } from "lucide-react";
@@ -549,12 +549,11 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function WireReelSection({ item }: { item: any }) {
+function WireReelInline({ item }: { item: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
   const { data: supplierList = [] } = useSuppliers();
-  const [isOpen, setIsOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
 
@@ -599,39 +598,28 @@ function WireReelSection({ item }: { item: any }) {
   });
 
   return (
-    <Card className="premium-card border-none" data-testid={`wire-reel-section-${item.id}`}>
-      {/* Clickable header — toggles open/close */}
-      <CardHeader
-        className="border-b border-slate-100 bg-slate-50/50 rounded-t-2xl pb-4 cursor-pointer select-none"
-        onClick={() => setIsOpen(v => !v)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-brand-600" />
-            <CardTitle className="text-lg font-display text-slate-900">Reel Inventory</CardTitle>
-            {!isLoading && reels.length > 0 && (
-              <span className="text-sm text-slate-400 font-normal">
-                {reels.length} reel{reels.length !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT total
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {isOpen && (
-              <button
-                className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
-                onClick={e => { e.stopPropagation(); setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
-                data-testid={`button-add-reel-${item.id}`}
-              >
-                <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
-              </button>
-            )}
-            <span className="text-slate-400 text-sm">{isOpen ? "▲" : "▼"}</span>
-          </div>
+    <div data-testid={`wire-reel-section-${item.id}`}>
+      {/* Inline header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Layers className="w-4 h-4 text-brand-600" />
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Reel Inventory</span>
+          {!isLoading && reels.length > 0 && (
+            <span className="text-xs text-slate-400 font-normal">
+              {reels.length} reel{reels.length !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT total
+            </span>
+          )}
         </div>
-      </CardHeader>
+        <button
+          className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
+          onClick={() => { setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
+          data-testid={`button-add-reel-${item.id}`}
+        >
+          <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
+        </button>
+      </div>
 
-      {isOpen && (
-      <div className="p-5 space-y-4">
+      <div className="space-y-4">
         {/* Summary cards when reels exist */}
         {!isLoading && reels.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -778,8 +766,7 @@ function WireReelSection({ item }: { item: any }) {
           </div>
         )}
       </div>
-      )}
-    </Card>
+    </div>
   );
 }
 
@@ -928,20 +915,25 @@ export default function ItemDetails() {
                 </dd>
               </div>
               <InfoRow label="Size" value={item.sizeLabel} icon={Tag} />
-              <InfoRow label="Location" value={item.location?.name} icon={MapPin} />
-            </div>
-
-            <div className="h-px bg-slate-100" />
-
-            {/* Secondary info grid */}
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
-              <InfoRow label="Supplier" value={item.supplier?.name} icon={Truck} />
-              <InfoRow label="Brand" value={item.brand} icon={Box} />
               <InfoRow
                 label="Unit Cost"
                 value={item.unitCost && parseFloat(item.unitCost) > 0 ? `$${parseFloat(item.unitCost).toFixed(2)}` : null}
                 icon={DollarSign}
               />
+            </div>
+
+            <div className="h-px bg-slate-100" />
+
+            {/* Reel Inventory — inline for wire/cable items */}
+            {item.unitOfMeasure === "FT" && (
+              <>
+                <WireReelInline item={item} />
+                <div className="h-px bg-slate-100" />
+              </>
+            )}
+
+            {/* Reorder stats */}
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
               <InfoRow label="Reorder Point" value={item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : null} icon={RefreshCw} />
               <InfoRow label="Reorder Qty" value={item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : null} icon={ClipboardList} />
               <InfoRow label="Min Stock" value={item.minimumStock > 0 ? item.minimumStock.toLocaleString() : null} />
@@ -959,9 +951,6 @@ export default function ItemDetails() {
           </div>
         </div>
       </div>
-
-      {/* Reel Inventory — wire/cable items only */}
-      {item.unitOfMeasure === "FT" && <WireReelSection item={item} />}
 
       {/* Recent History */}
       <Card className="premium-card border-none">

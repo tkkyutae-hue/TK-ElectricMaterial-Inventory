@@ -288,6 +288,25 @@ export class DatabaseStorage implements IStorage {
         ].join(' ').toLowerCase();
         return tokens.every(token => haystack.includes(token));
       });
+
+      const nameScore = (i: any) => {
+        const nameLower = (i.name || '').toLowerCase();
+        const skuLower = (i.sku || '').toLowerCase();
+        const baseLower = (i.baseItemName || '').toLowerCase();
+        let score = 0;
+        for (const token of tokens) {
+          if (nameLower.includes(token)) score += 4;
+          else if (baseLower.includes(token)) score += 3;
+          else if (skuLower.includes(token)) score += 2;
+        }
+        return score;
+      };
+
+      mapped = mapped.sort((a, b) => {
+        const diff = nameScore(b) - nameScore(a);
+        if (diff !== 0) return diff;
+        return (a.name || '').localeCompare(b.name || '');
+      });
     }
     if (filters?.categoryId) {
       mapped = mapped.filter(i => i.categoryId === filters.categoryId);

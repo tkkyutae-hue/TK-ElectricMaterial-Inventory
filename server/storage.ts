@@ -4,8 +4,10 @@ import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
+  wireReels,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
+  type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
   type CreateCategoryRequest, type UpdateCategoryRequest,
   type CreateLocationRequest, type CreateSupplierRequest, type UpdateSupplierRequest,
   type CreateProjectRequest, type UpdateProjectRequest,
@@ -84,6 +86,11 @@ export interface IStorage {
     perPage?: number;
   }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }>;
   getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>;
+
+  getWireReels(itemId: number): Promise<WireReelWithRelations[]>;
+  createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
+  updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel>;
+  deleteWireReel(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1373,6 +1380,38 @@ export class DatabaseStorage implements IStorage {
     const pageItems = statusFiltered.slice(start, start + perPage);
 
     return { items: pageItems, total };
+  }
+
+  // ─── Wire Reels ───────────────────────────────────────────────────────────────
+
+  async getWireReels(itemId: number): Promise<WireReelWithRelations[]> {
+    const rows = await db
+      .select()
+      .from(wireReels)
+      .leftJoin(suppliers, eq(wireReels.supplierId, suppliers.id))
+      .leftJoin(locations, eq(wireReels.locationId, locations.id))
+      .where(and(eq(wireReels.itemId, itemId), eq(wireReels.isActive, true)))
+      .orderBy(asc(wireReels.createdAt));
+    return rows.map(r => ({
+      ...r.wire_reels,
+      supplier: r.suppliers ?? null,
+      location: r.locations ?? null,
+    }));
+  }
+
+  async createWireReel(data: CreateWireReelRequest): Promise<WireReel> {
+    const [reel] = await db.insert(wireReels).values({ ...data, updatedAt: new Date() }).returning();
+    return reel;
+  }
+
+  async updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel> {
+    const [reel] = await db.update(wireReels).set({ ...data, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
+    if (!reel) throw new Error("Wire reel not found");
+    return reel;
+  }
+
+  async deleteWireReel(id: number): Promise<void> {
+    await db.update(wireReels).set({ isActive: false, updatedAt: new Date() }).where(eq(wireReels.id, id));
   }
 }
 

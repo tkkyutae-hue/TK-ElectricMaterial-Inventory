@@ -190,6 +190,23 @@ export const purchaseRecommendations = pgTable("purchase_recommendations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ─── Wire Reels ───────────────────────────────────────────────────────────────
+// Reel-level tracking for wire/cable items (unitOfMeasure = "FT")
+export const wireReels = pgTable("wire_reels", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  reelId: text("reel_id").notNull(),
+  lengthFt: integer("length_ft").notNull().default(0),
+  brand: text("brand"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  locationId: integer("location_id").references(() => locations.id),
+  status: text("status").default("full"), // "full" | "partial" | "opened"
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ─── Zod Insert Schemas ───────────────────────────────────────────────────────
 
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true, updatedAt: true });
@@ -207,6 +224,7 @@ export const insertInventoryMovementSchema = createInsertSchema(inventoryMovemen
 export const insertTransactionSchema = insertInventoryMovementSchema;
 export const insertPurchaseRecommendationSchema = createInsertSchema(purchaseRecommendations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSupplierItemSchema = createInsertSchema(supplierItems).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWireReelSchema = createInsertSchema(wireReels).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ─── TypeScript Types ─────────────────────────────────────────────────────────
 
@@ -222,6 +240,13 @@ export type ProjectMaterialTransaction = typeof projectMaterialTransactions.$inf
 export type SupplierItem = typeof supplierItems.$inferSelect;
 export type PurchaseRecommendation = typeof purchaseRecommendations.$inferSelect;
 export type ItemGroup = typeof itemGroups.$inferSelect;
+export type WireReel = typeof wireReels.$inferSelect;
+export type WireReelWithRelations = WireReel & {
+  supplier?: Supplier | null;
+  location?: Location | null;
+};
+export type CreateWireReelRequest = z.infer<typeof insertWireReelSchema>;
+export type UpdateWireReelRequest = Partial<CreateWireReelRequest>;
 
 export type CreateCategoryRequest = z.infer<typeof insertCategorySchema>;
 export type UpdateCategoryRequest = Partial<CreateCategoryRequest>;

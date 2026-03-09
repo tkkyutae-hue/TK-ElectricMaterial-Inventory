@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
   Search, Plus, Pencil, Trash2, MoveRight, Check, X as XIcon, ImageIcon, Save,
-  ChevronDown, ArrowUpDown, ArrowUp, ArrowDown,
+  ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Layers,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useLocations, useCreateLocation } from "@/hooks/use-reference-data";
+import { useLocations, useCreateLocation, useSuppliers } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -926,6 +926,248 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
   );
 }
 
+// ── Wire Reel Tracking ────────────────────────────────────────────────────────
+
+type WireReelLocal = {
+  id: number;
+  itemId: number;
+  reelId: string;
+  lengthFt: number;
+  brand: string | null;
+  status: string | null;
+  notes: string | null;
+  supplier: { id: number; name: string } | null;
+  location: { id: number; name: string } | null;
+  supplierId: number | null;
+  locationId: number | null;
+};
+
+type AddReelDraft = {
+  reelId: string;
+  lengthFt: string;
+  brand: string;
+  supplierId: string;
+  locationId: string;
+  status: "full" | "partial" | "opened";
+  notes: string;
+};
+
+const REEL_STATUS_COLORS: Record<string, string> = {
+  full: "bg-emerald-100 text-emerald-700",
+  partial: "bg-amber-100 text-amber-700",
+  opened: "bg-sky-100 text-sky-700",
+};
+const REEL_STATUS_LABELS: Record<string, string> = {
+  full: "Full Reel", partial: "Partial", opened: "Opened",
+};
+
+function ReelStatusBadge({ status }: { status: string | null }) {
+  const s = status || "full";
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${REEL_STATUS_COLORS[s] ?? "bg-slate-100 text-slate-600"}`}>
+      {REEL_STATUS_LABELS[s] ?? s}
+    </span>
+  );
+}
+
+const BLANK_REEL_DRAFT: AddReelDraft = {
+  reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "full", notes: ""
+};
+
+function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: locationList = [] } = useLocations();
+  const { data: supplierList = [] } = useSuppliers();
+  const [showAdd, setShowAdd] = useState(false);
+  const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
+
+  const { data: reels = [], isLoading } = useQuery<WireReelLocal[]>({
+    queryKey: ["/api/wire-reels", item.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/wire-reels/${item.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load reels");
+      return res.json();
+    },
+  });
+
+  const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
+
+  const addMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/wire-reels", {
+      itemId: item.id,
+      reelId: draft.reelId.trim(),
+      lengthFt: parseInt(draft.lengthFt) || 0,
+      brand: draft.brand.trim() || null,
+      supplierId: draft.supplierId ? parseInt(draft.supplierId) : null,
+      locationId: draft.locationId ? parseInt(draft.locationId) : null,
+      status: draft.status,
+      notes: draft.notes.trim() || null,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      setShowAdd(false);
+      setDraft(BLANK_REEL_DRAFT);
+      toast({ title: "Reel added" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/wire-reels/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      toast({ title: "Reel removed" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="border-t border-[#D9E7DD] bg-[#F7FAF8] px-5 py-4" data-testid={`wire-reel-section-${item.id}`}>
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Layers className="w-3.5 h-3.5 text-brand-500" />
+          <span className="text-[11px] font-semibold text-brand-700 uppercase tracking-wide">
+            Reel Inventory — {item.sizeLabel || item.name}
+          </span>
+          {!isLoading && reels.length > 0 && (
+            <span className="text-[11px] text-slate-500">
+              {reels.length} reel{reels.length !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT
+            </span>
+          )}
+        </div>
+        <button
+          className="flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-800 transition-colors"
+          onClick={() => { setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
+          data-testid={`button-add-reel-${item.id}`}
+        >
+          <Plus className="w-3 h-3" />{showAdd ? "Cancel" : "Add Reel"}
+        </button>
+      </div>
+
+      {/* Add reel inline form */}
+      {showAdd && (
+        <div className="mb-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Reel ID <span className="text-red-400">*</span></label>
+              <Input value={draft.reelId} onChange={e => setDraft(d => ({ ...d, reelId: e.target.value }))}
+                placeholder="e.g. R-001" className="h-8 text-sm" data-testid={`input-reel-id-${item.id}`} />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Length (FT) <span className="text-red-400">*</span></label>
+              <Input type="number" min={0} value={draft.lengthFt} onChange={e => setDraft(d => ({ ...d, lengthFt: e.target.value }))}
+                placeholder="500" className="h-8 text-sm" data-testid={`input-reel-length-${item.id}`} />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Brand</label>
+              <Input value={draft.brand} onChange={e => setDraft(d => ({ ...d, brand: e.target.value }))}
+                placeholder="Southwire" className="h-8 text-sm" data-testid={`input-reel-brand-${item.id}`} />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Status</label>
+              <Select value={draft.status} onValueChange={v => setDraft(d => ({ ...d, status: v as AddReelDraft["status"] }))}>
+                <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}`}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Reel</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="opened">Opened</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Supplier</label>
+              <Select value={draft.supplierId} onValueChange={v => setDraft(d => ({ ...d, supplierId: v }))}>
+                <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-supplier-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— None —</SelectItem>
+                  {(supplierList as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Location</label>
+              <Select value={draft.locationId} onValueChange={v => setDraft(d => ({ ...d, locationId: v }))}>
+                <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— None —</SelectItem>
+                  {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">Notes</label>
+              <Input value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
+                placeholder="Optional note…" className="h-8 text-sm" data-testid={`input-reel-notes-${item.id}`} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
+              disabled={!draft.reelId.trim() || addMutation.isPending}
+              onClick={() => addMutation.mutate()}
+              data-testid={`button-save-reel-${item.id}`}
+            >
+              {addMutation.isPending ? "Saving…" : "Add Reel"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Reel table or empty state */}
+      {isLoading ? (
+        <div className="text-xs text-slate-400 py-1">Loading reels…</div>
+      ) : reels.length === 0 ? (
+        <div className="text-xs text-slate-400 italic py-1">No reels recorded yet.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-[#D9E7DD]">
+          <table className="w-full text-xs" style={{ tableLayout: "auto" }}>
+            <thead>
+              <tr className="bg-white border-b border-slate-100">
+                {["Reel ID", "Length (FT)", "Brand", "Supplier", "Location", "Status", "Notes", ""].map(h => (
+                  <th key={h} className={`px-3 py-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] ${h === "Length (FT)" ? "text-right" : h === "Status" ? "text-center" : h === "" ? "" : "text-left"}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-50">
+              {reels.map(reel => (
+                <tr key={reel.id} className="hover:bg-slate-50 transition-colors" data-testid={`row-reel-${reel.id}`}>
+                  <td className="px-3 py-2 font-mono font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-3 py-2 text-center"><ReelStatusBadge status={reel.status} /></td>
+                  <td className="px-3 py-2 text-slate-500 max-w-[160px] truncate">{reel.notes || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      onClick={() => deleteMutation.mutate(reel.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-slate-300 hover:text-red-500 transition-colors"
+                      title="Remove reel"
+                      data-testid={`button-delete-reel-${reel.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
+                <td className="px-3 py-2 font-semibold text-brand-700 text-[11px]">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
+                <td className="px-3 py-2 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
+                <td colSpan={6} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CategoryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -1535,6 +1777,11 @@ export default function CategoryDetail() {
                     </TableBody>
                   </Table>
                 </div>
+
+                {/* Wire reel tracking — shown only for FT-measured items */}
+                {group.items.filter(item => item.unitOfMeasure === "FT").map(item => (
+                  <WireItemReelSection key={`reel-${item.id}`} item={item} />
+                ))}
               </div>
             );
           })}

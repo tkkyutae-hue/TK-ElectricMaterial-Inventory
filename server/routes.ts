@@ -790,5 +790,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Wire Reels ─────────────────────────────────────────────────────────────
+
+  app.get("/api/wire-reels/:itemId", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      if (isNaN(itemId)) return res.status(400).json({ message: "Invalid item ID" });
+      const reels = await storage.getWireReels(itemId);
+      res.json(reels);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/wire-reels", isAuthenticated, async (req, res) => {
+    try {
+      const schema = z.object({
+        itemId: z.number().int().positive(),
+        reelId: z.string().min(1),
+        lengthFt: z.number().int().min(0),
+        brand: z.string().optional().nullable(),
+        supplierId: z.number().int().optional().nullable(),
+        locationId: z.number().int().optional().nullable(),
+        status: z.enum(["full", "partial", "opened"]).optional().nullable(),
+        notes: z.string().optional().nullable(),
+      });
+      const data = schema.parse(req.body);
+      const reel = await storage.createWireReel(data);
+      res.status(201).json(reel);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/wire-reels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
+      const schema = z.object({
+        reelId: z.string().min(1).optional(),
+        lengthFt: z.number().int().min(0).optional(),
+        brand: z.string().optional().nullable(),
+        supplierId: z.number().int().optional().nullable(),
+        locationId: z.number().int().optional().nullable(),
+        status: z.enum(["full", "partial", "opened"]).optional().nullable(),
+        notes: z.string().optional().nullable(),
+      });
+      const data = schema.parse(req.body);
+      const reel = await storage.updateWireReel(id, data);
+      res.json(reel);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/wire-reels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
+      await storage.deleteWireReel(id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

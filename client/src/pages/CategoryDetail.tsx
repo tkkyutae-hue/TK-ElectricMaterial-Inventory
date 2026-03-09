@@ -1208,9 +1208,9 @@ export default function CategoryDetail() {
       </div>
 
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden shadow-lg aspect-[21/9]">
+      <div className="relative rounded-2xl overflow-hidden shadow-lg aspect-[21/9] bg-slate-900">
         {category.imageUrl ? (
-          <img src={category.imageUrl} alt={category.name} className="absolute inset-0 w-full h-full object-cover object-center"
+          <img src={category.imageUrl} alt={category.name} className="absolute inset-0 w-full h-full object-contain object-center"
             onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
         ) : null}
         <div className={`${category.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradientClass}`} />

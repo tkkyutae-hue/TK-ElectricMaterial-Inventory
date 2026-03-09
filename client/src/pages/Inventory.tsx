@@ -44,12 +44,12 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
         data-testid={`card-category-${cat.id}`}
       >
-        <div className="relative aspect-[16/9] overflow-hidden">
+        <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
           {cat.imageUrl ? (
             <img
               src={cat.imageUrl}
               alt={cat.name}
-              className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {
                 const t = e.currentTarget;
                 t.style.display = "none";

@@ -504,12 +504,12 @@ export default function FieldInventory() {
                       ? "border-[#0A6B24] ring-2 ring-[#0A6B24]/30 shadow-lg"
                       : "border-transparent hover:border-[#D9E7DD] hover:shadow-md"
                   }`}
-                  style={{ aspectRatio: "16/10" }}
+                  style={{ aspectRatio: "16/10", background: "#1e293b" }}
                 >
                   <div className="absolute inset-0">
                     {cat.imageUrl ? (
                       <>
-                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover object-center"
+                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-contain object-center"
                           onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
                         <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
                       </>

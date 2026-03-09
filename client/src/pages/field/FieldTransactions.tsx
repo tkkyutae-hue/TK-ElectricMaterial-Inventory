@@ -312,8 +312,8 @@ export default function FieldTransactions() {
               <col style={{ width: "11%" }} />
               <col style={{ width: "20%" }} />
               <col style={{ width: "60px" }} />
-              <col style={{ width: "118px" }} />
-              <col style={{ width: "130px" }} />
+              <col style={{ width: "105px" }} />
+              <col style={{ width: "96px" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
@@ -334,10 +334,10 @@ export default function FieldTransactions() {
                 <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
                 <TableHead className={`${TH} text-center`}>Type</TableHead>
                 <TableHead className={TH}>Photo</TableHead>
-                <TableHead className={`${TH} pl-2`}>Size</TableHead>
+                <TableHead className={`${TH} pl-4`}>Size</TableHead>
                 <TableHead className={TH}>Item</TableHead>
                 <TableHead className={`${TH} text-right`}>Qty / Unit</TableHead>
-                <TableHead className={TH}>From</TableHead>
+                <TableHead className={`${TH} pl-4`}>From</TableHead>
                 <TableHead className={TH}>To</TableHead>
                 <TableHead className={TH}>Project / PO</TableHead>
                 <TableHead className={`${TH} text-center`}>Note</TableHead>
@@ -442,7 +442,7 @@ export default function FieldTransactions() {
                     </TableCell>
 
                     {/* Size — nowrap prevents wrapping */}
-                    <TableCell className="py-3 pl-2 pr-1 text-xs font-semibold text-slate-500 whitespace-nowrap">
+                    <TableCell className="py-3 pl-4 pr-1 text-xs font-semibold text-slate-500 whitespace-nowrap">
                       {item?.sizeLabel || <span className="text-slate-300">—</span>}
                     </TableCell>
 
@@ -474,7 +474,7 @@ export default function FieldTransactions() {
                     </TableCell>
 
                     {/* From */}
-                    <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
+                    <TableCell className="py-3 pl-4 pr-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
                       {fromLoc?.name ?? <span className="text-slate-300">—</span>}
                     </TableCell>
 

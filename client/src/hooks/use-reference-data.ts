@@ -127,6 +127,14 @@ export function useUpdateProject() {
   });
 }
 
+export function useDeleteLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => safeDeleteJson(`/api/locations/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [api.locations.list.path] }),
+  });
+}
+
 export function useDeleteSupplier() {
   const qc = useQueryClient();
   return useMutation({

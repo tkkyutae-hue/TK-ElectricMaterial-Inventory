@@ -3,7 +3,10 @@ import { z } from 'zod';
 // Minimal route definitions for queryKey references on the frontend
 export const api = {
   categories: { list: { path: '/api/categories' as const } },
-  locations: { list: { path: '/api/locations' as const } },
+  locations: {
+    list: { path: '/api/locations' as const },
+    get: { path: '/api/locations/:id' as const },
+  },
   suppliers: {
     list: { path: '/api/suppliers' as const },
     get: { path: '/api/suppliers/:id' as const },

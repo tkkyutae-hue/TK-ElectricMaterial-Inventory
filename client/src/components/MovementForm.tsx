@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useItems } from "@/hooks/use-items";
-import { useLocations, useProjects, useCreateLocation } from "@/hooks/use-reference-data";
+import { useLocations, useProjects, useCreateLocation, useDeleteLocation } from "@/hooks/use-reference-data";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -216,6 +216,7 @@ function SearchableLocationSelect({
 }) {
   const { toast } = useToast();
   const createLocation = useCreateLocation();
+  const deleteLocation = useDeleteLocation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -258,6 +259,17 @@ function SearchableLocationSelect({
     }
   }
 
+  async function handleDelete(e: React.MouseEvent, loc: any) {
+    e.stopPropagation();
+    try {
+      await deleteLocation.mutateAsync(loc.id);
+      if (value === loc.id) onChange(0 as any);
+      toast({ title: "Location removed", description: `"${loc.name}" has been deleted.` });
+    } catch (err: any) {
+      toast({ title: "Failed to delete location", description: err.message, variant: "destructive" });
+    }
+  }
+
   return (
     <div ref={ref} className="relative" data-testid={testId}>
       <button
@@ -295,15 +307,29 @@ function SearchableLocationSelect({
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.map(loc => (
-              <button
+              <div
                 key={loc.id}
-                type="button"
-                onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
+                className={`group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
                 data-testid={`${testId}-option-${loc.id}`}
               >
-                {loc.name}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
+                  className={`flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
+                >
+                  {loc.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(e, loc)}
+                  disabled={deleteLocation.isPending}
+                  className="opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                  data-testid={`${testId}-delete-${loc.id}`}
+                  title="Delete location"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             ))}
             {filtered.length === 0 && !showCreate && (
               <p className="text-center text-sm text-slate-400 py-3">No locations found</p>

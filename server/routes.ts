@@ -162,6 +162,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/locations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+      await storage.deleteLocation(id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
   // ─── Suppliers ──────────────────────────────────────────────────────────────
   app.get("/api/suppliers", isAuthenticated, async (_req, res) => {
     res.json(await storage.getSuppliers());

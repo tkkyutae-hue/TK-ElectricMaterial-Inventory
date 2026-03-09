@@ -127,3 +127,27 @@ export function useBulkDeleteMovements() {
     },
   });
 }
+
+export function useBulkRestoreMovements() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (snapshots: any[]) => {
+      const res = await fetch("/api/movements/bulk-restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ snapshots }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to restore movements");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [api.movements.list.path] });
+      qc.invalidateQueries({ queryKey: [api.items.list.path] });
+      qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
+    },
+  });
+}

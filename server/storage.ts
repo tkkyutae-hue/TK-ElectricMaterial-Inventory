@@ -65,6 +65,7 @@ export interface IStorage {
   updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement>;
   deleteMovement(id: number): Promise<void>;
   bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }>;
+  bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[] }>;
   getDashboardStats(): Promise<any>;
   getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>>;
   getReportLowStock(): Promise<any>;
@@ -579,6 +580,50 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return { deleted, errors };
+  }
+
+  async bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[] }> {
+    const restored: number[] = [];
+    for (const snap of snapshots) {
+      // Re-apply inventory delta
+      let delta = 0;
+      if (snap.movementType === "receive" || snap.movementType === "return") delta = snap.quantity;
+      else if (snap.movementType === "issue") delta = -snap.quantity;
+
+      const [itemRow] = await db.select().from(items).where(eq(items.id, snap.itemId));
+      if (itemRow) {
+        const newQty = Math.max(0, itemRow.quantityOnHand + delta);
+        await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, snap.itemId));
+      }
+
+      // Re-apply location balances for transfers
+      if (snap.movementType === "transfer") {
+        if (snap.sourceLocationId) await this._adjustLocationBalance(snap.itemId, snap.sourceLocationId, -snap.quantity);
+        if (snap.destinationLocationId) await this._adjustLocationBalance(snap.itemId, snap.destinationLocationId, snap.quantity);
+      }
+
+      // Re-insert movement with original data
+      const [inserted] = await db.insert(inventoryMovements).values({
+        itemId: snap.itemId,
+        movementType: snap.movementType,
+        quantity: snap.quantity,
+        previousQuantity: snap.previousQuantity ?? 0,
+        newQuantity: snap.newQuantity ?? 0,
+        sourceLocationId: snap.sourceLocationId ?? null,
+        destinationLocationId: snap.destinationLocationId ?? null,
+        projectId: snap.projectId ?? null,
+        unitCostSnapshot: snap.unitCostSnapshot ?? null,
+        referenceType: snap.referenceType ?? null,
+        referenceId: snap.referenceId ?? null,
+        note: snap.note ?? null,
+        reason: snap.reason ?? null,
+        createdBy: snap.createdBy ?? null,
+        createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
+      }).returning();
+
+      restored.push(inserted.id);
+    }
+    return { restored };
   }
 
   private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {

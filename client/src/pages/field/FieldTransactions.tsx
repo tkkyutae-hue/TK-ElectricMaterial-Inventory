@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useMovements, useBulkDeleteMovements } from "@/hooks/use-transactions";
+import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
 import { useAuth } from "@/hooks/use-auth";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { Search, ClipboardList, ImageOff, ArrowRightLeft, Navigation, FolderKanban, CalendarDays, CheckSquare, Square, Trash2, X, AlertTriangle } from "lucide-react";
@@ -51,7 +51,8 @@ export default function FieldTransactions() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: movements, isLoading } = useMovements();
-  const bulkDelete = useBulkDeleteMovements();
+  const bulkDelete  = useBulkDeleteMovements();
+  const bulkRestore = useBulkRestoreMovements();
 
   const { fromOptions, toOptions, projectOptions } = useMemo(() => {
     const froms = new Map<string, string>();
@@ -128,16 +129,63 @@ export default function FieldTransactions() {
 
   async function handleDelete() {
     const ids = Array.from(selectedIds);
+    const count = ids.length;
+
+    // Save raw snapshots for undo (raw movement fields only, no joins)
+    const snapshots = (movements ?? [])
+      .filter(m => selectedIds.has(m.id))
+      .map(m => {
+        const raw = m as any;
+        return {
+          itemId: raw.itemId,
+          movementType: raw.movementType,
+          quantity: raw.quantity,
+          previousQuantity: raw.previousQuantity,
+          newQuantity: raw.newQuantity,
+          sourceLocationId: raw.sourceLocationId ?? null,
+          destinationLocationId: raw.destinationLocationId ?? null,
+          projectId: raw.projectId ?? null,
+          unitCostSnapshot: raw.unitCostSnapshot ?? null,
+          referenceType: raw.referenceType ?? null,
+          referenceId: raw.referenceId ?? null,
+          note: raw.note ?? null,
+          reason: raw.reason ?? null,
+          createdBy: raw.createdBy ?? null,
+          createdAt: raw.createdAt ?? null,
+        };
+      });
+
     try {
       await bulkDelete.mutateAsync(ids);
-      toast({ title: `${ids.length} transaction${ids.length !== 1 ? "s" : ""} deleted` });
       exitSelectMode();
       setConfirmOpen(false);
+
+      // Show toast with Undo button
+      toast({
+        title: `${count} transaction${count !== 1 ? "s" : ""} deleted`,
+        duration: 8000,
+        action: (
+          <button
+            className="shrink-0 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+            onClick={async () => {
+              try {
+                await bulkRestore.mutateAsync(snapshots);
+                toast({ title: `${count} transaction${count !== 1 ? "s" : ""} restored` });
+              } catch (err: any) {
+                toast({ title: "Restore failed", description: err.message, variant: "destructive" });
+              }
+            }}
+          >
+            Undo
+          </button>
+        ) as any,
+      });
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     }
   }
 
+  // COLS: checkbox(optional) + No + Type + Photo + Size + Item + Qty + From + To + Project + Note + Date + Actions
   const COLS = selectMode ? 13 : 12;
 
   return (
@@ -248,193 +296,240 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table — horizontal scroll for narrow viewports */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <Table className="w-full table-fixed">
-          <colgroup>
-            {selectMode && <col style={{ width: "40px" }} />}
-            <col style={{ width: "46px" }} />
-            <col style={{ width: "76px" }} />
-            <col style={{ width: "42px" }} />
-            <col style={{ width: "44px" }} />
-            <col />
-            <col style={{ width: "72px" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "118px" }} />
-          </colgroup>
-          <TableHeader>
-            <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
-              {selectMode && (
-                <TableHead className={`${TH} pl-3 text-center`}>
-                  <button
-                    type="button"
-                    onClick={toggleAll}
-                    className="inline-flex items-center justify-center"
-                    data-testid="button-select-all"
-                  >
-                    {allSelected
-                      ? <CheckSquare className="w-4 h-4 text-brand-600" />
-                      : <Square className="w-4 h-4 text-slate-300" />}
-                  </button>
-                </TableHead>
-              )}
-              <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
-              <TableHead className={`${TH} text-center`}>Type</TableHead>
-              <TableHead className={TH}>Photo</TableHead>
-              <TableHead className={`${TH} pl-4`}>Size</TableHead>
-              <TableHead className={TH}>Item</TableHead>
-              <TableHead className={`${TH} text-right`}>Qty / Unit</TableHead>
-              <TableHead className={TH}>From</TableHead>
-              <TableHead className={TH}>To</TableHead>
-              <TableHead className={TH}>Project / PO</TableHead>
-              <TableHead className={TH}>Note</TableHead>
-              <TableHead className={`${TH} pr-4`}>Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-100">
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">Loading…</TableCell>
-              </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">No transactions found.</TableCell>
-              </TableRow>
-            ) : filtered.map((m, idx) => {
-              const mx      = m as any;
-              const item    = mx.item;
-              const fromLoc = mx.sourceLocation;
-              const toLoc   = mx.destinationLocation;
-              const project = mx.project;
-              const isSelected = selectedIds.has(m.id);
-
-              const projectName = project?.name ?? null;
-              const projectPo   = project?.poNumber ?? null;
-
-              return (
-                <TableRow
-                  key={m.id}
-                  className={`group transition-colors duration-100 ${selectMode ? "cursor-pointer" : "cursor-default"} ${isSelected ? "bg-brand-50/60" : ""}`}
-                  style={{ borderLeft: isSelected ? "3px solid #0A6B24" : "3px solid transparent" }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid #0A6B24"; }}
-                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid transparent"; }}
-                  onClick={selectMode ? () => toggleRow(m.id) : undefined}
-                  data-testid={`field-tx-row-${m.id}`}
-                >
-                  {/* Checkbox */}
-                  {selectMode && (
-                    <TableCell className="py-3 pl-3 text-center" onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
-                      {isSelected
-                        ? <CheckSquare className="w-4 h-4 text-brand-600 mx-auto" />
-                        : <Square className="w-4 h-4 text-slate-300 mx-auto" />}
-                    </TableCell>
+        <div className="overflow-x-auto">
+          <Table style={{ minWidth: "960px" }} className="w-full table-fixed">
+            <colgroup>
+              {selectMode && <col style={{ width: "40px" }} />}
+              <col style={{ width: "46px" }} />
+              <col style={{ width: "76px" }} />
+              <col style={{ width: "42px" }} />
+              <col style={{ width: "62px" }} />
+              <col />
+              <col style={{ width: "72px" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "60px" }} />
+              <col style={{ width: "118px" }} />
+              <col style={{ width: "130px" }} />
+            </colgroup>
+            <TableHeader>
+              <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
+                {selectMode && (
+                  <TableHead className={`${TH} pl-3 text-center`}>
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      className="inline-flex items-center justify-center"
+                      data-testid="button-select-all"
+                    >
+                      {allSelected
+                        ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                        : <Square className="w-4 h-4 text-slate-300" />}
+                    </button>
+                  </TableHead>
+                )}
+                <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
+                <TableHead className={`${TH} text-center`}>Type</TableHead>
+                <TableHead className={TH}>Photo</TableHead>
+                <TableHead className={`${TH} pl-2`}>Size</TableHead>
+                <TableHead className={TH}>Item</TableHead>
+                <TableHead className={`${TH} text-right`}>Qty / Unit</TableHead>
+                <TableHead className={TH}>From</TableHead>
+                <TableHead className={TH}>To</TableHead>
+                <TableHead className={TH}>Project / PO</TableHead>
+                <TableHead className={`${TH} text-center`}>Note</TableHead>
+                <TableHead className={TH}>Date</TableHead>
+                {/* Select / Delete / Cancel controls in header */}
+                <TableHead className={`${TH} pr-3 text-right`}>
+                  {canDelete && (
+                    <div className="flex items-center justify-end gap-1.5">
+                      {selectMode ? (
+                        <>
+                          {selectedIds.size > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmOpen(true)}
+                              className="inline-flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[10px] font-bold text-white hover:bg-red-600 transition-colors"
+                              data-testid="button-delete-selected"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Delete ({selectedIds.size})
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={exitSelectMode}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                            data-testid="button-cancel-select"
+                          >
+                            <X className="w-3 h-3" />
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setSelectMode(true)}
+                          className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                          data-testid="button-select-mode"
+                        >
+                          <CheckSquare className="w-3 h-3" />
+                          Select
+                        </button>
+                      )}
+                    </div>
                   )}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100">
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">Loading…</TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">No transactions found.</TableCell>
+                </TableRow>
+              ) : filtered.map((m, idx) => {
+                const mx      = m as any;
+                const item    = mx.item;
+                const fromLoc = mx.sourceLocation;
+                const toLoc   = mx.destinationLocation;
+                const project = mx.project;
+                const isSelected = selectedIds.has(m.id);
 
-                  {/* No. */}
-                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors text-center">
-                    {idx + 1}
-                  </TableCell>
+                const projectName = project?.name ?? null;
+                const projectPo   = project?.poNumber ?? null;
 
-                  {/* Type */}
-                  <TableCell className="py-3 px-1 text-center">
-                    <span className="inline-block scale-[0.85] origin-center">
-                      <TransactionTypeBadge type={m.movementType} />
-                    </span>
-                  </TableCell>
+                return (
+                  <TableRow
+                    key={m.id}
+                    className={`group transition-colors duration-100 ${selectMode ? "cursor-pointer" : "cursor-default"} ${isSelected ? "bg-brand-50/60" : ""}`}
+                    style={{ borderLeft: isSelected ? "3px solid #0A6B24" : "3px solid transparent" }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid #0A6B24"; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid transparent"; }}
+                    onClick={selectMode ? () => toggleRow(m.id) : undefined}
+                    data-testid={`field-tx-row-${m.id}`}
+                  >
+                    {/* Checkbox */}
+                    {selectMode && (
+                      <TableCell className="py-3 pl-3 text-center" onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                        {isSelected
+                          ? <CheckSquare className="w-4 h-4 text-brand-600 mx-auto" />
+                          : <Square className="w-4 h-4 text-slate-300 mx-auto" />}
+                      </TableCell>
+                    )}
 
-                  {/* Photo */}
-                  <TableCell className="py-3 px-2">
-                    <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
-                  </TableCell>
+                    {/* No. */}
+                    <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors text-center">
+                      {idx + 1}
+                    </TableCell>
 
-                  {/* Size */}
-                  <TableCell className="py-3 pl-4 pr-2 text-xs font-semibold text-slate-500">
-                    {item?.sizeLabel || <span className="text-slate-300">—</span>}
-                  </TableCell>
+                    {/* Type */}
+                    <TableCell className="py-3 px-1 text-center">
+                      <span className="inline-block scale-[0.85] origin-center">
+                        <TransactionTypeBadge type={m.movementType} />
+                      </span>
+                    </TableCell>
 
-                  {/* Item */}
-                  <TableCell className="py-3 px-2">
-                    <p className="text-sm font-semibold text-slate-800 leading-tight truncate group-hover:text-slate-900 transition-colors">
-                      {item?.name ?? `#${m.itemId}`}
-                    </p>
-                  </TableCell>
+                    {/* Photo */}
+                    <TableCell className="py-3 px-2">
+                      <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
+                    </TableCell>
 
-                  {/* Qty + Unit */}
-                  <TableCell className="py-3 px-2 text-right tabular-nums">
-                    {(() => {
-                      const isIncrease = m.movementType === "receive" || m.movementType === "return";
-                      const color = isIncrease ? "#0A6B24" : "#DC2626";
-                      return (
-                        <div className="flex items-baseline justify-end gap-1">
-                          <span className="text-sm font-bold" style={{ color }}>
-                            {m.quantity}
-                          </span>
-                          {item?.unitOfMeasure && (
-                            <span className="text-[10px] font-medium text-slate-400 uppercase">
-                              {item.unitOfMeasure}
+                    {/* Size — nowrap prevents wrapping */}
+                    <TableCell className="py-3 pl-2 pr-1 text-xs font-semibold text-slate-500 whitespace-nowrap">
+                      {item?.sizeLabel || <span className="text-slate-300">—</span>}
+                    </TableCell>
+
+                    {/* Item */}
+                    <TableCell className="py-3 px-2">
+                      <p className="text-sm font-semibold text-slate-800 leading-tight truncate group-hover:text-slate-900 transition-colors">
+                        {item?.name ?? `#${m.itemId}`}
+                      </p>
+                    </TableCell>
+
+                    {/* Qty + Unit */}
+                    <TableCell className="py-3 px-2 text-right tabular-nums">
+                      {(() => {
+                        const isIncrease = m.movementType === "receive" || m.movementType === "return";
+                        const color = isIncrease ? "#0A6B24" : "#DC2626";
+                        return (
+                          <div className="flex items-baseline justify-end gap-1">
+                            <span className="text-sm font-bold" style={{ color }}>
+                              {m.quantity}
+                            </span>
+                            {item?.unitOfMeasure && (
+                              <span className="text-[10px] font-medium text-slate-400 uppercase">
+                                {item.unitOfMeasure}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+
+                    {/* From */}
+                    <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
+                      {fromLoc?.name ?? <span className="text-slate-300">—</span>}
+                    </TableCell>
+
+                    {/* To */}
+                    <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
+                      {toLoc?.name ?? <span className="text-slate-300">—</span>}
+                    </TableCell>
+
+                    {/* Project / PO */}
+                    <TableCell className="py-3 px-2">
+                      {projectName || projectPo ? (
+                        <div className="flex flex-col gap-0.5">
+                          {projectName && (
+                            <span className="text-xs font-semibold text-slate-700 leading-tight break-words">
+                              {projectName}
+                            </span>
+                          )}
+                          {projectPo && (
+                            <span className="text-[11px] text-slate-400 leading-tight">
+                              {projectPo}
                             </span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </TableCell>
+                      ) : (
+                        <span className="text-slate-300 text-xs">—</span>
+                      )}
+                    </TableCell>
 
-                  {/* From */}
-                  <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
-                    {fromLoc?.name ?? <span className="text-slate-300">—</span>}
-                  </TableCell>
+                    {/* Note — centered */}
+                    <TableCell className="py-3 px-2 text-xs text-slate-400 truncate text-center">
+                      {m.note || <span className="text-slate-300">—</span>}
+                    </TableCell>
 
-                  {/* To */}
-                  <TableCell className="py-3 px-2 text-xs text-slate-500 truncate group-hover:text-slate-700 transition-colors">
-                    {toLoc?.name ?? <span className="text-slate-300">—</span>}
-                  </TableCell>
-
-                  {/* Project / PO */}
-                  <TableCell className="py-3 px-2">
-                    {projectName || projectPo ? (
-                      <div className="flex flex-col gap-0.5">
-                        {projectName && (
-                          <span className="text-xs font-semibold text-slate-700 leading-tight break-words">
-                            {projectName}
+                    {/* Date */}
+                    <TableCell className="py-3 px-2 group-hover:text-slate-800 transition-colors">
+                      {m.createdAt ? (
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-xs font-medium text-slate-600">
+                            {format(new Date(m.createdAt), "MMM d, yyyy")}
                           </span>
-                        )}
-                        {projectPo && (
-                          <span className="text-[11px] text-slate-400 leading-tight">
-                            {projectPo}
+                          <span className="text-[11px] text-slate-400">
+                            {format(new Date(m.createdAt), "HH:mm")}
                           </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-slate-300 text-xs">—</span>
-                    )}
-                  </TableCell>
+                        </div>
+                      ) : "—"}
+                    </TableCell>
 
-                  {/* Note */}
-                  <TableCell className="py-3 px-2 text-xs text-slate-400 truncate">
-                    {m.note || <span className="text-slate-300">—</span>}
-                  </TableCell>
-
-                  {/* Date */}
-                  <TableCell className="py-3 px-2 pr-4 group-hover:text-slate-800 transition-colors">
-                    {m.createdAt ? (
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-xs font-medium text-slate-600">
-                          {format(new Date(m.createdAt), "MMM d, yyyy")}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {format(new Date(m.createdAt), "HH:mm")}
-                        </span>
-                      </div>
-                    ) : "—"}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {/* Actions column — empty in rows */}
+                    <TableCell className="py-3 pr-3" />
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         {filtered.length > 0 && (
           <div className="px-4 py-2.5 border-t border-slate-100 text-xs text-slate-400 bg-slate-50/50">
             Showing <span className="font-semibold text-slate-600">{filtered.length}</span> transaction{filtered.length !== 1 ? "s" : ""}
@@ -456,9 +551,9 @@ export default function FieldTransactions() {
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <p className="text-sm text-slate-600">
-              Are you sure you want to permanently delete{" "}
+              Are you sure you want to delete{" "}
               <span className="font-semibold text-slate-900">{selectedIds.size} transaction{selectedIds.size !== 1 ? "s" : ""}</span>?
-              This will also reverse the inventory counts. This action cannot be undone.
+              Inventory counts will be reversed. You can undo within 8 seconds after deletion.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)}>

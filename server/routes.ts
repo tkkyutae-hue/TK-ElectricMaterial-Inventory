@@ -554,6 +554,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/movements/bulk-restore", isAuthenticated, async (req, res) => {
+    try {
+      const { snapshots } = req.body;
+      if (!Array.isArray(snapshots) || snapshots.length === 0) {
+        return res.status(400).json({ message: "snapshots array is required" });
+      }
+      const result = await storage.bulkRestoreMovements(snapshots);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ─── Item Groups (family metadata) ───────────────────────────────────────────
   app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, async (req, res) => {
     try {

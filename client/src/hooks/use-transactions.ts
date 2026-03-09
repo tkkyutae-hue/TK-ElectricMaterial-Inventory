@@ -103,3 +103,27 @@ export function useDeleteMovement() {
     },
   });
 }
+
+export function useBulkDeleteMovements() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await fetch("/api/movements/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete movements");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [api.movements.list.path] });
+      qc.invalidateQueries({ queryKey: [api.items.list.path] });
+      qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
+    },
+  });
+}

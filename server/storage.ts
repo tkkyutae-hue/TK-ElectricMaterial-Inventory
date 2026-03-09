@@ -60,6 +60,7 @@ export interface IStorage {
 
   updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement>;
   deleteMovement(id: number): Promise<void>;
+  bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }>;
   getDashboardStats(): Promise<any>;
   getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>>;
   getReportLowStock(): Promise<any>;
@@ -547,6 +548,20 @@ export class DatabaseStorage implements IStorage {
     // Delete dependent project_material_transactions first (FK constraint), then the movement
     await db.delete(projectMaterialTransactions).where(eq(projectMaterialTransactions.movementId, id));
     await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
+  }
+
+  async bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }> {
+    const deleted: number[] = [];
+    const errors: { id: number; message: string }[] = [];
+    for (const id of ids) {
+      try {
+        await this.deleteMovement(id);
+        deleted.push(id);
+      } catch (err: any) {
+        errors.push({ id, message: err.message });
+      }
+    }
+    return { deleted, errors };
   }
 
   private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {

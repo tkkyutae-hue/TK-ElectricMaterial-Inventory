@@ -519,6 +519,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/movements/bulk-delete", isAuthenticated, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "ids array is required" });
+      }
+      const result = await storage.bulkDeleteMovements(ids.map(Number));
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ─── Item Groups (family metadata) ───────────────────────────────────────────
   app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, async (req, res) => {
     try {

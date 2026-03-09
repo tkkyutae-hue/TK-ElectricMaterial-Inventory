@@ -1,17 +1,18 @@
-import { useState } from "react";
-import { useMovements, useUpdateMovement, useDeleteMovement } from "@/hooks/use-transactions";
+import { useState, useMemo } from "react";
+import { useMovements, useUpdateMovement, useDeleteMovement, useBulkDeleteMovements } from "@/hooks/use-transactions";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
 import { SearchableItemSelect } from "@/components/MovementForm";
-import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle, CalendarIcon } from "lucide-react";
+import { Search, ArrowRightLeft, Edit2, Trash2, AlertTriangle, CalendarIcon, CheckSquare, Square, X } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
@@ -277,6 +278,11 @@ export default function Transactions() {
   const [endDate, setEndDate] = useState(todayStr());
   const [logOpen, setLogOpen] = useState(false);
   const [editTx, setEditTx] = useState<any | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const { toast } = useToast();
+  const bulkDelete = useBulkDeleteMovements();
 
   const { data: movements, isLoading } = useMovements(
     typeFilter !== "all" ? { movementType: typeFilter } : {}
@@ -294,6 +300,47 @@ export default function Transactions() {
     return matchSearch && matchProject && matchStart && matchEnd;
   });
 
+  const filteredIds = useMemo(() => (filtered ?? []).map((tx: any) => tx.id as number), [filtered]);
+  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+
+  function toggleSelectMode() {
+    setSelectMode(v => !v);
+    setSelectedIds(new Set());
+  }
+
+  function toggleRow(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredIds));
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    try {
+      const result = await bulkDelete.mutateAsync(ids);
+      const count = result.deleted?.length ?? ids.length;
+      toast({ title: `${count} transaction${count !== 1 ? "s" : ""} deleted` });
+      if (result.errors?.length) {
+        toast({ title: `${result.errors.length} failed to delete`, variant: "destructive" });
+      }
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
+    setConfirmBulkDelete(false);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -301,6 +348,32 @@ export default function Transactions() {
           <h1 className="text-3xl font-display font-bold text-slate-900">Transaction History</h1>
           <p className="text-slate-500 mt-1">Full log of all inventory movements.</p>
         </div>
+
+        <div className="flex items-center gap-2">
+          {selectMode && selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setConfirmBulkDelete(true)}
+              data-testid="button-bulk-delete"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              Delete Selected ({selectedIds.size})
+            </Button>
+          )}
+          <Button
+            variant={selectMode ? "outline" : "ghost"}
+            size="sm"
+            onClick={toggleSelectMode}
+            className={selectMode ? "border-slate-300 text-slate-700" : "text-slate-500 hover:text-slate-700"}
+            data-testid="button-select-mode"
+          >
+            {selectMode ? (
+              <><X className="w-3.5 h-3.5 mr-1.5" />Cancel</>
+            ) : (
+              <><CheckSquare className="w-3.5 h-3.5 mr-1.5" />Select</>
+            )}
+          </Button>
 
         <Dialog open={logOpen} onOpenChange={setLogOpen}>
           <Button
@@ -323,6 +396,7 @@ export default function Transactions() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="premium-card bg-white overflow-hidden">
@@ -400,6 +474,19 @@ export default function Transactions() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">
+                {selectMode && (
+                  <TableHead className="w-[36px] pr-0">
+                    <button
+                      onClick={toggleAll}
+                      className="p-0.5 text-slate-400 hover:text-brand-600 transition-colors"
+                      data-testid="checkbox-select-all"
+                    >
+                      {allSelected
+                        ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                        : <Square className="w-4 h-4" />}
+                    </button>
+                  </TableHead>
+                )}
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Date</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">Type</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item</TableHead>
@@ -430,7 +517,20 @@ export default function Transactions() {
                 </TableRow>
               ) : (
                 filtered?.map((tx: any) => (
-                  <TableRow key={tx.id} className="hover:bg-slate-50/50 group" data-testid={`row-tx-${tx.id}`}>
+                  <TableRow
+                    key={tx.id}
+                    className={`hover:bg-slate-50/50 group ${selectMode && selectedIds.has(tx.id) ? 'bg-brand-50/60' : ''}`}
+                    data-testid={`row-tx-${tx.id}`}
+                    onClick={selectMode ? () => toggleRow(tx.id) : undefined}
+                    style={selectMode ? { cursor: 'pointer' } : undefined}
+                  >
+                    {selectMode && (
+                      <TableCell className="pr-0 pl-3" onClick={(e) => { e.stopPropagation(); toggleRow(tx.id); }}>
+                        {selectedIds.has(tx.id)
+                          ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                          : <Square className="w-4 h-4 text-slate-300" />}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-slate-500 whitespace-nowrap">
                       {format(new Date(tx.createdAt), 'MMM d, yy')}<br />
                       <span className="text-slate-400">{format(new Date(tx.createdAt), 'HH:mm')}</span>
@@ -504,6 +604,27 @@ export default function Transactions() {
           onClose={() => setEditTx(null)}
         />
       )}
+
+      <AlertDialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} transaction{selectedIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected transactions and reverse their effect on inventory quantities. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-bulk-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-bulk-delete"
+            >
+              {bulkDelete.isPending ? "Deleting…" : `Delete ${selectedIds.size}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

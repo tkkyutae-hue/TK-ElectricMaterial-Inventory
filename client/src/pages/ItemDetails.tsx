@@ -524,25 +524,24 @@ type AddReelDraft = {
   brand: string;
   supplierId: string;
   locationId: string;
-  status: "full" | "partial" | "opened";
+  status: "new" | "used";
   notes: string;
 };
 
 const REEL_STATUS_COLORS: Record<string, string> = {
-  full: "bg-emerald-100 text-emerald-700",
-  partial: "bg-amber-100 text-amber-700",
-  opened: "bg-sky-100 text-sky-700",
+  new: "bg-emerald-100 text-emerald-700",
+  used: "bg-amber-100 text-amber-700",
 };
 const REEL_STATUS_LABELS: Record<string, string> = {
-  full: "Full Reel", partial: "Partial", opened: "Opened",
+  new: "New", used: "Used",
 };
 
 const BLANK_REEL_DRAFT: AddReelDraft = {
-  reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "full", notes: "",
+  reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new", notes: "",
 };
 
 function ReelStatusBadge({ status }: { status: string | null }) {
-  const s = status || "full";
+  const s = status || "new";
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${REEL_STATUS_COLORS[s] ?? "bg-slate-100 text-slate-600"}`}>
       {REEL_STATUS_LABELS[s] ?? s}
@@ -671,9 +670,8 @@ function WireReelSection({ item }: { item: any }) {
                 <Select value={draft.status} onValueChange={v => setDraft(d => ({ ...d, status: v as AddReelDraft["status"] }))}>
                   <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full">Full Reel</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="opened">Opened</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="used">Used</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

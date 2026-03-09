@@ -213,7 +213,7 @@ export default function FieldTransactions() {
           <TableHeader>
             <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
               <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
-              <TableHead className={`${TH} pl-2`}>Type</TableHead>
+              <TableHead className={`${TH} text-center`}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
               <TableHead className={`${TH} pl-4`}>Size</TableHead>
               <TableHead className={TH}>Item</TableHead>

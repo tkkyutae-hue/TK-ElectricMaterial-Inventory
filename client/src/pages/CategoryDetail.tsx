@@ -22,6 +22,7 @@ type CategoryGroupedItem = {
   sku: string;
   name: string;
   sizeLabel?: string | null;
+  sizeSortValue?: number | null;
   baseItemName?: string | null;
   subcategory?: string | null;
   detailType?: string | null;
@@ -131,9 +132,14 @@ function parseSizeToNumber(size: string | null | undefined): number {
 
 function sortItems(items: CategoryGroupedItem[], dir: "asc" | "desc"): CategoryGroupedItem[] {
   return [...items].sort((a, b) => {
-    const an = parseSizeToNumber(a.sizeLabel);
-    const bn = parseSizeToNumber(b.sizeLabel);
     const mul = dir === "desc" ? -1 : 1;
+    // Use DB sizeSortValue when it's set (non-zero) — preserves AWG/KCMIL wire order
+    const aDb = a.sizeSortValue && a.sizeSortValue !== 0 && a.sizeSortValue !== 9999 ? a.sizeSortValue : null;
+    const bDb = b.sizeSortValue && b.sizeSortValue !== 0 && b.sizeSortValue !== 9999 ? b.sizeSortValue : null;
+    if (aDb !== null && bDb !== null) return mul * (aDb - bDb);
+    // Fall back to label parsing for items without a DB sort value
+    const an = aDb !== null ? aDb : parseSizeToNumber(a.sizeLabel);
+    const bn = bDb !== null ? bDb : parseSizeToNumber(b.sizeLabel);
     if (an === Infinity && bn === Infinity) {
       return mul * (a.sizeLabel || "").localeCompare(b.sizeLabel || "");
     }

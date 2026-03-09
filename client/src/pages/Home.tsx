@@ -120,7 +120,7 @@ export default function Home() {
             data-testid="btn-home-logout"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign Out</span>
+            <span>Logout</span>
           </Button>
         </div>
       </header>

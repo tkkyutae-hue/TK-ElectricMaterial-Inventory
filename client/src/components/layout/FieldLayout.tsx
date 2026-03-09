@@ -1,14 +1,27 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, ArrowLeft } from "lucide-react";
+import { Home, ArrowLeft, HardHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import tkLogo from "@assets/tk_logo_1772726610288.png";
-import { HardHat } from "lucide-react";
+
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
 
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [location] = useLocation();
   const isFieldHome = location === "/field";
+  const now = useClock();
+
+  const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: "#0E1512" }}>
@@ -27,7 +40,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         className="relative z-10 flex items-center justify-between px-6 py-4 flex-shrink-0"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        {/* Left: logo + Field Mode pill */}
+        {/* Left: logo + Field Mode pill + date/time */}
         <div className="flex items-center gap-3 min-w-0">
           <img
             src={tkLogo}
@@ -47,6 +60,12 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
             <HardHat className="w-3.5 h-3.5" />
             <span>Field Mode</span>
           </div>
+          {/* Date & Time */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
+            <span>{dateStr}</span>
+            <span style={{ color: "rgba(255,255,255,0.18)" }}>·</span>
+            <span style={{ color: "rgba(255,255,255,0.55)", fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
+          </div>
         </div>
 
         {/* Right: Back + Home + user avatar */}
@@ -55,26 +74,26 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
             <Link href="/field">
               <Button
                 variant="ghost"
-                size="icon"
-                className="w-8 h-8"
+                size="sm"
+                className="gap-1.5 rounded-lg text-xs font-medium"
                 style={{ color: "rgba(255,255,255,0.40)" }}
                 data-testid="btn-field-back"
-                title="Back to Field Actions"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
               </Button>
             </Link>
           )}
           <Link href="/home">
             <Button
               variant="ghost"
-              size="icon"
-              className="w-8 h-8"
+              size="sm"
+              className="gap-1.5 rounded-lg text-xs font-medium"
               style={{ color: "rgba(255,255,255,0.40)" }}
               data-testid="btn-field-home"
-              title="Mode Select"
             >
-              <Home className="w-4 h-4" />
+              <Home className="w-3.5 h-3.5" />
+              <span>Home</span>
             </Button>
           </Link>
 

@@ -213,9 +213,9 @@ export default function FieldTransactions() {
           <TableHeader>
             <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
               <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
-              <TableHead className={`${TH} text-center`}>Type</TableHead>
+              <TableHead className={`${TH} pl-2`}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
-              <TableHead className={TH}>Size</TableHead>
+              <TableHead className={`${TH} pl-4`}>Size</TableHead>
               <TableHead className={TH}>Item</TableHead>
               <TableHead className={`${TH} text-right`}>Qty / Unit</TableHead>
               <TableHead className={TH}>From</TableHead>
@@ -259,8 +259,8 @@ export default function FieldTransactions() {
                   </TableCell>
 
                   {/* Type */}
-                  <TableCell className="py-3 px-1 text-center">
-                    <span className="inline-block scale-[0.85] origin-center">
+                  <TableCell className="py-3 pl-2 pr-1">
+                    <span className="inline-block scale-[0.85] origin-left">
                       <TransactionTypeBadge type={m.movementType} />
                     </span>
                   </TableCell>
@@ -271,7 +271,7 @@ export default function FieldTransactions() {
                   </TableCell>
 
                   {/* Size */}
-                  <TableCell className="py-3 px-2 text-xs font-semibold text-slate-500">
+                  <TableCell className="py-3 pl-4 pr-2 text-xs font-semibold text-slate-500">
                     {item?.sizeLabel || <span className="text-slate-300">—</span>}
                   </TableCell>
 

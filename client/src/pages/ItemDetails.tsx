@@ -519,29 +519,26 @@ type WireReelLocal = {
 };
 
 type AddReelDraft = {
-  reelId: string;
   lengthFt: string;
-  brand: string;
-  supplierId: string;
   locationId: string;
-  status: "new" | "used";
-  notes: string;
+  status: "full" | "partial" | "opened";
 };
 
 const REEL_STATUS_COLORS: Record<string, string> = {
-  new: "bg-emerald-100 text-emerald-700",
-  used: "bg-amber-100 text-amber-700",
+  full: "bg-emerald-100 text-emerald-700",
+  partial: "bg-amber-100 text-amber-700",
+  opened: "bg-sky-100 text-sky-700",
 };
 const REEL_STATUS_LABELS: Record<string, string> = {
-  new: "New", used: "Used",
+  full: "Full", partial: "Partial", opened: "Opened",
 };
 
 const BLANK_REEL_DRAFT: AddReelDraft = {
-  reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new", notes: "",
+  lengthFt: "", locationId: "", status: "full",
 };
 
 function ReelStatusBadge({ status }: { status: string | null }) {
-  const s = status || "new";
+  const s = status || "full";
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${REEL_STATUS_COLORS[s] ?? "bg-slate-100 text-slate-600"}`}>
       {REEL_STATUS_LABELS[s] ?? s}
@@ -553,7 +550,6 @@ function WireReelInline({ item }: { item: any }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
-  const { data: supplierList = [] } = useSuppliers();
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
 
@@ -568,16 +564,15 @@ function WireReelInline({ item }: { item: any }) {
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
 
+  const nextReelId = `r-${String(reels.length + 1).padStart(3, "0")}`;
+
   const addMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/wire-reels", {
       itemId: item.id,
-      reelId: draft.reelId.trim(),
+      reelId: nextReelId,
       lengthFt: parseInt(draft.lengthFt) || 0,
-      brand: draft.brand.trim() || null,
-      supplierId: draft.supplierId ? parseInt(draft.supplierId) : null,
       locationId: draft.locationId ? parseInt(draft.locationId) : null,
       status: draft.status,
-      notes: draft.notes.trim() || null,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
@@ -620,61 +615,19 @@ function WireReelInline({ item }: { item: any }) {
       </div>
 
       <div className="space-y-4">
-        {/* Summary cards when reels exist */}
-        {!isLoading && reels.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="bg-[#EAF7EE] border border-[#D9E7DD] rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-brand-700 uppercase tracking-wide">Total Reels</p>
-              <p className="text-2xl font-display font-bold text-brand-800 mt-0.5">{reels.length}</p>
-            </div>
-            <div className="bg-[#EAF7EE] border border-[#D9E7DD] rounded-xl p-3">
-              <p className="text-[11px] font-semibold text-brand-700 uppercase tracking-wide">Total Feet</p>
-              <p className="text-2xl font-display font-bold text-brand-800 mt-0.5">{totalFt.toLocaleString()} <span className="text-sm font-medium">FT</span></p>
-            </div>
-          </div>
-        )}
-
         {/* Add reel inline form */}
         {showAdd && (
           <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+            <div className="grid grid-cols-4 gap-3 mb-3">
               <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Reel ID <span className="text-red-400">*</span></label>
-                <Input value={draft.reelId} onChange={e => setDraft(d => ({ ...d, reelId: e.target.value }))}
-                  placeholder="e.g. R-001" className="h-8 text-sm" data-testid={`input-reel-id-${item.id}`} />
+                <label className="text-[11px] text-slate-500 font-medium block mb-1">Reel ID</label>
+                <Input value={nextReelId} readOnly
+                  className="h-8 text-sm bg-slate-50 text-slate-400 font-mono cursor-default" data-testid={`input-reel-id-${item.id}`} />
               </div>
               <div>
                 <label className="text-[11px] text-slate-500 font-medium block mb-1">Length (FT) <span className="text-red-400">*</span></label>
                 <Input type="number" min={0} value={draft.lengthFt} onChange={e => setDraft(d => ({ ...d, lengthFt: e.target.value }))}
                   placeholder="500" className="h-8 text-sm" data-testid={`input-reel-length-${item.id}`} />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Brand</label>
-                <Input value={draft.brand} onChange={e => setDraft(d => ({ ...d, brand: e.target.value }))}
-                  placeholder="Southwire" className="h-8 text-sm" data-testid={`input-reel-brand-${item.id}`} />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Status</label>
-                <Select value={draft.status} onValueChange={v => setDraft(d => ({ ...d, status: v as AddReelDraft["status"] }))}>
-                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}`}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="used">Used</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Supplier</label>
-                <Select
-                  value={draft.supplierId || "__none__"}
-                  onValueChange={v => setDraft(d => ({ ...d, supplierId: v === "__none__" ? "" : v }))}
-                >
-                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-supplier-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— None —</SelectItem>
-                    {(supplierList as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <label className="text-[11px] text-slate-500 font-medium block mb-1">Location</label>
@@ -689,16 +642,22 @@ function WireReelInline({ item }: { item: any }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-2">
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Notes</label>
-                <Input value={draft.notes} onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
-                  placeholder="Optional note…" className="h-8 text-sm" data-testid={`input-reel-notes-${item.id}`} />
+              <div>
+                <label className="text-[11px] text-slate-500 font-medium block mb-1">Status</label>
+                <Select value={draft.status} onValueChange={v => setDraft(d => ({ ...d, status: v as AddReelDraft["status"] }))}>
+                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}`}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full">Full</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                    <SelectItem value="opened">Opened</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setDraft(BLANK_REEL_DRAFT); }}>Cancel</Button>
               <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
-                disabled={!draft.reelId.trim() || addMutation.isPending}
+                disabled={!draft.lengthFt || addMutation.isPending}
                 onClick={() => addMutation.mutate()}
                 data-testid={`button-save-reel-${item.id}`}
               >
@@ -726,7 +685,7 @@ function WireReelInline({ item }: { item: any }) {
             <table className="w-full text-sm" style={{ tableLayout: "auto" }}>
               <thead>
                 <tr className="bg-white border-b border-slate-100">
-                  {["Reel ID", "Length (FT)", "Brand", "Supplier", "Location", "Status", "Notes", ""].map(h => (
+                  {["Reel ID", "Length (FT)", "Location", "Status", ""].map(h => (
                     <th key={h} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${h === "Length (FT)" ? "text-right" : h === "Status" ? "text-center" : h === "" ? "" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
@@ -736,11 +695,8 @@ function WireReelInline({ item }: { item: any }) {
                   <tr key={reel.id} className="hover:bg-slate-50 transition-colors" data-testid={`row-reel-${reel.id}`}>
                     <td className="px-4 py-2.5 font-mono font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
-                    <td className="px-4 py-2.5 text-slate-500 max-w-[180px] truncate">{reel.notes || <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-2.5">
                       <button
                         onClick={() => deleteMutation.mutate(reel.id)}
@@ -759,7 +715,7 @@ function WireReelInline({ item }: { item: any }) {
                 <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
                   <td className="px-4 py-2.5 font-semibold text-brand-700 text-sm">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
-                  <td colSpan={6} />
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             </table>
@@ -789,6 +745,16 @@ export default function ItemDetails() {
 
   const { data: item, isLoading } = useItem(id);
   const deleteMutation = useDeleteItem();
+
+  const { data: wireReels = [] } = useQuery<any[]>({
+    queryKey: ["/api/wire-reels", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/wire-reels/${id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load reels");
+      return res.json();
+    },
+    enabled: !!id,
+  });
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -912,6 +878,11 @@ export default function ItemDetails() {
                     {item.quantityOnHand.toLocaleString()}
                   </span>
                   <span className="text-base text-slate-400 ml-1.5 font-medium">{item.unitOfMeasure}</span>
+                  {item.unitOfMeasure === "FT" && (
+                    <span className="block text-xs text-slate-400 mt-0.5" data-testid="item-reel-count">
+                      {wireReels.length} reel{wireReels.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </dd>
               </div>
               <InfoRow label="Size" value={item.sizeLabel} icon={Tag} />

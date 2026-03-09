@@ -697,26 +697,26 @@ export default function FieldInventory() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: "108px" }} />  {/* SKU */}
+              <col style={{ width: "120px" }} />  {/* SKU */}
               <col style={{ width: "52px" }} />   {/* Photo */}
-              <col style={{ width: "88px" }} />   {/* Size */}
+              <col style={{ width: "80px" }} />   {/* Size */}
               <col />                              {/* Item — widest */}
-              <col style={{ width: "120px" }} />  {/* Category */}
-              <col style={{ width: "110px" }} />  {/* Location */}
-              <col style={{ width: "96px" }} />   {/* Qty/Unit */}
-              <col style={{ width: "96px" }} />   {/* Status */}
+              <col style={{ width: "140px" }} />  {/* Category */}
+              <col style={{ width: "110px" }} />  {/* Qty/Unit */}
+              <col style={{ width: "130px" }} />  {/* Location */}
+              <col style={{ width: "110px" }} />  {/* Status */}
             </colgroup>
             <thead>
               <tr className="bg-[#F6F7F9] border-b border-[#D9E7DD]">
                 {[
-                  { label: "SKU",      align: "left"   },
-                  { label: "Photo",    align: "center" },
-                  { label: "Size",     align: "left"   },
-                  { label: "Item",     align: "left"   },
-                  { label: "Category", align: "left",  cls: "hidden sm:table-cell" },
-                  { label: "Location", align: "left",  cls: "hidden md:table-cell" },
-                  { label: "Qty / Unit", align: "right" },
-                  { label: "Status",   align: "center" },
+                  { label: "SKU",        align: "left"   },
+                  { label: "Photo",      align: "left"   },
+                  { label: "Size",       align: "left"   },
+                  { label: "Item",       align: "left"   },
+                  { label: "Category",   align: "left",  cls: "hidden sm:table-cell" },
+                  { label: "Qty / Unit", align: "right"  },
+                  { label: "Location",   align: "left",  cls: "hidden md:table-cell" },
+                  { label: "Status",     align: "center" },
                 ].map(col => (
                   <th
                     key={col.label}
@@ -783,15 +783,15 @@ export default function FieldInventory() {
                     <span className="text-xs text-[#64748B] leading-snug">{item.category?.name ?? "—"}</span>
                   </td>
 
-                  {/* Location */}
-                  <td className="px-3 py-3 align-middle hidden md:table-cell">
-                    <span className="text-xs text-[#64748B]">{item.location?.name ?? "—"}</span>
-                  </td>
-
                   {/* Qty / Unit */}
                   <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
                     <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
                     <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
+                  </td>
+
+                  {/* Location */}
+                  <td className="px-3 py-3 align-middle hidden md:table-cell">
+                    <span className="text-xs text-[#64748B]">{item.location?.name ?? "—"}</span>
                   </td>
 
                   {/* Status */}

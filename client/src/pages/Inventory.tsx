@@ -44,7 +44,7 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-200 hover:-translate-y-0.5"
         data-testid={`card-category-${cat.id}`}
       >
-        <div className="relative aspect-[16/8] overflow-hidden bg-[#16202e]">
+        <div className="relative h-28 overflow-hidden bg-[#16202e]">
           {/* Blurred ambient fill — hides letterbox bars */}
           {cat.imageUrl && (
             <img

@@ -109,13 +109,13 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* Filters row 2: From | To | Project/PO */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filters — all 4 in one row */}
+      <div className="flex flex-wrap gap-2 items-center">
         {/* From */}
         <Select value={fromFilter} onValueChange={setFrom}>
-          <SelectTrigger className="flex-1 min-w-[130px] h-9 text-sm" data-testid="field-tx-from-filter">
-            <span className="flex items-center gap-1.5 min-w-0">
-              <Navigation className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+          <SelectTrigger className="flex-1 min-w-[110px] h-8 text-xs" data-testid="field-tx-from-filter">
+            <span className="flex items-center gap-1 min-w-0">
+              <Navigation className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All From" />
             </span>
           </SelectTrigger>
@@ -129,9 +129,9 @@ export default function FieldTransactions() {
 
         {/* To */}
         <Select value={toFilter} onValueChange={setTo}>
-          <SelectTrigger className="flex-1 min-w-[130px] h-9 text-sm" data-testid="field-tx-to-filter">
-            <span className="flex items-center gap-1.5 min-w-0">
-              <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+          <SelectTrigger className="flex-1 min-w-[110px] h-8 text-xs" data-testid="field-tx-to-filter">
+            <span className="flex items-center gap-1 min-w-0">
+              <ArrowRightLeft className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All To" />
             </span>
           </SelectTrigger>
@@ -145,9 +145,9 @@ export default function FieldTransactions() {
 
         {/* Project / PO */}
         <Select value={projectFilter} onValueChange={setProj}>
-          <SelectTrigger className="flex-1 min-w-[160px] h-9 text-sm" data-testid="field-tx-project-filter">
-            <span className="flex items-center gap-1.5 min-w-0">
-              <FolderKanban className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+          <SelectTrigger className="flex-1 min-w-[130px] h-8 text-xs" data-testid="field-tx-project-filter">
+            <span className="flex items-center gap-1 min-w-0">
+              <FolderKanban className="w-3 h-3 text-slate-400 flex-shrink-0" />
               <SelectValue placeholder="All Projects" />
             </span>
           </SelectTrigger>
@@ -158,42 +158,40 @@ export default function FieldTransactions() {
             ))}
           </SelectContent>
         </Select>
-      </div>
 
-      {/* Filters row 3: Date range */}
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[150px]">
-          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            placeholder="Start date"
-            data-testid="field-tx-date-from"
-            className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
-          />
+        {/* Date range — inline */}
+        <div className="flex items-center gap-1 flex-1 min-w-[240px]">
+          <div className="relative flex-1">
+            <CalendarDays className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              data-testid="field-tx-date-from"
+              className="w-full h-8 pl-6 pr-2 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+            />
+          </div>
+          <span className="text-slate-400 text-xs select-none flex-shrink-0">—</span>
+          <div className="relative flex-1">
+            <CalendarDays className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              data-testid="field-tx-date-to"
+              className="w-full h-8 pl-6 pr-2 text-xs rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="h-8 px-2 text-xs text-slate-400 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors flex-shrink-0"
+              data-testid="field-tx-date-clear"
+            >
+              ×
+            </button>
+          )}
         </div>
-        <span className="flex items-center text-slate-400 text-sm select-none">—</span>
-        <div className="relative flex-1 min-w-[150px]">
-          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            placeholder="End date"
-            data-testid="field-tx-date-to"
-            className="w-full h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
-          />
-        </div>
-        {(dateFrom || dateTo) && (
-          <button
-            onClick={() => { setDateFrom(""); setDateTo(""); }}
-            className="h-9 px-3 text-xs text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
-            data-testid="field-tx-date-clear"
-          >
-            Clear
-          </button>
-        )}
       </div>
 
       {/* Table — no horizontal scroll */}
@@ -201,7 +199,7 @@ export default function FieldTransactions() {
         <Table className="w-full table-fixed">
           <colgroup>
             <col style={{ width: "46px" }} />
-            <col style={{ width: "92px" }} />
+            <col style={{ width: "76px" }} />
             <col style={{ width: "42px" }} />
             <col style={{ width: "44px" }} />
             <col />
@@ -236,7 +234,7 @@ export default function FieldTransactions() {
               <TableRow>
                 <TableCell colSpan={COLS} className="text-center py-12 text-slate-400">No transactions found.</TableCell>
               </TableRow>
-            ) : filtered.map(m => {
+            ) : filtered.map((m, idx) => {
               const mx      = m as any;
               const item    = mx.item;
               const fromLoc = mx.sourceLocation;
@@ -256,8 +254,8 @@ export default function FieldTransactions() {
                   data-testid={`field-tx-row-${m.id}`}
                 >
                   {/* No. */}
-                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-300 group-hover:text-slate-400 transition-colors">
-                    #{m.id}
+                  <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors">
+                    {idx + 1}
                   </TableCell>
 
                   {/* Type */}

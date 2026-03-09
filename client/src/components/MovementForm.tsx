@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects, useCreateLocation } from "@/hooks/use-reference-data";
 import { useToast } from "@/hooks/use-toast";
@@ -62,12 +63,10 @@ export function SearchableItemSelect({
 
   const filtered = search.trim()
     ? items.filter(i => {
-        const q = search.toLowerCase();
-        return (
-          i.name?.toLowerCase().includes(q) ||
-          i.sku?.toLowerCase().includes(q) ||
-          i.sizeLabel?.toLowerCase().includes(q)
-        );
+        const tokens = search.toLowerCase().split(/\s+/).filter(Boolean);
+        const haystack = [i.name, i.sku, i.sizeLabel, i.description, i.brand, i.manufacturer]
+          .filter(Boolean).join(" ").toLowerCase();
+        return tokens.every(t => haystack.includes(t));
       })
     : items;
 
@@ -469,6 +468,7 @@ interface MovementFormProps {
 export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false }: MovementFormProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [, navigate] = useLocation();
   const { data: items } = useItems();
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
@@ -524,7 +524,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
     setSubmitting(true);
 
     try {
-      await Promise.all(
+      const results = await Promise.all(
         validRows.map(row =>
           fetch(api.movements.create.path, {
             method: "POST",
@@ -555,10 +555,54 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       await qc.invalidateQueries({ queryKey: [api.projects.list.path] });
 
       const count = validRows.length;
-      toast({
+      const createdIds: number[] = results.map((r: any) => r.id).filter(Boolean);
+      const txPath = fieldMode ? "/field/transactions" : "/transactions";
+
+      const dismissRef = { fn: () => {} };
+
+      const { dismiss } = toast({
         title: count === 1 ? "Movement logged" : `${count} movements logged`,
-        description: `${count} item${count > 1 ? "s" : ""} recorded as ${shared.movementType}.`,
+        description: (
+          <div>
+            <p>{count} item{count > 1 ? "s" : ""} recorded as {shared.movementType}.</p>
+            <div className="flex gap-3 mt-2">
+              <button
+                type="button"
+                className="text-xs font-medium text-brand-700 hover:text-brand-900 underline underline-offset-2"
+                onClick={() => { navigate(txPath); dismissRef.fn(); }}
+              >
+                View Transactions
+              </button>
+              {createdIds.length > 0 && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2"
+                  onClick={async () => {
+                    dismissRef.fn();
+                    try {
+                      await fetch("/api/movements/bulk-delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ ids: createdIds }),
+                      });
+                      await qc.invalidateQueries({ queryKey: [api.movements.list.path] });
+                      await qc.invalidateQueries({ queryKey: [api.items.list.path] });
+                      await qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
+                      toast({ title: "Undone", description: `${count} movement${count > 1 ? "s" : ""} removed.` });
+                    } catch (err: any) {
+                      toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+                    }
+                  }}
+                >
+                  Undo
+                </button>
+              )}
+            </div>
+          </div>
+        ) as any,
       });
+      dismissRef.fn = dismiss;
 
       setItemRows([makeRow()]);
       form.reset({ movementType: shared.movementType });

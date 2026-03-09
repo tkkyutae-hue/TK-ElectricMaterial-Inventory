@@ -44,15 +44,20 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         className="relative rounded-xl overflow-hidden cursor-pointer group border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
         data-testid={`card-category-${cat.id}`}
       >
-        <div className="relative aspect-[16/9] overflow-hidden bg-slate-900">
+        <div className="relative aspect-[16/7] overflow-hidden bg-slate-900">
+          {/* Blurred background fill */}
+          {cat.imageUrl && (
+            <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+          )}
           {cat.imageUrl ? (
             <img
               src={cat.imageUrl}
               alt={cat.name}
-              className="absolute inset-0 w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300"
+              className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {
                 const t = e.currentTarget;
                 t.style.display = "none";
+                (t.previousElementSibling as HTMLElement)?.style.setProperty("display", "none");
                 t.parentElement?.querySelector(".fallback-grad")?.classList.remove("hidden");
               }}
             />

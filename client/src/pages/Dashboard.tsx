@@ -298,14 +298,18 @@ export default function Dashboard() {
                     data-testid={`card-category-dash-${cat.id}`}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+                      {cat.imageUrl && (
+                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+                      )}
                       {cat.imageUrl ? (
                         <img
                           src={cat.imageUrl}
                           alt={cat.name}
-                          className="absolute inset-0 w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-200"
+                          className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
                             const t = e.currentTarget;
                             t.style.display = "none";
+                            (t.previousElementSibling as HTMLElement)?.style.setProperty("display", "none");
                             t.nextElementSibling?.classList.remove("hidden");
                           }}
                         />

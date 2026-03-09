@@ -1208,10 +1208,15 @@ export default function CategoryDetail() {
       </div>
 
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden shadow-lg aspect-[21/9] bg-slate-900">
+      <div className="relative rounded-2xl overflow-hidden shadow-lg bg-slate-900" style={{ height: "200px" }}>
+        {/* Blurred background fill */}
+        {category.imageUrl && (
+          <img src={category.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-50 saturate-150 pointer-events-none" />
+        )}
+        {/* Main image */}
         {category.imageUrl ? (
-          <img src={category.imageUrl} alt={category.name} className="absolute inset-0 w-full h-full object-contain object-center"
-            onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
+          <img src={category.imageUrl} alt={category.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
+            onError={(e) => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
         ) : null}
         <div className={`${category.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradientClass}`} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

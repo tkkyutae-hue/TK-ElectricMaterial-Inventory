@@ -555,6 +555,7 @@ function WireReelSection({ item }: { item: any }) {
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
   const { data: supplierList = [] } = useSuppliers();
+  const [isOpen, setIsOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
 
@@ -600,7 +601,11 @@ function WireReelSection({ item }: { item: any }) {
 
   return (
     <Card className="premium-card border-none" data-testid={`wire-reel-section-${item.id}`}>
-      <CardHeader className="border-b border-slate-100 bg-slate-50/50 rounded-t-2xl pb-4">
+      {/* Clickable header — toggles open/close */}
+      <CardHeader
+        className="border-b border-slate-100 bg-slate-50/50 rounded-t-2xl pb-4 cursor-pointer select-none"
+        onClick={() => setIsOpen(v => !v)}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-brand-600" />
@@ -611,16 +616,22 @@ function WireReelSection({ item }: { item: any }) {
               </span>
             )}
           </div>
-          <button
-            className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
-            onClick={() => { setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
-            data-testid={`button-add-reel-${item.id}`}
-          >
-            <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
-          </button>
+          <div className="flex items-center gap-3">
+            {isOpen && (
+              <button
+                className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
+                onClick={e => { e.stopPropagation(); setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
+                data-testid={`button-add-reel-${item.id}`}
+              >
+                <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
+              </button>
+            )}
+            <span className="text-slate-400 text-sm">{isOpen ? "▲" : "▼"}</span>
+          </div>
         </div>
       </CardHeader>
 
+      {isOpen && (
       <div className="p-5 space-y-4">
         {/* Summary cards when reels exist */}
         {!isLoading && reels.length > 0 && (
@@ -668,20 +679,26 @@ function WireReelSection({ item }: { item: any }) {
               </div>
               <div>
                 <label className="text-[11px] text-slate-500 font-medium block mb-1">Supplier</label>
-                <Select value={draft.supplierId} onValueChange={v => setDraft(d => ({ ...d, supplierId: v }))}>
+                <Select
+                  value={draft.supplierId || "__none__"}
+                  onValueChange={v => setDraft(d => ({ ...d, supplierId: v === "__none__" ? "" : v }))}
+                >
                   <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-supplier-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— None —</SelectItem>
+                    <SelectItem value="__none__">— None —</SelectItem>
                     {(supplierList as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="text-[11px] text-slate-500 font-medium block mb-1">Location</label>
-                <Select value={draft.locationId} onValueChange={v => setDraft(d => ({ ...d, locationId: v }))}>
+                <Select
+                  value={draft.locationId || "__none__"}
+                  onValueChange={v => setDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}
+                >
                   <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— None —</SelectItem>
+                    <SelectItem value="__none__">— None —</SelectItem>
                     {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -763,6 +780,7 @@ function WireReelSection({ item }: { item: any }) {
           </div>
         )}
       </div>
+      )}
     </Card>
   );
 }

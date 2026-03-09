@@ -1078,20 +1078,26 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
             </div>
             <div>
               <label className="text-[11px] text-slate-500 font-medium block mb-1">Supplier</label>
-              <Select value={draft.supplierId} onValueChange={v => setDraft(d => ({ ...d, supplierId: v }))}>
+              <Select
+                value={draft.supplierId || "__none__"}
+                onValueChange={v => setDraft(d => ({ ...d, supplierId: v === "__none__" ? "" : v }))}
+              >
                 <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-supplier-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="__none__">— None —</SelectItem>
                   {(supplierList as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="text-[11px] text-slate-500 font-medium block mb-1">Location</label>
-              <Select value={draft.locationId} onValueChange={v => setDraft(d => ({ ...d, locationId: v }))}>
+              <Select
+                value={draft.locationId || "__none__"}
+                onValueChange={v => setDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}
+              >
                 <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="__none__">— None —</SelectItem>
                   {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                 </SelectContent>
               </Select>

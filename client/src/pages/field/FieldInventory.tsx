@@ -4,11 +4,10 @@ import { useSearch, useLocation } from "wouter";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
-  ImageOff, Home,
+  ImageOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -457,18 +456,8 @@ export default function FieldInventory() {
             <Package className="w-5 h-5 text-[#0A6B24]" />
             <h1 className="text-2xl font-display font-bold text-slate-900">Inventory</h1>
           </div>
-          <p className="text-[#64748B] text-sm">카테고리 선택 후 Family, Type, Subcategory, Size로 세분화합니다.</p>
+          <p className="text-[#64748B] text-sm">Select a category, then filter by Family, Type, Subcategory, and Size.</p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-slate-500 hover:text-[#0A6B24] hover:bg-[#EAF7EE] gap-1.5 mt-1"
-          onClick={() => navigate("/field")}
-          data-testid="btn-back-field-home"
-        >
-          <Home className="w-4 h-4" />
-          <span className="text-xs font-medium">Field Home</span>
-        </Button>
       </div>
 
       {/* ── Category Cards ── */}
@@ -533,6 +522,14 @@ export default function FieldInventory() {
           </div>
         )}
       </div>
+
+      {/* ── Selected category heading ── */}
+      {selectedCat && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-xs font-bold text-[#0A6B24] uppercase tracking-widest">{selectedCat.name}</span>
+          <div className="flex-1 h-px bg-[#D9E7DD]" />
+        </div>
+      )}
 
       {/* ── Level 2: Family ── */}
       {selectedCatId !== null && families.length > 0 && (

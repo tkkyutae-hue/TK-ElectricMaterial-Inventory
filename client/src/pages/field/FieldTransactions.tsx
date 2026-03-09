@@ -259,8 +259,8 @@ export default function FieldTransactions() {
                   </TableCell>
 
                   {/* Type */}
-                  <TableCell className="py-3 pl-2 pr-1">
-                    <span className="inline-block scale-[0.85] origin-left">
+                  <TableCell className="py-3 px-1 text-center">
+                    <span className="inline-block scale-[0.85] origin-center">
                       <TransactionTypeBadge type={m.movementType} />
                     </span>
                   </TableCell>

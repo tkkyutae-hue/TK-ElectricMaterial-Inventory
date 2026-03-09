@@ -1778,10 +1778,6 @@ export default function CategoryDetail() {
                   </Table>
                 </div>
 
-                {/* Wire reel tracking — shown only for FT-measured items */}
-                {group.items.filter(item => item.unitOfMeasure === "FT").map(item => (
-                  <WireItemReelSection key={`reel-${item.id}`} item={item} />
-                ))}
               </div>
             );
           })}

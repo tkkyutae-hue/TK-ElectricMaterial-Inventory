@@ -291,11 +291,13 @@ export class DatabaseStorage implements IStorage {
 
       const nameScore = (i: any) => {
         const nameLower = (i.name || '').toLowerCase();
+        const sizeLabel = ((i as any).sizeLabel || '').toLowerCase();
+        const fullName = `${nameLower} ${sizeLabel}`.trim();
         const skuLower = (i.sku || '').toLowerCase();
-        const baseLower = (i.baseItemName || '').toLowerCase();
+        const baseLower = ((i as any).baseItemName || '').toLowerCase();
         let score = 0;
         for (const token of tokens) {
-          if (nameLower.includes(token)) score += 4;
+          if (fullName.includes(token)) score += 4;
           else if (baseLower.includes(token)) score += 3;
           else if (skuLower.includes(token)) score += 2;
         }

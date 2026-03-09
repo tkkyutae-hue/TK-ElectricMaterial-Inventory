@@ -11,7 +11,7 @@ export function ItemStatusBadge({ status }: { status: string }) {
   const { label, className } = config[status] || { label: status, className: "bg-slate-100 text-slate-700" };
 
   return (
-    <Badge variant="outline" className={`${className} font-semibold px-2.5 py-0.5 rounded-full border`}>
+    <Badge variant="outline" className={`${className} font-medium text-[11px] px-2 py-0 rounded-full border leading-5 whitespace-nowrap`}>
       {label}
     </Badge>
   );

@@ -1418,23 +1418,23 @@ export default function CategoryDetail() {
                 <div className="overflow-x-auto">
                   <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "760px" }}>
                     <colgroup>
-                      <col style={{ width: "140px" }} />
-                      <col style={{ width: "56px" }} />
-                      <col style={{ width: "110px" }} />
+                      <col style={{ width: "130px" }} />
+                      <col style={{ width: "52px" }} />
+                      <col style={{ width: "130px" }} />
                       <col />
-                      <col style={{ width: "90px" }} />
-                      <col style={{ width: "70px" }} />
-                      <col style={{ width: "170px" }} />
-                      <col style={{ width: "110px" }} />
+                      <col style={{ width: "72px" }} />
+                      <col style={{ width: "56px" }} />
+                      <col style={{ width: "150px" }} />
+                      <col style={{ width: "100px" }} />
                     </colgroup>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5">SKU</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5 text-center">SKU</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Photo</TableHead>
-                        <TableHead className="py-2">
+                        <TableHead className="py-2 text-center">
                           <button
                             onClick={() => toggleFamilySort(group.baseItemName)}
-                            className="flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors group"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
                             title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
                             data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
                           >
@@ -1444,10 +1444,10 @@ export default function CategoryDetail() {
                               : <ArrowDown className="w-3 h-3 text-brand-500" />}
                           </button>
                         </TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item Name</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Item Name</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Qty</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Unit</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Location</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Location</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5 text-center">
                           {isEditingThis ? "Delete" : "Status"}
                         </TableHead>
@@ -1467,7 +1467,9 @@ export default function CategoryDetail() {
                           <TableRow key={item.id}
                             className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                             data-testid={`row-item-${item.id}`}>
-                            <TableCell className="font-mono text-xs text-slate-500 py-2.5 pl-5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sku}</TableCell>
+                            <TableCell className="py-2.5 pl-5 text-center">
+                              <div className="font-mono text-xs text-slate-500 truncate">{item.sku}</div>
+                            </TableCell>
                             <TableCell className="py-2.5">
                               <div className="flex items-center justify-center">
                                 {item.imageUrl ? (
@@ -1479,13 +1481,17 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="font-semibold text-slate-800 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.sizeLabel || "—"}</TableCell>
+                            <TableCell className="py-2.5 text-center">
+                              <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
+                            </TableCell>
                             <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
                               <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
+                            <TableCell className="text-center font-semibold text-slate-900 py-2.5 tabular-nums">{item.quantityOnHand.toLocaleString()}</TableCell>
                             <TableCell className="text-slate-500 text-sm py-2.5 text-center">{item.unitOfMeasure}</TableCell>
-                            <TableCell className="text-slate-600 text-sm py-2.5 overflow-hidden text-ellipsis whitespace-nowrap">{item.location?.name || "—"}</TableCell>
+                            <TableCell className="text-slate-600 text-sm py-2.5 text-center overflow-hidden">
+                              <div className="truncate">{item.location?.name || "—"}</div>
+                            </TableCell>
                             <TableCell className="py-2.5 pr-5">
                               <div className="flex items-center justify-center"><StatusBadge status={item.status} /></div>
                             </TableCell>

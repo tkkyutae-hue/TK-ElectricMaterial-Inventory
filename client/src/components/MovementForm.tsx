@@ -602,76 +602,119 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             </FormItem>
           )} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left column: Source location (receive/return/transfer) or Destination (issue only) */}
-            {needsSource && (
-              <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{sourceLabel}</FormLabel>
-                  <FormControl>
-                    <SearchableLocationSelect
-                      value={field.value ?? null}
-                      onChange={(id) => field.onChange(id)}
-                      locations={locations || []}
-                      placeholder="Search or type to create…"
-                      testId="select-source-location"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
-            {!needsSource && needsDestination && (
-              <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{destLabel}</FormLabel>
-                  <FormControl>
-                    <SearchableLocationSelect
-                      value={field.value ?? null}
-                      onChange={(id) => field.onChange(id)}
-                      locations={locations || []}
-                      placeholder="Select destination…"
-                      testId="select-dest-location"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
+          <div className="space-y-4">
+            {/* Row 1: primary location + project (or both locations for transfer) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: source (receive/return/transfer) OR destination (issue) */}
+              {needsSource && (
+                <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{sourceLabel}</FormLabel>
+                    <FormControl>
+                      <SearchableLocationSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        locations={locations || []}
+                        placeholder="Search or type to create…"
+                        testId="select-source-location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+              {!needsSource && needsDestination && (
+                <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{destLabel}</FormLabel>
+                    <FormControl>
+                      <SearchableLocationSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        locations={locations || []}
+                        placeholder="Select destination…"
+                        testId="select-dest-location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
-            {/* Right column: Project (receive/issue/return) or Destination (transfer) */}
-            {needsProject && (
-              <FormField control={form.control} name="projectId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Project (Optional)</FormLabel>
-                  <FormControl>
-                    <SearchableProjectSelect
-                      value={field.value ?? null}
-                      onChange={(id) => field.onChange(id)}
-                      projects={projects || []}
-                      hideCreate={fieldMode}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {/* Right: project (receive/issue/return) OR dest (transfer) */}
+              {needsProject && (
+                <FormField control={form.control} name="projectId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project (Optional)</FormLabel>
+                    <FormControl>
+                      <SearchableProjectSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        projects={projects || []}
+                        hideCreate={fieldMode}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+              {needsSource && needsDestination && (
+                <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{destLabel}</FormLabel>
+                    <FormControl>
+                      <SearchableLocationSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        locations={locations || []}
+                        placeholder="Select destination…"
+                        testId="select-dest-location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
+            </div>
+
+            {/* Row 2: secondary location — Receiving Location (receive/return) or Sending Location (issue) */}
+            {(movType === "receive" || movType === "return") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Receiving Location</FormLabel>
+                    <FormControl>
+                      <SearchableLocationSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        locations={locations || []}
+                        placeholder="Search or type to create…"
+                        testId="select-dest-location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
             )}
-            {needsSource && needsDestination && (
-              <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{destLabel}</FormLabel>
-                  <FormControl>
-                    <SearchableLocationSelect
-                      value={field.value ?? null}
-                      onChange={(id) => field.onChange(id)}
-                      locations={locations || []}
-                      placeholder="Select destination…"
-                      testId="select-dest-location"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+            {movType === "issue" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sending Location</FormLabel>
+                    <FormControl>
+                      <SearchableLocationSelect
+                        value={field.value ?? null}
+                        onChange={(id) => field.onChange(id)}
+                        locations={locations || []}
+                        placeholder="Search or type to create…"
+                        testId="select-source-location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
             )}
           </div>
 

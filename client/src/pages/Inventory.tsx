@@ -250,14 +250,14 @@ export default function Inventory() {
           <Table style={{ minWidth: 900 }}>
             <TableHeader className="bg-slate-50/80">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px] whitespace-nowrap">SKU</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[120px] whitespace-nowrap">SKU</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[52px]">Photo</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[150px]">Category</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item Name</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[80px] whitespace-nowrap">Size</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[150px]">Category</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[110px] text-right whitespace-nowrap">Qty / Unit</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px] whitespace-nowrap">Location</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[110px]">Status</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[110px] text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -294,7 +294,7 @@ export default function Inventory() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-500 text-xs leading-snug">{item.category?.name || "—"}</TableCell>
+                    <TableCell className="text-slate-600 text-sm whitespace-nowrap">{(item as any).sizeLabel || "—"}</TableCell>
                     <TableCell>
                       <Link
                         href={`/inventory/${item.id}`}
@@ -304,13 +304,13 @@ export default function Inventory() {
                         {item.name}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-slate-600 text-sm whitespace-nowrap">{(item as any).sizeLabel || "—"}</TableCell>
+                    <TableCell className="text-slate-500 text-xs leading-snug">{item.category?.name || "—"}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
                       <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                     </TableCell>
                     <TableCell className="text-slate-500 text-sm whitespace-nowrap">{item.location?.name || "—"}</TableCell>
-                    <TableCell><ItemStatusBadge status={item.status} /></TableCell>
+                    <TableCell className="text-center"><ItemStatusBadge status={item.status} /></TableCell>
                   </TableRow>
                 ))
               )}

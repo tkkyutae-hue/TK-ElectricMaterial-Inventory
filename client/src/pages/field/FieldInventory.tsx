@@ -703,7 +703,7 @@ export default function FieldInventory() {
               <col />                              {/* Item — widest */}
               <col style={{ width: "120px" }} />  {/* Category */}
               <col style={{ width: "110px" }} />  {/* Location */}
-              <col style={{ width: "56px" }} />   {/* Qty */}
+              <col style={{ width: "96px" }} />   {/* Qty/Unit */}
               <col style={{ width: "96px" }} />   {/* Status */}
             </colgroup>
             <thead>
@@ -715,12 +715,12 @@ export default function FieldInventory() {
                   { label: "Item",     align: "left"   },
                   { label: "Category", align: "left",  cls: "hidden sm:table-cell" },
                   { label: "Location", align: "left",  cls: "hidden md:table-cell" },
-                  { label: "Qty",      align: "center" },
+                  { label: "Qty / Unit", align: "right" },
                   { label: "Status",   align: "center" },
                 ].map(col => (
                   <th
                     key={col.label}
-                    className={`px-3 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : "text-left"} ${col.cls || ""}`}
+                    className={`px-3 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${col.cls || ""}`}
                   >
                     {col.label}
                   </th>
@@ -788,9 +788,10 @@ export default function FieldInventory() {
                     <span className="text-xs text-[#64748B]">{item.location?.name ?? "—"}</span>
                   </td>
 
-                  {/* Qty */}
-                  <td className="px-3 py-3 align-middle text-center">
+                  {/* Qty / Unit */}
+                  <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
                     <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
+                    <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                   </td>
 
                   {/* Status */}

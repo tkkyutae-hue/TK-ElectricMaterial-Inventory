@@ -297,12 +297,12 @@ export default function Dashboard() {
                     className="relative rounded-lg overflow-hidden cursor-pointer group border border-slate-200 hover:border-brand-300 transition-all hover:shadow-md"
                     data-testid={`card-category-dash-${cat.id}`}
                   >
-                    <div className="relative h-24">
+                    <div className="relative aspect-[4/3] overflow-hidden">
                       {cat.imageUrl ? (
                         <img
                           src={cat.imageUrl}
                           alt={cat.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-200"
                           onError={(e) => {
                             const t = e.currentTarget;
                             t.style.display = "none";

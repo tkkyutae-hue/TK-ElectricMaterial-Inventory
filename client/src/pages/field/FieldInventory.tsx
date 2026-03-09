@@ -509,8 +509,8 @@ export default function FieldInventory() {
                   <div className="absolute inset-0">
                     {cat.imageUrl ? (
                       <>
-                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover"
-                          onError={e => { e.currentTarget.style.display = "none"; }} />
+                        <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover object-center"
+                          onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
                         <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
                       </>
                     ) : (

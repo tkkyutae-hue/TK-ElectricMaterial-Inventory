@@ -488,6 +488,7 @@ export default function Transactions() {
                 )}
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Date</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">Type</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Size</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">Qty</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">From</TableHead>
@@ -501,14 +502,14 @@ export default function Transactions() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    {[...Array(9)].map((__, j) => (
+                    {[...Array(10)].map((__, j) => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : !filtered?.length ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={10} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                     <p className="font-medium text-slate-900">No transactions found</p>
                     <p className="text-sm">Try adjusting filters or log a new movement.</p>
@@ -535,6 +536,9 @@ export default function Transactions() {
                       <span className="text-slate-400">{format(new Date(tx.createdAt), 'HH:mm')}</span>
                     </TableCell>
                     <TableCell><TransactionTypeBadge type={tx.movementType} /></TableCell>
+                    <TableCell className="text-xs text-slate-600 font-medium whitespace-nowrap">
+                      {tx.item?.sizeLabel || <span className="text-slate-300">—</span>}
+                    </TableCell>
                     <TableCell>
                       <p className="font-medium text-slate-900 text-sm">{tx.item?.name || `Item #${tx.itemId}`}</p>
                       <p className="text-xs font-mono text-slate-400">{tx.item?.sku}</p>

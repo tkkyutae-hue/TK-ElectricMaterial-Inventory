@@ -252,11 +252,10 @@ export default function Inventory() {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Photo</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Category</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item Name</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Size</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Category</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Quantity</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unit</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Qty</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Location</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</TableHead>
               </TableRow>
@@ -265,14 +264,14 @@ export default function Inventory() {
               {isLoading ? (
                 [1,2,3,4,5,6,7].map(i => (
                   <TableRow key={i}>
-                    {[1,2,3,4,5,6,7,8,9].map(j => (
+                    {[1,2,3,4,5,6,7,8].map(j => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse w-full max-w-[120px]"></div></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-16 text-slate-500">
+                  <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-900">No items found</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters.</p>
@@ -295,6 +294,7 @@ export default function Inventory() {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-slate-500 text-sm">{item.category?.name || "—"}</TableCell>
                     <TableCell className="max-w-[200px]">
                       <Link
                         href={`/inventory/${item.id}`}
@@ -305,11 +305,10 @@ export default function Inventory() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-slate-600 text-sm">{(item as any).sizeLabel || "—"}</TableCell>
-                    <TableCell className="text-slate-500 text-sm">{item.category?.name || "—"}</TableCell>
                     <TableCell className="text-right font-semibold text-slate-900">
-                      {item.quantityOnHand.toLocaleString()}
+                      <span>{item.quantityOnHand.toLocaleString()}</span>
+                      <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                     </TableCell>
-                    <TableCell className="text-slate-500 text-sm">{item.unitOfMeasure}</TableCell>
                     <TableCell className="text-slate-500 text-sm">{item.location?.name || "—"}</TableCell>
                     <TableCell><ItemStatusBadge status={item.status} /></TableCell>
                   </TableRow>

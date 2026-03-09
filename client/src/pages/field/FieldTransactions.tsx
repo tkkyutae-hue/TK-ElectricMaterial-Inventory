@@ -1,11 +1,15 @@
 import { useState, useMemo } from "react";
-import { useMovements } from "@/hooks/use-transactions";
+import { useMovements, useBulkDeleteMovements } from "@/hooks/use-transactions";
+import { useAuth } from "@/hooks/use-auth";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
-import { Search, ClipboardList, ImageOff, ArrowRightLeft, Navigation, FolderKanban, CalendarDays } from "lucide-react";
+import { Search, ClipboardList, ImageOff, ArrowRightLeft, Navigation, FolderKanban, CalendarDays, CheckSquare, Square, Trash2, X, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, startOfDay, endOfDay } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 const TH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest py-3 px-2 whitespace-nowrap";
 
@@ -31,6 +35,10 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 }
 
 export default function FieldTransactions() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const canDelete = user?.role === "staff" || user?.role === "admin";
+
   const [search, setSearch]       = useState("");
   const [fromFilter, setFrom]     = useState("all");
   const [toFilter, setTo]         = useState("all");
@@ -38,9 +46,13 @@ export default function FieldTransactions() {
   const [dateFrom, setDateFrom]   = useState("");
   const [dateTo, setDateTo]       = useState("");
 
-  const { data: movements, isLoading } = useMovements();
+  const [selectMode, setSelectMode]   = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Derive unique from/to/project options from movement data
+  const { data: movements, isLoading } = useMovements();
+  const bulkDelete = useBulkDeleteMovements();
+
   const { fromOptions, toOptions, projectOptions } = useMemo(() => {
     const froms = new Map<string, string>();
     const tos   = new Map<string, string>();
@@ -82,17 +94,106 @@ export default function FieldTransactions() {
     return true;
   });
 
-  const COLS = 11;
+  const filteredIds = filtered.map(m => m.id);
+  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+
+  function toggleRow(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredIds.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function handleDelete() {
+    const ids = Array.from(selectedIds);
+    try {
+      await bulkDelete.mutateAsync(ids);
+      toast({ title: `${ids.length} transaction${ids.length !== 1 ? "s" : ""} deleted` });
+      exitSelectMode();
+      setConfirmOpen(false);
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
+  }
+
+  const COLS = selectMode ? 12 : 11;
 
   return (
     <div className="space-y-4 pt-5 pb-8">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-0.5">
-          <ClipboardList className="w-5 h-5 text-brand-700" />
-          <h1 className="text-2xl font-display font-bold text-slate-900">Transactions</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <ClipboardList className="w-5 h-5 text-brand-700" />
+            <h1 className="text-2xl font-display font-bold text-slate-900">Transactions</h1>
+          </div>
+          <p className="text-slate-500 text-sm">
+            {selectMode ? `${selectedIds.size} selected` : "View-only transaction history."}
+          </p>
         </div>
-        <p className="text-slate-500 text-sm">View-only transaction history.</p>
+        {canDelete && (
+          <div className="flex items-center gap-2 shrink-0 mt-1">
+            {selectMode ? (
+              <>
+                {selectedIds.size > 0 && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => setConfirmOpen(true)}
+                    data-testid="button-delete-selected"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete ({selectedIds.size})
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={exitSelectMode}
+                  data-testid="button-cancel-select"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setSelectMode(true)}
+                data-testid="button-select-mode"
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                Select
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filters row 1: search */}
@@ -111,7 +212,6 @@ export default function FieldTransactions() {
 
       {/* Filters — grid: From | To | Project | Date range */}
       <div className="grid grid-cols-[1fr_1fr_1fr_1.6fr] gap-2 items-center">
-        {/* From */}
         <Select value={fromFilter} onValueChange={setFrom}>
           <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-from-filter">
             <span className="flex items-center gap-1 min-w-0 overflow-hidden">
@@ -127,7 +227,6 @@ export default function FieldTransactions() {
           </SelectContent>
         </Select>
 
-        {/* To */}
         <Select value={toFilter} onValueChange={setTo}>
           <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-to-filter">
             <span className="flex items-center gap-1 min-w-0 overflow-hidden">
@@ -143,7 +242,6 @@ export default function FieldTransactions() {
           </SelectContent>
         </Select>
 
-        {/* Project / PO */}
         <Select value={projectFilter} onValueChange={setProj}>
           <SelectTrigger className="w-full h-8 text-xs" data-testid="field-tx-project-filter">
             <span className="flex items-center gap-1 min-w-0 overflow-hidden">
@@ -159,7 +257,6 @@ export default function FieldTransactions() {
           </SelectContent>
         </Select>
 
-        {/* Date range */}
         <div className="flex items-center gap-1">
           <div className="relative flex-1 min-w-0">
             <CalendarDays className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
@@ -194,10 +291,11 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* Table — no horizontal scroll */}
+      {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <Table className="w-full table-fixed">
           <colgroup>
+            {selectMode && <col style={{ width: "40px" }} />}
             <col style={{ width: "46px" }} />
             <col style={{ width: "76px" }} />
             <col style={{ width: "42px" }} />
@@ -212,6 +310,20 @@ export default function FieldTransactions() {
           </colgroup>
           <TableHeader>
             <TableRow className="border-b-2 border-slate-200" style={{ background: "#F8FAFA" }}>
+              {selectMode && (
+                <TableHead className={`${TH} pl-3 text-center`}>
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="inline-flex items-center justify-center"
+                    data-testid="button-select-all"
+                  >
+                    {allSelected
+                      ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                      : <Square className="w-4 h-4 text-slate-300" />}
+                  </button>
+                </TableHead>
+              )}
               <TableHead className={`${TH} pl-4 text-center`}>No.</TableHead>
               <TableHead className={`${TH} text-center`}>Type</TableHead>
               <TableHead className={TH}>Photo</TableHead>
@@ -240,6 +352,7 @@ export default function FieldTransactions() {
               const fromLoc = mx.sourceLocation;
               const toLoc   = mx.destinationLocation;
               const project = mx.project;
+              const isSelected = selectedIds.has(m.id);
 
               const projectName = project?.name ?? null;
               const projectPo   = project?.poNumber ?? null;
@@ -247,12 +360,22 @@ export default function FieldTransactions() {
               return (
                 <TableRow
                   key={m.id}
-                  className="group transition-colors duration-100 cursor-default"
-                  style={{ borderLeft: "3px solid transparent" }}
-                  onMouseEnter={e => (e.currentTarget.style.borderLeft = "3px solid #0A6B24")}
-                  onMouseLeave={e => (e.currentTarget.style.borderLeft = "3px solid transparent")}
+                  className={`group transition-colors duration-100 ${selectMode ? "cursor-pointer" : "cursor-default"} ${isSelected ? "bg-brand-50/60" : ""}`}
+                  style={{ borderLeft: isSelected ? "3px solid #0A6B24" : "3px solid transparent" }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid #0A6B24"; }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderLeft = "3px solid transparent"; }}
+                  onClick={selectMode ? () => toggleRow(m.id) : undefined}
                   data-testid={`field-tx-row-${m.id}`}
                 >
+                  {/* Checkbox */}
+                  {selectMode && (
+                    <TableCell className="py-3 pl-3 text-center" onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                      {isSelected
+                        ? <CheckSquare className="w-4 h-4 text-brand-600 mx-auto" />
+                        : <Square className="w-4 h-4 text-slate-300 mx-auto" />}
+                    </TableCell>
+                  )}
+
                   {/* No. */}
                   <TableCell className="py-3 pl-3 font-mono text-[11px] text-slate-400 group-hover:text-slate-600 transition-colors text-center">
                     {idx + 1}
@@ -312,7 +435,7 @@ export default function FieldTransactions() {
                     {toLoc?.name ?? <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Project / PO — stacked */}
+                  {/* Project / PO */}
                   <TableCell className="py-3 px-2">
                     {projectName || projectPo ? (
                       <div className="flex flex-col gap-0.5">
@@ -337,7 +460,7 @@ export default function FieldTransactions() {
                     {m.note || <span className="text-slate-300">—</span>}
                   </TableCell>
 
-                  {/* Date — date on top, time below */}
+                  {/* Date */}
                   <TableCell className="py-3 px-2 pr-4 group-hover:text-slate-800 transition-colors">
                     {m.createdAt ? (
                       <div className="flex flex-col leading-tight">
@@ -358,9 +481,45 @@ export default function FieldTransactions() {
         {filtered.length > 0 && (
           <div className="px-4 py-2.5 border-t border-slate-100 text-xs text-slate-400 bg-slate-50/50">
             Showing <span className="font-semibold text-slate-600">{filtered.length}</span> transaction{filtered.length !== 1 ? "s" : ""}
+            {selectMode && selectedIds.size > 0 && (
+              <span className="ml-2 text-brand-600 font-semibold">· {selectedIds.size} selected</span>
+            )}
           </div>
         )}
       </div>
+
+      {/* Confirm delete dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Transactions
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <p className="text-sm text-slate-600">
+              Are you sure you want to permanently delete{" "}
+              <span className="font-semibold text-slate-900">{selectedIds.size} transaction{selectedIds.size !== 1 ? "s" : ""}</span>?
+              This will also reverse the inventory counts. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={bulkDelete.isPending}
+                data-testid="button-confirm-delete"
+              >
+                {bulkDelete.isPending ? "Deleting…" : `Delete ${selectedIds.size}`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

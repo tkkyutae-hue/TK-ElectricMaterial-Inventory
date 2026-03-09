@@ -25,6 +25,7 @@ export interface IStorage {
   getLocations(): Promise<Location[]>;
   createLocation(location: CreateLocationRequest): Promise<Location>;
   deleteLocation(id: number): Promise<void>;
+  restoreLocation(id: number): Promise<void>;
 
   getSuppliers(): Promise<Supplier[]>;
   getSupplier(id: number): Promise<SupplierWithStats | undefined>;
@@ -120,6 +121,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLocation(id: number): Promise<void> {
     await db.update(locations).set({ isActive: false }).where(eq(locations.id, id));
+  }
+
+  async restoreLocation(id: number): Promise<void> {
+    await db.update(locations).set({ isActive: true }).where(eq(locations.id, id));
   }
 
   // ─── Suppliers ───────────────────────────────────────────────────────────────

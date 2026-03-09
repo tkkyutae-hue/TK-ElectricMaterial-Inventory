@@ -215,6 +215,7 @@ function SearchableLocationSelect({
   testId?: string;
 }) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const createLocation = useCreateLocation();
   const deleteLocation = useDeleteLocation();
   const [open, setOpen] = useState(false);
@@ -264,7 +265,36 @@ function SearchableLocationSelect({
     try {
       await deleteLocation.mutateAsync(loc.id);
       if (value === loc.id) onChange(0 as any);
-      toast({ title: "Location removed", description: `"${loc.name}" has been deleted.` });
+
+      const dismissRef = { fn: () => {} };
+      const { dismiss } = toast({
+        title: "Location removed",
+        description: (
+          <div className="flex items-center justify-between gap-3 mt-0.5">
+            <span className="text-sm">"{loc.name}" has been deleted.</span>
+            <button
+              type="button"
+              className="text-xs font-semibold text-brand-700 hover:text-brand-900 underline underline-offset-2 shrink-0"
+              onClick={async () => {
+                dismissRef.fn();
+                try {
+                  await fetch(`/api/locations/${loc.id}/restore`, {
+                    method: "POST",
+                    credentials: "include",
+                  });
+                  await qc.invalidateQueries({ queryKey: ["/api/locations"] });
+                  toast({ title: "Undone", description: `"${loc.name}" has been restored.` });
+                } catch {
+                  toast({ title: "Undo failed", variant: "destructive" });
+                }
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        ) as any,
+      });
+      dismissRef.fn = dismiss;
     } catch (err: any) {
       toast({ title: "Failed to delete location", description: err.message, variant: "destructive" });
     }

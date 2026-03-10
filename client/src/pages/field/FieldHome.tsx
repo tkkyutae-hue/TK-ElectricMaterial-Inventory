@@ -1,75 +1,85 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { PackageCheck, PackageMinus, ScanSearch, ClipboardList } from "lucide-react";
 
 const CSS = `
 @keyframes fh-fadeUp {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fh-grid { animation: fh-fadeUp 0.4s ease 0.05s both; }
+.fh-list { animation: fh-fadeUp 0.35s ease 0.05s both; }
 `;
 
 type CardDef = {
-  num: string;
   testId: string;
-  label: string;
-  desc: string;
-  Icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
-  hoverBar: string;
+  emoji: string;
+  emojiBg: string;
+  accentColor: string;
+  title: string;
+  tags: string[];
+  tagStyle: React.CSSProperties;
   route: string;
 };
 
 const CARDS: CardDef[] = [
   {
-    num: "01",
     testId: "tile-receive",
-    label: "Receive / Return",
-    desc: "Log incoming stock or return material",
-    Icon: PackageCheck,
-    iconColor: "#2ddb6f",
-    iconBg: "rgba(45,219,111,0.08)",
-    hoverBar: "#2ddb6f",
+    emoji: "📦",
+    emojiBg: "rgba(45,219,111,0.10)",
+    accentColor: "#2ddb6f",
+    title: "Receive / Return",
+    tags: ["RECEIVE", "RETURN"],
+    tagStyle: {
+      background: "rgba(45,219,111,0.08)",
+      border: "1px solid rgba(45,219,111,0.18)",
+      color: "#2ddb6f",
+    },
     route: "/field/movement?type=receive",
   },
   {
-    num: "02",
     testId: "tile-issue",
-    label: "Issue / Transfer",
-    desc: "Send material out to a jobsite",
-    Icon: PackageMinus,
-    iconColor: "#f5a623",
-    iconBg: "rgba(245,166,35,0.08)",
-    hoverBar: "#f5a623",
+    emoji: "🚚",
+    emojiBg: "rgba(245,166,35,0.10)",
+    accentColor: "#f5a623",
+    title: "Issue / Transfer",
+    tags: ["ISSUE", "TRANSFER"],
+    tagStyle: {
+      background: "rgba(245,166,35,0.08)",
+      border: "1px solid rgba(245,166,35,0.18)",
+      color: "#f5a623",
+    },
     route: "/field/movement?type=issue",
   },
   {
-    num: "03",
     testId: "tile-inventory",
-    label: "Inventory",
-    desc: "Browse and search current stock",
-    Icon: ScanSearch,
-    iconColor: "#5b9cf6",
-    iconBg: "rgba(91,156,246,0.10)",
-    hoverBar: "#5b9cf6",
+    emoji: "🔍",
+    emojiBg: "rgba(91,156,246,0.10)",
+    accentColor: "#5b9cf6",
+    title: "Inventory",
+    tags: ["BROWSE", "SEARCH"],
+    tagStyle: {
+      background: "rgba(91,156,246,0.08)",
+      border: "1px solid rgba(91,156,246,0.18)",
+      color: "#5b9cf6",
+    },
     route: "/field/inventory",
   },
   {
-    num: "04",
     testId: "tile-transactions",
-    label: "Transactions",
-    desc: "View movement history",
-    Icon: ClipboardList,
-    iconColor: "#527856",
-    iconBg: "rgba(255,255,255,0.04)",
-    hoverBar: "#527856",
+    emoji: "📋",
+    emojiBg: "rgba(82,120,86,0.15)",
+    accentColor: "#527856",
+    title: "Transactions",
+    tags: ["HISTORY", "FILTER"],
+    tagStyle: {
+      background: "rgba(82,120,86,0.10)",
+      border: "1px solid rgba(82,120,86,0.20)",
+      color: "#527856",
+    },
     route: "/field/transactions",
   },
 ];
 
-function ActionCard({ num, testId, label, desc, Icon, iconColor, iconBg, hoverBar, onClick }: CardDef & { onClick: () => void }) {
+function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick }: CardDef & { onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -82,72 +92,64 @@ function ActionCard({ num, testId, label, desc, Icon, iconColor, iconBg, hoverBa
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       style={{
+        width: "100%",
         textAlign: "left",
         background: "#0f1612",
-        border: `1px solid ${hovered ? hoverBar + "44" : "#203023"}`,
+        border: `1px solid ${hovered ? accentColor + "55" : "#203023"}`,
         borderRadius: 14,
-        padding: 22,
+        padding: 0,
         cursor: "pointer",
-        position: "relative",
-        overflow: "hidden",
-        transform: pressed ? "scale(0.98)" : hovered ? "translateY(-2px)" : "none",
-        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.5)` : "none",
+        transform: hovered && !pressed ? "translateY(-2px)" : pressed ? "scale(0.99)" : "none",
+        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
+        overflow: "hidden",
       }}
     >
-      {/* Bottom hover accent bar */}
-      <div style={{
-        position: "absolute", bottom: 0, left: 0, right: 0,
-        height: 2,
-        background: hoverBar,
-        opacity: hovered ? 1 : 0,
-        transition: "opacity 0.2s",
-      }} />
+      {/* Top accent line */}
+      <div style={{ height: 2, background: accentColor, width: "100%" }} />
 
-      {/* Number top-left */}
-      <div style={{
-        fontFamily: "'Barlow Condensed', sans-serif",
-        fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
-        color: hovered ? hoverBar : "#2b3f2e",
-        marginBottom: 14, textTransform: "uppercase",
-        transition: "color 0.15s",
-      }}>{num}</div>
-
-      {/* Icon + arrow row */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-        {/* Icon box */}
+      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "18px 22px" }}>
+        {/* Emoji icon box */}
         <div style={{
-          width: 44, height: 44, borderRadius: 10,
-          background: iconBg,
+          width: 56, height: 56, borderRadius: 12, flexShrink: 0,
+          background: emojiBg,
           display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
+          fontSize: 26,
         }}>
-          <Icon style={{ width: 22, height: 22, color: iconColor }} strokeWidth={1.6} />
+          {emoji}
         </div>
 
-        {/* Arrow top-right */}
+        {/* Title + tags */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 19, fontWeight: 700,
+            color: "#ffffff", margin: "0 0 8px",
+            letterSpacing: 0.3,
+          }}>{title}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {tags.map(tag => (
+              <span key={tag} style={{
+                fontSize: 9, textTransform: "uppercase", letterSpacing: 1.2,
+                padding: "2px 7px", borderRadius: 4,
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 600,
+                ...tagStyle,
+              }}>{tag}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Arrow */}
         <span style={{
-          fontSize: 16, lineHeight: 1,
-          color: hovered ? hoverBar : "#2b3f2e",
+          fontSize: 20, flexShrink: 0,
+          color: hovered ? accentColor : "#2b3f2e",
           transition: "color 0.15s, transform 0.15s",
-          transform: hovered ? "translateX(2px) translateY(-1px)" : "none",
+          transform: hovered ? "translateX(3px)" : "translateX(0)",
           display: "inline-block",
+          lineHeight: 1,
         }}>→</span>
       </div>
-
-      {/* Title */}
-      <p style={{
-        fontFamily: "'Barlow Condensed', sans-serif",
-        fontSize: 17, fontWeight: 700, letterSpacing: 0.3,
-        color: "#ffffff", margin: "0 0 5px",
-      }}>{label}</p>
-
-      {/* Description */}
-      <p style={{
-        fontSize: 11, color: "#2b3f2e",
-        fontFamily: "'Barlow', sans-serif",
-        margin: 0, lineHeight: 1.5,
-      }}>{desc}</p>
     </button>
   );
 }
@@ -156,34 +158,35 @@ export default function FieldHome() {
   const [, navigate] = useLocation();
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px 48px" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 20px 48px" }}>
       <style>{CSS}</style>
 
       <div style={{ width: "100%", maxWidth: 680 }}>
 
         {/* Heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 26, fontWeight: 700, color: "#ffffff",
-            margin: "0 0 5px", letterSpacing: 0.3,
+        <div style={{ marginBottom: 28 }}>
+          <p style={{
+            fontSize: 11, textTransform: "uppercase", letterSpacing: 2,
+            color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 600, margin: "0 0 6px",
+            display: "flex", alignItems: "center", gap: 5,
           }}>
-            Field Actions
+            <span>⚡</span> Field Actions
+          </p>
+          <h1 style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: 48, lineHeight: 1.05, margin: "0 0 8px",
+            color: "#ffffff", letterSpacing: 1,
+          }}>
+            What do you need<br />to do?
           </h1>
-          <p style={{ fontSize: 12, color: "#2b3f2e", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
-            What do you need to do?
+          <p style={{ fontSize: 13, color: "#2b3f2e", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
+            Select an action to continue.
           </p>
         </div>
 
-        {/* 2×2 grid */}
-        <div
-          className="fh-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-          }}
-        >
+        {/* Single-column list */}
+        <div className="fh-list" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {CARDS.map(card => (
             <ActionCard
               key={card.testId}

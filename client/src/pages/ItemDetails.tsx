@@ -537,12 +537,58 @@ const BLANK_REEL_DRAFT: AddReelDraft = {
   lengthFt: "", brand: "", locationId: "", status: "new",
 };
 
+const BRAND_ABBREV: Record<string, string> = {
+  "southwire": "SW", "southwire company": "SW",
+  "ideal": "IDEAL", "ideal industries": "IDEAL",
+  "hubbell": "HUB", "leviton": "LEV",
+  "siemens": "SIE", "square d": "SQD",
+  "eaton": "ETN", "greenlee": "GRL",
+  "milwaukee": "MIL", "klein": "KLN",
+  "grainger": "GRG", "3m": "3M",
+  "panduit": "PAN", "burndy": "BRN",
+  "ilsco": "ILS", "nvent": "NVT",
+  "thomas & betts": "TB", "abb": "ABB",
+};
+
+function abbreviateWord(str: string): string {
+  const s = str.trim();
+  if (!s) return "XX";
+  if (/^[A-Z0-9#/\-]+$/.test(s)) return s;
+  const words = s.split(/\s+/);
+  if (words.length > 1) {
+    return words.map(w => (w[0] || "").toUpperCase()).join("").replace(/[^A-Z0-9]/g, "");
+  }
+  const upper = s.toUpperCase();
+  const vowels = new Set(["A","E","I","O","U"]);
+  const initials: string[] = [upper[0]];
+  let afterVowel = vowels.has(upper[0]);
+  let consecutiveConsonants = 0;
+  for (let i = 1; i < upper.length; i++) {
+    const ch = upper[i];
+    if (!/[A-Z0-9]/.test(ch)) { afterVowel = false; consecutiveConsonants = 0; continue; }
+    const isVowel = vowels.has(ch);
+    if (!isVowel) {
+      if (afterVowel && consecutiveConsonants === 0) {
+        initials.push(ch);
+        if (initials.length >= 4) break;
+      }
+      consecutiveConsonants++;
+    } else {
+      consecutiveConsonants = 0;
+    }
+    afterVowel = isVowel || (afterVowel && consecutiveConsonants <= 1);
+  }
+  return initials.slice(0, 3).join("");
+}
+
 function generateReelId(item: any, brand: string, seqNum: number): string {
-  const name = (item.baseItemName || item.name || "").replace(/[^a-zA-Z0-9]/g, "");
-  const size = (item.sizeLabel || "").replace(/[^a-zA-Z0-9]/g, "");
-  const b = (brand || "").replace(/[^a-zA-Z0-9]/g, "") || "NoBrand";
+  const familyName = (item.baseItemName || item.name || "").trim();
+  const itemAbbr = abbreviateWord(familyName).replace(/[^A-Z0-9]/gi, "");
+  const size = (item.sizeLabel || "").replace(/[^A-Za-z0-9#\/]/g, "");
+  const brandKey = (brand || "").toLowerCase().trim();
+  const brandAbbr = (BRAND_ABBREV[brandKey] || abbreviateWord(brand).replace(/[^A-Z0-9]/gi, "") || "XX");
   const seq = String(seqNum).padStart(3, "0");
-  return `${name}-${size}-${b}-R${seq}`;
+  return `${itemAbbr}-${size}-${brandAbbr}-R${seq}`;
 }
 
 function ReelStatusBadge({ status }: { status: string | null }) {
@@ -995,15 +1041,6 @@ export default function ItemDetails() {
                     <Edit className="w-3.5 h-3.5 mr-1.5" />Edit
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white border-slate-200 hover:border-slate-300 text-slate-600"
-                  onClick={() => setEditOpen(true)}
-                  data-testid="button-full-edit-item"
-                >
-                  Full Edit
-                </Button>
                 <Button
                   size="sm"
                   className="bg-brand-700 hover:bg-brand-800 text-white"

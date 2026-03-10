@@ -94,8 +94,8 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
       style={{
         width: "100%",
         textAlign: "left",
-        background: "#0f1612",
-        border: `1px solid ${hovered ? accentColor + "55" : "#203023"}`,
+        background: "#162019",
+        border: `1px solid ${hovered ? accentColor + "55" : "#2a4030"}`,
         borderRadius: 14,
         padding: 0,
         cursor: "pointer",
@@ -124,7 +124,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 19, fontWeight: 700,
-            color: "#ffffff", margin: "0 0 8px",
+            color: "#e2f0e5", margin: "0 0 8px",
             letterSpacing: 0.3,
           }}>{title}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -143,7 +143,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
         {/* Arrow */}
         <span style={{
           fontSize: 20, flexShrink: 0,
-          color: hovered ? accentColor : "#2b3f2e",
+          color: hovered ? accentColor : "#4a7052",
           transition: "color 0.15s, transform 0.15s",
           transform: hovered ? "translateX(3px)" : "translateX(0)",
           display: "inline-block",
@@ -176,11 +176,11 @@ export default function FieldHome() {
           <h1 style={{
             fontFamily: "'Bebas Neue', sans-serif",
             fontSize: 48, lineHeight: 1.05, margin: "0 0 8px",
-            color: "#ffffff", letterSpacing: 1,
+            color: "#e2f0e5", letterSpacing: 1,
           }}>
             What do you need<br />to do?
           </h1>
-          <p style={{ fontSize: 13, color: "#2b3f2e", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
+          <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
             Select an action to continue.
           </p>
         </div>

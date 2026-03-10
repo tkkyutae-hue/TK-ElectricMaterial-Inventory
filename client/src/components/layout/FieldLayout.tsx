@@ -36,13 +36,13 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#07090a", position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#0d1410", position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
       <style>{CSS}</style>
 
       {/* Grid texture */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: "linear-gradient(rgba(45,219,111,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(45,219,111,0.03) 1px, transparent 1px)",
+        backgroundImage: "linear-gradient(rgba(45,219,111,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(45,219,111,0.05) 1px, transparent 1px)",
         backgroundSize: "52px 52px",
       }} />
 
@@ -50,7 +50,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       <div style={{
         position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)",
         width: "100%", height: "55vh", pointerEvents: "none", zIndex: 0,
-        background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,219,111,0.05) 0%, transparent 65%)",
+        background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,219,111,0.10) 0%, transparent 65%)",
       }} />
 
       {/* ── Top header ── */}
@@ -59,8 +59,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         height: 52,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 20px",
-        background: "#07090a",
-        borderBottom: "1px solid #203023",
+        background: "#0d1410",
+        borderBottom: "1px solid #2a4030",
       }}>
 
         {/* Left: TK lettermark + Field Mode chip + date/time */}
@@ -89,7 +89,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
 
           {/* Date & Time */}
           <div className="hidden-mobile" style={{
-            fontSize: 11, color: "#2b3f2e",
+            fontSize: 11, color: "#4a7052",
             fontFamily: "'Barlow Condensed', sans-serif",
             letterSpacing: 0.5,
             display: "flex", gap: 4, alignItems: "center",
@@ -110,16 +110,16 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
                 data-testid="btn-field-back"
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
-                  background: "#0f1612", border: "1px solid #203023",
+                  background: "#162019", border: "1px solid #2a4030",
                   borderRadius: 8, padding: "5px 11px",
-                  color: "#527856", fontSize: 11,
+                  color: "#7aab82", fontSize: 11,
                   fontFamily: "'Barlow Condensed', sans-serif",
                   fontWeight: 600, letterSpacing: 0.5,
                   cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
                   textTransform: "uppercase",
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#527856"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#203023"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
               >
                 <ArrowLeft style={{ width: 11, height: 11 }} />
                 <span>Back</span>
@@ -133,16 +133,16 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
               data-testid="btn-field-home"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                background: "#0f1612", border: "1px solid #203023",
+                background: "#162019", border: "1px solid #2a4030",
                 borderRadius: 8, padding: "5px 11px",
-                color: "#527856", fontSize: 11,
+                color: "#7aab82", fontSize: 11,
                 fontFamily: "'Barlow Condensed', sans-serif",
                 fontWeight: 600, letterSpacing: 0.5,
                 cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
                 textTransform: "uppercase",
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#c8deca"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#527856"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#203023"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
             >
               <span>Mode Select</span>
             </button>
@@ -152,7 +152,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           <div style={{
             width: 28, height: 28, borderRadius: "50%",
             background: "rgba(45,219,111,0.08)",
-            border: "1px solid #203023",
+            border: "1px solid #2a4030",
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
           }}>
@@ -166,7 +166,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main
         className="relative"
-        style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: "#07090a" }}
+        style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: "#0d1410" }}
       >
         <div className={`flex-1 flex flex-col w-full mx-auto px-4 md:px-6 ${
           location.startsWith("/field/inventory") || location.startsWith("/field/transactions")

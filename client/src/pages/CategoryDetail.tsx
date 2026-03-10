@@ -1749,8 +1749,10 @@ export default function CategoryDetail() {
                         <col style={{ width: "56px" }} />
                         <col style={{ width: "104px" }} />
                         <col />
-                        <col style={{ width: "82px" }} />
-                        <col style={{ width: "90px" }} />
+                        {/* Qty/Unit: wide enough so "QTY / UNIT" never wraps */}
+                        <col style={{ width: "108px" }} />
+                        {/* Status: wide enough for "Out of Stock" badge (≈97px) + padding */}
+                        <col style={{ width: "118px" }} />
                       </colgroup>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
@@ -1770,8 +1772,8 @@ export default function CategoryDetail() {
                             </button>
                           </TableHead>
                           <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-3">Item</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right">Qty / Unit</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-4 text-right">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-right whitespace-nowrap">Qty / Unit</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1781,7 +1783,7 @@ export default function CategoryDetail() {
                             className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                             data-testid={`row-item-${item.id}`}
                           >
-                            <TableCell className="h-10 pl-5 pr-2">
+                            <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
                               <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
                             </TableCell>
                             <TableCell className="h-10 px-2">
@@ -1795,18 +1797,18 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="h-10 pl-2 pr-3">
+                            <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
                               <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
                             </TableCell>
                             <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
                               <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
-                            <TableCell className="h-10 px-2 text-right tabular-nums">
+                            <TableCell className="h-10 px-3 text-right tabular-nums overflow-hidden">
                               <span className="font-semibold text-slate-900">{item.quantityOnHand.toLocaleString()}</span>
                               <span className="text-slate-400 font-normal text-xs ml-1">{item.unitOfMeasure}</span>
                             </TableCell>
-                            <TableCell className="h-10 pl-2 pr-4">
-                              <div className="flex items-center justify-end"><StatusBadge status={item.status} /></div>
+                            <TableCell className="h-10 px-3 overflow-hidden">
+                              <div className="flex items-center justify-center"><StatusBadge status={item.status} /></div>
                             </TableCell>
                           </TableRow>
                         ))}

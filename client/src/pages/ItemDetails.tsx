@@ -608,7 +608,7 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function WireReelInline({ item }: { item: any }) {
+function WireReelInline({ item, editModeActive = false }: { item: any; editModeActive?: boolean }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
@@ -874,10 +874,13 @@ function WireReelInline({ item }: { item: any }) {
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
                           <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" style={{ visibility: editModeActive ? "visible" : "hidden" }}>
                               <button
                                 onClick={() => startEdit(reel)}
-                                className="text-slate-300 hover:text-brand-600 transition-colors"
+                                style={{ color: "#527856" }}
+                                onMouseEnter={e => (e.currentTarget.style.color = "#2ddb6f")}
+                                onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
+                                className="transition-colors"
                                 title="Edit reel"
                                 data-testid={`button-edit-reel-${reel.id}`}
                               >
@@ -886,11 +889,14 @@ function WireReelInline({ item }: { item: any }) {
                               <button
                                 onClick={() => deleteMutation.mutate(reel.id)}
                                 disabled={deleteMutation.isPending}
-                                className="text-slate-300 hover:text-red-500 transition-colors"
+                                style={{ color: "#527856" }}
+                                onMouseEnter={e => (e.currentTarget.style.color = "#ff5050")}
+                                onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
+                                className="transition-colors disabled:opacity-40"
                                 title="Remove reel"
                                 data-testid={`button-delete-reel-${reel.id}`}
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1210,7 +1216,7 @@ export default function ItemDetails() {
             {/* Reel Inventory — inline for wire/cable items */}
             {item.unitOfMeasure === "FT" && (
               <>
-                <WireReelInline item={item} />
+                <WireReelInline item={item} editModeActive={inlineEdit} />
                 <div className="h-px bg-slate-100" />
               </>
             )}

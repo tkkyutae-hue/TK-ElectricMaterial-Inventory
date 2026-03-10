@@ -450,7 +450,7 @@ export default function FieldTransactions() {
               <col style={{ width: 96 }} />
             </colgroup>
             <thead>
-              <tr style={{ borderBottom: "1px solid #2a4030" }}>
+              <tr style={{ borderBottom: "1px solid #2a4030", borderLeft: "3px solid transparent" }}>
                 {selectMode && (
                   <th style={{ ...TH, textAlign: "center" }}>
                     <button
@@ -566,7 +566,7 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Type */}
-                    <td style={{ padding: "12px 4px", textAlign: "center" }}>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
                       <FieldTypeBadge type={m.movementType} />
                     </td>
 
@@ -576,7 +576,7 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Size */}
-                    <td style={{ padding: "12px 4px", paddingLeft: 12, fontSize: 11, color: "#7aab82", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontSize: 11, color: "#7aab82", whiteSpace: "nowrap" }}>
                       {item?.sizeLabel || <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
@@ -656,7 +656,7 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Actions column — empty in rows */}
-                    <td style={{ padding: "12px 12px 12px 0" }} />
+                    <td style={{ padding: "12px 12px 12px 8px" }} />
                   </tr>
                 );
               })}

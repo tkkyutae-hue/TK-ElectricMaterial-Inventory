@@ -16,6 +16,68 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Search, X, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, ImageOff } from "lucide-react";
 import { api } from "@shared/routes";
 
+const FM_CSS = `
+.fm-dark label {
+  color: #527856 !important;
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  margin-bottom: 5px !important;
+  display: block;
+}
+.fm-dark [data-testid="select-movement-type"] {
+  background: #141e17 !important;
+  border: 1px solid #203023 !important;
+  border-radius: 10px !important;
+  color: #c8deca !important;
+  font-size: 13px !important;
+  min-height: 42px !important;
+}
+.fm-dark [data-testid="select-movement-type"]:focus-within {
+  border-color: #2ddb6f !important;
+  box-shadow: 0 0 0 3px rgba(45,219,111,0.12) !important;
+}
+.fm-dark [data-testid="select-movement-type"] span {
+  color: #c8deca !important;
+}
+.fm-dark textarea {
+  background: #141e17 !important;
+  border: 1px solid #203023 !important;
+  border-radius: 10px !important;
+  color: #c8deca !important;
+  font-size: 13px !important;
+  padding: 10px 14px !important;
+  min-height: 72px !important;
+}
+.fm-dark textarea::placeholder { color: #2b3f2e !important; }
+.fm-dark textarea:focus {
+  border-color: #2ddb6f !important;
+  box-shadow: 0 0 0 3px rgba(45,219,111,0.12) !important;
+  outline: none !important;
+}
+.fm-dark p[id^="form-item-message"] { color: #f87171 !important; font-size: 11px !important; }
+.fm-dark-select-content {
+  background: #0f1612 !important;
+  border: 1px solid #203023 !important;
+  border-radius: 10px !important;
+}
+.fm-dark-select-content [role="option"] {
+  color: #c8deca !important;
+  font-size: 13px !important;
+  cursor: pointer;
+}
+.fm-dark-select-content [role="option"]:focus,
+.fm-dark-select-content [role="option"]:hover {
+  background: #141e17 !important;
+}
+.fm-dark-select-content [role="option"][data-state="checked"] {
+  color: #2ddb6f !important;
+}
+`;
+
+
 const sharedSchema = z.object({
   movementType: z.string().min(1, "Movement type is required"),
   sourceLocationId: z.coerce.number().optional(),
@@ -48,11 +110,12 @@ function makeRow(): ItemRow {
 
 // ── Searchable Item Select ──────────────────────────────────────────────────
 export function SearchableItemSelect({
-  value, onChange, items,
+  value, onChange, items, dark = false,
 }: {
   value?: number | null;
   onChange: (id: number) => void;
   items: any[];
+  dark?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -94,23 +157,31 @@ export function SearchableItemSelect({
     setSearch("");
   }
 
+  const D = dark;
+
   return (
     <div ref={ref} className="relative" data-testid="searchable-item-select">
 
-      {/* ── Trigger: input-like container that toggles search mode ── */}
+      {/* ── Trigger ── */}
       <div
-        className={`w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-text transition-colors ${
-          open
-            ? "border-brand-400 ring-1 ring-brand-300 bg-white"
-            : "border-input hover:bg-slate-50"
+        style={D ? {
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 14px", fontSize: 13, borderRadius: 10, minHeight: 42, cursor: "text",
+          background: open ? "#141e17" : "#141e17",
+          border: `1px solid ${open ? "#2ddb6f" : "#203023"}`,
+          boxShadow: open ? "0 0 0 3px rgba(45,219,111,0.12)" : "none",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+          color: "#c8deca",
+        } : undefined}
+        className={D ? undefined : `w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-text transition-colors ${
+          open ? "border-brand-400 ring-1 ring-brand-300 bg-white" : "border-input hover:bg-slate-50"
         }`}
         onClick={handleOpen}
         data-testid="item-select-trigger"
       >
         {open ? (
-          /* ── Search mode: input appears directly in the trigger ── */
           <>
-            <Search className="w-4 h-4 text-slate-400 shrink-0 mr-2" />
+            <Search style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginRight: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 mr-2"} />
             <input
               ref={inputRef}
               type="text"
@@ -118,54 +189,49 @@ export function SearchableItemSelect({
               value={search}
               onChange={e => setSearch(e.target.value)}
               onClick={e => e.stopPropagation()}
-              className="flex-1 py-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              style={D ? { flex: 1, paddingTop: 10, paddingBottom: 10, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca" } : undefined}
+              className={D ? undefined : "flex-1 py-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
               data-testid="item-search-input"
             />
             {search && (
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }}
-                className="p-0.5 ml-1"
-              >
-                <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+              <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5 ml-1">
+                <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
               </button>
             )}
           </>
         ) : selected ? (
-          /* ── Closed + item selected ── */
           <>
             <span className="flex items-center gap-2.5 min-w-0 flex-1 py-1">
-              <span className="font-mono text-xs text-slate-400 shrink-0 w-20 truncate">{selected.sku}</span>
-              <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+              <span style={D ? { color: "#527856", fontSize: 11, flexShrink: 0, width: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined} className={D ? undefined : "font-mono text-xs text-slate-400 shrink-0 w-20 truncate"}>{selected.sku}</span>
+              <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 6, overflow: "hidden", border: "1px solid #203023", background: "#0f1612", display: "flex", alignItems: "center", justifyContent: "center" } : undefined} className={D ? undefined : "w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center"}>
                 {selected.imageUrl ? (
                   <img src={selected.imageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <ImageOff className="w-4 h-4 text-slate-300" />
+                  <ImageOff style={{ width: 13, height: 13, color: D ? "#2b3f2e" : undefined }} className={D ? undefined : "w-4 h-4 text-slate-300"} />
                 )}
               </span>
-              <span className="truncate text-slate-900 text-sm">{selected.name}</span>
+              <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#c8deca", fontSize: 13 } : undefined} className={D ? undefined : "truncate text-slate-900 text-sm"}>{selected.name}</span>
             </span>
-            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+            <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
           </>
         ) : (
-          /* ── Closed + no selection ── */
           <>
-            <span className="text-muted-foreground py-2 flex-1 text-sm">Search by name, SKU, or size…</span>
-            <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+            <span style={D ? { color: "#2b3f2e", paddingTop: 10, paddingBottom: 10, flex: 1, fontSize: 13 } : undefined} className={D ? undefined : "text-muted-foreground py-2 flex-1 text-sm"}>Search by name, SKU, or size…</span>
+            <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
           </>
         )}
       </div>
 
-      {/* ── Dropdown list: max 6 items, internal scroll only ── */}
+      {/* ── Dropdown list ── */}
       {open && (
         <div
-          className="absolute z-[60] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"
-          style={{ maxHeight: `${6 * 44}px` }}
+          style={D ? { position: "absolute", zIndex: 60, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden", maxHeight: `${6 * 44}px` } : { maxHeight: `${6 * 44}px` }}
+          className={D ? undefined : "absolute z-[60] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
         >
           <div className="overflow-y-auto h-full" style={{ maxHeight: `${6 * 44}px` }}>
             {filtered.length === 0 ? (
               <div className="flex items-center justify-center h-11">
-                <p className="text-sm text-slate-400">No items found</p>
+                <p style={D ? { fontSize: 12, color: "#527856" } : undefined} className={D ? undefined : "text-sm text-slate-400"}>No items found</p>
               </div>
             ) : (
               filtered.map(item => (
@@ -173,23 +239,25 @@ export function SearchableItemSelect({
                   key={item.id}
                   type="button"
                   onClick={() => handleSelect(item.id)}
-                  style={{ height: "44px", minHeight: "44px" }}
-                  className={`w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors border-b border-slate-50 last:border-0 ${item.id === value ? "bg-brand-50" : ""}`}
+                  style={D ? { height: 44, minHeight: 44, width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "0 12px", textAlign: "left", background: item.id === value ? "#141e17" : "transparent", borderBottom: "1px solid #0f1612", cursor: "pointer" } : { height: "44px", minHeight: "44px" }}
+                  className={D ? undefined : `w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors border-b border-slate-50 last:border-0 ${item.id === value ? "bg-brand-50" : ""}`}
                   data-testid={`item-option-${item.id}`}
+                  onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = "#141e17"; } : undefined}
+                  onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = item.id === value ? "#141e17" : "transparent"; } : undefined}
                 >
-                  <span className="font-mono text-xs text-slate-400 w-16 shrink-0 truncate">{item.sku}</span>
-                  <span className="w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                  <span style={D ? { color: "#527856", fontSize: 11, width: 64, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined} className={D ? undefined : "font-mono text-xs text-slate-400 w-16 shrink-0 truncate"}>{item.sku}</span>
+                  <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 5, overflow: "hidden", border: "1px solid #203023", background: "#141e17", display: "flex", alignItems: "center", justifyContent: "center" } : undefined} className={D ? undefined : "w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center"}>
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <ImageOff className="w-4 h-4 text-slate-300" />
+                      <ImageOff style={{ width: 13, height: 13, color: D ? "#2b3f2e" : undefined }} className={D ? undefined : "w-4 h-4 text-slate-300"} />
                     )}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate leading-tight">{item.name}</p>
-                    {item.sizeLabel && <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>}
+                    <p style={D ? { fontSize: 13, fontWeight: 500, color: item.id === value ? "#2ddb6f" : "#c8deca", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 } : undefined} className={D ? undefined : "text-sm font-medium text-slate-900 truncate leading-tight"}>{item.name}</p>
+                    {item.sizeLabel && <p style={D ? { fontSize: 11, color: "#527856", lineHeight: 1.3, margin: 0 } : undefined} className={D ? undefined : "text-xs text-slate-400 leading-tight"}>{item.sizeLabel}</p>}
                   </div>
-                  <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">{item.quantityOnHand} {item.unitOfMeasure}</span>
+                  <span style={D ? { fontSize: 11, color: "#527856", flexShrink: 0, whiteSpace: "nowrap" } : undefined} className={D ? undefined : "text-xs text-slate-400 shrink-0 whitespace-nowrap"}>{item.quantityOnHand} {item.unitOfMeasure}</span>
                 </button>
               ))
             )}
@@ -207,12 +275,14 @@ function SearchableLocationSelect({
   locations,
   placeholder = "Search or type to create…",
   testId = "location-select",
+  dark = false,
 }: {
   value?: number | null;
   onChange: (id: number) => void;
   locations: any[];
   placeholder?: string;
   testId?: string;
+  dark?: boolean;
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -300,38 +370,42 @@ function SearchableLocationSelect({
     }
   }
 
+  const D = dark;
+
   return (
     <div ref={ref} className="relative" data-testid={testId}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: open ? "0 0 0 3px rgba(45,219,111,0.12)" : "none", transition: "border-color 0.15s" } : undefined}
+        className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid={`${testId}-trigger`}
       >
         {selected ? (
-          <span className="truncate text-slate-900">{selected.name}</span>
+          <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{selected.name}</span>
         ) : (
-          <span className="text-muted-foreground">{placeholder}</span>
+          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
         )}
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+        <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div style={D ? { position: "absolute", zIndex: 50, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : undefined} className={D ? undefined : "absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
+          <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
+            <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
             <input
               ref={inputRef}
               type="text"
               placeholder="Type to filter or create…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca" } : undefined}
+              className={D ? undefined : "flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
               data-testid={`${testId}-search`}
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} className="p-0.5">
-                <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+                <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
               </button>
             )}
           </div>
@@ -339,13 +413,17 @@ function SearchableLocationSelect({
             {filtered.map(loc => (
               <div
                 key={loc.id}
-                className={`group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
+                style={D ? { display: "flex", alignItems: "center", background: loc.id === value ? "#141e17" : "transparent" } : undefined}
+                className={D ? "group" : `group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
                 data-testid={`${testId}-option-${loc.id}`}
+                onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = "#141e17"; } : undefined}
+                onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = loc.id === value ? "#141e17" : "transparent"; } : undefined}
               >
                 <button
                   type="button"
                   onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
-                  className={`flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
+                  style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: loc.id === value ? "#2ddb6f" : "#c8deca", fontWeight: loc.id === value ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
+                  className={D ? undefined : `flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
                 >
                   {loc.name}
                 </button>
@@ -353,26 +431,28 @@ function SearchableLocationSelect({
                   type="button"
                   onClick={(e) => handleDelete(e, loc)}
                   disabled={deleteLocation.isPending}
-                  className="opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                  style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: "#527856", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
+                  className={D ? "group-hover:opacity-100" : "opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"}
                   data-testid={`${testId}-delete-${loc.id}`}
                   title="Delete location"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
                 </button>
               </div>
             ))}
             {filtered.length === 0 && !showCreate && (
-              <p className="text-center text-sm text-slate-400 py-3">No locations found</p>
+              <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>No locations found</p>
             )}
             {showCreate && (
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={createLocation.isPending}
-                className="w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"
+                style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: "#2ddb6f", fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid #203023", background: "none", border: "none", borderTop: "1px solid #203023", cursor: "pointer" } as any : undefined}
+                className={D ? undefined : "w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"}
                 data-testid={`${testId}-create`}
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
                 {createLocation.isPending ? "Creating…" : `Create location "${search.trim()}"`}
               </button>
             )}
@@ -389,11 +469,13 @@ function SearchableProjectSelect({
   onChange,
   projects,
   hideCreate = false,
+  dark = false,
 }: {
   value?: number | null;
   onChange: (id: number | undefined) => void;
   projects: any[];
   hideCreate?: boolean;
+  dark?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -427,38 +509,42 @@ function SearchableProjectSelect({
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
   }, [open]);
 
+  const D = dark;
+
   return (
     <div ref={ref} className="relative" data-testid="project-select">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: open ? "0 0 0 3px rgba(45,219,111,0.12)" : "none", transition: "border-color 0.15s" } : undefined}
+        className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid="project-select-trigger"
       >
         {selected ? (
-          <span className="truncate text-slate-900">{label(selected)}</span>
+          <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{label(selected)}</span>
         ) : (
-          <span className="text-muted-foreground">Select project…</span>
+          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>Select project…</span>
         )}
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+        <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div style={D ? { position: "absolute", zIndex: 50, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : undefined} className={D ? undefined : "absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
+          <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
+            <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
             <input
               ref={inputRef}
               type="text"
               placeholder="Search by PO or project name…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"
+              style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca" } : undefined}
+              className={D ? undefined : "flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
               data-testid="project-search-input"
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} className="p-0.5">
-                <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+                <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
               </button>
             )}
           </div>
@@ -467,7 +553,8 @@ function SearchableProjectSelect({
               <button
                 type="button"
                 onClick={() => { onChange(undefined); setSearch(""); setOpen(false); }}
-                className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"
+                style={D ? { width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#527856", background: "none", border: "none", borderBottom: "1px solid #203023", cursor: "pointer", fontStyle: "italic" } : undefined}
+                className={D ? undefined : "w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"}
                 data-testid="project-clear"
               >
                 Clear selection
@@ -478,28 +565,32 @@ function SearchableProjectSelect({
                 key={p.id}
                 type="button"
                 onClick={() => { onChange(p.id); setSearch(""); setOpen(false); }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${p.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
+                style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: p.id === value ? "#2ddb6f" : "#c8deca", fontWeight: p.id === value ? 600 : 400, background: p.id === value ? "#141e17" : "transparent", border: "none", cursor: "pointer", display: "block" } : undefined}
+                className={D ? undefined : `w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${p.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
                 data-testid={`project-option-${p.id}`}
+                onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = "#141e17"; } : undefined}
+                onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = p.id === value ? "#141e17" : "transparent"; } : undefined}
               >
                 {p.poNumber && (
-                  <span className="font-mono text-xs text-slate-500 mr-1.5">{p.poNumber} —</span>
+                  <span style={D ? { color: "#527856", fontSize: 11, marginRight: 6, fontFamily: "monospace" } : undefined} className={D ? undefined : "font-mono text-xs text-slate-500 mr-1.5"}>{p.poNumber} —</span>
                 )}
                 {p.name}
               </button>
             ))}
             {filtered.length === 0 && (
-              <p className="text-center text-sm text-slate-400 py-3">No active projects found</p>
+              <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>No active projects found</p>
             )}
           </div>
           {!hideCreate && (
-            <div className="border-t border-slate-100 px-3 py-2">
+            <div style={D ? { borderTop: "1px solid #203023", padding: "8px 12px" } : undefined} className={D ? undefined : "border-t border-slate-100 px-3 py-2"}>
               <a
                 href="/projects"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"
+                style={D ? { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#2ddb6f", fontWeight: 500, textDecoration: "none" } : undefined}
+                className={D ? undefined : "flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"}
                 data-testid="project-create-link"
               >
-                <Plus className="w-3 h-3" />
+                <Plus style={{ width: 12, height: 12 }} className={D ? undefined : "w-3 h-3"} />
                 Create new project
               </a>
             </div>
@@ -677,6 +768,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
   return (
     <Form {...form}>
+      {fieldMode && <style>{FM_CSS}</style>}
+      <div className={fieldMode ? "fm-dark" : undefined}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-0"
@@ -694,11 +787,11 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className={fieldMode ? "fm-dark-select-content" : undefined}>
                   {MOVEMENT_TYPES.filter(t => !allowedTypes || allowedTypes.includes(t.value)).map(t => (
                     <SelectItem key={t.value} value={t.value}>
                       <span className="font-medium">{t.label}</span>
-                      <span className="text-slate-400 text-xs ml-2">— {t.desc}</span>
+                      <span className={fieldMode ? undefined : "text-slate-400 text-xs ml-2"} style={fieldMode ? { color: "#527856", fontSize: 11, marginLeft: 6 } : undefined}>— {t.desc}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -722,6 +815,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         locations={locations || []}
                         placeholder="Search or type to create…"
                         testId="select-source-location"
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -739,6 +833,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         locations={locations || []}
                         placeholder="Select destination…"
                         testId="select-dest-location"
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -757,6 +852,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         onChange={(id) => field.onChange(id)}
                         projects={projects || []}
                         hideCreate={fieldMode}
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -774,6 +870,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         locations={locations || []}
                         placeholder="Select destination…"
                         testId="select-dest-location"
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -795,6 +892,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         locations={locations || []}
                         placeholder="Search or type to create…"
                         testId="select-dest-location"
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -814,6 +912,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         locations={locations || []}
                         placeholder="Search or type to create…"
                         testId="select-source-location"
+                        dark={fieldMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -826,21 +925,22 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
         {/* ── SECTION B: Items ── */}
-        <div className="border-t border-slate-100 pt-3">
+        <div style={fieldMode ? { borderTop: "1px solid #203023", paddingTop: 16 } : undefined} className={fieldMode ? undefined : "border-t border-slate-100 pt-3"}>
 
           <div className="flex items-center gap-2 mb-2">
-            <p className="text-sm font-semibold text-slate-700">Items</p>
-            <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium">
+            <p style={fieldMode ? { fontSize: 13, fontWeight: 600, color: "#527856", margin: 0 } : undefined} className={fieldMode ? undefined : "text-sm font-semibold text-slate-700"}>Items</p>
+            <span style={fieldMode ? { fontSize: 11, color: "#2ddb6f", background: "#0b1a0f", borderRadius: 12, padding: "1px 8px", fontWeight: 600 } : undefined} className={fieldMode ? undefined : "text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium"}>
               {itemRows.length}
             </span>
-            <div className="h-px flex-1 bg-slate-100" />
+            <div style={fieldMode ? { height: 1, flex: 1, background: "#203023" } : undefined} className={fieldMode ? undefined : "h-px flex-1 bg-slate-100"} />
             <button
               type="button"
               onClick={addRow}
-              className="flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-md transition-all shrink-0"
+              style={fieldMode ? { display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "#2ddb6f", background: "rgba(45,219,111,0.06)", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", flexShrink: 0 } : undefined}
+              className={fieldMode ? undefined : "flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-md transition-all shrink-0"}
               data-testid="btn-add-item"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus style={{ width: 13, height: 13 }} className={fieldMode ? undefined : "w-3.5 h-3.5"} />
               Add Another Item
             </button>
           </div>
@@ -851,8 +951,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               return (
                 <div
                   key={row.rowId}
-                  style={{ position: 'relative', zIndex: itemRows.length - idx }}
-                  className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
+                  style={fieldMode ? { position: "relative", zIndex: itemRows.length - idx, display: "flex", alignItems: "center", gap: 8, background: "#0b1a0f", border: "1px solid #203023", borderRadius: 10, padding: 8 } : { position: 'relative', zIndex: itemRows.length - idx }}
+                  className={fieldMode ? undefined : "flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"}
                   data-testid={`item-row-${idx}`}
                 >
                   <div className="flex-[3] min-w-0">
@@ -860,9 +960,10 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       value={row.itemId}
                       onChange={(id) => updateRow(row.rowId, { itemId: id })}
                       items={items || []}
+                      dark={fieldMode}
                     />
                     {row.errors.itemId && (
-                      <p className="text-[10px] text-red-500 mt-1 ml-1" data-testid={`error-item-${idx}`}>
+                      <p style={fieldMode ? { fontSize: 10, color: "#ff5555", marginTop: 3, marginLeft: 2 } : undefined} className={fieldMode ? undefined : "text-[10px] text-red-500 mt-1 ml-1"} data-testid={`error-item-${idx}`}>
                         {row.errors.itemId}
                       </p>
                     )}
@@ -873,11 +974,12 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       <button
                         type="button"
                         onClick={() => updateRow(row.rowId, { quantity: Math.max(0, row.quantity - 1) })}
-                        className="w-9 h-9 flex items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"
+                        style={fieldMode ? { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: "1px solid #203023", borderRight: "none", background: "#141e17", color: "#527856", cursor: "pointer" } : undefined}
+                        className={fieldMode ? undefined : "w-9 h-9 flex items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"}
                         data-testid={`btn-qty-dec-${idx}`}
                         title="Decrease"
                       >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft style={{ width: 14, height: 14 }} className={fieldMode ? undefined : "w-4 h-4"} />
                       </button>
                       <input
                         type="text"
@@ -892,27 +994,28 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                           const val = parseInt(e.target.value, 10);
                           if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
                         }}
-                        style={{ textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0 }}
-                        className="h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300"
+                        style={fieldMode ? { textAlign: "center", height: 34, width: 56, fontSize: 13, fontWeight: 700, border: "1px solid #203023", borderLeft: "none", borderRight: "none", background: "#0f1612", color: "#c8deca", outline: "none", padding: 0 } : { textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0 }}
+                        className={fieldMode ? undefined : "h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300"}
                         data-testid={`input-quantity-${idx}`}
                       />
                       <button
                         type="button"
                         onClick={() => updateRow(row.rowId, { quantity: row.quantity + 1 })}
-                        className="w-9 h-9 flex items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"
+                        style={fieldMode ? { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "0 8px 8px 0", border: "1px solid #203023", borderLeft: "none", background: "#141e17", color: "#527856", cursor: "pointer" } : undefined}
+                        className={fieldMode ? undefined : "w-9 h-9 flex items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"}
                         data-testid={`btn-qty-inc-${idx}`}
                         title="Increase"
                       >
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight style={{ width: 14, height: 14 }} className={fieldMode ? undefined : "w-4 h-4"} />
                       </button>
                       {selectedItem && (
-                        <span className="ml-2 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap min-w-[28px] text-center">
+                        <span style={fieldMode ? { marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#527856", textTransform: "uppercase", whiteSpace: "nowrap", minWidth: 24, textAlign: "center" } : undefined} className={fieldMode ? undefined : "ml-2 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap min-w-[28px] text-center"}>
                           {selectedItem.unitOfMeasure}
                         </span>
                       )}
                     </div>
                     {row.errors.quantity && (
-                      <p className="text-[10px] text-red-500 mt-1 text-center" data-testid={`error-qty-${idx}`}>
+                      <p style={fieldMode ? { fontSize: 10, color: "#ff5555", marginTop: 3, textAlign: "center" } : undefined} className={fieldMode ? undefined : "text-[10px] text-red-500 mt-1 text-center"} data-testid={`error-qty-${idx}`}>
                         {row.errors.quantity}
                       </p>
                     )}
@@ -923,11 +1026,12 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       type="button"
                       onClick={() => removeRow(row.rowId)}
                       disabled={itemRows.length === 1}
-                      className="p-1.5 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-0 transition-all"
+                      style={fieldMode ? { padding: 6, borderRadius: 6, color: "#2b3f2e", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
+                      className={fieldMode ? undefined : "p-1.5 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-0 transition-all"}
                       data-testid={`btn-remove-row-${idx}`}
                       title="Remove item"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 style={{ width: 15, height: 15 }} className={fieldMode ? undefined : "w-4 h-4"} />
                     </button>
                   </div>
                 </div>
@@ -937,14 +1041,15 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
         {/* ── NOTE: below Items ── */}
-        <div className="flex-shrink-0 pt-3 border-t border-slate-100 mt-2">
+        <div style={fieldMode ? { flexShrink: 0, paddingTop: 16, borderTop: "1px solid #203023", marginTop: 8 } : undefined} className={fieldMode ? undefined : "flex-shrink-0 pt-3 border-t border-slate-100 mt-2"}>
           <FormField control={form.control} name="note" render={({ field }) => (
             <FormItem>
               <FormLabel>Note (Optional)</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Reference number, PO, reason…"
-                  className="resize-none"
+                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", borderRadius: 10, color: "#c8deca", fontSize: 13, resize: "none" } : undefined}
+                  className={fieldMode ? "resize-none" : "resize-none"}
                   rows={2}
                   {...field}
                   data-testid="input-note"
@@ -956,14 +1061,16 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
         {/* ── Confirm footer: slim sticky action bar ── */}
-        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6">
+        <div style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 16, marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16 } : undefined} className={fieldMode ? undefined : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}>
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button
                 type="button"
-                variant="outline"
+                variant={fieldMode ? undefined : "outline"}
                 onClick={onCancel}
                 disabled={submitting}
+                style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px" } : undefined}
+                className={fieldMode ? undefined : undefined}
                 data-testid="button-cancel-movement"
               >
                 Cancel
@@ -976,7 +1083,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     <Button
                       type="button"
                       disabled
-                      className="bg-slate-300 text-slate-500 min-w-[100px] cursor-not-allowed"
+                      style={fieldMode ? { background: "#1a2a1d", border: "1px solid #203023", color: "#2b3f2e", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 20px", cursor: "not-allowed" } : undefined}
+                      className={fieldMode ? undefined : "bg-slate-300 text-slate-500 min-w-[100px] cursor-not-allowed"}
                       data-testid="button-submit-movement"
                     >
                       Confirm
@@ -992,8 +1100,9 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 <Button
                   type="button"
                   disabled={submitting}
-                  variant="outline"
-                  className="min-w-[80px]"
+                  variant={fieldMode ? undefined : "outline"}
+                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px", minWidth: 72 } : undefined}
+                  className={fieldMode ? undefined : "min-w-[80px]"}
                   data-testid="button-save-movement"
                   onClick={() => {
                     saveOnlyRef.current = true;
@@ -1005,7 +1114,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="bg-brand-700 hover:bg-brand-800 min-w-[100px]"
+                  style={fieldMode ? { background: "#2ddb6f", color: "#07090a", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 22px", minWidth: 100, border: "none", letterSpacing: "0.03em" } : undefined}
+                  className={fieldMode ? undefined : "bg-brand-700 hover:bg-brand-800 min-w-[100px]"}
                   data-testid="button-submit-movement"
                 >
                   {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
@@ -1016,6 +1126,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
       </form>
+      </div>
     </Form>
   );
 }

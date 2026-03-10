@@ -1,19 +1,17 @@
 import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { MovementForm } from "@/components/MovementForm";
-import { PackageOpen, Send } from "lucide-react";
 
-// Screen configs: each preset type maps to its allowed movement types
-const SCREEN_CONFIG: Record<string, { heading: string; allowedTypes: string[]; icon: React.ReactNode }> = {
+const SCREEN_CONFIG: Record<string, { heading: string; emoji: string; allowedTypes: string[] }> = {
   receive: {
     heading: "Receive / Return",
+    emoji: "📦",
     allowedTypes: ["receive", "return"],
-    icon: <PackageOpen className="w-6 h-6 sm:w-6 sm:h-6 text-brand-700 shrink-0" />,
   },
   issue: {
     heading: "Issue / Transfer",
+    emoji: "📤",
     allowedTypes: ["issue", "transfer"],
-    icon: <Send className="w-6 h-6 sm:w-6 sm:h-6 text-brand-700 shrink-0" />,
   },
 };
 
@@ -27,14 +25,27 @@ export default function FieldMovement() {
   const config = SCREEN_CONFIG[presetType] ?? SCREEN_CONFIG.receive;
 
   return (
-    <div className="space-y-5 pb-6">
-      <div>
-        <div className="flex items-center gap-2">
-          {config.icon}
-          <h1 className="text-2xl font-display font-bold text-slate-900">{config.heading}</h1>
-        </div>
-        <p className="text-sm text-slate-400 mt-0.5">Log Movement</p>
+    <div style={{ paddingTop: 28, paddingBottom: 48, paddingLeft: 0, paddingRight: 0 }}>
+
+      {/* Page header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontSize: 24, fontWeight: 700,
+          color: "#ffffff", margin: "0 0 5px",
+          letterSpacing: 0.3,
+        }}>
+          {config.emoji} {config.heading}
+        </h1>
+        <p style={{
+          fontSize: 11, color: "#2ddb6f", margin: 0,
+          fontFamily: "'Barlow Condensed', sans-serif",
+          letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
+        }}>
+          Log Movement
+        </p>
       </div>
+
       <MovementForm
         key={presetType}
         defaultType={presetType}

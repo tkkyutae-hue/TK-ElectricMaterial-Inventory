@@ -12,7 +12,7 @@ function getTimeInfo(): { emoji: string; label: string; greeting: string } {
 
 const BG_STYLE: React.CSSProperties = {
   minHeight: "100vh",
-  background: "#07090a",
+  background: "#0d1410",
   display: "flex",
   flexDirection: "column",
   position: "relative",
@@ -25,7 +25,7 @@ const GLOW_STYLE: React.CSSProperties = {
   top: 0, left: "50%",
   transform: "translateX(-50%)",
   width: "100%", height: "65vh",
-  background: "radial-gradient(ellipse 80% 65% at 50% 0%, rgba(45,219,111,0.06) 0%, transparent 65%)",
+  background: "radial-gradient(ellipse 80% 65% at 50% 0%, rgba(45,219,111,0.10) 0%, transparent 65%)",
   pointerEvents: "none",
   zIndex: 0,
 };
@@ -33,8 +33,8 @@ const GLOW_STYLE: React.CSSProperties = {
 const GRID_STYLE: React.CSSProperties = {
   position: "absolute", inset: 0, pointerEvents: "none",
   backgroundImage: `
-    linear-gradient(rgba(45,219,111,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45,219,111,0.03) 1px, transparent 1px)
+    linear-gradient(rgba(45,219,111,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,219,111,0.05) 1px, transparent 1px)
   `,
   backgroundSize: "52px 52px",
   zIndex: 0,
@@ -66,8 +66,8 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
       style={{
         width: "100%",
         textAlign: "left",
-        background: "#0f1612",
-        border: `1px solid ${hovered ? accentColor : "#203023"}`,
+        background: "#162019",
+        border: `1px solid ${hovered ? accentColor : "#2a4030"}`,
         borderRadius: 14,
         padding: 0,
         cursor: "pointer",
@@ -96,7 +96,7 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 19, fontWeight: 700,
-            color: "#ffffff", margin: "0 0 8px",
+            color: "#e2f0e5", margin: "0 0 8px",
             letterSpacing: 0.3,
           }}>{title}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -115,7 +115,7 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
         {/* Arrow */}
         <span style={{
           fontSize: 20, flexShrink: 0,
-          color: hovered ? accentColor : "#2b3f2e",
+          color: hovered ? accentColor : "#4a7052",
           transition: "color 0.15s, transform 0.15s",
           transform: hovered ? "translateX(3px)" : "translateX(0)",
           display: "inline-block",
@@ -144,6 +144,8 @@ export default function Home() {
         position: "relative", zIndex: 10,
         display: "flex", alignItems: "center", justifyContent: "flex-end",
         padding: "18px 24px",
+        background: "#0d1410",
+        borderBottom: "1px solid #2a4030",
       }}>
         <button
           onClick={() => logout()}
@@ -151,12 +153,12 @@ export default function Home() {
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "none", cursor: "pointer",
-            color: "#2b3f2e", fontSize: 13, fontFamily: "'Barlow', sans-serif",
+            color: "#4a7052", fontSize: 13, fontFamily: "'Barlow', sans-serif",
             transition: "color 0.15s",
             padding: "6px 10px", borderRadius: 8,
           }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#527856")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#2b3f2e")}
+          onMouseEnter={e => (e.currentTarget.style.color = "#7aab82")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#4a7052")}
         >
           <LogOut style={{ width: 14, height: 14 }} />
           <span>Logout</span>
@@ -175,7 +177,7 @@ export default function Home() {
           <div style={{ marginBottom: 32 }}>
             <p style={{
               fontSize: 11, textTransform: "uppercase", letterSpacing: 2,
-              color: "#527856", fontFamily: "'Barlow Condensed', sans-serif",
+              color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif",
               fontWeight: 600, margin: "0 0 8px",
               display: "flex", alignItems: "center", gap: 5,
             }}>
@@ -184,13 +186,13 @@ export default function Home() {
             <h1 style={{
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 58, lineHeight: 1.02, margin: "0 0 10px",
-              color: "#ffffff",
+              color: "#e2f0e5",
               letterSpacing: 1,
             }}>
               {greeting.toUpperCase()}<br />
               <span style={{ color: "#2ddb6f" }}>{firstName}.</span>
             </h1>
-            <p style={{ fontSize: 13, color: "#2b3f2e", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
+            <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
               Select a mode to continue.
             </p>
           </div>
@@ -232,9 +234,9 @@ export default function Home() {
           </div>
 
           {!isAdminRole && (
-            <p style={{ fontSize: 11, color: "#2b3f2e", marginTop: 20, fontFamily: "'Barlow', sans-serif" }}>
+            <p style={{ fontSize: 11, color: "#4a7052", marginTop: 20, fontFamily: "'Barlow', sans-serif" }}>
               Role:{" "}
-              <strong style={{ color: "#527856" }}>{user?.role ?? "viewer"}</strong>
+              <strong style={{ color: "#7aab82" }}>{user?.role ?? "viewer"}</strong>
               {" "}— Contact an admin for elevated access.
             </p>
           )}

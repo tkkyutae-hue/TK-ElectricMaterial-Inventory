@@ -1061,7 +1061,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         </div>
 
         {/* ── Confirm footer: slim sticky action bar ── */}
-        <div style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 16, marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16 } : undefined} className={fieldMode ? undefined : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}>
+        <div style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 16, marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16, background: "#0d1410", borderTop: "1px solid #203023" } : undefined} className={fieldMode ? undefined : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}>
           <div className="flex items-center gap-2">
             {onCancel && (
               <Button

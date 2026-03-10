@@ -15,7 +15,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, type Ref } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -608,7 +608,17 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function WireReelInline({ item, editModeActive = false }: { item: any; editModeActive?: boolean }) {
+type WireReelInlineHandle = {
+  saveAll: () => Promise<void>;
+  discardAll: () => void;
+};
+
+type RowDraft = { reelId: string; lengthFt: string; brand: string; locationId: string; status: string };
+
+function WireReelInlineInner(
+  { item, editModeActive = false }: { item: any; editModeActive?: boolean },
+  ref: Ref<WireReelInlineHandle>
+) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
@@ -616,6 +626,7 @@ function WireReelInline({ item, editModeActive = false }: { item: any; editModeA
   const [rows, setRows] = useState<AddReelDraft[]>([{ ...BLANK_REEL_DRAFT }]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<EditReelDraft>({ reelId: "", lengthFt: "", brand: "", locationId: "", status: "new" });
+  const [rowDrafts, setRowDrafts] = useState<Record<number, RowDraft>>({});
 
   const { data: reels = [], isLoading } = useQuery<WireReelLocal[]>({
     queryKey: ["/api/wire-reels", item.id],
@@ -688,6 +699,63 @@ function WireReelInline({ item, editModeActive = false }: { item: any; editModeA
       status: reel.status || "new",
     });
   };
+
+  useEffect(() => {
+    if (editModeActive && reels.length > 0) {
+      setRowDrafts(prev => {
+        const next: Record<number, RowDraft> = {};
+        reels.forEach(r => {
+          next[r.id] = prev[r.id] ?? {
+            reelId: r.reelId,
+            lengthFt: String(r.lengthFt),
+            brand: r.brand || "",
+            locationId: r.locationId ? String(r.locationId) : "",
+            status: r.status || "new",
+          };
+        });
+        return next;
+      });
+    }
+    if (!editModeActive) {
+      setRowDrafts({});
+      setEditingId(null);
+    }
+  }, [editModeActive, reels]);
+
+  const updateRowDraft = (reelDbId: number, field: keyof RowDraft, value: string) => {
+    setRowDrafts(prev => {
+      const current = prev[reelDbId];
+      if (!current) return prev;
+      const updated = { ...current, [field]: value };
+      if (field === "brand") {
+        const seqMatch = current.reelId.match(/R(\d+)$/i);
+        const seq = seqMatch ? parseInt(seqMatch[1]) : 1;
+        updated.reelId = generateReelId(item, value, seq);
+      }
+      return { ...prev, [reelDbId]: updated };
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    saveAll: async () => {
+      const promises = reels.map(reel => {
+        const draft = rowDrafts[reel.id];
+        if (!draft) return Promise.resolve();
+        return apiRequest("PATCH", `/api/wire-reels/${reel.id}`, {
+          reelId: draft.reelId.trim(),
+          lengthFt: parseInt(draft.lengthFt) || 0,
+          brand: draft.brand.trim() || null,
+          locationId: draft.locationId ? parseInt(draft.locationId) : null,
+          status: draft.status || null,
+        });
+      });
+      await Promise.all(promises);
+      invalidateAll();
+    },
+    discardAll: () => {
+      setRowDrafts({});
+    },
+  }), [rowDrafts, reels]);
 
   return (
     <div data-testid={`wire-reel-section-${item.id}`}>
@@ -823,10 +891,54 @@ function WireReelInline({ item, editModeActive = false }: { item: any; editModeA
               </thead>
               <tbody className="bg-white divide-y divide-slate-50">
                 {reels.map(reel => {
-                  const isEditing = editingId === reel.id;
+                  const isBulkEdit = editModeActive;
+                  const isRowEdit = !editModeActive && editingId === reel.id;
+                  const draft = rowDrafts[reel.id];
                   return (
-                    <tr key={reel.id} className={`transition-colors ${isEditing ? "bg-slate-50" : "hover:bg-slate-50"}`} data-testid={`row-reel-${reel.id}`}>
-                      {isEditing ? (
+                    <tr key={reel.id} className={`transition-colors ${isBulkEdit || isRowEdit ? "bg-slate-50" : "hover:bg-slate-50"}`} data-testid={`row-reel-${reel.id}`}>
+                      {isBulkEdit && draft ? (
+                        <>
+                          <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-400 whitespace-nowrap">{draft.reelId}</td>
+                          <td className="px-3 py-1.5">
+                            <Input type="number" min={0} value={draft.lengthFt} onChange={e => updateRowDraft(reel.id, "lengthFt", e.target.value)} className="h-7 text-xs text-right w-20" data-testid={`input-bulk-reel-length-${reel.id}`} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Input value={draft.brand} onChange={e => updateRowDraft(reel.id, "brand", e.target.value)} placeholder="Brand" className="h-7 text-xs w-24" data-testid={`input-bulk-reel-brand-${reel.id}`} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Select value={draft.locationId || "__none__"} onValueChange={v => updateRowDraft(reel.id, "locationId", v === "__none__" ? "" : v)}>
+                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-bulk-reel-location-${reel.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">— None —</SelectItem>
+                                {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Select value={draft.status} onValueChange={v => updateRowDraft(reel.id, "status", v)}>
+                              <SelectTrigger className="h-7 text-xs w-20" data-testid={`select-bulk-reel-status-${reel.id}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="used">Used</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <button
+                              onClick={() => deleteMutation.mutate(reel.id)}
+                              disabled={deleteMutation.isPending}
+                              style={{ color: "#527856" }}
+                              onMouseEnter={e => (e.currentTarget.style.color = "#ff5050")}
+                              onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
+                              className="transition-colors disabled:opacity-40"
+                              title="Remove reel"
+                              data-testid={`button-delete-reel-${reel.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </>
+                      ) : isRowEdit ? (
                         <>
                           <td className="px-3 py-1.5">
                             <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-28" data-testid={`input-edit-reel-id-${reel.id}`} />
@@ -874,30 +986,8 @@ function WireReelInline({ item, editModeActive = false }: { item: any; editModeA
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
                           <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2" style={{ visibility: editModeActive ? "visible" : "hidden" }}>
-                              <button
-                                onClick={() => startEdit(reel)}
-                                style={{ color: "#527856" }}
-                                onMouseEnter={e => (e.currentTarget.style.color = "#2ddb6f")}
-                                onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
-                                className="transition-colors"
-                                title="Edit reel"
-                                data-testid={`button-edit-reel-${reel.id}`}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => deleteMutation.mutate(reel.id)}
-                                disabled={deleteMutation.isPending}
-                                style={{ color: "#527856" }}
-                                onMouseEnter={e => (e.currentTarget.style.color = "#ff5050")}
-                                onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
-                                className="transition-colors disabled:opacity-40"
-                                title="Remove reel"
-                                data-testid={`button-delete-reel-${reel.id}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                            <div className="flex items-center gap-2" style={{ visibility: "hidden" }}>
+                              <Trash2 className="w-3.5 h-3.5" />
                             </div>
                           </td>
                         </>
@@ -920,6 +1010,7 @@ function WireReelInline({ item, editModeActive = false }: { item: any; editModeA
     </div>
   );
 }
+const WireReelInline = forwardRef(WireReelInlineInner);
 
 function StockStatusBar({ qty, minStock }: { qty: number; minStock: number }) {
   let label: string;
@@ -984,6 +1075,7 @@ export default function ItemDetails() {
   const { toast } = useToast();
 
   const [inlineEdit, setInlineEdit] = useState(false);
+  const wireReelRef = useRef<WireReelInlineHandle>(null);
   const [inlineDraft, setInlineDraft] = useState({
     unitCost: "",
     reorderPoint: 0,
@@ -1004,6 +1096,7 @@ export default function ItemDetails() {
   async function saveInlineEdits() {
     if (!item) return;
     try {
+      await wireReelRef.current?.saveAll();
       await updateMutation.mutateAsync({
         id: item.id,
         sku: item.sku,
@@ -1129,7 +1222,7 @@ export default function ItemDetails() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setInlineEdit(false)}
+                      onClick={() => { wireReelRef.current?.discardAll(); setInlineEdit(false); }}
                       data-testid="button-cancel-inline"
                     >
                       <XIcon className="w-3.5 h-3.5 mr-1" />Cancel
@@ -1216,7 +1309,7 @@ export default function ItemDetails() {
             {/* Reel Inventory — inline for wire/cable items */}
             {item.unitOfMeasure === "FT" && (
               <>
-                <WireReelInline item={item} editModeActive={inlineEdit} />
+                <WireReelInline ref={wireReelRef} item={item} editModeActive={inlineEdit} />
                 <div className="h-px bg-slate-100" />
               </>
             )}

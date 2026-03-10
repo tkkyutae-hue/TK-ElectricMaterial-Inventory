@@ -1730,67 +1730,87 @@ export default function CategoryDetail() {
                     </Table>
                   </div>
                 ) : (
-                  /* View mode: responsive card grid */
-                  <div className="p-4">
-                    {group.items.length === 0 ? (
-                      <div className="text-center py-6 text-slate-400 text-sm">
-                        No items yet.{" "}
-                        <button className="text-brand-600 hover:underline" onClick={() => enterInlineEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
-                          Click Edit to add items.
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <button
-                            onClick={() => toggleFamilySort(group.baseItemName)}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
-                            title={sortDir === "asc" ? "Sorted small→large" : "Sorted large→small"}
-                            data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
+                  /* View mode: compact table */
+                  <div className="overflow-x-auto">
+                    <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "640px" }}>
+                      <colgroup>
+                        <col style={{ width: "110px" }} />
+                        <col style={{ width: "48px" }} />
+                        <col style={{ width: "120px" }} />
+                        <col />
+                        <col style={{ width: "90px" }} />
+                        <col style={{ width: "110px" }} />
+                      </colgroup>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5">SKU</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Photo</TableHead>
+                          <TableHead className="py-2">
+                            <button
+                              onClick={() => toggleFamilySort(group.baseItemName)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
+                              title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
+                              data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
+                            >
+                              Size
+                              {sortDir === "asc"
+                                ? <ArrowUp className="w-3 h-3 text-brand-500" />
+                                : <ArrowDown className="w-3 h-3 text-brand-500" />}
+                            </button>
+                          </TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty / Unit</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5 text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedItems.map(item => (
+                          <TableRow
+                            key={item.id}
+                            className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                            data-testid={`row-item-${item.id}`}
                           >
-                            Sort by Size
-                            {sortDir === "asc" ? <ArrowUp className="w-3 h-3 text-brand-500" /> : <ArrowDown className="w-3 h-3 text-brand-500" />}
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                          {sortedItems.map(item => (
-                            <Link href={`/inventory/${item.id}`} key={item.id}>
-                              <div
-                                className={`border rounded-xl p-3.5 cursor-pointer hover:shadow-md hover:border-brand-300 transition-all duration-150 bg-white group ${item.status === "out_of_stock" ? "border-rose-200 bg-rose-50/30" : item.status === "low_stock" ? "border-amber-200 bg-amber-50/30" : "border-slate-200"}`}
-                                data-testid={`card-item-${item.id}`}
-                              >
-                                <div className="flex items-start gap-3 mb-3">
-                                  <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center shrink-0">
-                                    {item.imageUrl ? (
-                                      <img src={item.imageUrl} alt="" className="w-full h-full object-cover"
-                                        onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
-                                    ) : null}
-                                    <div className={`${item.imageUrl ? "hidden" : ""} w-full h-full flex items-center justify-center`}>
-                                      <Package className="w-4 h-4 text-slate-300" />
-                                    </div>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xl font-bold text-slate-900 leading-tight">{item.sizeLabel || "—"}</p>
-                                    <p className="text-xs text-slate-500 truncate leading-snug mt-0.5" title={item.name}>{item.name}</p>
-                                    <p className="font-mono text-[10px] text-slate-400 mt-0.5">{item.sku}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-end justify-between">
-                                  <div>
-                                    <span className="text-2xl font-bold text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
-                                    <span className="text-xs text-slate-400 ml-1 font-medium">{item.unitOfMeasure}</span>
-                                    {item.location?.name && (
-                                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">{item.location.name}</p>
-                                    )}
-                                  </div>
-                                  <StatusBadge status={item.status} />
+                            <TableCell className="py-2.5 pl-5">
+                              <div className="font-mono text-xs text-slate-500 truncate">{item.sku}</div>
+                            </TableCell>
+                            <TableCell className="py-2.5">
+                              <div className="flex items-center">
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} alt="" className="w-7 h-7 object-cover rounded border border-slate-200 block"
+                                    onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
+                                ) : null}
+                                <div className={`w-7 h-7 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
+                                  <ImageIcon className="w-3 h-3 text-slate-300" />
                                 </div>
                               </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                            </TableCell>
+                            <TableCell className="py-2.5">
+                              <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
+                            </TableCell>
+                            <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
+                              <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">
+                              {item.quantityOnHand.toLocaleString()}
+                              <span className="text-slate-400 font-normal text-xs ml-1">{item.unitOfMeasure}</span>
+                            </TableCell>
+                            <TableCell className="py-2.5 pr-5">
+                              <div className="flex items-center justify-end"><StatusBadge status={item.status} /></div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {group.items.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-6 text-slate-400 text-sm">
+                              No items yet.{" "}
+                              <button className="text-brand-600 hover:underline" onClick={() => enterInlineEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
+                                Click Edit to add items.
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
 

@@ -1,0 +1,56 @@
+Redesign the Transactions page. Keep ALL existing filter logic, search, and data display. Only change visuals. Apply to Field Mode Transaction pages.
+
+COLOR TOKENS (updated brighter values):
+--bg: #0d1410
+--bg3: #162019
+--bg4: #1c2b1f
+--border: #1e2e21
+--border2: #2a4030
+--text: #e2f0e5
+--text2: #7aab82
+--text3: #4a7052
+
+FILTER BAR (horizontal, single row, 5-column grid):
+- Container: bg #162019, border 1px solid #2a4030, border-radius 12px, padding 14px 16px
+- Columns: Search | From | Project | Date From | Date To
+- Label: 9px uppercase, color #4a7052, font-weight 700
+- Input: bg #1c2b1f, border #2a4030, border-radius 7px, padding 8px 10px
+- Input text: color #e2f0e5, placeholder color #4a7052
+- Focus: border #2ddb6f, box-shadow 0 0 0 3px rgba(45,219,111,0.12)
+
+TABLE HEADER:
+- bg #162019, border 1px solid #2a4030, border-radius 12px 12px 0 0
+- 9px uppercase, color #7aab82, letter-spacing 1px
+- Columns: # | Type | Photo | Size | Item | Qty/Unit | From→To | Project/PO | Date
+
+TABLE ROWS:
+- bg #162019, border 1px solid #2a4030 (no top — flows from header)
+- Last row container: border-radius 0 0 12px 12px
+- Row hover: bg #1c2b1f
+- Row border-bottom: 1px solid #1e2e21
+- Row number: 11px, color #7aab82
+- Size: 11px, color #7aab82
+
+TYPE BADGES (border-radius 5px, 9px, 800 weight, uppercase):
+- ISSUED: bg rgba(255,80,80,0.10), color #ff5050, border 1px solid rgba(255,80,80,0.22)
+- RECEIVED: bg rgba(45,219,111,0.10), color #2ddb6f, border 1px solid rgba(45,219,111,0.22)
+- TRANSFER: bg rgba(91,156,246,0.12), color #5b9cf6, border 1px solid rgba(91,156,246,0.22)
+
+QTY (Barlow Condensed 16px 700):
+- Issued: color #ff5050
+- Received: color #2ddb6f
+- Transfer: color #5b9cf6
+- Unit suffix: 9px, color #7aab82
+
+FROM→TO: two lines stacked, "→" separator, second line color #4a7052
+
+ITEM NAME: 12px 600, color #e2f0e5
+ITEM SUBCATEGORY: 10px, color #7aab82
+PROJECT NAME: 11px 600, color #e2f0e5
+PO NUMBER: 9px, color #7aab82
+
+TABLE FOOTER:
+- "Showing X transactions" left / "Export CSV ↓" right
+- font-size 11px, color #7aab82, strong tag color #e2f0e5
+
+

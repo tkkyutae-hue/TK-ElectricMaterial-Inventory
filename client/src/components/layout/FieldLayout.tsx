@@ -168,13 +168,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         className="relative"
         style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: "#0d1410" }}
       >
-        <div className={`flex-1 flex flex-col w-full mx-auto px-4 md:px-6 ${
-          location.startsWith("/field/inventory") || location.startsWith("/field/transactions")
-            ? "max-w-7xl"
-            : location.startsWith("/field/movement")
-            ? "max-w-[1100px]"
-            : "max-w-6xl"
-        }`}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%", paddingLeft: 24, paddingRight: 24 }}>
           {children}
         </div>
       </main>

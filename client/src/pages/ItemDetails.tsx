@@ -520,25 +520,33 @@ type WireReelLocal = {
 
 type AddReelDraft = {
   lengthFt: string;
+  brand: string;
   locationId: string;
-  status: "full" | "partial" | "opened";
+  status: "new" | "used";
 };
 
 const REEL_STATUS_COLORS: Record<string, string> = {
-  full: "bg-emerald-100 text-emerald-700",
-  partial: "bg-amber-100 text-amber-700",
-  opened: "bg-sky-100 text-sky-700",
+  new: "bg-emerald-100 text-emerald-700",
+  used: "bg-amber-100 text-amber-700",
 };
 const REEL_STATUS_LABELS: Record<string, string> = {
-  full: "Full", partial: "Partial", opened: "Opened",
+  new: "New", used: "Used",
 };
 
 const BLANK_REEL_DRAFT: AddReelDraft = {
-  lengthFt: "", locationId: "", status: "full",
+  lengthFt: "", brand: "", locationId: "", status: "new",
 };
 
+function generateReelId(item: any, brand: string, seqNum: number): string {
+  const name = (item.baseItemName || item.name || "").replace(/[^a-zA-Z0-9]/g, "");
+  const size = (item.sizeLabel || "").replace(/[^a-zA-Z0-9]/g, "");
+  const b = (brand || "").replace(/[^a-zA-Z0-9]/g, "") || "NoBrand";
+  const seq = String(seqNum).padStart(3, "0");
+  return `${name}-${size}-${b}-R${seq}`;
+}
+
 function ReelStatusBadge({ status }: { status: string | null }) {
-  const s = status || "full";
+  const s = status || "new";
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium ${REEL_STATUS_COLORS[s] ?? "bg-slate-100 text-slate-600"}`}>
       {REEL_STATUS_LABELS[s] ?? s}
@@ -551,7 +559,7 @@ function WireReelInline({ item }: { item: any }) {
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
   const [showAdd, setShowAdd] = useState(false);
-  const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
+  const [rows, setRows] = useState<AddReelDraft[]>([{ ...BLANK_REEL_DRAFT }]);
 
   const { data: reels = [], isLoading } = useQuery<WireReelLocal[]>({
     queryKey: ["/api/wire-reels", item.id],
@@ -564,21 +572,27 @@ function WireReelInline({ item }: { item: any }) {
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
 
-  const nextReelId = `r-${String(reels.length + 1).padStart(3, "0")}`;
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+    qc.invalidateQueries({ queryKey: ["/api/items/:id", item.id] });
+  };
 
   const addMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/wire-reels", {
-      itemId: item.id,
-      reelId: nextReelId,
-      lengthFt: parseInt(draft.lengthFt) || 0,
-      locationId: draft.locationId ? parseInt(draft.locationId) : null,
-      status: draft.status,
+    mutationFn: () => apiRequest("POST", "/api/wire-reels/bulk", {
+      reels: rows.map((row, i) => ({
+        itemId: item.id,
+        reelId: generateReelId(item, row.brand, reels.length + i + 1),
+        lengthFt: parseInt(row.lengthFt) || 0,
+        brand: row.brand.trim() || null,
+        locationId: row.locationId ? parseInt(row.locationId) : null,
+        status: row.status,
+      })),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      invalidateAll();
       setShowAdd(false);
-      setDraft(BLANK_REEL_DRAFT);
-      toast({ title: "Reel added" });
+      setRows([{ ...BLANK_REEL_DRAFT }]);
+      toast({ title: `${rows.length} reel${rows.length > 1 ? "s" : ""} added` });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -586,7 +600,7 @@ function WireReelInline({ item }: { item: any }) {
   const deleteMutation = useMutation({
     mutationFn: (reelId: number) => apiRequest("DELETE", `/api/wire-reels/${reelId}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      invalidateAll();
       toast({ title: "Reel removed" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -607,7 +621,7 @@ function WireReelInline({ item }: { item: any }) {
         </div>
         <button
           className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
-          onClick={() => { setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
+          onClick={() => { setShowAdd(v => !v); setRows([{ ...BLANK_REEL_DRAFT }]); }}
           data-testid={`button-add-reel-${item.id}`}
         >
           <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
@@ -615,54 +629,88 @@ function WireReelInline({ item }: { item: any }) {
       </div>
 
       <div className="space-y-4">
-        {/* Add reel inline form */}
+        {/* Add reel multi-row form */}
         {showAdd && (
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <div className="grid grid-cols-4 gap-3 mb-3">
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Reel ID</label>
-                <Input value={nextReelId} readOnly
-                  className="h-8 text-sm bg-slate-50 text-slate-400 font-mono cursor-default" data-testid={`input-reel-id-${item.id}`} />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Length (FT) <span className="text-red-400">*</span></label>
-                <Input type="number" min={0} value={draft.lengthFt} onChange={e => setDraft(d => ({ ...d, lengthFt: e.target.value }))}
-                  placeholder="500" className="h-8 text-sm" data-testid={`input-reel-length-${item.id}`} />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Location</label>
+          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
+            {/* Column headers */}
+            <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Reel ID</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Length (FT)</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Brand</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Location</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Status</span>
+              <span />
+            </div>
+
+            {rows.map((row, i) => (
+              <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
+                <Input
+                  value={generateReelId(item, row.brand, reels.length + i + 1)}
+                  readOnly
+                  className="h-8 text-xs bg-slate-50 text-slate-400 font-mono cursor-default"
+                  data-testid={`input-reel-id-${item.id}-${i}`}
+                />
+                <Input
+                  type="number" min={0} value={row.lengthFt}
+                  onChange={e => setRows(rs => rs.map((r, j) => j === i ? { ...r, lengthFt: e.target.value } : r))}
+                  placeholder="500" className="h-8 text-sm"
+                  data-testid={`input-reel-length-${item.id}-${i}`}
+                />
+                <Input
+                  value={row.brand}
+                  onChange={e => setRows(rs => rs.map((r, j) => j === i ? { ...r, brand: e.target.value } : r))}
+                  placeholder="Southwire" className="h-8 text-sm"
+                  data-testid={`input-reel-brand-${item.id}-${i}`}
+                />
                 <Select
-                  value={draft.locationId || "__none__"}
-                  onValueChange={v => setDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}
+                  value={row.locationId || "__none__"}
+                  onValueChange={v => setRows(rs => rs.map((r, j) => j === i ? { ...r, locationId: v === "__none__" ? "" : v } : r))}
                 >
-                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}-${i}`}><SelectValue placeholder="— None —" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— None —</SelectItem>
                     {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-500 font-medium block mb-1">Status</label>
-                <Select value={draft.status} onValueChange={v => setDraft(d => ({ ...d, status: v as AddReelDraft["status"] }))}>
-                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}`}><SelectValue /></SelectTrigger>
+                <Select
+                  value={row.status}
+                  onValueChange={v => setRows(rs => rs.map((r, j) => j === i ? { ...r, status: v as AddReelDraft["status"] } : r))}
+                >
+                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}-${i}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full">Full</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="opened">Opened</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="used">Used</SelectItem>
                   </SelectContent>
                 </Select>
+                <button
+                  onClick={() => setRows(rs => rs.length > 1 ? rs.filter((_, j) => j !== i) : rs)}
+                  className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-30"
+                  disabled={rows.length === 1}
+                  title="Remove row"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setDraft(BLANK_REEL_DRAFT); }}>Cancel</Button>
-              <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
-                disabled={!draft.lengthFt || addMutation.isPending}
-                onClick={() => addMutation.mutate()}
-                data-testid={`button-save-reel-${item.id}`}
+            ))}
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={() => setRows(rs => [...rs, { ...BLANK_REEL_DRAFT }])}
+                className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors"
+                data-testid={`button-add-reel-row-${item.id}`}
               >
-                {addMutation.isPending ? "Saving…" : "Add Reel"}
-              </Button>
+                <Plus className="w-3.5 h-3.5" /> Add Row
+              </button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setRows([{ ...BLANK_REEL_DRAFT }]); }}>Cancel</Button>
+                <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
+                  disabled={rows.every(r => !r.lengthFt) || addMutation.isPending}
+                  onClick={() => addMutation.mutate()}
+                  data-testid={`button-save-reel-${item.id}`}
+                >
+                  {addMutation.isPending ? "Saving…" : `Save ${rows.length > 1 ? `${rows.length} Reels` : "Reel"}`}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -685,7 +733,7 @@ function WireReelInline({ item }: { item: any }) {
             <table className="w-full text-sm" style={{ tableLayout: "auto" }}>
               <thead>
                 <tr className="bg-white border-b border-slate-100">
-                  {["Reel ID", "Length (FT)", "Location", "Status", ""].map(h => (
+                  {["Reel ID", "Length (FT)", "Brand", "Location", "Status", ""].map(h => (
                     <th key={h} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${h === "Length (FT)" ? "text-right" : h === "Status" ? "text-center" : h === "" ? "" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
@@ -693,8 +741,9 @@ function WireReelInline({ item }: { item: any }) {
               <tbody className="bg-white divide-y divide-slate-50">
                 {reels.map(reel => (
                   <tr key={reel.id} className="hover:bg-slate-50 transition-colors" data-testid={`row-reel-${reel.id}`}>
-                    <td className="px-4 py-2.5 font-mono font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
                     <td className="px-4 py-2.5">
@@ -715,7 +764,7 @@ function WireReelInline({ item }: { item: any }) {
                 <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
                   <td className="px-4 py-2.5 font-semibold text-brand-700 text-sm">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
-                  <td colSpan={3} />
+                  <td colSpan={4} />
                 </tr>
               </tfoot>
             </table>

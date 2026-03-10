@@ -1475,19 +1475,31 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  private async syncItemQtyFromReels(itemId: number): Promise<void> {
+    const result = await db
+      .select({ total: sql<number>`coalesce(sum(${wireReels.lengthFt}), 0)` })
+      .from(wireReels)
+      .where(and(eq(wireReels.itemId, itemId), eq(wireReels.isActive, true)));
+    const total = Number(result[0]?.total ?? 0);
+    await db.update(items).set({ quantityOnHand: total, updatedAt: new Date() }).where(eq(items.id, itemId));
+  }
+
   async createWireReel(data: CreateWireReelRequest): Promise<WireReel> {
     const [reel] = await db.insert(wireReels).values({ ...data, updatedAt: new Date() }).returning();
+    await this.syncItemQtyFromReels(data.itemId);
     return reel;
   }
 
   async updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel> {
     const [reel] = await db.update(wireReels).set({ ...data, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
     if (!reel) throw new Error("Wire reel not found");
+    await this.syncItemQtyFromReels(reel.itemId);
     return reel;
   }
 
   async deleteWireReel(id: number): Promise<void> {
-    await db.update(wireReels).set({ isActive: false, updatedAt: new Date() }).where(eq(wireReels.id, id));
+    const [reel] = await db.update(wireReels).set({ isActive: false, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
+    if (reel) await this.syncItemQtyFromReels(reel.itemId);
   }
 }
 

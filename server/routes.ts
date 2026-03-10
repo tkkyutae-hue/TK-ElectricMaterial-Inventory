@@ -838,19 +838,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  const reelSchema = z.object({
+    itemId: z.number().int().positive(),
+    reelId: z.string().min(1),
+    lengthFt: z.number().int().min(0),
+    brand: z.string().optional().nullable(),
+    locationId: z.number().int().optional().nullable(),
+    status: z.enum(["new", "used"]).optional().nullable(),
+  });
+
+  app.post("/api/wire-reels/bulk", isAuthenticated, async (req, res) => {
+    try {
+      const { reels } = z.object({ reels: z.array(reelSchema).min(1) }).parse(req.body);
+      const created = [];
+      for (const reel of reels) {
+        const r = await storage.createWireReel(reel);
+        created.push(r);
+      }
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.post("/api/wire-reels", isAuthenticated, async (req, res) => {
     try {
-      const schema = z.object({
-        itemId: z.number().int().positive(),
-        reelId: z.string().min(1),
-        lengthFt: z.number().int().min(0),
-        brand: z.string().optional().nullable(),
-        supplierId: z.number().int().optional().nullable(),
-        locationId: z.number().int().optional().nullable(),
-        status: z.enum(["full", "partial", "opened"]).optional().nullable(),
-        notes: z.string().optional().nullable(),
-      });
-      const data = schema.parse(req.body);
+      const data = reelSchema.parse(req.body);
       const reel = await storage.createWireReel(data);
       res.status(201).json(reel);
     } catch (err: any) {
@@ -866,10 +879,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         reelId: z.string().min(1).optional(),
         lengthFt: z.number().int().min(0).optional(),
         brand: z.string().optional().nullable(),
-        supplierId: z.number().int().optional().nullable(),
         locationId: z.number().int().optional().nullable(),
-        status: z.enum(["full", "partial", "opened"]).optional().nullable(),
-        notes: z.string().optional().nullable(),
+        status: z.enum(["new", "used"]).optional().nullable(),
       });
       const data = schema.parse(req.body);
       const reel = await storage.updateWireReel(id, data);

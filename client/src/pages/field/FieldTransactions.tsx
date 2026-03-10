@@ -450,9 +450,9 @@ export default function FieldTransactions() {
               <col style={{ width: 96 }} />
             </colgroup>
             <thead>
-              <tr style={{ borderBottom: "1px solid #2a4030", borderLeft: "3px solid transparent" }}>
+              <tr style={{ borderBottom: "1px solid #2a4030" }}>
                 {selectMode && (
-                  <th style={{ ...TH, textAlign: "center" }}>
+                  <th style={{ ...TH, textAlign: "center", borderLeft: "3px solid transparent" }}>
                     <button
                       type="button"
                       onClick={toggleAll}
@@ -465,7 +465,7 @@ export default function FieldTransactions() {
                     </button>
                   </th>
                 )}
-                <th style={{ ...TH, textAlign: "center", paddingLeft: 12 }}>#</th>
+                <th style={{ ...TH, textAlign: "center", paddingLeft: 12, ...(selectMode ? {} : { borderLeft: "3px solid transparent" }) }}>#</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
                 <th style={TH}>Photo</th>
                 <th style={{ ...TH, paddingLeft: 12 }}>Size</th>
@@ -542,7 +542,6 @@ export default function FieldTransactions() {
                     style={{
                       background: isSelected ? "rgba(45,219,111,0.06)" : "#162019",
                       borderBottom: "1px solid #1e2e21",
-                      borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent",
                       cursor: selectMode ? "pointer" : "default",
                       transition: "background 0.1s",
                     }}
@@ -553,7 +552,7 @@ export default function FieldTransactions() {
                   >
                     {/* Checkbox */}
                     {selectMode && (
-                      <td style={{ padding: "12px 8px", textAlign: "center" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                      <td style={{ padding: "12px 8px", textAlign: "center", borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
                         {isSelected
                           ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f", margin: "0 auto" }} />
                           : <Square style={{ width: 15, height: 15, color: "#4a7052", margin: "0 auto" }} />}
@@ -561,7 +560,7 @@ export default function FieldTransactions() {
                     )}
 
                     {/* No. */}
-                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center" }}>
+                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center", ...(!selectMode ? { borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" } : {}) }}>
                       {idx + 1}
                     </td>
 

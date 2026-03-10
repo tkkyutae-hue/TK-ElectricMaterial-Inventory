@@ -775,6 +775,31 @@ function WireReelInline({ item }: { item: any }) {
   );
 }
 
+function StockStatusBar({ qty, minStock }: { qty: number; minStock: number }) {
+  let label: string;
+  let cls: string;
+  let dot: string;
+  if (qty === 0) {
+    label = "Out of Stock";
+    cls = "bg-rose-100 text-rose-700 border-rose-200";
+    dot = "bg-rose-500";
+  } else if (qty <= minStock) {
+    label = "Low Stock";
+    cls = "bg-amber-100 text-amber-700 border-amber-200";
+    dot = "bg-amber-500";
+  } else {
+    label = "In Stock";
+    cls = "bg-emerald-100 text-emerald-700 border-emerald-200";
+    dot = "bg-emerald-500";
+  }
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${cls}`} data-testid="stock-status-bar">
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
+}
+
 function InfoRow({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: any }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -808,6 +833,58 @@ export default function ItemDetails() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [movementOpen, setMovementOpen] = useState(false);
+
+  const updateMutation = useUpdateItem();
+  const { toast } = useToast();
+
+  const [inlineEdit, setInlineEdit] = useState(false);
+  const [inlineDraft, setInlineDraft] = useState({
+    unitCost: "",
+    reorderPoint: 0,
+    reorderQuantity: 0,
+    minimumStock: 0,
+  });
+
+  function enterInlineEdit() {
+    setInlineDraft({
+      unitCost: item?.unitCost?.toString() || "",
+      reorderPoint: item?.reorderPoint ?? 0,
+      reorderQuantity: item?.reorderQuantity ?? 0,
+      minimumStock: item?.minimumStock ?? 0,
+    });
+    setInlineEdit(true);
+  }
+
+  async function saveInlineEdits() {
+    if (!item) return;
+    try {
+      await updateMutation.mutateAsync({
+        id: item.id,
+        sku: item.sku,
+        name: item.name,
+        baseItemName: item.baseItemName || null,
+        sizeLabel: item.sizeLabel || null,
+        categoryId: item.categoryId,
+        subcategory: item.subcategory || null,
+        detailType: item.detailType || null,
+        supplierId: item.supplierId || null,
+        primaryLocationId: item.primaryLocationId || null,
+        quantityOnHand: item.quantityOnHand,
+        minimumStock: Number(inlineDraft.minimumStock) || 0,
+        reorderPoint: Number(inlineDraft.reorderPoint) || 0,
+        reorderQuantity: Number(inlineDraft.reorderQuantity) || 0,
+        unitCost: inlineDraft.unitCost || null,
+        unitOfMeasure: item.unitOfMeasure,
+        statusOverride: item.statusOverride || null,
+        notes: item.notes || null,
+        brand: item.brand || null,
+      });
+      setInlineEdit(false);
+      toast({ title: "Saved", description: "Item updated successfully." });
+    } catch (err: any) {
+      toast({ title: "Error saving", description: err.message, variant: "destructive" });
+    }
+  }
 
   const handleDelete = () => {
     deleteMutation.mutate(id, {
@@ -880,21 +957,52 @@ export default function ItemDetails() {
                   <h1 className="text-2xl font-display font-bold text-slate-900 leading-tight" data-testid="item-name">
                     {item.name}
                   </h1>
-                  <ItemStatusBadge status={item.status} />
+                  <StockStatusBar qty={item.quantityOnHand} minStock={item.minimumStock} />
                 </div>
                 <p className="font-mono text-slate-500 text-sm mt-1" data-testid="item-sku">
                   SKU: {item.sku}
                 </p>
               </div>
               <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                {inlineEdit ? (
+                  <>
+                    <Button
+                      size="sm"
+                      className="bg-brand-700 hover:bg-brand-800 text-white"
+                      onClick={saveInlineEdits}
+                      disabled={updateMutation.isPending}
+                      data-testid="button-save-inline"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />{updateMutation.isPending ? "Saving…" : "Save"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setInlineEdit(false)}
+                      data-testid="button-cancel-inline"
+                    >
+                      <XIcon className="w-3.5 h-3.5 mr-1" />Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white border-slate-200 hover:border-brand-300 hover:text-brand-600"
+                    onClick={enterInlineEdit}
+                    data-testid="button-edit-item"
+                  >
+                    <Edit className="w-3.5 h-3.5 mr-1.5" />Edit
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-white border-slate-200 hover:border-brand-300 hover:text-brand-600"
+                  className="bg-white border-slate-200 hover:border-slate-300 text-slate-600"
                   onClick={() => setEditOpen(true)}
-                  data-testid="button-edit-item"
+                  data-testid="button-full-edit-item"
                 >
-                  <Edit className="w-3.5 h-3.5 mr-1.5" />Edit
+                  Full Edit
                 </Button>
                 <Button
                   size="sm"
@@ -935,11 +1043,30 @@ export default function ItemDetails() {
                 </dd>
               </div>
               <InfoRow label="Size" value={item.sizeLabel} icon={Tag} />
-              <InfoRow
-                label="Unit Cost"
-                value={item.unitCost && parseFloat(item.unitCost) > 0 ? `$${parseFloat(item.unitCost).toFixed(2)}` : null}
-                icon={DollarSign}
-              />
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" />Unit Cost
+                  {inlineEdit && <span className="ml-1 text-amber-500 text-[10px] normal-case tracking-normal font-normal">(editing)</span>}
+                </dt>
+                {inlineEdit ? (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={inlineDraft.unitCost}
+                    onChange={e => setInlineDraft(d => ({ ...d, unitCost: e.target.value }))}
+                    className="h-8 text-sm w-28 font-semibold"
+                    placeholder="0.00"
+                    data-testid="input-unit-cost"
+                  />
+                ) : (
+                  <dd className="text-sm font-semibold text-slate-800">
+                    {item.unitCost && parseFloat(item.unitCost) > 0
+                      ? `$${parseFloat(item.unitCost).toFixed(2)}`
+                      : <span className="text-slate-400 font-normal">—</span>}
+                  </dd>
+                )}
+              </div>
             </div>
 
             <div className="h-px bg-slate-100" />
@@ -953,10 +1080,65 @@ export default function ItemDetails() {
             )}
 
             {/* Reorder stats */}
+            {inlineEdit && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 font-medium">
+                <Edit className="w-3 h-3" />
+                Editing — update values below and click Save
+              </div>
+            )}
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
-              <InfoRow label="Reorder Point" value={item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : null} icon={RefreshCw} />
-              <InfoRow label="Reorder Qty" value={item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : null} icon={ClipboardList} />
-              <InfoRow label="Min Stock" value={item.minimumStock > 0 ? item.minimumStock.toLocaleString() : null} />
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />Reorder Point
+                </dt>
+                {inlineEdit ? (
+                  <Input
+                    type="number" min="0"
+                    value={inlineDraft.reorderPoint}
+                    onChange={e => setInlineDraft(d => ({ ...d, reorderPoint: Number(e.target.value) }))}
+                    className="h-8 text-sm w-24 font-semibold"
+                    data-testid="input-reorder-point"
+                  />
+                ) : (
+                  <dd className="text-sm font-semibold text-slate-800">
+                    {item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : <span className="text-slate-400 font-normal">—</span>}
+                  </dd>
+                )}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <ClipboardList className="w-3 h-3" />Reorder Qty
+                </dt>
+                {inlineEdit ? (
+                  <Input
+                    type="number" min="0"
+                    value={inlineDraft.reorderQuantity}
+                    onChange={e => setInlineDraft(d => ({ ...d, reorderQuantity: Number(e.target.value) }))}
+                    className="h-8 text-sm w-24 font-semibold"
+                    data-testid="input-reorder-qty"
+                  />
+                ) : (
+                  <dd className="text-sm font-semibold text-slate-800">
+                    {item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : <span className="text-slate-400 font-normal">—</span>}
+                  </dd>
+                )}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Min Stock</dt>
+                {inlineEdit ? (
+                  <Input
+                    type="number" min="0"
+                    value={inlineDraft.minimumStock}
+                    onChange={e => setInlineDraft(d => ({ ...d, minimumStock: Number(e.target.value) }))}
+                    className="h-8 text-sm w-24 font-semibold"
+                    data-testid="input-min-stock"
+                  />
+                ) : (
+                  <dd className="text-sm font-semibold text-slate-800">
+                    {item.minimumStock > 0 ? item.minimumStock.toLocaleString() : <span className="text-slate-400 font-normal">—</span>}
+                  </dd>
+                )}
+              </div>
             </dl>
 
             {item.notes && (

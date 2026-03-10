@@ -318,11 +318,11 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.status) {
       if (filters.status === 'low_stock') {
-        mapped = mapped.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.reorderPoint);
+        mapped = mapped.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.minimumStock);
       } else if (filters.status === 'out_of_stock') {
         mapped = mapped.filter(i => i.quantityOnHand === 0);
       } else if (filters.status === 'in_stock') {
-        mapped = mapped.filter(i => i.quantityOnHand > i.reorderPoint);
+        mapped = mapped.filter(i => i.quantityOnHand > i.minimumStock);
       } else if (filters.status === 'ordered') {
         mapped = mapped.filter(i => i.statusOverride === 'ORDERED');
       }
@@ -332,7 +332,7 @@ export class DatabaseStorage implements IStorage {
       let status = "in_stock";
       if (i.statusOverride === "ORDERED") status = "ordered";
       else if (i.quantityOnHand === 0) status = "out_of_stock";
-      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
       return { ...i, status };
     });
   }
@@ -816,7 +816,7 @@ export class DatabaseStorage implements IStorage {
       const firstImage = allImages.find(img => img.itemId === i.id);
       let status = "in_stock";
       if (i.quantityOnHand === 0) status = "out_of_stock";
-      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
       return { ...i, location: r.location, supplier: r.supplier, status, imageUrl: firstImage?.imageUrl || null };
     });
 
@@ -1198,7 +1198,7 @@ export class DatabaseStorage implements IStorage {
         let st = "in_stock";
         if (i.statusOverride === "ORDERED") st = "ordered";
         else if (i.quantityOnHand === 0) st = "out_of_stock";
-        else if (i.quantityOnHand <= i.reorderPoint) st = "low_stock";
+        else if (i.quantityOnHand <= i.minimumStock) st = "low_stock";
         return st === params.status;
       });
     }
@@ -1427,7 +1427,7 @@ export class DatabaseStorage implements IStorage {
       let status = "in_stock";
       if ((i as any).statusOverride === "ORDERED") status = "ordered";
       else if (i.quantityOnHand === 0) status = "out_of_stock";
-      else if (i.quantityOnHand <= i.reorderPoint) status = "low_stock";
+      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
       return { ...i, status };
     });
 

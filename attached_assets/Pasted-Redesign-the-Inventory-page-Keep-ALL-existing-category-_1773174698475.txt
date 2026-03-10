@@ -1,0 +1,66 @@
+Redesign the Inventory page. Keep ALL existing category selection, filter logic, search, and pagination. Only change visuals.
+
+DESIGN + BRIGHTNESS UPDATE (Field Mode Inventory pages):
+- Dark background: #0d1410
+- Grid texture: linear-gradient rgba(45,219,111,0.05) lines, background-size 52px 52px
+- Topbar: bg #0d1410, border-bottom 1px solid #2a4030
+  · TK logo, mode chip, date/time, Back + Mode Select buttons
+
+COLOR TOKENS TO USE (updated/brighter values):
+--bg: #0d1410
+--bg2: #111a14
+--bg3: #162019
+--bg4: #1c2b1f
+--border: #1e2e21
+--border2: #2a4030
+--text: #e2f0e5        ← main text (bright)
+--text2: #7aab82       ← secondary text (readable)
+--text3: #4a7052       ← hint text (visible)
+
+CATEGORY GRID (10 tiles, 5 col × 2 row):
+- Each tile: background #162019, border 2px solid #1e2e21, border-radius 10px
+- DO NOT change existing category images — keep original img src
+- Category name text below image: 9px uppercase, color #7aab82
+- ACTIVE tile: border-color #2ddb6f, background rgba(45,219,111,0.10), name color #2ddb6f
+- Hover (inactive): border-color #2a4030
+
+FILTER BAR (when category selected):
+- Container: bg #162019, border 1px solid #2a4030, border-radius 12px, padding 12px 16px
+- Category name header: Barlow Condensed 12px 700 uppercase, color #2ddb6f
+- Filter row label: 9px uppercase, color #4a7052, width 76px
+- INACTIVE pill: bg #1c2b1f, border #1e2e21, color #7aab82
+- ACTIVE pill: bg rgba(45,219,111,0.10), border rgba(45,219,111,0.3), color #2ddb6f
+
+SEARCH ROW:
+- Input: bg #162019, border #2a4030, border-radius 9px, color #e2f0e5, placeholder #4a7052
+- Focus: border #2ddb6f, box-shadow 0 0 0 3px rgba(45,219,111,0.12)
+- Dropdowns: same style
+
+ACTIVE FILTER CHIPS:
+- Green pill: bg rgba(45,219,111,0.10), border rgba(45,219,111,0.25), color #2ddb6f
+- Item count text: color #4a7052
+
+TABLE:
+- Container: bg #162019, border 1px solid #1e2e21, border-radius 12px
+- Header: 9px uppercase, color #7aab82, border-bottom #1e2e21
+- Row hover: bg #1c2b1f
+- Row border-bottom: 1px solid #1e2e21
+- SKU: 10px, color #7aab82
+- Item name: 12px 600, color #e2f0e5
+- Subcategory below name: 10px, color #4a7052
+- Size: 11px, color #7aab82
+- Qty: Barlow Condensed 16px 700
+  · In stock (qty > 0): color #2ddb6f
+  · Low stock: color #f5a623
+  · Out of stock (qty = 0): color #ff5050
+- Status chips:
+  · In Stock: bg rgba(45,219,111,0.10), color #2ddb6f, border rgba(45,219,111,0.22), border-radius 20px, 9px uppercase
+  · Low Stock: bg rgba(245,166,35,0.10), color #f5a623, border rgba(245,166,35,0.22)
+  · Out of Stock: bg rgba(255,80,80,0.10), color #ff5050, border rgba(255,80,80,0.22)
+
+⚠️ IMPORTANT SCOPE:
+- Apply this ONLY to the Field Mode Inventory page
+- Do NOT touch the Admin Mode Inventory page at all — leave it completely unchanged
+
+
+

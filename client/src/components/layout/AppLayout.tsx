@@ -210,8 +210,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className={`flex-1 overflow-y-auto ${location === "/inventory" ? "bg-[#07090a] p-0" : "p-4 sm:p-6 lg:p-8"}`}>
-          <div className={location === "/inventory" ? "" : "max-w-7xl mx-auto"}>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto">
             {children}
           </div>
         </main>

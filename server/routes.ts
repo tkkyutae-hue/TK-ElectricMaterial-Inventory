@@ -879,8 +879,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         reelId: z.string().min(1).optional(),
         lengthFt: z.number().int().min(0).optional(),
         brand: z.string().optional().nullable(),
+        supplierId: z.number().int().optional().nullable(),
         locationId: z.number().int().optional().nullable(),
         status: z.enum(["new", "used"]).optional().nullable(),
+        notes: z.string().optional().nullable(),
       });
       const data = schema.parse(req.body);
       const reel = await storage.updateWireReel(id, data);

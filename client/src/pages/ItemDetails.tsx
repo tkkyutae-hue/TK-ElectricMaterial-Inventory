@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import {
   ArrowLeft, Edit, Trash2, Tag, Save, X as XIcon,
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
-  ClipboardList, Layers, Plus,
+  ClipboardList, Layers, Plus, Pencil, Check,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
@@ -525,6 +525,14 @@ type AddReelDraft = {
   status: "new" | "used";
 };
 
+type EditReelDraft = {
+  reelId: string;
+  lengthFt: string;
+  brand: string;
+  locationId: string;
+  status: string;
+};
+
 const REEL_STATUS_COLORS: Record<string, string> = {
   new: "bg-emerald-100 text-emerald-700",
   used: "bg-amber-100 text-amber-700",
@@ -606,6 +614,8 @@ function WireReelInline({ item }: { item: any }) {
   const { data: locationList = [] } = useLocations();
   const [showAdd, setShowAdd] = useState(false);
   const [rows, setRows] = useState<AddReelDraft[]>([{ ...BLANK_REEL_DRAFT }]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<EditReelDraft>({ reelId: "", lengthFt: "", brand: "", locationId: "", status: "new" });
 
   const { data: reels = [], isLoading } = useQuery<WireReelLocal[]>({
     queryKey: ["/api/wire-reels", item.id],
@@ -651,6 +661,33 @@ function WireReelInline({ item }: { item: any }) {
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/wire-reels/${id}`, {
+      reelId: editDraft.reelId.trim(),
+      lengthFt: parseInt(editDraft.lengthFt) || 0,
+      brand: editDraft.brand.trim() || null,
+      locationId: editDraft.locationId ? parseInt(editDraft.locationId) : null,
+      status: editDraft.status || null,
+    }),
+    onSuccess: () => {
+      invalidateAll();
+      setEditingId(null);
+      toast({ title: "Reel updated" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const startEdit = (reel: WireReelLocal) => {
+    setEditingId(reel.id);
+    setEditDraft({
+      reelId: reel.reelId,
+      lengthFt: String(reel.lengthFt),
+      brand: reel.brand || "",
+      locationId: reel.locationId ? String(reel.locationId) : "",
+      status: reel.status || "new",
+    });
+  };
 
   return (
     <div data-testid={`wire-reel-section-${item.id}`}>
@@ -785,26 +822,83 @@ function WireReelInline({ item }: { item: any }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-50">
-                {reels.map(reel => (
-                  <tr key={reel.id} className="hover:bg-slate-50 transition-colors" data-testid={`row-reel-${reel.id}`}>
-                    <td className="px-4 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        onClick={() => deleteMutation.mutate(reel.id)}
-                        disabled={deleteMutation.isPending}
-                        className="text-slate-300 hover:text-red-500 transition-colors"
-                        title="Remove reel"
-                        data-testid={`button-delete-reel-${reel.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {reels.map(reel => {
+                  const isEditing = editingId === reel.id;
+                  return (
+                    <tr key={reel.id} className={`transition-colors ${isEditing ? "bg-slate-50" : "hover:bg-slate-50"}`} data-testid={`row-reel-${reel.id}`}>
+                      {isEditing ? (
+                        <>
+                          <td className="px-3 py-1.5">
+                            <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-28" data-testid={`input-edit-reel-id-${reel.id}`} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Input type="number" min={0} value={editDraft.lengthFt} onChange={e => setEditDraft(d => ({ ...d, lengthFt: e.target.value }))} className="h-7 text-xs text-right w-20" data-testid={`input-edit-reel-length-${reel.id}`} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Input value={editDraft.brand} onChange={e => setEditDraft(d => ({ ...d, brand: e.target.value }))} placeholder="Brand" className="h-7 text-xs w-24" data-testid={`input-edit-reel-brand-${reel.id}`} />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Select value={editDraft.locationId || "__none__"} onValueChange={v => setEditDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}>
+                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-edit-reel-location-${reel.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">— None —</SelectItem>
+                                {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Select value={editDraft.status} onValueChange={v => setEditDraft(d => ({ ...d, status: v }))}>
+                              <SelectTrigger className="h-7 text-xs w-20" data-testid={`select-edit-reel-status-${reel.id}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="used">Used</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => updateMutation.mutate(reel.id)} disabled={!editDraft.reelId.trim() || updateMutation.isPending} className="text-emerald-500 hover:text-emerald-700 transition-colors disabled:opacity-40" title="Save" data-testid={`button-save-edit-reel-${reel.id}`}>
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-slate-600 transition-colors" title="Cancel" data-testid={`button-cancel-edit-reel-${reel.id}`}>
+                                <XIcon className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => startEdit(reel)}
+                                className="text-slate-300 hover:text-brand-600 transition-colors"
+                                title="Edit reel"
+                                data-testid={`button-edit-reel-${reel.id}`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deleteMutation.mutate(reel.id)}
+                                disabled={deleteMutation.isPending}
+                                className="text-slate-300 hover:text-red-500 transition-colors"
+                                title="Remove reel"
+                                data-testid={`button-delete-reel-${reel.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">

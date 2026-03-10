@@ -1,0 +1,74 @@
+Please redesign the Login page and Request Access page to match this reference design exactly.
+
+IMPORTANT RULES:
+- Keep ALL existing functionality: form submission, API calls, validation logic, routing, auth state
+- Only change the visual styling and layout
+- Keep all existing input field names, form IDs, and event handlers
+- Add Google Fonts to the project: Bebas Neue + Barlow Condensed + Barlow
+- Remove the demo switcher bar at the top (the .demo-bar) — navigation between login/register should use the existing routing
+
+Here is the full HTML/CSS reference to match visually:
+
+--- DESIGN TOKENS (CSS variables to apply globally) ---
+--green: #2ddb6f
+--bg: #07090a
+--bg2: #0b100d  
+--bg3: #0f1612
+--bg4: #141e17
+--border2: #203023
+--text: #c8deca
+--text2: #527856
+--text3: #2b3f2e
+
+--- BACKGROUND (apply to the page wrapper) ---
+- Full page dark background: #07090a
+- Centered radial green glow: radial-gradient(ellipse, rgba(45,219,111,0.07) 0%, transparent 60%), width 900px height 700px, centered top
+- Subtle grid lines: background-image linear-gradient with rgba(45,219,111,0.03), background-size 56px 56px
+- Diagonal texture: repeating-linear-gradient(-45deg, #2ddb6f, 1px, transparent 32px), opacity 0.018
+
+--- LOGO BLOCK (above the card, centered) ---
+- Font: Bebas Neue, 88px
+- Letter "T": transparent fill, -webkit-text-stroke 1.8px rgba(255,255,255,0.85)
+- Letter "K": transparent fill, -webkit-text-stroke 1.8px #2ddb6f, with drop-shadow glow effect, subtle flicker animation
+- Below letters: horizontal rule with "ELECTRIC LLC" centered text in Barlow Condensed, letter-spacing 6px, color rgba(45,219,111,0.55)
+- URL text: www.tkglobal.us, font-size 10px, color #2b3f2e
+- Badge: "● MATERIAL INVENTORY SYSTEM" with pulsing green dot, background rgba(45,219,111,0.08), border 1px solid rgba(45,219,111,0.22), border-radius 20px
+
+--- CARD ---
+- background: #0b100d
+- border: 1px solid #203023
+- border-radius: 20px
+- box-shadow: 0 28px 60px rgba(0,0,0,0.6)
+- Top shine line: height 2px, gradient from transparent → #2ddb6f → transparent
+- Padding: 28px
+
+--- FORM FIELDS ---
+- Label: 10px, uppercase, letter-spacing 1.5px, color #527856
+- Input: background #141e17, border 1px solid #203023, border-radius 10px, padding 11px 14px, color #c8deca
+- Input focus: border-color #2ddb6f, box-shadow 0 0 0 3px rgba(45,219,111,0.12)
+- Password field: show/hide eye icon toggle (SVG eye icon on right side)
+
+--- SUBMIT BUTTON ---
+- background: #2ddb6f
+- border-radius: 10px
+- font: Barlow Condensed, 16px, 700, uppercase, letter-spacing 1.5px
+- color: #07090a
+- box-shadow: 0 0 24px rgba(45,219,111,0.2)
+- hover: background #35f07e, box-shadow stronger, translateY(-1px)
+- Arrow "→" at end that slides right on hover
+
+--- REQUEST ACCESS PAGE EXTRA ---
+- Add amber notice box above the form fields:
+  background rgba(245,166,35,0.08), border 1px solid rgba(245,166,35,0.18), border-radius 10px, padding 11px 14px
+  Text: "🔒 Admin approval required. Your request will be reviewed and you'll receive an email once access is granted."
+- Password strength bar: 4 segments below password field, colors: red(weak) / amber(medium) / green(strong)
+- Confirm password mismatch error: show "Passwords do not match" in red below confirm field
+
+--- ANIMATIONS ---
+- Logo: fadeDown (opacity 0 → 1, translateY -12px → 0), 0.5s
+- Card: fadeUp (opacity 0 → 1, translateY 18px → 0), 0.5s, delay 0.1s
+- K letter: subtle flicker every 6s (opacity dips at 96%, 98%)
+- Pulse dot: scale + opacity pulse, 2.5s infinite
+
+--- FOOTER ---
+- "Created by Kyutae Kim (Michael) · TK Electric LLC" centered below card, font-size 10px, color #2b3f2e

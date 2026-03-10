@@ -1735,20 +1735,20 @@ export default function CategoryDetail() {
                 ) : (
                   /* View mode: compact table */
                   <div className="overflow-x-auto">
-                    <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "620px" }}>
+                    <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "600px" }}>
                       <colgroup>
-                        <col style={{ width: "108px" }} />
-                        <col style={{ width: "44px" }} />
-                        <col style={{ width: "110px" }} />
-                        <col style={{ width: "auto" }} />
-                        <col style={{ width: "100px" }} />
-                        <col style={{ width: "108px" }} />
+                        <col style={{ width: "118px" }} />
+                        <col style={{ width: "52px" }} />
+                        <col style={{ width: "106px" }} />
+                        <col />
+                        <col style={{ width: "88px" }} />
+                        <col style={{ width: "98px" }} />
                       </colgroup>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2">SKU</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
-                          <TableHead className="h-9 px-2">
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-3">SKU</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3">Photo</TableHead>
+                          <TableHead className="h-9 pl-1 pr-3">
                             <button
                               onClick={() => toggleFamilySort(group.baseItemName)}
                               className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
@@ -1761,9 +1761,9 @@ export default function CategoryDetail() {
                                 : <ArrowDown className="w-3 h-3 text-brand-500" />}
                             </button>
                           </TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Item</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right">Qty / Unit</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-5 text-right">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-1 pr-3">Item</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-right">Qty / Unit</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-3 pr-5 text-right">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1773,10 +1773,10 @@ export default function CategoryDetail() {
                             className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                             data-testid={`row-item-${item.id}`}
                           >
-                            <TableCell className="h-10 pl-5 pr-2">
+                            <TableCell className="h-10 pl-5 pr-3">
                               <div className="font-mono text-xs text-slate-500 truncate">{item.sku}</div>
                             </TableCell>
-                            <TableCell className="h-10 px-2">
+                            <TableCell className="h-10 px-3">
                               <div className="flex items-center">
                                 {item.imageUrl ? (
                                   <img src={item.imageUrl} alt="" className="w-7 h-7 object-cover rounded border border-slate-200 block"
@@ -1787,17 +1787,17 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="h-10 px-2">
+                            <TableCell className="h-10 pl-1 pr-3">
                               <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
                             </TableCell>
-                            <TableCell className="h-10 px-2 overflow-hidden">
+                            <TableCell className="h-10 pl-1 pr-3 overflow-hidden">
                               <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
-                            <TableCell className="h-10 px-2 text-right tabular-nums">
+                            <TableCell className="h-10 px-3 text-right tabular-nums">
                               <span className="font-semibold text-slate-900">{item.quantityOnHand.toLocaleString()}</span>
                               <span className="text-slate-400 font-normal text-xs ml-1">{item.unitOfMeasure}</span>
                             </TableCell>
-                            <TableCell className="h-10 pl-2 pr-5">
+                            <TableCell className="h-10 pl-3 pr-5">
                               <div className="flex items-center justify-end"><StatusBadge status={item.status} /></div>
                             </TableCell>
                           </TableRow>

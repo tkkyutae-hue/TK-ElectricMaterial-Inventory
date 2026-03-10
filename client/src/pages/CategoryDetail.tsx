@@ -133,16 +133,19 @@ function parseSizeToNumber(size: string | null | undefined): number {
 function sortItems(items: CategoryGroupedItem[], dir: "asc" | "desc"): CategoryGroupedItem[] {
   return [...items].sort((a, b) => {
     const mul = dir === "desc" ? -1 : 1;
-    // Use DB sizeSortValue when it's set (non-zero) — preserves AWG/KCMIL wire order
-    const aDb = a.sizeSortValue && a.sizeSortValue !== 0 && a.sizeSortValue !== 9999 ? a.sizeSortValue : null;
-    const bDb = b.sizeSortValue && b.sizeSortValue !== 0 && b.sizeSortValue !== 9999 ? b.sizeSortValue : null;
+    const aDb = (a.sizeSortValue != null && a.sizeSortValue !== 0 && a.sizeSortValue !== 9999) ? a.sizeSortValue : null;
+    const bDb = (b.sizeSortValue != null && b.sizeSortValue !== 0 && b.sizeSortValue !== 9999) ? b.sizeSortValue : null;
+
+    // Only use DB sort values when BOTH items have them (same scale — e.g. AWG wire ordering).
+    // If one item has sizeSortValue=0 (unset) and the other has a real value, the two numbers
+    // live on completely different scales (e.g. 0.5 from parseSizeToNumber vs 750 from DB).
+    // Mixing them produces wrong results, so we always fall through to label parsing in that case.
     if (aDb !== null && bDb !== null) return mul * (aDb - bDb);
-    // Fall back to label parsing for items without a DB sort value
-    const an = aDb !== null ? aDb : parseSizeToNumber(a.sizeLabel);
-    const bn = bDb !== null ? bDb : parseSizeToNumber(b.sizeLabel);
-    if (an === Infinity && bn === Infinity) {
-      return mul * (a.sizeLabel || "").localeCompare(b.sizeLabel || "");
-    }
+
+    // For everything else, parse the size label into a real number.
+    const an = parseSizeToNumber(a.sizeLabel);
+    const bn = parseSizeToNumber(b.sizeLabel);
+    if (an === Infinity && bn === Infinity) return mul * (a.sizeLabel || "").localeCompare(b.sizeLabel || "");
     if (an === Infinity) return 1;
     if (bn === Infinity) return -1;
     return mul * (an - bn);
@@ -1732,20 +1735,20 @@ export default function CategoryDetail() {
                 ) : (
                   /* View mode: compact table */
                   <div className="overflow-x-auto">
-                    <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "640px" }}>
+                    <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "620px" }}>
                       <colgroup>
+                        <col style={{ width: "108px" }} />
+                        <col style={{ width: "44px" }} />
                         <col style={{ width: "110px" }} />
-                        <col style={{ width: "48px" }} />
-                        <col style={{ width: "120px" }} />
-                        <col />
-                        <col style={{ width: "90px" }} />
-                        <col style={{ width: "110px" }} />
+                        <col style={{ width: "auto" }} />
+                        <col style={{ width: "100px" }} />
+                        <col style={{ width: "108px" }} />
                       </colgroup>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pl-5">SKU</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Photo</TableHead>
-                          <TableHead className="py-2">
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2">SKU</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
+                          <TableHead className="h-9 px-2">
                             <button
                               onClick={() => toggleFamilySort(group.baseItemName)}
                               className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
@@ -1758,22 +1761,22 @@ export default function CategoryDetail() {
                                 : <ArrowDown className="w-3 h-3 text-brand-500" />}
                             </button>
                           </TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2">Item</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-right">Qty / Unit</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5 text-right">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Item</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right">Qty / Unit</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-5 text-right">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {sortedItems.map(item => (
                           <TableRow
                             key={item.id}
-                            className={`hover:bg-slate-50/70 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                            className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                             data-testid={`row-item-${item.id}`}
                           >
-                            <TableCell className="py-2.5 pl-5">
+                            <TableCell className="h-10 pl-5 pr-2">
                               <div className="font-mono text-xs text-slate-500 truncate">{item.sku}</div>
                             </TableCell>
-                            <TableCell className="py-2.5">
+                            <TableCell className="h-10 px-2">
                               <div className="flex items-center">
                                 {item.imageUrl ? (
                                   <img src={item.imageUrl} alt="" className="w-7 h-7 object-cover rounded border border-slate-200 block"
@@ -1784,17 +1787,17 @@ export default function CategoryDetail() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="py-2.5">
+                            <TableCell className="h-10 px-2">
                               <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
                             </TableCell>
-                            <TableCell className="text-slate-700 text-sm py-2.5 overflow-hidden" style={{ maxWidth: 0 }}>
-                              <Link href={`/inventory/${item.id}`} className="hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
+                            <TableCell className="h-10 px-2 overflow-hidden">
+                              <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                             </TableCell>
-                            <TableCell className="text-right font-semibold text-slate-900 py-2.5 tabular-nums">
-                              {item.quantityOnHand.toLocaleString()}
+                            <TableCell className="h-10 px-2 text-right tabular-nums">
+                              <span className="font-semibold text-slate-900">{item.quantityOnHand.toLocaleString()}</span>
                               <span className="text-slate-400 font-normal text-xs ml-1">{item.unitOfMeasure}</span>
                             </TableCell>
-                            <TableCell className="py-2.5 pr-5">
+                            <TableCell className="h-10 pl-2 pr-5">
                               <div className="flex items-center justify-end"><StatusBadge status={item.status} /></div>
                             </TableCell>
                           </TableRow>

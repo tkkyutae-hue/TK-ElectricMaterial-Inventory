@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, ArrowLeft, HardHat } from "lucide-react";
+import { ArrowLeft, HardHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import tkLogo from "@assets/tk_logo_1772726610288.png";
+
+const CSS = `
+@keyframes fl-pulse-dot {
+  0%,100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.55; }
+}
+@keyframes fl-flicker {
+  0%,95%,97%,100% { opacity: 1; }
+  96%             { opacity: 0.5; }
+  98%             { opacity: 0.75; }
+}
+.fl-pulse-dot { animation: fl-pulse-dot 2.5s ease-in-out infinite; }
+.fl-k         { animation: fl-flicker 7s ease-in-out 3s infinite; }
+`;
 
 function useClock() {
   const [now, setNow] = useState(new Date());
@@ -24,95 +36,138 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
-    <div className="min-h-screen flex flex-col font-sans" style={{ background: "#0E1512" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#07090a", position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
+      <style>{CSS}</style>
 
-      {/* Subtle radial glow */}
-      <div
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background: "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(10,107,36,0.16) 0%, transparent 70%)",
-          zIndex: 0,
-        }}
-      />
+      {/* Grid texture */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: "linear-gradient(rgba(45,219,111,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(45,219,111,0.03) 1px, transparent 1px)",
+        backgroundSize: "52px 52px",
+      }} />
 
-      {/* Top header */}
-      <header
-        className="relative z-10 flex items-center justify-between px-6 py-4 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
-      >
-        {/* Left: logo + Field Mode pill + date/time */}
-        <div className="flex items-center gap-3 min-w-0">
-          <img
-            src={tkLogo}
-            alt="TK Electric"
-            className="h-12 w-auto object-contain flex-shrink-0"
-            style={{ filter: "brightness(0) invert(1)" }}
-          />
-          {/* Field Mode pill */}
-          <div
-            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold tracking-wide flex-shrink-0"
-            style={{
-              background: "rgba(10,107,36,0.25)",
-              border: "1px solid rgba(61,214,140,0.25)",
-              color: "#3DD68C",
-            }}
-          >
-            <HardHat className="w-3.5 h-3.5" />
+      {/* Radial glow */}
+      <div style={{
+        position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)",
+        width: "100%", height: "55vh", pointerEvents: "none", zIndex: 0,
+        background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,219,111,0.05) 0%, transparent 65%)",
+      }} />
+
+      {/* ── Top header ── */}
+      <header style={{
+        position: "relative", zIndex: 10, flexShrink: 0,
+        height: 52,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 20px",
+        background: "#07090a",
+        borderBottom: "1px solid #203023",
+      }}>
+
+        {/* Left: TK lettermark + Field Mode chip + date/time */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+
+          {/* TK lettermark */}
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, lineHeight: 1, letterSpacing: 1, display: "flex", gap: 0 }}>
+            <span style={{ color: "transparent", WebkitTextStroke: "1.4px rgba(255,255,255,0.85)" }}>T</span>
+            <span className="fl-k" style={{ color: "transparent", WebkitTextStroke: "1.4px #2ddb6f", filter: "drop-shadow(0 0 8px rgba(45,219,111,0.65)) drop-shadow(0 0 3px rgba(45,219,111,0.4))" }}>K</span>
+          </div>
+
+          {/* Field Mode chip */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "rgba(45,219,111,0.08)",
+            border: "1px solid rgba(45,219,111,0.22)",
+            borderRadius: 20, padding: "3px 10px",
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 11, fontWeight: 700, letterSpacing: 1,
+            color: "#2ddb6f", textTransform: "uppercase",
+          }}>
+            <div className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#2ddb6f", flexShrink: 0 }} />
+            <HardHat style={{ width: 11, height: 11, flexShrink: 0 }} />
             <span>Field Mode</span>
           </div>
+
           {/* Date & Time */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
+          <div className="hidden-mobile" style={{
+            fontSize: 11, color: "#2b3f2e",
+            fontFamily: "'Barlow Condensed', sans-serif",
+            letterSpacing: 0.5,
+            display: "flex", gap: 4, alignItems: "center",
+          }}>
             <span>{dateStr}</span>
-            <span style={{ color: "rgba(255,255,255,0.18)" }}>·</span>
-            <span style={{ color: "rgba(255,255,255,0.55)", fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
+            <span style={{ opacity: 0.5 }}>·</span>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
           </div>
         </div>
 
-        {/* Right: Back + Home + user avatar */}
-        <div className="flex items-center gap-1">
+        {/* Right: Back + Mode Select + Avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+
+          {/* Back button — only on sub-pages */}
           {!isFieldHome && (
             <Link href="/field">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 rounded-lg text-xs font-medium"
-                style={{ color: "rgba(255,255,255,0.40)" }}
+              <button
                 data-testid="btn-field-back"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "#0f1612", border: "1px solid #203023",
+                  borderRadius: 8, padding: "5px 11px",
+                  color: "#527856", fontSize: 11,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 600, letterSpacing: 0.5,
+                  cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+                  textTransform: "uppercase",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#527856"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#203023"; }}
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
+                <ArrowLeft style={{ width: 11, height: 11 }} />
                 <span>Back</span>
-              </Button>
+              </button>
             </Link>
           )}
+
+          {/* Mode Select button */}
           <Link href="/home">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 rounded-lg text-xs font-medium"
-              style={{ color: "rgba(255,255,255,0.40)" }}
+            <button
               data-testid="btn-field-home"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: "#0f1612", border: "1px solid #203023",
+                borderRadius: 8, padding: "5px 11px",
+                color: "#527856", fontSize: 11,
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 600, letterSpacing: 0.5,
+                cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+                textTransform: "uppercase",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#c8deca"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#527856"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#203023"; }}
             >
-              <Home className="w-3.5 h-3.5" />
               <span>Mode Select</span>
-            </Button>
+            </button>
           </Link>
 
           {/* User avatar */}
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center ml-1 flex-shrink-0"
-            style={{
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: "50%",
+            background: "rgba(45,219,111,0.08)",
+            border: "1px solid #203023",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#2ddb6f", fontFamily: "'Barlow Condensed', sans-serif" }}>
               {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 overflow-y-auto flex flex-col" style={{ background: "#F0F4F1" }}>
+      {/* Main content */}
+      <main
+        className="relative"
+        style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: "#07090a" }}
+      >
         <div className={`flex-1 flex flex-col w-full mx-auto px-4 md:px-6 ${
           location.startsWith("/field/inventory") || location.startsWith("/field/transactions")
             ? "max-w-7xl"

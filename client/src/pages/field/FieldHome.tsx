@@ -1,87 +1,75 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { PackageCheck, PackageMinus, ScanSearch, ClipboardList, ArrowRight } from "lucide-react";
+import { PackageCheck, PackageMinus, ScanSearch, ClipboardList } from "lucide-react";
 
-type Action = {
+const CSS = `
+@keyframes fh-fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fh-grid { animation: fh-fadeUp 0.4s ease 0.05s both; }
+`;
+
+type CardDef = {
+  num: string;
   testId: string;
   label: string;
-  sub: string;
-  icon: React.ElementType;
+  desc: string;
+  Icon: React.ElementType;
   iconColor: string;
   iconBg: string;
-  iconBgHover: string;
-  accentColor: string;
-  accentBorder: string;
-  accentShadow: string;
+  hoverBar: string;
   route: string;
 };
 
-const ACTIONS: Action[] = [
+const CARDS: CardDef[] = [
   {
+    num: "01",
     testId: "tile-receive",
     label: "Receive / Return",
-    sub: "Log incoming stock or return material",
-    icon: PackageCheck,
-    iconColor: "#0A6B24",
-    iconBg: "#E8F5EE",
-    iconBgHover: "#D1ECDB",
-    accentColor: "#0A6B24",
-    accentBorder: "#0A6B24",
-    accentShadow: "rgba(10,107,36,0.12)",
+    desc: "Log incoming stock or return material",
+    Icon: PackageCheck,
+    iconColor: "#2ddb6f",
+    iconBg: "rgba(45,219,111,0.08)",
+    hoverBar: "#2ddb6f",
     route: "/field/movement?type=receive",
   },
   {
+    num: "02",
     testId: "tile-issue",
     label: "Issue / Transfer",
-    sub: "Send material out to a jobsite",
-    icon: PackageMinus,
-    iconColor: "#B45309",
-    iconBg: "#FEF3E2",
-    iconBgHover: "#FDE8C4",
-    accentColor: "#B45309",
-    accentBorder: "#B45309",
-    accentShadow: "rgba(180,83,9,0.12)",
+    desc: "Send material out to a jobsite",
+    Icon: PackageMinus,
+    iconColor: "#f5a623",
+    iconBg: "rgba(245,166,35,0.08)",
+    hoverBar: "#f5a623",
     route: "/field/movement?type=issue",
   },
   {
+    num: "03",
     testId: "tile-inventory",
     label: "Inventory",
-    sub: "Browse and search current stock",
-    icon: ScanSearch,
-    iconColor: "#0369A1",
-    iconBg: "#E0F2FE",
-    iconBgHover: "#BAE6FD",
-    accentColor: "#0369A1",
-    accentBorder: "#0369A1",
-    accentShadow: "rgba(3,105,161,0.12)",
+    desc: "Browse and search current stock",
+    Icon: ScanSearch,
+    iconColor: "#5b9cf6",
+    iconBg: "rgba(91,156,246,0.10)",
+    hoverBar: "#5b9cf6",
     route: "/field/inventory",
   },
   {
+    num: "04",
     testId: "tile-transactions",
     label: "Transactions",
-    sub: "View movement history",
-    icon: ClipboardList,
-    iconColor: "#475569",
-    iconBg: "#F1F5F9",
-    iconBgHover: "#E2E8F0",
-    accentColor: "#475569",
-    accentBorder: "#475569",
-    accentShadow: "rgba(71,85,105,0.10)",
+    desc: "View movement history",
+    Icon: ClipboardList,
+    iconColor: "#527856",
+    iconBg: "rgba(255,255,255,0.04)",
+    hoverBar: "#527856",
     route: "/field/transactions",
   },
 ];
 
-interface ActionRowProps extends Action {
-  index: number;
-  onClick: () => void;
-}
-
-function ActionRow({
-  testId, label, sub, icon: Icon,
-  iconColor, iconBg, iconBgHover,
-  accentColor, accentBorder, accentShadow,
-  onClick, index,
-}: ActionRowProps) {
+function ActionCard({ num, testId, label, desc, Icon, iconColor, iconBg, hoverBar, onClick }: CardDef & { onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -93,47 +81,73 @@ function ActionRow({
       onMouseLeave={() => { setHovered(false); setPressed(false); }}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
-      className="w-full text-left flex items-center gap-4 rounded-xl bg-white transition-all"
       style={{
-        padding: "20px 22px",
-        border: `1.5px solid ${hovered ? accentBorder : "#E5E7EB"}`,
-        boxShadow: hovered
-          ? `0 6px 20px ${accentShadow}`
-          : "0 1px 3px rgba(0,0,0,0.05)",
-        transform: pressed ? "scale(0.985)" : "scale(1)",
-        transition: "border-color 0.12s, box-shadow 0.15s, transform 0.08s",
+        textAlign: "left",
+        background: "#0f1612",
+        border: `1px solid ${hovered ? hoverBar + "44" : "#203023"}`,
+        borderRadius: 14,
+        padding: 22,
+        cursor: "pointer",
+        position: "relative",
+        overflow: "hidden",
+        transform: pressed ? "scale(0.98)" : hovered ? "translateY(-2px)" : "none",
+        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.5)` : "none",
+        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
       }}
     >
-      {/* Number */}
-      <span
-        className="text-xs font-bold flex-shrink-0 w-5 text-right tabular-nums"
-        style={{ color: hovered ? accentColor : "#CBD5E1" }}
-      >
-        {String(index + 1).padStart(2, "0")}
-      </span>
+      {/* Bottom hover accent bar */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        height: 2,
+        background: hoverBar,
+        opacity: hovered ? 1 : 0,
+        transition: "opacity 0.2s",
+      }} />
 
-      {/* Icon */}
-      <div
-        className="flex items-center justify-center rounded-xl flex-shrink-0 transition-colors duration-150"
-        style={{ width: 100, height: 100, background: hovered ? iconBgHover : iconBg }}
-      >
-        <Icon style={{ width: 50, height: 50, color: iconColor }} strokeWidth={1.6} />
+      {/* Number top-left */}
+      <div style={{
+        fontFamily: "'Barlow Condensed', sans-serif",
+        fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+        color: hovered ? hoverBar : "#2b3f2e",
+        marginBottom: 14, textTransform: "uppercase",
+        transition: "color 0.15s",
+      }}>{num}</div>
+
+      {/* Icon + arrow row */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+        {/* Icon box */}
+        <div style={{
+          width: 44, height: 44, borderRadius: 10,
+          background: iconBg,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <Icon style={{ width: 22, height: 22, color: iconColor }} strokeWidth={1.6} />
+        </div>
+
+        {/* Arrow top-right */}
+        <span style={{
+          fontSize: 16, lineHeight: 1,
+          color: hovered ? hoverBar : "#2b3f2e",
+          transition: "color 0.15s, transform 0.15s",
+          transform: hovered ? "translateX(2px) translateY(-1px)" : "none",
+          display: "inline-block",
+        }}>→</span>
       </div>
 
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-base font-bold text-slate-900 leading-tight">{label}</p>
-        <p className="text-sm text-slate-400 mt-0.5 font-medium leading-snug">{sub}</p>
-      </div>
+      {/* Title */}
+      <p style={{
+        fontFamily: "'Barlow Condensed', sans-serif",
+        fontSize: 17, fontWeight: 700, letterSpacing: 0.3,
+        color: "#ffffff", margin: "0 0 5px",
+      }}>{label}</p>
 
-      {/* Arrow */}
-      <ArrowRight
-        className="w-5 h-5 flex-shrink-0 transition-all duration-150"
-        style={{
-          color: hovered ? accentColor : "#D1D5DB",
-          transform: hovered ? "translateX(3px)" : "translateX(0)",
-        }}
-      />
+      {/* Description */}
+      <p style={{
+        fontSize: 11, color: "#2b3f2e",
+        fontFamily: "'Barlow', sans-serif",
+        margin: 0, lineHeight: 1.5,
+      }}>{desc}</p>
     </button>
   );
 }
@@ -142,28 +156,39 @@ export default function FieldHome() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-5 py-12">
-      <div className="w-full max-w-lg">
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px 48px" }}>
+      <style>{CSS}</style>
 
-        <div className="mb-7">
-          <h1
-            className="font-display font-extrabold text-slate-900 leading-none tracking-tight"
-            style={{ fontSize: "clamp(26px, 6vw, 34px)", letterSpacing: "-0.02em" }}
-          >
+      <div style={{ width: "100%", maxWidth: 680 }}>
+
+        {/* Heading */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 26, fontWeight: 700, color: "#ffffff",
+            margin: "0 0 5px", letterSpacing: 0.3,
+          }}>
             Field Actions
           </h1>
-          <p className="text-sm text-slate-400 mt-2 font-medium">
+          <p style={{ fontSize: 12, color: "#2b3f2e", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
             What do you need to do?
           </p>
         </div>
 
-        <div className="space-y-2.5">
-          {ACTIONS.map((action, i) => (
-            <ActionRow
-              key={action.testId}
-              {...action}
-              index={i}
-              onClick={() => navigate(action.route)}
+        {/* 2×2 grid */}
+        <div
+          className="fh-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+          }}
+        >
+          {CARDS.map(card => (
+            <ActionCard
+              key={card.testId}
+              {...card}
+              onClick={() => navigate(card.route)}
             />
           ))}
         </div>

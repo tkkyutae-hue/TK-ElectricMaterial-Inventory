@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
-import { ItemStatusBadge } from "@/components/StatusBadge";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
   ImageOff,
@@ -9,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -90,6 +88,29 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+// ─── Field Status Badge ──────────────────────────────────────────────────────
+
+function FieldStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; bg: string; color: string; border: string }> = {
+    in_stock:     { label: "In Stock",     bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.25)" },
+    low_stock:    { label: "Low Stock",    bg: "rgba(245,166,35,0.10)",  color: "#f5a623", border: "1px solid rgba(245,166,35,0.25)" },
+    out_of_stock: { label: "Out of Stock", bg: "rgba(255,80,80,0.10)",   color: "#ff5050", border: "1px solid rgba(255,80,80,0.25)" },
+    ordered:      { label: "Ordered",      bg: "rgba(56,189,248,0.10)",  color: "#38bdf8", border: "1px solid rgba(56,189,248,0.25)" },
+  };
+  const { label, bg, color, border } = config[status] || { label: status, bg: "rgba(100,116,139,0.10)", color: "#7aab82", border: "1px solid rgba(100,116,139,0.25)" };
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      background: bg, color, border, borderRadius: 20,
+      fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+      padding: "2px 8px", whiteSpace: "nowrap",
+      fontFamily: "'Barlow Condensed', sans-serif",
+    }}>
+      {label}
+    </span>
+  );
+}
+
 // ─── PillBar ────────────────────────────────────────────────────────────────
 
 function PillBar({
@@ -111,16 +132,18 @@ function PillBar({
 
   return (
     <div>
-      <p className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide mb-2">{label}</p>
+      <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>{label}</p>
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => onSelect("all")}
           data-testid={`${testIdPrefix}-all`}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-            selected === "all"
-              ? "bg-[#0A6B24] text-white shadow-sm"
-              : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
-          }`}
+          style={selected === "all" ? {
+            padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+            background: "#2ddb6f", color: "#0d1410", border: "1px solid #2ddb6f", cursor: "pointer",
+          } : {
+            padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+            background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+          }}
         >
           All
         </button>
@@ -129,14 +152,16 @@ function PillBar({
             key={f.name}
             onClick={() => onSelect(f.name)}
             data-testid={`${testIdPrefix}-${f.name}`}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              selected === f.name
-                ? "bg-[#0A6B24] text-white shadow-sm"
-                : "bg-white border border-[#D9E7DD] text-slate-600 hover:border-[#0A6B24]/50 hover:text-[#0A6B24]"
-            }`}
+            style={selected === f.name ? {
+              padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+              background: "#2ddb6f", color: "#0d1410", border: "1px solid #2ddb6f", cursor: "pointer",
+            } : {
+              padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
+              background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+            }}
           >
             {getLabel(f.name)}
-            <span className="ml-1 opacity-60">({f.count})</span>
+            <span style={{ marginLeft: 4, opacity: 0.6 }}>({f.count})</span>
           </button>
         ))}
       </div>
@@ -149,21 +174,21 @@ function PillBar({
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   if (!imageUrl) {
     return (
-      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-        <ImageOff className="w-4 h-4 text-slate-300" />
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "#162019", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ImageOff style={{ width: 16, height: 16, color: "#4a7052" }} />
       </div>
     );
   }
   return (
-    <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+    <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", border: "1px solid #2a4030", background: "#162019", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <img
         src={imageUrl}
         alt={name}
-        className="w-full h-full object-cover"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
         onError={(e) => {
           const p = e.currentTarget.parentElement;
           if (p) {
-            p.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+            p.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;color:#4a7052" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
           }
         }}
       />
@@ -214,7 +239,7 @@ function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => v
           )}
           <div className="flex justify-between items-center">
             <span className="text-slate-500">Status</span>
-            <ItemStatusBadge status={item.status} />
+            <FieldStatusBadge status={item.status} />
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Qty on Hand</span>
@@ -246,6 +271,14 @@ function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => v
       </DialogContent>
     </Dialog>
   );
+}
+
+// ─── Qty color helper ────────────────────────────────────────────────────────
+
+function qtyColor(status: string): string {
+  if (status === "out_of_stock") return "#ff5050";
+  if (status === "low_stock") return "#f5a623";
+  return "#2ddb6f";
 }
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
@@ -454,30 +487,30 @@ export default function FieldInventory() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <Package className="w-5 h-5 text-[#0A6B24]" />
-            <h1 className="text-2xl font-display font-bold text-slate-900">Inventory</h1>
+            <Package className="w-5 h-5" style={{ color: "#2ddb6f" }} />
+            <h1 className="text-2xl font-display font-bold" style={{ color: "#e2f0e5" }}>Inventory</h1>
           </div>
-          <p className="text-[#64748B] text-sm">Select a category, then filter by Family, Type, Subcategory, and Size.</p>
+          <p className="text-sm" style={{ color: "#7aab82" }}>Select a category, then filter by Family, Type, Subcategory, and Size.</p>
         </div>
       </div>
 
       {/* ── Category Cards ── */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">Browse by Category</h2>
+          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>Browse by Category</h2>
           {selectedCatId !== null && (
             <button
               onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-red-500 transition-colors"
+              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
               data-testid="btn-clear-category"
             >
-              <X className="w-3 h-3" /> Clear
+              <X style={{ width: 12, height: 12 }} /> Clear
             </button>
           )}
         </div>
         {!categorySummary ? (
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl bg-slate-100 animate-pulse" style={{ aspectRatio: "16/10" }} />)}
+            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/10", background: "#162019" }} />)}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -489,12 +522,13 @@ export default function FieldInventory() {
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat)}
                   data-testid={`card-category-${cat.id}`}
-                  className={`relative rounded-xl overflow-hidden border-2 transition-all duration-200 focus:outline-none ${
-                    isActive
-                      ? "border-[#0A6B24] ring-2 ring-[#0A6B24]/30 shadow-lg"
-                      : "border-transparent hover:border-[#D9E7DD] hover:shadow-md"
-                  }`}
-                  style={{ aspectRatio: "16/8", background: "#16202e" }}
+                  className="relative overflow-hidden transition-all duration-200 focus:outline-none"
+                  style={{
+                    aspectRatio: "16/8",
+                    background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
+                    border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
+                    borderRadius: 10,
+                  }}
                 >
                   <div className="absolute inset-0">
                     {cat.imageUrl ? (
@@ -509,12 +543,12 @@ export default function FieldInventory() {
                     )}
                     <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                     <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
-                      <p className="text-white font-semibold text-[10px] sm:text-xs leading-tight line-clamp-2" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                      <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
                         {cat.name}
                       </p>
                     </div>
                     {isActive && (
-                      <div className="absolute top-1.5 right-1.5 z-30 w-3 h-3 rounded-full bg-[#0A6B24] border-2 border-white shadow" />
+                      <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
                     )}
                   </div>
                 </button>
@@ -527,8 +561,8 @@ export default function FieldInventory() {
       {/* ── Selected category heading ── */}
       {selectedCat && (
         <div className="flex items-center gap-2 px-1">
-          <span className="text-xs font-bold text-[#0A6B24] uppercase tracking-widest">{selectedCat.name}</span>
-          <div className="flex-1 h-px bg-[#D9E7DD]" />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: "0.1em" }}>{selectedCat.name}</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(45,219,111,0.3)" }} />
         </div>
       )}
 
@@ -569,16 +603,17 @@ export default function FieldInventory() {
       {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#4a7052" }} />
           <Input
             placeholder="Search name, SKU, size…"
             value={searchInput}
             onChange={e => handleSearch(e.target.value)}
-            className="pl-8 h-9 text-sm bg-white border-[#D9E7DD] focus-visible:ring-[#0A6B24]/30"
+            className="pl-8 h-9 text-sm"
+            style={{ background: "#162019", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 9 }}
             data-testid="field-inv-search"
           />
           {searchInput && (
-            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: "#4a7052", background: "none", border: "none", cursor: "pointer" }}>
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -587,7 +622,7 @@ export default function FieldInventory() {
         {/* Size dropdown — dynamic options based on current filters */}
         {selectedCatId !== null && sizes.length > 0 && (
           <Select value={selectedSize} onValueChange={handleSizeChange}>
-            <SelectTrigger className="w-32 h-9 text-sm bg-white border-[#D9E7DD]" data-testid="field-inv-size-filter">
+            <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-size-filter">
               <SelectValue placeholder="All Sizes" />
             </SelectTrigger>
             <SelectContent className="max-h-[264px] overflow-y-auto">
@@ -600,7 +635,7 @@ export default function FieldInventory() {
         )}
 
         <Select value={selectedStatus} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-32 h-9 text-sm bg-white border-[#D9E7DD]" data-testid="field-inv-status-filter">
+          <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-status-filter">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -611,7 +646,7 @@ export default function FieldInventory() {
         </Select>
 
         <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-          <SelectTrigger className="w-24 h-9 text-sm bg-white border-[#D9E7DD]" data-testid="field-inv-page-size">
+          <SelectTrigger className="w-24 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-page-size">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -626,65 +661,65 @@ export default function FieldInventory() {
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-1.5">
           {selectedCat && (
-            <Badge className="bg-[#EAF7EE] text-[#0A6B24] border-[#D9E7DD] gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {selectedCat.name}
-              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500 rounded-full">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {selectedFamily !== "all" && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {getFamilyDisplay(selectedFamily)}
-              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {selectedType !== "all" && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {selectedType}
-              <button onClick={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {selectedSubcategory !== "all" && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {selectedSubcategory}
-              <button onClick={() => { setSelectedSubcategory("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedSubcategory("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {selectedSize !== "all" && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {selectedSize}
-              <button onClick={() => { setSelectedSize("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {selectedStatus !== "all" && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               {STATUS_OPTIONS.find(o => o.value === selectedStatus)?.label}
-              <button onClick={() => { setSelectedStatus("all"); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSelectedStatus("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
           {searchInput && (
-            <Badge variant="outline" className="text-slate-600 gap-1 pl-2 pr-1 py-1 text-xs">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
               "{searchInput}"
-              <button onClick={() => { setSearchInput(""); setPage(1); }} className="ml-0.5 hover:text-red-500">
-                <X className="w-3 h-3" />
+              <button onClick={() => { setSearchInput(""); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
+                <X style={{ width: 12, height: 12 }} />
               </button>
-            </Badge>
+            </span>
           )}
-          <span className="text-xs text-[#64748B]">{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 12, color: "#4a7052" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
           <button
             onClick={clearAll}
-            className="ml-1 text-xs text-slate-400 hover:text-red-500 underline underline-offset-2 transition-colors"
+            style={{ marginLeft: 4, fontSize: 12, color: "#2ddb6f", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
             data-testid="btn-clear-all-filters"
           >
             Clear all
@@ -693,7 +728,7 @@ export default function FieldInventory() {
       )}
 
       {/* ── Item Table ── */}
-      <div className="bg-white border border-[#D9E7DD] rounded-xl overflow-hidden shadow-sm">
+      <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 12, overflow: "hidden" }}>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
             <colgroup>
@@ -707,7 +742,7 @@ export default function FieldInventory() {
               <col style={{ width: "110px" }} />  {/* Status */}
             </colgroup>
             <thead>
-              <tr className="bg-[#F6F7F9] border-b border-[#D9E7DD]">
+              <tr style={{ background: "#162019", borderBottom: "1px solid #1e2e21" }}>
                 {[
                   { label: "SKU",        align: "left"   },
                   { label: "Photo",      align: "left"   },
@@ -720,7 +755,8 @@ export default function FieldInventory() {
                 ].map(col => (
                   <th
                     key={col.label}
-                    className={`px-3 py-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${col.cls || ""}`}
+                    className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${col.cls || ""}`}
+                    style={{ fontSize: 9, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "1px" }}
                   >
                     {col.label}
                   </th>
@@ -730,30 +766,33 @@ export default function FieldInventory() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-50">
+                  <tr key={i} style={{ borderBottom: "1px solid #1e2e21" }}>
                     {[1,2,3,4,5,6,7,8].map(j => (
                       <td key={j} className="px-3 py-3 align-middle">
-                        <div className="h-4 bg-slate-100 animate-pulse rounded" />
+                        <div className="h-4 rounded animate-pulse" style={{ background: "#1c2b1f" }} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-14 text-sm text-[#64748B]">
+                  <td colSpan={8} className="text-center py-14 text-sm" style={{ color: "#7aab82" }}>
                     {hasFilters ? "No items match your filters." : "No items found."}
                   </td>
                 </tr>
               ) : pageItems.map((item: FieldItem) => (
                 <tr
                   key={item.id}
-                  className="border-b border-slate-50 last:border-0 hover:bg-[#EAF7EE]/40 transition-colors cursor-pointer"
+                  style={{ borderBottom: "1px solid #1e2e21", cursor: "pointer" }}
+                  className="transition-colors last:border-0"
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#1c2b1f"}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
                 >
                   {/* SKU */}
                   <td className="px-3 py-3 align-middle whitespace-nowrap">
-                    <span className="font-mono text-[11px] text-[#64748B]">{item.sku}</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 10, color: "#7aab82" }}>{item.sku}</span>
                   </td>
 
                   {/* Photo */}
@@ -765,39 +804,39 @@ export default function FieldInventory() {
 
                   {/* Size */}
                   <td className="px-3 py-3 align-middle">
-                    <span className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#7aab82", whiteSpace: "nowrap" }}>
                       {item.sizeLabel ?? "—"}
                     </span>
                   </td>
 
                   {/* Item — widest, may wrap */}
                   <td className="px-3 py-3 align-middle">
-                    <p className="text-sm font-semibold text-slate-800 leading-snug">{item.name}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#e2f0e5", lineHeight: 1.3 }}>{item.name}</p>
                     {item.extractedSubcategory && (
-                      <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{item.extractedSubcategory}</p>
+                      <p style={{ fontSize: 10, color: "#4a7052", lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
                     )}
                   </td>
 
                   {/* Category */}
                   <td className="px-3 py-3 align-middle hidden sm:table-cell">
-                    <span className="text-xs text-[#64748B] leading-snug">{item.category?.name ?? "—"}</span>
+                    <span style={{ fontSize: 11, color: "#7aab82", lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
                   </td>
 
                   {/* Qty / Unit */}
                   <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
-                    <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
-                    <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
+                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
+                    <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: "#7aab82" }}>{item.unitOfMeasure}</span>
                   </td>
 
                   {/* Location */}
                   <td className="px-3 py-3 align-middle hidden md:table-cell">
-                    <span className="text-xs text-[#64748B]">{item.location?.name ?? "—"}</span>
+                    <span style={{ fontSize: 12, color: "#7aab82" }}>{item.location?.name ?? "—"}</span>
                   </td>
 
                   {/* Status */}
                   <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
-                      <ItemStatusBadge status={item.status} />
+                      <FieldStatusBadge status={item.status} />
                     </div>
                   </td>
                 </tr>
@@ -808,28 +847,30 @@ export default function FieldInventory() {
 
         {/* Pagination */}
         {totalItems > 0 && (
-          <div className="px-4 py-2.5 border-t border-[#D9E7DD] flex items-center justify-between">
-            <span className="text-xs text-[#64748B]">
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: "1px solid #1e2e21" }}>
+            <span style={{ fontSize: 12, color: "#4a7052" }}>
               {`${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)}`} of {totalItems.toLocaleString()}
             </span>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-[#EAF7EE] hover:text-[#0A6B24]"
+                className="h-7 w-7"
+                style={{ color: "#4a7052" }}
                 disabled={page <= 1}
                 onClick={() => setPage(p => p - 1)}
                 data-testid="btn-prev-page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="px-2 text-xs text-slate-600 font-medium min-w-[80px] text-center">
+              <span style={{ padding: "0 8px", fontSize: 12, color: "#7aab82", fontWeight: 500, minWidth: 80, textAlign: "center" }}>
                 {page} / {totalPages}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:bg-[#EAF7EE] hover:text-[#0A6B24]"
+                className="h-7 w-7"
+                style={{ color: "#4a7052" }}
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}
                 data-testid="btn-next-page"

@@ -1,0 +1,83 @@
+Update the styling of the Field Mode Inventory page ONLY. Do NOT touch Admin Mode Inventory. Do NOT change any layout, structure, filter arrangement, or logic. Only change colors/styles as listed below.
+
+─── PAGE & TOPBAR ───
+Page background: #0d1410
+Topbar background: #0d1410
+Topbar border-bottom: 1px solid #2a4030
+
+─── PAGE TITLE & SUBTITLE ───
+"Inventory" title color: #e2f0e5
+Subtitle text color: #7aab82
+
+─── "BROWSE BY CATEGORY" LABEL ───
+Color: #7aab82
+
+─── CATEGORY IMAGE TILES ───
+Do NOT change or remove existing images
+Tile border (inactive): 2px solid #1e2e21
+Tile border-radius: 10px
+Tile border (active/selected): 2px solid #2ddb6f
+Tile background overlay (active): rgba(45,219,111,0.10)
+Category name text on tile: color #e2f0e5, font-weight 700
+"× Clear" button top-right: color #7aab82
+
+─── SELECTED CATEGORY LABEL (e.g. "CONDUIT / FITTINGS") ───
+Color: #2ddb6f
+Border/line below it: rgba(45,219,111,0.3)
+
+─── FAMILY FILTER PILLS (the row: All, EMT, Rigid...) ───
+Do NOT change layout or order
+Inactive pill: background #1c2b1f, border 1px solid #2a4030, color #7aab82, border-radius 20px
+Active pill: background #2ddb6f, color #0d1410, border-color #2ddb6f, font-weight 700
+"FAMILY" label: color #4a7052, font-size 9px, uppercase, letter-spacing 1.5px
+
+─── SEARCH BAR ───
+Background: #162019
+Border: 1px solid #2a4030
+Text color: #e2f0e5
+Placeholder: #4a7052
+Border-radius: 9px
+Focus border: #2ddb6f
+
+─── DROPDOWNS (All Sizes, All Status, 10/pg) ───
+Background: #162019
+Border: 1px solid #2a4030
+Text color: #7aab82
+
+─── ACTIVE FILTER CHIP (e.g. "CONDUIT / FITTINGS ×") ───
+Background: rgba(45,219,111,0.10)
+Border: 1px solid rgba(45,219,111,0.3)
+Text color: #2ddb6f
+"244 items" text: color #4a7052
+"Clear all" link: color #2ddb6f
+
+─── TABLE ───
+Container background: #162019
+Container border: 1px solid #1e2e21
+Border-radius: 12px
+
+Table header row:
+  Background: #162019
+  Text color: #7aab82
+  Font-size: 9px, uppercase, letter-spacing 1px
+  Border-bottom: 1px solid #1e2e21
+
+Table row:
+  Background: #162019
+  Border-bottom: 1px solid #1e2e21
+  Hover background: #1c2b1f
+  SKU text: color #7aab82, font-size 10px
+  Size text: color #7aab82, font-size 11px
+  Item name: color #e2f0e5, font-weight 600, font-size 13px
+  Item subcategory (small text below name): color #4a7052
+  Category column text: color #7aab82, font-size 11px
+  Location text: color #7aab82
+  Qty number — In Stock: color #2ddb6f, Barlow Condensed 700
+  Qty number — Low Stock: color #f5a623
+  Qty number — Out of Stock: color #ff5050
+  Qty unit (EA/FT): color #7aab82, font-size 9px
+
+─── STATUS CHIPS ───
+In Stock:     bg rgba(45,219,111,0.10),  color #2ddb6f, border 1px solid rgba(45,219,111,0.25), border-radius 20px
+Low Stock:    bg rgba(245,166,35,0.10),  color #f5a623, border 1px solid rgba(245,166,35,0.25)
+Out of Stock: bg rgba(255,80,80,0.10),   color #ff5050, border 1px solid rgba(255,80,80,0.25)

@@ -1000,7 +1000,12 @@ export default function ItemDetails() {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-2xl font-display font-bold text-slate-900 leading-tight" data-testid="item-name">
+                  {/* ITEM DETAIL TITLE — locked at 1.875rem/bold. Do not reduce this size. */}
+                  <h1
+                    className="!text-3xl font-display font-bold text-slate-900 leading-tight"
+                    style={{ fontSize: "1.875rem", lineHeight: "2.25rem", fontWeight: 700 }}
+                    data-testid="item-name"
+                  >
                     {item.name}
                   </h1>
                   <StockStatusBar qty={item.quantityOnHand} minStock={item.minimumStock} />

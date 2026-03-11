@@ -791,8 +791,8 @@ function ItemRowField({
     onUpdate(row.rowId, { newReels: updated, quantity: total });
   }
 
-  function addNewReel(reel: NewReel) {
-    const updated = [...newReels, reel];
+  function addNewReels(reels: NewReel[]) {
+    const updated = [...newReels, ...reels];
     const total = updated.reduce((s, r) => s + r.lengthFt, 0);
     onUpdate(row.rowId, { newReels: updated, quantity: total });
   }
@@ -898,8 +898,8 @@ function ItemRowField({
             </div>
           )}
 
-          {/* Add new reel form */}
-          <AddReelForm item={selectedItem ?? null} pendingCount={newReels.length} onAdd={addNewReel} locations={locations} />
+          {/* Bulk reel entry */}
+          <BulkReelEntry item={selectedItem ?? null} pendingCount={newReels.length} onAddAll={addNewReels} locations={locations} />
 
           {/* Total summary */}
           {newReels.length > 0 && (
@@ -968,150 +968,198 @@ function ItemRowField({
   );
 }
 
-// ── Add Reel Form (inline, used in receive mode) ─────────────────────────────
-function AddReelForm({
-  item, pendingCount, onAdd, locations,
+// ── Bulk Reel Entry (row-based multi-entry, used in receive mode) ─────────────
+interface BulkReelRow {
+  tempId: string;
+  lengthFt: number | "";
+  brand: string;
+  locationId: string;
+  status: string;
+  error: string | null;
+}
+
+function makeBulkRow(): BulkReelRow {
+  return { tempId: crypto.randomUUID(), lengthFt: 500, brand: "", locationId: "", status: "new", error: null };
+}
+
+function BulkReelEntry({
+  item, pendingCount, onAddAll, locations,
 }: {
   item: any | null;
   pendingCount: number;
-  onAdd: (reel: NewReel) => void;
+  onAddAll: (reels: NewReel[]) => void;
   locations: any[];
 }) {
-  const [open, setOpen] = useState(false);
-  const [lengthFt, setLengthFt] = useState<number | "">(500);
-  const [brand, setBrand] = useState("");
-  const [locationId, setLocationId] = useState<string>("");
-  const [status, setStatus] = useState("full");
+  const [rows, setRows] = useState<BulkReelRow[]>([makeBulkRow()]);
   const [nextSeq, setNextSeq] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const reelId = useMemo(() => {
-    if (nextSeq === null || !item) return null;
-    return generateReelId(item, brand || "XX", nextSeq + pendingCount);
-  }, [nextSeq, item, brand, pendingCount]);
+  const prevItemId = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!open || !item) return;
+    if (!item || item.id === prevItemId.current) return;
+    prevItemId.current = item.id;
     setFetching(true);
-    setNextSeq(null);
     fetch(`/api/wire-reels/${item.id}/next-id`, { credentials: "include" })
       .then(r => r.json())
       .then(d => { setNextSeq(typeof d.nextSeq === "number" ? d.nextSeq : 1); setFetching(false); })
       .catch(() => { setFetching(false); });
-  }, [open, item?.id]);
+  }, [item?.id]);
 
-  function handleAdd() {
-    if (!reelId) return;
-    const ft = typeof lengthFt === "number" ? lengthFt : parseInt(String(lengthFt), 10);
-    if (isNaN(ft) || ft <= 0) { setError("Enter a valid length greater than 0"); return; }
-    onAdd({
-      tempId: crypto.randomUUID(),
-      lengthFt: ft,
-      brand: brand.trim(),
-      reelId,
-      locationId: locationId ? parseInt(locationId, 10) : null,
-      status,
+  function getReelId(brand: string, rowIndex: number): string | null {
+    if (nextSeq === null || !item) return null;
+    return generateReelId(item, brand || "XX", nextSeq + pendingCount + rowIndex);
+  }
+
+  function updateRow(tempId: string, patch: Partial<BulkReelRow>) {
+    setRows(prev => prev.map(r => r.tempId === tempId ? { ...r, ...patch, error: null } : r));
+  }
+
+  function removeRow(tempId: string) {
+    setRows(prev => prev.length === 1 ? [makeBulkRow()] : prev.filter(r => r.tempId !== tempId));
+  }
+
+  function handleAddAll() {
+    const validated = rows.map((row, idx) => {
+      const ft = typeof row.lengthFt === "number" ? row.lengthFt : parseInt(String(row.lengthFt), 10);
+      if (isNaN(ft) || ft <= 0) return { ...row, error: "Length required (> 0)" };
+      if (!getReelId(row.brand, idx)) return { ...row, error: "Reel ID not ready" };
+      return { ...row, error: null };
     });
-    setOpen(false);
-    setLengthFt(500);
-    setBrand("");
-    setLocationId("");
-    setStatus("full");
-    setNextSeq(null);
-    setError(null);
+    setRows(validated);
+    if (validated.some(r => r.error)) return;
+
+    const reels: NewReel[] = rows.map((row, idx) => {
+      const ft = typeof row.lengthFt === "number" ? row.lengthFt : parseInt(String(row.lengthFt), 10);
+      return {
+        tempId: row.tempId,
+        lengthFt: ft,
+        brand: row.brand.trim(),
+        reelId: getReelId(row.brand, idx)!,
+        locationId: row.locationId ? parseInt(row.locationId, 10) : null,
+        status: row.status,
+      };
+    });
+    onAddAll(reels);
+    setRows([makeBulkRow()]);
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8, padding: "6px 12px", background: "rgba(45,219,111,0.07)", border: "1px dashed rgba(45,219,111,0.3)", borderRadius: 8, color: "#2ddb6f", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.5 }}
-        data-testid="btn-add-new-reel"
-      >
-        <Plus style={{ width: 13, height: 13 }} />
-        Add New Reel
-      </button>
-    );
-  }
+  const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: "#527856", textTransform: "uppercase" as const, letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif" };
+  const INPUT: React.CSSProperties = { height: 32, padding: "0 8px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none", width: "100%", boxSizing: "border-box" as const };
+  const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(100px,130px) 78px 1fr 1fr 68px 26px", gap: 6, alignItems: "center" };
 
   return (
-    <div style={{ marginTop: 8, padding: "10px 12px", background: "#111d14", border: "1px solid rgba(45,219,111,0.25)", borderRadius: 9 }} data-testid="add-reel-form">
+    <div style={{ marginTop: 10, padding: "10px 12px", background: "#0f1a12", border: "1px solid rgba(45,219,111,0.2)", borderRadius: 9 }} data-testid="bulk-reel-entry">
+      {/* Section label */}
       <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
-        New Reel
+        New Reels
       </div>
 
-      {/* Reel ID preview */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <span style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", minWidth: 50 }}>Reel ID</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: fetching ? "#4a7052" : "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif", background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 6, padding: "3px 10px", letterSpacing: 0.5 }}>
-          {fetching ? "…" : reelId ?? "—"}
-        </span>
-        <span style={{ fontSize: 10, color: "#4a7052" }}>auto-generated</span>
+      {/* Column headers */}
+      <div style={{ ...GRID, marginBottom: 4 }}>
+        <div style={LBL}>Reel ID</div>
+        <div style={LBL}>Length FT</div>
+        <div style={LBL}>Brand</div>
+        <div style={LBL}>Location</div>
+        <div style={LBL}>Status</div>
+        <div />
       </div>
 
-      {/* Length + Brand */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-        <div>
-          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Length (FT) *</div>
-          <input
-            type="number" min={1} value={lengthFt}
-            onChange={(e) => { setError(null); const v = parseInt(e.target.value, 10); setLengthFt(isNaN(v) ? "" : v); }}
-            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, fontWeight: 700, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
-            data-testid="input-new-reel-length"
-          />
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Brand</div>
-          <input
-            type="text" value={brand} placeholder="e.g. Southwire"
-            onChange={(e) => setBrand(e.target.value)}
-            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
-            data-testid="input-new-reel-brand"
-          />
-        </div>
-      </div>
+      {/* Input rows */}
+      {rows.map((row, idx) => {
+        const reelId = getReelId(row.brand, idx);
+        return (
+          <div key={row.tempId} style={{ marginBottom: 5 }}>
+            <div style={GRID}>
+              {/* Reel ID — read-only, auto-generated */}
+              <div style={{ height: 32, display: "flex", alignItems: "center", background: "#080f09", border: "1px solid #1a2c1e", borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? "#4a7052" : reelId ? "#2ddb6f" : "#4a7052", fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3 }} data-testid={`bulk-reel-id-${idx}`}>
+                  {fetching ? "…" : reelId ?? "—"}
+                </span>
+              </div>
+              {/* Length */}
+              <input
+                type="number" min={1} value={row.lengthFt}
+                onChange={e => { const v = parseInt(e.target.value, 10); updateRow(row.tempId, { lengthFt: isNaN(v) ? "" : v }); }}
+                style={INPUT}
+                data-testid={`bulk-reel-length-${idx}`}
+              />
+              {/* Brand */}
+              <input
+                type="text" value={row.brand} placeholder="Southwire"
+                onChange={e => updateRow(row.tempId, { brand: e.target.value })}
+                style={INPUT}
+                data-testid={`bulk-reel-brand-${idx}`}
+              />
+              {/* Location */}
+              <select
+                value={row.locationId}
+                onChange={e => updateRow(row.tempId, { locationId: e.target.value })}
+                style={{ ...INPUT, color: row.locationId ? "#e2f0e5" : "#4a7052" }}
+                data-testid={`bulk-reel-location-${idx}`}
+              >
+                <option value="">Default</option>
+                {locations.map((loc: any) => (
+                  <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                ))}
+              </select>
+              {/* Status — simplified: New / Used only */}
+              <select
+                value={row.status}
+                onChange={e => updateRow(row.tempId, { status: e.target.value })}
+                style={INPUT}
+                data-testid={`bulk-reel-status-${idx}`}
+              >
+                <option value="new">New</option>
+                <option value="used">Used</option>
+              </select>
+              {/* Delete row */}
+              <button
+                type="button"
+                onClick={() => removeRow(row.tempId)}
+                title="Remove row"
+                style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#2b3f2e", borderRadius: 5, flexShrink: 0 }}
+                data-testid={`btn-remove-bulk-row-${idx}`}
+              >
+                <X style={{ width: 13, height: 13 }} />
+              </button>
+            </div>
+            {row.error && (
+              <p style={{ fontSize: 10, color: "#ff5050", marginTop: 2, paddingLeft: 2 }}>{row.error}</p>
+            )}
+          </div>
+        );
+      })}
 
-      {/* Location + Status */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-        <div>
-          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Location</div>
-          <select
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: locationId ? "#e2f0e5" : "#4a7052", outline: "none" }}
-            data-testid="select-new-reel-location"
-          >
-            <option value="">Default</option>
-            {locations.map((loc: any) => (
-              <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Status</div>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
-            data-testid="select-new-reel-status"
-          >
-            <option value="full">Full / New</option>
-            <option value="new">New</option>
-            <option value="used">Used / Partial</option>
-          </select>
-        </div>
-      </div>
-
-      {error && <p style={{ fontSize: 10, color: "#ff5050", marginBottom: 6 }}>{error}</p>}
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-        <button type="button" onClick={() => { setOpen(false); setError(null); }} style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }} data-testid="btn-add-reel-cancel">
-          Cancel
+      {/* Footer: Add Row | Clear · Add All Reels */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => setRows(prev => [...prev, makeBulkRow()])}
+          style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "none", border: "1px dashed #2a4030", borderRadius: 7, color: "#527856", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
+          data-testid="btn-add-reel-row"
+        >
+          <Plus style={{ width: 12, height: 12 }} />
+          Add Reel Row
         </button>
-        <button type="button" onClick={handleAdd} disabled={!reelId || fetching} style={{ padding: "5px 14px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: !reelId || fetching ? 0.5 : 1 }} data-testid="btn-add-reel-confirm">
-          Add Reel
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setRows([makeBulkRow()])}
+            style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }}
+            data-testid="btn-bulk-reel-clear"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={handleAddAll}
+            disabled={!nextSeq || fetching}
+            style={{ padding: "5px 16px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (!nextSeq || fetching) ? 0.5 : 1, fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
+            data-testid="btn-add-all-reels"
+          >
+            Add All Reels
+          </button>
+        </div>
       </div>
     </div>
   );

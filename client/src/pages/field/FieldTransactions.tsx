@@ -826,20 +826,19 @@ export default function FieldTransactions() {
       <div style={{ position: "relative" }}>
       {/* Main table */}
       <div style={{ border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
-              <col style={{ width: 46 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 80 }} />
               <col style={{ width: 42 }} />
-              <col style={{ width: 60 }} />
+              <col style={{ width: 88 }} />
+              <col style={{ width: 72 }} />
+              <col style={{ width: 38 }} />
+              <col style={{ width: 54 }} />
               <col />
-              <col style={{ width: 76 }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "13%" }} />
-              <col style={{ width: 80 }} />
-              <col style={{ width: 58 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: 72 }} />
+              <col style={{ width: 72 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
@@ -854,7 +853,7 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
                 {/* Select col */}
-                <th style={{ ...TH, textAlign: "center", borderLeft: "1px solid #2a4030", background: selectionMode ? "#1a2e1e" : "#162019" }}>
+                <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: "1px solid #2a4030", background: selectionMode ? "#1a2e1e" : "#162019" }}>
                   {selectionMode ? (
                     <div
                       role="checkbox"
@@ -872,36 +871,37 @@ export default function FieldTransactions() {
                       onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
                       data-testid="btn-selection-mode-toggle"
                       onMouseEnter={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.14)";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.50)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.16)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.55)";
                         (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f";
                       }}
                       onMouseLeave={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.06)";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.22)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.07)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.25)";
                         (e.currentTarget as HTMLButtonElement).style.color = "#7aab82";
                       }}
                       onMouseDown={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.22)";
-                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.95)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.25)";
+                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.94)";
                       }}
                       onMouseUp={e => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.14)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.16)";
                         (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                       }}
                       style={{
-                        display: "inline-flex", alignItems: "center", justifyContent: "center",
-                        padding: "4px 10px",
-                        background: "rgba(45,219,111,0.06)",
-                        border: "1px solid rgba(45,219,111,0.22)",
-                        borderRadius: 5,
+                        display: "block",
+                        width: "100%",
+                        padding: "6px 0",
+                        background: "rgba(45,219,111,0.07)",
+                        border: "1px solid rgba(45,219,111,0.25)",
+                        borderRadius: 6,
                         color: "#7aab82",
-                        fontSize: 9, fontWeight: 700,
+                        fontSize: 10, fontWeight: 700,
                         fontFamily: "'Barlow Condensed', sans-serif",
-                        letterSpacing: "0.08em", textTransform: "uppercase",
+                        letterSpacing: "0.10em", textTransform: "uppercase",
                         cursor: "pointer", lineHeight: 1,
+                        textAlign: "center",
                         transition: "background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s",
-                        whiteSpace: "nowrap",
                       }}
                     >
                       Select
@@ -1081,7 +1081,6 @@ export default function FieldTransactions() {
               })}
             </tbody>
           </table>
-        </div>
 
         {/* ── Persistent action bar (bottom of table) ── */}
         <div style={{

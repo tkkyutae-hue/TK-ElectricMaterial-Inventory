@@ -828,16 +828,16 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center", paddingLeft: 12, ...(selectMode ? {} : { borderLeft: "3px solid transparent" }) }}>#</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
                 <th style={TH}>Photo</th>
-                <th style={{ ...TH, paddingLeft: 12 }}>Size</th>
+                <th style={{ ...TH, textAlign: "center" }}>Size</th>
                 <th style={TH}>Item</th>
-                <th style={{ ...TH, textAlign: "right" }}>Qty / Unit</th>
-                <th style={TH}>From → To</th>
-                <th style={TH}>Project / PO</th>
+                <th style={{ ...TH, textAlign: "center" }}>Qty / Unit</th>
+                <th style={{ ...TH, textAlign: "center" }}>From → To</th>
+                <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
-                <th style={TH}>Date</th>
-                <th style={{ ...TH, textAlign: "right", paddingRight: 12 }}>
+                <th style={{ ...TH, textAlign: "center" }}>Date</th>
+                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>
                   {canDelete && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                       {selectMode ? (
                         <>
                           {selectedIds.size > 0 && (
@@ -935,7 +935,7 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Size */}
-                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontSize: 11, color: "#7aab82", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 8px", fontSize: 11, color: "#7aab82", whiteSpace: "nowrap", textAlign: "center" }}>
                       {item?.sizeLabel || <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
@@ -952,7 +952,7 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Qty + Unit */}
-                    <td style={{ padding: "12px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 8px", whiteSpace: "nowrap", textAlign: "center" }}>
                       <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(m.movementType) }}>
                         {m.quantity}
                       </span>
@@ -964,23 +964,23 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* From → To (stacked) */}
-                    <td style={{ padding: "12px 8px" }}>
-                      <div style={{ fontSize: 11, lineHeight: 1.5 }}>
-                        <span style={{ color: "#e2f0e5", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                      <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ color: "#e2f0e5", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                           {fromLoc?.name ?? <span style={{ color: "#2a4030" }}>—</span>}
                         </span>
-                        <span style={{ color: "#4a7052", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ color: "#4a7052", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                           → {toLoc?.name ?? "—"}
                         </span>
                       </div>
                     </td>
 
                     {/* Project / PO */}
-                    <td style={{ padding: "12px 8px" }}>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
                       {projectName || projectPo ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center", justifyContent: "center" }}>
                           {projectName && (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "#e2f0e5", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#e2f0e5", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
                               {projectName}
                             </span>
                           )}
@@ -1001,9 +1001,9 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Date */}
-                    <td style={{ padding: "12px 8px" }}>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
                       {m.createdAt ? (
-                        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5 }}>
+                        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 11, fontWeight: 500, color: "#e2f0e5" }}>
                             {format(new Date(m.createdAt), "MMM d, yyyy")}
                           </span>

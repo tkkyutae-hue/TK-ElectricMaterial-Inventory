@@ -439,6 +439,10 @@ export default function FieldTransactions() {
   const [editTx, setEditTx]           = useState<any | null>(null);
   const [successToast, setSuccessToast] = useState<{ txId: number } | null>(null);
 
+  // Pagination
+  const [pageSize, setPageSize]     = useState(25);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const { data: movements, isLoading } = useMovements();
   const bulkDelete  = useBulkDeleteMovements();
   const bulkRestore = useBulkRestoreMovements();
@@ -484,8 +488,12 @@ export default function FieldTransactions() {
     return true;
   });
 
-  const filteredIds = filtered.map(m => m.id);
-  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const totalPages    = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage      = Math.min(currentPage, totalPages);
+  const paginated     = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const paginatedIds  = paginated.map(m => m.id);
+  const allSelected   = paginatedIds.length > 0 && paginatedIds.every(id => selectedIds.has(id));
 
   function toggleRow(id: number) {
     setSelectedIds(prev => {
@@ -499,13 +507,13 @@ export default function FieldTransactions() {
     if (allSelected) {
       setSelectedIds(prev => {
         const next = new Set(prev);
-        filteredIds.forEach(id => next.delete(id));
+        paginatedIds.forEach(id => next.delete(id));
         return next;
       });
     } else {
       setSelectedIds(prev => {
         const next = new Set(prev);
-        filteredIds.forEach(id => next.add(id));
+        paginatedIds.forEach(id => next.add(id));
         return next;
       });
     }
@@ -819,6 +827,7 @@ export default function FieldTransactions() {
             <colgroup>
               <col style={{ width: 38 }} />
               <col style={{ width: 46 }} />
+              <col style={{ width: 105 }} />
               <col style={{ width: 82 }} />
               <col style={{ width: 42 }} />
               <col style={{ width: 64 }} />
@@ -827,7 +836,6 @@ export default function FieldTransactions() {
               <col style={{ width: "16%" }} />
               <col style={{ width: "18%" }} />
               <col style={{ width: 55 }} />
-              <col style={{ width: 105 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
@@ -844,6 +852,7 @@ export default function FieldTransactions() {
                   </div>
                 </th>
                 <th style={{ ...TH, textAlign: "center" }}>#</th>
+                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
                 <th style={TH}>Photo</th>
                 <th style={{ ...TH, textAlign: "center" }}>Size</th>
@@ -852,7 +861,6 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center" }}>From → To</th>
                 <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
-                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
               </tr>
             </thead>
             <tbody>
@@ -864,7 +872,7 @@ export default function FieldTransactions() {
                 <tr>
                   <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>No transactions found.</td>
                 </tr>
-              ) : filtered.map((m, idx) => {
+              ) : paginated.map((m, idx) => {
                 const mx      = m as any;
                 const item    = mx.item;
                 const fromLoc = mx.sourceLocation;
@@ -909,7 +917,36 @@ export default function FieldTransactions() {
 
                     {/* No. */}
                     <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center" }}>
-                      {idx + 1}
+                      {(safePage - 1) * pageSize + idx + 1}
+                    </td>
+
+                    {/* Date (moved to second column) */}
+                    <td style={{ padding: "12px 8px 12px 8px", paddingRight: 12, textAlign: "center" }}>
+                      {m.createdAt ? (
+                        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "#e2f0e5" }}>
+                            {format(new Date(m.createdAt), "MMM d, yyyy")}
+                          </span>
+                          <span style={{ fontSize: 10, color: "#7aab82" }}>
+                            {format(new Date(m.createdAt), "HH:mm")}
+                          </span>
+                          {isEdited && (
+                            <span
+                              title={editLabel}
+                              data-testid={`field-edited-tag-${m.id}`}
+                              style={{
+                                marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2,
+                                background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)",
+                                color: "#a78bfa", padding: "1px 5px", borderRadius: 3,
+                                fontSize: 7, fontWeight: 700, letterSpacing: "0.06em",
+                                textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default",
+                              }}
+                            >
+                              ✎ EDITED
+                            </span>
+                          )}
+                        </div>
+                      ) : <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
                     {/* Type */}
@@ -954,11 +991,12 @@ export default function FieldTransactions() {
                     {/* From → To */}
                     <td style={{ padding: "12px 8px", textAlign: "center" }}>
                       <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ color: "#e2f0e5", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                        <span style={{ color: "#e2f0e5", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                           {fromLoc?.name ?? <span style={{ color: "#2a4030" }}>—</span>}
                         </span>
-                        <span style={{ color: "#4a7052", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                          → {toLoc?.name ?? "—"}
+                        <span style={{ color: "#4a7052", fontSize: 9, display: "block" }}>↓</span>
+                        <span style={{ color: "#ffffff", fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                          {toLoc?.name ?? "—"}
                         </span>
                       </div>
                     </td>
@@ -986,34 +1024,6 @@ export default function FieldTransactions() {
                       {m.note || <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
-                    {/* Date + Edited */}
-                    <td style={{ padding: "12px 8px 12px 8px", paddingRight: 12, textAlign: "center" }}>
-                      {m.createdAt ? (
-                        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center", justifyContent: "center" }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, color: "#e2f0e5" }}>
-                            {format(new Date(m.createdAt), "MMM d, yyyy")}
-                          </span>
-                          <span style={{ fontSize: 10, color: "#7aab82" }}>
-                            {format(new Date(m.createdAt), "HH:mm")}
-                          </span>
-                          {isEdited && (
-                            <span
-                              title={editLabel}
-                              data-testid={`field-edited-tag-${m.id}`}
-                              style={{
-                                marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2,
-                                background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)",
-                                color: "#a78bfa", padding: "1px 5px", borderRadius: 3,
-                                fontSize: 7, fontWeight: 700, letterSpacing: "0.06em",
-                                textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default",
-                              }}
-                            >
-                              ✎ EDITED
-                            </span>
-                          )}
-                        </div>
-                      ) : <span style={{ color: "#2a4030" }}>—</span>}
-                    </td>
                   </tr>
                 );
               })}
@@ -1031,8 +1041,60 @@ export default function FieldTransactions() {
           gap: 10,
           fontFamily: "'Barlow Condensed', sans-serif",
         }}>
-          <span style={{ fontSize: 11, color: "#7aab82", flex: 1 }}>
-            Showing <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong> transaction{filtered.length !== 1 ? "s" : ""}
+          {/* Page size button group */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {[15, 25, 35, 45].map(n => {
+              const active = pageSize === n;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => { if (!active) { setPageSize(n); setCurrentPage(1); } }}
+                  style={{
+                    padding: "7px 16px", borderRadius: 8,
+                    background: active ? "rgba(45,219,111,0.09)" : "#162019",
+                    border: `1px solid ${active ? "rgba(45,219,111,0.28)" : "#2a4030"}`,
+                    color: active ? "#2ddb6f" : "#7aab82",
+                    fontFamily: "'JetBrains Mono', 'Fira Mono', monospace",
+                    fontSize: 12, fontWeight: 600,
+                    cursor: active ? "default" : "pointer",
+                    transition: "all 0.12s",
+                  }}
+                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#3d5e47"; (e.currentTarget as HTMLElement).style.color = "#e2f0e5"; } }}
+                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#2a4030"; (e.currentTarget as HTMLElement).style.color = "#7aab82"; } }}
+                  data-testid={`btn-page-size-${n}`}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Page indicator + nav */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                data-testid="btn-page-prev"
+                style={{ padding: "7px 12px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: safePage <= 1 ? "#2a4030" : "#7aab82", fontSize: 12, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}
+              >‹</button>
+              <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "monospace", minWidth: 60, textAlign: "center" }}>
+                {safePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                data-testid="btn-page-next"
+                style={{ padding: "7px 12px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: safePage >= totalPages ? "#2a4030" : "#7aab82", fontSize: 12, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}
+              >›</button>
+            </div>
+          )}
+
+          <span style={{ fontSize: 11, color: "#7aab82", flex: 1, textAlign: "right" }}>
+            Showing <strong style={{ color: "#e2f0e5" }}>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
             {selCount > 0 && (
               <span style={{ marginLeft: 8, color: "#2ddb6f", fontWeight: 700 }}>· {selCount} selected</span>
             )}

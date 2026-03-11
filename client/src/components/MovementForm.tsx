@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects, useCreateLocation, useDeleteLocation } from "@/hooks/use-reference-data";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -1130,6 +1131,7 @@ interface MovementFormProps {
 
 export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false, draftId }: MovementFormProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const { data: items } = useItems();
@@ -1183,8 +1185,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
   const needsSource      = ["receive", "return", "transfer"].includes(movType);
   const needsDestination = ["issue", "transfer"].includes(movType);
   const needsProject     = ["receive", "issue", "return"].includes(movType);
-  const sourceLabel      = movType === "receive" ? "Receive From" : movType === "return" ? "Return From" : "From Location";
-  const destLabel        = movType === "issue" ? "Issue To" : "To Location";
+  const sourceLabel      = movType === "receive" ? t.receiveFrom : movType === "return" ? t.returnFrom : t.fromLocation;
+  const destLabel        = movType === "issue" ? t.issueTo : t.toLocation;
 
   const addRow = useCallback(() => {
     setItemRows(prev => [...prev, makeRow()]);
@@ -1445,7 +1447,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
           <FormField control={form.control} name="movementType" render={({ field }) => (
             <FormItem>
-              <FormLabel>Movement Type</FormLabel>
+              <FormLabel>{t.movementType}</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-movement-type">
@@ -1510,7 +1512,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               {needsProject && (
                 <FormField control={form.control} name="projectId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project (Optional)</FormLabel>
+                    <FormLabel>{t.projectOptional}</FormLabel>
                     <FormControl>
                       <SearchableProjectSelect
                         value={field.value ?? null}
@@ -1549,7 +1551,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Receiving Location</FormLabel>
+                    <FormLabel>{t.receivingLocation}</FormLabel>
                     <FormControl>
                       <SearchableLocationSelect
                         value={field.value ?? null}
@@ -1569,7 +1571,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="sourceLocationId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sending Location</FormLabel>
+                    <FormLabel>{t.sendingLocation}</FormLabel>
                     <FormControl>
                       <SearchableLocationSelect
                         value={field.value ?? null}
@@ -1593,7 +1595,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         <div style={fieldMode ? { borderTop: "1px solid #203023", paddingTop: 16 } : undefined} className={fieldMode ? undefined : "border-t border-slate-100 pt-3"}>
 
           <div className="flex items-center gap-2 mb-2">
-            <p style={fieldMode ? { fontSize: 13, fontWeight: 600, color: "#527856", margin: 0 } : undefined} className={fieldMode ? undefined : "text-sm font-semibold text-slate-700"}>Items</p>
+            <p style={fieldMode ? { fontSize: 13, fontWeight: 600, color: "#527856", margin: 0 } : undefined} className={fieldMode ? undefined : "text-sm font-semibold text-slate-700"}>{t.items}</p>
             <span style={fieldMode ? { fontSize: 11, color: "#2ddb6f", background: "#0b1a0f", borderRadius: 12, padding: "1px 8px", fontWeight: 600 } : undefined} className={fieldMode ? undefined : "text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium"}>
               {itemRows.length}
             </span>
@@ -1606,7 +1608,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               data-testid="btn-add-item"
             >
               <Plus style={{ width: 13, height: 13 }} className={fieldMode ? undefined : "w-3.5 h-3.5"} />
-              Add Another Item
+              {t.addAnotherItem}
             </button>
           </div>
 
@@ -1678,7 +1680,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         <div style={fieldMode ? { flexShrink: 0, paddingTop: 16, borderTop: "1px solid #203023", marginTop: 8 } : undefined} className={fieldMode ? undefined : "flex-shrink-0 pt-3 border-t border-slate-100 mt-2"}>
           <FormField control={form.control} name="note" render={({ field }) => (
             <FormItem>
-              <FormLabel>Note (Optional)</FormLabel>
+              <FormLabel>{t.noteOptional}</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Reference number, PO, reason…"
@@ -1740,7 +1742,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                   data-testid="button-save-draft"
                   onClick={onSaveDraft}
                 >
-                  {draftSaving ? "Saving…" : "Save as Draft"}
+                  {draftSaving ? t.saving : t.saveAsDraft}
                 </Button>
                 <Button
                   type="submit"
@@ -1749,7 +1751,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                   className={fieldMode ? undefined : "bg-brand-700 hover:bg-brand-800 min-w-[100px]"}
                   data-testid="button-submit-movement"
                 >
-                  {submitting ? "Saving…" : `Confirm${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
+                  {submitting ? t.saving : `${t.confirm}${itemRows.length > 1 ? ` (${itemRows.length})` : ""}`}
                 </Button>
               </>
             )}

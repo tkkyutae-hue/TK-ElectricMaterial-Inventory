@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useLanguage } from "@/hooks/use-language";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -66,13 +67,6 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 25];
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Status" },
-  { value: "in_stock", label: "In Stock" },
-  { value: "low_stock", label: "Low Stock" },
-  { value: "out_of_stock", label: "Out of Stock" },
-];
-
 function getFamilyDisplay(name: string): string {
   return name;
 }
@@ -91,11 +85,12 @@ function useDebounce<T>(value: T, delay: number): T {
 // ─── Field Status Badge ──────────────────────────────────────────────────────
 
 function FieldStatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   const config: Record<string, { label: string; bg: string; color: string; border: string }> = {
-    in_stock:     { label: "In Stock",     bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.25)" },
-    low_stock:    { label: "Low Stock",    bg: "rgba(245,166,35,0.10)",  color: "#f5a623", border: "1px solid rgba(245,166,35,0.25)" },
-    out_of_stock: { label: "Out of Stock", bg: "rgba(255,80,80,0.10)",   color: "#ff5050", border: "1px solid rgba(255,80,80,0.25)" },
-    ordered:      { label: "Ordered",      bg: "rgba(56,189,248,0.10)",  color: "#38bdf8", border: "1px solid rgba(56,189,248,0.25)" },
+    in_stock:     { label: t.inStock,     bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.25)" },
+    low_stock:    { label: t.lowStock,    bg: "rgba(245,166,35,0.10)",  color: "#f5a623", border: "1px solid rgba(245,166,35,0.25)" },
+    out_of_stock: { label: t.outOfStock,  bg: "rgba(255,80,80,0.10)",   color: "#ff5050", border: "1px solid rgba(255,80,80,0.25)" },
+    ordered:      { label: t.ordered,     bg: "rgba(56,189,248,0.10)",  color: "#38bdf8", border: "1px solid rgba(56,189,248,0.25)" },
   };
   const { label, bg, color, border } = config[status] || { label: status, bg: "rgba(100,116,139,0.10)", color: "#7aab82", border: "1px solid rgba(100,116,139,0.25)" };
   return (
@@ -120,6 +115,7 @@ function PillBar({
   onSelect,
   testIdPrefix,
   displayFn,
+  allLabel,
 }: {
   label: string;
   entries: PillEntry[];
@@ -127,6 +123,7 @@ function PillBar({
   onSelect: (v: string) => void;
   testIdPrefix: string;
   displayFn?: (name: string) => string;
+  allLabel: string;
 }) {
   const getLabel = displayFn ?? ((n: string) => n);
 
@@ -145,7 +142,7 @@ function PillBar({
             background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
           }}
         >
-          All
+          {allLabel}
         </button>
         {entries.map(f => (
           <button
@@ -199,6 +196,7 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 // ─── Item Detail Dialog ──────────────────────────────────────────────────────
 
 function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => void }) {
+  const { t } = useLanguage();
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
       <DialogContent className="max-w-sm">
@@ -210,60 +208,60 @@ function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => v
         )}
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">SKU</span>
+            <span className="text-slate-500">{t.colSku}</span>
             <span className="font-mono font-medium">{item.sku}</span>
           </div>
           {item.sizeLabel && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Size</span>
+              <span className="text-slate-500">{t.colSize}</span>
               <span>{item.sizeLabel}</span>
             </div>
           )}
           {item.subcategory && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Family</span>
+              <span className="text-slate-500">{t.colFamily}</span>
               <span>{getFamilyDisplay(item.subcategory)}</span>
             </div>
           )}
           {item.detailType && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Type</span>
+              <span className="text-slate-500">{t.colType}</span>
               <span>{item.detailType}</span>
             </div>
           )}
           {item.extractedSubcategory && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Subcategory</span>
+              <span className="text-slate-500">{t.subcategory}</span>
               <span>{item.extractedSubcategory}</span>
             </div>
           )}
           <div className="flex justify-between items-center">
-            <span className="text-slate-500">Status</span>
+            <span className="text-slate-500">{t.colStatus}</span>
             <FieldStatusBadge status={item.status} />
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Qty on Hand</span>
+            <span className="text-slate-500">{t.colQtyOnHand}</span>
             <span className="font-bold text-slate-900">{item.quantityOnHand.toLocaleString()} {item.unitOfMeasure}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Reorder Point</span>
+            <span className="text-slate-500">{t.colReorderPoint}</span>
             <span>{item.reorderPoint.toLocaleString()}</span>
           </div>
           {item.location && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Location</span>
+              <span className="text-slate-500">{t.colLocation}</span>
               <span>{item.location.name}</span>
             </div>
           )}
           {item.category && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Category</span>
+              <span className="text-slate-500">{t.colCategory}</span>
               <span>{item.category.name}</span>
             </div>
           )}
           {item.supplier && (
             <div className="flex justify-between">
-              <span className="text-slate-500">Supplier</span>
+              <span className="text-slate-500">{t.colSupplier}</span>
               <span>{item.supplier.name}</span>
             </div>
           )}
@@ -284,6 +282,7 @@ function qtyColor(status: string): string {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function FieldInventory() {
+  const { t } = useLanguage();
   const rawSearch = useSearch();
   const [, navigate] = useLocation();
 
@@ -303,6 +302,14 @@ export default function FieldInventory() {
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Status options (translated)
+  const STATUS_OPTIONS = useMemo(() => [
+    { value: "all",          label: t.allStatus  },
+    { value: "in_stock",     label: t.inStock    },
+    { value: "low_stock",    label: t.lowStock   },
+    { value: "out_of_stock", label: t.outOfStock },
+  ], [t]);
 
   // Sync state → URL
   useEffect(() => {
@@ -368,7 +375,6 @@ export default function FieldInventory() {
     staleTime: 0,
   });
 
-  // Dynamic sizes: recalculate from current filtered result (excluding size filter)
   const { data: sizes = [] } = useQuery<string[]>({
     queryKey: ["/api/field/sizes", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedStatus, debouncedSearch],
     queryFn: async () => {
@@ -384,7 +390,6 @@ export default function FieldInventory() {
     },
   });
 
-  // Auto-reset size if it no longer exists in new sizes list
   useEffect(() => {
     if (selectedSize !== "all" && sizes.length > 0 && !sizes.includes(selectedSize)) {
       setSelectedSize("all");
@@ -413,11 +418,8 @@ export default function FieldInventory() {
   const totalItems = fieldData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  // ── Computed flags ──
   const showTypePills = selectedFamily !== "all" && types.length >= 1;
   const showSubcategoryPills = selectedType !== "all" && !subcatFetching && subcategories.length >= 1;
-
-  // ── Handlers with cascade resets ──
 
   function handleCategoryClick(cat: CategorySummary) {
     if (selectedCatId === cat.id) {
@@ -480,6 +482,18 @@ export default function FieldInventory() {
 
   const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSubcategory !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
 
+  // Table column definitions (translated)
+  const TABLE_COLS = useMemo(() => [
+    { label: t.colSku,      align: "left"   },
+    { label: t.colPhoto,    align: "left"   },
+    { label: t.colSize,     align: "left"   },
+    { label: t.colItem,     align: "left"   },
+    { label: t.colCategory, align: "left",  cls: "hidden sm:table-cell" },
+    { label: t.colQtyUnit,  align: "right"  },
+    { label: t.colLocation, align: "left",  cls: "hidden md:table-cell" },
+    { label: t.colStatus,   align: "center" },
+  ], [t]);
+
   return (
     <div className="space-y-4">
 
@@ -488,23 +502,23 @@ export default function FieldInventory() {
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <Package className="w-5 h-5" style={{ color: "#2ddb6f" }} />
-            <h1 className="text-2xl font-display font-bold" style={{ color: "#e2f0e5" }}>Inventory</h1>
+            <h1 className="text-2xl font-display font-bold" style={{ color: "#e2f0e5" }}>{t.inventory}</h1>
           </div>
-          <p className="text-sm" style={{ color: "#7aab82" }}>Select a category, then filter by Family, Type, Subcategory, and Size.</p>
+          <p className="text-sm" style={{ color: "#7aab82" }}>{t.inventorySubtitle}</p>
         </div>
       </div>
 
       {/* ── Category Cards ── */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>Browse by Category</h2>
+          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
           {selectedCatId !== null && (
             <button
               onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }}
               style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
               data-testid="btn-clear-category"
             >
-              <X style={{ width: 12, height: 12 }} /> Clear
+              <X style={{ width: 12, height: 12 }} /> {t.clear}
             </button>
           )}
         </div>
@@ -569,34 +583,37 @@ export default function FieldInventory() {
       {/* ── Level 2: Family ── */}
       {selectedCatId !== null && families.length > 0 && (
         <PillBar
-          label="Family"
+          label={t.family}
           entries={families}
           selected={selectedFamily}
           onSelect={handleFamilyChange}
           testIdPrefix="chip-family"
           displayFn={getFamilyDisplay}
+          allLabel={t.allFilter}
         />
       )}
 
-      {/* ── Level 3: Type (shows when family selected + ≥2 types) ── */}
+      {/* ── Level 3: Type ── */}
       {showTypePills && (
         <PillBar
-          label="Type"
+          label={t.type}
           entries={types}
           selected={selectedType}
           onSelect={handleTypeChange}
           testIdPrefix="chip-type"
+          allLabel={t.allFilter}
         />
       )}
 
-      {/* ── Level 4: Subcategory (shows when type selected + ≥1 subcategory exists) ── */}
+      {/* ── Level 4: Subcategory ── */}
       {showSubcategoryPills && (
         <PillBar
-          label="Subcategory"
+          label={t.subcategory}
           entries={subcategories}
           selected={selectedSubcategory}
           onSelect={handleSubcategoryChange}
           testIdPrefix="chip-subcategory"
+          allLabel={t.allFilter}
         />
       )}
 
@@ -605,7 +622,7 @@ export default function FieldInventory() {
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#4a7052" }} />
           <Input
-            placeholder="Search name, SKU, size…"
+            placeholder={t.searchPlaceholder}
             value={searchInput}
             onChange={e => handleSearch(e.target.value)}
             className="pl-8 h-9 text-sm"
@@ -619,14 +636,13 @@ export default function FieldInventory() {
           )}
         </div>
 
-        {/* Size dropdown — dynamic options based on current filters */}
         {selectedCatId !== null && sizes.length > 0 && (
           <Select value={selectedSize} onValueChange={handleSizeChange}>
             <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-size-filter">
-              <SelectValue placeholder="All Sizes" />
+              <SelectValue placeholder={t.allSizes} />
             </SelectTrigger>
             <SelectContent className="max-h-[264px] overflow-y-auto">
-              <SelectItem value="all">All Sizes</SelectItem>
+              <SelectItem value="all">{t.allSizes}</SelectItem>
               {sizes.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -636,7 +652,7 @@ export default function FieldInventory() {
 
         <Select value={selectedStatus} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-status-filter">
-            <SelectValue placeholder="All Status" />
+            <SelectValue placeholder={t.allStatus} />
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map(o => (
@@ -651,7 +667,7 @@ export default function FieldInventory() {
           </SelectTrigger>
           <SelectContent>
             {PAGE_SIZE_OPTIONS.map(n => (
-              <SelectItem key={n} value={String(n)}>{n} / pg</SelectItem>
+              <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -722,7 +738,7 @@ export default function FieldInventory() {
             style={{ marginLeft: 4, fontSize: 12, color: "#2ddb6f", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
             data-testid="btn-clear-all-filters"
           >
-            Clear all
+            {t.clearAll}
           </button>
         </div>
       )}
@@ -732,30 +748,21 @@ export default function FieldInventory() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: "120px" }} />  {/* SKU */}
-              <col style={{ width: "52px" }} />   {/* Photo */}
-              <col style={{ width: "80px" }} />   {/* Size */}
-              <col />                              {/* Item — widest */}
-              <col style={{ width: "140px" }} />  {/* Category */}
-              <col style={{ width: "110px" }} />  {/* Qty/Unit */}
-              <col style={{ width: "130px" }} />  {/* Location */}
-              <col style={{ width: "110px" }} />  {/* Status */}
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "52px" }} />
+              <col style={{ width: "80px" }} />
+              <col />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "110px" }} />
             </colgroup>
             <thead>
               <tr style={{ background: "#162019", borderBottom: "1px solid #1e2e21" }}>
-                {[
-                  { label: "SKU",        align: "left"   },
-                  { label: "Photo",      align: "left"   },
-                  { label: "Size",       align: "left"   },
-                  { label: "Item",       align: "left"   },
-                  { label: "Category",   align: "left",  cls: "hidden sm:table-cell" },
-                  { label: "Qty / Unit", align: "right"  },
-                  { label: "Location",   align: "left",  cls: "hidden md:table-cell" },
-                  { label: "Status",     align: "center" },
-                ].map(col => (
+                {TABLE_COLS.map(col => (
                   <th
                     key={col.label}
-                    className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${col.cls || ""}`}
+                    className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${(col as any).cls || ""}`}
                     style={{ fontSize: 9, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "1px" }}
                   >
                     {col.label}
@@ -777,7 +784,7 @@ export default function FieldInventory() {
               ) : pageItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-14 text-sm" style={{ color: "#7aab82" }}>
-                    {hasFilters ? "No items match your filters." : "No items found."}
+                    {hasFilters ? t.noItemsMatch : t.noItemsFound}
                   </td>
                 </tr>
               ) : pageItems.map((item: FieldItem) => (
@@ -790,50 +797,35 @@ export default function FieldInventory() {
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
                 >
-                  {/* SKU */}
                   <td className="px-3 py-3 align-middle whitespace-nowrap">
                     <span style={{ fontFamily: "monospace", fontSize: 10, color: "#7aab82" }}>{item.sku}</span>
                   </td>
-
-                  {/* Photo */}
                   <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
                       <PhotoCell imageUrl={item.imageUrl} name={item.name} />
                     </div>
                   </td>
-
-                  {/* Size */}
                   <td className="px-3 py-3 align-middle">
                     <span style={{ fontSize: 11, fontWeight: 500, color: "#7aab82", whiteSpace: "nowrap" }}>
                       {item.sizeLabel ?? "—"}
                     </span>
                   </td>
-
-                  {/* Item — widest, may wrap */}
                   <td className="px-3 py-3 align-middle">
                     <p style={{ fontSize: 13, fontWeight: 600, color: "#e2f0e5", lineHeight: 1.3 }}>{item.name}</p>
                     {item.extractedSubcategory && (
                       <p style={{ fontSize: 10, color: "#4a7052", lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
                     )}
                   </td>
-
-                  {/* Category */}
                   <td className="px-3 py-3 align-middle hidden sm:table-cell">
                     <span style={{ fontSize: 11, color: "#7aab82", lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
                   </td>
-
-                  {/* Qty / Unit */}
                   <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
                     <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
                     <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: "#7aab82" }}>{item.unitOfMeasure}</span>
                   </td>
-
-                  {/* Location */}
                   <td className="px-3 py-3 align-middle hidden md:table-cell">
                     <span style={{ fontSize: 12, color: "#7aab82" }}>{item.location?.name ?? "—"}</span>
                   </td>
-
-                  {/* Status */}
                   <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
                       <FieldStatusBadge status={item.status} />

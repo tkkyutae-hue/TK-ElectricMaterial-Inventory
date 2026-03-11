@@ -3,6 +3,7 @@ import { useSearch, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { Search, ClipboardList, ImageOff, CalendarDays, Trash2, X, AlertTriangle, FileText, RotateCcw, Check, Clock, Edit2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -114,6 +115,7 @@ function DraftTypeBadge({ type }: { type: string }) {
 // ─── Draft Movements List ─────────────────────────────────────────────────────
 
 function DraftMovementsList() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
@@ -169,7 +171,7 @@ function DraftMovementsList() {
 
   if (isLoading) {
     return (
-      <div style={{ textAlign: "center", padding: "60px 0", fontSize: 13, color: "#7aab82" }}>Loading drafts…</div>
+      <div style={{ textAlign: "center", padding: "60px 0", fontSize: 13, color: "#7aab82" }}>{t.loadingDrafts}</div>
     );
   }
 
@@ -177,8 +179,8 @@ function DraftMovementsList() {
     return (
       <div style={{ textAlign: "center", padding: "60px 0" }}>
         <FileText style={{ width: 36, height: 36, color: "#2a4030", margin: "0 auto 12px" }} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: "#4a7052" }}>No draft movements</p>
-        <p style={{ fontSize: 12, color: "#2a4030", marginTop: 4 }}>Saved drafts will appear here.</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: "#4a7052" }}>{t.noDraftMovements}</p>
+        <p style={{ fontSize: 12, color: "#2a4030", marginTop: 4 }}>{t.savedDraftsHere}</p>
       </div>
     );
   }
@@ -210,10 +212,10 @@ function DraftMovementsList() {
                   <DraftTypeBadge type={draft.movementType} />
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,166,35,0.10)", border: "1px solid rgba(245,166,35,0.25)", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", padding: "2px 7px", color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif" }}>
                     <span className="draft-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#f5a623", flexShrink: 0, display: "inline-block" }} />
-                    Draft
+                    {t.txDraftsTab}
                   </span>
                   <span style={{ fontSize: 10, color: "#4a7052", marginLeft: "auto", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
-                    Inventory not affected
+                    {t.inventoryNotAffected}
                   </span>
                 </div>
 
@@ -244,7 +246,7 @@ function DraftMovementsList() {
                     </span>
                   )}
                   {draftItems.length === 0 && (
-                    <span style={{ fontSize: 10, color: "#4a7052" }}>No items</span>
+                    <span style={{ fontSize: 10, color: "#4a7052" }}>{t.noItems}</span>
                   )}
                 </div>
 
@@ -268,7 +270,7 @@ function DraftMovementsList() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#2a4030"; (e.currentTarget as HTMLElement).style.color = "#7aab82"; }}
                   >
                     <RotateCcw style={{ width: 12, height: 12 }} />
-                    Resume
+                    {t.resume}
                   </button>
                   <button
                     type="button"
@@ -279,7 +281,7 @@ function DraftMovementsList() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(45,219,111,0.10)"; }}
                   >
                     <Check style={{ width: 12, height: 12 }} />
-                    Confirm
+                    {t.confirm}
                   </button>
                   <button
                     type="button"
@@ -290,7 +292,7 @@ function DraftMovementsList() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,80,80,0.08)"; }}
                   >
                     <Trash2 style={{ width: 12, height: 12 }} />
-                    Delete
+                    {t.delete}
                   </button>
                 </div>
               </div>
@@ -304,7 +306,7 @@ function DraftMovementsList() {
         <DialogContent style={{ background: "#0f1612", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 480 }} className="max-w-[480px]">
           <DialogHeader>
             <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700 }}>
-              Confirm & Apply to Inventory
+              {t.confirmDraftTitle}
             </DialogTitle>
           </DialogHeader>
           {confirmingDraft && (() => {
@@ -348,7 +350,7 @@ function DraftMovementsList() {
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "rgba(255,80,80,0.07)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "10px 12px" }}>
                   <AlertTriangle style={{ width: 14, height: 14, color: "#ff5050", flexShrink: 0, marginTop: 1 }} />
                   <p style={{ fontSize: 11, color: "#ff5050", lineHeight: 1.5 }}>
-                    This will update inventory immediately and cannot be undone.
+                    {t.confirmDraftWarning}
                   </p>
                 </div>
 
@@ -359,7 +361,7 @@ function DraftMovementsList() {
                     onClick={() => setConfirmingDraft(null)}
                     style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
                   >
-                    Cancel
+                    {t.cancel}
                   </button>
                   <button
                     type="button"
@@ -368,7 +370,7 @@ function DraftMovementsList() {
                     data-testid="button-execute-confirm-draft"
                     style={{ background: "#2ddb6f", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#07090a", cursor: confirmLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: confirmLoading ? 0.7 : 1 }}
                   >
-                    {confirmLoading ? "Applying…" : "Confirm & Apply to Inventory"}
+                    {confirmLoading ? t.applying : t.confirmDraftTitle}
                   </button>
                 </div>
               </div>
@@ -383,12 +385,12 @@ function DraftMovementsList() {
           <DialogHeader>
             <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
               <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
-              Delete Draft?
+              {t.deleteDraftTitle}
             </DialogTitle>
           </DialogHeader>
           <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
             <p style={{ fontSize: 13, color: "#7aab82", lineHeight: 1.5 }}>
-              This draft will be permanently deleted. No inventory changes will be made.
+              {t.deleteDraftWarning}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
@@ -396,7 +398,7 @@ function DraftMovementsList() {
                 onClick={() => setDeletingId(null)}
                 style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 type="button"
@@ -405,7 +407,7 @@ function DraftMovementsList() {
                 data-testid="button-execute-delete-draft"
                 style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: deleteLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: deleteLoading ? 0.7 : 1 }}
               >
-                {deleteLoading ? "Deleting…" : "Delete Draft"}
+                {deleteLoading ? t.deleting : t.deleteDraftTitle}
               </button>
             </div>
           </div>
@@ -419,6 +421,7 @@ function DraftMovementsList() {
 
 export default function FieldTransactions() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const hasDeletePerm = user?.role === "staff" || user?.role === "admin";
   const urlSearch = useSearch();
@@ -642,11 +645,11 @@ export default function FieldTransactions() {
         <div className="flex items-center gap-2 mb-0.5">
           <ClipboardList style={{ width: 20, height: 20, color: "#2ddb6f" }} />
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.04em" }}>
-            Transactions
+            {t.transactions}
           </h1>
         </div>
         <p style={{ fontSize: 13, color: "#7aab82" }}>
-          {selCount > 0 ? `${selCount} selected` : "View transaction history."}
+          {selCount > 0 ? `${selCount} ${t.selected}` : t.viewHistory}
         </p>
       </div>
 
@@ -659,7 +662,7 @@ export default function FieldTransactions() {
             data-testid="tab-history"
             style={{ background: activeTab === "history" ? "#1c2b1f" : "transparent", border: activeTab === "history" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? "#e2f0e5" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
           >
-            Transaction History
+            {t.txHistoryTab}
           </button>
           <button
             type="button"
@@ -668,7 +671,7 @@ export default function FieldTransactions() {
             style={{ background: activeTab === "drafts" ? "#1c2b1f" : "transparent", border: activeTab === "drafts" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? "#f5a623" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
           >
             <FileText style={{ width: 12, height: 12 }} />
-            Draft Movements
+            {t.txDraftsTab}
           </button>
         </div>
 
@@ -679,7 +682,7 @@ export default function FieldTransactions() {
             data-testid="btn-export-csv"
             style={{ fontSize: 11, color: "#7aab82", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "5px 13px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}
           >
-            Export CSV ↓
+            {t.exportCsv} ↓
           </button>
         )}
       </div>
@@ -696,12 +699,12 @@ export default function FieldTransactions() {
 
           {/* Search */}
           <div>
-            <label style={LABEL_STYLE}>Search</label>
+            <label style={LABEL_STYLE}>{t.txSearch}</label>
             <div style={{ position: "relative" }}>
               <Search style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "#4a7052", pointerEvents: "none" }} />
               <input
                 type="text"
-                placeholder="Item / SKU / ID…"
+                placeholder={t.txSearchPlaceholder}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 data-testid="field-tx-search"
@@ -714,17 +717,17 @@ export default function FieldTransactions() {
 
           {/* From */}
           <div>
-            <label style={LABEL_STYLE}>From</label>
+            <label style={LABEL_STYLE}>{t.txFrom}</label>
             <Select value={fromFilter} onValueChange={setFrom}>
               <SelectTrigger
                 className="w-full h-[37px] text-xs"
                 style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }}
                 data-testid="field-tx-from-filter"
               >
-                <SelectValue placeholder="All" />
+                <SelectValue placeholder={t.allFilter} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">{t.allFilter}</SelectItem>
                 {fromOptions.map(([id, name]) => (
                   <SelectItem key={id} value={id}>{name}</SelectItem>
                 ))}
@@ -734,17 +737,17 @@ export default function FieldTransactions() {
 
           {/* To */}
           <div>
-            <label style={LABEL_STYLE}>To</label>
+            <label style={LABEL_STYLE}>{t.txTo}</label>
             <Select value={toFilter} onValueChange={setTo}>
               <SelectTrigger
                 className="w-full h-[37px] text-xs"
                 style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }}
                 data-testid="field-tx-to-filter"
               >
-                <SelectValue placeholder="All" />
+                <SelectValue placeholder={t.allFilter} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">{t.allFilter}</SelectItem>
                 {toOptions.map(([id, name]) => (
                   <SelectItem key={id} value={id}>{name}</SelectItem>
                 ))}
@@ -754,17 +757,17 @@ export default function FieldTransactions() {
 
           {/* Project */}
           <div>
-            <label style={LABEL_STYLE}>Project</label>
+            <label style={LABEL_STYLE}>{t.txProject}</label>
             <Select value={projectFilter} onValueChange={setProj}>
               <SelectTrigger
                 className="w-full h-[37px] text-xs"
                 style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }}
                 data-testid="field-tx-project-filter"
               >
-                <SelectValue placeholder="All" />
+                <SelectValue placeholder={t.allFilter} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">{t.allFilter}</SelectItem>
                 {projectOptions.map(([id, label]) => (
                   <SelectItem key={id} value={id}>{label}</SelectItem>
                 ))}
@@ -774,7 +777,7 @@ export default function FieldTransactions() {
 
           {/* Date From */}
           <div>
-            <label style={LABEL_STYLE}>Date From</label>
+            <label style={LABEL_STYLE}>{t.txDateFrom}</label>
             <div style={{ position: "relative" }}>
               <CalendarDays style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "#4a7052", pointerEvents: "none" }} />
               <input
@@ -791,7 +794,7 @@ export default function FieldTransactions() {
 
           {/* Date To */}
           <div>
-            <label style={LABEL_STYLE}>Date To</label>
+            <label style={LABEL_STYLE}>{t.txDateTo}</label>
             <div style={{ position: "relative" }}>
               <CalendarDays style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "#4a7052", pointerEvents: "none" }} />
               <input
@@ -816,7 +819,7 @@ export default function FieldTransactions() {
               data-testid="field-tx-date-clear"
               style={{ fontSize: 11, color: "#7aab82", background: "none", border: "1px solid #2a4030", borderRadius: 6, padding: "3px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
             >
-              <X style={{ width: 11, height: 11 }} /> Clear dates
+              <X style={{ width: 11, height: 11 }} /> {t.clearDates}
             </button>
           </div>
         )}
@@ -843,15 +846,15 @@ export default function FieldTransactions() {
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
                 <th style={{ ...TH, textAlign: "center" }}>#</th>
-                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
-                <th style={{ ...TH, textAlign: "center" }}>Type</th>
-                <th style={TH}>Photo</th>
-                <th style={{ ...TH, textAlign: "center" }}>Size</th>
-                <th style={TH}>Item</th>
-                <th style={{ ...TH, textAlign: "center" }}>Qty / Unit</th>
-                <th style={{ ...TH, textAlign: "center" }}>From → To</th>
-                <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
-                <th style={{ ...TH, textAlign: "center" }}>Note</th>
+                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>{t.colDate}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
+                <th style={TH}>{t.colPhoto}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colSize}</th>
+                <th style={TH}>{t.colItem}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colQtyUnit}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colFromTo}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
+                <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
                 {/* Select col */}
                 <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: "1px solid #2a4030", background: selectionMode ? "#1a2e1e" : "#162019" }}>
                   {selectionMode ? (
@@ -904,7 +907,7 @@ export default function FieldTransactions() {
                         transition: "background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s",
                       }}
                     >
-                      Select
+                      {t.selectBtn}
                     </button>
                   )}
                 </th>
@@ -913,11 +916,11 @@ export default function FieldTransactions() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>Loading…</td>
+                  <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>{t.loading}</td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>No transactions found.</td>
+                  <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>{t.noTransactions}</td>
                 </tr>
               ) : paginated.map((m, idx) => {
                 const mx      = m as any;
@@ -1190,7 +1193,7 @@ export default function FieldTransactions() {
               <>
                 {selCount > 0 && (
                   <span style={{ fontSize: 11, color: "#4a7052", marginRight: 2 }}>
-                    {selCount} selected
+                    {selCount} {t.selected}
                   </span>
                 )}
                 <button
@@ -1199,7 +1202,7 @@ export default function FieldTransactions() {
                   data-testid="button-field-cancel-select"
                   style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}
                 >
-                  <X style={{ width: 10, height: 10 }} /> Cancel
+                  <X style={{ width: 10, height: 10 }} /> {t.cancel}
                 </button>
                 {selCount > 0 && canEdit && hasDeletePerm && (
                   <button
@@ -1276,7 +1279,7 @@ export default function FieldTransactions() {
                 onClick={() => setConfirmOpen(false)}
                 style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
               >
-                Cancel
+                {t.cancel}
               </button>
               <button
                 type="button"

@@ -1,19 +1,7 @@
 import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { MovementForm } from "@/components/MovementForm";
-
-const SCREEN_CONFIG: Record<string, { heading: string; emoji: string; allowedTypes: string[] }> = {
-  receive: {
-    heading: "Receive / Return",
-    emoji: "📦",
-    allowedTypes: ["receive", "return"],
-  },
-  issue: {
-    heading: "Issue / Transfer",
-    emoji: "📤",
-    allowedTypes: ["issue", "transfer"],
-  },
-};
 
 export default function FieldMovement() {
   const search = useSearch();
@@ -21,9 +9,13 @@ export default function FieldMovement() {
   const presetType = params.get("type") ?? "receive";
   const draftId = params.get("draftId") ? Number(params.get("draftId")) : undefined;
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isViewer = user?.role === "viewer";
 
-  const config = SCREEN_CONFIG[presetType] ?? SCREEN_CONFIG.receive;
+  const isReceive = presetType === "receive";
+  const heading = isReceive ? t.receiveReturn : t.issueTransfer;
+  const emoji   = isReceive ? "📦" : "📤";
+  const allowedTypes = isReceive ? ["receive", "return"] : ["issue", "transfer"];
 
   return (
     <div style={{ paddingTop: 28, paddingBottom: 48, paddingLeft: 0, paddingRight: 0 }}>
@@ -36,10 +28,10 @@ export default function FieldMovement() {
           color: "#ffffff", margin: "0 0 5px",
           letterSpacing: 0.3,
         }}>
-          {config.emoji} {config.heading}
+          {emoji} {heading}
           {draftId && (
             <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 600, color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
-              — RESUMING DRAFT
+              — {t.resumingDraft}
             </span>
           )}
         </h1>
@@ -48,14 +40,14 @@ export default function FieldMovement() {
           fontFamily: "'Barlow Condensed', sans-serif",
           letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
         }}>
-          {draftId ? "Edit & Confirm Draft" : "Log Movement"}
+          {draftId ? t.editConfirmDraft : t.logMovement}
         </p>
       </div>
 
       <MovementForm
         key={draftId ? `draft-${draftId}` : presetType}
         defaultType={presetType}
-        allowedTypes={config.allowedTypes}
+        allowedTypes={allowedTypes}
         fieldMode
         readOnly={isViewer}
         draftId={draftId}

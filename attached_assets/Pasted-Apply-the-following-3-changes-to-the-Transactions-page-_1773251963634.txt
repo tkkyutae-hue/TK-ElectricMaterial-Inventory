@@ -1,0 +1,65 @@
+Apply the following 3 changes to the Transactions page. Do NOT change anything else — no other pages, no data logic, no existing styles outside what is specified below.
+
+════════════════════════════════════════
+CHANGE 1 — MOVE DATE COLUMN
+════════════════════════════════════════
+Currently the DATE column is the last column on the right.
+Move it to be the SECOND column, directly after the # (row number) column.
+
+New column order (left to right):
+  # | DATE | TYPE | PHOTO | SIZE | ITEM | QTY/UNIT | FROM→TO | PROJECT/PO | NOTE
+
+Keep the DATE column content exactly the same (date + time, two lines).
+Keep all other columns exactly as they are — no width, style, or content changes to them.
+This is only a position change.
+
+════════════════════════════════════════
+CHANGE 2 — FIX TO COLOR IN FROM→TO COLUMN
+════════════════════════════════════════
+Currently the FROM→TO column shows text like "Warehouse → HMGMA" where the TO value is hard to read against the dark green background.
+
+Change the TO destination text color from its current value to #ffffff (white).
+
+If FROM→TO is already displayed as a vertical stack (FROM on top, arrow in middle, TO on bottom), keep that layout and only change the TO text color to #ffffff, font-weight 700.
+
+If it is still displayed horizontally ("Warehouse → HMGMA"), convert it to vertical stack AND apply the color:
+  Line 1 — FROM: color #e2f0e5, font-weight 500 (existing primary text color)
+  Line 2 — ↓ arrow: color #4a7052, font-size smaller (muted)
+  Line 3 — TO: color #ffffff, font-weight 700
+
+This makes the destination clearly readable against the dark green background.
+
+════════════════════════════════════════
+CHANGE 3 — PAGE SIZE BUTTON GROUP
+════════════════════════════════════════
+Replace the existing page size dropdown (or add if not present) with a button group showing 4 options:
+
+  [ 15 ]  [ 25 ]  [ 35 ]  [ 45 ]
+
+Default selected: 25
+
+Button group placement: same location as existing page size control (near the "Showing N transactions" summary text, or in the pagination bar area).
+
+Button styles:
+  Default (not selected):
+    background: var(--bg3) or #162019
+    border: 1px solid #2a4030
+    color: #7aab82
+    font-family: JetBrains Mono, monospace
+    font-size: 12px, font-weight: 600
+    padding: 7px 16px, border-radius: 8px
+    cursor: pointer
+
+  Active (selected):
+    background: rgba(45,219,111,0.09)
+    border: 1px solid rgba(45,219,111,0.28)
+    color: #2ddb6f
+
+  Hover (not active):
+    border-color: slightly brighter
+    color: #e2f0e5
+
+Behavior:
+  Clicking a size button sets pageSize to that number and resets to page 1
+  Only one button can be active at a time
+  Clicking the already-active button does nothing

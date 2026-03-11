@@ -822,27 +822,6 @@ export default function FieldTransactions() {
       </div>
 
       {/* ── Table + Selection Action Panel ── */}
-      {/* Select-mode toggle */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-        <button
-          type="button"
-          onClick={() => { setSelectionMode(m => !m); setSelectedIds(new Set()); }}
-          data-testid="btn-selection-mode-toggle"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "6px 16px", borderRadius: 8,
-            background: selectionMode ? "rgba(45,219,111,0.1)" : "#162019",
-            border: `1px solid ${selectionMode ? "rgba(45,219,111,0.35)" : "#2a4030"}`,
-            color: selectionMode ? "#2ddb6f" : "#7aab82",
-            fontSize: 12, fontWeight: 700,
-            fontFamily: "'Barlow Condensed', sans-serif",
-            cursor: "pointer", transition: "all 0.15s",
-          }}
-        >
-          {selectionMode ? <><X style={{ width: 11, height: 11 }} /> Exit Select</> : "Select"}
-        </button>
-      </div>
-
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
       {/* Main table */}
       <div style={{ flex: 1, border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
@@ -902,7 +881,20 @@ export default function FieldTransactions() {
                       {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
                   ) : (
-                    <span style={{ color: "#3d5e47", fontSize: 8, letterSpacing: "0.05em" }}>SEL</span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+                      data-testid="btn-selection-mode-toggle"
+                      style={{
+                        background: "none", border: "none", padding: 0,
+                        color: "#7aab82", fontSize: 9, fontWeight: 700,
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        cursor: "pointer", lineHeight: 1,
+                      }}
+                    >
+                      Select
+                    </button>
                   )}
                 </th>
               </tr>

@@ -1165,66 +1165,69 @@ export default function FieldTransactions() {
         </div>
       </div>
 
-      {/* ── Selection Action Panel (far right, only in selection mode) ── */}
+      </div>{/* end relative wrapper */}
+
+      {/* ── Bottom-right selection action bar ── */}
       {selectionMode && (
         <div style={{
-          width: 152,
-          flexShrink: 0,
-          background: "#162019",
-          border: "1px solid #2a4030",
-          borderRadius: 12,
-          padding: "14px 12px",
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-end",
           gap: 8,
+          paddingTop: 10,
           fontFamily: "'Barlow Condensed', sans-serif",
-          alignSelf: "flex-start",
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            {selCount > 0 ? `${selCount} Selected` : "No selection"}
-          </span>
-
-          {selCount === 0 && (
-            <p style={{ fontSize: 11, color: "#4a7052", lineHeight: 1.4, margin: 0 }}>
-              Use checkboxes to select rows.
-            </p>
+          {selCount > 0 && (
+            <span style={{ fontSize: 11, color: "#4a7052", marginRight: 4 }}>
+              {selCount} selected
+            </span>
           )}
+
+          <button
+            type="button"
+            onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+            data-testid="button-field-cancel-select"
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
+          >
+            <X style={{ width: 11, height: 11 }} /> Cancel
+          </button>
 
           {selCount > 0 && (
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              data-testid="button-field-cancel-select"
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "#1c2b1f", border: "1px solid #2a4030", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer", width: "100%" }}
+              data-testid="button-field-clear-select"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
             >
-              <X style={{ width: 11, height: 11 }} /> Clear
+              Clear
             </button>
           )}
 
-          {canEdit && hasDeletePerm && (
+          {selCount > 0 && canEdit && hasDeletePerm && (
             <button
               type="button"
               onClick={() => selectedTx && setEditTx(selectedTx)}
+              disabled={selCount !== 1}
               data-testid="button-field-edit-selected"
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "rgba(91,156,246,0.12)", border: "1px solid rgba(91,156,246,0.35)", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#5b9cf6", cursor: "pointer", width: "100%" }}
+              title={selCount !== 1 ? "Select exactly one transaction to edit" : undefined}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: selCount === 1 ? "rgba(91,156,246,0.12)" : "#162019", border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : "#2a4030"}`, color: selCount === 1 ? "#5b9cf6" : "#3a5040", fontSize: 12, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em" }}
             >
               <Pencil style={{ width: 11, height: 11 }} /> Edit
             </button>
           )}
 
-          {canDelete && hasDeletePerm && (
+          {selCount > 0 && canDelete && hasDeletePerm && (
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
               data-testid="button-field-delete-selected"
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer", width: "100%" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
             >
               <Trash2 style={{ width: 11, height: 11 }} /> Delete ({selCount})
             </button>
           )}
         </div>
       )}
-      </div>{/* end flex row */}
 
       </>}
 

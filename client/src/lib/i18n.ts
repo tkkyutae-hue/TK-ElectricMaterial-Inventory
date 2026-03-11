@@ -185,7 +185,7 @@ const es: Translations = {
   role:               "Rol",
 
   tagReceive:         "Recibir",
-  tagIssue:           "Emitir",
+  tagIssue:           "Enviar",
   tagInventory:       "Inventario",
   tagTransfer:        "Transferir",
   tagDashboard:       "Panel",
@@ -202,14 +202,14 @@ const es: Translations = {
   selectAction:       "Selecciona una acción para continuar.",
 
   receiveReturn:      "Recibir / Devolver",
-  issueTransfer:      "Emitir / Transferir",
+  issueTransfer:      "Enviar / Transferir",
   inventoryCard:      "Inventario",
   transactionsCard:   "Transacciones",
   draftMovements:     "Borradores",
 
   tagReceiveUpper:    "RECIBIR",
   tagReturnUpper:     "DEVOLVER",
-  tagIssueUpper:      "EMITIR",
+  tagIssueUpper:      "ENVIAR",
   tagTransferUpper:   "TRANSFERIR",
   tagBrowse:          "EXPLORAR",
   tagSearch:          "BUSCAR",

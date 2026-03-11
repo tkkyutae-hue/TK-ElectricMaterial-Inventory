@@ -441,7 +441,7 @@ export default function FieldTransactions() {
   const [successToast, setSuccessToast] = useState<{ txId: number } | null>(null);
 
   // Pagination
-  const [pageSize, setPageSize]       = useState(25);
+  const [pageSize, setPageSize]       = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
 

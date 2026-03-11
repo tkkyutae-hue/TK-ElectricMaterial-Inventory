@@ -619,7 +619,7 @@ export default function FieldTransactions() {
     ? (filtered ?? []).find((m) => selectedIds.has(m.id)) ?? null
     : null;
 
-  const COLS_COUNT = 12;
+  const COLS_COUNT = 11;
 
   // ── TH style ──
   const TH: React.CSSProperties = {
@@ -828,7 +828,6 @@ export default function FieldTransactions() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
-              <col style={{ width: selectionMode ? 38 : 0 }} />
               <col style={{ width: 46 }} />
               <col style={{ width: 100 }} />
               <col style={{ width: 80 }} />
@@ -843,20 +842,6 @@ export default function FieldTransactions() {
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
-                {/* Checkbox col */}
-                <th style={{ ...TH, textAlign: "center", paddingLeft: 10, overflow: "hidden", padding: selectionMode ? undefined : 0 }}>
-                  {selectionMode && (
-                  <div
-                    role="checkbox"
-                    aria-checked={allSelected}
-                    onClick={toggleAll}
-                    data-testid="field-checkbox-select-all"
-                    style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? "#2ddb6f" : "#4a7052"}`, background: allSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                  >
-                    {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  </div>
-                  )}
-                </th>
                 <th style={{ ...TH, textAlign: "center" }}>#</th>
                 <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
@@ -931,28 +916,12 @@ export default function FieldTransactions() {
                       background: isSelected ? "rgba(45,219,111,0.07)" : "#162019",
                       borderBottom: "1px solid #1e2e21",
                       borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent",
-                      cursor: "pointer",
                       transition: "background 0.1s",
                     }}
                     onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#1c2b1f"; }}
                     onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#162019"; }}
-                    onClick={() => selectionMode && toggleRow(m.id)}
                     data-testid={`field-tx-row-${m.id}`}
                   >
-                    {/* Checkbox */}
-                    <td style={{ padding: selectionMode ? "12px 6px 12px 10px" : 0, textAlign: "center", overflow: "hidden" }} onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}>
-                      {selectionMode && (
-                      <div
-                        role="checkbox"
-                        aria-checked={isSelected}
-                        data-testid={`field-checkbox-tx-${m.id}`}
-                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? "#2ddb6f" : "#4a7052"}`, background: isSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
-                      >
-                        {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                      )}
-                    </td>
-
                     {/* No. */}
                     <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center" }}>
                       {(safePage - 1) * pageSize + idx + 1}
@@ -1177,7 +1146,7 @@ export default function FieldTransactions() {
 
           {selCount === 0 && (
             <p style={{ fontSize: 11, color: "#4a7052", lineHeight: 1.4, margin: 0 }}>
-              Click rows to select them.
+              Use checkboxes to select rows.
             </p>
           )}
 

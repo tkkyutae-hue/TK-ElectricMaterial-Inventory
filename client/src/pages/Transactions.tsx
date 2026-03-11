@@ -62,13 +62,13 @@ export default function Transactions() {
     return matchSearch && matchProject && matchStart && matchEnd;
   });
 
-  const filteredIds = useMemo(() => (filtered ?? []).map((tx: any) => tx.id as number), [filtered]);
-  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
-  const selCount = selectedIds.size;
-
   const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / pageSize));
   const safePage   = Math.min(Math.max(1, currentPage), totalPages);
   const paginated  = (filtered ?? []).slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const filteredIds = useMemo(() => paginated.map((tx: any) => tx.id as number), [paginated]);
+  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const selCount = selectedIds.size;
 
   function toggleRow(id: number) {
     setSelectedIds(prev => {

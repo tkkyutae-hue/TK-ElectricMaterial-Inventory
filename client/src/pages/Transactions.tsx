@@ -28,9 +28,11 @@ export default function Transactions() {
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
 
-  // Edit drawer
+  // Edit drawer + bulk-edit queue
   const [editTx, setEditTx] = useState<any | null>(null);
+  const [editQueue, setEditQueue] = useState<number[]>([]);
 
   // Toast
   const [toast, setToast] = useState<{ txId: number } | null>(null);
@@ -106,13 +108,37 @@ export default function Transactions() {
     setConfirmDelete(false);
   }
 
-  const selectedTx = selCount === 1
+  const selectedTx = selCount >= 1
     ? (filtered ?? []).find((tx: any) => selectedIds.has(tx.id)) ?? null
     : null;
 
-  // Determine action bar state
-  const canEdit = selCount === 1;
+  // Admin Mode: edit any number of selected rows
+  const canEdit = selCount >= 1;
   const canDelete = selCount >= 1;
+
+  function openBulkEdit() {
+    const ids = Array.from(selectedIds);
+    const [firstId, ...rest] = ids;
+    const firstTx = (filtered ?? []).find((tx: any) => tx.id === firstId) ?? null;
+    setEditQueue(rest);
+    setEditTx(firstTx);
+  }
+
+  function openNextInQueue(savedTxId: number) {
+    if (editQueue.length > 0) {
+      const [nextId, ...rest] = editQueue;
+      const nextTx = (filtered ?? []).find((tx: any) => tx.id === nextId) ?? null;
+      setEditQueue(rest);
+      setEditTx(nextTx);
+      setToast({ txId: savedTxId });
+    } else {
+      setEditTx(null);
+      setEditQueue([]);
+      clearSelection();
+      setSelectionMode(false);
+      setToast({ txId: savedTxId });
+    }
+  }
 
   const CHECKBOX_SIZE = 15;
 
@@ -242,22 +268,6 @@ export default function Transactions() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">
-                {/* Checkbox col */}
-                <TableHead className="w-[42px] pl-3 pr-0">
-                  <div
-                    style={checkboxStyle(allSelected)}
-                    onClick={toggleAll}
-                    data-testid="checkbox-select-all"
-                    role="checkbox"
-                    aria-checked={allSelected}
-                  >
-                    {allSelected && (
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
-                </TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Date</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">Type</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Size</TableHead>
@@ -267,6 +277,33 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">To</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">Project</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Note</TableHead>
+                {/* Select col */}
+                <TableHead className="w-[58px] text-center border-l border-slate-100" style={{ background: selectionMode ? "#f0fdf4" : undefined }}>
+                  {selectionMode ? (
+                    <div
+                      role="checkbox"
+                      aria-checked={allSelected}
+                      onClick={toggleAll}
+                      data-testid="checkbox-select-all"
+                      style={checkboxStyle(allSelected)}
+                    >
+                      {allSelected && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+                      data-testid="btn-selection-mode-toggle"
+                      style={{ background: "none", border: "none", padding: 0, color: "#94a3b8", fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1 }}
+                    >
+                      Select
+                    </button>
+                  )}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -278,6 +315,7 @@ export default function Transactions() {
                     ))}
                   </TableRow>
                 ))
+
               ) : !filtered?.length ? (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-12 text-slate-500">
@@ -298,30 +336,12 @@ export default function Transactions() {
                     <TableRow
                       key={tx.id}
                       data-testid={`row-tx-${tx.id}`}
-                      onClick={() => toggleRow(tx.id)}
                       style={{
                         ...(isSelected ? selectedRowStyle : {}),
-                        cursor: "pointer",
                         transition: "background 0.1s",
                       }}
-                      className={`hover:bg-slate-50/50 ${isSelected ? "" : ""}`}
+                      className="hover:bg-slate-50/50"
                     >
-                      {/* Checkbox */}
-                      <TableCell className="pl-3 pr-0" onClick={(e) => { e.stopPropagation(); toggleRow(tx.id); }}>
-                        <div
-                          style={checkboxStyle(isSelected)}
-                          data-testid={`checkbox-tx-${tx.id}`}
-                          role="checkbox"
-                          aria-checked={isSelected}
-                        >
-                          {isSelected && (
-                            <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                              <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
-                      </TableCell>
-
                       {/* Date */}
                       <TableCell className="text-xs text-slate-500 whitespace-nowrap">
                         {format(new Date(tx.createdAt), "MMM d, yy")}<br />
@@ -397,6 +417,23 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-xs text-slate-500 max-w-[140px] truncate">
                         {tx.note || tx.reason || "—"}
+                      </TableCell>
+                      {/* Select col */}
+                      <TableCell className="text-center border-l border-slate-100" style={{ background: selectionMode && isSelected ? "rgba(22,163,74,0.05)" : undefined }} onClick={(e) => { if (selectionMode) { e.stopPropagation(); toggleRow(tx.id); } }}>
+                        {selectionMode && (
+                          <div
+                            style={checkboxStyle(isSelected)}
+                            data-testid={`checkbox-tx-${tx.id}`}
+                            role="checkbox"
+                            aria-checked={isSelected}
+                          >
+                            {isSelected && (
+                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -511,7 +548,7 @@ export default function Transactions() {
             <button
               type="button"
               data-testid="btn-tx-edit"
-              onClick={() => canEdit && selectedTx && setEditTx(selectedTx)}
+              onClick={() => { if (canEdit) openBulkEdit(); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 11px", borderRadius: 7,
@@ -522,7 +559,8 @@ export default function Transactions() {
                 cursor: canEdit ? "pointer" : "default",
               }}
             >
-              <Edit2 style={{ width: 10, height: 10 }} /> Edit
+              <Edit2 style={{ width: 10, height: 10 }} />
+              {selCount > 1 ? `Edit (${selCount})` : "Edit"}
             </button>
             <button
               type="button"
@@ -543,15 +581,15 @@ export default function Transactions() {
             <button
               type="button"
               data-testid="btn-tx-cancel"
-              onClick={clearSelection}
+              onClick={() => { clearSelection(); setSelectionMode(false); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 11px", borderRadius: 7,
                 background: "white",
                 border: "1px solid #e2e8f0",
-                color: selCount > 0 ? "#475569" : "#cbd5e1",
+                color: selectionMode ? "#475569" : "#cbd5e1",
                 fontSize: 11, fontWeight: 700,
-                cursor: selCount > 0 ? "pointer" : "default",
+                cursor: selectionMode ? "pointer" : "default",
               }}
             >
               <X style={{ width: 10, height: 10 }} /> Cancel
@@ -564,12 +602,10 @@ export default function Transactions() {
           <EditTransactionDrawer
             tx={editTx}
             open={!!editTx}
-            onClose={() => setEditTx(null)}
+            onClose={() => { setEditTx(null); setEditQueue([]); }}
             dark={false}
             onSaved={(updated) => {
-              setEditTx(null);
-              clearSelection();
-              setToast({ txId: updated.id ?? editTx.id });
+              openNextInQueue(updated.id ?? editTx.id);
             }}
           />
         )}

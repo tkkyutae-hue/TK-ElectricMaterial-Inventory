@@ -291,7 +291,7 @@ function LocationCombobox({ value, onChange, locations }: {
   }
 
   return (
-    <div ref={ref} className="relative min-w-[120px]">
+    <div ref={ref} className="relative w-full">
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between text-xs border border-slate-300 rounded px-2 py-1.5 bg-white hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-500 text-left min-h-[30px]"
         data-testid="inline-location-trigger">

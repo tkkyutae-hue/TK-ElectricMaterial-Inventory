@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { z } from "zod";
-import { registerAuthRoutes } from "./replit_integrations/auth";
+import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
 import { isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import multer from "multer";
 import path from "path";
@@ -648,6 +648,73 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/reports/usage-by-project", isAuthenticated, async (_req, res) => {
     res.json(await storage.getReportUsageByProject());
+  });
+
+  // ─── Movement Drafts ─────────────────────────────────────────────────────────
+
+  app.get("/api/drafts", isAuthenticated, async (_req, res) => {
+    try {
+      res.json(await storage.getDrafts());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/drafts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const draft = await storage.getDraft(Number(req.params.id));
+      if (!draft) return res.status(404).json({ message: "Draft not found" });
+      res.json(draft);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/drafts", isAuthenticated, async (req, res) => {
+    try {
+      const { movementType, sourceLocationId, destinationLocationId, projectId, itemsJson, note } = req.body;
+      if (!movementType) return res.status(400).json({ message: "movementType is required" });
+      if (!itemsJson) return res.status(400).json({ message: "itemsJson is required" });
+
+      const userId = getUserId(req);
+      let savedByName: string | null = null;
+      if (userId) {
+        const user = await authStorage.getUser(userId);
+        if (user) savedByName = user.name ?? (user.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : user.email ?? null);
+      }
+
+      const draft = await storage.createDraft({
+        movementType,
+        sourceLocationId: sourceLocationId ? Number(sourceLocationId) : null,
+        destinationLocationId: destinationLocationId ? Number(destinationLocationId) : null,
+        projectId: projectId ? Number(projectId) : null,
+        itemsJson,
+        note: note ?? null,
+        savedBy: userId,
+        savedByName,
+      });
+      res.status(201).json(draft);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/drafts/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteDraft(Number(req.params.id));
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/drafts/:id/confirm", isAuthenticated, async (req, res) => {
+    try {
+      await storage.confirmDraft(Number(req.params.id), getUserId(req));
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
   });
 
   app.post("/api/upload/item-image", isAuthenticated, upload.single("file"), (req, res) => {

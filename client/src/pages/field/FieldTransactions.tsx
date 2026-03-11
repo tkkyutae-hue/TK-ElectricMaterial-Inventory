@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
+import { useSearch, useLocation } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
 import { useAuth } from "@/hooks/use-auth";
-import { Search, ClipboardList, ImageOff, CalendarDays, CheckSquare, Square, Trash2, X, AlertTriangle } from "lucide-react";
+import { Search, ClipboardList, ImageOff, CalendarDays, CheckSquare, Square, Trash2, X, AlertTriangle, FileText, RotateCcw, Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -86,12 +88,343 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 5,
 };
 
+// ─── Draft Type Badge ─────────────────────────────────────────────────────────
+
+const DRAFT_PULSE_CSS = `
+@keyframes draft-pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+.draft-pulse-dot { animation: draft-pulse 2s ease-in-out infinite; }
+`;
+
+function DraftTypeBadge({ type }: { type: string }) {
+  const config: Record<string, { label: string; bg: string; color: string; border: string }> = {
+    issue:    { label: "ISSUE",    bg: "rgba(255,80,80,0.10)",   color: "#ff5050", border: "1px solid rgba(255,80,80,0.22)" },
+    receive:  { label: "RECEIVE",  bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.22)" },
+    return:   { label: "RETURN",   bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.22)" },
+    transfer: { label: "TRANSFER", bg: "rgba(91,156,246,0.12)",  color: "#5b9cf6", border: "1px solid rgba(91,156,246,0.22)" },
+  };
+  const { label, bg, color, border } = config[type] || { label: type.toUpperCase(), bg: "rgba(100,116,139,0.10)", color: "#7aab82", border: "1px solid rgba(100,116,139,0.25)" };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", background: bg, color, border, borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", padding: "2px 7px", whiteSpace: "nowrap", fontFamily: "'Barlow Condensed', sans-serif" }}>
+      {label}
+    </span>
+  );
+}
+
+// ─── Draft Movements List ─────────────────────────────────────────────────────
+
+function DraftMovementsList() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [, navigate] = useLocation();
+  const [confirmingDraft, setConfirmingDraft] = useState<any | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const { data: drafts = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/drafts"],
+  });
+
+  const MOVTYPE_LABEL: Record<string, string> = { issue: "Issue", receive: "Receive", return: "Return", transfer: "Transfer" };
+
+  async function handleConfirm() {
+    if (!confirmingDraft) return;
+    setConfirmLoading(true);
+    try {
+      const res = await fetch(`/api/drafts/${confirmingDraft.id}/confirm`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.message || "Failed to confirm draft");
+      }
+      await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
+      await qc.invalidateQueries({ queryKey: ["/api/movements"] });
+      await qc.invalidateQueries({ queryKey: ["/api/items"] });
+      setConfirmingDraft(null);
+      toast({ title: "Draft confirmed", description: "Inventory has been updated." });
+      navigate("/field/transactions");
+    } catch (err: any) {
+      toast({ title: "Confirm failed", description: err.message, variant: "destructive" });
+    } finally {
+      setConfirmLoading(false);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    setDeleteLoading(true);
+    try {
+      await fetch(`/api/drafts/${id}`, { method: "DELETE", credentials: "include" });
+      await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
+      setDeletingId(null);
+      toast({ title: "Draft deleted" });
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 0", fontSize: 13, color: "#7aab82" }}>Loading drafts…</div>
+    );
+  }
+
+  if (drafts.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: "60px 0" }}>
+        <FileText style={{ width: 36, height: 36, color: "#2a4030", margin: "0 auto 12px" }} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: "#4a7052" }}>No draft movements</p>
+        <p style={{ fontSize: 12, color: "#2a4030", marginTop: 4 }}>Saved drafts will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <style>{DRAFT_PULSE_CSS}</style>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {drafts.map(draft => {
+          const draftItems: any[] = (() => { try { return JSON.parse(draft.itemsJson || "[]"); } catch { return []; } })();
+          const previewItems = draftItems.slice(0, 2);
+          const extraCount = draftItems.length - 2;
+          const fromName = draft.sourceLocation?.name;
+          const toName = draft.destinationLocation?.name;
+          const projectName = draft.project?.name;
+
+          return (
+            <div
+              key={draft.id}
+              data-testid={`draft-card-${draft.id}`}
+              style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}
+            >
+              {/* Top accent */}
+              <div style={{ height: 2, background: "linear-gradient(90deg, #f5a623, rgba(245,166,35,0.3))" }} />
+
+              <div style={{ padding: "14px 16px" }}>
+                {/* Row 1: type + status badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                  <DraftTypeBadge type={draft.movementType} />
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,166,35,0.10)", border: "1px solid rgba(245,166,35,0.25)", borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", padding: "2px 7px", color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    <span className="draft-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#f5a623", flexShrink: 0, display: "inline-block" }} />
+                    Draft
+                  </span>
+                  <span style={{ fontSize: 10, color: "#4a7052", marginLeft: "auto", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
+                    Inventory not affected
+                  </span>
+                </div>
+
+                {/* Row 2: Route */}
+                {(fromName || toName) && (
+                  <div style={{ fontSize: 12, color: "#e2f0e5", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ color: "#7aab82" }}>{fromName || "—"}</span>
+                    <span style={{ color: "#4a7052" }}>→</span>
+                    <span style={{ color: "#e2f0e5" }}>{toName || "—"}</span>
+                    {projectName && (
+                      <span style={{ marginLeft: 4, fontSize: 10, color: "#5b9cf6", background: "rgba(91,156,246,0.08)", border: "1px solid rgba(91,156,246,0.18)", borderRadius: 4, padding: "1px 6px" }}>
+                        {projectName}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Row 3: Item pills */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                  {previewItems.map((di: any, idx: number) => (
+                    <span key={idx} style={{ fontSize: 10, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 5, padding: "3px 8px", color: "#c8deca", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {di.itemName || `Item #${di.itemId}`} · <strong style={{ color: "#2ddb6f" }}>{di.qty}</strong>{di.unit ? ` ${di.unit}` : ""}
+                    </span>
+                  ))}
+                  {extraCount > 0 && (
+                    <span style={{ fontSize: 10, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 5, padding: "3px 8px", color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      +{extraCount} more
+                    </span>
+                  )}
+                  {draftItems.length === 0 && (
+                    <span style={{ fontSize: 10, color: "#4a7052" }}>No items</span>
+                  )}
+                </div>
+
+                {/* Row 4: Saved by + time */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                  <Clock style={{ width: 11, height: 11, color: "#4a7052" }} />
+                  <span style={{ fontSize: 10, color: "#4a7052" }}>
+                    {draft.savedByName ? `${draft.savedByName} · ` : ""}
+                    {draft.savedAt ? format(new Date(draft.savedAt), "MMM d, yyyy HH:mm") : "—"}
+                  </span>
+                </div>
+
+                {/* Row 5: Action buttons */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    data-testid={`button-resume-draft-${draft.id}`}
+                    onClick={() => navigate(`/field/movement?type=${draft.movementType === "receive" || draft.movementType === "return" ? "receive" : "issue"}&draftId=${draft.id}`)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#7aab82"; (e.currentTarget as HTMLElement).style.color = "#e2f0e5"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#2a4030"; (e.currentTarget as HTMLElement).style.color = "#7aab82"; }}
+                  >
+                    <RotateCcw style={{ width: 12, height: 12 }} />
+                    Resume
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`button-confirm-draft-${draft.id}`}
+                    onClick={() => setConfirmingDraft(draft)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.25)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#2ddb6f", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(45,219,111,0.18)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(45,219,111,0.10)"; }}
+                  >
+                    <Check style={{ width: 12, height: 12 }} />
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`button-delete-draft-${draft.id}`}
+                    onClick={() => setDeletingId(draft.id)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#ff5050", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,80,80,0.15)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,80,80,0.08)"; }}
+                  >
+                    <Trash2 style={{ width: 12, height: 12 }} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Confirm Draft Modal */}
+      <Dialog open={!!confirmingDraft} onOpenChange={open => { if (!open) setConfirmingDraft(null); }}>
+        <DialogContent style={{ background: "#0f1612", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 480 }} className="max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700 }}>
+              Confirm & Apply to Inventory
+            </DialogTitle>
+          </DialogHeader>
+          {confirmingDraft && (() => {
+            const draftItems: any[] = (() => { try { return JSON.parse(confirmingDraft.itemsJson || "[]"); } catch { return []; } })();
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
+                {/* Summary */}
+                <div style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 9, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <DraftTypeBadge type={confirmingDraft.movementType} />
+                    <span style={{ fontSize: 12, color: "#7aab82" }}>
+                      {confirmingDraft.sourceLocation?.name && confirmingDraft.destinationLocation?.name
+                        ? `${confirmingDraft.sourceLocation.name} → ${confirmingDraft.destinationLocation.name}`
+                        : confirmingDraft.sourceLocation?.name || confirmingDraft.destinationLocation?.name || ""}
+                    </span>
+                  </div>
+                  {confirmingDraft.project?.name && (
+                    <span style={{ fontSize: 11, color: "#5b9cf6" }}>Project: {confirmingDraft.project.name}</span>
+                  )}
+                  {confirmingDraft.note && (
+                    <span style={{ fontSize: 11, color: "#7aab82" }}>Note: {confirmingDraft.note}</span>
+                  )}
+                </div>
+
+                {/* Items list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
+                  {draftItems.map((di: any, idx: number) => (
+                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "8px 12px" }}>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#e2f0e5" }}>{di.itemName || `Item #${di.itemId}`}</span>
+                        {di.sku && <span style={{ fontSize: 10, color: "#4a7052", marginLeft: 6 }}>{di.sku}</span>}
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#2ddb6f", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                        {di.qty} <span style={{ fontSize: 10, color: "#7aab82" }}>{di.unit}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Warning */}
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "rgba(255,80,80,0.07)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "10px 12px" }}>
+                  <AlertTriangle style={{ width: 14, height: 14, color: "#ff5050", flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ fontSize: 11, color: "#ff5050", lineHeight: 1.5 }}>
+                    This will update inventory immediately and cannot be undone.
+                  </p>
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDraft(null)}
+                    style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={confirmLoading}
+                    data-testid="button-execute-confirm-draft"
+                    style={{ background: "#2ddb6f", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#07090a", cursor: confirmLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: confirmLoading ? 0.7 : 1 }}
+                  >
+                    {confirmLoading ? "Applying…" : "Confirm & Apply to Inventory"}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Draft Confirm */}
+      <Dialog open={!!deletingId} onOpenChange={open => { if (!open) setDeletingId(null); }}>
+        <DialogContent style={{ background: "#0f1612", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 380 }} className="max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
+              <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
+              Delete Draft?
+            </DialogTitle>
+          </DialogHeader>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
+            <p style={{ fontSize: 13, color: "#7aab82", lineHeight: 1.5 }}>
+              This draft will be permanently deleted. No inventory changes will be made.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setDeletingId(null)}
+                style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deletingId && handleDelete(deletingId)}
+                disabled={deleteLoading}
+                data-testid="button-execute-delete-draft"
+                style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: deleteLoading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: deleteLoading ? 0.7 : 1 }}
+              >
+                {deleteLoading ? "Deleting…" : "Delete Draft"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FieldTransactions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const canDelete = user?.role === "staff" || user?.role === "admin";
+  const urlSearch = useSearch();
+  const urlSearchParams = new URLSearchParams(urlSearch);
+  const [activeTab, setActiveTab] = useState<"history" | "drafts">(
+    urlSearchParams.get("tab") === "drafts" ? "drafts" : "history"
+  );
 
   const [search, setSearch]       = useState("");
   const [fromFilter, setFrom]     = useState("all");
@@ -298,6 +631,33 @@ export default function FieldTransactions() {
           {selectMode ? `${selectedIds.size} selected` : "View transaction history."}
         </p>
       </div>
+
+      {/* ── Tab Switcher ── */}
+      <div style={{ display: "flex", gap: 2, background: "#0d1410", border: "1px solid #2a4030", borderRadius: 10, padding: 3, width: "fit-content" }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          data-testid="tab-history"
+          style={{ background: activeTab === "history" ? "#1c2b1f" : "transparent", border: activeTab === "history" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? "#e2f0e5" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
+        >
+          Transaction History
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("drafts")}
+          data-testid="tab-drafts"
+          style={{ background: activeTab === "drafts" ? "#1c2b1f" : "transparent", border: activeTab === "drafts" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? "#f5a623" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+        >
+          <FileText style={{ width: 12, height: 12 }} />
+          Draft Movements
+        </button>
+      </div>
+
+      {/* ── Drafts Tab Content ── */}
+      {activeTab === "drafts" && <DraftMovementsList />}
+
+      {/* ── History Tab Content ── */}
+      {activeTab === "history" && <>
 
       {/* ── Filter Bar ── */}
       <div style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 12, padding: "14px 16px" }}>
@@ -682,6 +1042,8 @@ export default function FieldTransactions() {
           )}
         </div>
       </div>
+
+      </>}
 
       {/* Confirm delete dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

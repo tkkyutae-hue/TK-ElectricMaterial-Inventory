@@ -1,0 +1,74 @@
+Change the Save button behavior on both the Issue/Transfer and Receive/Return pages. Keep ALL existing Confirm logic completely unchanged. Only modify the Save button and add draft storage.
+
+════════════════════════════════════════
+1. SAVE BUTTON → "Save as Draft"
+════════════════════════════════════════
+- Rename the Save button to "Save as Draft"
+- Clicking it does NOT create a transaction
+- Clicking it does NOT update or deduct any inventory quantities
+- It only saves the current form state as a draft record
+
+════════════════════════════════════════
+2. DRAFT DATA TO SAVE
+════════════════════════════════════════
+Save the following fields to the database (drafts table or equivalent):
+
+- movement_type (Issue / Return / Transfer / Receive)
+- issue_to OR receive_from (destination or source)
+- sending_location OR receiving_location
+- project (nullable)
+- items: array of objects:
+    { item_id, item_name, sku, qty, unit, reel_ids[] (if reel-based) }
+- note (nullable)
+- saved_by: current user ID and display name
+- saved_at: current timestamp
+- status: "draft"
+
+════════════════════════════════════════
+3. AFTER SAVING DRAFT
+════════════════════════════════════════
+- Show a toast notification at bottom center:
+  · Message: "Draft saved — view in Transactions > Draft Movements"
+  · Include a link that navigates directly to the Drafts tab
+  · Auto-dismiss after 4 seconds
+
+════════════════════════════════════════
+4. DRAFT MOVEMENTS PAGE
+════════════════════════════════════════
+Add a "Draft Movements" section accessible from TWO places:
+  A) Transactions page → add a "Draft Movements" tab next to the history tab
+  B) Field Mode home (Field Actions page) → add a "Drafts" card or link
+
+Each draft entry in the list should show:
+- Movement type badge (Issue / Receive / Transfer)
+- Route: From → To
+- Project name (if any)
+- Item count and preview (first 2 items as pills, "+X more" if more)
+- Saved by + saved time
+- Status badge: "Draft" (amber, pulsing dot)
+- Note: "Inventory not affected"
+
+Three action buttons per draft:
+- "Resume" → reopens the form pre-filled with all saved draft data, user can edit and re-confirm
+- "Confirm" → shows a confirmation modal summarizing all items and quantities, then on confirm: creates the real transaction, deducts inventory, removes draft
+- "Delete" → deletes the draft after a confirmation prompt (no inventory effect)
+
+════════════════════════════════════════
+5. CONFIRM MODAL (when confirming a draft)
+════════════════════════════════════════
+Before executing, show a modal with:
+- Summary of movement type, route, project
+- List of all items with quantities to be deducted
+- Warning: "This will update inventory immediately and cannot be undone."
+- Buttons: Cancel | Confirm & Apply to Inventory
+
+On confirm:
+- Create the transaction record
+- Apply inventory changes
+- Mark draft status as "confirmed" (or delete from drafts)
+- Redirect to transaction history
+
+════════════════════════════════════════
+6. CONFIRM BUTTON: UNCHANGED
+════════════════════════════════════════
+The existing Confirm button behavior stays exactly the same — it still creates a real transaction and updates inventory immediately.

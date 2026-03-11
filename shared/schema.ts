@@ -207,6 +207,22 @@ export const wireReels = pgTable("wire_reels", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ─── Movement Drafts ──────────────────────────────────────────────────────────
+// Stores unsaved movement form state for later confirmation
+export const movementDrafts = pgTable("movement_drafts", {
+  id: serial("id").primaryKey(),
+  movementType: text("movement_type").notNull(),
+  sourceLocationId: integer("source_location_id").references(() => locations.id),
+  destinationLocationId: integer("destination_location_id").references(() => locations.id),
+  projectId: integer("project_id").references(() => projects.id),
+  itemsJson: text("items_json").notNull().default("[]"),
+  note: text("note"),
+  savedBy: text("saved_by").references(() => users.id),
+  savedByName: text("saved_by_name"),
+  status: text("status").notNull().default("draft"),
+  savedAt: timestamp("saved_at").defaultNow(),
+});
+
 // ─── Zod Insert Schemas ───────────────────────────────────────────────────────
 
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true, updatedAt: true });
@@ -318,4 +334,21 @@ export type CategoryGroupedDetail = {
   lowStockCount: number;
   outOfStockCount: number;
   groups: CategoryItemGroup[];
+};
+
+export type MovementDraft = typeof movementDrafts.$inferSelect;
+export type MovementDraftWithRelations = MovementDraft & {
+  sourceLocation?: Location | null;
+  destinationLocation?: Location | null;
+  project?: Project | null;
+};
+
+export type DraftItem = {
+  itemId: number;
+  itemName: string;
+  sku: string;
+  qty: number;
+  unit: string;
+  reelIds?: number[];
+  reelSelections?: Record<string, number>;
 };

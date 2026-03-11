@@ -4,7 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
-  wireReels,
+  wireReels, movementDrafts,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
@@ -15,7 +15,8 @@ import {
   type CreateInventoryMovementRequest,
   type CreatePurchaseRecommendationRequest,
   type ItemWithRelations, type InventoryMovementWithRelations,
-  type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations
+  type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations,
+  type MovementDraft, type MovementDraftWithRelations,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -94,6 +95,12 @@ export interface IStorage {
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
   updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel>;
   deleteWireReel(id: number): Promise<void>;
+
+  getDrafts(): Promise<MovementDraftWithRelations[]>;
+  getDraft(id: number): Promise<MovementDraftWithRelations | undefined>;
+  createDraft(data: { movementType: string; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; itemsJson: string; note?: string | null; savedBy?: string | null; savedByName?: string | null }): Promise<MovementDraft>;
+  deleteDraft(id: number): Promise<void>;
+  confirmDraft(id: number, performedBy: string | null): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1500,6 +1507,111 @@ export class DatabaseStorage implements IStorage {
   async deleteWireReel(id: number): Promise<void> {
     const [reel] = await db.update(wireReels).set({ isActive: false, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
     if (reel) await this.syncItemQtyFromReels(reel.itemId);
+  }
+
+  // ─── Movement Drafts ─────────────────────────────────────────────────────────
+
+  async getDrafts(): Promise<MovementDraftWithRelations[]> {
+    const srcLoc = alias(locations, "src_loc");
+    const dstLoc = alias(locations, "dst_loc");
+    const rows = await db
+      .select()
+      .from(movementDrafts)
+      .leftJoin(srcLoc, eq(movementDrafts.sourceLocationId, srcLoc.id))
+      .leftJoin(dstLoc, eq(movementDrafts.destinationLocationId, dstLoc.id))
+      .leftJoin(projects, eq(movementDrafts.projectId, projects.id))
+      .where(eq(movementDrafts.status, "draft"))
+      .orderBy(desc(movementDrafts.savedAt));
+    return rows.map(r => ({
+      ...r.movement_drafts,
+      sourceLocation: (r as any).src_loc ?? null,
+      destinationLocation: (r as any).dst_loc ?? null,
+      project: r.projects ?? null,
+    }));
+  }
+
+  async getDraft(id: number): Promise<MovementDraftWithRelations | undefined> {
+    const srcLoc = alias(locations, "src_loc");
+    const dstLoc = alias(locations, "dst_loc");
+    const rows = await db
+      .select()
+      .from(movementDrafts)
+      .leftJoin(srcLoc, eq(movementDrafts.sourceLocationId, srcLoc.id))
+      .leftJoin(dstLoc, eq(movementDrafts.destinationLocationId, dstLoc.id))
+      .leftJoin(projects, eq(movementDrafts.projectId, projects.id))
+      .where(eq(movementDrafts.id, id))
+      .limit(1);
+    if (!rows[0]) return undefined;
+    const r = rows[0];
+    return {
+      ...r.movement_drafts,
+      sourceLocation: (r as any).src_loc ?? null,
+      destinationLocation: (r as any).dst_loc ?? null,
+      project: r.projects ?? null,
+    };
+  }
+
+  async createDraft(data: { movementType: string; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; itemsJson: string; note?: string | null; savedBy?: string | null; savedByName?: string | null }): Promise<MovementDraft> {
+    const [draft] = await db.insert(movementDrafts).values({ ...data, status: "draft", savedAt: new Date() }).returning();
+    return draft;
+  }
+
+  async deleteDraft(id: number): Promise<void> {
+    await db.delete(movementDrafts).where(eq(movementDrafts.id, id));
+  }
+
+  async confirmDraft(id: number, performedBy: string | null): Promise<void> {
+    const draft = await this.getDraft(id);
+    if (!draft) throw new Error("Draft not found");
+
+    const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number> }> = JSON.parse(draft.itemsJson || "[]");
+
+    for (const di of draftItems) {
+      const item = await this.getItem(di.itemId);
+      if (!item) continue;
+
+      const qty = di.qty;
+      const movementType = draft.movementType;
+      let newQty = item.quantityOnHand;
+
+      if (movementType === "receive" || movementType === "return") newQty += qty;
+      else if (movementType === "issue") newQty = Math.max(0, newQty - qty);
+      else if (movementType === "adjust") newQty = qty;
+
+      await this.createInventoryMovement({
+        itemId: item.id,
+        movementType,
+        quantity: qty,
+        previousQuantity: item.quantityOnHand,
+        newQuantity: newQty,
+        sourceLocationId: draft.sourceLocationId ?? null,
+        destinationLocationId: draft.destinationLocationId ?? null,
+        projectId: draft.projectId ?? null,
+        unitCostSnapshot: item.unitCost,
+        note: draft.note ?? null,
+        reason: null,
+        referenceType: "draft",
+        referenceId: String(id),
+        createdBy: performedBy,
+      });
+
+      if (di.reelSelections) {
+        for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
+          if (!ftUsed) continue;
+          const reelId = Number(reelIdStr);
+          const [reelRow] = await db.select().from(wireReels).where(eq(wireReels.id, reelId)).limit(1);
+          if (!reelRow) continue;
+          const newLength = reelRow.lengthFt - ftUsed;
+          if (newLength <= 0) {
+            await this.deleteWireReel(reelId);
+          } else {
+            await this.updateWireReel(reelId, { lengthFt: newLength, status: "used" });
+          }
+        }
+      }
+    }
+
+    await db.delete(movementDrafts).where(eq(movementDrafts.id, id));
   }
 }
 

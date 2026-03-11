@@ -840,9 +840,10 @@ interface MovementFormProps {
   readOnly?: boolean;
   allowedTypes?: string[];
   fieldMode?: boolean;
+  draftId?: number;
 }
 
-export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false }: MovementFormProps) {
+export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false, draftId }: MovementFormProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
@@ -850,12 +851,18 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
   const [submitting, setSubmitting] = useState(false);
-  const saveOnlyRef = useRef(false);
+  const [draftSaving, setDraftSaving] = useState(false);
 
   const initialRow = makeRow();
   if (defaultItemId) initialRow.itemId = defaultItemId;
 
   const [itemRows, setItemRows] = useState<ItemRow[]>([initialRow]);
+  const [resumingDraftId, setResumingDraftId] = useState<number | undefined>(draftId);
+
+  const { data: draftData } = useQuery<any>({
+    queryKey: ["/api/drafts", draftId],
+    enabled: !!draftId,
+  });
 
   const form = useForm<SharedData>({
     resolver: zodResolver(sharedSchema),
@@ -863,6 +870,28 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       movementType: defaultType,
     },
   });
+
+  useEffect(() => {
+    if (!draftData || !items) return;
+    form.setValue("movementType", draftData.movementType);
+    if (draftData.sourceLocationId) form.setValue("sourceLocationId", draftData.sourceLocationId);
+    if (draftData.destinationLocationId) form.setValue("destinationLocationId", draftData.destinationLocationId);
+    if (draftData.projectId) form.setValue("projectId", draftData.projectId);
+    if (draftData.note) form.setValue("note", draftData.note);
+    try {
+      const draftItems = JSON.parse(draftData.itemsJson || "[]");
+      if (Array.isArray(draftItems) && draftItems.length > 0) {
+        setItemRows(draftItems.map((di: any) => ({
+          rowId: crypto.randomUUID(),
+          itemId: di.itemId,
+          quantity: di.qty,
+          errors: {},
+          reelSelections: di.reelSelections ? Object.fromEntries(Object.entries(di.reelSelections).map(([k, v]) => [Number(k), v as number])) : {},
+          reelSnapshots: {},
+        })));
+      }
+    } catch (_) {}
+  }, [draftData, items]);
 
   const movType = form.watch("movementType");
 
@@ -893,6 +922,77 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       return { ...r, errors };
     }));
     return valid;
+  }
+
+  async function onSaveDraft() {
+    const shared = form.getValues();
+    if (!shared.movementType) {
+      form.setError("movementType", { message: "Movement type is required" });
+      return;
+    }
+    const validRows = itemRows.filter(r => r.itemId && r.quantity >= 1);
+    if (validRows.length === 0) {
+      toast({ title: "Add at least one item before saving", variant: "destructive" });
+      return;
+    }
+
+    setDraftSaving(true);
+    try {
+      const itemsList = validRows.map(row => {
+        const item = items?.find(i => i.id === row.itemId);
+        return {
+          itemId: row.itemId,
+          itemName: item?.name ?? "",
+          sku: item?.sku ?? "",
+          qty: row.quantity,
+          unit: item?.unitOfMeasure ?? "",
+          reelIds: Object.entries(row.reelSelections ?? {}).filter(([, v]) => v > 0).map(([k]) => Number(k)),
+          reelSelections: row.reelSelections ?? {},
+        };
+      });
+
+      const res = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          movementType: shared.movementType,
+          sourceLocationId: shared.sourceLocationId || null,
+          destinationLocationId: shared.destinationLocationId || null,
+          projectId: shared.projectId || null,
+          note: shared.note || null,
+          itemsJson: JSON.stringify(itemsList),
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.message || "Failed to save draft");
+      }
+
+      await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
+
+      const txPath = fieldMode ? "/field/transactions?tab=drafts" : "/transactions?tab=drafts";
+      const { dismiss } = toast({
+        title: "Draft saved",
+        description: (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span>Draft saved — view in Transactions &gt; Draft Movements</span>
+            <button
+              type="button"
+              style={{ textAlign: "left", textDecoration: "underline", fontSize: 12, background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit" }}
+              onClick={() => { navigate(txPath); dismiss(); }}
+            >
+              View Draft Movements →
+            </button>
+          </div>
+        ) as any,
+        duration: 4000,
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to save draft", description: err.message, variant: "destructive" });
+    } finally {
+      setDraftSaving(false);
+    }
   }
 
   async function onSubmit(shared: SharedData) {
@@ -1000,13 +1100,17 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       });
       dismissRef.fn = dismiss;
 
-      setItemRows([makeRow()]);
-      if (saveOnlyRef.current) {
-        saveOnlyRef.current = false;
-      } else {
-        form.reset({ movementType: shared.movementType });
-        onSuccess?.();
+      if (resumingDraftId) {
+        try {
+          await fetch(`/api/drafts/${resumingDraftId}`, { method: "DELETE", credentials: "include" });
+          await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
+          setResumingDraftId(undefined);
+        } catch (_) {}
       }
+
+      setItemRows([makeRow()]);
+      form.reset({ movementType: shared.movementType });
+      onSuccess?.();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -1314,17 +1418,14 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               <>
                 <Button
                   type="button"
-                  disabled={submitting}
+                  disabled={draftSaving || submitting}
                   variant={fieldMode ? undefined : "outline"}
-                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px", minWidth: 72 } : undefined}
-                  className={fieldMode ? undefined : "min-w-[80px]"}
-                  data-testid="button-save-movement"
-                  onClick={() => {
-                    saveOnlyRef.current = true;
-                    form.handleSubmit(onSubmit)();
-                  }}
+                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px", minWidth: 110 } : undefined}
+                  className={fieldMode ? undefined : "min-w-[110px]"}
+                  data-testid="button-save-draft"
+                  onClick={onSaveDraft}
                 >
-                  {submitting && saveOnlyRef.current ? "Saving…" : "Save"}
+                  {draftSaving ? "Saving…" : "Save as Draft"}
                 </Button>
                 <Button
                   type="submit"

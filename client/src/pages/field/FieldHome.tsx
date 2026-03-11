@@ -77,6 +77,20 @@ const CARDS: CardDef[] = [
     },
     route: "/field/transactions",
   },
+  {
+    testId: "tile-drafts",
+    emoji: "📝",
+    emojiBg: "rgba(245,166,35,0.10)",
+    accentColor: "#f5a623",
+    title: "Draft Movements",
+    tags: ["SAVED", "PENDING"],
+    tagStyle: {
+      background: "rgba(245,166,35,0.08)",
+      border: "1px solid rgba(245,166,35,0.18)",
+      color: "#f5a623",
+    },
+    route: "/field/transactions?tab=drafts",
+  },
 ];
 
 function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick }: CardDef & { onClick: () => void }) {

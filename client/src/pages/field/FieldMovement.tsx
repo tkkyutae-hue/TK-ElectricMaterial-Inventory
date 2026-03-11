@@ -19,6 +19,7 @@ export default function FieldMovement() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const presetType = params.get("type") ?? "receive";
+  const draftId = params.get("draftId") ? Number(params.get("draftId")) : undefined;
   const { user } = useAuth();
   const isViewer = user?.role === "viewer";
 
@@ -36,22 +37,28 @@ export default function FieldMovement() {
           letterSpacing: 0.3,
         }}>
           {config.emoji} {config.heading}
+          {draftId && (
+            <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 600, color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
+              — RESUMING DRAFT
+            </span>
+          )}
         </h1>
         <p style={{
           fontSize: 11, color: "#2ddb6f", margin: 0,
           fontFamily: "'Barlow Condensed', sans-serif",
           letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
         }}>
-          Log Movement
+          {draftId ? "Edit & Confirm Draft" : "Log Movement"}
         </p>
       </div>
 
       <MovementForm
-        key={presetType}
+        key={draftId ? `draft-${draftId}` : presetType}
         defaultType={presetType}
         allowedTypes={config.allowedTypes}
         fieldMode
         readOnly={isViewer}
+        draftId={draftId}
       />
     </div>
   );

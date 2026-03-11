@@ -1058,10 +1058,35 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/wire-reels/${id}`),
-    onSuccess: () => {
+    mutationFn: (reel: WireReelLocal) => apiRequest("DELETE", `/api/wire-reels/${reel.id}`),
+    onSuccess: (_data, deletedReel) => {
       invalidateReelData();
-      toast({ title: "Reel removed" });
+      const dismissRef = { fn: () => {} };
+      const { dismiss } = toast({
+        title: "Reel removed",
+        description: (
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-sm text-muted-foreground">{deletedReel.reelId} · {deletedReel.lengthFt.toLocaleString()} FT</span>
+            <button
+              type="button"
+              className="text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+              onClick={async () => {
+                dismissRef.fn();
+                try {
+                  await apiRequest("POST", `/api/wire-reels/${deletedReel.id}/restore`);
+                  invalidateReelData();
+                  toast({ title: "Undo successful", description: `${deletedReel.reelId} restored.` });
+                } catch (err: any) {
+                  toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        ),
+      });
+      dismissRef.fn = dismiss;
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -1287,7 +1312,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
                               <Pencil className="w-3 h-3" />
                             </button>
                             <button
-                              onClick={() => deleteMutation.mutate(reel.id)}
+                              onClick={() => deleteMutation.mutate(reel)}
                               disabled={deleteMutation.isPending}
                               className="text-slate-300 hover:text-red-500 transition-colors"
                               title="Remove reel"

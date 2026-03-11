@@ -23,6 +23,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { api } from "@shared/routes";
 import { MovementForm } from "@/components/MovementForm";
 
 const editSchema = z.object({
@@ -316,7 +317,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
     mutationFn: (imageUrl: string | null) =>
       apiRequest("PATCH", `/api/inventory/${itemId}/image`, { imageUrl }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/items", itemId] });
+      qc.invalidateQueries({ queryKey: [api.items.get.path, itemId] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
       toast({ title: "Image updated" });
@@ -643,7 +644,7 @@ function WireReelInlineInner(
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
-    qc.invalidateQueries({ queryKey: ["/api/items", item.id] });
+    qc.invalidateQueries({ queryKey: [api.items.get.path, item.id] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
   };
@@ -669,10 +670,35 @@ function WireReelInlineInner(
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (reelId: number) => apiRequest("DELETE", `/api/wire-reels/${reelId}`),
-    onSuccess: () => {
+    mutationFn: (reel: WireReelLocal) => apiRequest("DELETE", `/api/wire-reels/${reel.id}`),
+    onSuccess: (_data, deletedReel) => {
       invalidateAll();
-      toast({ title: "Reel removed" });
+      const dismissRef = { fn: () => {} };
+      const { dismiss } = toast({
+        title: "Reel removed",
+        description: (
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-sm text-muted-foreground">{deletedReel.reelId} · {deletedReel.lengthFt.toLocaleString()} FT</span>
+            <button
+              type="button"
+              className="text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+              onClick={async () => {
+                dismissRef.fn();
+                try {
+                  await apiRequest("POST", `/api/wire-reels/${deletedReel.id}/restore`);
+                  invalidateAll();
+                  toast({ title: "Undo successful", description: `${deletedReel.reelId} restored.` });
+                } catch (err: any) {
+                  toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        ),
+      });
+      dismissRef.fn = dismiss;
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -929,7 +955,7 @@ function WireReelInlineInner(
                           </td>
                           <td className="px-3 py-1.5">
                             <button
-                              onClick={() => deleteMutation.mutate(reel.id)}
+                              onClick={() => deleteMutation.mutate(reel)}
                               disabled={deleteMutation.isPending}
                               style={{ color: "#527856" }}
                               onMouseEnter={e => (e.currentTarget.style.color = "#ff5050")}

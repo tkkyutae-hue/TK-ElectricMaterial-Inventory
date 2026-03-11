@@ -970,6 +970,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/wire-reels/:id/restore", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
+      const reel = await storage.restoreWireReel(id);
+      res.json(reel);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.delete("/api/wire-reels/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

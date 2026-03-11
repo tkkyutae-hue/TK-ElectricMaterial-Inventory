@@ -96,6 +96,7 @@ export interface IStorage {
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
   updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel>;
   deleteWireReel(id: number): Promise<void>;
+  restoreWireReel(id: number): Promise<WireReel>;
 
   getDrafts(): Promise<MovementDraftWithRelations[]>;
   getDraft(id: number): Promise<MovementDraftWithRelations | undefined>;
@@ -1570,6 +1571,13 @@ export class DatabaseStorage implements IStorage {
   async deleteWireReel(id: number): Promise<void> {
     const [reel] = await db.update(wireReels).set({ isActive: false, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
     if (reel) await this.syncItemQtyFromReels(reel.itemId);
+  }
+
+  async restoreWireReel(id: number): Promise<WireReel> {
+    const [reel] = await db.update(wireReels).set({ isActive: true, updatedAt: new Date() }).where(eq(wireReels.id, id)).returning();
+    if (!reel) throw new Error("Wire reel not found");
+    await this.syncItemQtyFromReels(reel.itemId);
+    return reel;
   }
 
   // ─── Movement Drafts ─────────────────────────────────────────────────────────

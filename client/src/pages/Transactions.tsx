@@ -38,6 +38,11 @@ export default function Transactions() {
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Pagination
+  const [pageSize, setPageSize]         = useState(10);
+  const [currentPage, setCurrentPage]   = useState(1);
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
+
   const { toast: shadcnToast } = useToast();
   const bulkDelete = useBulkDeleteMovements();
 
@@ -60,6 +65,10 @@ export default function Transactions() {
   const filteredIds = useMemo(() => (filtered ?? []).map((tx: any) => tx.id as number), [filtered]);
   const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
   const selCount = selectedIds.size;
+
+  const totalPages = Math.max(1, Math.ceil((filtered?.length ?? 0) / pageSize));
+  const safePage   = Math.min(Math.max(1, currentPage), totalPages);
+  const paginated  = (filtered ?? []).slice((safePage - 1) * pageSize, safePage * pageSize);
 
   function toggleRow(id: number) {
     setSelectedIds(prev => {
@@ -278,7 +287,7 @@ export default function Transactions() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered?.map((tx: any) => {
+                paginated.map((tx: any) => {
                   const isSelected = selectedIds.has(tx.id);
                   const isEdited = !!tx.editedAt;
                   const lastEditor = isEdited ? (tx.editHistory as any[])?.[((tx.editHistory as any[])?.length ?? 1) - 1] : null;
@@ -397,92 +406,155 @@ export default function Transactions() {
           </Table>
         </div>
 
-        {/* ── Persistent action bar ── */}
+        {/* ── Footer: showing count · pagination · action buttons ── */}
         <div
           data-testid="tx-action-bar"
-          className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-3"
-          style={{ minHeight: 46 }}
+          className="border-t border-slate-100 bg-slate-50/60"
+          style={{ padding: "8px 16px", display: "flex", alignItems: "center", minHeight: 46, fontFamily: "inherit" }}
         >
-          {/* Status text */}
-          <span
-            className="text-xs"
-            style={{ color: selCount === 0 ? "#94a3b8" : "#475569", fontWeight: 500 }}
-            data-testid="tx-selection-status"
-          >
-            {selCount === 0
-              ? "Select rows to edit or delete"
-              : selCount === 1
-                ? "1 record selected"
-                : `${selCount} records selected`}
+          {/* Left: showing count */}
+          <span className="text-xs text-slate-400" style={{ flex: 1 }}>
+            Showing{" "}
+            <strong className="text-slate-700">
+              {(filtered?.length ?? 0) === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered?.length ?? 0)}
+            </strong>
+            {" "}of{" "}
+            <strong className="text-slate-700">{filtered?.length ?? 0}</strong>
           </span>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            {/* Edit */}
+          {/* Center: page-size dropdown + pagination */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Compact page-size button */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setPageSizeOpen(o => !o)}
+                data-testid="btn-page-size-toggle"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 9px", borderRadius: 7,
+                  background: pageSizeOpen ? "rgba(22,163,74,0.08)" : "white",
+                  border: `1px solid ${pageSizeOpen ? "rgba(22,163,74,0.30)" : "#e2e8f0"}`,
+                  color: pageSizeOpen ? "#16a34a" : "#64748b",
+                  fontSize: 11, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.6 }}>
+                  <rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                </svg>
+                {pageSize}
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.5 }}>
+                  <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {pageSizeOpen && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                  background: "white", border: "1px solid #e2e8f0", borderRadius: 9,
+                  padding: "4px", zIndex: 50,
+                  display: "flex", flexDirection: "column", gap: 2, minWidth: 72,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                }}>
+                  {[10, 15, 25, 35, 45].map(n => {
+                    const active = pageSize === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
+                        data-testid={`btn-page-size-${n}`}
+                        style={{
+                          padding: "6px 10px", borderRadius: 6, textAlign: "center",
+                          background: active ? "rgba(22,163,74,0.08)" : "transparent",
+                          border: `1px solid ${active ? "rgba(22,163,74,0.28)" : "transparent"}`,
+                          color: active ? "#16a34a" : "#475569",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        }}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Prev / page indicator / Next */}
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              data-testid="btn-page-prev"
+              style={{ padding: "4px 10px", borderRadius: 7, background: "white", border: "1px solid #e2e8f0", color: safePage <= 1 ? "#cbd5e1" : "#64748b", fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer" }}
+            >‹</button>
+            <span style={{ fontSize: 11, color: "#64748b", minWidth: 52, textAlign: "center" }}>
+              {safePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              data-testid="btn-page-next"
+              style={{ padding: "4px 10px", borderRadius: 7, background: "white", border: "1px solid #e2e8f0", color: safePage >= totalPages ? "#cbd5e1" : "#64748b", fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer" }}
+            >›</button>
+          </div>
+
+          {/* Right: action buttons (always present; dimmed when nothing selected) */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+            {selCount > 0 && (
+              <span className="text-xs text-slate-400" style={{ marginRight: 2 }}>
+                {selCount} selected
+              </span>
+            )}
             <button
               type="button"
               data-testid="btn-tx-edit"
               onClick={() => canEdit && selectedTx && setEditTx(selectedTx)}
               style={{
-                padding: "7px 14px", borderRadius: 8,
-                background: "rgba(22,163,74,0.08)",
-                border: "1px solid rgba(22,163,74,0.22)",
-                color: "#16a34a",
-                fontSize: 10.5, fontWeight: 700, letterSpacing: 0.2,
-                cursor: canEdit ? "pointer" : "not-allowed",
-                opacity: canEdit ? 1 : 0.35,
-                pointerEvents: canEdit ? "auto" : "none",
-                display: "inline-flex", alignItems: "center", gap: 5,
-                boxShadow: canEdit ? "0 0 8px rgba(22,163,74,0.15)" : "none",
-                transition: "all 0.15s",
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 11px", borderRadius: 7,
+                background: canEdit ? "rgba(22,163,74,0.08)" : "white",
+                border: `1px solid ${canEdit ? "rgba(22,163,74,0.25)" : "#e2e8f0"}`,
+                color: canEdit ? "#16a34a" : "#cbd5e1",
+                fontSize: 11, fontWeight: 700,
+                cursor: canEdit ? "pointer" : "default",
               }}
             >
-              <Edit2 style={{ width: 11, height: 11 }} />
-              Edit
+              <Edit2 style={{ width: 10, height: 10 }} /> Edit
             </button>
-
-            {/* Delete */}
             <button
               type="button"
               data-testid="btn-tx-delete"
               onClick={() => canDelete && setConfirmDelete(true)}
               style={{
-                padding: "7px 14px", borderRadius: 8,
-                background: "rgba(220,38,38,0.07)",
-                border: "1px solid rgba(220,38,38,0.20)",
-                color: "#dc2626",
-                fontSize: 10.5, fontWeight: 700,
-                cursor: canDelete ? "pointer" : "not-allowed",
-                opacity: canDelete ? 1 : 0.35,
-                pointerEvents: canDelete ? "auto" : "none",
-                display: "inline-flex", alignItems: "center", gap: 5,
-                transition: "all 0.15s",
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 11px", borderRadius: 7,
+                background: canDelete ? "rgba(220,38,38,0.07)" : "white",
+                border: `1px solid ${canDelete ? "rgba(220,38,38,0.22)" : "#e2e8f0"}`,
+                color: canDelete ? "#dc2626" : "#cbd5e1",
+                fontSize: 11, fontWeight: 700,
+                cursor: canDelete ? "pointer" : "default",
               }}
             >
-              <Trash2 style={{ width: 11, height: 11 }} />
-              Delete
+              <Trash2 style={{ width: 10, height: 10 }} /> Delete
             </button>
-
-            {/* Cancel */}
             <button
               type="button"
               data-testid="btn-tx-cancel"
               onClick={clearSelection}
               style={{
-                padding: "7px 14px", borderRadius: 8,
-                background: "transparent",
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 11px", borderRadius: 7,
+                background: "white",
                 border: "1px solid #e2e8f0",
-                color: "#475569",
-                fontSize: 10.5, fontWeight: 700,
-                cursor: selCount > 0 ? "pointer" : "not-allowed",
-                opacity: selCount > 0 ? 1 : 0.35,
-                pointerEvents: selCount > 0 ? "auto" : "none",
-                display: "inline-flex", alignItems: "center", gap: 5,
-                transition: "all 0.15s",
+                color: selCount > 0 ? "#475569" : "#cbd5e1",
+                fontSize: 11, fontWeight: 700,
+                cursor: selCount > 0 ? "pointer" : "default",
               }}
             >
-              <X style={{ width: 11, height: 11 }} />
-              Cancel
+              <X style={{ width: 10, height: 10 }} /> Cancel
             </button>
           </div>
         </div>

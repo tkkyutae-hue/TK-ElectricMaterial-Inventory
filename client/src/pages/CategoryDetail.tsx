@@ -373,7 +373,7 @@ function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
 
   return (
     <TableRow className="bg-amber-50/30 border-b border-amber-100" data-testid={`row-edit-item-${item.id}`}>
-      <TableCell className="font-mono text-xs text-slate-400 py-2 pl-5 whitespace-nowrap">{item.sku}</TableCell>
+      <TableCell className="font-mono text-xs text-slate-400 py-2 px-2 text-center">{item.sku}</TableCell>
       <TableCell className="py-2">
         <div className="flex flex-col items-center gap-1">
           {draft.imageUrl ? (
@@ -400,11 +400,11 @@ function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
       </TableCell>
       <TableCell className="py-2 text-center">
         <input type="number" min="0" value={draft.quantityOnHand} onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
-          className="w-16 text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-qty-${item.id}`} />
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-qty-${item.id}`} />
       </TableCell>
       <TableCell className="py-2 text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>
@@ -1820,14 +1820,14 @@ export default function CategoryDetail() {
                   <div className="overflow-x-auto">
                     <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "760px" }}>
                       <colgroup>
-                        <col style={{ width: "130px" }} />
-                        <col style={{ width: "52px" }} />
-                        <col style={{ width: "130px" }} />
-                        <col />
-                        <col style={{ width: "72px" }} />
-                        <col style={{ width: "72px" }} />
-                        <col style={{ width: "150px" }} />
                         <col style={{ width: "100px" }} />
+                        <col style={{ width: "50px" }} />
+                        <col style={{ width: "100px" }} />
+                        <col />
+                        <col style={{ width: "85px" }} />
+                        <col style={{ width: "95px" }} />
+                        <col style={{ width: "150px" }} />
+                        <col style={{ width: "80px" }} />
                       </colgroup>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">

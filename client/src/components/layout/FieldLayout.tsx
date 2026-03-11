@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, HardHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 
 const CSS = `
 @keyframes fl-pulse-dot {
@@ -28,6 +29,7 @@ function useClock() {
 
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
@@ -84,7 +86,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           }}>
             <div className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#2ddb6f", flexShrink: 0 }} />
             <HardHat style={{ width: 11, height: 11, flexShrink: 0 }} />
-            <span>Field Mode</span>
+            <span>{t.fieldModeChip}</span>
           </div>
 
           {/* Date & Time */}
@@ -100,8 +102,10 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Right: Back + Mode Select + Avatar */}
+        {/* Right: Language switcher + Back + Mode Select + Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+
+          <LanguageSwitcher theme="dark" />
 
           {/* Back button — only on sub-pages */}
           {!isFieldHome && (
@@ -122,7 +126,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
               >
                 <ArrowLeft style={{ width: 11, height: 11 }} />
-                <span>Back</span>
+                <span>{t.back}</span>
               </button>
             </Link>
           )}
@@ -144,7 +148,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#c8deca"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
             >
-              <span>Mode Select</span>
+              <span>{t.modeSelect}</span>
             </button>
           </Link>
 

@@ -2,13 +2,16 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut } from "lucide-react";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 
-function getTimeInfo(): { emoji: string; label: string; greeting: string } {
+function getTimeKey(): "morning" | "afternoon" | "evening" {
   const h = new Date().getHours();
-  if (h < 12) return { emoji: "☀️", label: "Morning",   greeting: "Good morning," };
-  if (h < 17) return { emoji: "🌤️", label: "Afternoon", greeting: "Good afternoon," };
-  return              { emoji: "🌙", label: "Evening",   greeting: "Good evening," };
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  return "evening";
 }
+
+const EMOJI_MAP = { morning: "☀️", afternoon: "🌤️", evening: "🌙" };
 
 const BG_STYLE: React.CSSProperties = {
   minHeight: "100vh",
@@ -77,11 +80,9 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
         overflow: "hidden",
       }}
     >
-      {/* Top color accent line */}
       <div style={{ height: 2, background: accentColor, width: "100%" }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 22px" }}>
-        {/* Emoji icon box */}
         <div style={{
           width: 58, height: 58, borderRadius: 12, flexShrink: 0,
           background: emojiBg,
@@ -91,7 +92,6 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           {emoji}
         </div>
 
-        {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
@@ -112,7 +112,6 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           </div>
         </div>
 
-        {/* Arrow */}
         <span style={{
           fontSize: 20, flexShrink: 0,
           color: hovered ? accentColor : "#4a7052",
@@ -129,10 +128,18 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 export default function Home() {
   const [, navigate] = useLocation();
   const { user, logout, isAdminRole } = useAuth();
+  const { t } = useLanguage();
 
   const displayName = user?.name ?? (user as any)?.firstName ?? user?.email ?? "User";
   const firstName = displayName.split(" ")[0].toUpperCase();
-  const { emoji, label, greeting } = getTimeInfo();
+  const timeKey = getTimeKey();
+  const emoji = EMOJI_MAP[timeKey];
+  const label = t[timeKey];
+  const greeting = (
+    timeKey === "morning" ? t.goodMorning
+    : timeKey === "afternoon" ? t.goodAfternoon
+    : t.goodEvening
+  );
 
   return (
     <div style={BG_STYLE}>
@@ -143,10 +150,13 @@ export default function Home() {
       <header style={{
         position: "relative", zIndex: 10,
         display: "flex", alignItems: "center", justifyContent: "flex-end",
-        padding: "18px 24px",
+        padding: "14px 20px",
+        gap: 10,
         background: "#0d1410",
         borderBottom: "1px solid #2a4030",
       }}>
+        <LanguageSwitcher theme="dark" />
+
         <button
           onClick={() => logout()}
           data-testid="btn-home-logout"
@@ -161,7 +171,7 @@ export default function Home() {
           onMouseLeave={e => (e.currentTarget.style.color = "#4a7052")}
         >
           <LogOut style={{ width: 14, height: 14 }} />
-          <span>Logout</span>
+          <span>{t.logout}</span>
         </button>
       </header>
 
@@ -193,7 +203,7 @@ export default function Home() {
               <span style={{ color: "#2ddb6f" }}>{firstName}.</span>
             </h1>
             <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
-              Select a mode to continue.
+              {t.selectMode}
             </p>
           </div>
 
@@ -206,8 +216,8 @@ export default function Home() {
               accentColor="#2ddb6f"
               emoji="🪖"
               emojiBg="rgba(45,219,111,0.08)"
-              title="Field Mode"
-              tags={["Receive", "Issue", "Inventory", "Transfer"]}
+              title={t.fieldMode}
+              tags={[t.tagReceive, t.tagIssue, t.tagInventory, t.tagTransfer]}
               tagStyle={{
                 background: "rgba(45,219,111,0.08)",
                 border: "1px solid rgba(45,219,111,0.15)",
@@ -222,8 +232,8 @@ export default function Home() {
                 accentColor="#f5a623"
                 emoji="⚙️"
                 emojiBg="rgba(245,166,35,0.08)"
-                title="Admin Mode"
-                tags={["Dashboard", "Reports", "Suppliers", "Users"]}
+                title={t.adminMode}
+                tags={[t.tagDashboard, t.tagReports, t.tagSuppliers, t.tagUsers]}
                 tagStyle={{
                   background: "rgba(245,166,35,0.08)",
                   border: "1px solid rgba(245,166,35,0.15)",
@@ -235,9 +245,9 @@ export default function Home() {
 
           {!isAdminRole && (
             <p style={{ fontSize: 11, color: "#4a7052", marginTop: 20, fontFamily: "'Barlow', sans-serif" }}>
-              Role:{" "}
+              {t.role}:{" "}
               <strong style={{ color: "#7aab82" }}>{user?.role ?? "viewer"}</strong>
-              {" "}— Contact an admin for elevated access.
+              {" "}{t.roleNote}
             </p>
           )}
         </div>

@@ -17,6 +17,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -27,37 +28,37 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const isAdmin = user?.role === "admin";
 
   const navGroups = [
     {
-      label: "Main",
+      label: t.navMain,
       items: [
-        { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/inventory", label: "Inventory", icon: PackageSearch },
-        { href: "/transactions", label: "Transactions", icon: ArrowRightLeft },
+        { href: "/", label: t.navDashboard, icon: LayoutDashboard },
+        { href: "/inventory", label: t.navInventory, icon: PackageSearch },
+        { href: "/transactions", label: t.navTransactions, icon: ArrowRightLeft },
       ],
     },
     {
-      label: "Operations",
+      label: t.navOperations,
       items: [
-        { href: "/suppliers", label: "Suppliers", icon: Truck },
-        { href: "/projects", label: "Projects", icon: Briefcase },
-        { href: "/reorder", label: "Reorder", icon: ShoppingCart },
+        { href: "/suppliers", label: t.navSuppliers, icon: Truck },
+        { href: "/projects", label: t.navProjects, icon: Briefcase },
+        { href: "/reorder", label: t.navReorder, icon: ShoppingCart },
       ],
     },
     {
-      label: "Insights",
+      label: t.navInsights,
       items: [
-        { href: "/reports", label: "Reports", icon: BarChart3 },
+        { href: "/reports", label: t.navReports, icon: BarChart3 },
       ],
     },
     {
-      label: "Admin Tools",
+      label: t.navAdminTools,
       items: [
-        { href: "/admin/users", label: "User Approvals", icon: Users },
-        { href: "/admin/export", label: "Export Backup", icon: Download },
+        { href: "/admin/users", label: t.navUserApprovals, icon: Users },
+        { href: "/admin/export", label: t.navExportBackup, icon: Download },
       ],
     },
   ];
@@ -77,7 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="min-w-0">
           <span className="font-display font-bold text-xl tracking-tight text-slate-900 leading-none block">TK Electric</span>
           <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider mt-1 block flex items-center gap-1">
-            <Shield className="w-2.5 h-2.5 inline" /> Admin Mode
+            <Shield className="w-2.5 h-2.5 inline" /> {t.adminModeChip}
           </span>
         </div>
       </Link>
@@ -119,7 +120,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           data-testid="nav-back-home"
         >
           <Home className="w-4 h-4 flex-shrink-0" />
-          Back to Home
+          {t.backToHome}
         </Link>
 
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
@@ -140,7 +141,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           data-testid="btn-sign-out"
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
+          {t.signOut}
         </Button>
       </div>
     </div>
@@ -173,7 +174,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="hidden md:flex items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Shield className="w-3 h-3" /> Admin Mode
+              <Shield className="w-3 h-3" /> {t.adminModeChip}
             </span>
             <span className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
@@ -190,7 +191,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 data-testid="btn-header-back"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Back</span>
+                <span className="hidden sm:inline">{t.back}</span>
               </Button>
             )}
             <Link href="/home">
@@ -201,9 +202,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Mode Select</span>
+                <span className="hidden sm:inline">{t.modeSelect}</span>
               </Button>
             </Link>
+            <LanguageSwitcher theme="light" />
             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-brand-50 relative w-9 h-9">
               <Bell className="w-4 h-4" />
             </Button>

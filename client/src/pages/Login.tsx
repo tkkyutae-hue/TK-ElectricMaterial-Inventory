@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 
 const CSS = `
 @keyframes vs-fadeDown {
@@ -122,6 +123,7 @@ const GLOW_STYLE: React.CSSProperties = {
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -138,7 +140,12 @@ export default function Login() {
       queryClient.setQueryData(["/api/auth/user"], user);
       navigate("/home");
     } catch (err: any) {
-      setError(err?.message ?? "Login failed");
+      const msg: string = err?.message ?? "";
+      if (msg.includes("401") || msg.toLowerCase().includes("invalid")) {
+        setError(t.invalidCredentials);
+      } else {
+        setError(t.loginError);
+      }
     } finally {
       setLoading(false);
     }
@@ -154,6 +161,11 @@ export default function Login() {
       <div style={GLOW_STYLE} />
       <div style={GRID_STYLE} />
       <div style={DIAGONAL_STYLE} />
+
+      {/* Language switcher — top right */}
+      <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20 }}>
+        <LanguageSwitcher theme="dark" />
+      </div>
 
       <div style={{ width: "100%", maxWidth: 380, padding: "0 24px", position: "relative", zIndex: 1 }}>
 
@@ -234,7 +246,7 @@ export default function Login() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Email</label>
+                }}>{t.email}</label>
                 <input
                   type="email"
                   className="vs-input"
@@ -254,7 +266,7 @@ export default function Login() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Password</label>
+                }}>{t.password}</label>
                 <div style={{ position: "relative" }}>
                   <input
                     type={showPw ? "text" : "password"}
@@ -311,9 +323,9 @@ export default function Login() {
                 className="vs-btn"
                 data-testid="btn-login"
               >
-                {loading ? "Signing in…" : (
+                {loading ? t.signingIn : (
                   <>
-                    <span>Sign In</span>
+                    <span>{t.signIn}</span>
                     <span className="vs-arrow" style={{ fontSize: 18, lineHeight: 1 }}>→</span>
                   </>
                 )}

@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
 import { useAuth } from "@/hooks/use-auth";
+import { LanguageProvider } from "@/hooks/use-language";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -121,10 +122,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

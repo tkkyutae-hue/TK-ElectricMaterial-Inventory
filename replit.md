@@ -2,6 +2,28 @@
 
 **Project Goal:** Build inventory management system for TK Electric (electrical contractor) with role-based auth, Field Mode (dark), Admin Mode (light), dashboard, inventory, suppliers, projects, reorder, reports.
 
+## Global Language Switcher (March 11, 2026)
+
+### Feature: Multilingual UI (EN / 한국어 / ES)
+
+**System:**
+- `client/src/lib/i18n.ts` — full translation dictionaries (EN, KO, ES) with 70+ keys
+- `client/src/hooks/use-language.tsx` — `LanguageContext`, `LanguageProvider`, `useLanguage()` hook, and shared `LanguageSwitcher` component
+- Language persists in `localStorage` under key `voltstock_lang`
+
+**Locations with switcher:**
+- Login screen (top-right, dark theme)
+- Mode Select / Home screen (header right, dark theme)
+- Field Mode header (right area, dark theme)
+- Admin Mode header (right area, light theme)
+
+**Behavior:**
+- One shared global language state — changing it anywhere updates the entire app instantly
+- Persists across page changes, mode switches, refreshes, and future visits
+- Only translates UI text (labels, buttons, menus, headers, chips) — never data content
+
+**Files modified:** `App.tsx`, `Login.tsx`, `Home.tsx`, `FieldLayout.tsx`, `AppLayout.tsx`, `FieldHome.tsx`
+
 ## Recent Fixes (March 11, 2026)
 
 ### 1. Quantity Synchronization Fix

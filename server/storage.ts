@@ -421,24 +421,27 @@ export class DatabaseStorage implements IStorage {
   }): Promise<InventoryMovementWithRelations[]> {
     const srcLoc = alias(locations, "src_loc");
     const dstLoc = alias(locations, "dst_loc");
+    const firstImg = alias(itemImages, "first_img");
 
     const rows = await db.select({
       movement: inventoryMovements,
       item: items,
+      itemImageUrl: firstImg.imageUrl,
       project: projects,
       sourceLocation: srcLoc,
       destinationLocation: dstLoc,
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+    .leftJoin(firstImg, eq(items.id, firstImg.itemId))
     .leftJoin(projects, eq(inventoryMovements.projectId, projects.id))
     .leftJoin(srcLoc, eq(inventoryMovements.sourceLocationId, srcLoc.id))
     .leftJoin(dstLoc, eq(inventoryMovements.destinationLocationId, dstLoc.id))
-    .orderBy(desc(inventoryMovements.createdAt));
+    .orderBy(desc(inventoryMovements.createdAt), asc(firstImg.sortOrder));
 
     let result = rows.map(r => ({
       ...r.movement,
-      item: r.item,
+      item: r.item ? { ...r.item, imageUrl: r.itemImageUrl || null } : null,
       project: r.project,
       sourceLocation: r.sourceLocation,
       destinationLocation: r.destinationLocation,

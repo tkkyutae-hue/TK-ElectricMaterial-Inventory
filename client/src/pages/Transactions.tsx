@@ -315,7 +315,7 @@ export default function Transactions() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" style={{ paddingRight: 16 }}>
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">

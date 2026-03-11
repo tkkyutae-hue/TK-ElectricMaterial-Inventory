@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
-import { useMovements, useBulkDeleteMovements } from "@/hooks/use-transactions";
-import { useProjects } from "@/hooks/use-reference-data";
+import { useMovements, useBulkDeleteMovements, useUpdateMovement } from "@/hooks/use-transactions";
+import { useProjects, useLocations } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
-import { EditTransactionDrawer, EditSuccessToast } from "@/components/EditTransactionDrawer";
-import { Search, ArrowRightLeft, Trash2, AlertTriangle, CalendarIcon, Edit2, X } from "lucide-react";
+import { EditSuccessToast } from "@/components/EditTransactionDrawer";
+import { Search, ArrowRightLeft, Trash2, AlertTriangle, CalendarIcon, Edit2, X, Check } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +30,19 @@ export default function Transactions() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
-  // Edit drawer + bulk-edit queue
-  const [editTx, setEditTx] = useState<any | null>(null);
-  const [editQueue, setEditQueue] = useState<number[]>([]);
+  // Inline editing
+  interface EditDraft {
+    movementType: string;
+    quantity: string;
+    sourceLocationId: string;
+    destinationLocationId: string;
+    projectId: string;
+    note: string;
+    transactionDate: string;
+  }
+  const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
+  const [editDrafts, setEditDrafts] = useState<Record<number, EditDraft>>({});
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
 
   // Toast
   const [toast, setToast] = useState<{ txId: number } | null>(null);
@@ -47,11 +57,13 @@ export default function Transactions() {
 
   const { toast: shadcnToast } = useToast();
   const bulkDelete = useBulkDeleteMovements();
+  const updateMovement = useUpdateMovement();
 
   const { data: movements, isLoading } = useMovements(
     typeFilter !== "all" ? { movementType: typeFilter } : {}
   );
   const { data: projects } = useProjects();
+  const { data: locations } = useLocations();
 
   const filtered = movements?.filter((tx: any) => {
     const matchSearch = !search ||
@@ -108,36 +120,75 @@ export default function Transactions() {
     setConfirmDelete(false);
   }
 
-  const selectedTx = selCount >= 1
-    ? (filtered ?? []).find((tx: any) => selectedIds.has(tx.id)) ?? null
-    : null;
-
-  // Admin Mode: edit any number of selected rows
-  const canEdit = selCount >= 1;
+  // Admin Mode: inline edit any number of selected rows
+  const canEdit = selCount >= 1 && editingIds.size === 0;
   const canDelete = selCount >= 1;
 
-  function openBulkEdit() {
+  function openInlineEdit() {
     const ids = Array.from(selectedIds);
-    const [firstId, ...rest] = ids;
-    const firstTx = (filtered ?? []).find((tx: any) => tx.id === firstId) ?? null;
-    setEditQueue(rest);
-    setEditTx(firstTx);
+    const newDrafts: Record<number, any> = {};
+    ids.forEach(id => {
+      const tx = (filtered ?? []).find((t: any) => t.id === id);
+      if (!tx) return;
+      const datePart = tx.transactionDate
+        ? new Date(tx.transactionDate).toISOString().split("T")[0]
+        : new Date(tx.createdAt).toISOString().split("T")[0];
+      newDrafts[id] = {
+        movementType: tx.movementType,
+        quantity: String(tx.quantity),
+        sourceLocationId: String(tx.sourceLocationId ?? ""),
+        destinationLocationId: String(tx.destinationLocationId ?? ""),
+        projectId: tx.projectId ? String(tx.projectId) : "",
+        note: tx.note ?? tx.reason ?? "",
+        transactionDate: datePart,
+      };
+    });
+    setEditDrafts(prev => ({ ...prev, ...newDrafts }));
+    setEditingIds(new Set(ids));
   }
 
-  function openNextInQueue(savedTxId: number) {
-    if (editQueue.length > 0) {
-      const [nextId, ...rest] = editQueue;
-      const nextTx = (filtered ?? []).find((tx: any) => tx.id === nextId) ?? null;
-      setEditQueue(rest);
-      setEditTx(nextTx);
-      setToast({ txId: savedTxId });
-    } else {
-      setEditTx(null);
-      setEditQueue([]);
-      clearSelection();
-      setSelectionMode(false);
-      setToast({ txId: savedTxId });
+  function updateDraft(id: number, field: string, value: string) {
+    setEditDrafts(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
+  }
+
+  async function saveRow(id: number) {
+    const draft = editDrafts[id];
+    if (!draft) return;
+    setSavingIds(prev => { const s = new Set(prev); s.add(id); return s; });
+    try {
+      await updateMovement.mutateAsync({
+        id,
+        movementType: draft.movementType,
+        quantity: Number(draft.quantity),
+        sourceLocationId: draft.sourceLocationId ? Number(draft.sourceLocationId) : null,
+        destinationLocationId: draft.destinationLocationId ? Number(draft.destinationLocationId) : null,
+        projectId: draft.projectId ? Number(draft.projectId) : null,
+        note: draft.note || null,
+        transactionDate: draft.transactionDate ? new Date(draft.transactionDate + "T12:00:00").toISOString() : null,
+      });
+      setToast({ txId: id });
+      cancelRow(id);
+    } catch (err: any) {
+      shadcnToast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
+  }
+
+  function cancelRow(id: number) {
+    setEditingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    setEditDrafts(prev => { const d = { ...prev }; delete d[id]; return d; });
+    setSelectedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+  }
+
+  function cancelAllEdits() {
+    setEditingIds(new Set());
+    setEditDrafts({});
+    clearSelection();
+    setSelectionMode(false);
   }
 
   const CHECKBOX_SIZE = 15;
@@ -277,28 +328,30 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">To</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">Project</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Note</TableHead>
-                {/* Select col */}
-                <TableHead className="w-[58px] text-center border-l border-slate-100" style={{ background: selectionMode ? "#f0fdf4" : undefined }}>
+                {/* Select / Edit-action col */}
+                <TableHead className="text-center border-l border-slate-100" style={{ width: 90, minWidth: 90, background: selectionMode ? "#f0fdf4" : undefined }}>
                   {selectionMode ? (
-                    <div
-                      role="checkbox"
-                      aria-checked={allSelected}
-                      onClick={toggleAll}
-                      data-testid="checkbox-select-all"
-                      style={checkboxStyle(allSelected)}
-                    >
-                      {allSelected && (
-                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                          <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div
+                        role="checkbox"
+                        aria-checked={allSelected}
+                        onClick={toggleAll}
+                        data-testid="checkbox-select-all"
+                        style={checkboxStyle(allSelected)}
+                      >
+                        {allSelected && (
+                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
                       data-testid="btn-selection-mode-toggle"
-                      style={{ background: "none", border: "none", padding: 0, color: "#94a3b8", fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1 }}
+                      style={{ background: "none", border: "none", padding: "2px 6px", color: "#94a3b8", fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1 }}
                     >
                       Select
                     </button>
@@ -327,74 +380,182 @@ export default function Transactions() {
               ) : (
                 paginated.map((tx: any) => {
                   const isSelected = selectedIds.has(tx.id);
-                  const isEdited = !!tx.editedAt;
+                  const isEditing = editingIds.has(tx.id);
+                  const isSaving  = savingIds.has(tx.id);
+                  const draft     = editDrafts[tx.id];
+                  const isEdited  = !!tx.editedAt;
                   const lastEditor = isEdited ? (tx.editHistory as any[])?.[((tx.editHistory as any[])?.length ?? 1) - 1] : null;
                   const editLabel = lastEditor
                     ? `edited by ${lastEditor.editedBy?.replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEditor.editedAt), { addSuffix: true })}`
                     : "edited";
+
+                  const cellInput: React.CSSProperties = {
+                    fontSize: 11, padding: "3px 5px", height: 26, borderRadius: 4,
+                    border: "1px solid #cbd5e1", background: "#fff", color: "#1e293b", width: "100%",
+                  };
+                  const cellSelect: React.CSSProperties = { ...cellInput, cursor: "pointer" };
+
                   return (
                     <TableRow
                       key={tx.id}
                       data-testid={`row-tx-${tx.id}`}
                       style={{
-                        ...(isSelected ? selectedRowStyle : {}),
+                        ...(isEditing ? { background: "rgba(234,179,8,0.05)", outline: "1px solid rgba(234,179,8,0.20)" } : isSelected ? selectedRowStyle : {}),
                         transition: "background 0.1s",
                       }}
-                      className="hover:bg-slate-50/50"
+                      className={isEditing ? "" : "hover:bg-slate-50/50"}
                     >
                       {/* Date */}
-                      <TableCell className="text-xs text-slate-500 whitespace-nowrap">
-                        {format(new Date(tx.createdAt), "MMM d, yy")}<br />
-                        <span className="text-slate-400">{format(new Date(tx.createdAt), "HH:mm")}</span>
-                        {isEdited && (
-                          <TooltipProvider delayDuration={100}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div
-                                  data-testid={`edited-tag-${tx.id}`}
-                                  style={{
-                                    marginTop: 3,
-                                    display: "inline-flex", alignItems: "center", gap: 2,
-                                    background: "rgba(167,139,250,0.10)",
-                                    border: "1px solid rgba(167,139,250,0.28)",
-                                    color: "#7c3aed",
-                                    padding: "1px 5px", borderRadius: 3,
-                                    fontSize: 7, fontWeight: 700, letterSpacing: "0.06em",
-                                    textTransform: "uppercase", whiteSpace: "nowrap",
-                                    cursor: "default",
-                                  }}
-                                >
-                                  ✎ EDITED
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="text-xs max-w-[180px]">
-                                {editLabel}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                      <TableCell className="text-xs text-slate-500 whitespace-nowrap" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={draft?.transactionDate ?? ""}
+                            onChange={e => updateDraft(tx.id, "transactionDate", e.target.value)}
+                            style={{ ...cellInput, width: 110 }}
+                            data-testid={`input-date-${tx.id}`}
+                          />
+                        ) : (
+                          <>
+                            {format(new Date(tx.createdAt), "MMM d, yy")}<br />
+                            <span className="text-slate-400">{format(new Date(tx.createdAt), "HH:mm")}</span>
+                            {isEdited && (
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      data-testid={`edited-tag-${tx.id}`}
+                                      style={{
+                                        marginTop: 3,
+                                        display: "inline-flex", alignItems: "center", gap: 2,
+                                        background: "rgba(167,139,250,0.10)",
+                                        border: "1px solid rgba(167,139,250,0.28)",
+                                        color: "#7c3aed",
+                                        padding: "1px 5px", borderRadius: 3,
+                                        fontSize: 7, fontWeight: 700, letterSpacing: "0.06em",
+                                        textTransform: "uppercase", whiteSpace: "nowrap",
+                                        cursor: "default",
+                                      }}
+                                    >
+                                      ✎ EDITED
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="text-xs max-w-[180px]">
+                                    {editLabel}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </>
                         )}
                       </TableCell>
 
-                      <TableCell><TransactionTypeBadge type={tx.movementType} /></TableCell>
-                      <TableCell className="text-xs text-slate-600 font-medium whitespace-nowrap">
+                      {/* Type */}
+                      <TableCell style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <select
+                            value={draft?.movementType ?? ""}
+                            onChange={e => updateDraft(tx.id, "movementType", e.target.value)}
+                            style={cellSelect}
+                            data-testid={`select-type-${tx.id}`}
+                          >
+                            <option value="receive">Receive</option>
+                            <option value="issue">Issue</option>
+                            <option value="return">Return</option>
+                            <option value="transfer">Transfer</option>
+                          </select>
+                        ) : (
+                          <TransactionTypeBadge type={tx.movementType} />
+                        )}
+                      </TableCell>
+
+                      {/* Size (read-only) */}
+                      <TableCell className="text-xs text-slate-600 font-medium whitespace-nowrap" style={{ verticalAlign: "middle" }}>
                         {tx.item?.sizeLabel || <span className="text-slate-300">—</span>}
                       </TableCell>
-                      <TableCell>
+
+                      {/* Item (read-only) */}
+                      <TableCell style={{ verticalAlign: "middle" }}>
                         <p className="font-medium text-slate-900 text-sm">{tx.item?.name || `Item #${tx.itemId}`}</p>
                         <p className="text-xs font-mono text-slate-400">{tx.item?.sku}</p>
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {tx.movementType === "issue" ? (
-                          <span className="text-rose-600">-{tx.quantity}</span>
+
+                      {/* Qty */}
+                      <TableCell className="text-right" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min={0}
+                            value={draft?.quantity ?? ""}
+                            onChange={e => updateDraft(tx.id, "quantity", e.target.value)}
+                            style={{ ...cellInput, width: 60, textAlign: "right" }}
+                            data-testid={`input-qty-${tx.id}`}
+                          />
                         ) : (
-                          <span className="text-emerald-600">+{tx.quantity}</span>
+                          <span className="font-semibold">
+                            {tx.movementType === "issue" ? (
+                              <span className="text-rose-600">-{tx.quantity}</span>
+                            ) : (
+                              <span className="text-emerald-600">+{tx.quantity}</span>
+                            )}
+                            <span className="text-slate-400 text-xs ml-1">{tx.item?.unitOfMeasure}</span>
+                          </span>
                         )}
-                        <span className="text-slate-400 text-xs ml-1">{tx.item?.unitOfMeasure}</span>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-500">{tx.sourceLocation?.name || "—"}</TableCell>
-                      <TableCell className="text-xs text-slate-500">{tx.destinationLocation?.name || "—"}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {tx.project ? (
+
+                      {/* From */}
+                      <TableCell className="text-xs text-slate-500" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <select
+                            value={draft?.sourceLocationId ?? ""}
+                            onChange={e => updateDraft(tx.id, "sourceLocationId", e.target.value)}
+                            style={cellSelect}
+                            data-testid={`select-from-${tx.id}`}
+                          >
+                            <option value="">— none —</option>
+                            {(locations ?? []).map((loc: any) => (
+                              <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          tx.sourceLocation?.name || "—"
+                        )}
+                      </TableCell>
+
+                      {/* To */}
+                      <TableCell className="text-xs text-slate-500" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <select
+                            value={draft?.destinationLocationId ?? ""}
+                            onChange={e => updateDraft(tx.id, "destinationLocationId", e.target.value)}
+                            style={cellSelect}
+                            data-testid={`select-to-${tx.id}`}
+                          >
+                            <option value="">— none —</option>
+                            {(locations ?? []).map((loc: any) => (
+                              <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          tx.destinationLocation?.name || "—"
+                        )}
+                      </TableCell>
+
+                      {/* Project */}
+                      <TableCell className="whitespace-nowrap" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <select
+                            value={draft?.projectId ?? ""}
+                            onChange={e => updateDraft(tx.id, "projectId", e.target.value)}
+                            style={{ ...cellSelect, maxWidth: 150 }}
+                            data-testid={`select-project-${tx.id}`}
+                          >
+                            <option value="">— none —</option>
+                            {(projects ?? []).map((p: any) => (
+                              <option key={p.id} value={String(p.id)}>{p.poNumber ? `${p.poNumber} — ${p.name}` : p.name}</option>
+                            ))}
+                          </select>
+                        ) : tx.project ? (
                           <TooltipProvider delayDuration={200}>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -415,25 +576,87 @@ export default function Transactions() {
                           </TooltipProvider>
                         ) : <span className="text-slate-300">—</span>}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-500 max-w-[140px] truncate">
-                        {tx.note || tx.reason || "—"}
-                      </TableCell>
-                      {/* Select col */}
-                      <TableCell className="text-center border-l border-slate-100" style={{ background: selectionMode && isSelected ? "rgba(22,163,74,0.05)" : undefined }} onClick={(e) => { if (selectionMode) { e.stopPropagation(); toggleRow(tx.id); } }}>
-                        {selectionMode && (
-                          <div
-                            style={checkboxStyle(isSelected)}
-                            data-testid={`checkbox-tx-${tx.id}`}
-                            role="checkbox"
-                            aria-checked={isSelected}
-                          >
-                            {isSelected && (
-                              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                                <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </div>
+
+                      {/* Note */}
+                      <TableCell className="text-xs text-slate-500" style={{ verticalAlign: "middle" }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={draft?.note ?? ""}
+                            onChange={e => updateDraft(tx.id, "note", e.target.value)}
+                            placeholder="Add note…"
+                            style={{ ...cellInput, minWidth: 100 }}
+                            data-testid={`input-note-${tx.id}`}
+                          />
+                        ) : (
+                          <span className="max-w-[140px] truncate block">{tx.note || tx.reason || "—"}</span>
                         )}
+                      </TableCell>
+
+                      {/* Select / Save-Cancel col */}
+                      <TableCell
+                        className="text-center border-l border-slate-100"
+                        style={{ verticalAlign: "middle", width: 90, minWidth: 90, background: isEditing ? "rgba(234,179,8,0.05)" : (selectionMode && isSelected ? "rgba(22,163,74,0.05)" : undefined) }}
+                        onClick={(e) => { if (selectionMode && !isEditing) { e.stopPropagation(); toggleRow(tx.id); } }}
+                      >
+                        {isEditing ? (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => saveRow(tx.id)}
+                              disabled={isSaving}
+                              data-testid={`btn-save-row-${tx.id}`}
+                              title="Save changes"
+                              style={{
+                                width: 26, height: 26, borderRadius: 5,
+                                background: isSaving ? "#f1f5f9" : "rgba(22,163,74,0.10)",
+                                border: "1px solid rgba(22,163,74,0.30)",
+                                color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: isSaving ? "default" : "pointer",
+                              }}
+                            >
+                              {isSaving ? (
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                                  <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3"/>
+                                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"/>
+                                </svg>
+                              ) : (
+                                <Check style={{ width: 11, height: 11 }} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cancelRow(tx.id)}
+                              disabled={isSaving}
+                              data-testid={`btn-cancel-row-${tx.id}`}
+                              title="Cancel edit"
+                              style={{
+                                width: 26, height: 26, borderRadius: 5,
+                                background: "rgba(100,116,139,0.08)",
+                                border: "1px solid rgba(100,116,139,0.20)",
+                                color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: isSaving ? "default" : "pointer",
+                              }}
+                            >
+                              <X style={{ width: 11, height: 11 }} />
+                            </button>
+                          </div>
+                        ) : selectionMode ? (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div
+                              style={checkboxStyle(isSelected)}
+                              data-testid={`checkbox-tx-${tx.id}`}
+                              role="checkbox"
+                              aria-checked={isSelected}
+                            >
+                              {isSelected && (
+                                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                  <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -540,7 +763,12 @@ export default function Transactions() {
 
           {/* Right: action buttons (always present; dimmed when nothing selected) */}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-            {selCount > 0 && (
+            {editingIds.size > 0 && (
+              <span className="text-xs font-semibold" style={{ marginRight: 2, color: "#ca8a04" }}>
+                {editingIds.size} editing
+              </span>
+            )}
+            {selCount > 0 && editingIds.size === 0 && (
               <span className="text-xs text-slate-400" style={{ marginRight: 2 }}>
                 {selCount} selected
               </span>
@@ -548,7 +776,7 @@ export default function Transactions() {
             <button
               type="button"
               data-testid="btn-tx-edit"
-              onClick={() => { if (canEdit) openBulkEdit(); }}
+              onClick={() => { if (canEdit) openInlineEdit(); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 11px", borderRadius: 7,
@@ -581,15 +809,15 @@ export default function Transactions() {
             <button
               type="button"
               data-testid="btn-tx-cancel"
-              onClick={() => { clearSelection(); setSelectionMode(false); }}
+              onClick={cancelAllEdits}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "4px 11px", borderRadius: 7,
                 background: "white",
                 border: "1px solid #e2e8f0",
-                color: selectionMode ? "#475569" : "#cbd5e1",
+                color: (selectionMode || editingIds.size > 0) ? "#475569" : "#cbd5e1",
                 fontSize: 11, fontWeight: 700,
-                cursor: selectionMode ? "pointer" : "default",
+                cursor: (selectionMode || editingIds.size > 0) ? "pointer" : "default",
               }}
             >
               <X style={{ width: 10, height: 10 }} /> Cancel
@@ -597,18 +825,6 @@ export default function Transactions() {
           </div>
         </div>
 
-        {/* ── Edit Drawer (inside the card, absolutely positioned) ── */}
-        {editTx && (
-          <EditTransactionDrawer
-            tx={editTx}
-            open={!!editTx}
-            onClose={() => { setEditTx(null); setEditQueue([]); }}
-            dark={false}
-            onSaved={(updated) => {
-              openNextInQueue(updated.id ?? editTx.id);
-            }}
-          />
-        )}
       </div>
 
       {/* ── Confirm bulk delete ── */}

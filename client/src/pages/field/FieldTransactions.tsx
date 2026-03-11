@@ -602,7 +602,7 @@ export default function FieldTransactions() {
     URL.revokeObjectURL(url);
   }
 
-  const COLS_COUNT = selectMode ? 11 : 10;
+  const COLS_COUNT = 11;
 
   // ── TH style ──
   const TH: React.CSSProperties = {
@@ -632,25 +632,38 @@ export default function FieldTransactions() {
         </p>
       </div>
 
-      {/* ── Tab Switcher ── */}
-      <div style={{ display: "flex", gap: 2, background: "#0d1410", border: "1px solid #2a4030", borderRadius: 10, padding: 3, width: "fit-content" }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab("history")}
-          data-testid="tab-history"
-          style={{ background: activeTab === "history" ? "#1c2b1f" : "transparent", border: activeTab === "history" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? "#e2f0e5" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
-        >
-          Transaction History
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("drafts")}
-          data-testid="tab-drafts"
-          style={{ background: activeTab === "drafts" ? "#1c2b1f" : "transparent", border: activeTab === "drafts" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? "#f5a623" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
-        >
-          <FileText style={{ width: 12, height: 12 }} />
-          Draft Movements
-        </button>
+      {/* ── Tab Switcher + Export CSV ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: 2, background: "#0d1410", border: "1px solid #2a4030", borderRadius: 10, padding: 3, width: "fit-content" }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            data-testid="tab-history"
+            style={{ background: activeTab === "history" ? "#1c2b1f" : "transparent", border: activeTab === "history" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? "#e2f0e5" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
+          >
+            Transaction History
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("drafts")}
+            data-testid="tab-drafts"
+            style={{ background: activeTab === "drafts" ? "#1c2b1f" : "transparent", border: activeTab === "drafts" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? "#f5a623" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            <FileText style={{ width: 12, height: 12 }} />
+            Draft Movements
+          </button>
+        </div>
+
+        {/* Export CSV — upper-right, only in history tab */}
+        {activeTab === "history" && filtered.length > 0 && (
+          <button
+            onClick={exportCsv}
+            data-testid="btn-export-csv"
+            style={{ fontSize: 11, color: "#7aab82", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "5px 13px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}
+          >
+            Export CSV ↓
+          </button>
+        )}
       </div>
 
       {/* ── Drafts Tab Content ── */}
@@ -807,7 +820,6 @@ export default function FieldTransactions() {
               <col style={{ width: 55 }} />
               <col style={{ width: 105 }} />
               <col style={{ width: 96 }} />
-              {selectMode && <col style={{ width: 40 }} />}
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
@@ -995,22 +1007,13 @@ export default function FieldTransactions() {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "10px 16px", borderTop: "1px solid #1e2e21", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid #1e2e21", display: "flex", alignItems: "center" }}>
           <span style={{ fontSize: 11, color: "#7aab82" }}>
             Showing <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong> transaction{filtered.length !== 1 ? "s" : ""}
             {selectMode && selectedIds.size > 0 && (
               <span style={{ marginLeft: 8, color: "#2ddb6f", fontWeight: 600 }}>· {selectedIds.size} selected</span>
             )}
           </span>
-          {filtered.length > 0 && (
-            <button
-              onClick={exportCsv}
-              data-testid="btn-export-csv"
-              style={{ fontSize: 11, color: "#7aab82", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "4px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
-            >
-              Export CSV ↓
-            </button>
-          )}
         </div>
       </div>
 

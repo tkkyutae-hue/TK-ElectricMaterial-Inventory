@@ -398,13 +398,13 @@ function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
       <TableCell className="py-2">
         <input value={draft.name} onChange={e => onChange({ name: e.target.value })} className={`${inputCls} min-w-[140px]`} data-testid={`input-edit-name-${item.id}`} />
       </TableCell>
-      <TableCell className="py-2 text-right">
+      <TableCell className="py-2 text-center">
         <input type="number" min="0" value={draft.quantityOnHand} onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
-          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-qty-${item.id}`} />
+          className="w-16 text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-qty-${item.id}`} />
       </TableCell>
-      <TableCell className="py-2">
+      <TableCell className="py-2 text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="w-full text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>
@@ -605,14 +605,14 @@ function InlineNewRow({ draft, familyName, categoryId, categoryCode, existingIte
           </div>
         )}
       </TableCell>
-      <TableCell className="py-2 align-top text-right">
+      <TableCell className="py-2 align-top text-center">
         <input type="number" min="0" value={draft.quantityOnHand}
           onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
-          className="w-16 text-xs text-right bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
+          className="w-16 text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
       </TableCell>
-      <TableCell className="py-2 align-top">
+      <TableCell className="py-2 align-top text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="w-full text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-new-unit-${draft.tmpId}`}>
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-new-unit-${draft.tmpId}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>
@@ -1825,7 +1825,7 @@ export default function CategoryDetail() {
                         <col style={{ width: "130px" }} />
                         <col />
                         <col style={{ width: "72px" }} />
-                        <col style={{ width: "56px" }} />
+                        <col style={{ width: "72px" }} />
                         <col style={{ width: "150px" }} />
                         <col style={{ width: "100px" }} />
                       </colgroup>

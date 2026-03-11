@@ -894,6 +894,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Wire Reels ─────────────────────────────────────────────────────────────
 
+  app.get("/api/wire-reels/:itemId/next-id", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      if (isNaN(itemId)) return res.status(400).json({ message: "Invalid item ID" });
+      const reelId = await storage.getNextReelId(itemId);
+      res.json({ reelId });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/wire-reels/:itemId", isAuthenticated, async (req, res) => {
     try {
       const itemId = parseInt(req.params.itemId);

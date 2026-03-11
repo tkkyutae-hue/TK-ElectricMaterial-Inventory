@@ -93,6 +93,8 @@ type ItemRowError = { itemId?: string; quantity?: string };
 
 type ReelSnapshot = { id: number; reelId: string; lengthFt: number; status: string | null };
 
+type NewReel = { tempId: string; lengthFt: number; brand: string; reelId: string };
+
 type ItemRow = {
   rowId: string;
   itemId: number | null;
@@ -100,6 +102,7 @@ type ItemRow = {
   errors: ItemRowError;
   reelSelections: Record<number, number>;
   reelSnapshots: Record<number, ReelSnapshot>;
+  newReels?: NewReel[];
 };
 
 const MOVEMENT_TYPES = [
@@ -665,7 +668,7 @@ function SearchableProjectSelect({
 
 // ── Item Row (field mode — includes reel UX) ────────────────────────────────
 function ItemRowField({
-  row, idx, itemCount, items, onUpdate, onRemove,
+  row, idx, itemCount, items, onUpdate, onRemove, movementType,
 }: {
   row: ItemRow;
   idx: number;
@@ -673,6 +676,7 @@ function ItemRowField({
   items: any[];
   onUpdate: (rowId: string, patch: Partial<ItemRow>) => void;
   onRemove: (rowId: string) => void;
+  movementType?: string;
 }) {
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
 
@@ -683,18 +687,33 @@ function ItemRowField({
   const reels = reelsRaw as any[];
   const hasReels = reels.length > 0;
 
+  const isReelItem = selectedItem?.unitOfMeasure === "FT" || hasReels;
+  const isReceive = movementType === "receive";
+  const showReceiveReelUI = isReceive && !!row.itemId && isReelItem;
+  const showIssueReelUI = !isReceive && hasReels;
+
   const selections = row.reelSelections ?? {};
   const snapshots = row.reelSnapshots ?? {};
   const selectedCount = Object.keys(selections).length;
   const totalFt = Object.values(selections).reduce((a, b) => a + b, 0);
 
+  const newReels = row.newReels ?? [];
+  const newReelsTotalFt = newReels.reduce((s, r) => s + r.lengthFt, 0);
+
   const didInitRef = useRef(false);
   useEffect(() => {
-    if (hasReels && !didInitRef.current) {
+    if (showIssueReelUI && !didInitRef.current) {
       didInitRef.current = true;
       onUpdate(row.rowId, { quantity: 0 });
     }
-  }, [hasReels]);
+  }, [showIssueReelUI]);
+
+  useEffect(() => {
+    if (showReceiveReelUI && !didInitRef.current) {
+      didInitRef.current = true;
+      onUpdate(row.rowId, { quantity: 0, newReels: [] });
+    }
+  }, [showReceiveReelUI]);
 
   function toggleReel(reel: any) {
     const newSel = { ...selections };
@@ -723,6 +742,20 @@ function ItemRowField({
     onUpdate(row.rowId, { reelSelections: newSel, reelSnapshots: newSnap, quantity: total });
   }
 
+  function removeNewReel(tempId: string) {
+    const updated = newReels.filter(r => r.tempId !== tempId);
+    const total = updated.reduce((s, r) => s + r.lengthFt, 0);
+    onUpdate(row.rowId, { newReels: updated, quantity: total });
+  }
+
+  function addNewReel(reel: NewReel) {
+    const updated = [...newReels, reel];
+    const total = updated.reduce((s, r) => s + r.lengthFt, 0);
+    onUpdate(row.rowId, { newReels: updated, quantity: total });
+  }
+
+  const showQtyStepper = !showReceiveReelUI && !showIssueReelUI;
+
   return (
     <div
       style={{ position: "relative", zIndex: itemCount - idx, background: "#0b1a0f", border: "1px solid #203023", borderRadius: 10, padding: 8 }}
@@ -734,7 +767,7 @@ function ItemRowField({
             value={row.itemId}
             onChange={(id) => {
               didInitRef.current = false;
-              onUpdate(row.rowId, { itemId: id, reelSelections: {}, reelSnapshots: {}, quantity: 1 });
+              onUpdate(row.rowId, { itemId: id, reelSelections: {}, reelSnapshots: {}, quantity: 1, newReels: [] });
             }}
             items={items || []}
             dark={true}
@@ -744,7 +777,7 @@ function ItemRowField({
           )}
         </div>
 
-        {!hasReels && (
+        {showQtyStepper && (
           <div style={{ flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center" }}>
               <button type="button" onClick={() => onUpdate(row.rowId, { quantity: Math.max(0, row.quantity - 1) })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: "1px solid #203023", borderRight: "none", background: "#141e17", color: "#527856", cursor: "pointer" }} data-testid={`btn-qty-dec-${idx}`}>
@@ -777,7 +810,68 @@ function ItemRowField({
         </div>
       </div>
 
-      {hasReels && (
+      {/* ── Receive Reel UI ─────────────────────────────────────────── */}
+      {showReceiveReelUI && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
+          {/* Active reels info */}
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontFamily: "Barlow Condensed, sans-serif" }}>
+            Active Reels on Hand
+          </div>
+          {reels.length === 0 ? (
+            <div style={{ fontSize: 11, color: "#4a7052", padding: "4px 0 8px", fontStyle: "italic" }}>No active reels — all stock will come from new reels added below.</div>
+          ) : (
+            reels.map((reel: any) => {
+              const isNew = reel.status === "new" || reel.status === "full";
+              return (
+                <div key={reel.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: "#111d14", border: "1px solid #1a2c1e" }}>
+                  <span style={{ fontWeight: 600, fontSize: 12, color: "#c8deca", fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{reel.reelId}</span>
+                  <span style={{ fontSize: 13, color: "#2ddb6f", fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{reel.lengthFt} FT</span>
+                  {reel.brand && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.brand}</span>}
+                  {reel.location && <span style={{ fontSize: 11, color: "#527856" }}>{reel.location.name}</span>}
+                  <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.1)" : "rgba(245,166,35,0.1)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
+                    {isNew ? "New" : "Used"}
+                  </span>
+                </div>
+              );
+            })
+          )}
+
+          {/* Pending new reels */}
+          {newReels.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "Barlow Condensed, sans-serif" }}>
+                Adding
+              </div>
+              {newReels.map(nr => (
+                <div key={nr.tempId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: "rgba(45,219,111,0.06)", border: "1px solid rgba(45,219,111,0.2)" }} data-testid={`new-reel-pending-${nr.tempId}`}>
+                  <span style={{ fontWeight: 700, fontSize: 12, color: "#2ddb6f", fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{nr.reelId}</span>
+                  <span style={{ fontSize: 13, color: "#e2f0e5", fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{nr.lengthFt} FT</span>
+                  {nr.brand && <span style={{ fontSize: 11, color: "#7aab82" }}>{nr.brand}</span>}
+                  <button type="button" onClick={() => removeNewReel(nr.tempId)} style={{ marginLeft: "auto", padding: 3, background: "none", border: "none", cursor: "pointer", color: "#4a7052" }} data-testid={`btn-remove-new-reel-${nr.tempId}`}>
+                    <X style={{ width: 13, height: 13 }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new reel form */}
+          <AddReelForm itemId={row.itemId} pendingCount={newReels.length} onAdd={addNewReel} />
+
+          {/* Total summary */}
+          {newReels.length > 0 && (
+            <div style={{ textAlign: "right", marginTop: 6, fontSize: 12, color: "#7aab82" }}>
+              {newReels.length} new reel{newReels.length !== 1 ? "s" : ""} · <span style={{ color: "#2ddb6f", fontWeight: 700 }}>{newReelsTotalFt.toLocaleString()} FT</span>
+            </div>
+          )}
+          {row.errors.quantity && (
+            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 4 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Issue / Return Reel UI ───────────────────────────────────── */}
+      {showIssueReelUI && (
         <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
           {reels.map((reel: any) => {
             const isSelected = selections[reel.id] !== undefined;
@@ -827,6 +921,105 @@ function ItemRowField({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Add Reel Form (inline, used in receive mode) ─────────────────────────────
+function AddReelForm({ itemId, pendingCount, onAdd }: { itemId: number | null; pendingCount: number; onAdd: (reel: NewReel) => void }) {
+  const [open, setOpen] = useState(false);
+  const [lengthFt, setLengthFt] = useState<number | "">(500);
+  const [brand, setBrand] = useState("");
+  const [nextReelId, setNextReelId] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !itemId) return;
+    setFetching(true);
+    setNextReelId(null);
+    fetch(`/api/wire-reels/${itemId}/next-id`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const match = (d.reelId as string).match(/^R-(\d+)$/i);
+        if (match) {
+          const base = parseInt(match[1], 10);
+          setNextReelId(`R-${base + pendingCount}`);
+        } else {
+          setNextReelId(d.reelId);
+        }
+        setFetching(false);
+      })
+      .catch(() => { setFetching(false); });
+  }, [open, itemId, pendingCount]);
+
+  function handleAdd() {
+    if (!nextReelId) return;
+    const ft = typeof lengthFt === "number" ? lengthFt : parseInt(String(lengthFt), 10);
+    if (isNaN(ft) || ft <= 0) { setError("Enter a valid length greater than 0"); return; }
+    onAdd({ tempId: crypto.randomUUID(), lengthFt: ft, brand: brand.trim(), reelId: nextReelId });
+    setOpen(false);
+    setLengthFt(500);
+    setBrand("");
+    setNextReelId(null);
+    setError(null);
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 8, padding: "6px 12px", background: "rgba(45,219,111,0.07)", border: "1px dashed rgba(45,219,111,0.3)", borderRadius: 8, color: "#2ddb6f", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.5 }}
+        data-testid="btn-add-new-reel"
+      >
+        <Plus style={{ width: 13, height: 13 }} />
+        Add New Reel
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8, padding: "10px 12px", background: "#111d14", border: "1px solid rgba(45,219,111,0.25)", borderRadius: 9 }} data-testid="add-reel-form">
+      <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
+        New Reel
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <span style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", minWidth: 50 }}>Reel ID</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: fetching ? "#4a7052" : "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif", background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 6, padding: "3px 10px" }}>
+          {fetching ? "…" : nextReelId ?? "—"}
+        </span>
+        <span style={{ fontSize: 10, color: "#4a7052" }}>auto-assigned</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Length (FT) *</div>
+          <input
+            type="number" min={1} value={lengthFt}
+            onChange={(e) => { setError(null); const v = parseInt(e.target.value, 10); setLengthFt(isNaN(v) ? "" : v); }}
+            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, fontWeight: 700, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
+            data-testid="input-new-reel-length"
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Brand</div>
+          <input
+            type="text" value={brand} placeholder="e.g. Southwire"
+            onChange={(e) => setBrand(e.target.value)}
+            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
+            data-testid="input-new-reel-brand"
+          />
+        </div>
+      </div>
+      {error && <p style={{ fontSize: 10, color: "#ff5050", marginBottom: 6 }}>{error}</p>}
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+        <button type="button" onClick={() => { setOpen(false); setError(null); }} style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }} data-testid="btn-add-reel-cancel">
+          Cancel
+        </button>
+        <button type="button" onClick={handleAdd} disabled={!nextReelId || fetching} style={{ padding: "5px 14px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: !nextReelId || fetching ? 0.5 : 1 }} data-testid="btn-add-reel-confirm">
+          Add Reel
+        </button>
+      </div>
     </div>
   );
 }
@@ -1029,6 +1222,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
       const reelOps: Promise<any>[] = [];
       for (const row of validRows) {
+        // Issue/Return: update or delete consumed reels
         for (const [reelIdStr, ftUsed] of Object.entries(row.reelSelections ?? {})) {
           if (!ftUsed) continue;
           const reelId = Number(reelIdStr);
@@ -1039,6 +1233,24 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
             reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "DELETE", credentials: "include" }));
           } else {
             reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ lengthFt: newLength, status: "used" }) }));
+          }
+        }
+        // Receive: create new reels sequentially (sequential IDs require serial creation)
+        if (shared.movementType === "receive") {
+          for (const nr of (row.newReels ?? [])) {
+            await fetch("/api/wire-reels", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                itemId: row.itemId,
+                reelId: nr.reelId,
+                lengthFt: nr.lengthFt,
+                brand: nr.brand || null,
+                locationId: shared.destinationLocationId || null,
+                status: "full",
+              }),
+            });
           }
         }
       }
@@ -1309,6 +1521,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     items={items || []}
                     onUpdate={updateRow}
                     onRemove={removeRow}
+                    movementType={movType}
                   />
                 );
               }

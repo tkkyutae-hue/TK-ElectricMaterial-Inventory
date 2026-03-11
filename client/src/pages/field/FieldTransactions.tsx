@@ -1160,74 +1160,52 @@ export default function FieldTransactions() {
             >›</button>
           </div>
 
-          {/* Right: spacer to balance left "Showing" text */}
-          <div style={{ flex: 1 }} />
+          {/* Right: select-mode actions (or spacer when inactive) */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+            {selectionMode ? (
+              <>
+                {selCount > 0 && (
+                  <span style={{ fontSize: 11, color: "#4a7052", marginRight: 2 }}>
+                    {selCount} selected
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+                  data-testid="button-field-cancel-select"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}
+                >
+                  <X style={{ width: 10, height: 10 }} /> Cancel
+                </button>
+                {selCount > 0 && canEdit && hasDeletePerm && (
+                  <button
+                    type="button"
+                    onClick={() => selectedTx && setEditTx(selectedTx)}
+                    disabled={selCount !== 1}
+                    data-testid="button-field-edit-selected"
+                    title={selCount !== 1 ? "Select exactly one transaction to edit" : undefined}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : "#162019", border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : "#2a4030"}`, color: selCount === 1 ? "#5b9cf6" : "#3a5040", fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    <Pencil style={{ width: 10, height: 10 }} /> Edit
+                  </button>
+                )}
+                {selCount > 0 && canDelete && hasDeletePerm && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmOpen(true)}
+                    data-testid="button-field-delete-selected"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}
+                  >
+                    <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
+                  </button>
+                )}
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 
       </div>{/* end relative wrapper */}
-
-      {/* ── Bottom-right selection action bar ── */}
-      {selectionMode && (
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 8,
-          paddingTop: 10,
-          fontFamily: "'Barlow Condensed', sans-serif",
-        }}>
-          {selCount > 0 && (
-            <span style={{ fontSize: 11, color: "#4a7052", marginRight: 4 }}>
-              {selCount} selected
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
-            data-testid="button-field-cancel-select"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
-          >
-            <X style={{ width: 11, height: 11 }} /> Cancel
-          </button>
-
-          {selCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              data-testid="button-field-clear-select"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
-            >
-              Clear
-            </button>
-          )}
-
-          {selCount > 0 && canEdit && hasDeletePerm && (
-            <button
-              type="button"
-              onClick={() => selectedTx && setEditTx(selectedTx)}
-              disabled={selCount !== 1}
-              data-testid="button-field-edit-selected"
-              title={selCount !== 1 ? "Select exactly one transaction to edit" : undefined}
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: selCount === 1 ? "rgba(91,156,246,0.12)" : "#162019", border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : "#2a4030"}`, color: selCount === 1 ? "#5b9cf6" : "#3a5040", fontSize: 12, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em" }}
-            >
-              <Pencil style={{ width: 11, height: 11 }} /> Edit
-            </button>
-          )}
-
-          {selCount > 0 && canDelete && hasDeletePerm && (
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              data-testid="button-field-delete-selected"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em" }}
-            >
-              <Trash2 style={{ width: 11, height: 11 }} /> Delete ({selCount})
-            </button>
-          )}
-        </div>
-      )}
 
       </>}
 

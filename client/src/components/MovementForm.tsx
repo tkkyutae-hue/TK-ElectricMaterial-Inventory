@@ -968,6 +968,104 @@ function ItemRowField({
   );
 }
 
+// ── Brand combobox helpers ────────────────────────────────────────────────────
+const KNOWN_BRANDS = [
+  "Southwire", "Ideal", "Hubbell", "Leviton", "Siemens",
+  "Square D", "Eaton", "Greenlee", "Milwaukee", "Klein",
+  "Grainger", "3M", "Panduit", "Burndy", "ILSCO", "nVent",
+  "Thomas & Betts", "ABB",
+];
+
+const LS_CUSTOM_BRANDS_KEY = "vstock_custom_brands";
+function getStoredBrands(): string[] {
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM_BRANDS_KEY) || "[]"); } catch { return []; }
+}
+function saveCustomBrands(brands: string[]) {
+  const existing = getStoredBrands();
+  const merged = [...existing];
+  for (const b of brands) {
+    if (b && !merged.some(x => x.toLowerCase() === b.toLowerCase())) merged.push(b);
+  }
+  localStorage.setItem(LS_CUSTOM_BRANDS_KEY, JSON.stringify(merged));
+}
+
+function BrandCombobox({
+  value, onChange, allBrands, idx,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  allBrands: string[];
+  idx: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return allBrands;
+    const q = query.toLowerCase();
+    return allBrands.filter(b => b.toLowerCase().includes(q));
+  }, [query, allBrands]);
+
+  function select(brand: string) {
+    setQuery(brand);
+    onChange(brand);
+    setOpen(false);
+  }
+
+  const INPUT_STYLE: React.CSSProperties = {
+    height: 32, padding: "0 8px", fontSize: 13, background: "#0b1a0f",
+    border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5",
+    outline: "none", width: "100%", boxSizing: "border-box",
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <input
+        type="text"
+        value={query}
+        placeholder="Southwire"
+        autoComplete="off"
+        onFocus={() => setOpen(true)}
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onBlur={() => setTimeout(() => { setOpen(false); if (query.trim()) onChange(query.trim()); }, 160)}
+        style={INPUT_STYLE}
+        data-testid={`bulk-reel-brand-${idx}`}
+      />
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, background: "#111d14", border: "1px solid #2a4030", borderRadius: 7, zIndex: 200, maxHeight: 150, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "7px 10px", fontSize: 11, color: "#4a7052", fontStyle: "italic" }}>
+              Press Tab/Enter to use "{query}"
+            </div>
+          ) : (
+            filtered.map(brand => (
+              <div
+                key={brand}
+                onMouseDown={() => select(brand)}
+                style={{ padding: "6px 10px", fontSize: 13, color: brand.toLowerCase() === query.toLowerCase() ? "#2ddb6f" : "#c8deca", cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", borderBottom: "1px solid #152118" }}
+              >
+                {brand}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Bulk Reel Entry (row-based multi-entry, used in receive mode) ─────────────
 interface BulkReelRow {
   tempId: string;
@@ -994,6 +1092,18 @@ function BulkReelEntry({
   const [nextSeq, setNextSeq] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
   const prevItemId = useRef<number | null>(null);
+
+  const { data: dbBrands = [] } = useQuery<string[]>({ queryKey: ["/api/wire-reels/brands"] });
+
+  const allBrands = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    const push = (b: string) => { const k = b.toLowerCase(); if (b && !seen.has(k)) { seen.add(k); merged.push(b); } };
+    (dbBrands as string[]).forEach(push);
+    getStoredBrands().forEach(push);
+    KNOWN_BRANDS.forEach(push);
+    return merged;
+  }, [dbBrands]);
 
   useEffect(() => {
     if (!item || item.id === prevItemId.current) return;
@@ -1040,6 +1150,8 @@ function BulkReelEntry({
       };
     });
     onAddAll(reels);
+    const newBrands = rows.map(r => r.brand.trim()).filter(b => b && !allBrands.some(x => x.toLowerCase() === b.toLowerCase()));
+    if (newBrands.length) saveCustomBrands(newBrands);
     setRows([makeBulkRow()]);
   }
 
@@ -1083,12 +1195,12 @@ function BulkReelEntry({
                 style={INPUT}
                 data-testid={`bulk-reel-length-${idx}`}
               />
-              {/* Brand */}
-              <input
-                type="text" value={row.brand} placeholder="Southwire"
-                onChange={e => updateRow(row.tempId, { brand: e.target.value })}
-                style={INPUT}
-                data-testid={`bulk-reel-brand-${idx}`}
+              {/* Brand — combobox with existing brands + type-in */}
+              <BrandCombobox
+                value={row.brand}
+                onChange={v => updateRow(row.tempId, { brand: v })}
+                allBrands={allBrands}
+                idx={idx}
               />
               {/* Location */}
               <select

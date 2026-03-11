@@ -907,6 +907,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Wire Reels ─────────────────────────────────────────────────────────────
 
+  app.get("/api/wire-reels/brands", isAuthenticated, async (req, res) => {
+    try {
+      const brands = await storage.getDistinctReelBrands();
+      res.json(brands);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/wire-reels/:itemId/next-id", isAuthenticated, async (req, res) => {
     try {
       const itemId = parseInt(req.params.itemId);

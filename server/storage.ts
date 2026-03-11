@@ -94,6 +94,7 @@ export interface IStorage {
 
   getWireReels(itemId: number): Promise<WireReelWithRelations[]>;
   getNextReelSeq(itemId: number): Promise<number>;
+  getDistinctReelBrands(): Promise<string[]>;
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
   updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel>;
   deleteWireReel(id: number): Promise<void>;
@@ -1596,6 +1597,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ─── Wire Reels ───────────────────────────────────────────────────────────────
+
+  async getDistinctReelBrands(): Promise<string[]> {
+    const rows = await db
+      .selectDistinct({ brand: wireReels.brand })
+      .from(wireReels)
+      .where(sql`brand IS NOT NULL AND brand <> ''`)
+      .orderBy(asc(wireReels.brand));
+    return rows.map(r => r.brand!).filter(Boolean);
+  }
 
   async getNextReelSeq(itemId: number): Promise<number> {
     const allReels = await db.select({ reelId: wireReels.reelId }).from(wireReels).where(eq(wireReels.itemId, itemId));

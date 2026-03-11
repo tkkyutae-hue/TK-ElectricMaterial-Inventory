@@ -821,8 +821,8 @@ function ItemRowField({
             <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
           )}
           {selectedCount > 0 && (
-            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "#2ddb6f" }}>
-              Selected: {selectedCount} reel{selectedCount > 1 ? "s" : ""} · {totalFt} FT total
+            <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: "#7aab82" }}>
+              {selectedCount} reel{selectedCount !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT
             </div>
           )}
         </div>

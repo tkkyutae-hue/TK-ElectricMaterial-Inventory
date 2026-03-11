@@ -871,12 +871,37 @@ export default function FieldTransactions() {
                       type="button"
                       onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
                       data-testid="btn-selection-mode-toggle"
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.14)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.50)";
+                        (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.06)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.22)";
+                        (e.currentTarget as HTMLButtonElement).style.color = "#7aab82";
+                      }}
+                      onMouseDown={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.22)";
+                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.95)";
+                      }}
+                      onMouseUp={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(45,219,111,0.14)";
+                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                      }}
                       style={{
-                        background: "none", border: "none", padding: 0,
-                        color: "#7aab82", fontSize: 9, fontWeight: 700,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        padding: "4px 10px",
+                        background: "rgba(45,219,111,0.06)",
+                        border: "1px solid rgba(45,219,111,0.22)",
+                        borderRadius: 5,
+                        color: "#7aab82",
+                        fontSize: 9, fontWeight: 700,
                         fontFamily: "'Barlow Condensed', sans-serif",
-                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        letterSpacing: "0.08em", textTransform: "uppercase",
                         cursor: "pointer", lineHeight: 1,
+                        transition: "background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       Select

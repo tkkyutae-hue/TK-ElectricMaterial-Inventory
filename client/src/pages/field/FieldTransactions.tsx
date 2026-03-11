@@ -796,7 +796,6 @@ export default function FieldTransactions() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
-              {selectMode && <col style={{ width: 40 }} />}
               <col style={{ width: 46 }} />
               <col style={{ width: 82 }} />
               <col style={{ width: 42 }} />
@@ -808,24 +807,11 @@ export default function FieldTransactions() {
               <col style={{ width: 55 }} />
               <col style={{ width: 105 }} />
               <col style={{ width: 96 }} />
+              {selectMode && <col style={{ width: 40 }} />}
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
-                {selectMode && (
-                  <th style={{ ...TH, textAlign: "center", borderLeft: "3px solid transparent" }}>
-                    <button
-                      type="button"
-                      onClick={toggleAll}
-                      style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                      data-testid="button-select-all"
-                    >
-                      {allSelected
-                        ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f" }} />
-                        : <Square style={{ width: 15, height: 15, color: "#4a7052" }} />}
-                    </button>
-                  </th>
-                )}
-                <th style={{ ...TH, textAlign: "center", paddingLeft: 12, ...(selectMode ? {} : { borderLeft: "3px solid transparent" }) }}>#</th>
+                <th style={{ ...TH, textAlign: "center", paddingLeft: 12, borderLeft: "3px solid transparent" }}>#</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
                 <th style={TH}>Photo</th>
                 <th style={{ ...TH, textAlign: "center" }}>Size</th>
@@ -836,43 +822,28 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
                 <th style={{ ...TH, textAlign: "center" }}>Date</th>
                 <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>
-                  {canDelete && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                      {selectMode ? (
-                        <>
-                          {selectedIds.size > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmOpen(true)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#ff5050", cursor: "pointer" }}
-                              data-testid="button-delete-selected"
-                            >
-                              <Trash2 style={{ width: 11, height: 11 }} />
-                              Delete ({selectedIds.size})
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={exitSelectMode}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, background: "#1c2b1f", border: "1px solid #2a4030", padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
-                            data-testid="button-cancel-select"
-                          >
-                            <X style={{ width: 11, height: 11 }} />
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setSelectMode(true)}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, background: "#1c2b1f", border: "1px solid #2a4030", padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
-                          data-testid="button-select-mode"
-                        >
-                          <CheckSquare style={{ width: 11, height: 11 }} />
-                          Select
-                        </button>
-                      )}
-                    </div>
+                  {selectMode && (
+                    <button
+                      type="button"
+                      onClick={toggleAll}
+                      style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                      data-testid="button-select-all"
+                    >
+                      {allSelected
+                        ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f" }} />
+                        : <Square style={{ width: 15, height: 15, color: "#4a7052" }} />}
+                    </button>
+                  )}
+                  {!selectMode && canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectMode(true)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, background: "#1c2b1f", border: "1px solid #2a4030", padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
+                      data-testid="button-select-mode"
+                    >
+                      <CheckSquare style={{ width: 11, height: 11 }} />
+                      Select
+                    </button>
                   )}
                 </th>
               </tr>
@@ -910,17 +881,8 @@ export default function FieldTransactions() {
                     onClick={selectMode ? () => toggleRow(m.id) : undefined}
                     data-testid={`field-tx-row-${m.id}`}
                   >
-                    {/* Checkbox */}
-                    {selectMode && (
-                      <td style={{ padding: "12px 8px", textAlign: "center", borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
-                        {isSelected
-                          ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f", margin: "0 auto" }} />
-                          : <Square style={{ width: 15, height: 15, color: "#4a7052", margin: "0 auto" }} />}
-                      </td>
-                    )}
-
                     {/* No. */}
-                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center", ...(!selectMode ? { borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" } : {}) }}>
+                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center", borderLeft: "3px solid transparent" }}>
                       {idx + 1}
                     </td>
 
@@ -1014,8 +976,16 @@ export default function FieldTransactions() {
                       ) : <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
-                    {/* Actions column — empty in rows */}
-                    <td style={{ padding: "12px 12px 12px 8px" }} />
+                    {/* Checkbox or Actions column */}
+                    {selectMode ? (
+                      <td style={{ padding: "12px 8px", textAlign: "center", paddingRight: 12, borderRight: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                        {isSelected
+                          ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f", margin: "0 auto" }} />
+                          : <Square style={{ width: 15, height: 15, color: "#4a7052", margin: "0 auto" }} />}
+                      </td>
+                    ) : (
+                      <td style={{ padding: "12px 12px 12px 8px" }} />
+                    )}
                   </tr>
                 );
               })}

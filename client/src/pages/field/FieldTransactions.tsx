@@ -619,7 +619,7 @@ export default function FieldTransactions() {
     ? (filtered ?? []).find((m) => selectedIds.has(m.id)) ?? null
     : null;
 
-  const COLS_COUNT = 11;
+  const COLS_COUNT = 12;
 
   // ── TH style ──
   const TH: React.CSSProperties = {
@@ -860,6 +860,7 @@ export default function FieldTransactions() {
               <col style={{ width: "13%" }} />
               <col style={{ width: "13%" }} />
               <col style={{ width: 80 }} />
+              <col style={{ width: 58 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
@@ -887,6 +888,23 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center" }}>From → To</th>
                 <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
+                {/* Select col */}
+                <th style={{ ...TH, textAlign: "center", borderLeft: "1px solid #2a4030", background: selectionMode ? "#1a2e1e" : "#162019" }}>
+                  {selectionMode ? (
+                    <div
+                      role="checkbox"
+                      aria-checked={allSelected}
+                      onClick={toggleAll}
+                      data-testid="field-checkbox-select-all-right"
+                      title="Select all"
+                      style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? "#2ddb6f" : "#4a7052"}`, background: allSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                    >
+                      {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                  ) : (
+                    <span style={{ color: "#3d5e47", fontSize: 8, letterSpacing: "0.05em" }}>SEL</span>
+                  )}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1050,6 +1068,25 @@ export default function FieldTransactions() {
                     {/* Note */}
                     <td style={{ padding: "12px 8px", fontSize: 11, color: "#7aab82", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {m.note || <span style={{ color: "#2a4030" }}>—</span>}
+                    </td>
+
+                    {/* Select */}
+                    <td
+                      style={{ padding: "12px 6px", textAlign: "center", borderLeft: "1px solid #2a4030", background: isSelected ? "rgba(45,219,111,0.07)" : selectionMode ? "#1a2e1e" : "#162019" }}
+                      onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}
+                    >
+                      {selectionMode ? (
+                        <div
+                          role="checkbox"
+                          aria-checked={isSelected}
+                          data-testid={`field-checkbox-sel-${m.id}`}
+                          style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? "#2ddb6f" : "#4a7052"}`, background: isSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                        >
+                          {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                      ) : (
+                        <span style={{ color: "#2a4030", fontSize: 10 }}>·</span>
+                      )}
                     </td>
 
                   </tr>

@@ -441,8 +441,9 @@ export default function FieldTransactions() {
   const [successToast, setSuccessToast] = useState<{ txId: number } | null>(null);
 
   // Pagination
-  const [pageSize, setPageSize]     = useState(25);
+  const [pageSize, setPageSize]       = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
 
   const { data: movements, isLoading } = useMovements();
   const bulkDelete  = useBulkDeleteMovements();
@@ -822,9 +823,9 @@ export default function FieldTransactions() {
       </div>
 
       {/* ── Table + Selection Action Panel ── */}
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+      <div style={{ position: "relative" }}>
       {/* Main table */}
-      <div style={{ flex: 1, border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
@@ -1064,64 +1065,103 @@ export default function FieldTransactions() {
           padding: "10px 16px",
           display: "flex",
           alignItems: "center",
-          gap: 10,
           fontFamily: "'Barlow Condensed', sans-serif",
         }}>
-          {/* Page size button group */}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {[10, 15, 25, 35, 45].map(n => {
-              const active = pageSize === n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => { if (!active) { setPageSize(n); setCurrentPage(1); } }}
-                  style={{
-                    padding: "7px 13px", borderRadius: 8,
-                    background: active ? "rgba(45,219,111,0.09)" : "#162019",
-                    border: `1px solid ${active ? "rgba(45,219,111,0.28)" : "#2a4030"}`,
-                    color: active ? "#2ddb6f" : "#7aab82",
-                    fontFamily: "'JetBrains Mono', 'Fira Mono', monospace",
-                    fontSize: 12, fontWeight: 600,
-                    cursor: active ? "default" : "pointer",
-                    transition: "all 0.12s",
-                  }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#3d5e47"; (e.currentTarget as HTMLElement).style.color = "#e2f0e5"; } }}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "#2a4030"; (e.currentTarget as HTMLElement).style.color = "#7aab82"; } }}
-                  data-testid={`btn-page-size-${n}`}
-                >
-                  {n}
-                </button>
-              );
-            })}
+          {/* Left: Showing count */}
+          <span style={{ fontSize: 11, color: "#7aab82", flex: 1 }}>
+            Showing{" "}
+            <strong style={{ color: "#e2f0e5" }}>
+              {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
+            </strong>
+            {" "}of{" "}
+            <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
+          </span>
+
+          {/* Center: page-size dropdown + pagination */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Compact page-size button */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setPageSizeOpen(o => !o)}
+                data-testid="btn-page-size-toggle"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "5px 9px", borderRadius: 7,
+                  background: pageSizeOpen ? "rgba(45,219,111,0.09)" : "#162019",
+                  border: `1px solid ${pageSizeOpen ? "rgba(45,219,111,0.28)" : "#2a4030"}`,
+                  color: pageSizeOpen ? "#2ddb6f" : "#7aab82",
+                  fontSize: 11, fontWeight: 700,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  letterSpacing: "0.04em", cursor: "pointer",
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}>
+                  <rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                </svg>
+                {pageSize}
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.6 }}>
+                  <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {pageSizeOpen && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                  background: "#162019", border: "1px solid #2a4030", borderRadius: 9,
+                  padding: "4px", zIndex: 50,
+                  display: "flex", flexDirection: "column", gap: 2, minWidth: 72,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.45)",
+                }}>
+                  {[10, 15, 25, 35, 45].map(n => {
+                    const active = pageSize === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
+                        data-testid={`btn-page-size-${n}`}
+                        style={{
+                          padding: "6px 10px", borderRadius: 6, textAlign: "center",
+                          background: active ? "rgba(45,219,111,0.12)" : "transparent",
+                          border: `1px solid ${active ? "rgba(45,219,111,0.28)" : "transparent"}`,
+                          color: active ? "#2ddb6f" : "#7aab82",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer",
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Pagination arrows + indicator */}
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              data-testid="btn-page-prev"
+              style={{ padding: "5px 10px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: safePage <= 1 ? "#2a4030" : "#7aab82", fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}
+            >‹</button>
+            <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "monospace", minWidth: 52, textAlign: "center" }}>
+              {safePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              data-testid="btn-page-next"
+              style={{ padding: "5px 10px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: safePage >= totalPages ? "#2a4030" : "#7aab82", fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}
+            >›</button>
           </div>
 
-          {/* Page indicator + nav */}
-          {totalPages > 1 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                data-testid="btn-page-prev"
-                style={{ padding: "7px 12px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: safePage <= 1 ? "#2a4030" : "#7aab82", fontSize: 12, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}
-              >‹</button>
-              <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "monospace", minWidth: 60, textAlign: "center" }}>
-                {safePage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                data-testid="btn-page-next"
-                style={{ padding: "7px 12px", borderRadius: 8, background: "#162019", border: "1px solid #2a4030", color: safePage >= totalPages ? "#2a4030" : "#7aab82", fontSize: 12, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}
-              >›</button>
-            </div>
-          )}
-
-          <span style={{ fontSize: 11, color: "#7aab82", flex: 1, textAlign: "right" }}>
-            Showing <strong style={{ color: "#e2f0e5" }}>{filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
-          </span>
+          {/* Right: spacer to balance left "Showing" text */}
+          <div style={{ flex: 1 }} />
         </div>
       </div>
 

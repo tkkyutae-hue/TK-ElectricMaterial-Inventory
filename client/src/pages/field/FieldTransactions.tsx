@@ -435,6 +435,7 @@ export default function FieldTransactions() {
   const [dateTo, setDateTo]       = useState("");
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editTx, setEditTx]           = useState<any | null>(null);
   const [successToast, setSuccessToast] = useState<{ txId: number } | null>(null);
@@ -820,27 +821,51 @@ export default function FieldTransactions() {
         )}
       </div>
 
-      {/* ── Table ── */}
-      <div style={{ border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
+      {/* ── Table + Selection Action Panel ── */}
+      {/* Select-mode toggle */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+        <button
+          type="button"
+          onClick={() => { setSelectionMode(m => !m); setSelectedIds(new Set()); }}
+          data-testid="btn-selection-mode-toggle"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 16px", borderRadius: 8,
+            background: selectionMode ? "rgba(45,219,111,0.1)" : "#162019",
+            border: `1px solid ${selectionMode ? "rgba(45,219,111,0.35)" : "#2a4030"}`,
+            color: selectionMode ? "#2ddb6f" : "#7aab82",
+            fontSize: 12, fontWeight: 700,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            cursor: "pointer", transition: "all 0.15s",
+          }}
+        >
+          {selectionMode ? <><X style={{ width: 11, height: 11 }} /> Exit Select</> : "Select"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+      {/* Main table */}
+      <div style={{ flex: 1, border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
-              <col style={{ width: 38 }} />
+              <col style={{ width: selectionMode ? 38 : 0 }} />
               <col style={{ width: 46 }} />
-              <col style={{ width: 105 }} />
-              <col style={{ width: 82 }} />
-              <col style={{ width: 42 }} />
-              <col style={{ width: 64 }} />
-              <col />
+              <col style={{ width: 100 }} />
               <col style={{ width: 80 }} />
-              <col style={{ width: "16%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: 55 }} />
+              <col style={{ width: 42 }} />
+              <col style={{ width: 60 }} />
+              <col />
+              <col style={{ width: 76 }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: 80 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
                 {/* Checkbox col */}
-                <th style={{ ...TH, textAlign: "center", paddingLeft: 10 }}>
+                <th style={{ ...TH, textAlign: "center", paddingLeft: 10, overflow: "hidden", padding: selectionMode ? undefined : 0 }}>
+                  {selectionMode && (
                   <div
                     role="checkbox"
                     aria-checked={allSelected}
@@ -850,6 +875,7 @@ export default function FieldTransactions() {
                   >
                     {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
+                  )}
                 </th>
                 <th style={{ ...TH, textAlign: "center" }}>#</th>
                 <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
@@ -900,11 +926,12 @@ export default function FieldTransactions() {
                     }}
                     onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#1c2b1f"; }}
                     onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#162019"; }}
-                    onClick={() => toggleRow(m.id)}
+                    onClick={() => selectionMode && toggleRow(m.id)}
                     data-testid={`field-tx-row-${m.id}`}
                   >
                     {/* Checkbox */}
-                    <td style={{ padding: "12px 6px 12px 10px", textAlign: "center" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                    <td style={{ padding: selectionMode ? "12px 6px 12px 10px" : 0, textAlign: "center", overflow: "hidden" }} onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}>
+                      {selectionMode && (
                       <div
                         role="checkbox"
                         aria-checked={isSelected}
@@ -913,6 +940,7 @@ export default function FieldTransactions() {
                       >
                         {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
+                      )}
                     </td>
 
                     {/* No. */}
@@ -1043,7 +1071,7 @@ export default function FieldTransactions() {
         }}>
           {/* Page size button group */}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {[15, 25, 35, 45].map(n => {
+            {[10, 15, 25, 35, 45].map(n => {
               const active = pageSize === n;
               return (
                 <button
@@ -1051,7 +1079,7 @@ export default function FieldTransactions() {
                   type="button"
                   onClick={() => { if (!active) { setPageSize(n); setCurrentPage(1); } }}
                   style={{
-                    padding: "7px 16px", borderRadius: 8,
+                    padding: "7px 13px", borderRadius: 8,
                     background: active ? "rgba(45,219,111,0.09)" : "#162019",
                     border: `1px solid ${active ? "rgba(45,219,111,0.28)" : "#2a4030"}`,
                     color: active ? "#2ddb6f" : "#7aab82",
@@ -1094,20 +1122,44 @@ export default function FieldTransactions() {
           )}
 
           <span style={{ fontSize: 11, color: "#7aab82", flex: 1, textAlign: "right" }}>
-            Showing <strong style={{ color: "#e2f0e5" }}>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
-            {selCount > 0 && (
-              <span style={{ marginLeft: 8, color: "#2ddb6f", fontWeight: 700 }}>· {selCount} selected</span>
-            )}
+            Showing <strong style={{ color: "#e2f0e5" }}>{filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}</strong> of <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
           </span>
+        </div>
+      </div>
+
+      {/* ── Selection Action Panel (far right, only in selection mode) ── */}
+      {selectionMode && (
+        <div style={{
+          width: 152,
+          flexShrink: 0,
+          background: "#162019",
+          border: "1px solid #2a4030",
+          borderRadius: 12,
+          padding: "14px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          fontFamily: "'Barlow Condensed', sans-serif",
+          alignSelf: "flex-start",
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            {selCount > 0 ? `${selCount} Selected` : "No selection"}
+          </span>
+
+          {selCount === 0 && (
+            <p style={{ fontSize: 11, color: "#4a7052", lineHeight: 1.4, margin: 0 }}>
+              Click rows to select them.
+            </p>
+          )}
 
           {selCount > 0 && (
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
               data-testid="button-field-cancel-select"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "#1c2b1f", border: "1px solid #2a4030", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "#1c2b1f", border: "1px solid #2a4030", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer", width: "100%" }}
             >
-              <X style={{ width: 11, height: 11 }} /> Cancel
+              <X style={{ width: 11, height: 11 }} /> Clear
             </button>
           )}
 
@@ -1116,7 +1168,7 @@ export default function FieldTransactions() {
               type="button"
               onClick={() => selectedTx && setEditTx(selectedTx)}
               data-testid="button-field-edit-selected"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "rgba(91,156,246,0.12)", border: "1px solid rgba(91,156,246,0.35)", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#5b9cf6", cursor: "pointer" }}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "rgba(91,156,246,0.12)", border: "1px solid rgba(91,156,246,0.35)", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#5b9cf6", cursor: "pointer", width: "100%" }}
             >
               <Pencil style={{ width: 11, height: 11 }} /> Edit
             </button>
@@ -1127,14 +1179,14 @@ export default function FieldTransactions() {
               type="button"
               onClick={() => setConfirmOpen(true)}
               data-testid="button-field-delete-selected"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "6px 16px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer" }}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "7px 10px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer", width: "100%" }}
             >
-              <Trash2 style={{ width: 12, height: 12 }} />
-              Delete ({selCount})
+              <Trash2 style={{ width: 11, height: 11 }} /> Delete ({selCount})
             </button>
           )}
         </div>
-      </div>
+      )}
+      </div>{/* end flex row */}
 
       </>}
 

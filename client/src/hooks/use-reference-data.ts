@@ -117,7 +117,10 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: async ({ id, ...data }: any) => {
       const res = await fetch(buildUrl(api.projects.get.path, { id }), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to update project');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || `Failed to update project (${res.status})`);
+      }
       return res.json();
     },
     onSuccess: (_, { id }) => {

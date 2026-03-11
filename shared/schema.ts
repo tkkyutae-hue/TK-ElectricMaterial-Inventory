@@ -60,6 +60,7 @@ export const projects = pgTable("projects", {
   status: text("status").notNull().default("active"), // active, completed, on_hold, cancelled
   poNumber: text("po_number"),
   ownerName: text("owner_name"),
+  jobLocation: text("job_location"),
   startDate: date("start_date"),
   endDate: date("end_date"),
   notes: text("notes"),

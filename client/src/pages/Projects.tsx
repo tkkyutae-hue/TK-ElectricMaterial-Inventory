@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { QuickEntryInput } from "@/components/QuickEntryInput";
 import { useForm } from "react-hook-form";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -32,28 +33,38 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
+  // Derive suggestion lists from existing project data
+  const allProjects: any[] = projects ?? [];
+  const customerSuggestions = [...new Set(allProjects.map((p: any) => p.customerName).filter(Boolean))] as string[];
+  const ownerSuggestions    = [...new Set(allProjects.map((p: any) => p.ownerName).filter(Boolean))] as string[];
+  const locationSuggestions = [...new Set(allProjects.map((p: any) => p.jobLocation).filter(Boolean))] as string[];
+
   const form = useForm({
-    defaultValues: { name: "", customerName: "", city: "", state: "", status: "active", poNumber: "", notes: "" }
+    defaultValues: { name: "", customerName: "", ownerName: "", jobLocation: "", poNumber: "", status: "active", notes: "" }
   });
 
-  const filtered = projects?.filter((p: any) => {
+  const filtered = allProjects.filter((p: any) => {
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     if (!search.trim()) return matchStatus;
     const q = search.toLowerCase();
     const matchSearch =
       p.name?.toLowerCase().includes(q) ||
       p.customerName?.toLowerCase().includes(q) ||
-      p.city?.toLowerCase().includes(q) ||
-      p.state?.toLowerCase().includes(q) ||
+      p.ownerName?.toLowerCase().includes(q) ||
+      p.jobLocation?.toLowerCase().includes(q) ||
       p.poNumber?.toLowerCase().includes(q) ||
-      p.status?.toLowerCase().includes(q) ||
-      p.ownerName?.toLowerCase().includes(q);
+      p.status?.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
 
   function onSubmit(data: any) {
     const code = `PRJ-${Date.now().toString(36).toUpperCase()}`;
-    createMutation.mutate({ ...data, code }, {
+    // Convert empty strings to null for optional fields
+    const clean: any = { ...data, code };
+    ["customerName", "ownerName", "jobLocation", "poNumber", "notes"].forEach(f => {
+      if (clean[f] === "") clean[f] = null;
+    });
+    createMutation.mutate(clean, {
       onSuccess: () => { setDialogOpen(false); form.reset(); }
     });
   }
@@ -87,9 +98,11 @@ export default function Projects() {
               <DialogHeader><DialogTitle>Create Project</DialogTitle></DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+
+                  {/* Name + Status */}
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input placeholder="Downtown Office Renovation" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Project Name <span className="text-red-500">*</span></FormLabel><FormControl><Input placeholder="Downtown Office Renovation" {...field} data-testid="input-create-project-name" /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="status" render={({ field }) => (
                       <FormItem><FormLabel>Status</FormLabel>
@@ -106,25 +119,68 @@ export default function Projects() {
                       </FormItem>
                     )} />
                   </div>
+
+                  {/* Customer (searchable) */}
+                  <FormField control={form.control} name="customerName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <FormControl>
+                        <QuickEntryInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          suggestions={customerSuggestions}
+                          placeholder="Apex Commercial Group"
+                          testId="input-create-customer"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  {/* Owner (searchable) + PO Number */}
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="customerName" render={({ field }) => (
-                      <FormItem><FormLabel>Customer</FormLabel><FormControl><Input placeholder="Apex Commercial Group" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormField control={form.control} name="ownerName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Owner</FormLabel>
+                        <FormControl>
+                          <QuickEntryInput
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            suggestions={ownerSuggestions}
+                            placeholder="John Kim"
+                            testId="input-create-owner"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )} />
                     <FormField control={form.control} name="poNumber" render={({ field }) => (
-                      <FormItem><FormLabel>PO Number</FormLabel><FormControl><Input placeholder="PO-2026-001" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>PO Number</FormLabel><FormControl><Input placeholder="PO-2026-001" {...field} data-testid="input-create-po" /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="city" render={({ field }) => (
-                      <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="Dallas" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="state" render={({ field }) => (
-                      <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="TX" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                  </div>
+
+                  {/* Job Location (searchable) */}
+                  <FormField control={form.control} name="jobLocation" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Job Location</FormLabel>
+                      <FormControl>
+                        <QuickEntryInput
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          suggestions={locationSuggestions}
+                          placeholder="123 Main St, Dallas TX"
+                          testId="input-create-location"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  {/* Notes */}
                   <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={2} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
+
                   <div className="flex justify-end pt-2">
                     <Button type="submit" disabled={createMutation.isPending} className="bg-brand-700 hover:bg-brand-800">
                       {createMutation.isPending ? "Creating..." : "Create Project"}
@@ -141,7 +197,7 @@ export default function Projects() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input
-          placeholder="Search by project name, customer, city, PO number, owner…"
+          placeholder="Search by project name, customer, owner, location, PO…"
           className="pl-9 bg-white border-slate-200"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -178,10 +234,10 @@ export default function Projects() {
                     <p className="text-sm text-slate-500 mb-3">{project.customerName}</p>
                   )}
                   <div className="space-y-1.5 text-sm text-slate-500">
-                    {(project.city || project.state) && (
+                    {project.jobLocation && (
                       <div className="flex items-center gap-2">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        {[project.city, project.state].filter(Boolean).join(", ")}
+                        <span className="truncate">{project.jobLocation}</span>
                       </div>
                     )}
                     {project.startDate && (

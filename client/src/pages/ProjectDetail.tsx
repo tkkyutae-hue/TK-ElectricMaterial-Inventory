@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
+import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
 import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Users, Edit, Save, X, Trash2 } from "lucide-react";
@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { QuickEntryInput } from "@/components/QuickEntryInput";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active:    { label: "Active",    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -27,29 +28,61 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Cancelled", className: "bg-rose-100 text-rose-700 border-rose-200" },
 };
 
+// ── Edit schema ───────────────────────────────────────────────────────────────
 const editSchema = z.object({
   name:         z.string().min(1, "Project name is required"),
   customerName: z.string().optional(),
   ownerName:    z.string().optional(),
+  jobLocation:  z.string().optional(),
   poNumber:     z.string().optional(),
   status:       z.string().min(1),
   startDate:    z.string().optional(),
   endDate:      z.string().optional(),
-  addressLine1: z.string().optional(),
-  city:         z.string().optional(),
-  state:        z.string().optional(),
-  zipCode:      z.string().optional(),
   notes:        z.string().optional(),
 });
 
 type EditFormData = z.infer<typeof editSchema>;
 
-function EditProjectDialog({ project, open, onClose }: { project: any; open: boolean; onClose: () => void }) {
+// ── Helper: convert empty strings → undefined for optional fields ─────────────
+function cleanFormData(data: EditFormData) {
+  const clean: any = { ...data };
+  const optionalFields: (keyof EditFormData)[] = [
+    "customerName", "ownerName", "jobLocation", "poNumber", "startDate", "endDate", "notes",
+  ];
+  optionalFields.forEach(f => {
+    if (clean[f] === "") clean[f] = null;
+  });
+  return clean;
+}
+
+// ── Edit Dialog ───────────────────────────────────────────────────────────────
+function EditProjectDialog({
+  project,
+  open,
+  onClose,
+  allProjects,
+}: {
+  project: any;
+  open: boolean;
+  onClose: () => void;
+  allProjects: any[];
+}) {
   const { toast } = useToast();
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
   const [, navigate] = useLocation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Build unique suggestion lists from existing project data
+  const customerSuggestions = [...new Set(
+    allProjects.map((p: any) => p.customerName).filter(Boolean)
+  )] as string[];
+  const ownerSuggestions = [...new Set(
+    allProjects.map((p: any) => p.ownerName).filter(Boolean)
+  )] as string[];
+  const locationSuggestions = [...new Set(
+    allProjects.map((p: any) => p.jobLocation).filter(Boolean)
+  )] as string[];
 
   const form = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -57,14 +90,11 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
       name:         project.name || "",
       customerName: project.customerName || "",
       ownerName:    project.ownerName || "",
+      jobLocation:  project.jobLocation || "",
       poNumber:     project.poNumber || "",
       status:       project.status || "active",
       startDate:    project.startDate || "",
       endDate:      project.endDate || "",
-      addressLine1: project.addressLine1 || "",
-      city:         project.city || "",
-      state:        project.state || "",
-      zipCode:      project.zipCode || "",
       notes:        project.notes || "",
     },
   });
@@ -75,14 +105,11 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
         name:         project.name || "",
         customerName: project.customerName || "",
         ownerName:    project.ownerName || "",
+        jobLocation:  project.jobLocation || "",
         poNumber:     project.poNumber || "",
         status:       project.status || "active",
         startDate:    project.startDate || "",
         endDate:      project.endDate || "",
-        addressLine1: project.addressLine1 || "",
-        city:         project.city || "",
-        state:        project.state || "",
-        zipCode:      project.zipCode || "",
         notes:        project.notes || "",
       });
       setShowDeleteConfirm(false);
@@ -91,7 +118,7 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
 
   async function onSubmit(data: EditFormData) {
     try {
-      await updateMutation.mutateAsync({ id: project.id, code: project.code, ...data });
+      await updateMutation.mutateAsync({ id: project.id, code: project.code, ...cleanFormData(data) });
       toast({ title: "Project updated", description: `${data.name} has been saved.` });
       onClose();
     } catch (err: any) {
@@ -119,6 +146,8 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+
+            {/* Name + Status */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
@@ -144,11 +173,37 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               )} />
             </div>
 
+            {/* Customer (searchable) */}
+            <FormField control={form.control} name="customerName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Customer</FormLabel>
+                <FormControl>
+                  <QuickEntryInput
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    suggestions={customerSuggestions}
+                    placeholder="e.g. Apex Commercial Group"
+                    testId="edit-customer-name"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            {/* Project Owner (searchable) + PO Number */}
             <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="customerName" render={({ field }) => (
+              <FormField control={form.control} name="ownerName" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Customer</FormLabel>
-                  <FormControl><Input placeholder="Customer name" {...field} /></FormControl>
+                  <FormLabel>Project Owner</FormLabel>
+                  <FormControl>
+                    <QuickEntryInput
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      suggestions={ownerSuggestions}
+                      placeholder="e.g. John Kim"
+                      testId="edit-owner-name"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -161,14 +216,24 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               )} />
             </div>
 
-            <FormField control={form.control} name="ownerName" render={({ field }) => (
+            {/* Job Location (searchable) */}
+            <FormField control={form.control} name="jobLocation" render={({ field }) => (
               <FormItem>
-                <FormLabel>Project Owner / 담당자</FormLabel>
-                <FormControl><Input placeholder="e.g. John Kim" {...field} data-testid="edit-owner-name" /></FormControl>
+                <FormLabel>Job Location</FormLabel>
+                <FormControl>
+                  <QuickEntryInput
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    suggestions={locationSuggestions}
+                    placeholder="e.g. 123 Main St, Dallas TX"
+                    testId="edit-job-location"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
 
+            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="startDate" render={({ field }) => (
                 <FormItem>
@@ -186,38 +251,7 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               )} />
             </div>
 
-            <FormField control={form.control} name="addressLine1" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Address</FormLabel>
-                <FormControl><Input placeholder="Street address" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <div className="grid grid-cols-3 gap-4">
-              <FormField control={form.control} name="city" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>City</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="state" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>State</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="zipCode" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Zip Code</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-
+            {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
                 <FormLabel>Notes</FormLabel>
@@ -226,6 +260,7 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
               </FormItem>
             )} />
 
+            {/* Action buttons */}
             <div className="flex justify-between items-center pt-2">
               <Button
                 type="button"
@@ -242,7 +277,12 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
                 <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>
                   <X className="w-4 h-4 mr-1" /> Cancel
                 </Button>
-                <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-save-project">
+                <Button
+                  type="submit"
+                  className="bg-brand-700 hover:bg-brand-800"
+                  disabled={updateMutation.isPending || deleteMutation.isPending}
+                  data-testid="button-save-project"
+                >
                   <Save className="w-4 h-4 mr-1" />
                   {updateMutation.isPending ? "Saving…" : "Save Changes"}
                 </Button>
@@ -285,10 +325,12 @@ function EditProjectDialog({ project, open, onClose }: { project: any; open: boo
   );
 }
 
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
   const id = Number(params?.id || "0");
   const { data: project, isLoading } = useProject(id);
+  const { data: allProjects = [] } = useProjects();
   const [logOpen, setLogOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -356,12 +398,17 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <EditProjectDialog project={project} open={editOpen} onClose={() => setEditOpen(false)} />
+      <EditProjectDialog
+        project={project}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        allProjects={allProjects}
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total Issued",   value: project.totalIssued || 0,  icon: ArrowUpRight,   color: "text-brand-600",   bg: "bg-brand-50" },
-          { label: "Total Returned", value: project.totalReturned || 0, icon: ArrowDownRight, color: "text-emerald-600",bg: "bg-emerald-50" },
+          { label: "Total Returned", value: project.totalReturned || 0, icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Net Used",       value: (project.totalIssued || 0) - (project.totalReturned || 0), icon: Package, color: "text-slate-600", bg: "bg-slate-50" },
           { label: "Transactions",   value: project.recentActivity?.length || 0, icon: Users, color: "text-indigo-600", bg: "bg-indigo-50" },
         ].map((s, i) => (
@@ -463,6 +510,12 @@ export default function ProjectDetail() {
                   <p className="font-semibold text-slate-900">{project.ownerName}</p>
                 </div>
               )}
+              {project.jobLocation && (
+                <div className="flex gap-3">
+                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-slate-600">{project.jobLocation}</p>
+                </div>
+              )}
               {(project.startDate || project.endDate) && (
                 <div className="flex gap-3">
                   <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
@@ -482,23 +535,11 @@ export default function ProjectDetail() {
                   </div>
                 </div>
               )}
-              {project.addressLine1 && (
-                <div className="flex gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-slate-900">{project.addressLine1}</p>
-                    <p className="text-slate-500">{[project.city, project.state, project.zipCode].filter(Boolean).join(", ")}</p>
-                  </div>
-                </div>
-              )}
               {project.notes && (
                 <div className="pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-1">Notes</p>
-                  <p className="text-slate-600">{project.notes}</p>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+                  <p className="text-slate-600 leading-relaxed">{project.notes}</p>
                 </div>
-              )}
-              {!project.poNumber && !project.ownerName && !project.addressLine1 && !project.startDate && !project.notes && (
-                <p className="text-slate-400 text-sm">No additional details. Click Edit to add project metadata.</p>
               )}
             </CardContent>
           </Card>

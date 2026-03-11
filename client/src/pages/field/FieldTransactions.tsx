@@ -619,7 +619,7 @@ export default function FieldTransactions() {
     ? (filtered ?? []).find((m) => selectedIds.has(m.id)) ?? null
     : null;
 
-  const COLS_COUNT = 11;
+  const COLS_COUNT = 12;
 
   // ── TH style ──
   const TH: React.CSSProperties = {
@@ -828,6 +828,7 @@ export default function FieldTransactions() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
+              <col style={{ width: selectionMode ? 38 : 0 }} />
               <col style={{ width: 46 }} />
               <col style={{ width: 100 }} />
               <col style={{ width: 80 }} />
@@ -842,6 +843,20 @@ export default function FieldTransactions() {
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
+                {/* Checkbox col */}
+                <th style={{ ...TH, textAlign: "center", paddingLeft: 10, overflow: "hidden", padding: selectionMode ? undefined : 0 }}>
+                  {selectionMode && (
+                  <div
+                    role="checkbox"
+                    aria-checked={allSelected}
+                    onClick={toggleAll}
+                    data-testid="field-checkbox-select-all"
+                    style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? "#2ddb6f" : "#4a7052"}`, background: allSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  )}
+                </th>
                 <th style={{ ...TH, textAlign: "center" }}>#</th>
                 <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>

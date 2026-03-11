@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -121,6 +122,8 @@ export function SearchableItemSelect({
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   const selected = items.find(i => i.id === value);
 
@@ -136,13 +139,23 @@ export function SearchableItemSelect({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
         setSearch("");
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
   }, [open]);
 
   function handleOpen() {
@@ -223,10 +236,11 @@ export function SearchableItemSelect({
       </div>
 
       {/* ── Dropdown list ── */}
-      {open && (
+      {open && createPortal(
         <div
-          style={D ? { position: "absolute", zIndex: 60, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden", maxHeight: `${6 * 44}px` } : { maxHeight: `${6 * 44}px` }}
-          className={D ? undefined : "absolute z-[60] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
+          ref={dropdownRef}
+          style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden", maxHeight: `${6 * 44}px` } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, maxHeight: `${6 * 44}px` }}
+          className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
         >
           <div className="overflow-y-auto h-full" style={{ maxHeight: `${6 * 44}px` }}>
             {filtered.length === 0 ? (
@@ -263,7 +277,7 @@ export function SearchableItemSelect({
             )}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
@@ -292,6 +306,8 @@ function SearchableLocationSelect({
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   const selected = locations.find(l => l.id === value);
 
@@ -306,10 +322,20 @@ function SearchableLocationSelect({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
   }, [open]);
 
   useEffect(() => {
@@ -389,8 +415,8 @@ function SearchableLocationSelect({
         <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
-      {open && (
-        <div style={D ? { position: "absolute", zIndex: 50, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : undefined} className={D ? undefined : "absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
+      {open && createPortal(
+        <div ref={dropdownRef} style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }} className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
           <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
             <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
             <input
@@ -458,7 +484,7 @@ function SearchableLocationSelect({
             )}
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
@@ -481,6 +507,8 @@ function SearchableProjectSelect({
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   const activeProjects = projects.filter(p => p.status === "active");
   const selected = activeProjects.find(p => p.id === value);
@@ -499,10 +527,20 @@ function SearchableProjectSelect({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
   }, [open]);
 
   useEffect(() => {
@@ -528,8 +566,8 @@ function SearchableProjectSelect({
         <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
-      {open && (
-        <div style={D ? { position: "absolute", zIndex: 50, marginTop: 4, width: "100%", background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : undefined} className={D ? undefined : "absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
+      {open && createPortal(
+        <div ref={dropdownRef} style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }} className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
           <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
             <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
             <input
@@ -596,7 +634,7 @@ function SearchableProjectSelect({
             </div>
           )}
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

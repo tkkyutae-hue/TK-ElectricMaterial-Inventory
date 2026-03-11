@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -264,18 +265,38 @@ function LocationCombobox({ value, onChange, locations }: {
   const createLocation = useCreateLocation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
 
   const selected = locations.find(l => l.id === value);
   const filtered = search.trim() ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase())) : locations;
   const showCreate = search.trim().length > 0 && !locations.some(l => l.name.trim().toLowerCase() === search.trim().toLowerCase());
 
+  function recalcPos() {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setDropPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 208) });
+  }
+
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    recalcPos();
+    const h = (e: MouseEvent) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
     document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    window.addEventListener("scroll", recalcPos, true);
+    window.addEventListener("resize", recalcPos);
+    return () => {
+      document.removeEventListener("mousedown", h);
+      window.removeEventListener("scroll", recalcPos, true);
+      window.removeEventListener("resize", recalcPos);
+    };
   }, [open]);
 
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 40); }, [open]);
@@ -291,22 +312,26 @@ function LocationCombobox({ value, onChange, locations }: {
   }
 
   return (
-    <div ref={ref} className="relative w-full">
-      <button type="button" onClick={() => setOpen(o => !o)}
+    <div className="w-full">
+      <button ref={triggerRef} type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between text-xs border border-slate-300 rounded px-2 py-1.5 bg-white hover:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-500 text-left min-h-[30px]"
         data-testid="inline-location-trigger">
         <span className={selected ? "text-slate-900 truncate" : "text-slate-400"}>{selected ? selected.name : "Select…"}</span>
         <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
       </button>
-      {open && (
-        <div className="absolute z-50 mt-0.5 w-52 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ position: "fixed", top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+          className="bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"
+        >
           <div className="p-1.5 border-b border-slate-100 flex items-center gap-1.5 bg-slate-50">
             <Search className="w-3 h-3 text-slate-400 shrink-0" />
             <input ref={inputRef} type="text" placeholder="Filter or create…" value={search}
               onChange={e => setSearch(e.target.value)}
               className="flex-1 text-xs outline-none bg-transparent text-slate-900 placeholder:text-slate-400" />
           </div>
-          <div className="max-h-40 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto">
             {value != null && (
               <button type="button" onClick={() => { onChange(null); setSearch(""); setOpen(false); }}
                 className="w-full text-left px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100">Clear</button>
@@ -325,7 +350,8 @@ function LocationCombobox({ value, onChange, locations }: {
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -378,7 +404,7 @@ function InlineEditRow({ item, draft, locations, onChange, onDelete }: {
       </TableCell>
       <TableCell className="py-2">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
+          className="w-full text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>
@@ -586,7 +612,7 @@ function InlineNewRow({ draft, familyName, categoryId, categoryCode, existingIte
       </TableCell>
       <TableCell className="py-2 align-top">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
-          className="text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-new-unit-${draft.tmpId}`}>
+          className="w-full text-xs bg-white border border-slate-300 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-new-unit-${draft.tmpId}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </TableCell>

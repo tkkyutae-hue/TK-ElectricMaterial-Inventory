@@ -157,17 +157,28 @@ export function SearchableItemSelect({
 
   useEffect(() => {
     if (!open || !ref.current) return;
-    function recalc() {
-      if (!ref.current) return;
-      const r = ref.current.getBoundingClientRect();
-      setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    const r = ref.current.getBoundingClientRect();
+    setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+
+    function onScroll() {
+      if (!ref.current || !dropdownRef.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      dropdownRef.current.style.top = `${rect.bottom + 4}px`;
+      dropdownRef.current.style.left = `${rect.left}px`;
+      dropdownRef.current.style.width = `${rect.width}px`;
     }
-    recalc();
-    window.addEventListener("scroll", recalc, true);
-    window.addEventListener("resize", recalc);
+
+    function onResize() {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("scroll", recalc, true);
-      window.removeEventListener("resize", recalc);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [open]);
 

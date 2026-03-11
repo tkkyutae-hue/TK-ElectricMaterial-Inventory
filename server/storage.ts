@@ -252,6 +252,34 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Items ────────────────────────────────────────────────────────────────────
 
+  // ── Live reel quantities ────────────────────────────────────────────────────
+  // For items with active reels the reel sum IS the quantity on hand.
+  // This helper returns a Map<itemId, totalFt> for every item that has ≥1 active reel.
+  private async liveReelQtyMap(itemIds: number[]): Promise<Map<number, number>> {
+    if (itemIds.length === 0) return new Map();
+    const rows = await db
+      .select({
+        itemId: wireReels.itemId,
+        total: sql<number>`COALESCE(SUM(${wireReels.lengthFt}), 0)`,
+      })
+      .from(wireReels)
+      .where(and(inArray(wireReels.itemId, itemIds), eq(wireReels.isActive, true)))
+      .groupBy(wireReels.itemId);
+    return new Map(rows.map(r => [r.itemId, Number(r.total)]));
+  }
+
+  // Apply live reel quantities to a list of plain item objects (mutates nothing, returns new array).
+  private applyReelQty<T extends { id: number; quantityOnHand: number; minimumStock: number }>(
+    items: T[],
+    reelMap: Map<number, number>,
+  ): T[] {
+    return items.map(item => {
+      if (!reelMap.has(item.id)) return item;
+      const qty = reelMap.get(item.id)!;
+      return { ...item, quantityOnHand: qty };
+    });
+  }
+
   async getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]> {
     const results = await db.select({
       item: items,
@@ -281,6 +309,10 @@ export class DatabaseStorage implements IStorage {
         imageUrl: firstImage?.imageUrl || null,
       };
     });
+
+    // Override quantityOnHand with live reel sum for reel-tracked items
+    const reelMap = await this.liveReelQtyMap(itemIds);
+    mapped = this.applyReelQty(mapped, reelMap) as typeof mapped;
 
     if (filters?.search) {
       const tokens = filters.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
@@ -374,8 +406,13 @@ export class DatabaseStorage implements IStorage {
     .orderBy(desc(inventoryMovements.createdAt))
     .limit(20);
 
+    // Override quantityOnHand with live reel sum for reel-tracked items
+    const reelMap = await this.liveReelQtyMap([id]);
+    const liveQty = reelMap.has(id) ? reelMap.get(id)! : row.item.quantityOnHand;
+
     return {
       ...row.item,
+      quantityOnHand: liveQty,
       category: row.category,
       location: row.location,
       supplier: row.supplier,
@@ -822,13 +859,17 @@ export class DatabaseStorage implements IStorage {
       groupImageMap.set(g.baseItemName, g.imageUrl ?? null);
     }
 
+    // Override quantityOnHand with live reel sum for reel-tracked items
+    const reelMap = await this.liveReelQtyMap(itemIds);
+
     const enriched = rows.map(r => {
       const i = r.item;
       const firstImage = allImages.find(img => img.itemId === i.id);
+      const liveQty = reelMap.has(i.id) ? reelMap.get(i.id)! : i.quantityOnHand;
       let status = "in_stock";
-      if (i.quantityOnHand === 0) status = "out_of_stock";
-      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
-      return { ...i, location: r.location, supplier: r.supplier, status, imageUrl: firstImage?.imageUrl || null };
+      if (liveQty === 0) status = "out_of_stock";
+      else if (liveQty <= i.minimumStock) status = "low_stock";
+      return { ...i, quantityOnHand: liveQty, location: r.location, supplier: r.supplier, status, imageUrl: firstImage?.imageUrl || null };
     });
 
     // Group by baseItemName (fall back to name if not set)
@@ -1386,14 +1427,19 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
+    // Override quantityOnHand with live reel sum for reel-tracked items
+    const reelMap = await this.liveReelQtyMap(itemIds);
+
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
       const it = row.item as any;
       const famName = derivedFamily(it.subcategory, it.detailType, it.name || '', it.baseItemName);
       const typeName = derivedType(it.subcategory, it.detailType, it.baseItemName, it.name || '');
       const sc = it.subType?.trim() || extractSubcategory(it.name || '', it.detailType, it.subcategory, it.baseItemName);
+      const liveQty = reelMap.has(row.item.id) ? reelMap.get(row.item.id)! : row.item.quantityOnHand;
       return {
         ...row.item,
+        quantityOnHand: liveQty,
         category: row.category,
         location: row.location,
         supplier: row.supplier,

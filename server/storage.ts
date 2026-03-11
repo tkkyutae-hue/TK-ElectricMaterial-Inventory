@@ -63,7 +63,8 @@ export interface IStorage {
   getCategorySummary(): Promise<any[]>;
   getCategoryGrouped(categoryId: number): Promise<any>;
 
-  updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement>;
+  updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number; transactionDate?: Date | null; editedBy?: string | null; editHistory?: any[] }): Promise<InventoryMovement>;
+  undoMovementEdit(id: number): Promise<InventoryMovement>;
   deleteMovement(id: number): Promise<void>;
   bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }>;
   bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[] }>;
@@ -551,7 +552,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number }): Promise<InventoryMovement> {
+  async updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number; transactionDate?: Date | null; editedBy?: string | null; editHistory?: any[] }): Promise<InventoryMovement> {
     const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
     if (!orig) throw new Error("Movement not found");
 
@@ -592,6 +593,35 @@ export class DatabaseStorage implements IStorage {
     // Update item quantity
     await db.update(items).set({ quantityOnHand: updatedQty, updatedAt: new Date() }).where(eq(items.id, effectiveItemId));
 
+    // Build edit history entry
+    const now = new Date();
+    const prevHistory: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
+    const changedFields: Record<string, { old: any; new: any }> = {};
+    if (changes.movementType !== orig.movementType) changedFields.movementType = { old: orig.movementType, new: changes.movementType };
+    if (changes.quantity !== orig.quantity) changedFields.quantity = { old: orig.quantity, new: changes.quantity };
+    if (changes.sourceLocationId !== undefined && changes.sourceLocationId !== orig.sourceLocationId) changedFields.sourceLocationId = { old: orig.sourceLocationId, new: changes.sourceLocationId };
+    if (changes.destinationLocationId !== undefined && changes.destinationLocationId !== orig.destinationLocationId) changedFields.destinationLocationId = { old: orig.destinationLocationId, new: changes.destinationLocationId };
+    if (changes.projectId !== undefined && changes.projectId !== orig.projectId) changedFields.projectId = { old: orig.projectId, new: changes.projectId };
+    if (changes.note !== undefined && changes.note !== orig.note) changedFields.note = { old: orig.note, new: changes.note };
+    if (changes.transactionDate !== undefined && String(changes.transactionDate) !== String(orig.transactionDate)) changedFields.transactionDate = { old: orig.transactionDate, new: changes.transactionDate };
+
+    const newHistoryEntry = {
+      editedBy: changes.editedBy ?? null,
+      editedAt: now.toISOString(),
+      changedFields,
+      previousValues: {
+        movementType: orig.movementType,
+        quantity: orig.quantity,
+        sourceLocationId: orig.sourceLocationId,
+        destinationLocationId: orig.destinationLocationId,
+        projectId: orig.projectId,
+        note: orig.note,
+        transactionDate: orig.transactionDate,
+      },
+    };
+
+    const newHistory = [...prevHistory, newHistoryEntry];
+
     // Update movement record
     const [updated] = await db.update(inventoryMovements).set({
       movementType: changes.movementType,
@@ -604,6 +634,55 @@ export class DatabaseStorage implements IStorage {
       projectId: changes.projectId !== undefined ? changes.projectId : orig.projectId,
       note: changes.note !== undefined ? changes.note : orig.note,
       reason: changes.reason !== undefined ? changes.reason : orig.reason,
+      transactionDate: changes.transactionDate !== undefined ? changes.transactionDate : orig.transactionDate,
+      editedBy: changes.editedBy ?? orig.editedBy,
+      editedAt: now,
+      editHistory: newHistory as any,
+    }).where(eq(inventoryMovements.id, id)).returning();
+
+    return updated;
+  }
+
+  async undoMovementEdit(id: number): Promise<InventoryMovement> {
+    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+    if (!orig) throw new Error("Movement not found");
+    const history: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
+    if (history.length === 0) throw new Error("No edit history to undo");
+
+    const lastEntry = history[history.length - 1];
+    const prev = lastEntry.previousValues;
+
+    // Revert the stock using the same logic as updateInventoryMovement
+    const [itemRow] = await db.select().from(items).where(eq(items.id, orig.itemId));
+    if (!itemRow) throw new Error("Item not found");
+
+    let curDelta = 0;
+    if (orig.movementType === "receive" || orig.movementType === "return") curDelta = orig.quantity;
+    else if (orig.movementType === "issue") curDelta = -orig.quantity;
+
+    let prevDelta = 0;
+    if (prev.movementType === "receive" || prev.movementType === "return") prevDelta = prev.quantity;
+    else if (prev.movementType === "issue") prevDelta = -prev.quantity;
+
+    const netChange = prevDelta - curDelta;
+    const revertedQty = itemRow.quantityOnHand + netChange;
+
+    await db.update(items).set({ quantityOnHand: revertedQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
+
+    const newHistory = history.slice(0, -1);
+    const [updated] = await db.update(inventoryMovements).set({
+      movementType: prev.movementType ?? orig.movementType,
+      quantity: prev.quantity ?? orig.quantity,
+      sourceLocationId: prev.sourceLocationId ?? null,
+      destinationLocationId: prev.destinationLocationId ?? null,
+      projectId: prev.projectId ?? null,
+      note: prev.note ?? null,
+      transactionDate: prev.transactionDate ?? null,
+      newQuantity: revertedQty,
+      previousQuantity: itemRow.quantityOnHand,
+      editedAt: newHistory.length > 0 ? new Date(newHistory[newHistory.length - 1].editedAt) : null,
+      editedBy: newHistory.length > 0 ? newHistory[newHistory.length - 1].editedBy : null,
+      editHistory: newHistory.length > 0 ? (newHistory as any) : null,
     }).where(eq(inventoryMovements.id, id)).returning();
 
     return updated;

@@ -515,18 +515,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.put("/api/movements/:id", isAuthenticated, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { movementType, quantity, sourceLocationId, destinationLocationId, projectId, note, reason, itemId } = req.body;
+      const { movementType, quantity, sourceLocationId, destinationLocationId, projectId, note, reason, itemId, transactionDate } = req.body;
       if (!movementType || !quantity) return res.status(400).json({ message: "movementType and quantity are required" });
+      const editedBy = (req as any).user?.id ?? null;
       const updated = await storage.updateInventoryMovement(id, {
         movementType, quantity: Number(quantity),
-        sourceLocationId: sourceLocationId ? Number(sourceLocationId) : null,
-        destinationLocationId: destinationLocationId ? Number(destinationLocationId) : null,
-        projectId: projectId ? Number(projectId) : null,
-        note: note ?? null,
+        sourceLocationId: sourceLocationId !== undefined ? (sourceLocationId ? Number(sourceLocationId) : null) : undefined,
+        destinationLocationId: destinationLocationId !== undefined ? (destinationLocationId ? Number(destinationLocationId) : null) : undefined,
+        projectId: projectId !== undefined ? (projectId ? Number(projectId) : null) : undefined,
+        note: note !== undefined ? (note || null) : undefined,
         reason: reason ?? null,
         itemId: itemId ? Number(itemId) : undefined,
+        transactionDate: transactionDate ? new Date(transactionDate) : null,
+        editedBy,
       });
       res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/movements/:id/undo", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const reverted = await storage.undoMovementEdit(id);
+      res.json(reverted);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }

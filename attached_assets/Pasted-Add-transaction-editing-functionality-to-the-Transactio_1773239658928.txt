@@ -1,0 +1,146 @@
+Add transaction editing functionality to the Transactions page. Do NOT change any other page or feature. Keep all existing logic and data intact.
+
+════════════════════════════════════════
+1. ROW SELECTION
+════════════════════════════════════════
+Add a checkbox column as the first column in the Transactions table (both Admin and Field mode).
+Checkbox: 15×15px, border-radius 4px, styled to match the dark green theme
+Clicking anywhere on a row toggles selection (not just the checkbox)
+Selected row style:
+  - background: rgba(45,219,111,0.07)
+  - left border: 3px solid var(--green), border-radius 0 2px 2px 0
+  - all other borders unchanged
+
+════════════════════════════════════════
+2. ACTION BAR (bottom of table)
+════════════════════════════════════════
+Add a persistent action bar at the very bottom of the Transactions table, always visible.
+Layout: left = selection status text, right = action buttons
+
+States:
+  0 rows selected:
+    Text: "Select rows to edit or delete" (muted color)
+    All buttons disabled and visually dimmed (opacity 0.35, pointer-events none)
+
+  Exactly 1 row selected:
+    Text: "1 record selected"
+    Buttons: [✎ Edit] [🗑 Delete] [✕ Cancel] — all active
+
+  2+ rows selected:
+    Text: "N records selected"
+    Edit button: disabled (opacity 0.35) — editing multiple not supported
+    Delete and Cancel: active
+
+Button styles:
+  Edit:   background rgba(45,219,111,0.10), border var(--g-bd), color var(--green), glow shadow
+  Delete: background var(--red-dim), border var(--red-bd), color var(--red)
+  Cancel: transparent background, border var(--border2), color var(--t2)
+  All: padding 7px 14px, border-radius 8px, font-size 10.5px, font-weight 700
+
+════════════════════════════════════════
+3. EDIT DRAWER
+════════════════════════════════════════
+When Edit is clicked (exactly 1 row selected), open a right-side drawer panel.
+
+Drawer spec:
+  Width: 420px
+  Position: absolute, right:0, top:0, bottom:0 (inside the Transactions page container)
+  Background: var(--bg2), border-left: 1px solid var(--border2)
+  Overlay behind drawer: rgba(4,8,5,0.65), backdrop-filter blur(4px)
+  Open/close animation: translateX(100%) → translateX(0), 280ms cubic-bezier(.4,0,.2,1)
+  Clicking overlay closes drawer without saving
+
+Drawer header:
+  Title: "Edit Transaction", font-size 14px, weight 800
+  Subtitle: "[item name] · [SKU]"
+  Close button (✕): top-right, border-radius 6px, hover = red tint
+
+AUDIT INFO PILL (top of drawer body):
+  Horizontal bar with 3 sections separated by dividers:
+  - Created At: [timestamp]
+  - Created By: [username]
+  - Last Edited: [timestamp · username] (or "Never" if not edited before)
+
+PRE-FILLED EDITABLE FIELDS (in this order):
+  1. Movement Type — select dropdown (Issue / Receive / Transfer / Return)
+  2. Item — READ-ONLY locked input, style: dashed border, no hover effect
+     Add hint: "(read-only — delete and re-log to change item)"
+  3. Quantity + Unit — side-by-side (grid 1fr 1fr)
+     Quantity: text input, monospace font
+     Unit: select dropdown (EA / FT / LB / etc.)
+  4. From — select dropdown, pre-filled with current from value
+  5. To — select dropdown, pre-filled with current to value
+  6. Project / PO — select dropdown, pre-filled (or "None")
+  7. Note — textarea, 2 rows, pre-filled
+  8. Date & Time section (same as Log Movement form):
+     - Transaction Date/Time: datetime-local input, editable, "Now" reset button
+     - Created At: locked read-only input with 🔒 icon, dashed border
+     - Backdated notice if (created_at - transaction_date) > 6 hours
+
+CHANGED FIELDS TRACKER:
+  Track which fields have been modified from their original values
+  Modified fields get:
+    - Purple dot indicator next to their label
+    - Border color: rgba(167,139,250,0.35), background rgba(167,139,250,0.04)
+  At bottom of drawer body, show "Changed Fields" summary section (purple tint bg):
+    List each changed field: "old value → new value" format
+    Only visible when at least one field has changed
+
+DRAWER FOOTER:
+  Small text: "Saving will record: edited_by · edited_at · field changes"
+  Buttons: [Cancel] [Save Changes]
+  Save button: background var(--green), color #0d1410, weight 800
+
+════════════════════════════════════════
+4. SAVING BEHAVIOR
+════════════════════════════════════════
+On Save:
+  a. Update the transaction record in the database with all edited values
+  b. Auto-set: edited_by = current user, edited_at = current timestamp
+  c. Do NOT modify: created_at, created_by, transaction_id
+  d. Close the drawer
+  e. Immediately reflect changes in the table row (no page reload)
+  f. Show success toast (see below)
+
+DATA FIELDS TO STORE (add to transactions schema if not present):
+  edited_by   — string, user who last edited (null if never edited)
+  edited_at   — timestamp, when last edited (null if never edited)
+  edit_history — optional JSON array: [{edited_by, edited_at, changed_fields: {field: {old, new}}}]
+
+════════════════════════════════════════
+5. EDITED INDICATOR IN TABLE
+════════════════════════════════════════
+If a transaction has been edited (edited_at is not null):
+  Show "✎ EDITED" tag below the time in the date column
+  Style: background var(--edited-dim), border var(--edited-bd), color var(--edited) (#a78bfa),
+         padding 1px 5px, border-radius 3px, font-size 7px, font-weight 700
+  Add tooltip on hover: "edited by [username] · [relative time]"
+  Example: "edited by M.Kim · 2h ago"
+
+════════════════════════════════════════
+6. SUCCESS TOAST
+════════════════════════════════════════
+After saving, show toast notification at bottom-center of screen.
+
+Toast spec:
+  Position: fixed, bottom 28px, left 50%, translateX(-50%)
+  Background: var(--bg3), border: 1px solid var(--border2), border-radius 10px
+  Fade in with translateY(20px→0), auto-dismiss after 10 seconds
+  Content: ✅ icon + "Transaction updated" + [Undo] button + [✕ close]
+
+Undo behavior:
+  Undo button is only active for 10 seconds after save
+  After 10 seconds: Undo button grays out and becomes non-functional
+  If Undo is clicked: revert all field changes, restore original values in table,
+    remove the EDITED tag if this was the first edit,
+    store a record that undo was performed (keep edited_by/edited_at for audit),
+    show a second toast: "Changes reverted"
+
+════════════════════════════════════════
+7. SCOPE NOTES
+════════════════════════════════════════
+- Apply to: Admin Mode Transactions page, Field Mode Transactions page
+- Item field is always read-only in edit mode (to prevent audit trail corruption)
+- Do NOT change: inventory quantities on edit — if qty changes, recalculate the delta correctly
+  (new_qty - old_qty difference should be applied to inventory)
+- Do NOT change: Log Movement form, any other page, any other feature

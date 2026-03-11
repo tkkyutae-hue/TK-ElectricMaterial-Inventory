@@ -3,12 +3,13 @@ import { useSearch, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
 import { useAuth } from "@/hooks/use-auth";
-import { Search, ClipboardList, ImageOff, CalendarDays, CheckSquare, Square, Trash2, X, AlertTriangle, FileText, RotateCcw, Check, Clock } from "lucide-react";
+import { Search, ClipboardList, ImageOff, CalendarDays, Trash2, X, AlertTriangle, FileText, RotateCcw, Check, Clock, Edit2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { EditTransactionDrawer, EditSuccessToast } from "@/components/EditTransactionDrawer";
 
 // ─── Field Type Badge ─────────────────────────────────────────────────────────
 
@@ -419,7 +420,7 @@ function DraftMovementsList() {
 export default function FieldTransactions() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const canDelete = user?.role === "staff" || user?.role === "admin";
+  const hasDeletePerm = user?.role === "staff" || user?.role === "admin";
   const urlSearch = useSearch();
   const urlSearchParams = new URLSearchParams(urlSearch);
   const [activeTab, setActiveTab] = useState<"history" | "drafts">(
@@ -433,9 +434,10 @@ export default function FieldTransactions() {
   const [dateFrom, setDateFrom]   = useState("");
   const [dateTo, setDateTo]       = useState("");
 
-  const [selectMode, setSelectMode]   = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editTx, setEditTx]           = useState<any | null>(null);
+  const [successToast, setSuccessToast] = useState<{ txId: number } | null>(null);
 
   const { data: movements, isLoading } = useMovements();
   const bulkDelete  = useBulkDeleteMovements();
@@ -509,8 +511,7 @@ export default function FieldTransactions() {
     }
   }
 
-  function exitSelectMode() {
-    setSelectMode(false);
+  function clearSelection() {
     setSelectedIds(new Set());
   }
 
@@ -543,7 +544,7 @@ export default function FieldTransactions() {
 
     try {
       await bulkDelete.mutateAsync(ids);
-      exitSelectMode();
+      clearSelection();
       setConfirmOpen(false);
       toast({
         title: `${count} transaction${count !== 1 ? "s" : ""} deleted`,
@@ -602,6 +603,13 @@ export default function FieldTransactions() {
     URL.revokeObjectURL(url);
   }
 
+  const selCount = selectedIds.size;
+  const canEdit = selCount === 1;
+  const canDelete = selCount >= 1;
+  const selectedTx = selCount === 1
+    ? (filtered ?? []).find((m) => selectedIds.has(m.id)) ?? null
+    : null;
+
   const COLS_COUNT = 11;
 
   // ── TH style ──
@@ -628,7 +636,7 @@ export default function FieldTransactions() {
           </h1>
         </div>
         <p style={{ fontSize: 13, color: "#7aab82" }}>
-          {selectMode ? `${selectedIds.size} selected` : "View transaction history."}
+          {selCount > 0 ? `${selCount} selected` : "View transaction history."}
         </p>
       </div>
 
@@ -809,6 +817,7 @@ export default function FieldTransactions() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 860, width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <colgroup>
+              <col style={{ width: 38 }} />
               <col style={{ width: 46 }} />
               <col style={{ width: 82 }} />
               <col style={{ width: 42 }} />
@@ -819,11 +828,22 @@ export default function FieldTransactions() {
               <col style={{ width: "18%" }} />
               <col style={{ width: 55 }} />
               <col style={{ width: 105 }} />
-              <col style={{ width: 96 }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #2a4030" }}>
-                <th style={{ ...TH, textAlign: "center", paddingLeft: 12, borderLeft: "3px solid transparent" }}>#</th>
+                {/* Checkbox col */}
+                <th style={{ ...TH, textAlign: "center", paddingLeft: 10 }}>
+                  <div
+                    role="checkbox"
+                    aria-checked={allSelected}
+                    onClick={toggleAll}
+                    data-testid="field-checkbox-select-all"
+                    style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? "#2ddb6f" : "#4a7052"}`, background: allSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                </th>
+                <th style={{ ...TH, textAlign: "center" }}>#</th>
                 <th style={{ ...TH, textAlign: "center" }}>Type</th>
                 <th style={TH}>Photo</th>
                 <th style={{ ...TH, textAlign: "center" }}>Size</th>
@@ -832,33 +852,7 @@ export default function FieldTransactions() {
                 <th style={{ ...TH, textAlign: "center" }}>From → To</th>
                 <th style={{ ...TH, textAlign: "center" }}>Project / PO</th>
                 <th style={{ ...TH, textAlign: "center" }}>Note</th>
-                <th style={{ ...TH, textAlign: "center" }}>Date</th>
-                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>
-                  {selectMode && (
-                    <button
-                      type="button"
-                      onClick={toggleAll}
-                      style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                      data-testid="button-select-all"
-                    >
-                      {allSelected
-                        ? <CheckSquare style={{ width: 14, height: 14, color: "#2ddb6f" }} />
-                        : <Square style={{ width: 14, height: 14, color: "#4a7052" }} />}
-                      <span style={{ fontSize: 9, fontWeight: 700, color: allSelected ? "#2ddb6f" : "#4a7052", textTransform: "uppercase", letterSpacing: "0.8px" }}>All</span>
-                    </button>
-                  )}
-                  {!selectMode && canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectMode(true)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, background: "#1c2b1f", border: "1px solid #2a4030", padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
-                      data-testid="button-select-mode"
-                    >
-                      <CheckSquare style={{ width: 11, height: 11 }} />
-                      Select
-                    </button>
-                  )}
-                </th>
+                <th style={{ ...TH, textAlign: "center", paddingRight: 12 }}>Date</th>
               </tr>
             </thead>
             <tbody>
@@ -877,25 +871,44 @@ export default function FieldTransactions() {
                 const toLoc   = mx.destinationLocation;
                 const project = mx.project;
                 const isSelected = selectedIds.has(m.id);
+                const isEdited = !!(mx.editedAt);
                 const projectName = project?.name ?? null;
                 const projectPo   = project?.poNumber ?? null;
+                const editHistory: any[] = Array.isArray(mx.editHistory) ? mx.editHistory : [];
+                const lastEdit = editHistory.length > 0 ? editHistory[editHistory.length - 1] : null;
+                const editLabel = lastEdit
+                  ? `edited by ${(lastEdit.editedBy ?? "").replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEdit.editedAt), { addSuffix: true })}`
+                  : "edited";
 
                 return (
                   <tr
                     key={m.id}
                     style={{
-                      background: isSelected ? "rgba(45,219,111,0.06)" : "#162019",
+                      background: isSelected ? "rgba(45,219,111,0.07)" : "#162019",
                       borderBottom: "1px solid #1e2e21",
-                      cursor: selectMode ? "pointer" : "default",
+                      borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent",
+                      cursor: "pointer",
                       transition: "background 0.1s",
                     }}
                     onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#1c2b1f"; }}
                     onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#162019"; }}
-                    onClick={selectMode ? () => toggleRow(m.id) : undefined}
+                    onClick={() => toggleRow(m.id)}
                     data-testid={`field-tx-row-${m.id}`}
                   >
+                    {/* Checkbox */}
+                    <td style={{ padding: "12px 6px 12px 10px", textAlign: "center" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
+                      <div
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        data-testid={`field-checkbox-tx-${m.id}`}
+                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? "#2ddb6f" : "#4a7052"}`, background: isSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                      >
+                        {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                    </td>
+
                     {/* No. */}
-                    <td style={{ padding: "12px 8px", paddingLeft: 12, fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center", borderLeft: "3px solid transparent" }}>
+                    <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center" }}>
                       {idx + 1}
                     </td>
 
@@ -938,7 +951,7 @@ export default function FieldTransactions() {
                       )}
                     </td>
 
-                    {/* From → To (stacked) */}
+                    {/* From → To */}
                     <td style={{ padding: "12px 8px", textAlign: "center" }}>
                       <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ color: "#e2f0e5", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
@@ -960,9 +973,7 @@ export default function FieldTransactions() {
                             </span>
                           )}
                           {projectPo && (
-                            <span style={{ fontSize: 9, color: "#7aab82", lineHeight: 1.3 }}>
-                              {projectPo}
-                            </span>
+                            <span style={{ fontSize: 9, color: "#7aab82", lineHeight: 1.3 }}>{projectPo}</span>
                           )}
                         </div>
                       ) : (
@@ -975,8 +986,8 @@ export default function FieldTransactions() {
                       {m.note || <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 
-                    {/* Date */}
-                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                    {/* Date + Edited */}
+                    <td style={{ padding: "12px 8px 12px 8px", paddingRight: 12, textAlign: "center" }}>
                       {m.createdAt ? (
                         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 11, fontWeight: 500, color: "#e2f0e5" }}>
@@ -985,20 +996,24 @@ export default function FieldTransactions() {
                           <span style={{ fontSize: 10, color: "#7aab82" }}>
                             {format(new Date(m.createdAt), "HH:mm")}
                           </span>
+                          {isEdited && (
+                            <span
+                              title={editLabel}
+                              data-testid={`field-edited-tag-${m.id}`}
+                              style={{
+                                marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2,
+                                background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)",
+                                color: "#a78bfa", padding: "1px 5px", borderRadius: 3,
+                                fontSize: 7, fontWeight: 700, letterSpacing: "0.06em",
+                                textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default",
+                              }}
+                            >
+                              ✎ EDITED
+                            </span>
+                          )}
                         </div>
                       ) : <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
-
-                    {/* Checkbox or Actions column */}
-                    {selectMode ? (
-                      <td style={{ padding: "12px 8px", textAlign: "center", paddingRight: 12, borderRight: isSelected ? "3px solid #2ddb6f" : "3px solid transparent" }} onClick={e => { e.stopPropagation(); toggleRow(m.id); }}>
-                        {isSelected
-                          ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f", margin: "0 auto" }} />
-                          : <Square style={{ width: 15, height: 15, color: "#4a7052", margin: "0 auto" }} />}
-                      </td>
-                    ) : (
-                      <td style={{ padding: "12px 12px 12px 8px" }} />
-                    )}
                   </tr>
                 );
               })}
@@ -1006,59 +1021,83 @@ export default function FieldTransactions() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: "10px 16px", borderTop: "1px solid #1e2e21", display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "#7aab82" }}>
+        {/* ── Persistent action bar (bottom of table) ── */}
+        <div style={{
+          borderTop: "1px solid #2a4030",
+          background: "#0f1a11",
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontFamily: "'Barlow Condensed', sans-serif",
+        }}>
+          <span style={{ fontSize: 11, color: "#7aab82", flex: 1 }}>
             Showing <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong> transaction{filtered.length !== 1 ? "s" : ""}
-            {selectMode && selectedIds.size > 0 && (
-              <span style={{ marginLeft: 8, color: "#2ddb6f", fontWeight: 600 }}>· {selectedIds.size} selected</span>
+            {selCount > 0 && (
+              <span style={{ marginLeft: 8, color: "#2ddb6f", fontWeight: 700 }}>· {selCount} selected</span>
             )}
           </span>
+
+          {selCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              data-testid="button-field-cancel-select"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "#1c2b1f", border: "1px solid #2a4030", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
+            >
+              <X style={{ width: 11, height: 11 }} /> Cancel
+            </button>
+          )}
+
+          {canEdit && hasDeletePerm && (
+            <button
+              type="button"
+              onClick={() => selectedTx && setEditTx(selectedTx)}
+              data-testid="button-field-edit-selected"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "rgba(91,156,246,0.12)", border: "1px solid rgba(91,156,246,0.35)", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#5b9cf6", cursor: "pointer" }}
+            >
+              <Pencil style={{ width: 11, height: 11 }} /> Edit
+            </button>
+          )}
+
+          {canDelete && hasDeletePerm && (
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              data-testid="button-field-delete-selected"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "6px 16px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer" }}
+            >
+              <Trash2 style={{ width: 12, height: 12 }} />
+              Delete ({selCount})
+            </button>
+          )}
         </div>
       </div>
 
       </>}
 
-      {/* ── Floating bulk-action bar ── */}
-      {selectMode && (
-        <div style={{
-          position: "fixed", bottom: 28, right: 28, zIndex: 200,
-          display: "flex", alignItems: "center", gap: 10,
-          background: "#0d1410",
-          border: "1px solid #2a4030",
-          borderRadius: 14,
-          padding: "12px 18px",
-          boxShadow: "0 8px 36px rgba(0,0,0,0.65), 0 0 0 1px rgba(45,219,111,0.08)",
-          fontFamily: "'Barlow Condensed', sans-serif",
-        }}>
-          {selectedIds.size > 0 && (
-            <span style={{ fontSize: 13, color: "#2ddb6f", fontWeight: 700, letterSpacing: 0.3, paddingRight: 6, borderRight: "1px solid #2a4030" }}>
-              {selectedIds.size} selected
-            </span>
-          )}
-          {selectedIds.size === 0 && (
-            <span style={{ fontSize: 12, color: "#4a7052", fontWeight: 600 }}>Select rows to delete</span>
-          )}
-          <button
-            type="button"
-            onClick={exitSelectMode}
-            data-testid="button-cancel-select"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "#1c2b1f", border: "1px solid #2a4030", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
-          >
-            <X style={{ width: 12, height: 12 }} /> Cancel
-          </button>
-          {selectedIds.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              data-testid="button-delete-selected"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "6px 16px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer" }}
-            >
-              <Trash2 style={{ width: 13, height: 13 }} />
-              Delete ({selectedIds.size})
-            </button>
-          )}
-        </div>
+      {/* ── Edit Drawer (dark) ── */}
+      {editTx && (
+        <EditTransactionDrawer
+          tx={editTx}
+          open={!!editTx}
+          onClose={() => setEditTx(null)}
+          dark={true}
+          onSaved={(updated) => {
+            setEditTx(null);
+            setSelectedIds(new Set());
+            setSuccessToast({ txId: updated.id ?? editTx.id });
+          }}
+        />
+      )}
+
+      {/* ── Edit success toast (dark) ── */}
+      {successToast && (
+        <EditSuccessToast
+          txId={successToast.txId}
+          dark={true}
+          onDismiss={() => setSuccessToast(null)}
+        />
       )}
 
       {/* ── Confirm delete dialog (dark-themed) ── */}

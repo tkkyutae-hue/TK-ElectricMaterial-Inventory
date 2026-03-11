@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -150,6 +150,10 @@ export const inventoryMovements = pgTable("inventory_movements", {
   reason: text("reason"),
   createdBy: text("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
+  transactionDate: timestamp("transaction_date"),
+  editedBy: text("edited_by"),
+  editedAt: timestamp("edited_at"),
+  editHistory: jsonb("edit_history"),
 });
 
 // ─── Project Material Transactions ────────────────────────────────────────────

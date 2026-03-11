@@ -316,7 +316,9 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
     mutationFn: (imageUrl: string | null) =>
       apiRequest("PATCH", `/api/inventory/${itemId}/image`, { imageUrl }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/inventory", itemId] });
+      qc.invalidateQueries({ queryKey: ["/api/items", itemId] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
       toast({ title: "Image updated" });
     },
     onError: (err: any) =>
@@ -642,7 +644,8 @@ function WireReelInlineInner(
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
     qc.invalidateQueries({ queryKey: ["/api/items", item.id] });
-    qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
   };
 
   const addMutation = useMutation({
@@ -1076,10 +1079,12 @@ export default function ItemDetails() {
   const updateMutation = useUpdateItem();
   const { toast } = useToast();
 
-  // Invalidate inventory cache on unmount so fresh data loads when returning to list
+  // Invalidate inventory caches on unmount so the list always shows fresh data when
+  // the user clicks Back — covers both the category grouped rows and the summary cards.
   useEffect(() => {
     return () => {
-      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
     };
   }, [qc]);
 

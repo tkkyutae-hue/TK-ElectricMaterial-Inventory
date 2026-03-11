@@ -1261,7 +1261,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       await qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
       await qc.invalidateQueries({ queryKey: [api.projects.list.path] });
       await qc.invalidateQueries({ queryKey: ["/api/wire-reels"] });
-      await qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+      await qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+      await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
 
       const count = validRows.length;
       const createdIds: number[] = results.map((r: any) => r.id).filter(Boolean);

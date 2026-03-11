@@ -720,7 +720,6 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-    qc.invalidateQueries({ queryKey: ["/api/inventory"] });
     qc.invalidateQueries({ queryKey: ["/api/field/families"] });
     qc.invalidateQueries({ queryKey: ["/api/field/types"] });
     qc.invalidateQueries({ queryKey: ["/api/field/subcategories"] });
@@ -761,7 +760,6 @@ function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: {
     onSuccess: () => {
       toast({ title: "Settings saved" });
       qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
       qc.invalidateQueries({ queryKey: ["/api/field/families"] });
       qc.invalidateQueries({ queryKey: ["/api/field/types"] });
       qc.invalidateQueries({ queryKey: ["/api/field/subcategories"] });
@@ -1033,6 +1031,12 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
 
+  const invalidateReelData = () => {
+    qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+  };
+
   const addMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/wire-reels", {
       itemId: item.id,
@@ -1045,8 +1049,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
       notes: draft.notes.trim() || null,
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+      invalidateReelData();
       setShowAdd(false);
       setDraft(BLANK_REEL_DRAFT);
       toast({ title: "Reel added" });
@@ -1057,8 +1060,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/wire-reels/${id}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+      invalidateReelData();
       toast({ title: "Reel removed" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -1075,8 +1077,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
       notes: editDraft.notes.trim() || null,
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+      invalidateReelData();
       setEditingId(null);
       toast({ title: "Reel updated" });
     },
@@ -1533,7 +1534,6 @@ export default function CategoryDetail() {
       await Promise.all(promises);
       await qc.invalidateQueries({ queryKey: ["/api/inventory/category", id, "grouped"] });
       await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-      await qc.invalidateQueries({ queryKey: ["/api/inventory"] });
 
       // Save draft family image if applicable
       const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;

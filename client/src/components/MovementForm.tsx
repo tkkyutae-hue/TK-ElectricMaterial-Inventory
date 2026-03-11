@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { generateReelId } from "@/lib/reel-utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -93,7 +94,7 @@ type ItemRowError = { itemId?: string; quantity?: string };
 
 type ReelSnapshot = { id: number; reelId: string; lengthFt: number; status: string | null };
 
-type NewReel = { tempId: string; lengthFt: number; brand: string; reelId: string };
+type NewReel = { tempId: string; lengthFt: number; brand: string; reelId: string; locationId?: number | null; status?: string };
 
 type ItemRow = {
   rowId: string;
@@ -668,12 +669,13 @@ function SearchableProjectSelect({
 
 // ── Item Row (field mode — includes reel UX) ────────────────────────────────
 function ItemRowField({
-  row, idx, itemCount, items, onUpdate, onRemove, movementType,
+  row, idx, itemCount, items, locations, onUpdate, onRemove, movementType,
 }: {
   row: ItemRow;
   idx: number;
   itemCount: number;
   items: any[];
+  locations: any[];
   onUpdate: (rowId: string, patch: Partial<ItemRow>) => void;
   onRemove: (rowId: string) => void;
   movementType?: string;
@@ -856,7 +858,7 @@ function ItemRowField({
           )}
 
           {/* Add new reel form */}
-          <AddReelForm itemId={row.itemId} pendingCount={newReels.length} onAdd={addNewReel} />
+          <AddReelForm item={selectedItem ?? null} pendingCount={newReels.length} onAdd={addNewReel} locations={locations} />
 
           {/* Total summary */}
           {newReels.length > 0 && (
@@ -926,42 +928,56 @@ function ItemRowField({
 }
 
 // ── Add Reel Form (inline, used in receive mode) ─────────────────────────────
-function AddReelForm({ itemId, pendingCount, onAdd }: { itemId: number | null; pendingCount: number; onAdd: (reel: NewReel) => void }) {
+function AddReelForm({
+  item, pendingCount, onAdd, locations,
+}: {
+  item: any | null;
+  pendingCount: number;
+  onAdd: (reel: NewReel) => void;
+  locations: any[];
+}) {
   const [open, setOpen] = useState(false);
   const [lengthFt, setLengthFt] = useState<number | "">(500);
   const [brand, setBrand] = useState("");
-  const [nextReelId, setNextReelId] = useState<string | null>(null);
+  const [locationId, setLocationId] = useState<string>("");
+  const [status, setStatus] = useState("full");
+  const [nextSeq, setNextSeq] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const reelId = useMemo(() => {
+    if (nextSeq === null || !item) return null;
+    return generateReelId(item, brand || "XX", nextSeq + pendingCount);
+  }, [nextSeq, item, brand, pendingCount]);
+
   useEffect(() => {
-    if (!open || !itemId) return;
+    if (!open || !item) return;
     setFetching(true);
-    setNextReelId(null);
-    fetch(`/api/wire-reels/${itemId}/next-id`, { credentials: "include" })
+    setNextSeq(null);
+    fetch(`/api/wire-reels/${item.id}/next-id`, { credentials: "include" })
       .then(r => r.json())
-      .then(d => {
-        const match = (d.reelId as string).match(/^R-(\d+)$/i);
-        if (match) {
-          const base = parseInt(match[1], 10);
-          setNextReelId(`R-${base + pendingCount}`);
-        } else {
-          setNextReelId(d.reelId);
-        }
-        setFetching(false);
-      })
+      .then(d => { setNextSeq(typeof d.nextSeq === "number" ? d.nextSeq : 1); setFetching(false); })
       .catch(() => { setFetching(false); });
-  }, [open, itemId, pendingCount]);
+  }, [open, item?.id]);
 
   function handleAdd() {
-    if (!nextReelId) return;
+    if (!reelId) return;
     const ft = typeof lengthFt === "number" ? lengthFt : parseInt(String(lengthFt), 10);
     if (isNaN(ft) || ft <= 0) { setError("Enter a valid length greater than 0"); return; }
-    onAdd({ tempId: crypto.randomUUID(), lengthFt: ft, brand: brand.trim(), reelId: nextReelId });
+    onAdd({
+      tempId: crypto.randomUUID(),
+      lengthFt: ft,
+      brand: brand.trim(),
+      reelId,
+      locationId: locationId ? parseInt(locationId, 10) : null,
+      status,
+    });
     setOpen(false);
     setLengthFt(500);
     setBrand("");
-    setNextReelId(null);
+    setLocationId("");
+    setStatus("full");
+    setNextSeq(null);
     setError(null);
   }
 
@@ -984,13 +1000,17 @@ function AddReelForm({ itemId, pendingCount, onAdd }: { itemId: number | null; p
       <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
         New Reel
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+
+      {/* Reel ID preview */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
         <span style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", minWidth: 50 }}>Reel ID</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: fetching ? "#4a7052" : "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif", background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 6, padding: "3px 10px" }}>
-          {fetching ? "…" : nextReelId ?? "—"}
+        <span style={{ fontSize: 13, fontWeight: 700, color: fetching ? "#4a7052" : "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif", background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 6, padding: "3px 10px", letterSpacing: 0.5 }}>
+          {fetching ? "…" : reelId ?? "—"}
         </span>
-        <span style={{ fontSize: 10, color: "#4a7052" }}>auto-assigned</span>
+        <span style={{ fontSize: 10, color: "#4a7052" }}>auto-generated</span>
       </div>
+
+      {/* Length + Brand */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Length (FT) *</div>
@@ -1011,12 +1031,44 @@ function AddReelForm({ itemId, pendingCount, onAdd }: { itemId: number | null; p
           />
         </div>
       </div>
+
+      {/* Location + Status */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Location</div>
+          <select
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: locationId ? "#e2f0e5" : "#4a7052", outline: "none" }}
+            data-testid="select-new-reel-location"
+          >
+            <option value="">Default</option>
+            {locations.map((loc: any) => (
+              <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: "#527856", textTransform: "uppercase", letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif", marginBottom: 4 }}>Status</div>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            style={{ width: "100%", height: 34, padding: "0 10px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none" }}
+            data-testid="select-new-reel-status"
+          >
+            <option value="full">Full / New</option>
+            <option value="new">New</option>
+            <option value="used">Used / Partial</option>
+          </select>
+        </div>
+      </div>
+
       {error && <p style={{ fontSize: 10, color: "#ff5050", marginBottom: 6 }}>{error}</p>}
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
         <button type="button" onClick={() => { setOpen(false); setError(null); }} style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }} data-testid="btn-add-reel-cancel">
           Cancel
         </button>
-        <button type="button" onClick={handleAdd} disabled={!nextReelId || fetching} style={{ padding: "5px 14px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: !nextReelId || fetching ? 0.5 : 1 }} data-testid="btn-add-reel-confirm">
+        <button type="button" onClick={handleAdd} disabled={!reelId || fetching} style={{ padding: "5px 14px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: !reelId || fetching ? 0.5 : 1 }} data-testid="btn-add-reel-confirm">
           Add Reel
         </button>
       </div>
@@ -1247,8 +1299,8 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 reelId: nr.reelId,
                 lengthFt: nr.lengthFt,
                 brand: nr.brand || null,
-                locationId: shared.destinationLocationId || null,
-                status: "full",
+                locationId: nr.locationId ?? shared.destinationLocationId ?? null,
+                status: nr.status ?? "full",
               }),
             });
           }
@@ -1263,6 +1315,13 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       await qc.invalidateQueries({ queryKey: ["/api/wire-reels"] });
       await qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
       await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+      await qc.invalidateQueries({ queryKey: ["/api/field/items"] });
+      for (const row of validRows) {
+        if (row.itemId) {
+          await qc.invalidateQueries({ queryKey: [api.items.get.path, row.itemId] });
+          await qc.invalidateQueries({ queryKey: ["/api/wire-reels", row.itemId] });
+        }
+      }
 
       const count = validRows.length;
       const createdIds: number[] = results.map((r: any) => r.id).filter(Boolean);
@@ -1521,6 +1580,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     idx={idx}
                     itemCount={itemRows.length}
                     items={items || []}
+                    locations={locations || []}
                     onUpdate={updateRow}
                     onRemove={removeRow}
                     movementType={movType}

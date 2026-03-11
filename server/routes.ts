@@ -898,8 +898,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const itemId = parseInt(req.params.itemId);
       if (isNaN(itemId)) return res.status(400).json({ message: "Invalid item ID" });
-      const reelId = await storage.getNextReelId(itemId);
-      res.json({ reelId });
+      const nextSeq = await storage.getNextReelSeq(itemId);
+      res.json({ nextSeq });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

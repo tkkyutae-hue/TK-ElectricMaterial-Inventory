@@ -92,7 +92,7 @@ export interface IStorage {
   getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>;
 
   getWireReels(itemId: number): Promise<WireReelWithRelations[]>;
-  getNextReelId(itemId: number): Promise<string>;
+  getNextReelSeq(itemId: number): Promise<number>;
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
   updateWireReel(id: number, data: UpdateWireReelRequest): Promise<WireReel>;
   deleteWireReel(id: number): Promise<void>;
@@ -1518,17 +1518,17 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Wire Reels ───────────────────────────────────────────────────────────────
 
-  async getNextReelId(itemId: number): Promise<string> {
+  async getNextReelSeq(itemId: number): Promise<number> {
     const allReels = await db.select({ reelId: wireReels.reelId }).from(wireReels).where(eq(wireReels.itemId, itemId));
     let maxNum = 0;
     for (const r of allReels) {
-      const match = r.reelId.match(/^R-(\d+)$/i);
+      const match = r.reelId.match(/R(\d+)$/i);
       if (match) {
         const n = parseInt(match[1], 10);
         if (n > maxNum) maxNum = n;
       }
     }
-    return `R-${maxNum + 1}`;
+    return maxNum + 1;
   }
 
   async getWireReels(itemId: number): Promise<WireReelWithRelations[]> {

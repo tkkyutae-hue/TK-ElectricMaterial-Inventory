@@ -1054,6 +1054,7 @@ export default function ItemDetails() {
   const [, params] = useRoute("/inventory/:id");
   const id = parseInt(params?.id || "0");
   const [_, setLocation] = useLocation();
+  const qc = useQueryClient();
 
   const { data: item, isLoading } = useItem(id);
   const deleteMutation = useDeleteItem();
@@ -1074,6 +1075,13 @@ export default function ItemDetails() {
 
   const updateMutation = useUpdateItem();
   const { toast } = useToast();
+
+  // Invalidate inventory cache on unmount so fresh data loads when returning to list
+  useEffect(() => {
+    return () => {
+      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
+    };
+  }, [qc]);
 
   const [inlineEdit, setInlineEdit] = useState(false);
   const wireReelRef = useRef<WireReelInlineHandle>(null);

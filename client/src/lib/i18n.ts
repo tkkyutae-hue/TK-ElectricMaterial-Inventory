@@ -1,9 +1,9 @@
 export type Lang = "en" | "ko" | "es";
 
-export const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
-  { code: "en", label: "English",  flag: "🇺🇸" },
-  { code: "ko", label: "한국어",    flag: "🇰🇷" },
-  { code: "es", label: "Español",  flag: "🇲🇽" },
+export const LANGUAGES: { code: Lang; label: string; flag: string; country: string }[] = [
+  { code: "en", label: "English",  flag: "🇺🇸", country: "US" },
+  { code: "ko", label: "한국어",    flag: "🇰🇷", country: "KR" },
+  { code: "es", label: "Español",  flag: "🇲🇽", country: "MX" },
 ];
 
 export type Translations = typeof en;

@@ -57,7 +57,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Top header ── */}
       <header style={{
-        position: "relative", zIndex: 10, flexShrink: 0,
+        position: "relative", zIndex: 50, flexShrink: 0,
         height: 52,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 20px",

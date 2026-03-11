@@ -1,0 +1,61 @@
+Please fix the global language selector UI and behavior across the whole app.
+
+Current problems:
+1. The "US EN" button text/icon alignment is inconsistent
+- The label looks vertically uneven / misaligned
+- The text and icon are not sitting cleanly on the same baseline
+
+2. The language dropdown options are not clickable
+- Clicking the language button opens the menu
+- But clicking the language options does not work properly
+
+3. In Field Mode, the language dropdown overlays and covers important UI
+- When the language menu opens in Field Mode, it blocks the page content awkwardly
+- It should open in a cleaner anchored way without covering important controls unnecessarily
+
+4. Admin Mode shows language abbreviations (US / KR / MX), but other screens do not
+- The language selector format is inconsistent across screens
+- I want the same format everywhere
+
+What I want:
+
+1. Fix header button alignment
+- Make the language button content vertically centered and visually balanced
+- Align country code, language code/text, and chevron properly
+- Keep the button compact and clean
+
+2. Make dropdown options fully clickable
+- Clicking English / 한국어 / Español must work reliably
+- The menu should not close before selection registers
+- Fix any z-index / pointer-events / overlay issue causing broken clicks
+
+3. Fix dropdown placement in Field Mode
+- The menu should stay anchored to the language button
+- It should open in a direction/position that does not awkwardly cover the page
+- If needed, open slightly lower or left/right aligned to avoid blocking content
+
+4. Make the language selector style consistent everywhere
+Use the same format on all screens:
+- Login
+- Mode Select
+- Field Mode
+- Admin Mode
+- any other main screen
+
+5. Standardize the visible labels
+I want the selector to consistently show country/language abbreviations everywhere, like:
+- US  English
+- KR  한국어
+- MX  Español
+
+And the collapsed header button should also follow one consistent style everywhere, such as:
+- US EN
+- KR KO
+- MX ES
+
+6. Keep one shared global language system
+- Do not create separate behavior per page
+- Just fix the UI/interaction consistency across all screens
+
+Design goal:
+One consistent, clickable, well-aligned language selector across the whole app, with the same abbreviations and clean dropdown behavior everywhere.

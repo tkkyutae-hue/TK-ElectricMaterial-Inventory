@@ -1046,6 +1046,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
       setShowAdd(false);
       setDraft(BLANK_REEL_DRAFT);
       toast({ title: "Reel added" });
@@ -1057,6 +1058,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/wire-reels/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Reel removed" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -1074,6 +1076,7 @@ function WireItemReelSection({ item }: { item: CategoryGroupedItem }) {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+      qc.invalidateQueries({ queryKey: ["/api/inventory"] });
       setEditingId(null);
       toast({ title: "Reel updated" });
     },

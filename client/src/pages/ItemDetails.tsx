@@ -642,6 +642,7 @@ function WireReelInlineInner(
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
     qc.invalidateQueries({ queryKey: ["/api/items/:id", item.id] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory"] });
   };
 
   const addMutation = useMutation({

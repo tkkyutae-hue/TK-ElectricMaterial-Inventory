@@ -826,12 +826,13 @@ export default function FieldTransactions() {
                     <button
                       type="button"
                       onClick={toggleAll}
-                      style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}
                       data-testid="button-select-all"
                     >
                       {allSelected
-                        ? <CheckSquare style={{ width: 15, height: 15, color: "#2ddb6f" }} />
-                        : <Square style={{ width: 15, height: 15, color: "#4a7052" }} />}
+                        ? <CheckSquare style={{ width: 14, height: 14, color: "#2ddb6f" }} />
+                        : <Square style={{ width: 14, height: 14, color: "#4a7052" }} />}
+                      <span style={{ fontSize: 9, fontWeight: 700, color: allSelected ? "#2ddb6f" : "#4a7052", textTransform: "uppercase", letterSpacing: "0.8px" }}>All</span>
                     </button>
                   )}
                   {!selectMode && canDelete && (
@@ -1015,34 +1016,79 @@ export default function FieldTransactions() {
 
       </>}
 
-      {/* Confirm delete dialog */}
+      {/* ── Floating bulk-action bar ── */}
+      {selectMode && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 28, zIndex: 200,
+          display: "flex", alignItems: "center", gap: 10,
+          background: "#0d1410",
+          border: "1px solid #2a4030",
+          borderRadius: 14,
+          padding: "12px 18px",
+          boxShadow: "0 8px 36px rgba(0,0,0,0.65), 0 0 0 1px rgba(45,219,111,0.08)",
+          fontFamily: "'Barlow Condensed', sans-serif",
+        }}>
+          {selectedIds.size > 0 && (
+            <span style={{ fontSize: 13, color: "#2ddb6f", fontWeight: 700, letterSpacing: 0.3, paddingRight: 6, borderRight: "1px solid #2a4030" }}>
+              {selectedIds.size} selected
+            </span>
+          )}
+          {selectedIds.size === 0 && (
+            <span style={{ fontSize: 12, color: "#4a7052", fontWeight: 600 }}>Select rows to delete</span>
+          )}
+          <button
+            type="button"
+            onClick={exitSelectMode}
+            data-testid="button-cancel-select"
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 8, background: "#1c2b1f", border: "1px solid #2a4030", padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#7aab82", cursor: "pointer" }}
+          >
+            <X style={{ width: 12, height: 12 }} /> Cancel
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              data-testid="button-delete-selected"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", padding: "6px 16px", fontSize: 12, fontWeight: 700, color: "#ff5050", cursor: "pointer" }}
+            >
+              <Trash2 style={{ width: 13, height: 13 }} />
+              Delete ({selectedIds.size})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Confirm delete dialog (dark-themed) ── */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent style={{ background: "#0d1410", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 400 }} className="max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Delete Transactions
+            <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
+              Delete {selectedIds.size} Transaction{selectedIds.size !== 1 ? "s" : ""}?
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-1">
-            <p className="text-sm text-slate-600">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-slate-900">{selectedIds.size} transaction{selectedIds.size !== 1 ? "s" : ""}</span>?
-              Inventory counts will be reversed. You can undo within 8 seconds after deletion.
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
+            <p style={{ fontSize: 13, color: "#7aab82", lineHeight: 1.55 }}>
+              Inventory counts will be reversed for all selected transactions. You can undo this within 8 seconds after deletion.
             </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
+              >
                 Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
+              </button>
+              <button
+                type="button"
                 onClick={handleDelete}
                 disabled={bulkDelete.isPending}
                 data-testid="button-confirm-delete"
+                style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.35)", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: bulkDelete.isPending ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: bulkDelete.isPending ? 0.7 : 1, display: "inline-flex", alignItems: "center", gap: 6 }}
               >
+                <Trash2 style={{ width: 13, height: 13 }} />
                 {bulkDelete.isPending ? "Deleting…" : `Delete ${selectedIds.size}`}
-              </Button>
+              </button>
             </div>
           </div>
         </DialogContent>

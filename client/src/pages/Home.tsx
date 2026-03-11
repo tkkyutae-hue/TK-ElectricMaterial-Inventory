@@ -148,7 +148,7 @@ export default function Home() {
 
       {/* Header */}
       <header style={{
-        position: "relative", zIndex: 10,
+        position: "relative", zIndex: 50,
         display: "flex", alignItems: "center", justifyContent: "flex-end",
         padding: "14px 20px",
         gap: 10,

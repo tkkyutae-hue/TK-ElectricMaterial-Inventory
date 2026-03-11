@@ -152,10 +152,19 @@ export function SearchableItemSelect({
   }, [open]);
 
   useEffect(() => {
-    if (open && ref.current) {
+    if (!open || !ref.current) return;
+    function recalc() {
+      if (!ref.current) return;
       const r = ref.current.getBoundingClientRect();
       setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
     }
+    recalc();
+    window.addEventListener("scroll", recalc, true);
+    window.addEventListener("resize", recalc);
+    return () => {
+      window.removeEventListener("scroll", recalc, true);
+      window.removeEventListener("resize", recalc);
+    };
   }, [open]);
 
   function handleOpen() {

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects, useCreateLocation, useDeleteLocation } from "@/hooks/use-reference-data";
@@ -91,11 +91,15 @@ type SharedData = z.infer<typeof sharedSchema>;
 
 type ItemRowError = { itemId?: string; quantity?: string };
 
+type ReelSnapshot = { id: number; reelId: string; lengthFt: number; status: string | null };
+
 type ItemRow = {
   rowId: string;
   itemId: number | null;
   quantity: number;
   errors: ItemRowError;
+  reelSelections: Record<number, number>;
+  reelSnapshots: Record<number, ReelSnapshot>;
 };
 
 const MOVEMENT_TYPES = [
@@ -106,7 +110,7 @@ const MOVEMENT_TYPES = [
 ];
 
 function makeRow(): ItemRow {
-  return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {} };
+  return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {}, reelSelections: {}, reelSnapshots: {} };
 }
 
 // ── Searchable Item Select ──────────────────────────────────────────────────
@@ -648,6 +652,174 @@ function SearchableProjectSelect({
   );
 }
 
+// ── Item Row (field mode — includes reel UX) ────────────────────────────────
+function ItemRowField({
+  row, idx, itemCount, items, onUpdate, onRemove,
+}: {
+  row: ItemRow;
+  idx: number;
+  itemCount: number;
+  items: any[];
+  onUpdate: (rowId: string, patch: Partial<ItemRow>) => void;
+  onRemove: (rowId: string) => void;
+}) {
+  const selectedItem = items?.find((i: any) => i.id === row.itemId);
+
+  const { data: reelsRaw = [] } = useQuery<any[]>({
+    queryKey: ["/api/wire-reels", row.itemId],
+    enabled: !!row.itemId,
+  });
+  const reels = reelsRaw as any[];
+  const hasReels = reels.length > 0;
+
+  const selections = row.reelSelections ?? {};
+  const snapshots = row.reelSnapshots ?? {};
+  const selectedCount = Object.keys(selections).length;
+  const totalFt = Object.values(selections).reduce((a, b) => a + b, 0);
+
+  const didInitRef = useRef(false);
+  useEffect(() => {
+    if (hasReels && !didInitRef.current) {
+      didInitRef.current = true;
+      onUpdate(row.rowId, { quantity: 0 });
+    }
+  }, [hasReels]);
+
+  function toggleReel(reel: any) {
+    const newSel = { ...selections };
+    const newSnap = { ...snapshots };
+    if (newSel[reel.id] !== undefined) {
+      delete newSel[reel.id];
+      delete newSnap[reel.id];
+    } else {
+      newSel[reel.id] = reel.lengthFt;
+      newSnap[reel.id] = { id: reel.id, reelId: reel.reelId, lengthFt: reel.lengthFt, status: reel.status };
+    }
+    const total = Object.values(newSel).reduce((a, b) => a + b, 0);
+    onUpdate(row.rowId, { reelSelections: newSel, reelSnapshots: newSnap, quantity: total });
+  }
+
+  function setReelFt(reelId: number, value: number, maxFt: number) {
+    const newSel = { ...selections };
+    const newSnap = { ...snapshots };
+    if (value <= 0) {
+      delete newSel[reelId];
+      delete newSnap[reelId];
+    } else {
+      newSel[reelId] = Math.min(value, maxFt);
+    }
+    const total = Object.values(newSel).reduce((a, b) => a + b, 0);
+    onUpdate(row.rowId, { reelSelections: newSel, reelSnapshots: newSnap, quantity: total });
+  }
+
+  return (
+    <div
+      style={{ position: "relative", zIndex: itemCount - idx, background: "#0b1a0f", border: "1px solid #203023", borderRadius: 10, padding: 8 }}
+      data-testid={`item-row-${idx}`}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <SearchableItemSelect
+            value={row.itemId}
+            onChange={(id) => {
+              didInitRef.current = false;
+              onUpdate(row.rowId, { itemId: id, reelSelections: {}, reelSnapshots: {}, quantity: 1 });
+            }}
+            items={items || []}
+            dark={true}
+          />
+          {row.errors.itemId && (
+            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
+          )}
+        </div>
+
+        {!hasReels && (
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: Math.max(0, row.quantity - 1) })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: "1px solid #203023", borderRight: "none", background: "#141e17", color: "#527856", cursor: "pointer" }} data-testid={`btn-qty-dec-${idx}`}>
+                <ChevronLeft style={{ width: 14, height: 14 }} />
+              </button>
+              <input
+                type="text" inputMode="numeric" pattern="[0-9]*" value={row.quantity}
+                onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ""), 10); onUpdate(row.rowId, { quantity: isNaN(v) || v < 0 ? 0 : v }); }}
+                onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 0) onUpdate(row.rowId, { quantity: 0 }); }}
+                style={{ textAlign: "center", height: 34, width: 56, fontSize: 13, fontWeight: 700, border: "1px solid #203023", borderLeft: "none", borderRight: "none", background: "#0f1612", color: "#c8deca", outline: "none", padding: 0 }}
+                data-testid={`input-quantity-${idx}`}
+              />
+              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: row.quantity + 1 })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "0 8px 8px 0", border: "1px solid #203023", borderLeft: "none", background: "#141e17", color: "#527856", cursor: "pointer" }} data-testid={`btn-qty-inc-${idx}`}>
+                <ChevronRight style={{ width: 14, height: 14 }} />
+              </button>
+              {selectedItem && (
+                <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#527856", textTransform: "uppercase", whiteSpace: "nowrap" }}>{selectedItem.unitOfMeasure}</span>
+              )}
+            </div>
+            {row.errors.quantity && (
+              <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, textAlign: "center" }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+            )}
+          </div>
+        )}
+
+        <div style={{ flexShrink: 0 }}>
+          <button type="button" onClick={() => onRemove(row.rowId)} disabled={itemCount === 1} style={{ padding: 6, borderRadius: 6, color: "#2b3f2e", background: "none", border: "none", cursor: "pointer" }} data-testid={`btn-remove-row-${idx}`} title="Remove item">
+            <Trash2 style={{ width: 15, height: 15 }} />
+          </button>
+        </div>
+      </div>
+
+      {hasReels && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
+          {reels.map((reel: any) => {
+            const isSelected = selections[reel.id] !== undefined;
+            const ftValue = selections[reel.id] ?? reel.lengthFt;
+            const isNew = reel.status === "new" || reel.status === "full";
+            return (
+              <div
+                key={reel.id}
+                onClick={() => toggleReel(reel)}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", marginBottom: 4, borderRadius: 8, borderLeft: `3px solid ${isSelected ? "#2ddb6f" : "transparent"}`, background: isSelected ? "rgba(45,219,111,0.08)" : "transparent", cursor: "pointer", userSelect: "none" }}
+                data-testid={`reel-row-${reel.id}`}
+              >
+                <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${isSelected ? "#2ddb6f" : "#2a4030"}`, background: isSelected ? "#2ddb6f" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {isSelected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0b1a0f" }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 600, fontSize: 12, color: "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif" }}>{reel.reelId}</span>
+                    <span style={{ fontSize: 15, color: "#2ddb6f", fontFamily: "Barlow Condensed, sans-serif", fontWeight: 500 }}>{reel.lengthFt} FT</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.15)" : "rgba(245,166,35,0.15)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
+                      {isNew ? "New" : "Used"}
+                    </span>
+                    {reel.location && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.location.name}</span>}
+                  </div>
+                </div>
+                {isSelected && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="number" min={1} max={reel.lengthFt} value={ftValue}
+                      onChange={(e) => { const v = parseInt(e.target.value, 10); setReelFt(reel.id, isNaN(v) ? 0 : v, reel.lengthFt); }}
+                      style={{ width: 70, height: 30, textAlign: "center", fontSize: 13, fontWeight: 700, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none", padding: "0 6px" }}
+                      data-testid={`reel-ft-input-${reel.id}`}
+                    />
+                    <span style={{ fontSize: 11, color: "#4a7052", whiteSpace: "nowrap" }}>/ {reel.lengthFt} FT</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {row.errors.quantity && (
+            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+          )}
+          {selectedCount > 0 && (
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: "#2ddb6f" }}>
+              Selected: {selectedCount} reel{selectedCount > 1 ? "s" : ""} · {totalFt} FT total
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MovementForm ─────────────────────────────────────────────────────────────
 interface MovementFormProps {
   defaultType?: string;
@@ -697,7 +869,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
     setItemRows(prev => prev.length > 1 ? prev.filter(r => r.rowId !== rowId) : prev);
   }, []);
 
-  const updateRow = useCallback((rowId: string, patch: Partial<Pick<ItemRow, "itemId" | "quantity">>) => {
+  const updateRow = useCallback((rowId: string, patch: Partial<ItemRow>) => {
     setItemRows(prev => prev.map(r => r.rowId === rowId ? { ...r, ...patch, errors: {} } : r));
   }, []);
 
@@ -744,10 +916,28 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         )
       );
 
+      const reelOps: Promise<any>[] = [];
+      for (const row of validRows) {
+        for (const [reelIdStr, ftUsed] of Object.entries(row.reelSelections ?? {})) {
+          if (!ftUsed) continue;
+          const reelId = Number(reelIdStr);
+          const snapshot = row.reelSnapshots?.[reelId];
+          if (!snapshot) continue;
+          const newLength = snapshot.lengthFt - ftUsed;
+          if (newLength <= 0) {
+            reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "DELETE", credentials: "include" }));
+          } else {
+            reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ lengthFt: newLength, status: "used" }) }));
+          }
+        }
+      }
+      if (reelOps.length > 0) await Promise.all(reelOps);
+
       await qc.invalidateQueries({ queryKey: [api.movements.list.path] });
       await qc.invalidateQueries({ queryKey: [api.items.list.path] });
       await qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
       await qc.invalidateQueries({ queryKey: [api.projects.list.path] });
+      await qc.invalidateQueries({ queryKey: ["/api/wire-reels"] });
 
       const count = validRows.length;
       const createdIds: number[] = results.map((r: any) => r.id).filter(Boolean);
@@ -994,12 +1184,25 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
 
           <div className="space-y-2">
             {itemRows.map((row, idx) => {
+              if (fieldMode) {
+                return (
+                  <ItemRowField
+                    key={row.rowId}
+                    row={row}
+                    idx={idx}
+                    itemCount={itemRows.length}
+                    items={items || []}
+                    onUpdate={updateRow}
+                    onRemove={removeRow}
+                  />
+                );
+              }
               const selectedItem = items?.find((i: any) => i.id === row.itemId);
               return (
                 <div
                   key={row.rowId}
-                  style={fieldMode ? { position: "relative", zIndex: itemRows.length - idx, display: "flex", alignItems: "center", gap: 8, background: "#0b1a0f", border: "1px solid #203023", borderRadius: 10, padding: 8 } : { position: 'relative', zIndex: itemRows.length - idx }}
-                  className={fieldMode ? undefined : "flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"}
+                  style={{ position: 'relative', zIndex: itemRows.length - idx }}
+                  className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-2 hover:border-brand-200 transition-colors"
                   data-testid={`item-row-${idx}`}
                 >
                   <div className="flex-[3] min-w-0">
@@ -1007,78 +1210,32 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       value={row.itemId}
                       onChange={(id) => updateRow(row.rowId, { itemId: id })}
                       items={items || []}
-                      dark={fieldMode}
+                      dark={false}
                     />
                     {row.errors.itemId && (
-                      <p style={fieldMode ? { fontSize: 10, color: "#ff5555", marginTop: 3, marginLeft: 2 } : undefined} className={fieldMode ? undefined : "text-[10px] text-red-500 mt-1 ml-1"} data-testid={`error-item-${idx}`}>
-                        {row.errors.itemId}
-                      </p>
+                      <p className="text-[10px] text-red-500 mt-1 ml-1" data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
                     )}
                   </div>
-
                   <div className="shrink-0">
                     <div className="flex items-center">
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.rowId, { quantity: Math.max(0, row.quantity - 1) })}
-                        style={fieldMode ? { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: "1px solid #203023", borderRight: "none", background: "#141e17", color: "#527856", cursor: "pointer" } : undefined}
-                        className={fieldMode ? undefined : "w-9 h-9 flex items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"}
-                        data-testid={`btn-qty-dec-${idx}`}
-                        title="Decrease"
-                      >
-                        <ChevronLeft style={{ width: 14, height: 14 }} className={fieldMode ? undefined : "w-4 h-4"} />
+                      <button type="button" onClick={() => updateRow(row.rowId, { quantity: Math.max(0, row.quantity - 1) })} className="w-9 h-9 flex items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600" data-testid={`btn-qty-dec-${idx}`} title="Decrease">
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={row.quantity}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                          updateRow(row.rowId, { quantity: isNaN(val) || val < 0 ? 0 : val });
-                        }}
-                        onBlur={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 });
-                        }}
-                        style={fieldMode ? { textAlign: "center", height: 34, width: 56, fontSize: 13, fontWeight: 700, border: "1px solid #203023", borderLeft: "none", borderRight: "none", background: "#0f1612", color: "#c8deca", outline: "none", padding: 0 } : { textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0 }}
-                        className={fieldMode ? undefined : "h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300"}
-                        data-testid={`input-quantity-${idx}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.rowId, { quantity: row.quantity + 1 })}
-                        style={fieldMode ? { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "0 8px 8px 0", border: "1px solid #203023", borderLeft: "none", background: "#141e17", color: "#527856", cursor: "pointer" } : undefined}
-                        className={fieldMode ? undefined : "w-9 h-9 flex items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600"}
-                        data-testid={`btn-qty-inc-${idx}`}
-                        title="Increase"
-                      >
-                        <ChevronRight style={{ width: 14, height: 14 }} className={fieldMode ? undefined : "w-4 h-4"} />
+                      <input type="text" inputMode="numeric" pattern="[0-9]*" value={row.quantity} onChange={(e) => { const val = parseInt(e.target.value.replace(/\D/g, ''), 10); updateRow(row.rowId, { quantity: isNaN(val) || val < 0 ? 0 : val }); }} onBlur={(e) => { const val = parseInt(e.target.value, 10); if (isNaN(val) || val < 0) updateRow(row.rowId, { quantity: 0 }); }} style={{ textAlign: "center", paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0 }} className="h-9 w-16 text-sm font-semibold border-y border-slate-200 bg-white focus:outline-none focus:border-brand-300" data-testid={`input-quantity-${idx}`} />
+                      <button type="button" onClick={() => updateRow(row.rowId, { quantity: row.quantity + 1 })} className="w-9 h-9 flex items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 hover:bg-brand-50 hover:text-brand-600 transition-colors text-slate-600" data-testid={`btn-qty-inc-${idx}`} title="Increase">
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                       {selectedItem && (
-                        <span style={fieldMode ? { marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#527856", textTransform: "uppercase", whiteSpace: "nowrap", minWidth: 24, textAlign: "center" } : undefined} className={fieldMode ? undefined : "ml-2 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap min-w-[28px] text-center"}>
-                          {selectedItem.unitOfMeasure}
-                        </span>
+                        <span className="ml-2 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap min-w-[28px] text-center">{selectedItem.unitOfMeasure}</span>
                       )}
                     </div>
                     {row.errors.quantity && (
-                      <p style={fieldMode ? { fontSize: 10, color: "#ff5555", marginTop: 3, textAlign: "center" } : undefined} className={fieldMode ? undefined : "text-[10px] text-red-500 mt-1 text-center"} data-testid={`error-qty-${idx}`}>
-                        {row.errors.quantity}
-                      </p>
+                      <p className="text-[10px] text-red-500 mt-1 text-center" data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
                     )}
                   </div>
-
                   <div className="shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => removeRow(row.rowId)}
-                      disabled={itemRows.length === 1}
-                      style={fieldMode ? { padding: 6, borderRadius: 6, color: "#2b3f2e", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
-                      className={fieldMode ? undefined : "p-1.5 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-0 transition-all"}
-                      data-testid={`btn-remove-row-${idx}`}
-                      title="Remove item"
-                    >
-                      <Trash2 style={{ width: 15, height: 15 }} className={fieldMode ? undefined : "w-4 h-4"} />
+                    <button type="button" onClick={() => removeRow(row.rowId)} disabled={itemRows.length === 1} className="p-1.5 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-0 transition-all" data-testid={`btn-remove-row-${idx}`} title="Remove item">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

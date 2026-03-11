@@ -40,8 +40,8 @@ function FieldTypeBadge({ type }: { type: string }) {
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   if (!imageUrl) {
     return (
-      <div style={{ width: 32, height: 32, borderRadius: 6, background: "#162019", border: "1px solid #2a4030", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <ImageOff style={{ width: 13, height: 13, color: "#4a7052" }} />
+      <div style={{ width: 36, height: 36, borderRadius: 6, background: "#162019", border: "1px solid #2a4030", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, margin: "0 auto" }}>
+        <ImageOff style={{ width: 15, height: 15, color: "#4a7052" }} />
       </div>
     );
   }
@@ -49,10 +49,10 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
     <img
       src={imageUrl}
       alt={name}
-      style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid #2a4030" }}
+      style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid #2a4030", display: "block", margin: "0 auto" }}
       onError={e => {
         const p = e.currentTarget.parentElement;
-        if (p) p.innerHTML = '<div style="width:32px;height:32px;border-radius:6px;background:#162019;border:1px solid #2a4030;display:flex;align-items:center;justify-content:center"><svg style="width:13px;height:13px;color:#4a7052" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+        if (p) p.innerHTML = '<div style="width:36px;height:36px;border-radius:6px;background:#162019;border:1px solid #2a4030;display:flex;align-items:center;justify-content:center;margin:0 auto"><svg style="width:15px;height:15px;color:#4a7052" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
       }}
     />
   );
@@ -988,12 +988,12 @@ export default function FieldTransactions() {
                     </td>
 
                     {/* Photo */}
-                    <td style={{ padding: "10px 8px" }}>
+                    <td style={{ padding: "8px 2px", textAlign: "center" }}>
                       <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
                     </td>
 
                     {/* Size */}
-                    <td style={{ padding: "12px 8px", fontSize: 11, color: "#7aab82", whiteSpace: "nowrap", textAlign: "center" }}>
+                    <td style={{ padding: "12px 6px", fontSize: 11, color: "#7aab82", whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
                       {item?.sizeLabel || <span style={{ color: "#2a4030" }}>—</span>}
                     </td>
 

@@ -1,0 +1,128 @@
+Please fully clean up and standardize the global language selector across the entire app.
+
+Apply this consistently to:
+- Login screen
+- Mode Select screen
+- Field Mode
+- Admin Mode
+- any other main top-level screen that shows the language selector
+
+Important:
+Use one shared global language system for the whole app.
+Do NOT create separate language selector logic for each screen or mode.
+
+Supported languages:
+- English
+- 한국어
+- Español
+
+Main goals:
+1. One shared language state across the whole app
+2. One consistent language selector UI everywhere
+3. UI text only should change language
+4. Actual app data/content must remain unchanged
+
+Behavior requirements:
+1. If the user changes language anywhere, it should update the whole app immediately
+2. The selected language must persist across:
+- page changes
+- mode changes
+- refresh
+- future visits/login
+3. All screens must reflect the same current language
+
+UI-only translation:
+Translate interface text only, such as:
+- page titles
+- sidebar/menu labels
+- buttons
+- form labels
+- placeholders
+- table headers
+- status text
+- warning/success/error messages
+- modal/popup labels
+
+Do NOT translate or modify real content/data such as:
+- item names
+- SKU
+- project names
+- customer names
+- PO numbers
+- notes
+- transaction record content
+- inventory data
+
+Fix these current language selector issues:
+
+1. Remove duplicated country/language labels
+Current issue:
+- the header button shows duplicated values like "US US EN"
+
+Fix:
+- use only ONE clean collapsed button format
+- never repeat the country code
+
+Use this exact collapsed format:
+- US EN
+- KR KO
+- MX ES
+
+Do NOT show:
+- US US EN
+- KR KR KO
+- MX MX ES
+
+2. Standardize the dropdown option layout
+Each language option row must use the exact same structure and spacing.
+
+Use this exact visible option format:
+- US   English
+- KR   한국어
+- MX   Español
+
+Layout rules:
+- left = country code
+- middle = language name
+- right = checkmark for current selection
+- all rows must have the same padding
+- all rows must have the same spacing
+- all rows must have the same baseline alignment
+- all rows must feel visually identical in structure
+
+3. Fix header button alignment
+- the collapsed language button content must be vertically centered
+- country code, language code, and chevron must align properly
+- the button should look compact, balanced, and intentional
+- do this consistently on every screen
+
+4. Make dropdown options fully clickable
+Current issue:
+- the menu opens, but clicking a language option does not work properly
+
+Fix:
+- clicking English / 한국어 / Español must immediately switch the app language
+- fix any pointer-events, z-index, overlay, or event handling issue
+- the dropdown must behave like a real working menu everywhere
+
+5. Fix dropdown placement/anchoring
+- the dropdown must stay properly anchored to the language button
+- it must not open awkwardly or cover important UI unnecessarily
+- placement should be clean and consistent across screens
+- if needed, adjust opening direction/alignment so it does not interfere with nearby controls
+
+6. Use the same selector style everywhere
+The language selector must look and behave the same across:
+- Login
+- Mode Select
+- Field Mode
+- Admin Mode
+
+Design goal:
+One clean, reliable, shared language selector across the whole app, with:
+- no duplicated labels
+- consistent alignment
+- consistent abbreviations
+- clickable options
+- stable dropdown placement
+- shared global behavior everywhere

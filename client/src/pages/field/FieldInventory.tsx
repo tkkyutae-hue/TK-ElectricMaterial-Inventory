@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
-  ImageOff,
+  ImageOff, ZoomIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/hooks/use-language";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -49,6 +49,15 @@ type FieldItemsResponse = {
 };
 
 type PillEntry = { name: string; count: number };
+
+type FieldWireReel = {
+  id: number;
+  reelId: string;
+  lengthFt: number;
+  brand: string | null;
+  status: string | null;
+  location: { id: number; name: string } | null;
+};
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -193,81 +202,265 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
   );
 }
 
-// ─── Item Detail Dialog ──────────────────────────────────────────────────────
+// ─── Stat Cell ───────────────────────────────────────────────────────────────
 
-function ItemDetailDialog({ item, onClose }: { item: FieldItem; onClose: () => void }) {
-  const { t } = useLanguage();
+function StatCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">{item.name}</DialogTitle>
-        </DialogHeader>
-        {item.imageUrl && (
-          <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover rounded-xl mb-2" />
-        )}
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-500">{t.colSku}</span>
-            <span className="font-mono font-medium">{item.sku}</span>
+    <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
+      <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>{label}</p>
+      <p style={{ fontSize: 13, fontWeight: 600, color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: mono ? 0.5 : 0 }}>{value}</p>
+    </div>
+  );
+}
+
+// ─── Reel Row ────────────────────────────────────────────────────────────────
+
+const REEL_STATUS_DOT: Record<string, { color: string }> = {
+  new:      { color: "#2ddb6f" },
+  used:     { color: "#f5a623" },
+  depleted: { color: "#ff5050" },
+};
+
+function ReelRow({ reel }: { reel: FieldWireReel }) {
+  const dot = REEL_STATUS_DOT[reel.status || ""] || { color: "#7aab82" };
+  return (
+    <div style={{
+      background: "#162019", border: "1px solid #1e2e21", borderRadius: 9,
+      padding: "9px 12px", display: "flex", alignItems: "center", gap: 10,
+    }}>
+      <div style={{ width: 7, height: 7, borderRadius: "50%", background: dot.color, flexShrink: 0, boxShadow: `0 0 5px ${dot.color}80` }} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, flex: "0 0 auto", minWidth: 64 }}>
+        {reel.reelId}
+      </span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: "#2ddb6f", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>
+        {reel.lengthFt.toLocaleString()} FT
+      </span>
+      <div style={{ flex: 1 }} />
+      {reel.location && (
+        <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif", maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+          {reel.location.name}
+        </span>
+      )}
+      {reel.brand && (
+        <span style={{ fontSize: 10, color: "#4a7052", fontFamily: "'Barlow Condensed', sans-serif", flexShrink: 0 }}>
+          {reel.brand}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Field Item Detail Panel ─────────────────────────────────────────────────
+
+function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () => void }) {
+  const { t } = useLanguage();
+  const isReelItem = item.unitOfMeasure === "FT" || item.unitOfMeasure === "LF";
+  const [imgEnlarged, setImgEnlarged] = useState(false);
+
+  const { data: reels, isLoading: reelsLoading } = useQuery<FieldWireReel[]>({
+    queryKey: ["/api/wire-reels", item.id],
+    queryFn: async () => {
+      const r = await fetch(`/api/wire-reels/${item.id}`, { credentials: "include" });
+      return r.json();
+    },
+    enabled: isReelItem,
+  });
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const totalFt = reels?.reduce((sum, r) => sum + (r.lengthFt || 0), 0) ?? 0;
+
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 9000, display: "flex" }}>
+      {/* Backdrop */}
+      <div
+        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)" }}
+        onClick={onClose}
+      />
+
+      {/* Panel — right-side drawer */}
+      <div
+        data-testid="field-item-detail-panel"
+        style={{
+          position: "absolute", right: 0, top: 0, bottom: 0,
+          width: "min(420px, 100vw)",
+          background: "#0d1410",
+          borderLeft: "1px solid #2a4030",
+          display: "flex", flexDirection: "column",
+          boxShadow: "-8px 0 48px rgba(0,0,0,0.65)",
+          overflowY: "auto",
+        }}
+      >
+        {/* ── Header ── */}
+        <div style={{
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+          padding: "15px 16px 12px",
+          borderBottom: "1px solid #1e2e21",
+          position: "sticky", top: 0, background: "#0d1410", zIndex: 2,
+          gap: 10,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 8, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.8px", marginBottom: 3, fontFamily: "'Barlow Condensed', sans-serif" }}>
+              {isReelItem ? t.cableWireDetail : t.materialDetail}
+            </p>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1.1, margin: 0, wordBreak: "break-word" as const }}>
+              {item.name}
+            </h2>
           </div>
-          {item.sizeLabel && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colSize}</span>
-              <span>{item.sizeLabel}</span>
+          <button
+            onClick={onClose}
+            data-testid="btn-close-detail"
+            style={{
+              background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8,
+              width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#7aab82", flexShrink: 0,
+            }}
+          >
+            <X style={{ width: 16, height: 16 }} />
+          </button>
+        </div>
+
+        {/* ── Content ── */}
+        <div style={{ padding: "14px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Photo */}
+          {item.imageUrl ? (
+            <div
+              onClick={() => setImgEnlarged(true)}
+              data-testid="img-item-photo"
+              style={{
+                borderRadius: 12, overflow: "hidden", border: "1px solid #2a4030",
+                background: "#162019", cursor: "zoom-in", position: "relative",
+                height: 172, display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 10 }}
+                onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
+              />
+              <div style={{
+                position: "absolute", bottom: 6, right: 8, display: "flex", alignItems: "center", gap: 4,
+                fontSize: 9, color: "rgba(255,255,255,0.35)", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
+              }}>
+                <ZoomIn style={{ width: 10, height: 10 }} />
+                {t.tapToEnlarge}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              borderRadius: 12, border: "1px dashed #2a4030", background: "#162019",
+              height: 80, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <ImageOff style={{ width: 22, height: 22, color: "#2a4030" }} />
             </div>
           )}
-          {item.subcategory && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colFamily}</span>
-              <span>{getFamilyDisplay(item.subcategory)}</span>
+
+          {/* ── Hero qty / total FT ── */}
+          <div style={{
+            background: "#162019", border: "1px solid #1e2e21", borderRadius: 12,
+            padding: "14px 16px", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+          }}>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                {isReelItem ? t.totalFt : t.colQtyOnHand}
+              </p>
+              <p style={{ fontSize: 32, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
+                {isReelItem
+                  ? `${totalFt.toLocaleString()} FT`
+                  : `${item.quantityOnHand.toLocaleString()} ${item.unitOfMeasure}`}
+              </p>
             </div>
-          )}
-          {item.detailType && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colType}</span>
-              <span>{item.detailType}</span>
-            </div>
-          )}
-          {item.extractedSubcategory && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.subcategory}</span>
-              <span>{item.extractedSubcategory}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <span className="text-slate-500">{t.colStatus}</span>
-            <FieldStatusBadge status={item.status} />
+            {isReelItem && reels && (
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                  {t.reelCount}
+                </p>
+                <p style={{ fontSize: 32, fontWeight: 700, color: "#7aab82", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
+                  {reels.filter(r => r.status !== "depleted").length}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">{t.colQtyOnHand}</span>
-            <span className="font-bold text-slate-900">{item.quantityOnHand.toLocaleString()} {item.unitOfMeasure}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">{t.colReorderPoint}</span>
-            <span>{item.reorderPoint.toLocaleString()}</span>
-          </div>
-          {item.location && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colLocation}</span>
-              <span>{item.location.name}</span>
+
+          {/* ── Key stat grid ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <StatCell label="SKU" value={item.sku} mono />
+            {item.sizeLabel
+              ? <StatCell label={t.colSize} value={item.sizeLabel} />
+              : <div />}
+            <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 5, fontFamily: "'Barlow Condensed', sans-serif" }}>{t.colStatus}</p>
+              <FieldStatusBadge status={item.status} />
             </div>
-          )}
-          {item.category && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colCategory}</span>
-              <span>{item.category.name}</span>
-            </div>
-          )}
-          {item.supplier && (
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.colSupplier}</span>
-              <span>{item.supplier.name}</span>
+            {item.location
+              ? <StatCell label={t.colLocation} value={item.location.name} />
+              : <div />}
+          </div>
+
+          {/* ── Reel inventory section (reel items only) ── */}
+          {isReelItem && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, marginTop: 4 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.5px", fontFamily: "'Barlow Condensed', sans-serif", whiteSpace: "nowrap" as const }}>
+                  {t.reelInventory}
+                </p>
+                <div style={{ flex: 1, height: 1, background: "#1e2e21" }} />
+              </div>
+              {reelsLoading ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {[1,2,3].map(i => (
+                    <div key={i} style={{ height: 42, borderRadius: 8, background: "#162019", opacity: 0.6 }} />
+                  ))}
+                </div>
+              ) : !reels || reels.length === 0 ? (
+                <div style={{
+                  background: "#162019", border: "1px dashed #2a4030", borderRadius: 10,
+                  padding: "20px 16px", textAlign: "center",
+                  color: "#4a7052", fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif",
+                }}>
+                  {t.noReelsRecorded}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {reels.map(reel => <ReelRow key={reel.id} reel={reel} />)}
+                </div>
+              )}
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {/* Enlarged image overlay */}
+      {imgEnlarged && item.imageUrl && (
+        <div
+          style={{
+            position: "absolute", inset: 0, background: "rgba(0,0,0,0.92)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 3, cursor: "zoom-out",
+          }}
+          onClick={() => setImgEnlarged(false)}
+          data-testid="img-enlarged-overlay"
+        >
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 10 }}
+          />
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }
 
@@ -874,9 +1067,9 @@ export default function FieldInventory() {
         )}
       </div>
 
-      {/* Item detail dialog */}
+      {/* Field item detail panel */}
       {selectedItem && (
-        <ItemDetailDialog item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <FieldItemDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
     </div>
   );

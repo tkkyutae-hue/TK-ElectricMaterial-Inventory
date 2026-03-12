@@ -110,6 +110,15 @@ const en = {
   noItemsFound:       "No items found.",
   perPage:            "/ pg",
 
+  // ── Field Item Detail panel ───────────────────────────────────────────────
+  cableWireDetail:    "Wire / Cable",
+  materialDetail:     "Material",
+  tapToEnlarge:       "Tap to enlarge",
+  totalFt:            "Total FT",
+  reelCount:          "Reels",
+  reelInventory:      "Reel Inventory",
+  noReelsRecorded:    "No reels recorded",
+
   // ── Field Transactions page ──────────────────────────────────────────────
   transactions:       "Transactions",
   viewHistory:        "View transaction history.",
@@ -279,6 +288,14 @@ const ko: Translations = {
   noItemsFound:       "품목이 없습니다.",
   perPage:            "/ 페이지",
 
+  cableWireDetail:    "전선 / 케이블",
+  materialDetail:     "자재",
+  tapToEnlarge:       "탭하여 확대",
+  totalFt:            "총 FT",
+  reelCount:          "릴",
+  reelInventory:      "릴 재고",
+  noReelsRecorded:    "등록된 릴 없음",
+
   transactions:       "거래 내역",
   viewHistory:        "거래 내역 보기.",
   txHistoryTab:       "거래 내역",
@@ -444,6 +461,14 @@ const es: Translations = {
   noItemsMatch:       "Ningún artículo coincide con los filtros.",
   noItemsFound:       "No se encontraron artículos.",
   perPage:            "/ pág",
+
+  cableWireDetail:    "Cable / Alambre",
+  materialDetail:     "Material",
+  tapToEnlarge:       "Toca para ampliar",
+  totalFt:            "Total FT",
+  reelCount:          "Bobinas",
+  reelInventory:      "Inventario de Bobinas",
+  noReelsRecorded:    "Sin bobinas registradas",
 
   transactions:       "Transacciones",
   viewHistory:        "Ver historial de transacciones.",

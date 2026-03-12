@@ -1,0 +1,97 @@
+Please improve only the Field Mode Inventory item detail view.
+
+Do NOT change Admin Mode detail pages for this request.
+This request is only for Field Mode.
+
+Main goal:
+Make the Field Mode item detail practical for fast jobsite inventory checking.
+
+What I want:
+
+1. Redesign Field Mode item detail by item type
+Do not use one generic admin-style detail layout for every item.
+
+Create field-optimized detail behavior for:
+
+A. General material items
+Examples:
+- couplings
+- connectors
+- boxes
+- bushings
+- fittings
+- hardware
+
+Show only:
+- Photo
+- Item Name
+- SKU
+- Size
+- Qty on Hand
+- Status
+- Main Location
+
+B. Cable / wire / reel-managed items
+Examples:
+- THHN
+- grounding wire
+- MC cable
+- reel-managed cable items
+
+Show:
+- Photo
+- Item Name
+- SKU
+- Size
+- Total Qty / Total FT
+- Status
+- Main Location
+- Reel Summary
+- Reel Inventory list
+
+For the Reel Inventory list, show:
+- Reel ID
+- Remaining FT / Qty
+- Location
+- Status
+- Brand if available
+
+2. Remove unnecessary admin-style info from Field Mode detail
+Do not emphasize or show unnecessary back-office data in Field Mode, such as:
+- Reorder Point
+- Supplier
+- Family
+- Type
+- Subcategory
+- other admin-only metadata
+unless absolutely necessary
+
+3. Fix item photo display in Field Mode detail
+- Do not crop the item image aggressively
+- Show the full product image as much as possible
+- Use contain-style image fitting
+- Keep the image easy to recognize quickly
+- Optional: allow tap/click to enlarge image
+
+4. Improve detail layout for field use
+- Make the detail easy to scan quickly
+- Prioritize stock and location info first
+- Keep the content compact and clean
+- Do not make it feel like an admin data sheet
+
+5. Better detail container behavior
+If possible:
+- use a right-side detail drawer on desktop/tablet
+- use a full-height bottom sheet on mobile
+- avoid cramped centered popups when possible
+
+6. Cable-specific requirement
+When a cable item is opened from Field Mode Inventory, the user must be able to check reel stock directly from that detail view without going elsewhere.
+
+If no reels exist, show a simple empty state like:
+- No reels recorded
+
+Important:
+- This request is only for Field Mode
+- Do not modify Admin Mode detail structure in this request
+- Keep Field Mode optimized for quick field inventory checking

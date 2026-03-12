@@ -202,17 +202,6 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
   );
 }
 
-// ─── Stat Cell ───────────────────────────────────────────────────────────────
-
-function StatCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
-      <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>{label}</p>
-      <p style={{ fontSize: 13, fontWeight: 600, color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: mono ? 0.5 : 0 }}>{value}</p>
-    </div>
-  );
-}
-
 // ─── Reel Row ────────────────────────────────────────────────────────────────
 
 const REEL_STATUS_DOT: Record<string, { color: string }> = {
@@ -308,13 +297,16 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
           position: "sticky", top: 0, background: "#0d1410", zIndex: 2,
           gap: 10,
         }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 8, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.8px", marginBottom: 3, fontFamily: "'Barlow Condensed', sans-serif" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 8, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.8px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
               {isReelItem ? t.cableWireDetail : t.materialDetail}
             </p>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1.1, margin: 0, wordBreak: "break-word" as const }}>
-              {item.name}
-            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1.1, margin: 0, wordBreak: "break-word" as const }}>
+                {item.name}
+              </h2>
+              <FieldStatusBadge status={item.status} />
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -393,19 +385,48 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
             )}
           </div>
 
-          {/* ── Key stat grid ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <StatCell label="SKU" value={item.sku} mono />
-            {item.sizeLabel
-              ? <StatCell label={t.colSize} value={item.sizeLabel} />
-              : <div />}
-            <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 5, fontFamily: "'Barlow Condensed', sans-serif" }}>{t.colStatus}</p>
-              <FieldStatusBadge status={item.status} />
+          {/* ── Info rows: Name+Size / Location+SKU ── */}
+          <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, overflow: "hidden" }}>
+            {/* Row 1: Item Name | Size */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "10px 13px 9px" }}>
+              <span style={{
+                fontSize: 14, fontWeight: 700, color: "#e2f0e5",
+                fontFamily: "'Barlow Condensed', sans-serif", flex: 1,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const,
+                paddingRight: 10,
+              }}>
+                {item.name}
+              </span>
+              {item.sizeLabel && (
+                <span style={{
+                  fontSize: 13, fontWeight: 600, color: "#7aab82",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  flexShrink: 0, letterSpacing: 0.3,
+                }}>
+                  {item.sizeLabel}
+                </span>
+              )}
             </div>
-            {item.location
-              ? <StatCell label={t.colLocation} value={item.location.name} />
-              : <div />}
+            {/* Divider */}
+            <div style={{ height: 1, background: "#1e2e21", margin: "0 13px" }} />
+            {/* Row 2: Location | SKU */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px 10px" }}>
+              <span style={{
+                fontSize: 12, color: "#7aab82",
+                fontFamily: "'Barlow Condensed', sans-serif",
+                flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const,
+                paddingRight: 10,
+              }}>
+                {item.location?.name ?? "—"}
+              </span>
+              <span style={{
+                fontSize: 11, color: "#4a7052",
+                fontFamily: "'Barlow Condensed', monospace",
+                flexShrink: 0, letterSpacing: 0.5,
+              }}>
+                {item.sku}
+              </span>
+            </div>
           </div>
 
           {/* ── Reel inventory section (reel items only) ── */}

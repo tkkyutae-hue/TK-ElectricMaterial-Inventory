@@ -754,15 +754,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   // ─── RBAC middleware ─────────────────────────────────────────────────────────
-  async function requireRole(role: string, req: any, res: any, next: any) {
+  // Roles: viewer < staff < manager < admin
+  // - viewer:  field mode, read-only
+  // - staff:   field mode, can do movements
+  // - manager: admin mode (normal pages), cannot access Admin Tools
+  // - admin:   full access including Admin Tools
+  async function requireRole(roles: string | string[], req: any, res: any, next: any) {
     const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ message: "Authentication required" });
     try {
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const user = await authStorage.getUser(userId);
       if (!user || user.status !== "active") return res.status(401).json({ message: "Authentication required" });
-      if (role === "admin" && user.role !== "admin") return res.status(403).json({ message: "Admin access required" });
-      if (role === "staff" && user.role !== "admin" && user.role !== "staff") return res.status(403).json({ message: "Staff access required" });
+      const allowed = Array.isArray(roles) ? roles : [roles];
+      if (!allowed.includes(user.role ?? "")) return res.status(403).json({ message: "Insufficient permissions" });
       (req as any).currentUser = user;
       next();
     } catch {
@@ -770,8 +775,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   }
 
-  const requireAdmin = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
-  const requireStaff = (req: any, res: any, next: any) => requireRole("staff", req, res, next);
+  // Admin Tools only (User Approvals, Export)
+  const requireAdmin   = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
+  // Normal admin operations (inventory CRUD, suppliers, projects, reports, etc.)
+  const requireManager = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
+  // Field operations (movements, transactions)
+  const requireStaff   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
 
   // Keep legacy admin session endpoints for compatibility
   app.post("/api/admin/verify", isAuthenticated, (req: any, res) => {

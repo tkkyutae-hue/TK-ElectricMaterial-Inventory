@@ -31,8 +31,9 @@ import FieldMovement from "@/pages/field/FieldMovement";
 import FieldInventory from "@/pages/field/FieldInventory";
 import FieldTransactions from "@/pages/field/FieldTransactions";
 
+// Allows admin + manager into Admin Mode; all others go back to /home
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, canAccessAdminMode } = useAuth();
 
   if (isLoading) {
     return (
@@ -43,7 +44,24 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Redirect to="/login" />;
-  if (user.role !== "admin") return <Redirect to="/home" />;
+  if (!canAccessAdminMode) return <Redirect to="/home" />;
+  return <>{children}</>;
+}
+
+// Only admin can access Admin Tools (User Approvals, Export Backup)
+function AdminToolsGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, isAdminRole } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (!isAdminRole) return <Redirect to="/" />;
   return <>{children}</>;
 }
 
@@ -63,8 +81,8 @@ function AdminRouter() {
           <Route path="/projects/:id" component={ProjectDetail} />
           <Route path="/reorder" component={Reorder} />
           <Route path="/reports" component={Reports} />
-          <Route path="/admin/users" component={UserApprovals} />
-          <Route path="/admin/export" component={Export} />
+          <Route path="/admin/users" component={() => <AdminToolsGuard><UserApprovals /></AdminToolsGuard>} />
+          <Route path="/admin/export" component={() => <AdminToolsGuard><Export /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

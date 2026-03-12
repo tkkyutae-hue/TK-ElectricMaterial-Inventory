@@ -27,7 +27,7 @@ import tkLogo from "@assets/tk_logo_1772726610288.png";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdminRole } = useAuth();
   const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -54,13 +54,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/reports", label: t.navReports, icon: BarChart3 },
       ],
     },
-    {
+    // Admin Tools section: admin role only
+    ...(isAdminRole ? [{
       label: t.navAdminTools,
       items: [
         { href: "/admin/users", label: t.navUserApprovals, icon: Users },
         { href: "/admin/export", label: t.navExportBackup, icon: Download },
       ],
-    },
+    }] : []),
   ];
 
   const displayName = user?.name ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? user?.email ?? "User";

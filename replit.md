@@ -72,7 +72,7 @@
 - Inventory movements tracked
 
 ### Key Features
-- **Role-based Access:** admin, staff, field
+- **Role-based Access:** 4 roles — viewer (read-only, field), staff (field + movements), manager (admin mode, no admin tools), admin (full access including User Approvals & Export)
 - **Field Mode:** Dark-themed mobile inventory interface
 - **Admin Mode:** Light-themed desktop management dashboard
 - **Reel Tracking:** Sequential R-{n} IDs for wire/cable FT items

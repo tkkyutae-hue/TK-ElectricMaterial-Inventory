@@ -127,7 +127,7 @@ function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const { user, logout, isAdminRole } = useAuth();
+  const { user, logout, isAdminRole, canAccessAdminMode } = useAuth();
   const { t } = useLanguage();
 
   const displayName = user?.name ?? (user as any)?.firstName ?? user?.email ?? "User";
@@ -225,7 +225,7 @@ export default function Home() {
               }}
             />
 
-            {isAdminRole && (
+            {canAccessAdminMode && (
               <ModeCard
                 testId="btn-admin-mode"
                 onClick={() => navigate("/")}
@@ -243,7 +243,7 @@ export default function Home() {
             )}
           </div>
 
-          {!isAdminRole && (
+          {!canAccessAdminMode && (
             <p style={{ fontSize: 11, color: "#4a7052", marginTop: 20, fontFamily: "'Barlow', sans-serif" }}>
               {t.role}:{" "}
               <strong style={{ color: "#7aab82" }}>{user?.role ?? "viewer"}</strong>

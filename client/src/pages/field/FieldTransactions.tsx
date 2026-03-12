@@ -423,7 +423,7 @@ export default function FieldTransactions() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const hasDeletePerm = user?.role === "staff" || user?.role === "admin";
+  const hasDeletePerm = user?.role === "staff" || user?.role === "manager" || user?.role === "admin";
   const urlSearch = useSearch();
   const urlSearchParams = new URLSearchParams(urlSearch);
   const [activeTab, setActiveTab] = useState<"history" | "drafts">(

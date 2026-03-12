@@ -8,9 +8,8 @@ export default function FieldMovement() {
   const params = new URLSearchParams(search);
   const presetType = params.get("type") ?? "receive";
   const draftId = params.get("draftId") ? Number(params.get("draftId")) : undefined;
-  const { user } = useAuth();
+  const { canDoMovements } = useAuth();
   const { t } = useLanguage();
-  const isViewer = user?.role === "viewer";
 
   const isReceive = presetType === "receive";
   const heading = isReceive ? t.receiveReturn : t.issueTransfer;
@@ -49,7 +48,7 @@ export default function FieldMovement() {
         defaultType={presetType}
         allowedTypes={allowedTypes}
         fieldMode
-        readOnly={isViewer}
+        readOnly={!canDoMovements}
         draftId={draftId}
       />
     </div>

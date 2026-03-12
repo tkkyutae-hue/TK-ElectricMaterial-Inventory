@@ -27,11 +27,20 @@ export function useAuth() {
     },
   });
 
+  const role = user?.role ?? "viewer";
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdminRole: user?.role === "admin",
+    // Admin Tools access (User Approvals, Export Backup) — admin only
+    isAdminRole: role === "admin",
+    // Admin Mode access (all normal admin pages) — admin + manager
+    canAccessAdminMode: role === "admin" || role === "manager",
+    // Can perform field movements — staff, manager, admin (not viewer)
+    canDoMovements: role === "staff" || role === "manager" || role === "admin",
+    // Can edit/modify data in admin mode — manager + admin
+    isManagerOrAbove: role === "manager" || role === "admin",
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
   };

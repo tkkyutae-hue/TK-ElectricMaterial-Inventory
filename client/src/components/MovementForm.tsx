@@ -163,12 +163,12 @@ export function SearchableItemSelect({
   useEffect(() => {
     if (!open || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setDropdownPos({ top: r.bottom, left: r.left, width: r.width });
 
     function onScroll() {
       if (!ref.current || !dropdownRef.current) return;
       const rect = ref.current.getBoundingClientRect();
-      dropdownRef.current.style.top = `${rect.bottom + 4}px`;
+      dropdownRef.current.style.top = `${rect.bottom}px`;
       dropdownRef.current.style.left = `${rect.left}px`;
       dropdownRef.current.style.width = `${rect.width}px`;
     }
@@ -176,7 +176,7 @@ export function SearchableItemSelect({
     function onResize() {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
     }
 
     window.addEventListener("scroll", onScroll, true);
@@ -208,11 +208,12 @@ export function SearchableItemSelect({
       <div
         style={D ? {
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 14px", fontSize: 13, borderRadius: 10, minHeight: 42, cursor: "text",
-          background: open ? "#141e17" : "#141e17",
+          padding: "0 14px", fontSize: 13, minHeight: 42, cursor: "text",
+          background: "#141e17",
           border: `1px solid ${open ? "#2ddb6f" : "#203023"}`,
-          boxShadow: open ? "0 0 0 3px rgba(45,219,111,0.12)" : "none",
-          transition: "border-color 0.15s, box-shadow 0.15s",
+          borderRadius: open ? "10px 10px 0 0" : 10,
+          boxShadow: "none",
+          transition: "border-color 0.15s",
           color: "#c8deca",
         } : undefined}
         className={D ? undefined : `w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-text transition-colors ${
@@ -268,7 +269,7 @@ export function SearchableItemSelect({
       {open && createPortal(
         <div
           ref={dropdownRef}
-          style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden", maxHeight: `${6 * 44}px` } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, maxHeight: `${6 * 44}px` }}
+          style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #2ddb6f", borderTop: "none", borderRadius: "0 0 10px 10px", boxShadow: "0 10px 28px rgba(0,0,0,0.6)", overflow: "hidden", maxHeight: `${6 * 44}px` } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, maxHeight: `${6 * 44}px` }}
           className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
         >
           <div className="overflow-y-auto h-full" style={{ maxHeight: `${6 * 44}px` }}>
@@ -363,12 +364,12 @@ function SearchableLocationSelect({
   useEffect(() => {
     if (!open || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    setDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setDropdownPos({ top: r.bottom, left: r.left, width: r.width });
 
     function onScroll() {
       if (!ref.current || !dropdownRef.current) return;
       const rect = ref.current.getBoundingClientRect();
-      dropdownRef.current.style.top = `${rect.bottom + 4}px`;
+      dropdownRef.current.style.top = `${rect.bottom}px`;
       dropdownRef.current.style.left = `${rect.left}px`;
       dropdownRef.current.style.width = `${rect.width}px`;
     }
@@ -376,7 +377,7 @@ function SearchableLocationSelect({
     function onResize() {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+      setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
     }
 
     window.addEventListener("scroll", onScroll, true);
@@ -452,7 +453,7 @@ function SearchableLocationSelect({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: open ? "0 0 0 3px rgba(45,219,111,0.12)" : "none", transition: "border-color 0.15s" } : undefined}
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: open ? "10px 10px 0 0" : 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: "none", transition: "border-color 0.15s" } : undefined}
         className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid={`${testId}-trigger`}
       >
@@ -465,7 +466,7 @@ function SearchableLocationSelect({
       </button>
 
       {open && createPortal(
-        <div ref={dropdownRef} style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #203023", borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden" } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }} className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
+        <div ref={dropdownRef} style={D ? { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: "#0f1612", border: "1px solid #2ddb6f", borderTop: "none", borderRadius: "0 0 10px 10px", boxShadow: "0 10px 28px rgba(0,0,0,0.6)", overflow: "hidden" } : { position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }} className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}>
           <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
             <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
             <input
@@ -523,7 +524,7 @@ function SearchableLocationSelect({
                 type="button"
                 onClick={handleCreate}
                 disabled={createLocation.isPending}
-                style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: "#2ddb6f", fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid #203023", background: "none", border: "none", borderTop: "1px solid #203023", cursor: "pointer" } as any : undefined}
+                style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: "#2ddb6f", fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid #203023", background: "none", border: "none", cursor: "pointer" } as any : undefined}
                 className={D ? undefined : "w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"}
                 data-testid={`${testId}-create`}
               >
@@ -847,8 +848,17 @@ function ItemRowField({
         )}
 
         <div style={{ flexShrink: 0 }}>
-          <button type="button" onClick={() => onRemove(row.rowId)} disabled={itemCount === 1} style={{ padding: 6, borderRadius: 6, color: "#2b3f2e", background: "none", border: "none", cursor: "pointer" }} data-testid={`btn-remove-row-${idx}`} title="Remove item">
-            <Trash2 style={{ width: 15, height: 15 }} />
+          <button
+            type="button"
+            onClick={() => onRemove(row.rowId)}
+            disabled={itemCount === 1}
+            style={{ padding: "5px 7px", borderRadius: 7, color: itemCount === 1 ? "#1e3524" : "#ff5050", background: "none", border: "none", cursor: itemCount === 1 ? "not-allowed" : "pointer", opacity: itemCount === 1 ? 0.35 : 0.65, transition: "opacity 0.15s, background 0.15s" }}
+            onMouseEnter={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; } : undefined}
+            onMouseLeave={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.65"; (e.currentTarget as HTMLButtonElement).style.background = "none"; } : undefined}
+            data-testid={`btn-remove-row-${idx}`}
+            title="Remove item"
+          >
+            <Trash2 style={{ width: 16, height: 16 }} />
           </button>
         </div>
       </div>
@@ -1066,6 +1076,101 @@ function BrandCombobox({
   );
 }
 
+// ── Reel Location Select (attached dropdown, used in BulkReelEntry) ──────────
+function ReelLocationSelect({
+  value, onChange, locations, idx,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  locations: any[];
+  idx: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = locations.find(l => String(l.id) === value);
+  const filtered = search.trim()
+    ? locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()))
+    : locations;
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 30);
+  }, [open]);
+
+  const BTN: React.CSSProperties = {
+    height: 32, width: "100%", display: "flex", alignItems: "center",
+    justifyContent: "space-between", padding: "0 8px", fontSize: 13,
+    background: "#0b1a0f", border: `1px solid ${open ? "#2ddb6f" : "#2a4030"}`,
+    borderRadius: open ? "7px 7px 0 0" : 7, color: selected ? "#e2f0e5" : "#4a7052",
+    cursor: "pointer", textAlign: "left", transition: "border-color 0.15s",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen(o => !o)} style={BTN} data-testid={`bulk-reel-location-${idx}`}>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {selected ? selected.name : "Default"}
+        </span>
+        <ChevronDown style={{ width: 12, height: 12, color: "#527856", flexShrink: 0, marginLeft: 4 }} />
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200,
+          background: "#111d14", border: "1px solid #2ddb6f", borderTop: "none",
+          borderRadius: "0 0 7px 7px", overflow: "hidden",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{ padding: "5px 7px", borderBottom: "1px solid #1a2c1e", display: "flex", alignItems: "center", gap: 5 }}>
+            <Search style={{ width: 11, height: 11, color: "#527856", flexShrink: 0 }} />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Filter…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ flex: 1, fontSize: 12, outline: "none", background: "transparent", color: "#c8deca", border: "none" }}
+            />
+          </div>
+          <div style={{ maxHeight: 144, overflowY: "auto" }}>
+            <button
+              type="button"
+              onMouseDown={() => { onChange(""); setOpen(false); setSearch(""); }}
+              style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: !value ? "#2ddb6f" : "#7aab82", background: "none", border: "none", borderBottom: "1px solid #0e1810", cursor: "pointer" }}
+            >
+              Default
+            </button>
+            {filtered.map(loc => (
+              <button
+                key={loc.id}
+                type="button"
+                onMouseDown={() => { onChange(String(loc.id)); setOpen(false); setSearch(""); }}
+                style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: String(loc.id) === value ? "#2ddb6f" : "#c8deca", background: "none", border: "none", borderBottom: "1px solid #0e1810", cursor: "pointer" }}
+              >
+                {loc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Bulk Reel Entry (row-based multi-entry, used in receive mode) ─────────────
 interface BulkReelRow {
   tempId: string;
@@ -1203,17 +1308,12 @@ function BulkReelEntry({
                 idx={idx}
               />
               {/* Location */}
-              <select
+              <ReelLocationSelect
                 value={row.locationId}
-                onChange={e => updateRow(row.tempId, { locationId: e.target.value })}
-                style={{ ...INPUT, color: row.locationId ? "#e2f0e5" : "#4a7052" }}
-                data-testid={`bulk-reel-location-${idx}`}
-              >
-                <option value="">Default</option>
-                {locations.map((loc: any) => (
-                  <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
-                ))}
-              </select>
+                onChange={v => updateRow(row.tempId, { locationId: v })}
+                locations={locations}
+                idx={idx}
+              />
               {/* Status — simplified: New / Used only */}
               <select
                 value={row.status}
@@ -1229,7 +1329,9 @@ function BulkReelEntry({
                 type="button"
                 onClick={() => removeRow(row.tempId)}
                 title="Remove row"
-                style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#2b3f2e", borderRadius: 5, flexShrink: 0 }}
+                style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#ff5050", opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
                 data-testid={`btn-remove-bulk-row-${idx}`}
               >
                 <X style={{ width: 13, height: 13 }} />

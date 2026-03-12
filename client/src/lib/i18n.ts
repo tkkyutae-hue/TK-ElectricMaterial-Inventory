@@ -10,12 +10,15 @@ export type Translations = typeof en;
 
 const en = {
   // ── Auth ─────────────────────────────────────────────────────────────────
-  signIn:             "Sign In",
-  email:              "Email",
-  password:           "Password",
-  signingIn:          "Signing in…",
-  invalidCredentials: "Invalid email or password.",
-  loginError:         "Login failed. Please try again.",
+  signIn:                  "Sign In",
+  email:                   "Email",
+  password:                "Password",
+  signingIn:               "Signing in…",
+  invalidCredentials:      "Invalid email or password.",
+  loginError:              "Login failed. Please try again.",
+  materialInventorySystem: "Material Inventory System",
+  noAccount:               "No account?",
+  requestAccess:           "Request Access",
 
   // ── Home / Mode select ───────────────────────────────────────────────────
   morning:            "Morning",
@@ -183,12 +186,15 @@ const en = {
 };
 
 const ko: Translations = {
-  signIn:             "로그인",
-  email:              "이메일",
-  password:           "비밀번호",
-  signingIn:          "로그인 중…",
-  invalidCredentials: "이메일 또는 비밀번호가 올바르지 않습니다.",
-  loginError:         "로그인에 실패했습니다. 다시 시도해 주세요.",
+  signIn:                  "로그인",
+  email:                   "이메일",
+  password:                "비밀번호",
+  signingIn:               "로그인 중…",
+  invalidCredentials:      "이메일 또는 비밀번호가 올바르지 않습니다.",
+  loginError:              "로그인에 실패했습니다. 다시 시도해 주세요.",
+  materialInventorySystem: "자재 재고 시스템",
+  noAccount:               "계정이 없으신가요?",
+  requestAccess:           "접속 요청",
 
   morning:            "아침",
   afternoon:          "오후",
@@ -346,12 +352,15 @@ const ko: Translations = {
 };
 
 const es: Translations = {
-  signIn:             "Iniciar sesión",
-  email:              "Correo electrónico",
-  password:           "Contraseña",
-  signingIn:          "Iniciando sesión…",
-  invalidCredentials: "Correo o contraseña incorrectos.",
-  loginError:         "Error al iniciar sesión. Inténtalo de nuevo.",
+  signIn:                  "Iniciar sesión",
+  email:                   "Correo electrónico",
+  password:                "Contraseña",
+  signingIn:               "Iniciando sesión…",
+  invalidCredentials:      "Correo o contraseña incorrectos.",
+  loginError:              "Error al iniciar sesión. Inténtalo de nuevo.",
+  materialInventorySystem: "Sistema de Inventario",
+  noAccount:               "¿Sin cuenta?",
+  requestAccess:           "Solicitar Acceso",
 
   morning:            "Mañana",
   afternoon:          "Tarde",

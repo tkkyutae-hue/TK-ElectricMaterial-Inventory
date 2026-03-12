@@ -222,7 +222,7 @@ export default function Login() {
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 11, letterSpacing: 2,
               color: "rgba(45,219,111,0.7)", textTransform: "uppercase",
-            }}>Material Inventory System</span>
+            }}>{t.materialInventorySystem}</span>
           </div>
         </div>
 
@@ -334,7 +334,7 @@ export default function Login() {
 
             {/* Link */}
             <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#2b3f2e" }}>
-              No account?{" "}
+              {t.noAccount}{" "}
               <button
                 onClick={() => navigate("/signup")}
                 style={{
@@ -345,7 +345,7 @@ export default function Login() {
                 }}
                 data-testid="link-request-access"
               >
-                Request Access
+                {t.requestAccess}
               </button>
             </p>
           </div>

@@ -821,7 +821,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const { role, status } = req.body ?? {};
       const allowed: Record<string, string[]> = {
-        role: ["admin", "staff", "viewer"],
+        role: ["admin", "manager", "staff", "viewer"],
         status: ["active", "pending", "rejected"],
       };
       const update: Record<string, string> = {};
@@ -848,7 +848,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const { role } = req.body ?? {};
       const update: any = { status: "active" };
-      if (role && ["admin", "staff", "viewer"].includes(role)) update.role = role;
+      if (role && ["admin", "manager", "staff", "viewer"].includes(role)) update.role = role;
       const user = await authStorage.updateUser(req.params.id, update);
       if (!user) return res.status(404).json({ message: "User not found" });
       const { passwordHash: _ph, ...safe } = user as any;

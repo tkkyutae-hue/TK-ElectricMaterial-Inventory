@@ -108,12 +108,14 @@ type ItemRow = {
   newReels?: NewReel[];
 };
 
-const MOVEMENT_TYPES = [
-  { value: "receive",  label: "Receive",  desc: "Stock arriving from a supplier" },
-  { value: "issue",    label: "Issue",    desc: "Material going out to a jobsite" },
-  { value: "return",   label: "Return",   desc: "Material returned from the field" },
-  { value: "transfer", label: "Transfer", desc: "Move between locations" },
-];
+function getMovementTypes(t: Record<string, string>) {
+  return [
+    { value: "receive",  label: t.moveTypeReceiveLabel,  desc: t.moveTypeReceiveDesc },
+    { value: "issue",    label: t.moveTypeIssueLabel,    desc: t.moveTypeIssueDesc },
+    { value: "return",   label: t.moveTypeReturnLabel,   desc: t.moveTypeReturnDesc },
+    { value: "transfer", label: t.moveTypeTransferLabel, desc: t.moveTypeTransferDesc },
+  ];
+}
 
 function makeRow(): ItemRow {
   return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {}, reelSelections: {}, reelSnapshots: {} };
@@ -1395,6 +1397,7 @@ interface MovementFormProps {
 export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess, onCancel, readOnly = false, allowedTypes, fieldMode = false, draftId }: MovementFormProps) {
   const { toast } = useToast();
   const { t } = useLanguage();
+  const movementTypes = getMovementTypes(t as unknown as Record<string, string>);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const { data: items } = useItems();
@@ -1719,10 +1722,10 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className={fieldMode ? "fm-dark-select-content" : undefined}>
-                  {MOVEMENT_TYPES.filter(t => !allowedTypes || allowedTypes.includes(t.value)).map(t => (
-                    <SelectItem key={t.value} value={t.value}>
-                      <span className="font-medium">{t.label}</span>
-                      <span className={fieldMode ? undefined : "text-slate-400 text-xs ml-2"} style={fieldMode ? { color: "#527856", fontSize: 11, marginLeft: 6 } : undefined}>— {t.desc}</span>
+                  {movementTypes.filter(mt => !allowedTypes || allowedTypes.includes(mt.value)).map(mt => (
+                    <SelectItem key={mt.value} value={mt.value}>
+                      <span className="font-medium">{mt.label}</span>
+                      <span className={fieldMode ? undefined : "text-slate-400 text-xs ml-2"} style={fieldMode ? { color: "#527856", fontSize: 11, marginLeft: 6 } : undefined}>— {mt.desc}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

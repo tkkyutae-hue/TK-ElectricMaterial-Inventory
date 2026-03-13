@@ -1831,11 +1831,11 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 )} />
                 <FormField control={form.control} name="personName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Received By</FormLabel>
+                    <FormLabel>{t.receivedBy}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Enter receiver name..."
+                        placeholder={t.receiverNamePlaceholder}
                         style={fieldMode ? {
                           background: "#141e17",
                           border: "1px solid #203023",
@@ -1872,11 +1872,11 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 )} />
                 <FormField control={form.control} name="personName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Requested By</FormLabel>
+                    <FormLabel>{t.requestedBy}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Enter requester name..."
+                        placeholder={t.requesterNamePlaceholder}
                         style={fieldMode ? {
                           background: "#141e17",
                           border: "1px solid #203023",

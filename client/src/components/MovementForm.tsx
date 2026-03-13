@@ -1810,7 +1810,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               )}
             </div>
 
-            {/* Row 2: secondary location — Receiving Location (receive/return) or Sending Location (issue) */}
+            {/* Row 2: secondary location + person name — right column */}
             {(movType === "receive" || movType === "return") && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="destinationLocationId" render={({ field }) => (
@@ -1824,6 +1824,27 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                         placeholder="Search or type to create…"
                         testId="select-dest-location"
                         dark={fieldMode}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="personName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Received By</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter receiver name..."
+                        style={fieldMode ? {
+                          background: "#141e17",
+                          border: "1px solid #203023",
+                          borderRadius: 10,
+                          color: "#c8deca",
+                          fontSize: 13,
+                          height: 40,
+                        } : undefined}
+                        data-testid="input-person-name"
                       />
                     </FormControl>
                     <FormMessage />
@@ -1849,35 +1870,29 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="personName" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Requested By</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter requester name..."
+                        style={fieldMode ? {
+                          background: "#141e17",
+                          border: "1px solid #203023",
+                          borderRadius: 10,
+                          color: "#c8deca",
+                          fontSize: 13,
+                          height: 40,
+                        } : undefined}
+                        data-testid="input-person-name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
             )}
-
-            {/* ── Person name field (Received By / Requested By) ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="personName" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {(movType === "receive" || movType === "return") ? "Received By" : "Requested By"}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder={(movType === "receive" || movType === "return") ? "Enter receiver name..." : "Enter requester name..."}
-                      style={fieldMode ? {
-                        background: "#141e17",
-                        border: "1px solid #203023",
-                        borderRadius: 10,
-                        color: "#c8deca",
-                        fontSize: 13,
-                        height: 40,
-                      } : undefined}
-                      data-testid="input-person-name"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
           </div>
 
         </div>

@@ -12,7 +12,6 @@ import { LanguageProvider } from "@/hooks/use-language";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Home from "@/pages/Home";
-import Hub from "@/pages/Hub";
 import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
 import CategoryDetail from "@/pages/CategoryDetail";
@@ -45,7 +44,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Redirect to="/login" />;
-  if (!canAccessAdminMode) return <Redirect to="/hub" />;
+  if (!canAccessAdminMode) return <Redirect to="/home" />;
   return <>{children}</>;
 }
 
@@ -128,10 +127,9 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/login" component={() => <Redirect to="/hub" />} />
-      <Route path="/signup" component={() => <Redirect to="/hub" />} />
-      <Route path="/hub" component={Hub} />
-      <Route path="/home" component={() => <Redirect to="/hub" />} />
+      <Route path="/login" component={() => <Redirect to="/home" />} />
+      <Route path="/signup" component={() => <Redirect to="/home" />} />
+      <Route path="/home" component={Home} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
       <Route component={AdminRouter} />

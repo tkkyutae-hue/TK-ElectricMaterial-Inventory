@@ -116,12 +116,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="p-3 border-t border-border space-y-1">
         <Link
-          href="/hub"
+          href="/home"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
           data-testid="nav-back-home"
         >
           <Home className="w-4 h-4 flex-shrink-0" />
-          ← Hub
+          {t.backToHome}
         </Link>
 
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
@@ -195,7 +195,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="hidden sm:inline">{t.back}</span>
               </Button>
             )}
-            <Link href="/hub">
+            <Link href="/home">
               <Button
                 variant="ghost"
                 size="sm"
@@ -203,7 +203,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 data-testid="btn-header-back-home"
               >
                 <Home className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">← Hub</span>
+                <span className="hidden sm:inline">{t.modeSelect}</span>
               </Button>
             </Link>
             <LanguageSwitcher theme="light" />

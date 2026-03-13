@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ArrowLeft, HardHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -30,6 +30,8 @@ function useClock() {
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [location] = useLocation();
+  const isFieldHome = location === "/field";
   const now = useClock();
 
   const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -105,8 +107,32 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
 
           <LanguageSwitcher theme="dark" />
 
-          {/* ← Hub button */}
-          <Link href="/hub">
+          {/* Back button — only on sub-pages */}
+          {!isFieldHome && (
+            <Link href="/field">
+              <button
+                data-testid="btn-field-back"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "#162019", border: "1px solid #2a4030",
+                  borderRadius: 8, padding: "5px 11px",
+                  color: "#7aab82", fontSize: 11,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 600, letterSpacing: 0.5,
+                  cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+                  textTransform: "uppercase",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
+              >
+                <ArrowLeft style={{ width: 11, height: 11 }} />
+                <span>{t.back}</span>
+              </button>
+            </Link>
+          )}
+
+          {/* Mode Select button */}
+          <Link href="/home">
             <button
               data-testid="btn-field-home"
               style={{
@@ -119,11 +145,10 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
                 cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
                 textTransform: "uppercase",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#2ddb6f"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#c8deca"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(45,219,111,0.35)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#7aab82"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a4030"; }}
             >
-              <ArrowLeft style={{ width: 11, height: 11 }} />
-              <span>Hub</span>
+              <span>{t.modeSelect}</span>
             </button>
           </Link>
 

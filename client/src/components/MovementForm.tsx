@@ -1961,19 +1961,6 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
         {/* ── Confirm footer: slim sticky action bar ── */}
         <div style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 16, marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16, background: "#0d1410", borderTop: "1px solid #203023" } : undefined} className={fieldMode ? undefined : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}>
           <div className="flex items-center gap-2">
-            {onCancel && (
-              <Button
-                type="button"
-                variant={fieldMode ? undefined : "outline"}
-                onClick={onCancel}
-                disabled={submitting}
-                style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px" } : undefined}
-                className={fieldMode ? undefined : undefined}
-                data-testid="button-cancel-movement"
-              >
-                Cancel
-              </Button>
-            )}
             {readOnly ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -2006,6 +1993,28 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 >
                   {draftSaving ? t.saving : t.saveAsDraft}
                 </Button>
+                {onCancel && (
+                  <Button
+                    type="button"
+                    variant={fieldMode ? undefined : "destructive"}
+                    onClick={onCancel}
+                    disabled={submitting}
+                    style={fieldMode ? {
+                      background: "rgba(255,80,80,0.08)",
+                      border: "1px solid rgba(255,80,80,0.30)",
+                      color: "#ff5050",
+                      borderRadius: 10,
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      fontWeight: 600,
+                      fontSize: 14,
+                      height: 40,
+                      padding: "0 18px",
+                    } : undefined}
+                    data-testid="button-cancel-movement"
+                  >
+                    Cancel
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={submitting}

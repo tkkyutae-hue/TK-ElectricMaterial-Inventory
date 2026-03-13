@@ -1,10 +1,11 @@
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { MovementForm } from "@/components/MovementForm";
 
 export default function FieldMovement() {
   const search = useSearch();
+  const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
   const presetType = params.get("type") ?? "receive";
   const draftId = params.get("draftId") ? Number(params.get("draftId")) : undefined;
@@ -50,6 +51,7 @@ export default function FieldMovement() {
         fieldMode
         readOnly={!canDoMovements}
         draftId={draftId}
+        onCancel={() => navigate("/field")}
       />
     </div>
   );

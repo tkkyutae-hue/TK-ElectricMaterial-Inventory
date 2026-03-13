@@ -87,6 +87,7 @@ const sharedSchema = z.object({
   destinationLocationId: z.coerce.number().optional(),
   projectId: z.coerce.number().optional(),
   note: z.string().optional(),
+  personName: z.string().optional(),
 });
 
 type SharedData = z.infer<typeof sharedSchema>;
@@ -1565,6 +1566,7 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
               destinationLocationId: shared.destinationLocationId || null,
               projectId: shared.projectId || null,
               note: shared.note || null,
+              reason: shared.personName || null,
             }),
           }).then(async res => {
             if (!res.ok) {
@@ -1849,6 +1851,33 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                 )} />
               </div>
             )}
+
+            {/* ── Person name field (Received By / Requested By) ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField control={form.control} name="personName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {(movType === "receive" || movType === "return") ? "Received By" : "Requested By"}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder={(movType === "receive" || movType === "return") ? "Enter receiver name..." : "Enter requester name..."}
+                      style={fieldMode ? {
+                        background: "#141e17",
+                        border: "1px solid #203023",
+                        borderRadius: 10,
+                        color: "#c8deca",
+                        fontSize: 13,
+                        height: 40,
+                      } : undefined}
+                      data-testid="input-person-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
           </div>
 
         </div>

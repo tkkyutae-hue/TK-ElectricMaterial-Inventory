@@ -2005,10 +2005,11 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
                       color: "#ff5050",
                       borderRadius: 10,
                       fontFamily: "'Barlow Condensed', sans-serif",
-                      fontWeight: 600,
+                      fontWeight: 700,
                       fontSize: 14,
                       height: 40,
-                      padding: "0 18px",
+                      padding: "0 22px",
+                      minWidth: 100,
                     } : undefined}
                     data-testid="button-cancel-movement"
                   >

@@ -43,7 +43,7 @@ const GRID_STYLE: React.CSSProperties = {
   zIndex: 0,
 };
 
-interface ModeCardProps {
+interface SquareCardProps {
   testId: string;
   onClick: () => void;
   accentColor: string;
@@ -54,7 +54,100 @@ interface ModeCardProps {
   tagStyle: React.CSSProperties;
 }
 
-function ModeCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle }: ModeCardProps) {
+function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle }: SquareCardProps) {
+  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <button
+      data-testid={testId}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setPressed(false); }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      style={{
+        flex: 1,
+        textAlign: "center",
+        background: "#162019",
+        border: `1px solid ${hovered ? accentColor : "#2a4030"}`,
+        borderRadius: 14,
+        padding: 0,
+        cursor: "pointer",
+        transform: hovered && !pressed ? "translateY(-2px)" : pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
+        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+      }}
+    >
+      <div style={{ height: 2, background: accentColor, width: "100%" }} />
+
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px 16px 20px",
+        gap: 12,
+      }}>
+        <div style={{
+          width: 54, height: 54, borderRadius: 14, flexShrink: 0,
+          background: emojiBg,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 26,
+        }}>
+          {emoji}
+        </div>
+
+        <p style={{
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontSize: 17, fontWeight: 700,
+          color: "#e2f0e5", margin: 0,
+          letterSpacing: 0.3,
+          lineHeight: 1.2,
+        }}>{title}</p>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
+          {tags.map(tag => (
+            <span key={tag} style={{
+              fontSize: 8, textTransform: "uppercase", letterSpacing: 1.2,
+              padding: "2px 6px", borderRadius: 4,
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 600,
+              ...tagStyle,
+            }}>{tag}</span>
+          ))}
+        </div>
+
+        <span style={{
+          fontSize: 16, flexShrink: 0,
+          color: hovered ? accentColor : "#4a7052",
+          transition: "color 0.15s, transform 0.15s",
+          transform: hovered ? "translateX(3px)" : "translateX(0)",
+          display: "inline-block",
+          lineHeight: 1,
+        }}>→</span>
+      </div>
+    </button>
+  );
+}
+
+interface WideCardProps {
+  testId: string;
+  onClick: () => void;
+  accentColor: string;
+  emoji: string;
+  emojiBg: string;
+  title: string;
+  tags: string[];
+  tagStyle: React.CSSProperties;
+}
+
+function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle }: WideCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -181,7 +274,7 @@ export default function Home() {
         flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
         padding: "20px 24px 48px",
       }}>
-        <div style={{ width: "100%", maxWidth: 520 }}>
+        <div style={{ width: "100%", maxWidth: 580 }}>
 
           {/* Greeting */}
           <div style={{ marginBottom: 32 }}>
@@ -210,23 +303,42 @@ export default function Home() {
           {/* Mode cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-            <ModeCard
-              testId="btn-field-mode"
-              onClick={() => navigate("/field")}
-              accentColor="#2ddb6f"
-              emoji="🪖"
-              emojiBg="rgba(45,219,111,0.08)"
-              title={t.fieldMode}
-              tags={[t.tagReceive, t.tagIssue, t.tagInventory, t.tagTransfer]}
-              tagStyle={{
-                background: "rgba(45,219,111,0.08)",
-                border: "1px solid rgba(45,219,111,0.15)",
-                color: "#2ddb6f",
-              }}
-            />
+            {/* Top row: 2 equal square cards */}
+            <div style={{ display: "flex", gap: 12 }}>
+              <SquareCard
+                testId="btn-inventory-mode"
+                onClick={() => navigate("/field")}
+                accentColor="#2ddb6f"
+                emoji="🪖"
+                emojiBg="rgba(45,219,111,0.08)"
+                title={t.inventoryMode}
+                tags={[t.tagReceive, t.tagIssue, t.tagInventory, t.tagTransfer]}
+                tagStyle={{
+                  background: "rgba(45,219,111,0.08)",
+                  border: "1px solid rgba(45,219,111,0.15)",
+                  color: "#2ddb6f",
+                }}
+              />
 
+              <SquareCard
+                testId="btn-daily-report-mode"
+                onClick={() => navigate("/reports")}
+                accentColor="#60a5fa"
+                emoji="📋"
+                emojiBg="rgba(96,165,250,0.08)"
+                title={t.dailyReportMode}
+                tags={[t.tagProjects, t.tagReports, t.tagManpower, t.tagProgress]}
+                tagStyle={{
+                  background: "rgba(96,165,250,0.08)",
+                  border: "1px solid rgba(96,165,250,0.15)",
+                  color: "#60a5fa",
+                }}
+              />
+            </div>
+
+            {/* Bottom row: full-width Admin Mode card */}
             {canAccessAdminMode && (
-              <ModeCard
+              <WideCard
                 testId="btn-admin-mode"
                 onClick={() => navigate("/")}
                 accentColor="#f5a623"

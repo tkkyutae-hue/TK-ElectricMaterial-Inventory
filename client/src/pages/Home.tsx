@@ -52,9 +52,10 @@ interface SquareCardProps {
   title: string;
   tags: string[];
   tagStyle: React.CSSProperties;
+  tagGap?: number;
 }
 
-function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle }: SquareCardProps) {
+function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4 }: SquareCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -68,6 +69,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
       onMouseUp={() => setPressed(false)}
       style={{
         flex: 1,
+        minHeight: 220,
         textAlign: "center",
         background: "#162019",
         border: `1px solid ${hovered ? accentColor : "#2a4030"}`,
@@ -87,18 +89,19 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
 
       <div style={{
         flex: 1,
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px 16px 20px",
-        gap: 12,
+        padding: "28px 16px 36px",
+        gap: 8,
       }}>
         <div style={{
-          width: 54, height: 54, borderRadius: 14, flexShrink: 0,
+          width: 66, height: 66, borderRadius: 16, flexShrink: 0,
           background: emojiBg,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 26,
+          fontSize: 32,
         }}>
           {emoji}
         </div>
@@ -111,7 +114,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
           lineHeight: 1.2,
         }}>{title}</p>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: tagGap, justifyContent: "center" }}>
           {tags.map(tag => (
             <span key={tag} style={{
               fontSize: 8, textTransform: "uppercase", letterSpacing: 1.2,
@@ -124,7 +127,10 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         </div>
 
         <span style={{
-          fontSize: 16, flexShrink: 0,
+          position: "absolute",
+          bottom: 14,
+          right: 16,
+          fontSize: 14,
           color: hovered ? accentColor : "#4a7052",
           transition: "color 0.15s, transform 0.15s",
           transform: hovered ? "translateX(3px)" : "translateX(0)",
@@ -328,6 +334,7 @@ export default function Home() {
                 emojiBg="rgba(96,165,250,0.08)"
                 title={t.dailyReportMode}
                 tags={[t.tagProjects, t.tagReports, t.tagManpower, t.tagProgress]}
+                tagGap={6}
                 tagStyle={{
                   background: "rgba(96,165,250,0.08)",
                   border: "1px solid rgba(96,165,250,0.15)",

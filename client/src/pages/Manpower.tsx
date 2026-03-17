@@ -5,203 +5,315 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   HardHat, PlusCircle, Pencil, Loader2, Users,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Lock, Camera, Star,
+  ClipboardList, Calendar, Zap, LayoutGrid,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertWorkerSchema, type Worker } from "@shared/schema";
+import { type Worker } from "@shared/schema";
 
-// ─── Form schema ──────────────────────────────────────────────────────────────
-const workerFormSchema = insertWorkerSchema.extend({
+// ─── Registration form schema (only name + trade) ─────────────────────────────
+const registerSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   trade: z.string().optional().nullable(),
-  isActive: z.boolean().default(true),
-  notes: z.string().optional().nullable(),
 });
-type WorkerFormValues = z.infer<typeof workerFormSchema>;
+type RegisterValues = z.infer<typeof registerSchema>;
 
-// ─── Worker form dialog ───────────────────────────────────────────────────────
-function WorkerDialog({
+// ─── Locked evaluation field placeholder ─────────────────────────────────────
+function LockedField({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100">
+      <Icon className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+      <span className="text-xs text-slate-400 flex-1">{label}</span>
+      <Lock className="w-3 h-3 text-slate-300 shrink-0" />
+    </div>
+  );
+}
+
+// ─── Registration dialog ──────────────────────────────────────────────────────
+function RegisterDialog({
   open,
-  worker,
   onClose,
 }: {
   open: boolean;
-  worker: Worker | null;
   onClose: () => void;
 }) {
   const { toast } = useToast();
-  const isEdit = worker !== null;
+  const [lastRegistered, setLastRegistered] = useState<string | null>(null);
 
-  const form = useForm<WorkerFormValues>({
-    resolver: zodResolver(workerFormSchema),
-    defaultValues: {
-      fullName: worker?.fullName ?? "",
-      trade: worker?.trade ?? "",
-      isActive: worker?.isActive ?? true,
-      notes: worker?.notes ?? "",
-    },
+  const form = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { fullName: "", trade: "" },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: WorkerFormValues) =>
-      apiRequest("POST", "/api/workers", data),
-    onSuccess: () => {
+    mutationFn: (data: RegisterValues) =>
+      apiRequest("POST", "/api/workers", { ...data, isActive: true }),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
-      toast({ title: "Worker registered successfully." });
-      onClose();
+      setLastRegistered(variables.fullName);
+      form.reset({ fullName: "", trade: "" });
     },
     onError: (err: any) => {
       toast({ title: "Failed to register worker", description: err.message, variant: "destructive" });
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: WorkerFormValues) =>
-      apiRequest("PUT", `/api/workers/${worker!.id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
-      toast({ title: "Worker updated successfully." });
-      onClose();
-    },
-    onError: (err: any) => {
-      toast({ title: "Failed to update worker", description: err.message, variant: "destructive" });
-    },
-  });
+  function onSubmit(values: RegisterValues) {
+    createMutation.mutate(values);
+  }
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
-
-  function onSubmit(values: WorkerFormValues) {
-    if (isEdit) {
-      updateMutation.mutate(values);
-    } else {
-      createMutation.mutate(values);
-    }
+  function handleClose() {
+    form.reset({ fullName: "", trade: "" });
+    setLastRegistered(null);
+    onClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HardHat className="w-5 h-5 text-slate-500" />
-            {isEdit ? "Edit Worker" : "Register New Worker"}
+            Register New Worker
           </DialogTitle>
         </DialogHeader>
+
+        {/* Last registered confirmation */}
+        {lastRegistered && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span><strong>{lastRegistered}</strong> registered — fill in the next worker below</span>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-            <FormField
-              control={form.control}
-              name="fullName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input
-                      data-testid="input-worker-name"
-                      placeholder="e.g. John Smith"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* ── Editable registration fields ── */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Registration Info
+              </p>
 
-            <FormField
-              control={form.control}
-              name="trade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Trade / Classification</FormLabel>
-                  <FormControl>
-                    <Input
-                      data-testid="input-worker-trade"
-                      placeholder="e.g. Electrician, Foreman, Apprentice"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="input-worker-name"
+                        placeholder="e.g. John Smith"
+                        autoFocus
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <FormLabel className="text-sm font-medium">Active</FormLabel>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Inactive workers will not appear in daily report selection
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      data-testid="switch-worker-active"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="trade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trade / Classification</FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="input-worker-trade"
+                        placeholder="e.g. Electrician, Foreman, Apprentice"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      data-testid="textarea-worker-notes"
-                      placeholder="Optional notes…"
-                      rows={3}
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* ── Evaluation profile (locked, future step) ── */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Worker Profile
+                </p>
+                <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
+                  Available after evaluation
+                </span>
+              </div>
 
-            <DialogFooter className="pt-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100 col-span-2">
+                  <Camera className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                  <span className="text-xs text-slate-400 flex-1">Photo</span>
+                  <Lock className="w-3 h-3 text-slate-300 shrink-0" />
+                </div>
+                <LockedField icon={Star}         label="Skill" />
+                <LockedField icon={ClipboardList} label="Control" />
+                <LockedField icon={Users}         label="Attitude" />
+                <LockedField icon={CheckCircle2}  label="Total Score" />
+                <LockedField icon={Calendar}      label="Date of TK" />
+                <LockedField icon={Zap}           label="Special Ability" />
+                <LockedField icon={LayoutGrid}    label="Skill Board" />
+              </div>
+            </div>
+
+            {/* ── Actions ── */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
-                data-testid="btn-worker-cancel"
-                onClick={onClose}
-                disabled={isPending}
+                data-testid="btn-register-done"
+                onClick={handleClose}
+                disabled={createMutation.isPending}
               >
-                Cancel
+                Done
               </Button>
               <Button
                 type="submit"
                 data-testid="btn-worker-save"
-                disabled={isPending}
+                disabled={createMutation.isPending}
               >
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {isEdit ? "Save Changes" : "Register Worker"}
+                {createMutation.isPending
+                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  : <PlusCircle className="w-4 h-4 mr-2" />
+                }
+                Register Worker
               </Button>
-            </DialogFooter>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Edit dialog (name + trade only, evaluation section still locked) ─────────
+function EditDialog({
+  worker,
+  onClose,
+}: {
+  worker: Worker;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { fullName: worker.fullName, trade: worker.trade ?? "" },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: RegisterValues) =>
+      apiRequest("PUT", `/api/workers/${worker.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
+      toast({ title: "Worker updated." });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="w-4 h-4 text-slate-500" />
+            Edit Worker
+          </DialogTitle>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Registration Info
+              </p>
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input data-testid="input-worker-name-edit" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="trade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trade / Classification</FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="input-worker-trade-edit"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Evaluation profile (locked) */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Worker Profile
+                </p>
+                <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
+                  Available after evaluation
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100 col-span-2">
+                  <Camera className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                  <span className="text-xs text-slate-400 flex-1">Photo</span>
+                  <Lock className="w-3 h-3 text-slate-300 shrink-0" />
+                </div>
+                <LockedField icon={Star}         label="Skill" />
+                <LockedField icon={ClipboardList} label="Control" />
+                <LockedField icon={Users}         label="Attitude" />
+                <LockedField icon={CheckCircle2}  label="Total Score" />
+                <LockedField icon={Calendar}      label="Date of TK" />
+                <LockedField icon={Zap}           label="Special Ability" />
+                <LockedField icon={LayoutGrid}    label="Skill Board" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" data-testid="btn-worker-save-edit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
@@ -211,7 +323,7 @@ function WorkerDialog({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Manpower() {
-  const [dialogOpen, setDialogOpen]       = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
 
   const { data: workerList = [], isLoading } = useQuery<Worker[]>({
@@ -221,48 +333,23 @@ export default function Manpower() {
   const activeCount   = workerList.filter((w) => w.isActive).length;
   const inactiveCount = workerList.filter((w) => !w.isActive).length;
 
-  function openNew() {
-    setEditingWorker(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(w: Worker) {
-    setEditingWorker(w);
-    setDialogOpen(true);
-  }
-
-  function closeDialog() {
-    setDialogOpen(false);
-    setEditingWorker(null);
-  }
-
   return (
     <div className="space-y-6">
 
-      {/* ── Page header ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Manpower</h1>
-          <p className="text-slate-500 mt-1">
-            Register and manage your workforce. Active workers are available for selection in Daily Reports.
-          </p>
-        </div>
-        <Button
-          data-testid="btn-register-worker"
-          onClick={openNew}
-          className="gap-2 shrink-0"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Register Worker
-        </Button>
+      {/* ── Page header (no button here) ── */}
+      <div>
+        <h1 className="text-3xl font-display font-bold text-slate-900">Manpower</h1>
+        <p className="text-slate-500 mt-1">
+          Register and manage your workforce. Active workers are available for selection in Daily Reports.
+        </p>
       </div>
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Users,        label: "Total Workers", value: String(workerList.length), color: "text-blue-600",   bg: "bg-blue-50"   },
+          { icon: Users,        label: "Total Workers", value: String(workerList.length), color: "text-blue-600",    bg: "bg-blue-50"    },
           { icon: CheckCircle2, label: "Active",        value: String(activeCount),       color: "text-emerald-600", bg: "bg-emerald-50" },
-          { icon: XCircle,      label: "Inactive",      value: String(inactiveCount),     color: "text-slate-500",  bg: "bg-slate-100" },
+          { icon: XCircle,      label: "Inactive",      value: String(inactiveCount),     color: "text-slate-500",   bg: "bg-slate-100"  },
         ].map(({ icon: Icon, label, value, color, bg }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-4 pt-5 pb-5">
@@ -278,16 +365,27 @@ export default function Manpower() {
         ))}
       </div>
 
-      {/* ── Worker table ── */}
+      {/* ── Worker Registry table ── */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <HardHat className="w-4 h-4 text-slate-500" />
-            Worker Registry
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <HardHat className="w-4 h-4 text-slate-500" />
+              Worker Registry
+            </CardTitle>
+            <Button
+              data-testid="btn-register-worker"
+              size="sm"
+              className="gap-1.5 text-xs h-8"
+              onClick={() => setRegisterOpen(true)}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              Register Worker
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="p-0">
 
+        <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
@@ -301,7 +399,7 @@ export default function Manpower() {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-slate-600">No workers registered yet</p>
-                <p className="text-xs text-slate-400 mt-0.5">Click "Register Worker" to add your first worker</p>
+                <p className="text-xs text-slate-400 mt-0.5">Use "Register Worker" above to add your first worker</p>
               </div>
             </div>
 
@@ -313,7 +411,6 @@ export default function Manpower() {
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trade / Classification</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Notes</th>
                     <th className="px-5 py-3" />
                   </tr>
                 </thead>
@@ -359,22 +456,30 @@ export default function Manpower() {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 max-w-[200px]">
-                        <span className="text-slate-500 text-xs truncate block">
-                          {worker.notes || <span className="text-slate-300">—</span>}
-                        </span>
-                      </td>
                       <td className="px-5 py-3.5 text-right">
-                        <Button
-                          data-testid={`btn-edit-worker-${worker.id}`}
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1.5 text-xs text-slate-500 hover:text-slate-700"
-                          onClick={() => openEdit(worker)}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            data-testid={`btn-evaluate-worker-${worker.id}`}
+                            variant="ghost"
+                            size="sm"
+                            disabled
+                            className="gap-1.5 text-xs text-slate-300 cursor-not-allowed"
+                            title="Evaluation coming soon"
+                          >
+                            <ClipboardList className="w-3.5 h-3.5" />
+                            Evaluate
+                          </Button>
+                          <Button
+                            data-testid={`btn-edit-worker-${worker.id}`}
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1.5 text-xs text-slate-500 hover:text-slate-700"
+                            onClick={() => setEditingWorker(worker)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -382,16 +487,20 @@ export default function Manpower() {
               </table>
             </div>
           )}
-
         </CardContent>
       </Card>
 
-      {/* ── Dialog ── */}
-      <WorkerDialog
-        open={dialogOpen}
-        worker={editingWorker}
-        onClose={closeDialog}
+      {/* ── Dialogs ── */}
+      <RegisterDialog
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
       />
+      {editingWorker && (
+        <EditDialog
+          worker={editingWorker}
+          onClose={() => setEditingWorker(null)}
+        />
+      )}
 
     </div>
   );

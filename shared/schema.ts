@@ -382,3 +382,25 @@ export const insertDailyReportSchema = createInsertSchema(dailyReports).omit({
 export type DailyReport = typeof dailyReports.$inferSelect;
 export type CreateDailyReportRequest = z.infer<typeof insertDailyReportSchema>;
 export type UpdateDailyReportRequest = Partial<CreateDailyReportRequest>;
+
+// ─── Workers ──────────────────────────────────────────────────────────────────
+
+export const workers = pgTable("workers", {
+  id: serial("id").primaryKey(),
+  fullName: text("full_name").notNull(),
+  trade: text("trade"),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWorkerSchema = createInsertSchema(workers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Worker = typeof workers.$inferSelect;
+export type CreateWorkerRequest = z.infer<typeof insertWorkerSchema>;
+export type UpdateWorkerRequest = Partial<CreateWorkerRequest>;

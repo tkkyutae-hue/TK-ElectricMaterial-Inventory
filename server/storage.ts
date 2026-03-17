@@ -18,6 +18,7 @@ import {
   type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations,
   type MovementDraft, type MovementDraftWithRelations,
   type DailyReport, type CreateDailyReportRequest, type UpdateDailyReportRequest,
+  workers, type Worker, type CreateWorkerRequest, type UpdateWorkerRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -111,6 +112,11 @@ export interface IStorage {
   getDailyReport(id: number): Promise<DailyReport | undefined>;
   createDailyReport(data: CreateDailyReportRequest): Promise<DailyReport>;
   updateDailyReport(id: number, data: UpdateDailyReportRequest): Promise<DailyReport>;
+
+  getWorkers(): Promise<Worker[]>;
+  getWorker(id: number): Promise<Worker | undefined>;
+  createWorker(data: CreateWorkerRequest): Promise<Worker>;
+  updateWorker(id: number, data: UpdateWorkerRequest): Promise<Worker>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1807,6 +1813,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(dailyReports.id, id))
       .returning();
     if (!row) throw new Error("Daily report not found");
+    return row;
+  }
+
+  // ─── Workers ─────────────────────────────────────────────────────────────────
+
+  async getWorkers(): Promise<Worker[]> {
+    return await db.select().from(workers).orderBy(asc(workers.fullName));
+  }
+
+  async getWorker(id: number): Promise<Worker | undefined> {
+    const [row] = await db.select().from(workers).where(eq(workers.id, id));
+    return row;
+  }
+
+  async createWorker(data: CreateWorkerRequest): Promise<Worker> {
+    const [row] = await db.insert(workers).values(data).returning();
+    return row;
+  }
+
+  async updateWorker(id: number, data: UpdateWorkerRequest): Promise<Worker> {
+    const [row] = await db
+      .update(workers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workers.id, id))
+      .returning();
+    if (!row) throw new Error("Worker not found");
     return row;
   }
 }

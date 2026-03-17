@@ -59,15 +59,19 @@ function WorkerAvatar({ photoUrl, name }: { photoUrl?: string | null; name: stri
 }
 
 // ─── Inline "add worker" row ──────────────────────────────────────────────────
-function AddWorkerRow({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
+function AddWorkerRow({
+  onSaved, onCancel, autoFocus = false,
+}: {
+  onSaved: () => void; onCancel: () => void; autoFocus?: boolean;
+}) {
   const { toast } = useToast();
   const [fullName, setFullName] = useState("");
   const [trade, setTrade]       = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
+    if (autoFocus) nameRef.current?.focus();
+  }, [autoFocus]);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -174,7 +178,9 @@ function AddWorkerRow({ onSaved, onCancel }: { onSaved: () => void; onCancel: ()
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Manpower() {
   const [, navigate]  = useLocation();
-  const [adding, setAdding] = useState(false);
+  // Each entry is a unique draft key — one per open inline row
+  const [draftKeys, setDraftKeys] = useState<number[]>([]);
+  const nextKey = useRef(0);
 
   const { data: workerList = [], isLoading } = useQuery<Worker[]>({
     queryKey: ["/api/workers"],
@@ -187,12 +193,13 @@ export default function Manpower() {
     navigate(`/manpower/${worker.id}`);
   }
 
-  function handleSaved() {
-    setAdding(false);
+  function removeDraft(key: number) {
+    setDraftKeys((prev) => prev.filter((k) => k !== key));
   }
 
   function handleAddClick() {
-    setAdding(true);
+    const key = nextKey.current++;
+    setDraftKeys((prev) => [...prev, key]);
   }
 
   return (
@@ -240,7 +247,6 @@ export default function Manpower() {
               size="sm"
               className="gap-1.5 text-xs h-8"
               onClick={handleAddClick}
-              disabled={adding}
             >
               <PlusCircle className="w-3.5 h-3.5" />
               Register Worker
@@ -255,7 +261,7 @@ export default function Manpower() {
               <p className="text-sm text-slate-400">Loading workers…</p>
             </div>
 
-          ) : workerList.length === 0 && !adding ? (
+          ) : workerList.length === 0 && draftKeys.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
                 <HardHat className="w-7 h-7 text-slate-400" />
@@ -287,13 +293,15 @@ export default function Manpower() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
 
-                  {/* Inline add row — appears at top */}
-                  {adding && (
+                  {/* Inline draft rows — one per pending registration */}
+                  {draftKeys.map((key, idx) => (
                     <AddWorkerRow
-                      onSaved={handleSaved}
-                      onCancel={() => setAdding(false)}
+                      key={key}
+                      autoFocus={idx === draftKeys.length - 1}
+                      onSaved={() => removeDraft(key)}
+                      onCancel={() => removeDraft(key)}
                     />
-                  )}
+                  ))}
 
                   {/* Saved worker rows */}
                   {workerList.map((worker) => {

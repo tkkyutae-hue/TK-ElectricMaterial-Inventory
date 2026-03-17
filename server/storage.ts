@@ -111,6 +111,7 @@ export interface IStorage {
   confirmDraft(id: number, performedBy: string | null): Promise<void>;
 
   getDailyReports(projectId: number): Promise<DailyReport[]>;
+  getDailyReportSummary(): Promise<{ projectId: number; total: number; draft: number; submitted: number; lastDate: string | null }[]>;
   getDailyReport(id: number): Promise<DailyReport | undefined>;
   createDailyReport(data: CreateDailyReportRequest): Promise<DailyReport>;
   updateDailyReport(id: number, data: UpdateDailyReportRequest): Promise<DailyReport>;
@@ -1804,6 +1805,20 @@ export class DatabaseStorage implements IStorage {
       .from(dailyReports)
       .where(eq(dailyReports.projectId, projectId))
       .orderBy(desc(dailyReports.updatedAt));
+  }
+
+  async getDailyReportSummary(): Promise<{ projectId: number; total: number; draft: number; submitted: number; lastDate: string | null }[]> {
+    const rows = await db
+      .select({
+        projectId: dailyReports.projectId,
+        total:     sql<number>`count(*)::int`,
+        draft:     sql<number>`count(*) filter (where status = 'draft')::int`,
+        submitted: sql<number>`count(*) filter (where status = 'submitted')::int`,
+        lastDate:  sql<string | null>`max(report_date)`,
+      })
+      .from(dailyReports)
+      .groupBy(dailyReports.projectId);
+    return rows;
   }
 
   async getDailyReport(id: number): Promise<DailyReport | undefined> {

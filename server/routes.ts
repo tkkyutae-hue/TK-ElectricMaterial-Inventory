@@ -1036,6 +1036,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/daily-reports-summary", isAuthenticated, async (_req, res) => {
+    try {
+      const summary = await storage.getDailyReportSummary();
+      res.json(summary);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/daily-reports/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Calendar, ClipboardList, CheckCircle2, AlertCircle,
-  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2,
+  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2, Hash,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
@@ -368,13 +368,25 @@ export default function DailyReportWorkspace() {
               >
                 {project.name}
               </h1>
-              <span className="text-xs font-mono text-slate-400">{project.code}</span>
+              <span
+                data-testid="text-workspace-project-po"
+                className="flex items-center gap-0.5 text-xs text-slate-400 font-medium shrink-0"
+              >
+                <Hash className="w-3 h-3" />
+                {project.poNumber ? `PO: ${project.poNumber}` : "No PO"}
+              </span>
               <ProjectStatusBadge status={project.status} />
             </div>
             <div className="flex items-center gap-4 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-xs text-slate-500">
                 <MapPin className="w-3 h-3" />{projectLocation(project)}
               </span>
+              {(project.ownerName || project.customerName) && (
+                <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <Users className="w-3 h-3" />
+                  {project.ownerName || project.customerName}
+                </span>
+              )}
               {project.startDate && (
                 <span className="flex items-center gap-1 text-xs text-slate-400">
                   <Calendar className="w-3 h-3" />

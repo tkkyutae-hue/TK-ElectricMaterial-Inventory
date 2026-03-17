@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight,
   Search, ClipboardList, FileText, CheckCircle2, Loader2,
+  User, BarChart3, Hash,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,15 @@ import {
 } from "@/lib/mock-daily-report";
 import type { Project } from "@shared/schema";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface ReportSummary {
+  projectId: number;
+  total:     number;
+  draft:     number;
+  submitted: number;
+  lastDate:  string | null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function projectLocation(p: Project): string {
   if (p.jobLocation) return p.jobLocation;
@@ -21,9 +31,9 @@ function projectLocation(p: Project): string {
   return parts.length > 0 ? parts.join(", ") : "—";
 }
 
-function projectStartDate(p: Project): string {
-  if (!p.startDate) return "—";
-  return new Date(p.startDate).toLocaleDateString("en-US", {
+function formatLastDate(date: string | null): string {
+  if (!date) return "No reports";
+  return new Date(date).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
 }
@@ -41,6 +51,36 @@ function ProjectStatusBadge({ status }: { status: string }) {
   );
 }
 
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({
+  icon: Icon, label, value, accent, iconBg, iconColor, borderColor,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  accent: string;
+  iconBg: string;
+  iconColor: string;
+  borderColor: string;
+}) {
+  return (
+    <Card className={`overflow-hidden border ${borderColor}`}>
+      <div className={`h-1 ${accent}`} />
+      <CardContent className="px-5 py-5">
+        <div className="flex items-start gap-4">
+          <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${iconBg}`}>
+            <Icon className={`w-5 h-5 ${iconColor}`} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-semibold">{label}</p>
+            <p className="text-3xl font-bold text-slate-800 leading-tight mt-0.5">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const [, navigate] = useLocation();
@@ -51,6 +91,21 @@ export default function DailyReport() {
     queryKey: ["/api/projects"],
   });
 
+  const { data: reportSummaries = [] } = useQuery<ReportSummary[]>({
+    queryKey: ["/api/daily-reports-summary"],
+    queryFn: async () => {
+      const res = await fetch("/api/daily-reports-summary", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // Build a lookup map: projectId → summary
+  const summaryMap = reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => {
+    acc[s.projectId] = s;
+    return acc;
+  }, {});
+
   const filtered = allProjects.filter((p) => {
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     if (!search.trim()) return matchStatus;
@@ -58,13 +113,13 @@ export default function DailyReport() {
     return (
       matchStatus &&
       (p.name.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q) ||
+        (p.poNumber ?? "").toLowerCase().includes(q) ||
         projectLocation(p).toLowerCase().includes(q))
     );
   });
 
-  const activeCount    = allProjects.filter((p) => p.status === "active").length;
   const totalCount     = allProjects.length;
+  const activeCount    = allProjects.filter((p) => p.status === "active").length;
   const completedCount = allProjects.filter((p) => p.status === "completed").length;
 
   return (
@@ -78,25 +133,35 @@ export default function DailyReport() {
         </p>
       </div>
 
-      {/* ── Summary stat cards ── */}
+      {/* ── KPI Cards — reordered: Total → Active → Completed ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { icon: Briefcase,    label: "Active Projects",    value: String(activeCount),    color: "text-blue-600",    bg: "bg-blue-50"    },
-          { icon: ClipboardList, label: "Total Projects",    value: String(totalCount),     color: "text-indigo-600",  bg: "bg-indigo-50"  },
-          { icon: CheckCircle2,  label: "Completed",         value: String(completedCount), color: "text-slate-600",   bg: "bg-slate-100"  },
-        ].map(({ icon: Icon, label, value, color, bg }) => (
-          <Card key={label}>
-            <CardContent className="flex items-center gap-4 pt-5 pb-5">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${bg}`}>
-                <Icon className={`w-5 h-5 ${color}`} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">{label}</p>
-                <p className="font-bold text-slate-700 leading-tight truncate text-2xl">{value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <KpiCard
+          icon={BarChart3}
+          label="Total Projects"
+          value={String(totalCount)}
+          accent="bg-gradient-to-r from-slate-400 to-slate-500"
+          iconBg="bg-slate-100"
+          iconColor="text-slate-600"
+          borderColor="border-slate-200"
+        />
+        <KpiCard
+          icon={Briefcase}
+          label="Active Projects"
+          value={String(activeCount)}
+          accent="bg-gradient-to-r from-emerald-400 to-green-500"
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+          borderColor="border-emerald-200"
+        />
+        <KpiCard
+          icon={CheckCircle2}
+          label="Completed Projects"
+          value={String(completedCount)}
+          accent="bg-gradient-to-r from-teal-400 to-blue-500"
+          iconBg="bg-teal-50"
+          iconColor="text-teal-600"
+          borderColor="border-teal-200"
+        />
       </div>
 
       {/* ── Project List ── */}
@@ -124,7 +189,7 @@ export default function DailyReport() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input
               data-testid="input-project-search"
-              placeholder="Search by name, code, or location…"
+              placeholder="Search by name, PO number, or location…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9 text-sm"
@@ -182,72 +247,127 @@ export default function DailyReport() {
         /* Project cards */
         ) : (
           <div className="space-y-2">
-            {filtered.map((project) => (
-              <Card
-                key={project.id}
-                data-testid={`card-project-${project.id}`}
-                className="hover:shadow-md transition-shadow duration-150 cursor-pointer group"
-                onClick={() => navigate(`/daily-report/${project.id}`)}
-              >
-                <CardContent className="flex items-center gap-4 px-5 py-4">
+            {filtered.map((project) => {
+              const summary = summaryMap[project.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null };
+              const loc     = projectLocation(project);
+              const owner   = project.ownerName || project.customerName;
 
-                  {/* Icon */}
-                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 shrink-0">
-                    <Briefcase className="w-5 h-5 text-slate-500" />
-                  </div>
+              return (
+                <Card
+                  key={project.id}
+                  data-testid={`card-project-${project.id}`}
+                  className="hover:shadow-md transition-all duration-150 cursor-pointer group border border-slate-200"
+                  onClick={() => navigate(`/daily-report/${project.id}`)}
+                >
+                  <CardContent className="px-5 py-4 flex gap-4">
 
-                  {/* Main info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        data-testid={`text-project-name-${project.id}`}
-                        className="font-semibold text-slate-800 text-sm truncate"
-                      >
-                        {project.name}
-                      </span>
-                      <span
-                        data-testid={`text-project-code-${project.id}`}
-                        className="text-xs text-slate-400 font-mono shrink-0"
-                      >
-                        {project.code}
-                      </span>
-                      <ProjectStatusBadge status={project.status} />
+                    {/* Left icon */}
+                    <div className="flex items-start pt-0.5">
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
+                        project.status === "active"    ? "bg-emerald-50" :
+                        project.status === "completed" ? "bg-teal-50"    :
+                        project.status === "on_hold"   ? "bg-amber-50"   :
+                                                         "bg-slate-100"
+                      }`}>
+                        <Briefcase className={`w-5 h-5 ${
+                          project.status === "active"    ? "text-emerald-600" :
+                          project.status === "completed" ? "text-teal-600"    :
+                          project.status === "on_hold"   ? "text-amber-600"   :
+                                                           "text-slate-400"
+                        }`} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-1 flex-wrap">
-                      <span
-                        data-testid={`text-project-location-${project.id}`}
-                        className="flex items-center gap-1 text-xs text-slate-500"
-                      >
-                        <MapPin className="w-3 h-3 shrink-0" />
-                        {projectLocation(project)}
-                      </span>
-                      {project.startDate && (
+
+                    {/* Main content — 3 rows */}
+                    <div className="flex-1 min-w-0 space-y-2">
+
+                      {/* Row 1: Name + PO + Status */}
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          data-testid={`text-project-start-${project.id}`}
-                          className="flex items-center gap-1 text-xs text-slate-400"
+                          data-testid={`text-project-name-${project.id}`}
+                          className="font-semibold text-slate-800 text-sm leading-tight"
                         >
-                          <Calendar className="w-3 h-3 shrink-0" />
-                          Started: {projectStartDate(project)}
+                          {project.name}
                         </span>
-                      )}
+                        <span
+                          data-testid={`text-project-po-${project.id}`}
+                          className="flex items-center gap-1 text-xs text-slate-400 font-medium shrink-0"
+                        >
+                          <Hash className="w-3 h-3" />
+                          {project.poNumber ? `PO: ${project.poNumber}` : "No PO"}
+                        </span>
+                        <ProjectStatusBadge status={project.status} />
+                      </div>
+
+                      {/* Row 2: Location + Owner */}
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <span
+                          data-testid={`text-project-location-${project.id}`}
+                          className="flex items-center gap-1 text-xs text-slate-500"
+                        >
+                          <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                          {loc}
+                        </span>
+                        {owner && (
+                          <span
+                            data-testid={`text-project-owner-${project.id}`}
+                            className="flex items-center gap-1 text-xs text-slate-500 ml-auto"
+                          >
+                            <User className="w-3 h-3 shrink-0 text-slate-400" />
+                            {owner}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Row 3: Report status mini-stats */}
+                      <div className="flex items-center gap-4 pt-1 border-t border-slate-100 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <ClipboardList className="w-3 h-3 text-slate-300 shrink-0" />
+                          <span className="text-xs text-slate-400">Total</span>
+                          <span className="text-xs font-semibold text-slate-700 ml-0.5">{summary.total}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                          <span className="text-xs text-slate-400">Draft</span>
+                          <span className="text-xs font-semibold text-amber-600 ml-0.5">{summary.draft}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="text-xs text-slate-400">Submitted</span>
+                          <span className="text-xs font-semibold text-emerald-700 ml-0.5">{summary.submitted}</span>
+                        </div>
+                        <div className="flex items-center gap-1 ml-auto">
+                          <Calendar className="w-3 h-3 text-slate-300 shrink-0" />
+                          <span className="text-xs text-slate-400">Last</span>
+                          <span
+                            data-testid={`text-project-last-report-${project.id}`}
+                            className="text-xs font-medium text-slate-600 ml-0.5"
+                          >
+                            {formatLastDate(summary.lastDate)}
+                          </span>
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
 
-                  {/* Open */}
-                  <Button
-                    data-testid={`btn-open-project-${project.id}`}
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1 text-xs group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors"
-                    onClick={(e) => { e.stopPropagation(); navigate(`/daily-report/${project.id}`); }}
-                  >
-                    Open
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Button>
+                    {/* Right: Open button */}
+                    <div className="shrink-0 flex items-center self-center pl-2">
+                      <Button
+                        data-testid={`btn-open-project-${project.id}`}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-xs group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/daily-report/${project.id}`); }}
+                      >
+                        Open
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
 
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

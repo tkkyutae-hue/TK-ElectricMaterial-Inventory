@@ -1,0 +1,183 @@
+Update the Daily Report project list screen only.
+
+Do NOT change:
+- Admin Mode pages
+- Inventory Mode pages
+- Worker Profile / Manpower pages
+- Top global layout structure outside Daily Report
+- Existing routing logic unless needed for project card data binding
+- Existing color tokens / design system variables
+
+Goal:
+Improve the Daily Report landing page so it feels more informative and operational, not plain.
+
+==================================================
+1. TOP KPI CARDS — reorder + improve visual weight
+==================================================
+Reorder the 3 summary cards to:
+
+1) Total Projects
+2) Active Projects
+3) Completed Projects
+
+Keep them in one row.
+
+Visual improvements:
+- Cards currently feel too flat and empty. Make them more premium and readable.
+- Keep same overall clean admin style, but improve hierarchy:
+  - stronger icon area
+  - larger number
+  - smaller uppercase label
+  - slightly richer card background contrast
+  - subtle top accent or soft tint by card type
+- Maintain current white/light admin theme. Do NOT switch to dark mode.
+
+Suggested visual treatment:
+- Total Projects: neutral / blue-gray accent
+- Active Projects: green accent
+- Completed Projects: teal or blue accent
+- Increase padding slightly
+- Make value more prominent than label
+- Add subtle hover lift if cards are already interactive; if not interactive, keep static
+
+==================================================
+2. PROJECT CARD — add manager on right side
+==================================================
+For each project card in the project list:
+- Keep current structure
+- Add “Person in Charge” / manager / 담당자 on the right side of the location row
+- Layout should remain clean and readable
+
+Project card content should include:
+- Project Name
+- PO Number (instead of current PRJ-xxxxx code shown next to project name)
+- Project Status badge
+- Location
+- Person in Charge / Manager on the right side
+- Report status summary section
+- Action button on far right
+
+Important:
+- Replace the current PRJ-style project code shown beside the project title with PO Number
+- This change should apply both:
+  1. on the Daily Report project list cards
+  2. on the project header card shown after entering a specific project
+
+If PO Number does not exist in project data yet:
+- use a safe fallback label like “No PO”
+- do not break layout
+
+==================================================
+3. PROJECT TITLE AREA — replace PRJ code with PO number
+==================================================
+Currently next to the project name there is something like PRJ-XXXX.
+
+Change that to:
+- PO: [poNumber]
+
+Example:
+LG HOOK UP   PO: 24116
+
+Style:
+- smaller than project name
+- muted text
+- clearly secondary
+- do not overpower the project title
+
+Apply the same PO display rule in the project detail header card after opening the project.
+
+==================================================
+4. REPORT STATUS INFO INSIDE EACH PROJECT CARD
+==================================================
+Each project card should show a compact report status summary.
+
+Add small summary items such as:
+- Total Reports
+- Draft Reports
+- Submitted Reports
+- Last Report Date
+
+Show them inside the card in a compact horizontal info row or mini-stat section.
+
+Example structure:
+- Total Reports: 12
+- Draft: 2
+- Submitted: 10
+- Last Report: Mar 16, 2026
+
+Design rules:
+- Keep it compact
+- Avoid making the card too tall
+- Use small muted labels + stronger values
+- Do not clutter the layout
+- If any value is missing, show 0 or “No reports”
+
+==================================================
+5. CARD LAYOUT PRIORITY
+==================================================
+Each project card should now visually read in this order:
+
+Top row:
+- Project Name
+- PO Number
+- Status badge
+
+Second row:
+- Location (left)
+- Person in Charge / Manager (right)
+
+Third row:
+- Report status summary:
+  - Total Reports
+  - Draft Reports
+  - Submitted Reports
+  - Last Report Date
+
+Right side:
+- Keep action button (Open)
+- If needed, vertically center it relative to card content
+
+==================================================
+6. DATA BINDING RULES
+==================================================
+Use real project data from the existing Admin Mode project source.
+Do NOT use fake mock project data if real data exists.
+
+For each project card:
+- project.name
+- project.poNumber (new display priority)
+- project.status
+- project.location
+- project.manager or project.personInCharge
+- report counts derived from actual daily reports linked to that project:
+  - totalReports
+  - draftReports
+  - submittedReports
+  - lastReportDate
+
+If report data is not available:
+- totalReports = 0
+- draftReports = 0
+- submittedReports = 0
+- lastReportDate = null / “No reports”
+
+==================================================
+7. KEEP SCREEN CLEAN
+==================================================
+Important:
+- Do not overcrowd cards
+- Maintain current spacing rhythm
+- Preserve current search bar and status filters unless layout adjustment is needed
+- Keep the page looking like a polished admin operations dashboard
+- Prefer compact, structured information over decorative elements
+
+==================================================
+8. FINAL RESULT EXPECTATION
+==================================================
+When finished, the Daily Report landing page should feel like:
+- a real project reporting hub
+- more informative at a glance
+- clearly tied to real project data
+- visually stronger than the current flat version
+
+Only update the Daily Report project list screen and the project header card where the PRJ code is currently shown.

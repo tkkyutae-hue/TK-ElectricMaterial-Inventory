@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
-  MapPin, Calendar, ClipboardList, CheckCircle2, AlertCircle,
-  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2, Hash,
+  MapPin, Calendar, ClipboardList, AlertCircle,
+  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2,
+  Hash, Download, ListTodo,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
@@ -13,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewReportTab } from "@/pages/daily-report/NewReportTab";
+import { useToast } from "@/hooks/use-toast";
 import type { Project } from "@shared/schema";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -53,14 +55,88 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ─── Excel export helper ──────────────────────────────────────────────────────
+function exportReportToExcel(report: any, projectName: string) {
+  const fd = report.formData ?? {};
+  const rows: string[][] = [];
+
+  // Header
+  rows.push(["VoltStock — Daily Report Export"]);
+  rows.push(["Project:", projectName]);
+  rows.push(["Report No.:", report.reportNumber ?? "—"]);
+  rows.push(["Report Date:", report.reportDate ?? "—"]);
+  rows.push(["Prepared By:", fd.preparedBy ?? "—"]);
+  rows.push(["Shift:", fd.shift ?? "—"]);
+  rows.push(["Weather:", fd.weather ?? "—"]);
+  rows.push(["Temperature:", fd.temperature ? `${fd.temperature}°F` : "—"]);
+  rows.push([]);
+
+  // Manpower
+  rows.push(["── MANPOWER ──"]);
+  rows.push(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
+  (fd.manpower ?? []).forEach((r: any) => {
+    rows.push([r.workerName ?? "", r.trade ?? "", r.attendanceStatus ?? "", r.startTime ?? "", r.endTime ?? "", String(r.hoursWorked ?? 0), r.notes ?? ""]);
+  });
+  const totalHrs = (fd.manpower ?? []).reduce((s: number, r: any) => s + Number(r.hoursWorked ?? 0), 0);
+  rows.push(["", "", "", "", "Total:", String(totalHrs.toFixed(1)), ""]);
+  rows.push([]);
+
+  // Work Tasks
+  rows.push(["── WORK TASKS ──"]);
+  rows.push(["Description", "Area", "Status", "Notes"]);
+  (fd.tasks ?? []).forEach((r: any) => {
+    rows.push([r.description ?? "", r.area ?? "", r.status ?? "", r.notes ?? ""]);
+  });
+  rows.push([]);
+
+  // Materials
+  rows.push(["── MATERIALS ──"]);
+  rows.push(["Material", "Unit", "Qty", "Notes"]);
+  (fd.materials ?? []).forEach((r: any) => {
+    rows.push([r.description ?? "", r.unit ?? "", String(r.qty ?? 0), r.notes ?? ""]);
+  });
+  rows.push([]);
+
+  // Equipment
+  rows.push(["── EQUIPMENT ──"]);
+  rows.push(["Equipment", "Unit", "Qty", "Hours", "Notes"]);
+  (fd.equipment ?? []).forEach((r: any) => {
+    rows.push([r.name ?? "", r.unit ?? "", String(r.qty ?? 0), String(r.hours ?? 0), r.notes ?? ""]);
+  });
+  rows.push([]);
+
+  // Notes
+  rows.push(["── NOTES / REMARKS ──"]);
+  rows.push(["General Notes:", fd.generalNotes ?? ""]);
+  rows.push(["Safety:", fd.safetyNotes ?? ""]);
+  rows.push(["Inspector/Visitor:", fd.inspectorVisitor ?? ""]);
+
+  // Build CSV
+  const csv = rows.map((row) =>
+    row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+  ).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href  = url;
+  link.download = `DailyReport_${report.reportNumber ?? report.id}_${report.reportDate ?? "unknown"}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Tab content components ───────────────────────────────────────────────────
 function HistoryTab({
   projectId,
+  projectName,
   onOpen,
 }: {
   projectId: number;
+  projectName: string;
   onOpen: (report: any) => void;
 }) {
+  const { toast } = useToast();
+
   const { data: reports = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
     queryFn: () => fetch(`/api/daily-reports?projectId=${projectId}`, { credentials: "include" }).then((r) => r.json()),
@@ -70,7 +146,7 @@ function HistoryTab({
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-16">
-          <p className="text-sm text-slate-400">Loading reports…</p>
+          <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
         </CardContent>
       </Card>
     );
@@ -90,82 +166,169 @@ function HistoryTab({
     );
   }
 
+  // Sort descending by reportDate then id
+  const sorted = [...reports].sort((a, b) => {
+    const da = a.reportDate ?? "";
+    const db = b.reportDate ?? "";
+    return da > db ? -1 : da < db ? 1 : b.id - a.id;
+  });
+
   return (
     <div className="space-y-2">
-      {reports.map((r: any) => {
-        const dateObj = r.reportDate ? new Date(r.reportDate + "T00:00:00") : null;
-        const updatedAt = r.updatedAt ? new Date(r.updatedAt) : null;
-        const fd = r.formData ?? {};
-        const totalWorkers = (fd.manpower ?? []).reduce((s: number, row: any) => s + Number(row.count ?? 0), 0);
-        const totalHours   = (fd.manpower ?? []).reduce((s: number, row: any) => s + Number(row.count ?? 0) * Number(row.hoursEach ?? 0), 0);
+      {/* Summary bar */}
+      <div className="flex items-center gap-4 px-1 pb-1">
+        <span className="text-xs text-slate-400">
+          {reports.length} report{reports.length !== 1 ? "s" : ""} total
+        </span>
+        <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+          {reports.filter((r) => r.status === "draft").length} draft
+        </span>
+        <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+          {reports.filter((r) => r.status === "submitted").length} submitted
+        </span>
+      </div>
+
+      {sorted.map((r: any) => {
+        const dateObj    = r.reportDate ? new Date(r.reportDate + "T00:00:00") : null;
+        const updatedAt  = r.updatedAt  ? new Date(r.updatedAt)  : null;
+        const fd         = r.formData ?? {};
+        const manpower   = fd.manpower ?? [];
+        const tasks      = fd.tasks    ?? [];
+
+        // ── Correct calculations using actual ManpowerRow shape ──
+        const workerCount = manpower.length;
+        const totalHours  = manpower.reduce((s: number, row: any) => s + Number(row.hoursWorked ?? 0), 0);
+        const taskCount   = tasks.length;
+        const submitted   = r.status === "submitted";
+
         return (
-          <Card key={r.id} data-testid={`card-report-${r.id}`} className="hover:shadow-sm transition-shadow">
-            <CardContent className="flex items-start gap-4 px-5 py-4">
+          <Card
+            key={r.id}
+            data-testid={`card-report-${r.id}`}
+            className="hover:shadow-sm transition-shadow border border-slate-200"
+          >
+            <CardContent className="px-0 py-0">
 
-              {/* Date column */}
-              <div className="shrink-0 text-center w-12">
-                {dateObj ? (
-                  <>
-                    <p className="text-xl font-bold text-slate-800 leading-none">{dateObj.getDate()}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
-                      {dateObj.toLocaleDateString("en-US", { month: "short" })}
+              {/* ── Top: status accent bar ── */}
+              <div className={`h-0.5 rounded-t-xl ${submitted ? "bg-emerald-400" : "bg-amber-400"}`} />
+
+              <div className="flex items-stretch gap-0 px-5 py-4">
+
+                {/* Date column */}
+                <div className="shrink-0 text-center w-[52px] flex flex-col items-center justify-center pr-4 border-r border-slate-100">
+                  {dateObj ? (
+                    <>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">
+                        {dateObj.toLocaleDateString("en-US", { month: "short" })}
+                      </p>
+                      <p className="text-2xl font-bold text-slate-800 leading-none mt-0.5">
+                        {String(dateObj.getDate()).padStart(2, "0")}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {dateObj.getFullYear()}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400">—</p>
+                  )}
+                </div>
+
+                {/* Main info */}
+                <div className="flex-1 min-w-0 pl-4 space-y-2">
+
+                  {/* Row 1: Report # + status badge + prepared by */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {r.reportNumber && (
+                      <span
+                        data-testid={`text-report-number-${r.id}`}
+                        className="text-xs font-mono font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded"
+                      >
+                        #{r.reportNumber}
+                      </span>
+                    )}
+                    <StatusBadge status={r.status} />
+                    {fd.preparedBy && (
+                      <span className="text-xs text-slate-400">
+                        by {fd.preparedBy}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 2: Stats chips */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {workerCount > 0 && (
+                      <span
+                        data-testid={`text-report-workers-${r.id}`}
+                        className="flex items-center gap-1 text-xs text-slate-500"
+                      >
+                        <Users className="w-3 h-3 text-slate-400 shrink-0" />
+                        {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {totalHours > 0 && (
+                      <span
+                        data-testid={`text-report-hours-${r.id}`}
+                        className="flex items-center gap-1 text-xs text-slate-500"
+                      >
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        {totalHours.toFixed(1)} man-hrs
+                      </span>
+                    )}
+                    {taskCount > 0 && (
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <ListTodo className="w-3 h-3 text-slate-400 shrink-0" />
+                        {taskCount} task{taskCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {workerCount === 0 && taskCount === 0 && (
+                      <span className="text-xs text-slate-300 italic">No data recorded</span>
+                    )}
+                  </div>
+
+                  {/* Row 3: Last updated */}
+                  {updatedAt && (
+                    <p className="text-[11px] text-slate-400">
+                      Last updated {updatedAt.toLocaleString("en-US", {
+                        month: "short", day: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
                     </p>
-                  </>
-                ) : (
-                  <p className="text-xs text-slate-400">—</p>
-                )}
-              </div>
+                  )}
 
-              {/* Divider */}
-              <div className="w-px self-stretch bg-slate-200 shrink-0" />
+                </div>
 
-              {/* Main info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  {r.reportNumber && (
-                    <span
-                      data-testid={`text-report-number-${r.id}`}
-                      className="text-[11px] font-mono text-slate-500"
+                {/* Right: action buttons */}
+                <div className="shrink-0 flex flex-col items-end justify-center gap-2 pl-4">
+                  <Button
+                    data-testid={`btn-open-report-${r.id}`}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1.5 h-8"
+                    onClick={() => onOpen(r)}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    {submitted ? "View" : "Edit"}
+                  </Button>
+                  {submitted && (
+                    <Button
+                      data-testid={`btn-export-report-${r.id}`}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1.5 h-8 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => {
+                        exportReportToExcel(r, projectName);
+                        toast({ title: "Exported", description: `Report #${r.reportNumber ?? r.id} downloaded as CSV.` });
+                      }}
                     >
-                      #{r.reportNumber}
-                    </span>
-                  )}
-                  <StatusBadge status={r.status} />
-                </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  {totalWorkers > 0 && (
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                      <Users className="w-3 h-3" />{totalWorkers} workers
-                    </span>
-                  )}
-                  {totalHours > 0 && (
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                      <Clock className="w-3 h-3" />{totalHours} hrs
-                    </span>
-                  )}
-                  {fd.preparedBy && (
-                    <span className="text-xs text-slate-400">By {fd.preparedBy}</span>
+                      <Download className="w-3.5 h-3.5" />
+                      Export
+                    </Button>
                   )}
                 </div>
-                {updatedAt && (
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Last updated {updatedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                )}
+
               </div>
-
-              {/* Open/Edit button */}
-              <Button
-                data-testid={`btn-open-report-${r.id}`}
-                variant="outline"
-                size="sm"
-                className="shrink-0 text-xs gap-1.5"
-                onClick={() => onOpen(r)}
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                {r.status === "submitted" ? "View" : "Edit"}
-              </Button>
-
             </CardContent>
           </Card>
         );
@@ -467,6 +630,7 @@ export default function DailyReportWorkspace() {
         {activeTab === "history" && (
           <HistoryTab
             projectId={numericProjectId}
+            projectName={project.name}
             onOpen={(report) => {
               setEditingReport(report);
               setActiveTab("new-report");

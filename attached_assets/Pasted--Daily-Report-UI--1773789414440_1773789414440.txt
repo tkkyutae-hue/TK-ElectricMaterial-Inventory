@@ -1,0 +1,86 @@
+현재 Daily Report 페이지에서 이미 적용된 수정사항은 그대로 유지하고, 이미 완료된 항목은 절대 다시 건드리지 마.
+
+중요:
+- 이미 반영된 UI/레이아웃/기능은 수정하지 말 것
+- 중복 작업하지 말 것
+- 오직 아직 적용되지 않았거나, 여전히 어색한 부분만 보완할 것
+- 기존에 잘 작동하는 기능은 유지할 것
+- 기존 디자인 톤, spacing, section 구조는 최대한 유지할 것
+
+이번 작업 범위는 "남은 미적용 사항 + 사용성 보완"만 처리해줘.
+
+[작업 원칙]
+1. 이미 완료된 항목은 skip
+2. 기존 구조를 뒤엎지 말고 부분 수정만 진행
+3. 새 수정이 기존 기능을 망가뜨리지 않게
+4. dropdown / input / section overflow 문제는 실제 화면 기준으로 확인 후 수정
+5. 결과는 실사용 가능한 상태로 정리
+
+[이번에 우선 확인하고 남은 것만 수정할 항목]
+
+1. General Info
+- 현재 각 input 칸 폭과 간격이 여전히 어색하면 더 compact하게 다듬기
+- 하지만 이미 안정적이면 그대로 두기
+- Report No는 자동 생성 / read-only 유지
+- Prepared By, Report Date, Shift, Weather, Temperature 배치가 이미 괜찮으면 건드리지 말 것
+
+2. Manpower
+- Add Worker 이후 dropdown 또는 row가 잘리는 현상이 남아 있으면 수정
+- worker name 선택 후 이름이 중복 표시되면 그 문제만 수정
+- dropdown 결과는 처음 5명 정도만 보이고 검색 시 필터되게
+- manpower 내부 이중 스크롤이 아직 남아 있으면 제거
+- start/end/status 기본값 자동 반영이 이미 되면 유지
+- total workers / total man-hours summary가 정상 작동하면 유지
+
+3. Work Tasks
+- 각 task row의 detail 확장 UI가 불안정하거나 spacing이 어색하면 보정
+- task별 drawing / site photo / additional notes 구조 유지
+- 업로드 영역이 너무 크거나 너무 작으면 균형 조정
+- task add / delete UX가 어색하면 개선
+- 이미 잘 되면 유지
+
+4. Materials
+- inventory 검색 dropdown이 잘리는 문제 남아 있으면 수정
+- item 선택 후 unit 폰트/스타일이 달라지는 문제 있으면 통일
+- unit은 항상 중앙정렬
+- Add Material 반복 시 스크롤/overflow 문제 있으면 수정
+- 검색 결과 표시 방식이 어색하면 item name + unit 정도로 간단히 정리
+- inventory 연동과 unit 자동 적용은 유지
+
+5. Equipment
+- Quick Add 버튼으로 추가되는 장비:
+  Scissor Lift, Boom Lift, One Man Lift, Reach Forklift, Forklift, Trench, Excavator Small, Excavator Big
+- 이미 적용되었으면 유지
+- 버튼 spacing이나 row 정렬이 어색하면 다듬기
+- Add Custom 유지
+- 기본 unit 표시 방식 통일
+
+6. Photo Log / Progress
+- New Report 화면에서는 제거된 상태 유지
+- 다시 나타나지 않게
+- Progress는 Progress 탭 전용으로 유지
+
+7. Save / Submit / History 흐름
+- Save Draft 상태표시가 아직 어색하면 정리
+- Export Excel은 New Report가 아니라 submitted report / report history 쪽에서만 동작하게 유지
+- Report History 카드 정보가 부족하면 아래 정보 기준으로 보완:
+  - Report Date
+  - Draft / Submitted status
+  - Worker count
+  - Total man-hours
+  - Last updated
+  - Edit
+  - Submitted일 때 Export Excel
+
+8. 전체 UI polish
+- 섹션 헤더 높이 / 패딩 / 번호 뱃지 / 아이콘 정렬 통일
+- 버튼 크기와 border radius 통일
+- input 높이와 텍스트 baseline 통일
+- table row vertical alignment 정리
+- 모바일까지는 아니어도 데스크탑에서 깨지는 부분 없게 정리
+
+[중요 최종 지시]
+- 이미 구현된 항목은 절대 다시 만들지 말고 그대로 유지
+- "남은 문제만" 찾아서 수정
+- 수정 후 전체 Daily Report 페이지가 더 깔끔하고 안정적으로 보이게 마감해줘
+- 가능하면 변경 범위를 최소화해서 안전하게 반영해줘

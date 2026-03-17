@@ -24,6 +24,7 @@ import SupplierDetail from "@/pages/SupplierDetail";
 import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
 import Manpower from "@/pages/Manpower";
+import WorkerDetail from "@/pages/WorkerDetail";
 import Reorder from "@/pages/Reorder";
 import Reports from "@/pages/Reports";
 import DailyReport from "@/pages/DailyReport";
@@ -163,6 +164,7 @@ function AdminRouter() {
           <Route path="/suppliers/:id" component={SupplierDetail} />
           <Route path="/projects" component={Projects} />
           <Route path="/projects/:id" component={ProjectDetail} />
+          <Route path="/manpower/:id" component={WorkerDetail} />
           <Route path="/manpower" component={Manpower} />
           <Route path="/reorder" component={Reorder} />
           <Route path="/reports" component={Reports} />

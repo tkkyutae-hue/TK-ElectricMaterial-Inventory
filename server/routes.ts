@@ -1093,6 +1093,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getWorkers());
   });
 
+  app.get("/api/workers/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
+    const worker = await storage.getWorker(id);
+    if (!worker) return res.status(404).json({ message: "Worker not found" });
+    res.json(worker);
+  });
+
   app.post("/api/workers", isAuthenticated, async (req, res) => {
     try {
       const worker = await storage.createWorker(req.body);

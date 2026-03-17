@@ -1,48 +1,37 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useLocation } from "wouter";
 import {
-  HardHat, PlusCircle, Pencil, Loader2, Users,
-  CheckCircle2, XCircle, Lock, Camera, Star,
-  ClipboardList, Calendar, Zap, LayoutGrid, UserCircle2,
+  HardHat, PlusCircle, Loader2, Users, CheckCircle2, XCircle,
+  ClipboardList, Check, X, UserCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Worker } from "@shared/schema";
 
-// ─── Registration form schema ─────────────────────────────────────────────────
-const registerSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  trade: z.string().optional().nullable(),
-  photoUrl: z.string().optional().nullable(),
-});
-type RegisterValues = z.infer<typeof registerSchema>;
+// ─── Trade options (Korean label → English value) ─────────────────────────────
+export const TRADE_OPTIONS = [
+  { value: "General Manager",        label: "부장 — General Manager"        },
+  { value: "Deputy General Manager", label: "차장 — Deputy General Manager" },
+  { value: "Manager",                label: "과장 — Manager"                },
+  { value: "Assistant Manager",      label: "대리 — Assistant Manager"      },
+  { value: "Staff",                  label: "사원 — Staff"                  },
+  { value: "Project Engineer",       label: "공무 — Project Engineer"       },
+  { value: "Foreman",                label: "Foreman"                       },
+  { value: "Helper",                 label: "Helper"                        },
+  { value: "Safety",                 label: "Safety"                        },
+];
 
-// ─── Avatar helper ────────────────────────────────────────────────────────────
-function WorkerAvatar({
-  photoUrl,
-  name,
-  size = "sm",
-}: {
-  photoUrl?: string | null;
-  name: string;
-  size?: "sm" | "lg";
-}) {
-  const dim = size === "lg" ? "w-20 h-20" : "w-9 h-9";
-  const iconDim = size === "lg" ? "w-10 h-10" : "w-5 h-5";
-  const initials = name
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+function WorkerAvatar({ photoUrl, name }: { photoUrl?: string | null; name: string }) {
+  const initials = name.trim()
     .split(" ")
     .map((n) => n[0])
     .slice(0, 2)
@@ -54,551 +43,138 @@ function WorkerAvatar({
       <img
         src={photoUrl}
         alt={name}
-        className={`${dim} rounded-full object-cover shrink-0 border border-slate-200`}
+        className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200"
       />
     );
   }
 
   return (
-    <div
-      className={`${dim} rounded-full shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center`}
-      aria-label={`Avatar for ${name}`}
-    >
-      {initials ? (
-        <span className={`font-semibold text-slate-500 ${size === "lg" ? "text-2xl" : "text-xs"}`}>
-          {initials}
-        </span>
-      ) : (
-        <UserCircle2 className={`${iconDim} text-slate-300`} />
-      )}
+    <div className="w-9 h-9 rounded-full shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center">
+      {initials
+        ? <span className="text-xs font-semibold text-slate-500">{initials}</span>
+        : <UserCircle2 className="w-5 h-5 text-slate-300" />
+      }
     </div>
   );
 }
 
-// ─── Photo upload field ───────────────────────────────────────────────────────
-function PhotoUpload({
-  value,
-  onChange,
-}: {
-  value?: string | null;
-  onChange: (dataUrl: string | null) => void;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string);
-    reader.readAsDataURL(file);
-  }
-
-  return (
-    <div className="flex items-center gap-4">
-      {/* Preview */}
-      <div
-        className="w-16 h-16 rounded-full shrink-0 bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-slate-400 transition-colors"
-        onClick={() => fileRef.current?.click()}
-        data-testid="photo-preview"
-      >
-        {value ? (
-          <img src={value} alt="Preview" className="w-full h-full object-cover" />
-        ) : (
-          <Camera className="w-6 h-6 text-slate-300" />
-        )}
-      </div>
-
-      {/* Controls */}
-      <div className="flex flex-col gap-1.5">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="text-xs gap-1.5 h-7"
-          data-testid="btn-upload-photo"
-          onClick={() => fileRef.current?.click()}
-        >
-          <Camera className="w-3.5 h-3.5" />
-          {value ? "Change Photo" : "Upload Photo"}
-        </Button>
-        {value && (
-          <button
-            type="button"
-            className="text-xs text-slate-400 hover:text-red-500 transition-colors text-left"
-            data-testid="btn-remove-photo"
-            onClick={() => {
-              onChange(null);
-              if (fileRef.current) fileRef.current.value = "";
-            }}
-          >
-            Remove
-          </button>
-        )}
-        <p className="text-[10px] text-slate-400">JPG, PNG or WebP · Max 2 MB</p>
-      </div>
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        data-testid="input-photo-file"
-        onChange={handleFile}
-      />
-    </div>
-  );
-}
-
-// ─── Locked evaluation field placeholder ─────────────────────────────────────
-function LockedField({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100">
-      <Icon className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-      <span className="text-xs text-slate-400 flex-1">{label}</span>
-      <Lock className="w-3 h-3 text-slate-300 shrink-0" />
-    </div>
-  );
-}
-
-// ─── Shared form body (registration + edit share the same layout) ─────────────
-function WorkerFormBody({
-  form,
-  isPending,
-  isEdit,
-  lastRegistered,
-  onClose,
-}: {
-  form: ReturnType<typeof useForm<RegisterValues>>;
-  isPending: boolean;
-  isEdit: boolean;
-  lastRegistered?: string | null;
-  onClose: () => void;
-}) {
-  return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(
-          isEdit
-            ? () => {}  /* handled by caller */
-            : () => {}  /* handled by caller */
-        )}
-        className="space-y-4"
-      >
-        {/* Last registered confirmation (registration mode only) */}
-        {!isEdit && lastRegistered && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>
-              <strong>{lastRegistered}</strong> registered — fill in the next worker below
-            </span>
-          </div>
-        )}
-
-        {/* ── Editable registration fields ── */}
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Registration Info
-          </p>
-
-          {/* Photo upload */}
-          <FormField
-            control={form.control}
-            name="photoUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Profile Photo</FormLabel>
-                <FormControl>
-                  <PhotoUpload
-                    value={field.value}
-                    onChange={(v) => field.onChange(v)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="fullName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Full Name <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    data-testid="input-worker-name"
-                    placeholder="e.g. John Smith"
-                    autoFocus={!isEdit}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="trade"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Trade / Classification</FormLabel>
-                <FormControl>
-                  <Input
-                    data-testid="input-worker-trade"
-                    placeholder="e.g. Electrician, Foreman, Apprentice"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {/* ── Evaluation profile (locked, future step) ── */}
-        <div className="space-y-2 pt-1">
-          <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              Worker Profile
-            </p>
-            <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
-              Available after evaluation
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <LockedField icon={Star}          label="Skill" />
-            <LockedField icon={ClipboardList} label="Control" />
-            <LockedField icon={Users}         label="Attitude" />
-            <LockedField icon={CheckCircle2}  label="Total Score" />
-            <LockedField icon={Calendar}      label="Date of TK" />
-            <LockedField icon={Zap}           label="Special Ability" />
-            <div className="col-span-2">
-              <LockedField icon={LayoutGrid} label="Skill Board" />
-            </div>
-          </div>
-        </div>
-      </form>
-    </Form>
-  );
-}
-
-// ─── Registration dialog ──────────────────────────────────────────────────────
-function RegisterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+// ─── Inline "add worker" row ──────────────────────────────────────────────────
+function AddWorkerRow({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
   const { toast } = useToast();
-  const [lastRegistered, setLastRegistered] = useState<string | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [trade, setTrade]       = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: "", trade: "", photoUrl: null },
-  });
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
 
   const createMutation = useMutation({
-    mutationFn: (data: RegisterValues) =>
-      apiRequest("POST", "/api/workers", { ...data, isActive: true }),
-    onSuccess: (_data, variables) => {
+    mutationFn: () =>
+      apiRequest("POST", "/api/workers", { fullName: fullName.trim(), trade: trade || null, isActive: true }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
-      setLastRegistered(variables.fullName);
-      form.reset({ fullName: "", trade: "", photoUrl: null });
+      onSaved();
     },
     onError: (err: any) => {
       toast({ title: "Failed to register worker", description: err.message, variant: "destructive" });
     },
   });
 
-  function handleClose() {
-    form.reset({ fullName: "", trade: "", photoUrl: null });
-    setLastRegistered(null);
-    onClose();
+  function handleSave() {
+    if (!fullName.trim()) {
+      nameRef.current?.focus();
+      return;
+    }
+    createMutation.mutate();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") onCancel();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <HardHat className="w-5 h-5 text-slate-500" />
-            Register New Worker
-          </DialogTitle>
-        </DialogHeader>
+    <tr className="bg-blue-50/60 border-b border-blue-100">
+      {/* Avatar placeholder */}
+      <td className="px-5 py-2.5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full shrink-0 bg-slate-200 border border-slate-300 flex items-center justify-center">
+            <UserCircle2 className="w-5 h-5 text-slate-400" />
+          </div>
+          <Input
+            ref={nameRef}
+            data-testid="input-inline-name"
+            placeholder="Full Name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="h-8 text-sm max-w-[200px] bg-white"
+          />
+        </div>
+      </td>
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((v) => createMutation.mutate(v))}
-            className="space-y-4"
+      {/* Trade select */}
+      <td className="px-5 py-2.5">
+        <Select value={trade} onValueChange={(v) => setTrade(v === "__none__" ? "" : v)}>
+          <SelectTrigger
+            data-testid="select-inline-trade"
+            className="h-8 text-sm max-w-[220px] bg-white"
           >
-            {lastRegistered && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>
-                  <strong>{lastRegistered}</strong> registered — fill in the next worker below
-                </span>
-              </div>
-            )}
+            <SelectValue placeholder="Select trade…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">— None —</SelectItem>
+            {TRADE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
 
-            {/* Registration fields */}
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Registration Info
-              </p>
+      {/* Status placeholder */}
+      <td className="px-5 py-2.5">
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
+          Active
+        </Badge>
+      </td>
 
-              <FormField
-                control={form.control}
-                name="photoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profile Photo</FormLabel>
-                    <FormControl>
-                      <PhotoUpload value={field.value} onChange={(v) => field.onChange(v)} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Full Name <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        data-testid="input-worker-name"
-                        placeholder="e.g. John Smith"
-                        autoFocus
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="trade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trade / Classification</FormLabel>
-                    <FormControl>
-                      <Input
-                        data-testid="input-worker-trade"
-                        placeholder="e.g. Electrician, Foreman, Apprentice"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Locked evaluation placeholders */}
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Worker Profile
-                </p>
-                <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
-                  Available after evaluation
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <LockedField icon={Star}          label="Skill" />
-                <LockedField icon={ClipboardList} label="Control" />
-                <LockedField icon={Users}         label="Attitude" />
-                <LockedField icon={CheckCircle2}  label="Total Score" />
-                <LockedField icon={Calendar}      label="Date of TK" />
-                <LockedField icon={Zap}           label="Special Ability" />
-                <div className="col-span-2">
-                  <LockedField icon={LayoutGrid} label="Skill Board" />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <Button
-                type="button"
-                variant="outline"
-                data-testid="btn-register-done"
-                onClick={handleClose}
-                disabled={createMutation.isPending}
-              >
-                Done
-              </Button>
-              <Button
-                type="submit"
-                data-testid="btn-worker-save"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending
-                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  : <PlusCircle className="w-4 h-4 mr-2" />
-                }
-                Register Worker
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Edit dialog ──────────────────────────────────────────────────────────────
-function EditDialog({ worker, onClose }: { worker: Worker; onClose: () => void }) {
-  const { toast } = useToast();
-
-  const form = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      fullName: worker.fullName,
-      trade: worker.trade ?? "",
-      photoUrl: worker.photoUrl ?? null,
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (data: RegisterValues) =>
-      apiRequest("PUT", `/api/workers/${worker.id}`, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
-      toast({ title: "Worker updated." });
-      onClose();
-    },
-    onError: (err: any) => {
-      toast({ title: "Update failed", description: err.message, variant: "destructive" });
-    },
-  });
-
-  return (
-    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Pencil className="w-4 h-4 text-slate-500" />
-            Edit Worker
-          </DialogTitle>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((v) => updateMutation.mutate(v))}
-            className="space-y-4"
+      {/* Save / cancel */}
+      <td className="px-5 py-2.5 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            data-testid="btn-inline-save"
+            size="sm"
+            className="gap-1 h-7 text-xs px-2.5"
+            onClick={handleSave}
+            disabled={createMutation.isPending}
           >
-            {/* Registration fields */}
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Registration Info
-              </p>
-
-              <FormField
-                control={form.control}
-                name="photoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profile Photo</FormLabel>
-                    <FormControl>
-                      <PhotoUpload value={field.value} onChange={(v) => field.onChange(v)} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Full Name <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input data-testid="input-worker-name-edit" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="trade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trade / Classification</FormLabel>
-                    <FormControl>
-                      <Input
-                        data-testid="input-worker-trade-edit"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Locked evaluation placeholders */}
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Worker Profile
-                </p>
-                <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
-                  Available after evaluation
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <LockedField icon={Star}          label="Skill" />
-                <LockedField icon={ClipboardList} label="Control" />
-                <LockedField icon={Users}         label="Attitude" />
-                <LockedField icon={CheckCircle2}  label="Total Score" />
-                <LockedField icon={Calendar}      label="Date of TK" />
-                <LockedField icon={Zap}           label="Special Ability" />
-                <div className="col-span-2">
-                  <LockedField icon={LayoutGrid} label="Skill Board" />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={updateMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                data-testid="btn-worker-save-edit"
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            {createMutation.isPending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Check className="w-3.5 h-3.5" />
+            }
+            Save
+          </Button>
+          <Button
+            data-testid="btn-inline-cancel"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
+            onClick={onCancel}
+            disabled={createMutation.isPending}
+          >
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Manpower() {
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [, navigate]  = useLocation();
+  const [adding, setAdding] = useState(false);
 
   const { data: workerList = [], isLoading } = useQuery<Worker[]>({
     queryKey: ["/api/workers"],
@@ -607,6 +183,18 @@ export default function Manpower() {
   const activeCount   = workerList.filter((w) => w.isActive).length;
   const inactiveCount = workerList.filter((w) => !w.isActive).length;
 
+  function handleWorkerClick(worker: Worker) {
+    navigate(`/manpower/${worker.id}`);
+  }
+
+  function handleSaved() {
+    setAdding(false);
+  }
+
+  function handleAddClick() {
+    setAdding(true);
+  }
+
   return (
     <div className="space-y-6">
 
@@ -614,7 +202,7 @@ export default function Manpower() {
       <div>
         <h1 className="text-3xl font-display font-bold text-slate-900">Manpower</h1>
         <p className="text-slate-500 mt-1">
-          Register and manage your workforce. Active workers are available for selection in Daily Reports.
+          Register and manage your workforce. Click a worker to view their profile.
         </p>
       </div>
 
@@ -651,7 +239,8 @@ export default function Manpower() {
               data-testid="btn-register-worker"
               size="sm"
               className="gap-1.5 text-xs h-8"
-              onClick={() => setRegisterOpen(true)}
+              onClick={handleAddClick}
+              disabled={adding}
             >
               <PlusCircle className="w-3.5 h-3.5" />
               Register Worker
@@ -666,7 +255,7 @@ export default function Manpower() {
               <p className="text-sm text-slate-400">Loading workers…</p>
             </div>
 
-          ) : workerList.length === 0 ? (
+          ) : workerList.length === 0 && !adding ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
                 <HardHat className="w-7 h-7 text-slate-400" />
@@ -697,60 +286,73 @@ export default function Manpower() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {workerList.map((worker) => (
-                    <tr
-                      key={worker.id}
-                      data-testid={`row-worker-${worker.id}`}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      {/* Worker column: avatar + name */}
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <WorkerAvatar
-                            photoUrl={worker.photoUrl}
-                            name={worker.fullName}
-                            size="sm"
-                          />
+
+                  {/* Inline add row — appears at top */}
+                  {adding && (
+                    <AddWorkerRow
+                      onSaved={handleSaved}
+                      onCancel={() => setAdding(false)}
+                    />
+                  )}
+
+                  {/* Saved worker rows */}
+                  {workerList.map((worker) => {
+                    const tradeLabel =
+                      TRADE_OPTIONS.find((o) => o.value === worker.trade)?.label ?? worker.trade;
+
+                    return (
+                      <tr
+                        key={worker.id}
+                        data-testid={`row-worker-${worker.id}`}
+                        className="hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => handleWorkerClick(worker)}
+                      >
+                        {/* Avatar + name */}
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} />
+                            <span
+                              data-testid={`text-worker-name-${worker.id}`}
+                              className="font-medium text-slate-800"
+                            >
+                              {worker.fullName}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Trade */}
+                        <td className="px-5 py-3">
                           <span
-                            data-testid={`text-worker-name-${worker.id}`}
-                            className="font-medium text-slate-800"
+                            data-testid={`text-worker-trade-${worker.id}`}
+                            className="text-slate-600"
                           >
-                            {worker.fullName}
+                            {tradeLabel || <span className="text-slate-300">—</span>}
                           </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-5 py-3">
-                        <span
-                          data-testid={`text-worker-trade-${worker.id}`}
-                          className="text-slate-600"
-                        >
-                          {worker.trade || <span className="text-slate-300">—</span>}
-                        </span>
-                      </td>
+                        {/* Status badge */}
+                        <td className="px-5 py-3">
+                          {worker.isActive ? (
+                            <Badge
+                              variant="outline"
+                              data-testid={`badge-worker-status-${worker.id}`}
+                              className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold"
+                            >
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              data-testid={`badge-worker-status-${worker.id}`}
+                              className="bg-slate-100 text-slate-500 border-slate-200 text-xs font-semibold"
+                            >
+                              Inactive
+                            </Badge>
+                          )}
+                        </td>
 
-                      <td className="px-5 py-3">
-                        {worker.isActive ? (
-                          <Badge
-                            variant="outline"
-                            data-testid={`badge-worker-status-${worker.id}`}
-                            className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold"
-                          >
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            data-testid={`badge-worker-status-${worker.id}`}
-                            className="bg-slate-100 text-slate-500 border-slate-200 text-xs font-semibold"
-                          >
-                            Inactive
-                          </Badge>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        {/* Evaluate placeholder */}
+                        <td className="px-5 py-3 text-right">
                           <Button
                             data-testid={`btn-evaluate-worker-${worker.id}`}
                             variant="ghost"
@@ -758,36 +360,22 @@ export default function Manpower() {
                             disabled
                             className="gap-1.5 text-xs text-slate-300 cursor-not-allowed"
                             title="Evaluation coming soon"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <ClipboardList className="w-3.5 h-3.5" />
                             Evaluate
                           </Button>
-                          <Button
-                            data-testid={`btn-edit-worker-${worker.id}`}
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1.5 text-xs text-slate-500 hover:text-slate-700"
-                            onClick={() => setEditingWorker(worker)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
                 </tbody>
               </table>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* ── Dialogs ── */}
-      <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} />
-      {editingWorker && (
-        <EditDialog worker={editingWorker} onClose={() => setEditingWorker(null)} />
-      )}
 
     </div>
   );

@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Calendar, Users, Package, Truck, Image,
   BarChart2, FileText, ChevronDown, Plus, Trash2,
-  Save, Send, Download, AlertTriangle, CheckCircle2, Info,
+  Save, Send, Download, AlertTriangle, CheckCircle2, Info, Loader2,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
@@ -101,26 +104,42 @@ let nextId = 100;
 function uid() { return ++nextId; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function NewReportTab() {
+export function NewReportTab({
+  projectId,
+  reportId,
+  initialData,
+  onSaved,
+}: {
+  projectId: number;
+  reportId?: number | null;
+  initialData?: any;
+  onSaved?: (id: number, status: string) => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Pull saved form data if reopening an existing report
+  const fd = initialData?.formData ?? null;
+
   // General Info
-  const [reportDate,    setReportDate]    = useState("2026-03-17");
-  const [reportNumber,  setReportNumber]  = useState("043");
-  const [preparedBy,    setPreparedBy]    = useState("Michael Kim");
-  const [shift,         setShift]         = useState("day");
-  const [weather,       setWeather]       = useState("clear");
-  const [temperature,   setTemperature]   = useState("72");
+  const [reportDate,    setReportDate]    = useState(fd?.reportDate    ?? new Date().toISOString().slice(0, 10));
+  const [reportNumber,  setReportNumber]  = useState(fd?.reportNumber  ?? "");
+  const [preparedBy,    setPreparedBy]    = useState(fd?.preparedBy    ?? "");
+  const [shift,         setShift]         = useState(fd?.shift         ?? "day");
+  const [weather,       setWeather]       = useState(fd?.weather       ?? "clear");
+  const [temperature,   setTemperature]   = useState(fd?.temperature   ?? "72");
 
   // Dynamic rows
-  const [tasks,      setTasks]      = useState(INIT_TASKS);
-  const [manpower,   setManpower]   = useState(INIT_MANPOWER);
-  const [materials,  setMaterials]  = useState(INIT_MATERIALS);
-  const [equipment,  setEquipment]  = useState(INIT_EQUIPMENT);
+  const [tasks,      setTasks]      = useState(fd?.tasks      ?? INIT_TASKS);
+  const [manpower,   setManpower]   = useState(fd?.manpower   ?? INIT_MANPOWER);
+  const [materials,  setMaterials]  = useState(fd?.materials  ?? INIT_MATERIALS);
+  const [equipment,  setEquipment]  = useState(fd?.equipment  ?? INIT_EQUIPMENT);
 
   // Progress — today's qty input per item (keyed by ProgressItem.id)
-  const [todayQty,    setTodayQty]    = useState<Record<number, number>>({});
-  const [onSchedule,  setOnSchedule]  = useState(true);
-  const [issues,      setIssues]      = useState("");
-  const [nextDayPlan, setNextDayPlan] = useState("");
+  const [todayQty,    setTodayQty]    = useState<Record<number, number>>(fd?.todayQty    ?? {});
+  const [onSchedule,  setOnSchedule]  = useState<boolean>(fd?.onSchedule  ?? true);
+  const [issues,      setIssues]      = useState(fd?.issues      ?? "");
+  const [nextDayPlan, setNextDayPlan] = useState(fd?.nextDayPlan ?? "");
 
   // Derived progress rows (live-calculated from todayQty inputs)
   const progressRows = MOCK_PROGRESS_ITEMS.map((item) =>
@@ -129,13 +148,60 @@ export function NewReportTab() {
   const overallPct = overallProgress(progressRows);
 
   // Notes
-  const [generalNotes,    setGeneralNotes]    = useState("");
-  const [safetyNotes,     setSafetyNotes]     = useState("");
-  const [inspectorVisitor, setInspectorVisitor] = useState("");
+  const [generalNotes,     setGeneralNotes]     = useState(fd?.generalNotes     ?? "");
+  const [safetyNotes,      setSafetyNotes]      = useState(fd?.safetyNotes      ?? "");
+  const [inspectorVisitor, setInspectorVisitor] = useState(fd?.inspectorVisitor ?? "");
+
+  // Saved status tracking
+  const [savedStatus, setSavedStatus] = useState<string | null>(initialData?.status ?? null);
 
   // Computed
-  const totalWorkers = manpower.reduce((s, r) => s + Number(r.count), 0);
-  const totalHours   = manpower.reduce((s, r) => s + Number(r.count) * Number(r.hoursEach), 0);
+  const totalWorkers = manpower.reduce((s: number, r: any) => s + Number(r.count), 0);
+  const totalHours   = manpower.reduce((s: number, r: any) => s + Number(r.count) * Number(r.hoursEach), 0);
+
+  // Collect all form state into a single JSON-serialisable object
+  function buildFormData() {
+    return {
+      reportDate, reportNumber, preparedBy, shift, weather, temperature,
+      tasks, manpower, materials, equipment,
+      todayQty, onSchedule, issues, nextDayPlan,
+      generalNotes, safetyNotes, inspectorVisitor,
+      photoLog: [],
+    };
+  }
+
+  // Mutation — create or update
+  const saveMutation = useMutation({
+    mutationFn: async (status: "draft" | "submitted") => {
+      const body = {
+        projectId,
+        reportDate,
+        reportNumber: reportNumber || null,
+        preparedBy:   preparedBy   || null,
+        status,
+        formData: buildFormData(),
+      };
+      if (reportId) {
+        return apiRequest("PATCH", `/api/daily-reports/${reportId}`, body);
+      }
+      return apiRequest("POST", "/api/daily-reports", body);
+    },
+    onSuccess: async (res: any, status) => {
+      const saved = await res.json();
+      setSavedStatus(status);
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-reports", projectId] });
+      toast({
+        title: status === "submitted" ? "Report submitted" : "Draft saved",
+        description: status === "submitted"
+          ? "The daily report has been submitted successfully."
+          : "Your progress has been saved as a draft.",
+      });
+      onSaved?.(saved.id, status);
+    },
+    onError: (err: any) => {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    },
+  });
 
   return (
     <div className="space-y-4">
@@ -148,19 +214,27 @@ export function NewReportTab() {
             variant="outline"
             size="sm"
             className="gap-2 text-slate-700"
-            onClick={() => {}}
+            disabled={saveMutation.isPending}
+            onClick={() => saveMutation.mutate("draft")}
           >
-            <Save className="w-3.5 h-3.5" />
+            {saveMutation.isPending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Save className="w-3.5 h-3.5" />
+            }
             Save Draft
           </Button>
           <Button
             data-testid="btn-submit-report"
             size="sm"
             className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => {}}
+            disabled={saveMutation.isPending || savedStatus === "submitted"}
+            onClick={() => saveMutation.mutate("submitted")}
           >
-            <Send className="w-3.5 h-3.5" />
-            Submit
+            {saveMutation.isPending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Send className="w-3.5 h-3.5" />
+            }
+            {savedStatus === "submitted" ? "Submitted" : "Submit"}
           </Button>
           <Button
             data-testid="btn-export-excel"
@@ -168,13 +242,23 @@ export function NewReportTab() {
             size="sm"
             className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
             onClick={() => {}}
+            disabled
           >
             <Download className="w-3.5 h-3.5" />
             Export Excel
           </Button>
         </div>
-        <Badge variant="outline" className="text-[11px] text-slate-500 border-slate-200 bg-slate-50">
-          Draft — not submitted
+        <Badge
+          variant="outline"
+          className={
+            savedStatus === "submitted"
+              ? "text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200"
+              : savedStatus === "draft"
+              ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200"
+              : "text-[11px] text-slate-500 border-slate-200 bg-slate-50"
+          }
+        >
+          {savedStatus === "submitted" ? "Submitted" : savedStatus === "draft" ? "Draft saved" : "Not saved"}
         </Badge>
       </div>
 
@@ -880,25 +964,28 @@ export function NewReportTab() {
           variant="outline"
           size="sm"
           className="gap-2 text-slate-700"
-          onClick={() => {}}
+          disabled={saveMutation.isPending}
+          onClick={() => saveMutation.mutate("draft")}
         >
-          <Save className="w-3.5 h-3.5" />
+          {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
           Save Draft
         </Button>
         <Button
           data-testid="btn-submit-report-bottom"
           size="sm"
           className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          onClick={() => {}}
+          disabled={saveMutation.isPending || savedStatus === "submitted"}
+          onClick={() => saveMutation.mutate("submitted")}
         >
-          <Send className="w-3.5 h-3.5" />
-          Submit
+          {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          {savedStatus === "submitted" ? "Submitted" : "Submit"}
         </Button>
         <Button
           data-testid="btn-export-excel-bottom"
           variant="outline"
           size="sm"
           className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+          disabled
           onClick={() => {}}
         >
           <Download className="w-3.5 h-3.5" />

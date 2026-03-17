@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useParams } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Calendar, ClipboardList, CheckCircle2, AlertCircle,
-  Users, FileText, BarChart3, Clock, PlusCircle, Info,
+  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
@@ -35,19 +36,46 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "progress",   label: "Progress",       icon: <BarChart3 className="w-4 h-4" /> },
 ];
 
-// ─── Mock report history ──────────────────────────────────────────────────────
-const MOCK_HISTORY = [
-  { id: 101, date: "2026-03-16", crew: 8,  hours: 64,  workDone: "Panel installation – Level 3 east wing. Conduit pull-through complete.", weather: "Clear", issues: false },
-  { id: 102, date: "2026-03-15", crew: 7,  hours: 56,  workDone: "Branch circuit wiring – Rooms 301–312. Inspection passed.", weather: "Partly Cloudy", issues: false },
-  { id: 103, date: "2026-03-14", crew: 9,  hours: 72,  workDone: "Main switchgear rough-in. Delays due to material delivery.", weather: "Clear", issues: true },
-  { id: 104, date: "2026-03-13", crew: 6,  hours: 48,  workDone: "Ground fault circuit installation – Kitchen and restrooms.", weather: "Rain", issues: false },
-  { id: 105, date: "2026-03-12", crew: 8,  hours: 64,  workDone: "Conduit installation – Basement electrical room.", weather: "Clear", issues: false },
-];
-
+// ─── Status badge helper ─────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  if (status === "submitted") {
+    return (
+      <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 px-1.5 py-0 font-semibold">
+        Submitted
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-1.5 py-0 font-semibold">
+      Draft
+    </Badge>
+  );
+}
 
 // ─── Tab content components ───────────────────────────────────────────────────
-function HistoryTab() {
-  if (MOCK_HISTORY.length === 0) {
+function HistoryTab({
+  projectId,
+  onOpen,
+}: {
+  projectId: number;
+  onOpen: (report: any) => void;
+}) {
+  const { data: reports = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/daily-reports", projectId],
+    queryFn: () => fetch(`/api/daily-reports?projectId=${projectId}`, { credentials: "include" }).then((r) => r.json()),
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-16">
+          <p className="text-sm text-slate-400">Loading reports…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (reports.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
@@ -63,62 +91,84 @@ function HistoryTab() {
 
   return (
     <div className="space-y-2">
-      {MOCK_HISTORY.map((r) => (
-        <Card key={r.id} data-testid={`card-report-${r.id}`} className="hover:shadow-sm transition-shadow">
-          <CardContent className="flex items-start gap-4 px-5 py-4">
+      {reports.map((r: any) => {
+        const dateObj = r.reportDate ? new Date(r.reportDate + "T00:00:00") : null;
+        const updatedAt = r.updatedAt ? new Date(r.updatedAt) : null;
+        const fd = r.formData ?? {};
+        const totalWorkers = (fd.manpower ?? []).reduce((s: number, row: any) => s + Number(row.count ?? 0), 0);
+        const totalHours   = (fd.manpower ?? []).reduce((s: number, row: any) => s + Number(row.count ?? 0) * Number(row.hoursEach ?? 0), 0);
+        return (
+          <Card key={r.id} data-testid={`card-report-${r.id}`} className="hover:shadow-sm transition-shadow">
+            <CardContent className="flex items-start gap-4 px-5 py-4">
 
-            {/* Date column */}
-            <div className="shrink-0 text-center w-14">
-              <p className="text-xl font-bold text-slate-800 leading-none">
-                {new Date(r.date).getDate()}
-              </p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
-                {new Date(r.date).toLocaleDateString("en-US", { month: "short" })}
-              </p>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px self-stretch bg-slate-200 shrink-0" />
-
-            {/* Main info */}
-            <div className="flex-1 min-w-0">
-              <p
-                data-testid={`text-report-work-${r.id}`}
-                className="text-sm text-slate-700 line-clamp-2"
-              >
-                {r.workDone}
-              </p>
-              <div className="flex items-center gap-3 mt-2 flex-wrap">
-                <span className="flex items-center gap-1 text-xs text-slate-500">
-                  <Users className="w-3 h-3" />{r.crew} workers
-                </span>
-                <span className="flex items-center gap-1 text-xs text-slate-500">
-                  <Clock className="w-3 h-3" />{r.hours} hrs
-                </span>
-                <span className="text-xs text-slate-400">{r.weather}</span>
-                {r.issues && (
-                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-1.5 py-0 font-semibold">
-                    Issue logged
-                  </Badge>
+              {/* Date column */}
+              <div className="shrink-0 text-center w-12">
+                {dateObj ? (
+                  <>
+                    <p className="text-xl font-bold text-slate-800 leading-none">{dateObj.getDate()}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
+                      {dateObj.toLocaleDateString("en-US", { month: "short" })}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-400">—</p>
                 )}
               </div>
-            </div>
 
-            {/* View button — placeholder */}
-            <Button
-              data-testid={`btn-view-report-${r.id}`}
-              variant="ghost"
-              size="sm"
-              className="shrink-0 text-xs text-slate-500 gap-1"
-              disabled
-            >
-              <FileText className="w-3.5 h-3.5" />
-              View
-            </Button>
+              {/* Divider */}
+              <div className="w-px self-stretch bg-slate-200 shrink-0" />
 
-          </CardContent>
-        </Card>
-      ))}
+              {/* Main info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  {r.reportNumber && (
+                    <span
+                      data-testid={`text-report-number-${r.id}`}
+                      className="text-[11px] font-mono text-slate-500"
+                    >
+                      #{r.reportNumber}
+                    </span>
+                  )}
+                  <StatusBadge status={r.status} />
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {totalWorkers > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Users className="w-3 h-3" />{totalWorkers} workers
+                    </span>
+                  )}
+                  {totalHours > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Clock className="w-3 h-3" />{totalHours} hrs
+                    </span>
+                  )}
+                  {fd.preparedBy && (
+                    <span className="text-xs text-slate-400">By {fd.preparedBy}</span>
+                  )}
+                </div>
+                {updatedAt && (
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Last updated {updatedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </div>
+
+              {/* Open/Edit button */}
+              <Button
+                data-testid={`btn-open-report-${r.id}`}
+                variant="outline"
+                size="sm"
+                className="shrink-0 text-xs gap-1.5"
+                onClick={() => onOpen(r)}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                {r.status === "submitted" ? "View" : "Edit"}
+              </Button>
+
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -259,7 +309,10 @@ function ProgressTab() {
 export default function DailyReportWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("new-report");
+  // Track the report currently open for editing/viewing
+  const [editingReport, setEditingReport] = useState<any>(null);
 
+  const numericProjectId = Number(projectId);
   const project = MOCK_PROJECTS.find((p) => String(p.id) === projectId);
 
   if (!project) {
@@ -344,9 +397,51 @@ export default function DailyReportWorkspace() {
 
       {/* ── Tab content ── */}
       <div data-testid="tab-content-workspace">
-        {activeTab === "new-report" && <NewReportTab />}
-        {activeTab === "history"    && <HistoryTab />}
-        {activeTab === "progress"   && <ProgressTab />}
+        {activeTab === "new-report" && (
+          <>
+            {/* Editing-existing banner */}
+            {editingReport?.id && (
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-blue-50 border border-blue-200 mb-4">
+                <div className="flex items-center gap-2">
+                  <Edit2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <p className="text-xs text-blue-800 font-medium">
+                    Editing report #{editingReport.reportNumber || editingReport.id} — {editingReport.status === "submitted" ? "Submitted" : "Draft"}
+                  </p>
+                </div>
+                <Button
+                  data-testid="btn-new-report-clear"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 h-7 px-2"
+                  onClick={() => setEditingReport(null)}
+                >
+                  + New Report
+                </Button>
+              </div>
+            )}
+            <NewReportTab
+              key={editingReport?.id ?? "new"}
+              projectId={numericProjectId}
+              reportId={editingReport?.id ?? null}
+              initialData={editingReport}
+              onSaved={(id, status) => {
+                setEditingReport((prev: any) =>
+                  prev ? { ...prev, id, status } : { id, status, projectId: numericProjectId }
+                );
+              }}
+            />
+          </>
+        )}
+        {activeTab === "history" && (
+          <HistoryTab
+            projectId={numericProjectId}
+            onOpen={(report) => {
+              setEditingReport(report);
+              setActiveTab("new-report");
+            }}
+          />
+        )}
+        {activeTab === "progress" && <ProgressTab />}
       </div>
 
     </div>

@@ -4,7 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
-  wireReels, movementDrafts,
+  wireReels, movementDrafts, dailyReports,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
@@ -17,6 +17,7 @@ import {
   type ItemWithRelations, type InventoryMovementWithRelations,
   type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations,
   type MovementDraft, type MovementDraftWithRelations,
+  type DailyReport, type CreateDailyReportRequest, type UpdateDailyReportRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -105,6 +106,11 @@ export interface IStorage {
   createDraft(data: { movementType: string; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; itemsJson: string; note?: string | null; savedBy?: string | null; savedByName?: string | null }): Promise<MovementDraft>;
   deleteDraft(id: number): Promise<void>;
   confirmDraft(id: number, performedBy: string | null): Promise<void>;
+
+  getDailyReports(projectId: number): Promise<DailyReport[]>;
+  getDailyReport(id: number): Promise<DailyReport | undefined>;
+  createDailyReport(data: CreateDailyReportRequest): Promise<DailyReport>;
+  updateDailyReport(id: number, data: UpdateDailyReportRequest): Promise<DailyReport>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1772,6 +1778,36 @@ export class DatabaseStorage implements IStorage {
     }
 
     await db.delete(movementDrafts).where(eq(movementDrafts.id, id));
+  }
+
+  // ─── Daily Reports ───────────────────────────────────────────────────────────
+
+  async getDailyReports(projectId: number): Promise<DailyReport[]> {
+    return db
+      .select()
+      .from(dailyReports)
+      .where(eq(dailyReports.projectId, projectId))
+      .orderBy(desc(dailyReports.updatedAt));
+  }
+
+  async getDailyReport(id: number): Promise<DailyReport | undefined> {
+    const [row] = await db.select().from(dailyReports).where(eq(dailyReports.id, id));
+    return row;
+  }
+
+  async createDailyReport(data: CreateDailyReportRequest): Promise<DailyReport> {
+    const [row] = await db.insert(dailyReports).values(data).returning();
+    return row;
+  }
+
+  async updateDailyReport(id: number, data: UpdateDailyReportRequest): Promise<DailyReport> {
+    const [row] = await db
+      .update(dailyReports)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(dailyReports.id, id))
+      .returning();
+    if (!row) throw new Error("Daily report not found");
+    return row;
   }
 }
 

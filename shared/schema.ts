@@ -357,3 +357,28 @@ export type DraftItem = {
   reelIds?: number[];
   reelSelections?: Record<string, number>;
 };
+
+// ─── Daily Reports ────────────────────────────────────────────────────────────
+
+export const dailyReports = pgTable("daily_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
+  reportDate: text("report_date").notNull(),
+  reportNumber: text("report_number"),
+  preparedBy: text("prepared_by"),
+  status: text("status").notNull().default("draft"),
+  formData: jsonb("form_data"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDailyReportSchema = createInsertSchema(dailyReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type DailyReport = typeof dailyReports.$inferSelect;
+export type CreateDailyReportRequest = z.infer<typeof insertDailyReportSchema>;
+export type UpdateDailyReportRequest = Partial<CreateDailyReportRequest>;

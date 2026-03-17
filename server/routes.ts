@@ -1023,5 +1023,69 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Daily Reports ─────────────────────────────────────────────────────────
+
+  app.get("/api/daily-reports", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.query.projectId as string);
+      if (isNaN(projectId)) return res.status(400).json({ message: "projectId is required" });
+      const reports = await storage.getDailyReports(projectId);
+      res.json(reports);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/daily-reports/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
+      const report = await storage.getDailyReport(id);
+      if (!report) return res.status(404).json({ message: "Report not found" });
+      res.json(report);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/daily-reports", isAuthenticated, async (req, res) => {
+    try {
+      const { projectId, reportDate, reportNumber, preparedBy, status, formData } = req.body;
+      if (!projectId || !reportDate) {
+        return res.status(400).json({ message: "projectId and reportDate are required" });
+      }
+      const report = await storage.createDailyReport({
+        projectId: Number(projectId),
+        reportDate,
+        reportNumber: reportNumber ?? null,
+        preparedBy: preparedBy ?? null,
+        status: status ?? "draft",
+        formData: formData ?? null,
+        createdBy: (req.user as any)?.id ?? null,
+      });
+      res.status(201).json(report);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/daily-reports/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
+      const { reportDate, reportNumber, preparedBy, status, formData } = req.body;
+      const report = await storage.updateDailyReport(id, {
+        ...(reportDate !== undefined && { reportDate }),
+        ...(reportNumber !== undefined && { reportNumber }),
+        ...(preparedBy !== undefined && { preparedBy }),
+        ...(status !== undefined && { status }),
+        ...(formData !== undefined && { formData }),
+      });
+      res.json(report);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

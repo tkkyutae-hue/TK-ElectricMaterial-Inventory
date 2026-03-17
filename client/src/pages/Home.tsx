@@ -328,7 +328,7 @@ export default function Home() {
 
               <SquareCard
                 testId="btn-daily-report-mode"
-                onClick={() => navigate("/reports")}
+                onClick={() => navigate("/daily-report")}
                 accentColor="#60a5fa"
                 emoji="📋"
                 emojiBg="rgba(96,165,250,0.08)"

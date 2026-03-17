@@ -7,7 +7,9 @@ import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
 import { useAuth } from "@/hooks/use-auth";
-import { LanguageProvider } from "@/hooks/use-language";
+import { LanguageProvider, useLanguage } from "@/hooks/use-language";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -30,6 +32,66 @@ import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
 import FieldInventory from "@/pages/field/FieldInventory";
 import FieldTransactions from "@/pages/field/FieldTransactions";
+
+// Requires login only — no role restriction
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  return <>{children}</>;
+}
+
+// Standalone Daily Report layout — light theme, no admin sidebar, back-to-hub header
+function DailyReportLayout({ children }: { children: React.ReactNode }) {
+  const [, navigate] = useLocation();
+  const { t } = useLanguage();
+  return (
+    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
+      <header style={{
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 20px",
+        background: "#ffffff",
+        borderBottom: "1px solid #e2e8f0",
+      }}>
+        <button
+          data-testid="btn-daily-report-back"
+          onClick={() => navigate("/home")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "none", border: "none", cursor: "pointer",
+            color: "#64748b", fontSize: 13, fontFamily: "'Barlow', sans-serif",
+            padding: "6px 10px", borderRadius: 8,
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#334155")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
+        >
+          <ArrowLeft style={{ width: 14, height: 14 }} />
+          <span>{t.dailyReportMode}</span>
+        </button>
+      </header>
+      <main style={{ flex: 1, padding: "24px 32px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
+        {children}
+      </main>
+    </div>
+  );
+}
+
+function DailyReportRouter() {
+  return (
+    <AuthGuard>
+      <DailyReportLayout>
+        <Reports />
+      </DailyReportLayout>
+    </AuthGuard>
+  );
+}
 
 // Allows admin + manager into Admin Mode; all others go back to /home
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -132,6 +194,7 @@ function Router() {
       <Route path="/home" component={Home} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
+      <Route path="/daily-report" component={DailyReportRouter} />
       <Route component={AdminRouter} />
     </Switch>
   );

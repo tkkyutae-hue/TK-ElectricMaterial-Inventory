@@ -391,6 +391,12 @@ export const workers = pgTable("workers", {
   trade: text("trade"),
   photoUrl: text("photo_url"),
   isActive: boolean("is_active").notNull().default(true),
+  // Evaluation fields
+  skill: integer("skill"),
+  control: integer("control"),
+  attitude: integer("attitude"),
+  specialAbility: text("special_ability"),
+  skillBoard: text("skill_board"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

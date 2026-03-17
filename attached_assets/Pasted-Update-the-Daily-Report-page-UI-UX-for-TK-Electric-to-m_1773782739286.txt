@@ -1,0 +1,297 @@
+Update the Daily Report page UI/UX for TK Electric to make it faster, cleaner, and more practical for real field use.
+
+IMPORTANT
+- Keep the current overall visual style, background color, card style, spacing, and admin-mode design language.
+- Do NOT redesign from scratch.
+- Improve usability, hierarchy, and input flow.
+- Keep the page clean and compact without looking crowded.
+- Optimize for desktop + tablet use.
+- Do not add unnecessary animations.
+
+==================================================
+1. SAVE / DRAFT / STATUS UX
+==================================================
+
+Improve the save experience so users always know the current report state.
+
+Requirements:
+- Show a clear report status indicator in the top action bar:
+  - Unsaved
+  - Draft Saved
+  - Submitted
+- Add "Last saved" text when a draft has been saved.
+  Example: Last saved: 3:42 PM
+- Keep "Save Draft" visible and primary.
+- "Submit" should remain disabled until required fields are valid.
+- Remove Export Excel from New Report page entirely.
+- Excel export will only exist later inside Report History for submitted reports.
+
+==================================================
+2. GENERAL INFO LAYOUT FIX
+==================================================
+
+The General Info row is too wide and stretched horizontally.
+Make it cleaner and more compact.
+
+Requirements:
+- Reduce the width and visual length of each General Info input.
+- Improve spacing so fields feel balanced and not overly stretched.
+- Keep all fields aligned in a neat 2-row layout.
+
+Required field order:
+Row 1:
+1. Report No.
+2. Prepared By
+3. Report Date
+
+Row 2:
+4. Shift
+5. Weather
+6. Temperature (°F)
+
+Additional rules:
+- Report No. must be auto-generated based on report count for that project.
+- Report No. should be read-only and not editable by the user.
+- Use a clean readonly field style, not a normal editable-looking field.
+- Keep Report Date editable.
+- Prepared By remains editable.
+- Shift / Weather remain dropdowns.
+
+==================================================
+3. MANPOWER SECTION IMPROVEMENT
+==================================================
+
+Move Manpower directly below General Info and above Work Tasks.
+Keep it as section #2.
+
+Current problem:
+- Add Worker causes nested scrolling and cut-off dropdown areas.
+- Worker name sometimes appears duplicated.
+- The whole section becomes hard to use.
+
+Fix this.
+
+Requirements:
+- Keep the Manpower section below General Info.
+- Remove awkward internal scrolling that cuts off content.
+- Show up to 5 worker rows comfortably before scrolling is needed.
+- If more than 5 rows exist, only then allow a clean internal scroll inside the manpower list area.
+- Worker dropdown/search list should open clearly and not be clipped.
+
+Worker Name field:
+- Allow both:
+  1. searching/selecting from manpower master
+  2. manual typing for unregistered temporary worker
+- When a worker is selected, show the name only once.
+- Remove duplicate name display entirely.
+- If selected from manpower master:
+  - auto-fill Trade
+- If manually typed:
+  - Trade remains editable manually
+
+Improve row behavior:
+- Add Worker button adds a clean new row
+- Start and End should default to common field hours
+  Example default:
+  - 07:00 AM
+  - 03:30 PM
+- HRS should auto-calculate from Start and End
+- Attendance change should still be editable per worker
+- Total summary row should clearly show:
+  - total worker count
+  - total man-hours
+
+If possible, add section-level defaults above the manpower rows:
+- Default Start
+- Default End
+- Default Attendance
+These defaults should apply to newly added worker rows only.
+
+==================================================
+4. WORK TASKS IMPROVEMENT
+==================================================
+
+Keep Work Tasks after Manpower.
+
+Requirements:
+- Keep current clean row style
+- Allow task description, area/location, status, notes
+
+Expand the task status options to:
+- Not Started
+- In Progress
+- Completed
+- Delayed
+- Blocked
+
+Attachment support:
+- Each task row should support:
+  - drawing upload
+  - photo upload
+- But do NOT clutter the table row too much.
+- Use a compact approach:
+  - an attachment icon, detail icon, or expandable per-task detail area
+- In expanded task detail area, allow:
+  - drawing upload
+  - photo upload
+  - extra task notes if needed
+
+==================================================
+5. MATERIALS SECTION IMPROVEMENT
+==================================================
+
+Current issue:
+- Search/dropdown area gets clipped and awkward.
+- Unit font/style is inconsistent after item selection.
+
+Fix this.
+
+Requirements:
+- Materials must stay connected to inventory items.
+- User can:
+  1. search inventory by typing
+  2. select from matching list
+  3. manually type if needed
+- When an inventory item is selected:
+  - unit auto-fills from the item
+  - unit becomes readonly
+- Make unit text style consistent before and after selection.
+- Center-align the unit display.
+- Use the same font size, line height, and input style whether auto-filled or manual.
+
+Dropdown/search UX:
+- Show search results in a clean dropdown that is not clipped.
+- Avoid awkward nested scroll behavior.
+- Show a manageable result list with smooth scrolling.
+- Prioritize exact and close matches.
+- Keep Add Material behavior simple and stable.
+
+Optional nice improvement:
+- show a small hint below the input:
+  “Search inventory or enter material manually”
+
+==================================================
+6. EQUIPMENT SECTION IMPROVEMENT
+==================================================
+
+Replace free-form equipment behavior with a preset-select-first workflow.
+
+Requirements:
+- Equipment section should allow selecting from preset equipment list:
+  - Scissor Lift
+  - Boom Lift
+  - One Man Lift
+  - Reach Forklift
+  - Forklift
+  - Trench
+  - Excavator Small
+  - Excavator Big
+- Also allow Custom entry if needed.
+- Keep existing fields:
+  - Equipment Name
+  - Unit
+  - Qty
+  - Hours Used
+  - Notes
+- For preset equipment:
+  - equipment name auto-fills from selected preset
+- Unit can default appropriately if desired, but keep it simple and consistent.
+
+==================================================
+7. REMOVE PHOTO LOG SECTION
+==================================================
+
+Delete the standalone Photo Log section entirely.
+
+Reason:
+- Photo uploads are now handled inside each Work Task.
+- Do not leave an empty or unused Photo Log section on the page.
+
+==================================================
+8. REMOVE PROGRESS SECTION FROM NEW REPORT
+==================================================
+
+Remove the Progress section from the New Report form entirely.
+
+Reason:
+- Progress will be managed separately in its own tab/section.
+- New Report page should stay focused on daily field reporting only.
+
+So New Report page sections should be:
+
+1. General Info
+2. Manpower
+3. Work Tasks
+4. Materials
+5. Equipment
+6. Notes / Remarks
+
+==================================================
+9. NOTES / REMARKS SECTION CLEANUP
+==================================================
+
+Keep Notes / Remarks as the final section and make it practical.
+
+Fields:
+- General Notes
+- Safety Observations
+- Inspector / Visitor on Site
+
+Improve placeholder text so it feels field-usable, concise, and professional.
+
+Examples:
+- General Notes:
+  Any general observations, site conditions, or notes for the record...
+- Safety Observations:
+  Safety incidents, near misses, toolbox talk topics, PPE compliance, hazard observations...
+- Inspector / Visitor on Site:
+  Name and affiliation of any inspector or visitor present today
+
+==================================================
+10. SECTION STRUCTURE / ORDER / NUMBERING
+==================================================
+
+Use section numbering badges consistently and update order to:
+
+1. General Info
+2. Manpower
+3. Work Tasks
+4. Materials
+5. Equipment
+6. Notes / Remarks
+
+Keep section headers compact and visually consistent.
+
+==================================================
+11. VALIDATION / SUBMIT RULES
+==================================================
+
+Before enabling Submit, require at minimum:
+- Report Date
+- Prepared By
+- at least 1 manpower row OR at least 1 work task row
+
+If invalid:
+- keep Submit disabled
+- show subtle helper text, not aggressive alerts
+
+==================================================
+12. OVERALL UX GOAL
+==================================================
+
+This page should feel:
+- faster to fill out
+- less cluttered
+- less stretched horizontally
+- more stable when adding rows
+- better for repeated daily field use
+- cleaner and easier to scan
+
+Do not overcomplicate.
+Focus on practical field-report workflow.
+
+After changes:
+- make sure dropdowns are not clipped
+- make sure no duplicated worker names appear
+- make sure row heights and input alignment remain consistent
+- make sure the layout looks balanced on the current page width

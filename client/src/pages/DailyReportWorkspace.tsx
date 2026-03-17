@@ -3,23 +3,24 @@ import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Calendar, ClipboardList, CheckCircle2, AlertCircle,
-  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2,
+  Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
+  STATUS_CFG, type ProjectStatus,
 } from "@/lib/mock-daily-report";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  MOCK_PROJECTS, STATUS_CFG, formatReportDate,
-  type ProjectStatus,
-} from "@/lib/mock-daily-report";
 import { NewReportTab } from "@/pages/daily-report/NewReportTab";
+import type { Project } from "@shared/schema";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
-function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
-  const cfg = STATUS_CFG[status];
+function ProjectStatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status as ProjectStatus] ?? {
+    label: status,
+    className: "bg-slate-100 text-slate-500 border-slate-200",
+  };
   return (
     <Badge variant="outline" className={`${cfg.className} text-xs font-semibold px-2 py-0.5`}>
       {cfg.label}
@@ -305,17 +306,40 @@ function ProgressTab() {
   );
 }
 
+// ─── Location helper ──────────────────────────────────────────────────────────
+function projectLocation(p: Project): string {
+  if (p.jobLocation) return p.jobLocation;
+  const parts = [p.city, p.state].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "—";
+}
+
 // ─── Main workspace page ──────────────────────────────────────────────────────
 export default function DailyReportWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("new-report");
-  // Track the report currently open for editing/viewing
   const [editingReport, setEditingReport] = useState<any>(null);
 
   const numericProjectId = Number(projectId);
-  const project = MOCK_PROJECTS.find((p) => String(p.id) === projectId);
 
-  if (!project) {
+  const {
+    data: project,
+    isLoading: projectLoading,
+    isError: projectError,
+  } = useQuery<Project>({
+    queryKey: ["/api/projects", numericProjectId],
+    enabled: !isNaN(numericProjectId),
+  });
+
+  if (projectLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
+        <p className="text-sm text-slate-400">Loading project…</p>
+      </div>
+    );
+  }
+
+  if (projectError || !project) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100">
@@ -349,19 +373,15 @@ export default function DailyReportWorkspace() {
             </div>
             <div className="flex items-center gap-4 mt-1 flex-wrap">
               <span className="flex items-center gap-1 text-xs text-slate-500">
-                <MapPin className="w-3 h-3" />{project.location}
+                <MapPin className="w-3 h-3" />{projectLocation(project)}
               </span>
-              <span className="flex items-center gap-1 text-xs text-slate-400">
-                <Calendar className="w-3 h-3" />
-                Last report: {formatReportDate(project.lastReportDate)}
-              </span>
+              {project.startDate && (
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <Calendar className="w-3 h-3" />
+                  Started: {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
             </div>
-          </div>
-          <div className="shrink-0 text-right hidden sm:block">
-            <p className="text-2xl font-bold text-slate-700">{project.reportCount}</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-              {project.reportCount === 1 ? "Report" : "Reports"}
-            </p>
           </div>
         </CardContent>
       </Card>

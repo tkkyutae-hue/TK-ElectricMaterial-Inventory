@@ -1,21 +1,39 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight,
-  Search, ClipboardList, FileText, Clock,
+  Search, ClipboardList, FileText, CheckCircle2, Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  MOCK_PROJECTS, STATUS_CFG, formatReportDate,
-  type ProjectStatus,
+  STATUS_CFG, type ProjectStatus,
 } from "@/lib/mock-daily-report";
+import type { Project } from "@shared/schema";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function projectLocation(p: Project): string {
+  if (p.jobLocation) return p.jobLocation;
+  const parts = [p.city, p.state].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "—";
+}
+
+function projectStartDate(p: Project): string {
+  if (!p.startDate) return "—";
+  return new Date(p.startDate).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
+}
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
-function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
-  const cfg = STATUS_CFG[status];
+function ProjectStatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status as ProjectStatus] ?? {
+    label: status,
+    className: "bg-slate-100 text-slate-500 border-slate-200",
+  };
   return (
     <Badge variant="outline" className={`${cfg.className} text-xs font-semibold px-2 py-0.5`}>
       {cfg.label}
@@ -26,10 +44,14 @@ function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const [, navigate] = useLocation();
-  const [search, setSearch]           = useState("");
+  const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
 
-  const filtered = MOCK_PROJECTS.filter((p) => {
+  const { data: allProjects = [], isLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const filtered = allProjects.filter((p) => {
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     if (!search.trim()) return matchStatus;
     const q = search.toLowerCase();
@@ -37,17 +59,13 @@ export default function DailyReport() {
       matchStatus &&
       (p.name.toLowerCase().includes(q) ||
         p.code.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q))
+        projectLocation(p).toLowerCase().includes(q))
     );
   });
 
-  const activeCount  = MOCK_PROJECTS.filter((p) => p.status === "active").length;
-  const totalReports = MOCK_PROJECTS.reduce((s, p) => s + p.reportCount, 0);
-  const lastDate     = MOCK_PROJECTS
-    .map((p) => p.lastReportDate)
-    .filter(Boolean)
-    .sort()
-    .reverse()[0] ?? null;
+  const activeCount    = allProjects.filter((p) => p.status === "active").length;
+  const totalCount     = allProjects.length;
+  const completedCount = allProjects.filter((p) => p.status === "completed").length;
 
   return (
     <div className="space-y-6">
@@ -63,10 +81,10 @@ export default function DailyReport() {
       {/* ── Summary stat cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Briefcase,    label: "Active Projects",    value: String(activeCount),  color: "text-blue-600",   bg: "bg-blue-50",    small: false },
-          { icon: ClipboardList, label: "Total Reports Filed", value: String(totalReports), color: "text-indigo-600", bg: "bg-indigo-50",  small: false },
-          { icon: Clock,        label: "Last Report",        value: formatReportDate(lastDate), color: "text-slate-600", bg: "bg-slate-100", small: true },
-        ].map(({ icon: Icon, label, value, color, bg, small }) => (
+          { icon: Briefcase,    label: "Active Projects",    value: String(activeCount),    color: "text-blue-600",    bg: "bg-blue-50"    },
+          { icon: ClipboardList, label: "Total Projects",    value: String(totalCount),     color: "text-indigo-600",  bg: "bg-indigo-50"  },
+          { icon: CheckCircle2,  label: "Completed",         value: String(completedCount), color: "text-slate-600",   bg: "bg-slate-100"  },
+        ].map(({ icon: Icon, label, value, color, bg }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-4 pt-5 pb-5">
               <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${bg}`}>
@@ -74,9 +92,7 @@ export default function DailyReport() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">{label}</p>
-                <p className={`font-bold text-slate-700 leading-tight truncate ${small ? "text-lg" : "text-2xl"}`}>
-                  {value}
-                </p>
+                <p className="font-bold text-slate-700 leading-tight truncate text-2xl">{value}</p>
               </div>
             </CardContent>
           </Card>
@@ -98,7 +114,7 @@ export default function DailyReport() {
             </div>
           </div>
           <span className="text-xs text-slate-400">
-            {filtered.length} project{filtered.length !== 1 ? "s" : ""}
+            {isLoading ? "Loading…" : `${filtered.length} project${filtered.length !== 1 ? "s" : ""}`}
           </span>
         </div>
 
@@ -128,8 +144,29 @@ export default function DailyReport() {
           ))}
         </div>
 
-        {/* Project cards */}
-        {filtered.length === 0 ? (
+        {/* Loading state */}
+        {isLoading ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
+              <p className="text-sm text-slate-400">Loading projects…</p>
+            </CardContent>
+          </Card>
+
+        /* Empty states */
+        ) : allProjects.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
+                <Briefcase className="w-7 h-7 text-slate-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-slate-600">No projects yet</p>
+                <p className="text-xs text-slate-400 mt-0.5">Create projects in Admin Mode to get started</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : filtered.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
@@ -141,6 +178,8 @@ export default function DailyReport() {
               </div>
             </CardContent>
           </Card>
+
+        /* Project cards */
         ) : (
           <div className="space-y-2">
             {filtered.map((project) => (
@@ -180,24 +219,18 @@ export default function DailyReport() {
                         className="flex items-center gap-1 text-xs text-slate-500"
                       >
                         <MapPin className="w-3 h-3 shrink-0" />
-                        {project.location}
+                        {projectLocation(project)}
                       </span>
-                      <span
-                        data-testid={`text-project-last-report-${project.id}`}
-                        className="flex items-center gap-1 text-xs text-slate-400"
-                      >
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        Last report: {formatReportDate(project.lastReportDate)}
-                      </span>
+                      {project.startDate && (
+                        <span
+                          data-testid={`text-project-start-${project.id}`}
+                          className="flex items-center gap-1 text-xs text-slate-400"
+                        >
+                          <Calendar className="w-3 h-3 shrink-0" />
+                          Started: {projectStartDate(project)}
+                        </span>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Report count */}
-                  <div className="shrink-0 text-center hidden sm:block">
-                    <p className="text-lg font-bold text-slate-700 leading-tight">{project.reportCount}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                      {project.reportCount === 1 ? "Report" : "Reports"}
-                    </p>
                   </div>
 
                   {/* Open */}

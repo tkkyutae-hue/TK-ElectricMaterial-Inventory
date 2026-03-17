@@ -389,6 +389,7 @@ export const workers = pgTable("workers", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
   trade: text("trade"),
+  photoUrl: text("photo_url"),
   isActive: boolean("is_active").notNull().default(true),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),

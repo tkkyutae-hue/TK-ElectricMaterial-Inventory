@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   HardHat, PlusCircle, Pencil, Loader2, Users,
   CheckCircle2, XCircle, Lock, Camera, Star,
-  ClipboardList, Calendar, Zap, LayoutGrid,
+  ClipboardList, Calendar, Zap, LayoutGrid, UserCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,12 +22,132 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Worker } from "@shared/schema";
 
-// ─── Registration form schema (only name + trade) ─────────────────────────────
+// ─── Registration form schema ─────────────────────────────────────────────────
 const registerSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   trade: z.string().optional().nullable(),
+  photoUrl: z.string().optional().nullable(),
 });
 type RegisterValues = z.infer<typeof registerSchema>;
+
+// ─── Avatar helper ────────────────────────────────────────────────────────────
+function WorkerAvatar({
+  photoUrl,
+  name,
+  size = "sm",
+}: {
+  photoUrl?: string | null;
+  name: string;
+  size?: "sm" | "lg";
+}) {
+  const dim = size === "lg" ? "w-20 h-20" : "w-9 h-9";
+  const iconDim = size === "lg" ? "w-10 h-10" : "w-5 h-5";
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        className={`${dim} rounded-full object-cover shrink-0 border border-slate-200`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${dim} rounded-full shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center`}
+      aria-label={`Avatar for ${name}`}
+    >
+      {initials ? (
+        <span className={`font-semibold text-slate-500 ${size === "lg" ? "text-2xl" : "text-xs"}`}>
+          {initials}
+        </span>
+      ) : (
+        <UserCircle2 className={`${iconDim} text-slate-300`} />
+      )}
+    </div>
+  );
+}
+
+// ─── Photo upload field ───────────────────────────────────────────────────────
+function PhotoUpload({
+  value,
+  onChange,
+}: {
+  value?: string | null;
+  onChange: (dataUrl: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="flex items-center gap-4">
+      {/* Preview */}
+      <div
+        className="w-16 h-16 rounded-full shrink-0 bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-slate-400 transition-colors"
+        onClick={() => fileRef.current?.click()}
+        data-testid="photo-preview"
+      >
+        {value ? (
+          <img src={value} alt="Preview" className="w-full h-full object-cover" />
+        ) : (
+          <Camera className="w-6 h-6 text-slate-300" />
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="text-xs gap-1.5 h-7"
+          data-testid="btn-upload-photo"
+          onClick={() => fileRef.current?.click()}
+        >
+          <Camera className="w-3.5 h-3.5" />
+          {value ? "Change Photo" : "Upload Photo"}
+        </Button>
+        {value && (
+          <button
+            type="button"
+            className="text-xs text-slate-400 hover:text-red-500 transition-colors text-left"
+            data-testid="btn-remove-photo"
+            onClick={() => {
+              onChange(null);
+              if (fileRef.current) fileRef.current.value = "";
+            }}
+          >
+            Remove
+          </button>
+        )}
+        <p className="text-[10px] text-slate-400">JPG, PNG or WebP · Max 2 MB</p>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        data-testid="input-photo-file"
+        onChange={handleFile}
+      />
+    </div>
+  );
+}
 
 // ─── Locked evaluation field placeholder ─────────────────────────────────────
 function LockedField({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
@@ -40,20 +160,140 @@ function LockedField({ icon: Icon, label }: { icon: React.ElementType; label: st
   );
 }
 
-// ─── Registration dialog ──────────────────────────────────────────────────────
-function RegisterDialog({
-  open,
+// ─── Shared form body (registration + edit share the same layout) ─────────────
+function WorkerFormBody({
+  form,
+  isPending,
+  isEdit,
+  lastRegistered,
   onClose,
 }: {
-  open: boolean;
+  form: ReturnType<typeof useForm<RegisterValues>>;
+  isPending: boolean;
+  isEdit: boolean;
+  lastRegistered?: string | null;
   onClose: () => void;
 }) {
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(
+          isEdit
+            ? () => {}  /* handled by caller */
+            : () => {}  /* handled by caller */
+        )}
+        className="space-y-4"
+      >
+        {/* Last registered confirmation (registration mode only) */}
+        {!isEdit && lastRegistered && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>
+              <strong>{lastRegistered}</strong> registered — fill in the next worker below
+            </span>
+          </div>
+        )}
+
+        {/* ── Editable registration fields ── */}
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Registration Info
+          </p>
+
+          {/* Photo upload */}
+          <FormField
+            control={form.control}
+            name="photoUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Profile Photo</FormLabel>
+                <FormControl>
+                  <PhotoUpload
+                    value={field.value}
+                    onChange={(v) => field.onChange(v)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="fullName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Full Name <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    data-testid="input-worker-name"
+                    placeholder="e.g. John Smith"
+                    autoFocus={!isEdit}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="trade"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Trade / Classification</FormLabel>
+                <FormControl>
+                  <Input
+                    data-testid="input-worker-trade"
+                    placeholder="e.g. Electrician, Foreman, Apprentice"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* ── Evaluation profile (locked, future step) ── */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              Worker Profile
+            </p>
+            <span className="text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 font-medium">
+              Available after evaluation
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <LockedField icon={Star}          label="Skill" />
+            <LockedField icon={ClipboardList} label="Control" />
+            <LockedField icon={Users}         label="Attitude" />
+            <LockedField icon={CheckCircle2}  label="Total Score" />
+            <LockedField icon={Calendar}      label="Date of TK" />
+            <LockedField icon={Zap}           label="Special Ability" />
+            <div className="col-span-2">
+              <LockedField icon={LayoutGrid} label="Skill Board" />
+            </div>
+          </div>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+// ─── Registration dialog ──────────────────────────────────────────────────────
+function RegisterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const [lastRegistered, setLastRegistered] = useState<string | null>(null);
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: "", trade: "" },
+    defaultValues: { fullName: "", trade: "", photoUrl: null },
   });
 
   const createMutation = useMutation({
@@ -62,26 +302,22 @@ function RegisterDialog({
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
       setLastRegistered(variables.fullName);
-      form.reset({ fullName: "", trade: "" });
+      form.reset({ fullName: "", trade: "", photoUrl: null });
     },
     onError: (err: any) => {
       toast({ title: "Failed to register worker", description: err.message, variant: "destructive" });
     },
   });
 
-  function onSubmit(values: RegisterValues) {
-    createMutation.mutate(values);
-  }
-
   function handleClose() {
-    form.reset({ fullName: "", trade: "" });
+    form.reset({ fullName: "", trade: "", photoUrl: null });
     setLastRegistered(null);
     onClose();
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HardHat className="w-5 h-5 text-slate-500" />
@@ -89,18 +325,21 @@ function RegisterDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Last registered confirmation */}
-        {lastRegistered && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span><strong>{lastRegistered}</strong> registered — fill in the next worker below</span>
-          </div>
-        )}
-
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit((v) => createMutation.mutate(v))}
+            className="space-y-4"
+          >
+            {lastRegistered && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>
+                  <strong>{lastRegistered}</strong> registered — fill in the next worker below
+                </span>
+              </div>
+            )}
 
-            {/* ── Editable registration fields ── */}
+            {/* Registration fields */}
             <div className="space-y-3">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Registration Info
@@ -108,10 +347,25 @@ function RegisterDialog({
 
               <FormField
                 control={form.control}
+                name="photoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profile Photo</FormLabel>
+                    <FormControl>
+                      <PhotoUpload value={field.value} onChange={(v) => field.onChange(v)} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Full Name <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         data-testid="input-worker-name"
@@ -145,7 +399,7 @@ function RegisterDialog({
               />
             </div>
 
-            {/* ── Evaluation profile (locked, future step) ── */}
+            {/* Locked evaluation placeholders */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -155,24 +409,20 @@ function RegisterDialog({
                   Available after evaluation
                 </span>
               </div>
-
               <div className="grid grid-cols-2 gap-1.5">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100 col-span-2">
-                  <Camera className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  <span className="text-xs text-slate-400 flex-1">Photo</span>
-                  <Lock className="w-3 h-3 text-slate-300 shrink-0" />
-                </div>
-                <LockedField icon={Star}         label="Skill" />
+                <LockedField icon={Star}          label="Skill" />
                 <LockedField icon={ClipboardList} label="Control" />
                 <LockedField icon={Users}         label="Attitude" />
                 <LockedField icon={CheckCircle2}  label="Total Score" />
                 <LockedField icon={Calendar}      label="Date of TK" />
                 <LockedField icon={Zap}           label="Special Ability" />
-                <LockedField icon={LayoutGrid}    label="Skill Board" />
+                <div className="col-span-2">
+                  <LockedField icon={LayoutGrid} label="Skill Board" />
+                </div>
               </div>
             </div>
 
-            {/* ── Actions ── */}
+            {/* Actions */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               <Button
                 type="button"
@@ -202,19 +452,17 @@ function RegisterDialog({
   );
 }
 
-// ─── Edit dialog (name + trade only, evaluation section still locked) ─────────
-function EditDialog({
-  worker,
-  onClose,
-}: {
-  worker: Worker;
-  onClose: () => void;
-}) {
+// ─── Edit dialog ──────────────────────────────────────────────────────────────
+function EditDialog({ worker, onClose }: { worker: Worker; onClose: () => void }) {
   const { toast } = useToast();
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: worker.fullName, trade: worker.trade ?? "" },
+    defaultValues: {
+      fullName: worker.fullName,
+      trade: worker.trade ?? "",
+      photoUrl: worker.photoUrl ?? null,
+    },
   });
 
   const updateMutation = useMutation({
@@ -232,7 +480,7 @@ function EditDialog({
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="w-4 h-4 text-slate-500" />
@@ -241,18 +489,37 @@ function EditDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
-
+          <form
+            onSubmit={form.handleSubmit((v) => updateMutation.mutate(v))}
+            className="space-y-4"
+          >
+            {/* Registration fields */}
             <div className="space-y-3">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Registration Info
               </p>
+
+              <FormField
+                control={form.control}
+                name="photoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Profile Photo</FormLabel>
+                    <FormControl>
+                      <PhotoUpload value={field.value} onChange={(v) => field.onChange(v)} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Full Name <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input data-testid="input-worker-name-edit" {...field} />
                     </FormControl>
@@ -260,6 +527,7 @@ function EditDialog({
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="trade"
@@ -279,7 +547,7 @@ function EditDialog({
               />
             </div>
 
-            {/* Evaluation profile (locked) */}
+            {/* Locked evaluation placeholders */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center gap-2">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -290,26 +558,32 @@ function EditDialog({
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-50 border border-slate-100 col-span-2">
-                  <Camera className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                  <span className="text-xs text-slate-400 flex-1">Photo</span>
-                  <Lock className="w-3 h-3 text-slate-300 shrink-0" />
-                </div>
-                <LockedField icon={Star}         label="Skill" />
+                <LockedField icon={Star}          label="Skill" />
                 <LockedField icon={ClipboardList} label="Control" />
                 <LockedField icon={Users}         label="Attitude" />
                 <LockedField icon={CheckCircle2}  label="Total Score" />
                 <LockedField icon={Calendar}      label="Date of TK" />
                 <LockedField icon={Zap}           label="Special Ability" />
-                <LockedField icon={LayoutGrid}    label="Skill Board" />
+                <div className="col-span-2">
+                  <LockedField icon={LayoutGrid} label="Skill Board" />
+                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={updateMutation.isPending}
+              >
                 Cancel
               </Button>
-              <Button type="submit" data-testid="btn-worker-save-edit" disabled={updateMutation.isPending}>
+              <Button
+                type="submit"
+                data-testid="btn-worker-save-edit"
+                disabled={updateMutation.isPending}
+              >
                 {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
@@ -336,7 +610,7 @@ export default function Manpower() {
   return (
     <div className="space-y-6">
 
-      {/* ── Page header (no button here) ── */}
+      {/* ── Page header ── */}
       <div>
         <h1 className="text-3xl font-display font-bold text-slate-900">Manpower</h1>
         <p className="text-slate-500 mt-1">
@@ -365,7 +639,7 @@ export default function Manpower() {
         ))}
       </div>
 
-      {/* ── Worker Registry table ── */}
+      {/* ── Worker Registry ── */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
@@ -399,7 +673,9 @@ export default function Manpower() {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-slate-600">No workers registered yet</p>
-                <p className="text-xs text-slate-400 mt-0.5">Use "Register Worker" above to add your first worker</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Use "Register Worker" above to add your first worker
+                </p>
               </div>
             </div>
 
@@ -408,9 +684,15 @@ export default function Manpower() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trade / Classification</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Worker
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Trade / Classification
+                    </th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                      Status
+                    </th>
                     <th className="px-5 py-3" />
                   </tr>
                 </thead>
@@ -421,15 +703,24 @@ export default function Manpower() {
                       data-testid={`row-worker-${worker.id}`}
                       className="hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-5 py-3.5">
-                        <span
-                          data-testid={`text-worker-name-${worker.id}`}
-                          className="font-medium text-slate-800"
-                        >
-                          {worker.fullName}
-                        </span>
+                      {/* Worker column: avatar + name */}
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <WorkerAvatar
+                            photoUrl={worker.photoUrl}
+                            name={worker.fullName}
+                            size="sm"
+                          />
+                          <span
+                            data-testid={`text-worker-name-${worker.id}`}
+                            className="font-medium text-slate-800"
+                          >
+                            {worker.fullName}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-5 py-3.5">
+
+                      <td className="px-5 py-3">
                         <span
                           data-testid={`text-worker-trade-${worker.id}`}
                           className="text-slate-600"
@@ -437,7 +728,8 @@ export default function Manpower() {
                           {worker.trade || <span className="text-slate-300">—</span>}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5">
+
+                      <td className="px-5 py-3">
                         {worker.isActive ? (
                           <Badge
                             variant="outline"
@@ -456,7 +748,8 @@ export default function Manpower() {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+
+                      <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             data-testid={`btn-evaluate-worker-${worker.id}`}
@@ -491,15 +784,9 @@ export default function Manpower() {
       </Card>
 
       {/* ── Dialogs ── */}
-      <RegisterDialog
-        open={registerOpen}
-        onClose={() => setRegisterOpen(false)}
-      />
+      <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} />
       {editingWorker && (
-        <EditDialog
-          worker={editingWorker}
-          onClose={() => setEditingWorker(null)}
-        />
+        <EditDialog worker={editingWorker} onClose={() => setEditingWorker(null)} />
       )}
 
     </div>

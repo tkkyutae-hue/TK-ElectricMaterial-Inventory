@@ -6,7 +6,7 @@ import {
   Calendar, Users, Package, Truck, Image,
   BarChart2, FileText, ChevronDown, Plus, Trash2,
   Save, Send, Download, AlertTriangle, CheckCircle2,
-  Info, Loader2, User, Clock, HardHat,
+  Info, Loader2, HardHat, Upload,
 } from "lucide-react";
 import {
   MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
@@ -22,12 +22,12 @@ import { Badge } from "@/components/ui/badge";
 import type { Worker } from "@shared/schema";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string }> = {
-  "not-started": { label: "Not Started",  dot: "bg-slate-400",   text: "text-slate-500"  },
-  "in-progress":  { label: "In Progress", dot: "bg-blue-500",    text: "text-blue-700"   },
-  "completed":    { label: "Completed",   dot: "bg-emerald-500", text: "text-emerald-700"},
-  "delayed":      { label: "Delayed",     dot: "bg-amber-500",   text: "text-amber-700"  },
-  "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700"    },
+const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string; rowBg: string }> = {
+  "not-started": { label: "Not Started",  dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "" },
+  "in-progress":  { label: "In Progress", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "" },
+  "completed":    { label: "Completed",   dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "" },
+  "delayed":      { label: "Delayed",     dot: "bg-amber-500",   text: "text-amber-700",   rowBg: "bg-amber-50/40" },
+  "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/40" },
 };
 
 const ATTENDANCE_STATUSES = [
@@ -35,7 +35,6 @@ const ATTENDANCE_STATUSES = [
   "LATE", "EARLY_LEAVE", "WFH", "TRAINING", "SUSPENDED", "TERMINATED",
 ];
 
-// Statuses where hours are computed from start/end time
 const HOURS_COMPUTED = new Set(["ATTEND", "LATE", "EARLY_LEAVE", "WFH", "TRAINING"]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -60,6 +59,18 @@ function isWorkerBasedManpower(rows: any[]): boolean {
   return rows.length === 0 || "workerId" in rows[0];
 }
 
+// ─── Section color palette by index ───────────────────────────────────────────
+const SECTION_ICON_STYLE: Record<number, { bg: string; icon: string }> = {
+  1: { bg: "bg-blue-50",    icon: "text-blue-500"    },
+  2: { bg: "bg-violet-50",  icon: "text-violet-500"  },
+  3: { bg: "bg-emerald-50", icon: "text-emerald-600" },
+  4: { bg: "bg-amber-50",   icon: "text-amber-600"   },
+  5: { bg: "bg-orange-50",  icon: "text-orange-600"  },
+  6: { bg: "bg-sky-50",     icon: "text-sky-500"     },
+  7: { bg: "bg-teal-50",    icon: "text-teal-600"    },
+  8: { bg: "bg-slate-100",  icon: "text-slate-500"   },
+};
+
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({
   num, title, icon, defaultOpen = true, summary, children,
@@ -68,31 +79,36 @@ function Section({
   defaultOpen?: boolean; summary?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const ic = SECTION_ICON_STYLE[num] ?? { bg: "bg-slate-100", icon: "text-slate-500" };
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden shadow-none border border-slate-200">
       <button
         type="button"
         data-testid={`section-toggle-${num}`}
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/70 transition-colors text-left"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-white text-[11px] font-bold shrink-0">
+          {/* numbered circle */}
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold shrink-0 tabular-nums">
             {num}
           </span>
-          <span className="text-slate-500 shrink-0">{icon}</span>
-          <span className="text-sm font-semibold text-slate-800 shrink-0">{title}</span>
+          {/* icon container */}
+          <span className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${ic.bg}`}>
+            <span className={ic.icon}>{icon}</span>
+          </span>
+          <span className="text-sm font-semibold text-slate-800 shrink-0 tracking-tight">{title}</span>
           {!open && summary && (
-            <span className="text-xs text-slate-400 font-normal truncate">— {summary}</span>
+            <span className="ml-1 text-[11px] text-slate-400 font-normal truncate">{summary}</span>
           )}
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ml-3 ${open ? "rotate-180" : ""}`}
         />
       </button>
       {open && (
-        <CardContent className="pt-0 pb-5 px-5 border-t border-slate-100">
-          <div className="pt-4">{children}</div>
+        <CardContent className="pt-0 pb-6 px-5 border-t border-slate-100">
+          <div className="pt-5">{children}</div>
         </CardContent>
       )}
     </Card>
@@ -100,32 +116,35 @@ function Section({
 }
 
 // ─── Field label ──────────────────────────────────────────────────────────────
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FL({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+    <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 select-none">
       {children}
     </label>
   );
 }
 
-// ─── Table header ─────────────────────────────────────────────────────────────
-function TableHeader({ cols }: { cols: string[] }) {
+// ─── Unified table header ─────────────────────────────────────────────────────
+function TH({ cols }: { cols: { label: string; cls?: string }[] }) {
   return (
     <thead>
-      <tr className="border-b border-slate-200 bg-slate-50">
-        {cols.map((c) => (
-          <th key={c} className="text-left py-2 px-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
-            {c}
+      <tr className="border-b border-slate-200 bg-slate-50/80">
+        {cols.map(({ label, cls }) => (
+          <th
+            key={label}
+            className={`py-2 px-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap text-left ${cls ?? ""}`}
+          >
+            {label}
           </th>
         ))}
-        <th className="w-8" />
+        <th className="w-9 py-2 px-1" />
       </tr>
     </thead>
   );
 }
 
 // ─── Row delete button ────────────────────────────────────────────────────────
-function DeleteBtn({ onClick, testId }: { onClick: () => void; testId: string }) {
+function DelBtn({ onClick, testId }: { onClick: () => void; testId: string }) {
   return (
     <button
       type="button"
@@ -138,19 +157,28 @@ function DeleteBtn({ onClick, testId }: { onClick: () => void; testId: string })
   );
 }
 
-// ─── Add row button ───────────────────────────────────────────────────────────
-function AddRowBtn({ onClick, label, testId }: { onClick: () => void; label: string; testId: string }) {
+// ─── Shared add-row button ────────────────────────────────────────────────────
+function AddRow({ onClick, label, testId }: { onClick: () => void; label: string; testId: string }) {
   return (
     <Button
       data-testid={testId}
       type="button"
       variant="outline"
       size="sm"
-      className="mt-3 gap-1.5 text-xs text-slate-600 border-dashed"
+      className="mt-4 gap-1.5 text-xs text-slate-500 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-700"
       onClick={onClick}
     >
       <Plus className="w-3.5 h-3.5" /> {label}
     </Button>
+  );
+}
+
+// ─── Read-only cell ───────────────────────────────────────────────────────────
+function ROCell({ children, center }: { children: React.ReactNode; center?: boolean }) {
+  return (
+    <div className={`h-8 flex items-center px-2.5 text-xs text-slate-500 bg-slate-50 rounded-md border border-slate-200 select-none ${center ? "justify-center font-semibold text-slate-700" : ""}`}>
+      {children}
+    </div>
   );
 }
 
@@ -166,15 +194,12 @@ export function NewReportTab({
   initialData?: any;
   onSaved?: (id: number, status: string) => void;
 }) {
-  const { toast }    = useToast();
-  const queryClient  = useQueryClient();
-
-  const fd = initialData?.formData ?? null;
+  const { toast }   = useToast();
+  const queryClient = useQueryClient();
+  const fd          = initialData?.formData ?? null;
 
   // ── Workers registry ──
-  const { data: workers = [] } = useQuery<Worker[]>({
-    queryKey: ["/api/workers"],
-  });
+  const { data: workers = [] } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const activeWorkers = workers.filter((w) => w.isActive);
 
   // ── General Info ──
@@ -210,20 +235,19 @@ export function NewReportTab({
   // ── Status ──
   const [savedStatus, setSavedStatus] = useState<string | null>(initialData?.status ?? null);
 
-  // ── Computed progress ──
-  const progressRows = MOCK_PROGRESS_ITEMS.map((item) => calcProgressRow(item, todayQty[item.id] ?? 0));
-  const overallPct   = overallProgress(progressRows);
-
-  // ── Manpower totals ──
+  // ── Computed ──
+  const progressRows  = MOCK_PROGRESS_ITEMS.map((item) => calcProgressRow(item, todayQty[item.id] ?? 0));
+  const overallPct    = overallProgress(progressRows);
   const totalWorkers  = manpower.length;
   const totalManhours = manpower.reduce((s, r) => s + r.hoursWorked, 0);
 
-  // ── Section summaries for collapsed state ──
-  const taskSummary     = tasks.length     ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
-  const mpSummary       = manpower.length  ? `${totalWorkers} worker${totalWorkers !== 1 ? "s" : ""} · ${totalManhours.toFixed(1)} hrs` : undefined;
-  const matSummary      = materials.length ? `${materials.length} item${materials.length !== 1 ? "s" : ""}` : undefined;
-  const eqSummary       = equipment.length ? `${equipment.length} item${equipment.length !== 1 ? "s" : ""}` : undefined;
-  const notesSummary    = generalNotes.trim() ? generalNotes.trim().slice(0, 40) + (generalNotes.length > 40 ? "…" : "") : undefined;
+  // ── Section summaries ──
+  const taskSummary  = tasks.length     ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
+  const mpSummary    = manpower.length  ? `${totalWorkers} worker${totalWorkers !== 1 ? "s" : ""} · ${totalManhours.toFixed(1)} hrs` : undefined;
+  const matSummary   = materials.length ? `${materials.length} item${materials.length !== 1 ? "s" : ""}` : undefined;
+  const eqSummary    = equipment.length ? `${equipment.length} item${equipment.length !== 1 ? "s" : ""}` : undefined;
+  const progSummary  = `${overallPct}% complete`;
+  const notesSummary = generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : "3 fields";
 
   // ── Build form data ──
   function buildFormData() {
@@ -270,39 +294,70 @@ export function NewReportTab({
 
   const isSubmitted = savedStatus === "submitted";
 
-  // ── Shared action buttons ──
-  function ActionButtons({ bottom }: { bottom?: boolean }) {
+  // ── Action bar ──
+  function ActionBar({ bottom }: { bottom?: boolean }) {
+    const statusBadge = (
+      <div className={`flex items-center gap-2 ${bottom ? "hidden" : ""}`}>
+        <div className="w-px h-5 bg-slate-200" />
+        <Badge
+          variant="outline"
+          className={
+            isSubmitted
+              ? "text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0.5 px-2.5"
+              : savedStatus === "draft"
+              ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200 py-0.5 px-2.5"
+              : "text-[11px] text-slate-400 border-slate-200 bg-white py-0.5 px-2.5"
+          }
+        >
+          {isSubmitted ? "✓ Submitted" : savedStatus === "draft" ? "Draft saved" : "Unsaved"}
+        </Badge>
+      </div>
+    );
+
     return (
-      <div className={`flex items-center gap-2 flex-wrap ${bottom ? "justify-end pt-4 border-t border-slate-200" : "justify-between"}`}>
+      <div className={`flex items-center justify-between gap-3 flex-wrap ${bottom ? "pt-2" : ""}`}>
+        {/* Primary actions — ordered: Save Draft → Submit → Export */}
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             data-testid={bottom ? "btn-save-draft-bottom" : "btn-save-draft"}
             variant="outline"
             size="sm"
-            className="gap-2 text-slate-700"
+            className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
             disabled={saveMutation.isPending || isSubmitted}
             onClick={() => saveMutation.mutate("draft")}
           >
-            {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {saveMutation.isPending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Save className="w-3.5 h-3.5" />}
             Save Draft
           </Button>
+
           <Button
             data-testid={bottom ? "btn-submit-report-bottom" : "btn-submit-report"}
             size="sm"
-            className={`gap-2 ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600" : "bg-blue-600 hover:bg-blue-700"} text-white`}
+            className={`gap-2 h-9 font-semibold ${
+              isSubmitted
+                ? "bg-emerald-600 hover:bg-emerald-600 text-white"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
             disabled={saveMutation.isPending || isSubmitted}
             onClick={() => saveMutation.mutate("submitted")}
           >
             {saveMutation.isPending
               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+              : isSubmitted
+              ? <CheckCircle2 className="w-3.5 h-3.5" />
+              : <Send className="w-3.5 h-3.5" />}
             {isSubmitted ? "Submitted" : "Submit Report"}
           </Button>
+
+          <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+
           <Button
             data-testid={bottom ? "btn-export-excel-bottom" : "btn-export-excel"}
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="gap-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+            className="gap-2 h-9 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
             onClick={() => {}}
             disabled
           >
@@ -311,73 +366,50 @@ export function NewReportTab({
           </Button>
         </div>
 
-        {!bottom && (
-          <Badge
-            variant="outline"
-            className={
-              isSubmitted
-                ? "text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 px-2.5 py-1"
-                : savedStatus === "draft"
-                ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200 px-2.5 py-1"
-                : "text-[11px] text-slate-400 border-slate-200 bg-slate-50 px-2.5 py-1"
-            }
-          >
-            {isSubmitted ? "✓ Submitted" : savedStatus === "draft" ? "Draft saved" : "Unsaved"}
-          </Badge>
-        )}
+        {/* Status badge — top bar only */}
+        {!bottom && statusBadge}
       </div>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
 
       {/* ── Top action bar ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3.5">
-        <ActionButtons />
+      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
+        <ActionBar />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 1 — General Info
+          §1 — General Info
       ══════════════════════════════════════════════════════════════════ */}
       <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-5 gap-y-4">
 
           <div>
-            <FieldLabel>Report Date</FieldLabel>
-            <Input
-              data-testid="input-report-date"
-              type="date"
-              value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)}
-              className="h-9 text-sm"
-            />
+            <FL>Report Date</FL>
+            <Input data-testid="input-report-date" type="date" value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)} className="h-9 text-sm" />
           </div>
 
           <div>
-            <FieldLabel>Report No.</FieldLabel>
-            <Input
-              data-testid="input-report-number"
-              value={reportNumber}
+            <FL>Report No.</FL>
+            <Input data-testid="input-report-number" value={reportNumber}
               onChange={(e) => setReportNumber(e.target.value)}
-              className="h-9 text-sm font-mono"
-              placeholder="e.g. 001"
-            />
+              className="h-9 text-sm font-mono tracking-wide" placeholder="e.g. 001" />
           </div>
 
           <div>
-            <FieldLabel>Prepared By</FieldLabel>
-            <Input
-              data-testid="input-prepared-by"
-              value={preparedBy}
+            <FL>Prepared By</FL>
+            <Input data-testid="input-prepared-by" value={preparedBy}
               onChange={(e) => setPreparedBy(e.target.value)}
-              className="h-9 text-sm"
-              placeholder="Name"
-            />
+              className={`h-9 text-sm ${preparedBy ? "text-slate-800" : ""}`}
+              placeholder="Your name" />
           </div>
 
           <div>
-            <FieldLabel>Shift</FieldLabel>
+            <FL>Shift</FL>
             <Select value={shift} onValueChange={setShift}>
               <SelectTrigger data-testid="select-shift" className="h-9 text-sm">
                 <SelectValue />
@@ -391,48 +423,47 @@ export function NewReportTab({
           </div>
 
           <div>
-            <FieldLabel>Weather</FieldLabel>
+            <FL>Weather</FL>
             <Select value={weather} onValueChange={setWeather}>
               <SelectTrigger data-testid="select-weather" className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="clear">☀️ Clear</SelectItem>
-                <SelectItem value="partly-cloudy">⛅ Partly Cloudy</SelectItem>
-                <SelectItem value="overcast">☁️ Overcast</SelectItem>
-                <SelectItem value="rain">🌧️ Rain</SelectItem>
-                <SelectItem value="wind">💨 Windy</SelectItem>
-                <SelectItem value="heat">🌡️ Extreme Heat</SelectItem>
+                <SelectItem value="clear">☀️  Clear</SelectItem>
+                <SelectItem value="partly-cloudy">⛅  Partly Cloudy</SelectItem>
+                <SelectItem value="overcast">☁️  Overcast</SelectItem>
+                <SelectItem value="rain">🌧️  Rain</SelectItem>
+                <SelectItem value="wind">💨  Windy</SelectItem>
+                <SelectItem value="heat">🌡️  Extreme Heat</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <FieldLabel>Temperature (°F)</FieldLabel>
-            <Input
-              data-testid="input-temperature"
-              type="number"
-              value={temperature}
-              onChange={(e) => setTemperature(e.target.value)}
-              className="h-9 text-sm"
-              placeholder="°F"
-            />
+            <FL>Temperature (°F)</FL>
+            <Input data-testid="input-temperature" type="number" value={temperature}
+              onChange={(e) => setTemperature(e.target.value)} className="h-9 text-sm" placeholder="°F" />
           </div>
 
         </div>
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 2 — Work Tasks
+          §2 — Work Tasks
       ══════════════════════════════════════════════════════════════════ */}
-      <Section num={2} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary} defaultOpen={true}>
-        <div className="overflow-x-auto">
+      <Section num={2} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm" data-testid="table-tasks">
-            <TableHeader cols={["Task Description", "Area / Location", "Status", "Notes"]} />
+            <TH cols={[
+              { label: "Task Description", cls: "min-w-[220px] w-[40%]" },
+              { label: "Area / Location",  cls: "min-w-[140px] w-[22%]" },
+              { label: "Status",           cls: "min-w-[140px] w-[18%]" },
+              { label: "Notes",            cls: "min-w-[130px]"         },
+            ]} />
             <tbody>
               {tasks.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-xs text-slate-300">
+                  <td colSpan={5} className="py-8 text-center text-xs text-slate-300 italic">
                     No tasks yet — add your first task below
                   </td>
                 </tr>
@@ -440,32 +471,24 @@ export function NewReportTab({
               {tasks.map((row, i) => {
                 const cfg = TASK_STATUS_CFG[row.status] ?? TASK_STATUS_CFG["not-started"];
                 return (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                    <td className="py-1.5 px-2 min-w-[180px]">
-                      <Input
-                        data-testid={`input-task-desc-${i}`}
-                        value={row.description}
+                  <tr key={row.id} className={`border-b border-slate-100 last:border-0 group ${cfg.rowBg}`}>
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-task-desc-${i}`} value={row.description}
                         onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                        className="h-8 text-xs"
-                        placeholder="Describe the task…"
-                      />
+                        className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                        placeholder="Describe the task…" />
                     </td>
-                    <td className="py-1.5 px-2 min-w-[130px]">
-                      <Input
-                        data-testid={`input-task-area-${i}`}
-                        value={row.area}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-task-area-${i}`} value={row.area}
                         onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className="h-8 text-xs"
-                        placeholder="Area / Zone"
-                      />
+                        className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                        placeholder="Area / Zone" />
                     </td>
-                    <td className="py-1.5 px-2 min-w-[140px]">
+                    <td className="py-1.5 px-2.5">
                       <div className="relative">
-                        <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 ${cfg.dot}`} />
-                        <Select
-                          value={row.status}
-                          onValueChange={(v) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, status: v } : r))}
-                        >
+                        <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
+                        <Select value={row.status}
+                          onValueChange={(v) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, status: v } : r))}>
                           <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text}`}>
                             <SelectValue />
                           </SelectTrigger>
@@ -482,20 +505,14 @@ export function NewReportTab({
                         </Select>
                       </div>
                     </td>
-                    <td className="py-1.5 px-2 min-w-[130px]">
-                      <Input
-                        data-testid={`input-task-notes-${i}`}
-                        value={row.notes}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-task-notes-${i}`} value={row.notes}
                         onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className="h-8 text-xs"
-                        placeholder="Optional"
-                      />
+                        className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                        placeholder="Optional" />
                     </td>
-                    <td className="py-1.5 px-1">
-                      <DeleteBtn
-                        testId={`btn-remove-task-${i}`}
-                        onClick={() => setTasks(tasks.filter((r) => r.id !== row.id))}
-                      />
+                    <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DelBtn testId={`btn-remove-task-${i}`} onClick={() => setTasks(tasks.filter((r) => r.id !== row.id))} />
                     </td>
                   </tr>
                 );
@@ -503,62 +520,50 @@ export function NewReportTab({
             </tbody>
           </table>
         </div>
-        <AddRowBtn
-          testId="btn-add-task"
-          label="Add Task"
-          onClick={() => setTasks([...tasks, { id: uid(), description: "", area: "", status: "in-progress", notes: "" }])}
-        />
+        <AddRow testId="btn-add-task" label="Add Task"
+          onClick={() => setTasks([...tasks, { id: uid(), description: "", area: "", status: "in-progress", notes: "" }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 3 — Manpower (Worker-based)
+          §3 — Manpower
       ══════════════════════════════════════════════════════════════════ */}
-      <Section num={3} title="Manpower" icon={<Users className="w-4 h-4" />} summary={mpSummary} defaultOpen={true}>
-        <div className="overflow-x-auto">
+      <Section num={3} title="Manpower" icon={<Users className="w-4 h-4" />} summary={mpSummary}>
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm" data-testid="table-manpower">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {[
-                  { label: "Worker Name",          cls: "min-w-[160px]" },
-                  { label: "Trade",                cls: "min-w-[130px]" },
-                  { label: "Attendance",           cls: "min-w-[130px]" },
-                  { label: "Start",                cls: "w-24"          },
-                  { label: "End",                  cls: "w-24"          },
-                  { label: "Hrs",                  cls: "w-14 text-center" },
-                  { label: "Notes",                cls: "min-w-[100px]" },
-                ].map(({ label, cls }) => (
-                  <th key={label} className={`text-left py-2 px-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${cls}`}>
-                    {label}
-                  </th>
-                ))}
-                <th className="w-8" />
-              </tr>
-            </thead>
+            <TH cols={[
+              { label: "Worker Name",  cls: "min-w-[200px] w-[26%]" },
+              { label: "Trade",        cls: "min-w-[120px] w-[16%]" },
+              { label: "Attendance",   cls: "min-w-[118px] w-[14%]" },
+              { label: "Start",        cls: "w-[90px]"              },
+              { label: "End",          cls: "w-[90px]"              },
+              { label: "Hrs",          cls: "w-[60px] text-center"  },
+              { label: "Notes",        cls: "min-w-[110px]"         },
+            ]} />
             <tbody>
               {manpower.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-xs text-slate-300">
-                    No workers added — select workers from the registry below
+                  <td colSpan={8} className="py-8 text-center text-xs text-slate-300 italic">
+                    No workers added — select from the registry below
                   </td>
                 </tr>
               )}
               {manpower.map((row, i) => {
-                const workerIds = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
-                const availableWorkers = activeWorkers.filter((w) => !workerIds.has(w.id));
-                const allSelectable = row.workerId
-                  ? [activeWorkers.find((w) => w.id === row.workerId), ...availableWorkers].filter(Boolean) as Worker[]
-                  : availableWorkers;
+                const workerIds      = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
+                const avail          = activeWorkers.filter((w) => !workerIds.has(w.id));
+                const allSelectable  = row.workerId
+                  ? [activeWorkers.find((w) => w.id === row.workerId), ...avail].filter(Boolean) as Worker[]
+                  : avail;
+                const hoursActive    = HOURS_COMPUTED.has(row.attendanceStatus);
 
                 return (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                  <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/50">
                     {/* Worker Name */}
-                    <td className="py-1.5 px-2">
+                    <td className="py-1.5 px-2.5">
                       <Select
                         value={row.workerId !== null ? String(row.workerId) : "__none__"}
                         onValueChange={(v) => {
                           if (v === "__none__") {
-                            setManpower(manpower.map((r) => r.id === row.id
-                              ? { ...r, workerId: null, workerName: "", trade: "" } : r));
+                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, workerId: null, workerName: "", trade: "" } : r));
                             return;
                           }
                           const w = activeWorkers.find((w) => w.id === Number(v));
@@ -567,10 +572,7 @@ export function NewReportTab({
                             ? { ...r, workerId: w.id, workerName: w.fullName, trade: w.trade ?? "" } : r));
                         }}
                       >
-                        <SelectTrigger
-                          data-testid={`select-mp-worker-${i}`}
-                          className="h-8 text-xs"
-                        >
+                        <SelectTrigger data-testid={`select-mp-worker-${i}`} className="h-8 text-xs">
                           <SelectValue placeholder="Select worker…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -584,29 +586,26 @@ export function NewReportTab({
                             </SelectItem>
                           ))}
                           {allSelectable.length === 0 && (
-                            <div className="px-3 py-2 text-xs text-slate-400">All workers already added</div>
+                            <div className="px-3 py-2 text-xs text-slate-400 italic">All workers already added</div>
                           )}
                         </SelectContent>
                       </Select>
                     </td>
 
-                    {/* Trade (read-only auto-filled) */}
-                    <td className="py-1.5 px-2">
-                      <div className="h-8 flex items-center px-2 text-xs text-slate-500 bg-slate-50 rounded-md border border-slate-200 truncate">
-                        {row.trade || <span className="text-slate-300 italic">auto-filled</span>}
-                      </div>
+                    {/* Trade — read-only */}
+                    <td className="py-1.5 px-2.5">
+                      <ROCell>
+                        {row.trade || <span className="italic text-slate-300">auto-filled</span>}
+                      </ROCell>
                     </td>
 
-                    {/* Attendance Status */}
-                    <td className="py-1.5 px-2">
-                      <Select
-                        value={row.attendanceStatus}
+                    {/* Attendance */}
+                    <td className="py-1.5 px-2.5">
+                      <Select value={row.attendanceStatus}
                         onValueChange={(v) => {
                           const hrs = calcHours(row.startTime, row.endTime, v);
-                          setManpower(manpower.map((r) => r.id === row.id
-                            ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
-                        }}
-                      >
+                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
+                        }}>
                         <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
@@ -618,61 +617,45 @@ export function NewReportTab({
                       </Select>
                     </td>
 
-                    {/* Start Time */}
-                    <td className="py-1.5 px-2">
-                      <Input
-                        data-testid={`input-mp-start-${i}`}
-                        type="time"
-                        value={row.startTime}
+                    {/* Start */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-mp-start-${i}`} type="time" value={row.startTime}
                         onChange={(e) => {
                           const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus);
-                          setManpower(manpower.map((r) => r.id === row.id
-                            ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
+                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
                         }}
-                        className="h-8 text-xs"
-                        disabled={!HOURS_COMPUTED.has(row.attendanceStatus)}
-                      />
+                        className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
+                        disabled={!hoursActive} />
                     </td>
 
-                    {/* End Time */}
-                    <td className="py-1.5 px-2">
-                      <Input
-                        data-testid={`input-mp-end-${i}`}
-                        type="time"
-                        value={row.endTime}
+                    {/* End */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-mp-end-${i}`} type="time" value={row.endTime}
                         onChange={(e) => {
                           const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus);
-                          setManpower(manpower.map((r) => r.id === row.id
-                            ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
+                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
                         }}
-                        className="h-8 text-xs"
-                        disabled={!HOURS_COMPUTED.has(row.attendanceStatus)}
-                      />
+                        className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
+                        disabled={!hoursActive} />
                     </td>
 
-                    {/* Hours (auto-calc, read-only) */}
-                    <td className="py-1.5 px-2">
-                      <div className="h-8 flex items-center justify-center px-1 text-xs font-semibold text-slate-700 bg-slate-50 rounded-md border border-slate-200">
-                        {HOURS_COMPUTED.has(row.attendanceStatus) ? row.hoursWorked.toFixed(1) : "—"}
-                      </div>
+                    {/* Hrs — read-only */}
+                    <td className="py-1.5 px-2.5">
+                      <ROCell center>
+                        {hoursActive ? row.hoursWorked.toFixed(1) : <span className="text-slate-300">—</span>}
+                      </ROCell>
                     </td>
 
                     {/* Notes */}
-                    <td className="py-1.5 px-2">
-                      <Input
-                        data-testid={`input-mp-notes-${i}`}
-                        value={row.notes}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
                         onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className="h-8 text-xs"
-                        placeholder="Optional"
-                      />
+                        className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                        placeholder="Optional" />
                     </td>
 
-                    <td className="py-1.5 px-1">
-                      <DeleteBtn
-                        testId={`btn-remove-mp-${i}`}
-                        onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))}
-                      />
+                    <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
                     </td>
                   </tr>
                 );
@@ -680,431 +663,390 @@ export function NewReportTab({
 
               {/* Totals row */}
               {manpower.length > 0 && (
-                <tr className="border-t-2 border-slate-200 bg-slate-50">
-                  <td className="py-2 px-2 text-xs font-semibold text-slate-600">
-                    Total
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <td colSpan={5} className="py-2.5 px-2.5">
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Summary</span>
+                    <span className="ml-3 text-xs text-slate-600">
+                      <span className="font-semibold text-slate-800">{totalWorkers}</span> worker{totalWorkers !== 1 ? "s" : ""}
+                    </span>
                   </td>
-                  <td colSpan={4} />
-                  <td className="py-2 px-2">
-                    <div className="h-7 flex items-center justify-center px-1 text-xs font-bold text-blue-700 bg-blue-50 rounded-md border border-blue-200">
+                  <td className="py-2.5 px-2.5">
+                    <div className="h-7 flex items-center justify-center px-1 rounded-md bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 tabular-nums">
                       {totalManhours.toFixed(1)}
                     </div>
                   </td>
-                  <td className="py-2 px-2 text-xs text-slate-500">
-                    <span className="font-medium">{totalWorkers}</span> worker{totalWorkers !== 1 ? "s" : ""}
+                  <td colSpan={2} className="py-2.5 px-2.5">
+                    <span className="text-[10px] text-slate-400">man-hrs</span>
                   </td>
-                  <td />
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        <AddRowBtn
-          testId="btn-add-manpower"
-          label="Add Worker"
+        <AddRow testId="btn-add-manpower" label="Add Worker"
           onClick={() => setManpower([...manpower, {
-            id: uid(),
-            workerId: null, workerName: "", trade: "",
+            id: uid(), workerId: null, workerName: "", trade: "",
             attendanceStatus: "ATTEND",
             startTime: "07:00", endTime: "15:30",
             hoursWorked: calcHours("07:00", "15:30", "ATTEND"),
             notes: "",
-          }])}
-        />
+          }])} />
 
         {activeWorkers.length === 0 && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
-            <Info className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <div className="mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-100">
+            <Info className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700">
-              No active workers found in the registry. Add workers in the Admin Mode Manpower section first.
+              No active workers found. Add workers in Admin Mode → Manpower first.
             </p>
           </div>
         )}
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 4 — Materials
+          §4 — Materials
       ══════════════════════════════════════════════════════════════════ */}
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm" data-testid="table-materials">
-            <TableHeader cols={["Material Description", "Unit", "Qty Used", "Notes"]} />
+            <TH cols={[
+              { label: "Material Description", cls: "min-w-[200px] w-[50%]" },
+              { label: "Unit",                 cls: "w-[70px]"              },
+              { label: "Qty Used",             cls: "w-[90px]"              },
+              { label: "Notes",                cls: "min-w-[130px]"         },
+            ]} />
             <tbody>
               {materials.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-xs text-slate-300">
-                    No materials logged yet
-                  </td>
+                  <td colSpan={5} className="py-8 text-center text-xs text-slate-300 italic">No materials logged yet</td>
                 </tr>
               )}
               {materials.map((row, i) => (
-                <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                  <td className="py-1.5 px-2 min-w-[200px]">
-                    <Input
-                      data-testid={`input-mat-desc-${i}`}
-                      value={row.description}
+                <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/50">
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-mat-desc-${i}`} value={row.description}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                      className="h-8 text-xs"
-                      placeholder="Material name or description…"
-                    />
+                      className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                      placeholder="Material name or description…" />
                   </td>
-                  <td className="py-1.5 px-2 w-20">
-                    <Input
-                      data-testid={`input-mat-unit-${i}`}
-                      value={row.unit}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center"
-                      placeholder="EA"
-                    />
+                      className="h-8 text-xs text-center" placeholder="EA" />
                   </td>
-                  <td className="py-1.5 px-2 w-24">
-                    <Input
-                      data-testid={`input-mat-qty-${i}`}
-                      type="number"
-                      min={0}
-                      value={row.qty}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center"
-                    />
+                      className="h-8 text-xs text-center tabular-nums" />
                   </td>
-                  <td className="py-1.5 px-2 min-w-[140px]">
-                    <Input
-                      data-testid={`input-mat-notes-${i}`}
-                      value={row.notes}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-mat-notes-${i}`} value={row.notes}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className="h-8 text-xs"
-                      placeholder="Optional"
-                    />
+                      className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                      placeholder="Optional" />
                   </td>
-                  <td className="py-1.5 px-1">
-                    <DeleteBtn
-                      testId={`btn-remove-mat-${i}`}
-                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                    />
+                  <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DelBtn testId={`btn-remove-mat-${i}`} onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <AddRowBtn
-          testId="btn-add-material"
-          label="Add Material"
-          onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "" }])}
-        />
+        <AddRow testId="btn-add-material" label="Add Material"
+          onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "" }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 5 — Equipment
+          §5 — Equipment
       ══════════════════════════════════════════════════════════════════ */}
       <Section num={5} title="Equipment" icon={<Truck className="w-4 h-4" />} summary={eqSummary} defaultOpen={false}>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-1">
           <table className="w-full text-sm" data-testid="table-equipment">
-            <TableHeader cols={["Equipment Name", "Unit", "Qty", "Hours Used", "Notes"]} />
+            <TH cols={[
+              { label: "Equipment Name", cls: "min-w-[200px] w-[40%]" },
+              { label: "Unit",           cls: "w-[70px]"              },
+              { label: "Qty",            cls: "w-[70px]"              },
+              { label: "Hours Used",     cls: "w-[90px]"              },
+              { label: "Notes",          cls: "min-w-[130px]"         },
+            ]} />
             <tbody>
               {equipment.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-xs text-slate-300">
-                    No equipment logged yet
-                  </td>
+                  <td colSpan={6} className="py-8 text-center text-xs text-slate-300 italic">No equipment logged yet</td>
                 </tr>
               )}
               {equipment.map((row, i) => (
-                <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                  <td className="py-1.5 px-2 min-w-[180px]">
-                    <Input
-                      data-testid={`input-eq-name-${i}`}
-                      value={row.name}
+                <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/50">
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-name-${i}`} value={row.name}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                      className="h-8 text-xs"
-                      placeholder="Equipment name…"
-                    />
+                      className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                      placeholder="Equipment name…" />
                   </td>
-                  <td className="py-1.5 px-2 w-20">
-                    <Input
-                      data-testid={`input-eq-unit-${i}`}
-                      value={row.unit}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center"
-                      placeholder="EA"
-                    />
+                      className="h-8 text-xs text-center" placeholder="EA" />
                   </td>
-                  <td className="py-1.5 px-2 w-20">
-                    <Input
-                      data-testid={`input-eq-qty-${i}`}
-                      type="number"
-                      min={0}
-                      value={row.qty}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center"
-                    />
+                      className="h-8 text-xs text-center tabular-nums" />
                   </td>
-                  <td className="py-1.5 px-2 w-24">
-                    <Input
-                      data-testid={`input-eq-hours-${i}`}
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={row.hours}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center"
-                    />
+                      className="h-8 text-xs text-center tabular-nums" />
                   </td>
-                  <td className="py-1.5 px-2 min-w-[130px]">
-                    <Input
-                      data-testid={`input-eq-notes-${i}`}
-                      value={row.notes}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className="h-8 text-xs"
-                      placeholder="Optional"
-                    />
+                      className="h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors"
+                      placeholder="Optional" />
                   </td>
-                  <td className="py-1.5 px-1">
-                    <DeleteBtn
-                      testId={`btn-remove-eq-${i}`}
-                      onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))}
-                    />
+                  <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <AddRowBtn
-          testId="btn-add-equipment"
-          label="Add Equipment"
-          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])}
-        />
+        <AddRow testId="btn-add-equipment" label="Add Equipment"
+          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 6 — Photo Log
+          §6 — Photo Log
       ══════════════════════════════════════════════════════════════════ */}
-      <Section num={6} title="Photo Log" icon={<Image className="w-4 h-4" />} defaultOpen={false}>
+      <Section num={6} title="Photo Log" icon={<Image className="w-4 h-4" />} summary="0 photos" defaultOpen={false}>
         <div
           data-testid="photo-upload-zone"
-          className="flex flex-col items-center justify-center gap-4 py-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 cursor-not-allowed select-none"
+          className="flex flex-col items-center justify-center gap-3 py-10 border-2 border-dashed border-slate-200 rounded-xl bg-gradient-to-b from-slate-50 to-white"
         >
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <Image className="w-7 h-7 text-slate-300" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <Upload className="w-5 h-5 text-slate-400" />
           </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-slate-500">Photo upload</p>
-            <p className="text-xs text-slate-400 mt-1">JPG, PNG, HEIC · max 10 MB per photo</p>
-            <p className="text-xs text-slate-300 mt-2">Upload will be enabled once backend storage is configured</p>
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium text-slate-600">Click to upload site photos</p>
+            <p className="text-xs text-slate-400">JPG, PNG, HEIC · max 10 MB per photo · multiple files allowed</p>
           </div>
-          <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-200">
-            Coming soon
+          <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-200 bg-white mt-1">
+            Upload available in next update
           </Badge>
         </div>
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 7 — Progress
+          §7 — Progress
       ══════════════════════════════════════════════════════════════════ */}
-      <Section num={7} title="Progress" icon={<BarChart2 className="w-4 h-4" />}>
-        <div className="space-y-5">
+      <Section num={7} title="Progress" icon={<BarChart2 className="w-4 h-4" />} summary={progSummary}>
 
-          {/* A. Overall Completion + On Schedule */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* A. Completion + Schedule — two-column */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
 
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">
-                Overall Completion
-                <span className="ml-1 normal-case font-normal text-slate-300">(auto-calculated)</span>
-              </p>
-              <div className="flex items-end gap-3 mb-3">
-                <span className="text-4xl font-bold text-slate-800 leading-none">{overallPct}</span>
-                <span className="text-lg font-semibold text-slate-400 leading-none mb-0.5">%</span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    overallPct >= 100 ? "bg-emerald-500" : overallPct >= 70 ? "bg-blue-500" : overallPct >= 40 ? "bg-blue-400" : "bg-slate-400"
-                  }`}
-                  style={{ width: `${overallPct}%` }}
-                />
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">Weighted by estimated quantities</p>
-            </div>
-
-            <div>
-              <FieldLabel>On Schedule?</FieldLabel>
-              <div className="flex gap-2 mt-1">
-                <button
-                  type="button"
-                  data-testid="btn-on-schedule-yes"
-                  onClick={() => setOnSchedule(true)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all flex-1 justify-center ${
-                    onSchedule
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" /> On Track
-                </button>
-                <button
-                  type="button"
-                  data-testid="btn-on-schedule-no"
-                  onClick={() => setOnSchedule(false)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all flex-1 justify-center ${
-                    !onSchedule
-                      ? "bg-rose-50 border-rose-300 text-rose-700 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
-                  }`}
-                >
-                  <AlertTriangle className="w-4 h-4" /> Delayed
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Info note */}
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-100">
-            <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-700 leading-relaxed">
-              <strong>Est. Qty</strong> is fixed at the project scope level.&nbsp;
-              <strong>Prev. Cumul.</strong> is the running total from all submitted reports.&nbsp;
-              Enter <strong>Today</strong> below — New Total, Remaining, and Progress % are auto-calculated.
+          {/* Overall % */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+              Overall Completion
+              <span className="ml-1.5 font-normal normal-case text-slate-300">auto-calculated</span>
             </p>
+            <div className="flex items-baseline gap-1.5 mb-3">
+              <span className="text-5xl font-black text-slate-800 leading-none tabular-nums">{overallPct}</span>
+              <span className="text-2xl font-bold text-slate-400 leading-none">%</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  overallPct >= 100 ? "bg-emerald-500" : overallPct >= 70 ? "bg-blue-500" : "bg-blue-400"
+                }`}
+                style={{ width: `${overallPct}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">Weighted by estimated quantities from project scope</p>
           </div>
 
-          {/* B. Progress table */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-sm" data-testid="table-progress">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  {[
-                    { label: "Work Item / Description", cls: "text-left min-w-[160px] px-3" },
-                    { label: "Unit",        cls: "text-center w-12 px-2" },
-                    { label: "Est. Qty",    cls: "text-right w-20 px-3", note: "scope" },
-                    { label: "Prev. Cumul.", cls: "text-right w-24 px-3", note: "before today" },
-                    { label: "Today ✏",    cls: "text-center w-24 px-2 text-blue-700" },
-                    { label: "New Total",  cls: "text-right w-20 px-3" },
-                    { label: "Remaining",  cls: "text-right w-20 px-3" },
-                    { label: "Progress",   cls: "text-center w-28 px-3" },
-                  ].map(({ label, cls, note }) => (
-                    <th key={label} className={`py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${cls}`}>
-                      <div>{label}</div>
-                      {note && <div className="text-[9px] text-slate-400 normal-case font-normal tracking-normal">{note}</div>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {progressRows.map((row, i) => {
-                  const isOver = row.actualTotal > row.estimatedQty;
-                  return (
-                    <tr key={row.id} data-testid={`row-progress-${row.id}`}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                      <td className="py-2 px-3 text-sm text-slate-700">{row.description}</td>
-                      <td className="py-2 px-2 text-center text-xs text-slate-400 font-mono">{row.unit}</td>
-                      <td className="py-2 px-3 text-right text-sm text-slate-400 font-mono">{row.estimatedQty.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right text-sm text-slate-400 font-mono">{row.cumulativeQty.toLocaleString()}</td>
-                      <td className="py-1.5 px-2 text-center">
-                        <Input
-                          data-testid={`input-progress-today-${i}`}
-                          type="number" min={0}
-                          value={todayQty[row.id] ?? ""}
-                          placeholder="0"
-                          onChange={(e) => setTodayQty((prev) => ({ ...prev, [row.id]: Math.max(0, Number(e.target.value)) }))}
-                          className="h-8 text-xs text-center font-semibold border-blue-200 focus:border-blue-400 bg-blue-50 w-20"
-                        />
-                      </td>
-                      <td className={`py-2 px-3 text-right text-sm font-mono font-semibold ${isOver ? "text-amber-600" : "text-slate-700"}`}>
-                        {row.actualTotal.toLocaleString()}
-                      </td>
-                      <td className={`py-2 px-3 text-right text-sm font-mono ${row.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-500"}`}>
-                        {row.remaining.toLocaleString()}
-                      </td>
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${row.pct >= 100 ? "bg-emerald-500" : row.pct >= 75 ? "bg-blue-500" : "bg-blue-400"}`}
-                              style={{ width: `${row.pct}%` }}
-                            />
-                          </div>
-                          <span className={`text-xs font-bold w-8 text-right shrink-0 ${row.pct >= 100 ? "text-emerald-600" : "text-slate-600"}`}>
-                            {row.pct}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-50 border-t-2 border-slate-200">
-                  <td colSpan={2} className="py-2 px-3 text-xs font-semibold text-slate-600">Total</td>
-                  <td className="py-2 px-3 text-right text-xs font-bold text-slate-700 font-mono">
-                    {progressRows.reduce((s, r) => s + r.estimatedQty, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-bold text-slate-700 font-mono">
-                    {progressRows.reduce((s, r) => s + r.cumulativeQty, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2 px-2 text-center text-xs font-bold text-blue-700 font-mono">
-                    {progressRows.reduce((s, r) => s + r.todayQty, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-bold text-slate-700 font-mono">
-                    {progressRows.reduce((s, r) => s + r.actualTotal, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2 px-3 text-right text-xs font-bold text-slate-700 font-mono">
-                    {progressRows.reduce((s, r) => s + r.remaining, 0).toLocaleString()}
-                  </td>
-                  <td className="py-2 px-3 text-center text-xs font-bold text-slate-700">{overallPct}%</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* C. Issues / Delays */}
+          {/* On Schedule */}
           <div>
-            <FieldLabel>Issues / Delays</FieldLabel>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">Schedule Status</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                data-testid="btn-on-schedule-yes"
+                onClick={() => setOnSchedule(true)}
+                className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all flex-1 justify-center ${
+                  onSchedule
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm"
+                    : "bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" /> On Track
+              </button>
+              <button
+                type="button"
+                data-testid="btn-on-schedule-no"
+                onClick={() => setOnSchedule(false)}
+                className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl border text-sm font-semibold transition-all flex-1 justify-center ${
+                  !onSchedule
+                    ? "bg-rose-50 border-rose-300 text-rose-700 shadow-sm"
+                    : "bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" /> Delayed
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Info note */}
+        <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-lg bg-blue-50 border border-blue-100 mb-4">
+          <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-xs text-blue-700 leading-relaxed">
+            <strong>Est. Qty</strong> is fixed at the project scope level.&nbsp;
+            <strong>Prev. Cumul.</strong> = running total from all submitted reports.&nbsp;
+            Enter <strong className="text-blue-800">Today</strong> — New Total, Remaining, and Progress % auto-calculate.
+          </p>
+        </div>
+
+        {/* B. Progress table */}
+        <div className="overflow-x-auto rounded-xl border border-slate-200 mb-5">
+          <table className="w-full text-sm" data-testid="table-progress">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                {[
+                  { l: "Work Item / Description", c: "text-left min-w-[160px] px-3" },
+                  { l: "Unit",       c: "text-center w-12 px-2" },
+                  { l: "Est. Qty",   c: "text-right w-20 px-3", sub: "scope" },
+                  { l: "Prev. Cum.", c: "text-right w-20 px-3", sub: "before today" },
+                  { l: "Today ✏",   c: "text-center w-24 px-2 text-blue-600" },
+                  { l: "New Total",  c: "text-right w-20 px-3" },
+                  { l: "Remaining",  c: "text-right w-20 px-3" },
+                  { l: "Progress",   c: "text-center w-28 px-3" },
+                ].map(({ l, c, sub }) => (
+                  <th key={l} className={`py-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${c}`}>
+                    <div>{l}</div>
+                    {sub && <div className="text-[9px] text-slate-300 normal-case font-normal tracking-normal mt-0.5">{sub}</div>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {progressRows.map((row, i) => {
+                const isOver = row.actualTotal > row.estimatedQty;
+                return (
+                  <tr key={row.id} data-testid={`row-progress-${row.id}`}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors">
+                    <td className="py-2.5 px-3 text-sm text-slate-700 font-medium">{row.description}</td>
+                    <td className="py-2.5 px-2 text-center text-xs text-slate-400 font-mono">{row.unit}</td>
+                    <td className="py-2.5 px-3 text-right text-sm text-slate-400 font-mono tabular-nums">{row.estimatedQty.toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right text-sm text-slate-400 font-mono tabular-nums">{row.cumulativeQty.toLocaleString()}</td>
+                    <td className="py-2 px-2 text-center">
+                      <Input
+                        data-testid={`input-progress-today-${i}`}
+                        type="number" min={0}
+                        value={todayQty[row.id] ?? ""}
+                        placeholder="0"
+                        onChange={(e) => setTodayQty((prev) => ({ ...prev, [row.id]: Math.max(0, Number(e.target.value)) }))}
+                        className="h-8 text-xs text-center font-semibold border-blue-200 bg-blue-50 focus:border-blue-400 focus:bg-white tabular-nums w-20 mx-auto"
+                      />
+                    </td>
+                    <td className={`py-2.5 px-3 text-right text-sm font-mono font-semibold tabular-nums ${isOver ? "text-amber-600" : "text-slate-700"}`}>
+                      {row.actualTotal.toLocaleString()}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right text-sm font-mono tabular-nums ${row.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-500"}`}>
+                      {row.remaining.toLocaleString()}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${row.pct >= 100 ? "bg-emerald-500" : row.pct >= 75 ? "bg-blue-500" : "bg-blue-400"}`}
+                            style={{ width: `${row.pct}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-bold w-9 text-right shrink-0 tabular-nums ${row.pct >= 100 ? "text-emerald-600" : "text-slate-600"}`}>
+                          {row.pct}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-800">
+                <td colSpan={2} className="py-2.5 px-3 text-xs font-bold text-slate-200 uppercase tracking-wide">Total</td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-100 font-mono tabular-nums">
+                  {progressRows.reduce((s, r) => s + r.estimatedQty, 0).toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-100 font-mono tabular-nums">
+                  {progressRows.reduce((s, r) => s + r.cumulativeQty, 0).toLocaleString()}
+                </td>
+                <td className="py-2.5 px-2 text-center text-xs font-black text-blue-200 font-mono tabular-nums">
+                  {progressRows.reduce((s, r) => s + r.todayQty, 0).toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-100 font-mono tabular-nums">
+                  {progressRows.reduce((s, r) => s + r.actualTotal, 0).toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-100 font-mono tabular-nums">
+                  {progressRows.reduce((s, r) => s + r.remaining, 0).toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-center text-xs font-black text-white">
+                  {overallPct}%
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* C. Issues / Delays */}
+        <div className="space-y-4">
+          <div>
+            <FL>Issues / Delays</FL>
             <Textarea
               data-testid="input-issues"
               value={issues}
               onChange={(e) => setIssues(e.target.value)}
-              placeholder="Describe any issues, delays, or blockers encountered today. Include root cause, affected scope, and any corrective action taken…"
+              placeholder="List any issues, delays, or blockers encountered today. Include root cause, affected scope, and corrective action taken…"
               className="text-sm min-h-[90px] resize-y"
             />
           </div>
 
           {/* D. Next Day Work Plan */}
           <div>
-            <FieldLabel>Next Day Work Plan</FieldLabel>
+            <FL>Next Day Work Plan</FL>
             <Textarea
               data-testid="input-next-day-plan"
               value={nextDayPlan}
               onChange={(e) => setNextDayPlan(e.target.value)}
-              placeholder="List the planned work scope for tomorrow's shift. Include work items, areas, and any special requirements or crew changes…"
+              placeholder="Plan for tomorrow's shift — work items, areas, crew assignments, special requirements or equipment…"
               className="text-sm min-h-[90px] resize-y"
             />
           </div>
-
         </div>
+
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          Section 8 — Notes / Remarks
+          §8 — Notes / Remarks
       ══════════════════════════════════════════════════════════════════ */}
-      <Section num={8} title="Notes / Remarks" icon={<FileText className="w-4 h-4" />} summary={notesSummary} defaultOpen={true}>
-        <div className="space-y-4">
+      <Section num={8} title="Notes / Remarks" icon={<FileText className="w-4 h-4" />} summary={notesSummary}>
+        <div className="space-y-5">
 
           <div>
-            <FieldLabel>General Notes</FieldLabel>
+            <FL>General Notes</FL>
             <Textarea
               data-testid="input-general-notes"
               value={generalNotes}
               onChange={(e) => setGeneralNotes(e.target.value)}
-              placeholder="Any general observations, site conditions, or notes for the record…"
+              placeholder="General site observations, conditions, or notes for the record…"
               className="text-sm min-h-[90px] resize-y"
             />
           </div>
 
           <div>
-            <FieldLabel>Safety Observations</FieldLabel>
+            <FL>Safety Observations</FL>
             <Textarea
               data-testid="input-safety-notes"
               value={safetyNotes}
@@ -1115,12 +1057,12 @@ export function NewReportTab({
           </div>
 
           <div>
-            <FieldLabel>Inspector / Visitor on Site</FieldLabel>
+            <FL>Inspector / Visitor on Site</FL>
             <Input
               data-testid="input-inspector-visitor"
               value={inspectorVisitor}
               onChange={(e) => setInspectorVisitor(e.target.value)}
-              placeholder="Name and affiliation of any inspector or visitor"
+              placeholder="Name and affiliation of any inspector or visitor present today"
               className="h-9 text-sm"
             />
           </div>
@@ -1129,8 +1071,38 @@ export function NewReportTab({
       </Section>
 
       {/* ── Bottom action bar ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-5 py-4">
-        <ActionButtons bottom />
+      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <Button
+            data-testid="btn-save-draft-bottom"
+            variant="outline" size="sm"
+            className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
+            disabled={saveMutation.isPending || isSubmitted}
+            onClick={() => saveMutation.mutate("draft")}
+          >
+            {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Save Draft
+          </Button>
+          <Button
+            data-testid="btn-submit-report-bottom"
+            size="sm"
+            className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+            disabled={saveMutation.isPending || isSubmitted}
+            onClick={() => saveMutation.mutate("submitted")}
+          >
+            {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+            {isSubmitted ? "Submitted" : "Submit Report"}
+          </Button>
+          <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+          <Button
+            data-testid="btn-export-excel-bottom"
+            variant="ghost" size="sm"
+            className="gap-2 h-9 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
+            onClick={() => {}} disabled
+          >
+            <Download className="w-3.5 h-3.5" /> Export Excel
+          </Button>
+        </div>
       </div>
 
     </div>

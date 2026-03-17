@@ -1,0 +1,346 @@
+Refine the Daily Report detail page that is already implemented.
+
+Important:
+- This is a refinement pass, not a rebuild.
+- Keep the current white/light TK Electric admin theme.
+- Keep the existing section order and current backend bindings.
+- Do NOT remove already working logic for manpower, progress, or project linkage.
+- Do NOT redesign the whole page from scratch.
+- Improve visual hierarchy, spacing, field alignment, and usability based on the current implemented screen.
+
+==================================================
+GOAL
+==================================================
+Make the Daily Report editor look more polished, balanced, and production-ready.
+
+The page already has the right structure:
+- Project header
+- Action bar
+- General Info
+- Work Tasks
+- Manpower
+- Materials
+- Equipment
+- Photo Log
+- Progress
+- Notes / Remarks
+- Bottom action bar
+
+Now improve the UI/UX quality of this existing structure.
+
+==================================================
+1. TOP PROJECT HEADER — MAKE IT FEEL MORE COMPLETE
+==================================================
+Current header is functional but still a little plain.
+
+Improve the top project card:
+- Keep project name as the strongest text
+- Keep PO number, location, manager, and started date
+- Improve spacing between metadata items
+- Make the project icon area feel slightly more premium
+- Keep the status badge visible and cleaner
+- Make the card height slightly tighter so it feels compact and solid
+- Align metadata so it reads cleanly in one row on desktop if space allows
+
+Do not make it flashy.
+Keep it professional and clean.
+
+==================================================
+2. TOP ACTION BAR — STRONGER REPORT ACTION HIERARCHY
+==================================================
+Current action bar feels too weak and visually disconnected.
+
+Improve it like this:
+- Left side: Save Draft, Submit, Export Excel
+- Right side: report status badge such as Draft / Unsaved / Saved / Submitted
+- Make primary action more obvious
+- Save Draft should feel secondary but still easy to tap
+- Export Excel should remain tertiary
+- Add clearer visual grouping between actions and status
+
+If Submit is disabled:
+- show subtle helper text or tooltip explaining what is missing
+
+Also:
+- make top action bar sticky only if simple to implement cleanly
+- otherwise keep it fixed in normal flow and improve contrast
+
+==================================================
+3. SECTION CARD SPACING AND VISUAL RHYTHM
+==================================================
+All cards currently look a bit too similar in weight.
+
+Refine section cards:
+- slightly improve vertical spacing between sections
+- make section headers a little more distinct
+- keep same border radius family
+- keep borders subtle but clear
+- make card padding more consistent across all sections
+- make repeated input rows slightly tighter
+
+Goal:
+The page should feel long, but not tiring.
+
+==================================================
+4. GENERAL INFO — CLEANER INPUT BALANCE
+==================================================
+Keep current fields:
+- Report Date
+- Report No.
+- Prepared By
+- Shift
+- Weather
+- Temperature
+
+Refine:
+- all fields must align perfectly in a balanced 3-column layout
+- labels should sit consistently above fields
+- make Report No. look more deliberate, not like a placeholder-only field
+- Prepared By should visually feel auto-filled if user name exists
+- Weather selector should feel cleaner and not visually heavier than other fields
+
+==================================================
+5. WORK TASKS — FEEL MORE LIKE A REAL DAILY LOG
+==================================================
+Keep current columns:
+- Task Description
+- Area / Location
+- Status
+- Notes
+
+Refine:
+- make input widths more balanced
+- Task Description wider
+- Status narrower but readable
+- Notes flexible
+- delete icon should align properly per row
+- Add Task button should feel like a row-level utility action, not floating randomly
+
+Improve row UX:
+- rows should feel easier to scan
+- slightly reduce excess empty horizontal space
+- keep table headers readable but subtle
+
+==================================================
+6. MANPOWER — POLISH THE MOST IMPORTANT SECTION
+==================================================
+This section is already moving in the right direction.
+Refine it carefully.
+
+Keep columns:
+- Worker Name
+- Trade
+- Attendance
+- Start
+- End
+- Hrs
+- Notes
+
+Improve:
+- make Worker Name column noticeably wider
+- Trade should stay auto-filled and visually read-only
+- Attendance select should be compact
+- Start / End time inputs should align perfectly
+- Hrs should feel clearly auto-calculated and read-only
+- Total row should feel more intentional and useful
+
+For total row:
+show clearly:
+- Total Man-Hours
+- Total Workers
+
+Reduce visual clutter:
+- total row should not look like another editable row
+- differentiate summary row with lighter background or subtle band
+
+Also:
+- Add Worker button should align neatly with the section content width
+- prevent row controls from feeling cramped
+
+==================================================
+7. MATERIALS AND EQUIPMENT — UNIFY THEM BETTER
+==================================================
+Materials and Equipment sections should feel like sibling blocks.
+
+Keep current fields.
+
+Materials:
+- Material Description
+- Unit
+- Qty Used
+- Notes
+
+Equipment:
+- Equipment Name
+- Unit
+- Qty
+- Hours Used
+- Notes
+
+Refine both:
+- same visual proportions
+- same row height
+- same Add button treatment
+- same delete icon alignment
+- numeric columns narrower and more consistent
+- description/name column wider
+- Notes column flexible
+
+These two sections should visually mirror each other.
+
+==================================================
+8. PHOTO LOG — BETTER EMPTY STATE
+==================================================
+Current placeholder is okay but still feels too empty.
+
+Improve the empty state:
+- center the upload icon and helper text more intentionally
+- make the dropzone look more like a usable feature, less like a disabled block
+- keep “coming soon” only if upload is not connected yet
+- clarify supported file types and size limit
+- keep it simple and clean, not oversized
+
+The photo area should feel like:
+“This is ready for use soon,”
+not
+“This is unfinished.”
+
+==================================================
+9. PROGRESS SECTION — BEST SECTION, JUST NEEDS FINISHING
+==================================================
+Current Progress section is strong. Keep structure.
+Do not rebuild logic.
+
+Keep:
+- Overall Completion %
+- On Schedule toggle/status
+- Progress table
+- Issues / Delays
+- Next Day Work Plan
+
+Refine it:
+
+A. Overall completion block
+- make percentage and progress bar align better
+- make “auto-calculated” more subtle
+- keep percentage prominent
+
+B. On Schedule block
+- make On Track / Delayed feel like a real status selector
+- improve spacing and selection clarity
+- active status should be clearly readable
+
+C. Progress table
+Keep columns:
+- Work Item / Description
+- Unit
+- Est. Qty
+- Prev. Cumul.
+- Today
+- New Total
+- Remaining
+- Progress
+
+Improve:
+- header spacing
+- numeric alignment
+- Today input boxes should feel intentionally editable
+- total row should stand out more clearly
+- progress bars should be a little easier to scan
+- long rows should remain very readable
+
+D. Textareas
+- Issues / Delays and Next Day Work Plan should have slightly better spacing
+- placeholders should feel operational, not generic
+
+==================================================
+10. NOTES / REMARKS — IMPROVE STRUCTURE
+==================================================
+Current Notes / Remarks section now has:
+- General Notes
+- Safety Observations
+- Inspector / Visitor on Site
+
+Keep this structure.
+
+Refine:
+- make each field visually distinct with better vertical spacing
+- labels should be clearer
+- textarea heights should feel balanced
+- Inspector / Visitor field should look intentionally different if it is single-line
+- section should not feel like an afterthought
+
+==================================================
+11. COLLAPSIBLE SECTION BEHAVIOR
+==================================================
+Keep collapsible cards.
+
+Improve:
+- smoother chevron alignment
+- more obvious expanded/collapsed states
+- when collapsed, show a short summary if data exists
+
+Examples:
+- Work Tasks: “2 tasks”
+- Manpower: “2 workers · 17.0 hrs”
+- Materials: “1 item”
+- Equipment: “1 item”
+- Photo Log: “0 photos”
+- Progress: “73% complete”
+- Notes / Remarks: “3 fields”
+
+General Info and Progress should stay expanded by default.
+
+==================================================
+12. BOTTOM ACTION AREA
+==================================================
+The bottom Save Draft / Submit / Export actions should remain,
+but improve layout so they feel like final submission controls.
+
+Refine:
+- align buttons cleanly to the right
+- keep Submit as primary
+- Save Draft secondary
+- Export Excel tertiary
+- match the tone of the top action bar
+
+If top and bottom action bars both exist:
+- make them consistent in wording and hierarchy
+
+==================================================
+13. CONSISTENCY RULES
+==================================================
+Please enforce these consistency rules across the entire Daily Report page:
+
+- Same input height across similar controls
+- Same border radius family
+- Same spacing between label and field
+- Same icon alignment in section headers
+- Same Add button style across Work Tasks / Manpower / Materials / Equipment
+- Same delete icon alignment per row
+- Same table header visual style
+- Same summary row style where totals exist
+
+==================================================
+14. DO NOT CHANGE THESE
+==================================================
+Do NOT change:
+- project/report data structure
+- current manpower worker-based logic
+- current attendance options
+- current progress calculation logic
+- current white/light TK Electric visual direction
+- current section order
+
+==================================================
+15. FINAL RESULT
+==================================================
+The Daily Report page should feel:
+- cleaner
+- more balanced
+- easier to scan
+- better for field use
+- closer to a finished product
+- less plain, but still professional
+
+This is a refinement and polish pass on the existing implementation, not a redesign.

@@ -1,0 +1,202 @@
+Refine the existing Daily Report detail page implementation. This is a targeted update pass, not a redesign.
+
+Important rules:
+- Keep the current TK Electric light theme and current overall page style.
+- Keep current project linkage, report linkage, manpower linkage, and progress logic.
+- Do not break existing working sections.
+- Apply only the changes below.
+
+==================================================
+1. GENERAL INFO LAYOUT FIX
+==================================================
+The General Info input fields are too wide and visually overlapping / cramped.
+
+Fix the General Info section:
+- Reduce field width and rebalance spacing
+- Keep it in a clean responsive grid
+- On desktop, use this exact visual order:
+
+Row 1:
+- Report No.
+- Prepared By
+- Report Date
+
+Row 2:
+- Shift
+- Weather
+- Temperature (°F)
+
+Requirements:
+- Labels must stay above each input
+- All 6 fields should have equal visual rhythm
+- No field should stretch too wide
+- Inputs should align cleanly inside the card without collision
+- Report Date field should not dominate the row
+- Temperature field should be compact compared to text fields
+
+==================================================
+2. REPORT NO. AUTO GENERATION
+==================================================
+Report No. should NOT be manually typed.
+
+Change logic:
+- Auto-generate Report No. based on the number of reports already created for that project
+- Example:
+  - first report = 001
+  - second report = 002
+  - third report = 003
+- Use zero-padded numbering
+- When opening a new draft report, automatically assign the next available report number
+- Show Report No. as read-only or auto-filled
+- Do not require manual input for Report No.
+
+If there is already a report history list for the project:
+- derive the next number from existing reports
+- avoid duplicate numbers
+
+==================================================
+3. GENERAL INFO FIELD ORDER
+==================================================
+Use this exact field arrangement in General Info:
+
+1. Report No.
+2. Prepared By
+3. Report Date
+4. Shift
+5. Weather
+6. Temperature
+
+This order must be reflected visually in the layout.
+
+==================================================
+4. MOVE MANPOWER SECTION
+==================================================
+Move the Manpower section so it appears directly after General Info and before Work Tasks.
+
+New section order at the top should be:
+- General Info
+- Manpower
+- Work Tasks
+- Materials
+- Equipment
+- Photo Log
+- Progress
+- Notes / Remarks
+
+Do not change the rest of the section order unnecessarily.
+
+==================================================
+5. MANPOWER INPUT FIXES
+==================================================
+Current manpower row has a duplicate name display issue.
+The selected worker name is appearing twice in the worker field.
+
+Fix manpower row behavior:
+- Worker Name should display only one name
+- No duplicated stacked name text
+- Dropdown/search result should resolve to one clean selected value
+
+Also update manpower worker input behavior:
+- Allow typing worker name manually
+- At the same time, support selecting from registered manpower workers
+- Use a searchable combobox / autocomplete style input if possible
+
+Desired behavior:
+- User can type free text if worker is not registered yet
+- User can also search and select an existing registered worker
+- If an existing registered worker is selected:
+  - auto-fill trade/classification
+- If user types a custom manual name:
+  - trade can still be selected or entered as currently supported
+
+Keep:
+- Attendance
+- Start
+- End
+- Hrs auto-calculation
+- Notes
+- Summary row with total workers and total man-hours
+
+==================================================
+6. WORK TASKS: ADD DRAWING + PHOTO UPLOAD PER TASK
+==================================================
+Enhance each Work Task row so each task can have:
+- drawing attachment
+- photo attachment
+
+Add per-task attachment capability:
+- Each task row should support attaching drawing files and photos
+- Best UX: small attachment actions/icons at row level
+- Support showing uploaded file count or attachment indicator
+- If backend is not fully connected yet, build the UI structure and placeholder state cleanly
+
+Preferred approach:
+- Add an attachment area or attachment button per task row
+- Allow:
+  - drawing upload (PDF/image/file reference)
+  - photo upload
+- If too heavy for inline layout, use a compact expandable row detail or mini popover/modal trigger for attachments
+
+Do not make the row too cluttered.
+Keep task row readable first.
+
+==================================================
+7. MATERIALS SECTION: INVENTORY LINKED SEARCH
+==================================================
+Materials should be linked to inventory items.
+
+Update Materials section:
+- Material Description should support typing and searching inventory items
+- Show matching inventory items in a dropdown/autocomplete list
+- User should be able to select an inventory item from the list
+- Once selected:
+  - auto-fill the correct unit from the inventory item
+  - unit should become read-only or auto-selected
+- Keep Qty Used editable
+- Keep Notes editable
+
+Behavior details:
+- typing in Material Description should search inventory records
+- selected material should use the inventory item’s real item name
+- unit must follow the selected item automatically
+- prevent mismatch between selected inventory item and manually changed unit
+
+If inventory item is not found:
+- optionally allow manual custom material entry only if needed
+- but prioritize inventory-linked selection first
+
+==================================================
+8. MATERIALS ROW UX
+==================================================
+Refine materials row layout after inventory linkage:
+- Material Description should be the widest field
+- Unit should be compact and auto-filled
+- Qty Used should stay numeric and compact
+- Notes should remain flexible
+- Add Material button should stay aligned cleanly below rows
+- Delete icon alignment should stay consistent
+
+==================================================
+9. DO NOT BREAK EXISTING LOGIC
+==================================================
+Do NOT break:
+- existing project header
+- existing report save draft behavior
+- existing progress section and calculations
+- existing materials/equipment section structure
+- existing attendance/man-hours logic in manpower
+- existing report tabs
+
+==================================================
+10. FINAL RESULT
+==================================================
+After this update, the Daily Report page should behave like this:
+
+- General Info is compact, aligned, and ordered correctly
+- Report No. is automatically generated
+- Manpower appears right after General Info
+- Worker name shows only once and supports both manual typing and registered worker search
+- Work Tasks support drawing/photo attachment per task
+- Materials search inventory items directly and auto-fill unit
+
+This is a refinement update to the existing implementation, not a full redesign.

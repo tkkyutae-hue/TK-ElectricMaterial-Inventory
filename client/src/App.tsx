@@ -26,6 +26,7 @@ import ProjectDetail from "@/pages/ProjectDetail";
 import Reorder from "@/pages/Reorder";
 import Reports from "@/pages/Reports";
 import DailyReport from "@/pages/DailyReport";
+import DailyReportWorkspace from "@/pages/DailyReportWorkspace";
 import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
 
@@ -49,9 +50,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 // Standalone Daily Report layout — light theme, no admin sidebar, back-to-hub header
-function DailyReportLayout({ children }: { children: React.ReactNode }) {
+function DailyReportLayout({
+  children,
+  backTo = "/home",
+  backLabel,
+}: {
+  children: React.ReactNode;
+  backTo?: string;
+  backLabel?: string;
+}) {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
+  const label = backLabel ?? t.dailyReportMode;
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
       <header style={{
@@ -62,7 +72,7 @@ function DailyReportLayout({ children }: { children: React.ReactNode }) {
       }}>
         <button
           data-testid="btn-daily-report-back"
-          onClick={() => navigate("/home")}
+          onClick={() => navigate(backTo)}
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "none", cursor: "pointer",
@@ -74,7 +84,7 @@ function DailyReportLayout({ children }: { children: React.ReactNode }) {
           onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />
-          <span>{t.dailyReportMode}</span>
+          <span>{label}</span>
         </button>
       </header>
       <main style={{ flex: 1, padding: "24px 32px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
@@ -89,6 +99,16 @@ function DailyReportRouter() {
     <AuthGuard>
       <DailyReportLayout>
         <DailyReport />
+      </DailyReportLayout>
+    </AuthGuard>
+  );
+}
+
+function DailyReportWorkspaceRouter() {
+  return (
+    <AuthGuard>
+      <DailyReportLayout backTo="/daily-report" backLabel="Project List">
+        <DailyReportWorkspace />
       </DailyReportLayout>
     </AuthGuard>
   );
@@ -195,6 +215,7 @@ function Router() {
       <Route path="/home" component={Home} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
+      <Route path="/daily-report/:projectId" component={DailyReportWorkspaceRouter} />
       <Route path="/daily-report" component={DailyReportRouter} />
       <Route component={AdminRouter} />
     </Switch>

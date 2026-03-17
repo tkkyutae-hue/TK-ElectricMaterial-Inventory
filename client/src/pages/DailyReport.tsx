@@ -1,97 +1,19 @@
 import { useState } from "react";
-import { Briefcase, MapPin, Calendar, ChevronRight, Search, ClipboardList, FileText, Clock } from "lucide-react";
+import { useLocation } from "wouter";
+import {
+  Briefcase, MapPin, Calendar, ChevronRight,
+  Search, ClipboardList, FileText, Clock,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-type ProjectStatus = "active" | "on_hold" | "completed" | "cancelled";
-
-interface MockProject {
-  id: number;
-  name: string;
-  code: string;
-  location: string;
-  status: ProjectStatus;
-  lastReportDate: string | null;
-  reportCount: number;
-}
-
-const MOCK_PROJECTS: MockProject[] = [
-  {
-    id: 1,
-    name: "Riverside Office Complex",
-    code: "TK-2025-001",
-    location: "3200 Riverside Dr, Los Angeles, CA",
-    status: "active",
-    lastReportDate: "2026-03-16",
-    reportCount: 42,
-  },
-  {
-    id: 2,
-    name: "Harbor Light Industrial",
-    code: "TK-2025-002",
-    location: "8800 Harbor Blvd, Long Beach, CA",
-    status: "active",
-    lastReportDate: "2026-03-15",
-    reportCount: 28,
-  },
-  {
-    id: 3,
-    name: "Sunset Mall Renovation",
-    code: "TK-2025-003",
-    location: "1100 Sunset Strip, West Hollywood, CA",
-    status: "on_hold",
-    lastReportDate: "2026-02-28",
-    reportCount: 17,
-  },
-  {
-    id: 4,
-    name: "Northgate Warehouse Fit-Out",
-    code: "TK-2025-004",
-    location: "4450 Northgate Pkwy, Burbank, CA",
-    status: "active",
-    lastReportDate: "2026-03-17",
-    reportCount: 63,
-  },
-  {
-    id: 5,
-    name: "Pacific View High School",
-    code: "TK-2024-018",
-    location: "700 Pacific View Ave, Santa Monica, CA",
-    status: "completed",
-    lastReportDate: "2026-01-10",
-    reportCount: 91,
-  },
-  {
-    id: 6,
-    name: "Cerritos Medical Center",
-    code: "TK-2025-005",
-    location: "2255 Medical Center Dr, Cerritos, CA",
-    status: "active",
-    lastReportDate: "2026-03-14",
-    reportCount: 11,
-  },
-  {
-    id: 7,
-    name: "Downtown Loft Tower",
-    code: "TK-2025-006",
-    location: "500 S Grand Ave, Los Angeles, CA",
-    status: "cancelled",
-    lastReportDate: null,
-    reportCount: 0,
-  },
-];
+import {
+  MOCK_PROJECTS, STATUS_CFG, formatReportDate,
+  type ProjectStatus,
+} from "@/lib/mock-daily-report";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
-const STATUS_CFG: Record<ProjectStatus, { label: string; className: string }> = {
-  active:    { label: "Active",    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  completed: { label: "Completed", className: "bg-slate-100 text-slate-500 border-slate-200" },
-  on_hold:   { label: "On Hold",   className: "bg-amber-100 text-amber-700 border-amber-200" },
-  cancelled: { label: "Cancelled", className: "bg-rose-100 text-rose-700 border-rose-200" },
-};
-
 function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
   const cfg = STATUS_CFG[status];
   return (
@@ -101,16 +23,10 @@ function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function formatReportDate(dateStr: string | null) {
-  if (!dateStr) return "No reports yet";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DailyReport() {
-  const [search, setSearch] = useState("");
+  const [, navigate] = useLocation();
+  const [search, setSearch]           = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
 
   const filtered = MOCK_PROJECTS.filter((p) => {
@@ -125,13 +41,13 @@ export default function DailyReport() {
     );
   });
 
-  const activeCount    = MOCK_PROJECTS.filter((p) => p.status === "active").length;
-  const totalReports   = MOCK_PROJECTS.reduce((s, p) => s + p.reportCount, 0);
-  const lastReportDate = MOCK_PROJECTS
+  const activeCount  = MOCK_PROJECTS.filter((p) => p.status === "active").length;
+  const totalReports = MOCK_PROJECTS.reduce((s, p) => s + p.reportCount, 0);
+  const lastDate     = MOCK_PROJECTS
     .map((p) => p.lastReportDate)
     .filter(Boolean)
     .sort()
-    .reverse()[0];
+    .reverse()[0] ?? null;
 
   return (
     <div className="space-y-6">
@@ -147,28 +63,9 @@ export default function DailyReport() {
       {/* ── Summary stat cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          {
-            icon: Briefcase,
-            label: "Active Projects",
-            value: String(activeCount),
-            color: "text-blue-600",
-            bg: "bg-blue-50",
-          },
-          {
-            icon: ClipboardList,
-            label: "Total Reports Filed",
-            value: String(totalReports),
-            color: "text-indigo-600",
-            bg: "bg-indigo-50",
-          },
-          {
-            icon: Clock,
-            label: "Last Report",
-            value: lastReportDate ? formatReportDate(lastReportDate) : "—",
-            color: "text-slate-600",
-            bg: "bg-slate-100",
-            small: true,
-          },
+          { icon: Briefcase,    label: "Active Projects",    value: String(activeCount),  color: "text-blue-600",   bg: "bg-blue-50",    small: false },
+          { icon: ClipboardList, label: "Total Reports Filed", value: String(totalReports), color: "text-indigo-600", bg: "bg-indigo-50",  small: false },
+          { icon: Clock,        label: "Last Report",        value: formatReportDate(lastDate), color: "text-slate-600", bg: "bg-slate-100", small: true },
         ].map(({ icon: Icon, label, value, color, bg, small }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-4 pt-5 pb-5">
@@ -176,9 +73,7 @@ export default function DailyReport() {
                 <Icon className={`w-5 h-5 ${color}`} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
-                  {label}
-                </p>
+                <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">{label}</p>
                 <p className={`font-bold text-slate-700 leading-tight truncate ${small ? "text-lg" : "text-2xl"}`}>
                   {value}
                 </p>
@@ -202,7 +97,9 @@ export default function DailyReport() {
               <p className="text-xs text-slate-400">Select a project to file or view a daily report</p>
             </div>
           </div>
-          <span className="text-xs text-slate-400">{filtered.length} project{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-slate-400">
+            {filtered.length} project{filtered.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
         {/* Filters row */}
@@ -251,10 +148,11 @@ export default function DailyReport() {
                 key={project.id}
                 data-testid={`card-project-${project.id}`}
                 className="hover:shadow-md transition-shadow duration-150 cursor-pointer group"
+                onClick={() => navigate(`/daily-report/${project.id}`)}
               >
                 <CardContent className="flex items-center gap-4 px-5 py-4">
 
-                  {/* Icon column */}
+                  {/* Icon */}
                   <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 shrink-0">
                     <Briefcase className="w-5 h-5 text-slate-500" />
                   </div>
@@ -276,7 +174,6 @@ export default function DailyReport() {
                       </span>
                       <ProjectStatusBadge status={project.status} />
                     </div>
-
                     <div className="flex items-center gap-4 mt-1 flex-wrap">
                       <span
                         data-testid={`text-project-location-${project.id}`}
@@ -295,23 +192,21 @@ export default function DailyReport() {
                     </div>
                   </div>
 
-                  {/* Report count pill */}
+                  {/* Report count */}
                   <div className="shrink-0 text-center hidden sm:block">
-                    <p className="text-lg font-bold text-slate-700 leading-tight">
-                      {project.reportCount}
-                    </p>
+                    <p className="text-lg font-bold text-slate-700 leading-tight">{project.reportCount}</p>
                     <p className="text-[10px] text-slate-400 uppercase tracking-wide">
                       {project.reportCount === 1 ? "Report" : "Reports"}
                     </p>
                   </div>
 
-                  {/* Open button */}
+                  {/* Open */}
                   <Button
                     data-testid={`btn-open-project-${project.id}`}
                     variant="outline"
                     size="sm"
                     className="shrink-0 gap-1 text-xs group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors"
-                    disabled
+                    onClick={(e) => { e.stopPropagation(); navigate(`/daily-report/${project.id}`); }}
                   >
                     Open
                     <ChevronRight className="w-3.5 h-3.5" />

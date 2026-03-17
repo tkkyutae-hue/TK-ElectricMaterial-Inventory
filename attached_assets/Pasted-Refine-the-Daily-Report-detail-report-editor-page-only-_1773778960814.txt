@@ -1,0 +1,334 @@
+Refine the Daily Report detail / report editor page only.
+
+Do NOT change:
+- Inventory Mode
+- Admin Mode pages other than data binding already used by Daily Report
+- Manpower admin pages
+- Global topbar / app shell
+- Existing backend data structure unless absolutely necessary
+- Existing project selection page unless needed for data connection
+- Existing white/light admin theme and design tokens
+
+Goal:
+Make the Daily Report editor page feel more organized, faster to fill out, and easier to review in the field.
+Keep the current clean admin style, but improve layout hierarchy, section grouping, and data-entry usability.
+
+==================================================
+1. PAGE STRUCTURE — MAKE THE FLOW CLEAR
+==================================================
+Keep the page in this writing order:
+
+1) Project Header
+2) Report Action Bar
+3) General Info
+4) Work Tasks
+5) Manpower
+6) Materials
+7) Equipment
+8) Photo Log
+9) Progress
+10) Notes / Remarks
+11) Bottom Action Bar
+
+Important:
+- Keep this exact order
+- Make the flow visually obvious from top to bottom
+- Reduce the feeling that everything is one long uninterrupted form
+
+==================================================
+2. PROJECT HEADER — CLEANER AND MORE INFORMATIVE
+==================================================
+Keep the project header card at the top, but improve hierarchy.
+
+Show:
+- Project name
+- PO number
+- Status badge
+- Location
+- Person in charge / manager
+- Started date if available
+
+Improve layout:
+- Project name should be strongest
+- PO number should be secondary muted text
+- Location / manager / started date should sit on one metadata row if space allows
+- Keep the card compact and not too tall
+
+==================================================
+3. REPORT ACTION BAR — MAKE CURRENT STATE CLEAR
+==================================================
+The current report status area should clearly show:
+- Editing report number
+- Draft or Submitted status
+- New Report action if needed
+
+Improve this bar:
+- make “currently editing draft” more obvious
+- visually separate state info from actions
+- keep Save Draft / Submit / Export Excel nearby
+- disable Submit only when required fields are missing, but explain why with tooltip or helper text if possible
+
+Preferred action layout:
+Top action row:
+- Save Draft
+- Submit
+- Export Excel
+Right side:
+- Draft saved / status badge
+
+==================================================
+4. GENERAL INFO — KEEP SIMPLE, 2-ROW GRID
+==================================================
+Keep the current General Info section with:
+- Report Date
+- Report No.
+- Prepared By
+- Shift
+- Weather
+- Temperature
+
+Improve:
+- keep it in a clean 3-column responsive grid
+- equal input heights
+- better spacing between label and field
+- auto-fill Prepared By with logged-in user if available
+- auto-increment Report No. if possible, based on existing submitted/draft reports for that project
+
+==================================================
+5. WORK TASKS — MAKE IT FEEL LIKE DAILY FIELD LOG
+==================================================
+Keep columns:
+- Task Description
+- Area / Location
+- Status
+- Notes
+
+Improve:
+- make row spacing slightly tighter
+- Add Task button should stay visible at section bottom
+- allow quick-add empty row
+- allow delete row
+- make task status more readable with colored select or colored badge styling:
+  - Not Started
+  - In Progress
+  - Completed
+  - Delayed
+  - Blocked
+
+Optional quality improvement:
+- allow duplicate previous row for faster field entry
+
+==================================================
+6. MANPOWER — CHANGE TO REAL WORKER-BASED ENTRY
+==================================================
+Current manpower section still looks like old classification summary input.
+Change it to worker-based entry tied to Admin Mode manpower registry.
+
+Replace current structure with row-based manpower attendance input using registered workers.
+
+For each manpower row, show:
+- Worker Name (select from Admin Mode manpower registry)
+- Trade / Classification (auto-filled from selected worker, read-only)
+- Attendance Status
+- Start Time
+- End Time
+- Work Hours (auto-calculated)
+- Notes
+
+Attendance status options must be exactly:
+- ATTEND
+- PTO
+- SICK
+- ABSENT
+- OFF
+- LATE
+- EARLY LEAVE
+- WFH
+- TRAINING
+- SUSPENDED
+- TERMINATED
+
+Behavior:
+- Worker Name dropdown should only pull active workers from Admin Mode manpower registry
+- Trade / Classification auto-fills after worker select
+- Work Hours auto-calculate from Start/End unless attendance status is ABSENT / OFF / PTO etc
+- prevent duplicate same worker on same report unless explicitly allowed with warning
+- Add Row button remains at bottom
+- allow delete row
+
+Summary row at bottom:
+- Total Workers
+- Total Man-Hours
+
+This section should feel similar to the Excel manpower sheet logic, but modern and app-friendly.
+
+==================================================
+7. MATERIALS — KEEP SIMPLE BUT CLEANER
+==================================================
+Keep columns:
+- Material Description
+- Unit
+- Qty Used
+- Notes
+
+Improve:
+- align all columns more cleanly
+- Qty field should accept only numeric values
+- Add Row button at bottom
+- allow delete row
+- optional: autocomplete from inventory items later, but do not block current manual entry
+
+==================================================
+8. EQUIPMENT — SAME PATTERN AS MATERIALS
+==================================================
+Keep columns:
+- Equipment Name
+- Unit
+- Qty
+- Hours Used
+- Notes
+
+Improve:
+- consistent layout with Materials section
+- Hours Used numeric only
+- Add Row / delete row supported
+
+==================================================
+9. PHOTO LOG — MAKE IT USEFUL EVEN BEFORE FULL BACKEND
+==================================================
+Keep Photo Log section but improve empty state.
+
+Requirements:
+- clearer upload dropzone
+- show helper text:
+  - supported file types
+  - size limit
+- if upload backend is not ready, keep placeholder state but make it look intentional, not broken
+- once files exist, show thumbnail list/grid with remove button
+- allow multiple photos
+
+==================================================
+10. PROGRESS SECTION — KEEP THIS AS THE MAIN PROJECT CONTROL AREA
+==================================================
+The current Progress section is important. Keep it, but improve readability.
+
+Must include:
+- Overall Completion %
+- On Schedule? (On Track / Delayed)
+- Work item progress table
+- Issues / Delays
+- Next Day Work Plan
+
+Improve as follows:
+
+A. Overall Completion block
+- make percentage more prominent
+- make status chip clearer
+- show whether value is auto-calculated
+
+B. Progress table
+Keep columns conceptually:
+- Work Item / Description
+- Unit
+- Est. Qty
+- Prev. Cumulative
+- Today
+- New Total
+- Remaining
+- Progress
+
+Behavior:
+- Today is editable
+- New Total auto-calculates
+- Remaining auto-calculates
+- Progress % auto-calculates
+- Total row at bottom auto-updates
+
+C. Issues / Delays
+- multi-line textarea
+- placeholder text should guide user to write actual blockers
+
+D. Next Day Work Plan
+- multi-line textarea
+- guide user to enter tomorrow’s plan
+
+==================================================
+11. NOTES / REMARKS — MAKE IT EXPANDABLE BUT USEFUL
+==================================================
+Keep Notes / Remarks as the last content section before final actions.
+
+Improve:
+- make it expanded by default if empty
+- if user enters text, keep it visibly summarized when collapsed
+- multi-line freeform text area
+
+==================================================
+12. COLLAPSIBLE SECTION UX
+==================================================
+Keep sections collapsible, but improve behavior:
+
+- Only one or two sections may be collapsed by user choice
+- General Info and Progress should default to expanded
+- If a section contains validation errors, auto-expand it
+- Chevron icon rotation should be smooth and obvious
+- Collapsed sections should still show a small summary if data exists
+  Example:
+  - Work Tasks (3 items)
+  - Manpower (12 workers / 96 hrs)
+  - Materials (5 items)
+  - Equipment (2 items)
+
+==================================================
+13. VISUAL CLEANUP
+==================================================
+Current page is functional but too long and visually repetitive.
+
+Improve:
+- slightly stronger section headers
+- more distinct card separation between sections
+- tighter row padding inside repeatable tables
+- better whitespace between sections
+- keep rounded cards and current admin aesthetic
+- do not overdecorate
+- do not introduce dark mode
+- do not change core typography system
+
+==================================================
+14. BOTTOM ACTION BAR
+==================================================
+At the very bottom, keep:
+- Save Draft
+- Submit
+- Export Excel
+
+Improve:
+- make bottom action bar sticky when helpful, or keep consistently visible near the end
+- primary action should be Submit
+- Save Draft secondary
+- Export Excel tertiary
+- show small validation helper if Submit is blocked
+
+==================================================
+15. DATA CONNECTION RULES
+==================================================
+Use real project and manpower data.
+
+- Project info must come from Admin Mode Projects
+- Worker list must come from Admin Mode Manpower registry
+- Draft/submitted report counts should use actual report data
+- Report number should be based on actual reports for that project if possible
+
+Do not use fake placeholder projects or fake manpower once real data exists.
+
+==================================================
+16. FINAL UX GOAL
+==================================================
+The Daily Report editor should feel like:
+- a real field reporting tool
+- easier to fill on tablet or desktop
+- logically grouped
+- less cluttered
+- tied to actual projects and actual workers
+- ready for daily operational use
+
+Focus on layout refinement, worker-based manpower entry, and cleaner section flow.

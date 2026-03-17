@@ -1,9 +1,12 @@
 import { useState } from "react";
 import {
-  Calendar, Cloud, Users, Package, Truck, Image,
+  Calendar, Users, Package, Truck, Image,
   BarChart2, FileText, ChevronDown, Plus, Trash2,
-  Save, Send, Download, AlertTriangle, CheckCircle2,
+  Save, Send, Download, AlertTriangle, CheckCircle2, Info,
 } from "lucide-react";
+import {
+  MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
+} from "@/lib/mock-daily-report";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,11 +116,17 @@ export function NewReportTab() {
   const [materials,  setMaterials]  = useState(INIT_MATERIALS);
   const [equipment,  setEquipment]  = useState(INIT_EQUIPMENT);
 
-  // Progress
-  const [overallPct,    setOverallPct]    = useState(62);
-  const [onSchedule,    setOnSchedule]    = useState(true);
-  const [issues,        setIssues]        = useState("");
-  const [nextDayPlan,   setNextDayPlan]   = useState("");
+  // Progress — today's qty input per item (keyed by ProgressItem.id)
+  const [todayQty,    setTodayQty]    = useState<Record<number, number>>({});
+  const [onSchedule,  setOnSchedule]  = useState(true);
+  const [issues,      setIssues]      = useState("");
+  const [nextDayPlan, setNextDayPlan] = useState("");
+
+  // Derived progress rows (live-calculated from todayQty inputs)
+  const progressRows = MOCK_PROGRESS_ITEMS.map((item) =>
+    calcProgressRow(item, todayQty[item.id] ?? 0)
+  );
+  const overallPct = overallProgress(progressRows);
 
   // Notes
   const [generalNotes,    setGeneralNotes]    = useState("");
@@ -608,32 +617,27 @@ export function NewReportTab() {
           Section 7 — Progress
       ══════════════════════════════════════════════════════════════════ */}
       <Section num={7} title="Progress" icon={<BarChart2 className="w-4 h-4" />}>
-        <div className="space-y-4">
+        <div className="space-y-5">
 
-          {/* % Complete + schedule toggle */}
+          {/* Overall summary bar + on-schedule toggle */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Calculated overall % */}
             <div>
-              <FieldLabel>Overall Completion (%)</FieldLabel>
-              <div className="flex items-center gap-3">
-                <input
-                  data-testid="input-overall-pct"
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={overallPct}
-                  onChange={(e) => setOverallPct(Number(e.target.value))}
-                  className="flex-1 accent-blue-600"
-                />
-                <span className="text-sm font-bold text-slate-800 w-10 text-right">{overallPct}%</span>
+              <FieldLabel>Overall Completion (calculated)</FieldLabel>
+              <div className="flex items-center gap-3 mb-1.5">
+                <span className="text-2xl font-bold text-slate-800">{overallPct}%</span>
+                <span className="text-xs text-slate-400">weighted by estimated qty</span>
               </div>
-              <div className="mt-1.5 w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-blue-500 transition-all"
+                  className="h-full rounded-full bg-blue-500 transition-all duration-300"
                   style={{ width: `${overallPct}%` }}
                 />
               </div>
             </div>
 
+            {/* On Schedule toggle */}
             <div>
               <FieldLabel>On Schedule?</FieldLabel>
               <div className="flex gap-2 mt-1">
@@ -647,7 +651,7 @@ export function NewReportTab() {
                       : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4" /> Yes
+                  <CheckCircle2 className="w-4 h-4" /> On Track
                 </button>
                 <button
                   type="button"
@@ -659,10 +663,145 @@ export function NewReportTab() {
                       : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
                   }`}
                 >
-                  <AlertTriangle className="w-4 h-4" /> No
+                  <AlertTriangle className="w-4 h-4" /> Delayed
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Context note */}
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-100">
+            <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              <strong>Estimated Qty</strong> is set at the project scope level.&nbsp;
+              <strong>Prev. Cumulative</strong> is the running total from all previously submitted reports.&nbsp;
+              Enter <strong>Today's Qty</strong> below — the system calculates New Total, Remaining, and Progress % automatically.
+            </p>
+          </div>
+
+          {/* Quantity progress table */}
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-sm" data-testid="table-progress">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  {[
+                    { label: "Work Item / Description", cls: "text-left min-w-[180px]" },
+                    { label: "Unit",         cls: "text-center w-14" },
+                    { label: "Est. Qty",     cls: "text-right w-20", note: "project scope" },
+                    { label: "Prev. Cumul.", cls: "text-right w-24", note: "before today" },
+                    { label: "Today",        cls: "text-center w-24 text-blue-700 font-bold", note: "editable" },
+                    { label: "New Total",    cls: "text-right w-24" },
+                    { label: "Remaining",    cls: "text-right w-24" },
+                    { label: "Progress",     cls: "text-center w-28" },
+                  ].map(({ label, cls, note }) => (
+                    <th key={label} className={`py-2.5 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide ${cls}`}>
+                      <div>{label}</div>
+                      {note && <div className="text-[9px] text-slate-400 normal-case font-normal tracking-normal">{note}</div>}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {progressRows.map((row, i) => {
+                  const isOver = row.actualTotal > row.estimatedQty;
+                  return (
+                    <tr
+                      key={row.id}
+                      data-testid={`row-progress-${row.id}`}
+                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                    >
+                      {/* Description */}
+                      <td className="py-2.5 px-3 text-sm text-slate-700">{row.description}</td>
+
+                      {/* Unit */}
+                      <td className="py-2.5 px-3 text-center text-xs text-slate-500 font-mono">{row.unit}</td>
+
+                      {/* Est. Qty — read-only */}
+                      <td className="py-2.5 px-3 text-right text-sm text-slate-500 font-mono">
+                        {row.estimatedQty.toLocaleString()}
+                      </td>
+
+                      {/* Prev. Cumulative — read-only */}
+                      <td className="py-2.5 px-3 text-right text-sm text-slate-500 font-mono">
+                        {row.cumulativeQty.toLocaleString()}
+                      </td>
+
+                      {/* Today Qty — editable */}
+                      <td className="py-2 px-2 text-center">
+                        <Input
+                          data-testid={`input-progress-today-${i}`}
+                          type="number"
+                          min={0}
+                          value={todayQty[row.id] ?? ""}
+                          placeholder="0"
+                          onChange={(e) =>
+                            setTodayQty((prev) => ({
+                              ...prev,
+                              [row.id]: Math.max(0, Number(e.target.value)),
+                            }))
+                          }
+                          className="h-8 text-xs text-center font-semibold border-blue-200 focus:border-blue-400 bg-blue-50"
+                        />
+                      </td>
+
+                      {/* New Total — calculated */}
+                      <td className={`py-2.5 px-3 text-right text-sm font-mono font-semibold ${isOver ? "text-amber-600" : "text-slate-700"}`}>
+                        {row.actualTotal.toLocaleString()}
+                      </td>
+
+                      {/* Remaining — calculated */}
+                      <td className={`py-2.5 px-3 text-right text-sm font-mono ${row.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-600"}`}>
+                        {row.remaining.toLocaleString()}
+                      </td>
+
+                      {/* Progress % — mini bar */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                row.pct >= 100 ? "bg-emerald-500" : row.pct >= 75 ? "bg-blue-500" : row.pct >= 40 ? "bg-blue-400" : "bg-slate-400"
+                              }`}
+                              style={{ width: `${row.pct}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-semibold w-8 text-right shrink-0 ${
+                            row.pct >= 100 ? "text-emerald-600" : "text-slate-600"
+                          }`}>
+                            {row.pct}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+              {/* Totals footer */}
+              <tfoot>
+                <tr className="bg-slate-50 border-t-2 border-slate-200">
+                  <td colSpan={2} className="py-2.5 px-3 text-xs font-semibold text-slate-600">Total</td>
+                  <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-700 font-mono">
+                    {progressRows.reduce((s, r) => s + r.estimatedQty, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-700 font-mono">
+                    {progressRows.reduce((s, r) => s + r.cumulativeQty, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-center text-xs font-bold text-blue-700 font-mono">
+                    {progressRows.reduce((s, r) => s + r.todayQty, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-700 font-mono">
+                    {progressRows.reduce((s, r) => s + r.actualTotal, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-700 font-mono">
+                    {progressRows.reduce((s, r) => s + r.remaining, 0).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-center text-xs font-bold text-slate-700">
+                    {overallPct}%
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
 
           {/* Issues / Delays */}

@@ -1,0 +1,351 @@
+Update Admin Mode → Manpower based on the current existing structure. This is a refinement and completion pass, not a full redesign.
+
+Important:
+- Keep the current Admin Mode shell, layout, background color, sidebar, and overall visual style unchanged
+- Do not redesign unrelated modules
+- Do not change Inventory, Daily Report, or other Admin pages
+- Only refine and complete the Manpower module and Worker Profile flow
+
+════════════════════════════════════════
+1. MANPOWER REGISTRY PAGE
+════════════════════════════════════════
+
+Refine the Worker Registry page with these rules:
+
+1) Inline registration
+- Keep worker registration inline inside Worker Registry
+- Do not use a modal for worker registration
+- Clicking "Register Worker" should add a new editable empty row directly in the registry
+- Multiple unfinished inline rows must be allowed at the same time
+- Do not disable the Register Worker button just because one row is already open
+- Each unsaved row must have its own Save and Cancel controls
+
+2) Registration fields
+For initial registration, allow only:
+- Profile Photo
+- Full Name
+- Trade / Classification
+
+Do not make full evaluation fields editable during initial registration
+
+3) Worker photo
+- Show a small photo/avatar thumbnail to the left of the worker name in Worker Registry
+- If no photo is uploaded, show a clean default placeholder avatar
+- Save the photo with the worker record
+
+4) Trade / Classification options
+Use a predefined selectable list with these labels:
+
+- 부장 — General Manager
+- 차장 — Deputy General Manager
+- 과장 — Manager
+- 대리 — Assistant Manager
+- 사원 — Staff
+- 공무 — Project Engineer
+- 팀장 — Foreman
+- 조공 — Helper
+- 안전관리자 — Safety
+
+Use this same display format consistently in:
+- inline registration dropdown
+- saved row display
+- filters
+- sort labels
+- summary counts
+
+5) Registry actions
+For each saved worker row:
+- Enable Evaluate button
+- Add Delete button
+- Keep Edit action if already present
+
+Behavior:
+- Clicking Evaluate should open Worker Detail / Worker Profile
+- Do NOT open Worker Detail by clicking anywhere else on the row
+- Row-wide click navigation must be removed
+- Only the Evaluate button opens the detail page
+
+6) Delete behavior
+- Delete should remove the worker from the registry
+- Update all related counts after deletion
+
+7) Classification summary and sort
+At the top of the page, show compact headcount summaries by classification
+Example:
+- 팀장 — Foreman: 3
+- 조공 — Helper: 8
+- 안전관리자 — Safety: 2
+
+Add sort/grouping by classification using this order:
+1. 부장 — General Manager
+2. 차장 — Deputy General Manager
+3. 과장 — Manager
+4. 대리 — Assistant Manager
+5. 사원 — Staff
+6. 공무 — Project Engineer
+7. 팀장 — Foreman
+8. 조공 — Helper
+9. 안전관리자 — Safety
+
+Keep the current registry structure as much as possible
+
+════════════════════════════════════════
+2. WORKER PROFILE / DETAIL PAGE
+════════════════════════════════════════
+
+Use the current Worker Profile direction and refine it without redesigning Admin Mode.
+
+Page goal:
+- clean worker profile
+- reduced duplicate information
+- profile-driven
+- evaluation-focused
+- visually consistent with current Admin Mode background and layout
+
+Use this final page structure:
+
+A. Header / Identity Banner
+This is the main identity area.
+Show:
+- worker photo
+- full name
+- trade / classification
+- active/inactive status
+- high-level badges
+- worker ID
+- Date of TK
+- Project
+- Edit Profile button
+- Evaluate button
+
+Keep the header as the main place for identity information.
+
+Refine the header so role information is not visually repetitive.
+Preferred direction:
+- main subtitle should focus on 팀장 — Foreman
+- avoid overly repetitive use of Journeyman in both subtitle and badge if it creates clutter
+
+B. Basic Info
+Keep this section simple and non-repetitive.
+Use only:
+- Gender
+- Nationality
+- State
+- Registered Date
+
+Do NOT repeat:
+- Full Name
+- Trade / Classification
+- Status
+- Classification
+
+Visa information:
+- keep visa badge in header
+- do not repeat the exact same visa text again in Basic Info unless it is shown in a more detailed, non-duplicative form
+
+C. Evaluation Summary
+Use a unified 1–10 scoring system only.
+Do not mix 100-point, 5-point, and 10-point systems.
+
+Summary categories:
+- Skill
+- Control
+- Attitude
+- Attendance
+
+Total Score formula:
+- Total Score = (Skill + Control + Attitude + Attendance) ÷ 4
+
+Display:
+- Total Score as x.x / 10
+- percentage equivalent
+- interpretation label
+- small Grade label as well
+
+Example format:
+- 8.5 / 10
+- 85.3%
+- Grade B
+- Strong / Reliable
+
+Use this interpretation system:
+- 9.0–10.0 = Excellent / Ready to lead
+- 7.0–8.9 = Strong / Reliable
+- 5.0–6.9 = Average / Needs improvement
+- 3.0–4.9 = Weak / Needs training
+- 0–2.9 = Critical / Immediate improvement needed
+
+Use this fixed grade scale:
+- 9.0–10.0 = Grade A
+- 8.0–8.9 = Grade B
+- 7.0–7.9 = Grade C
+- 5.0–6.9 = Grade D
+- below 5.0 = Grade F
+
+D. Special Ability / Evaluator Notes
+Keep both sections
+- Special Ability
+- Evaluator Notes
+
+Keep these clean and useful
+Do not turn them into cluttered generic cards
+
+════════════════════════════════════════
+3. ATTENDANCE EVALUATION
+════════════════════════════════════════
+
+Attendance must remain a distinct evaluation category.
+
+Use this attendance scoring system:
+- ATTEND = 10
+- PTO = 8
+- SICK = 7
+- ABSENT = 0
+- OFF = excluded from calculation
+- LATE = 5
+- EARLY LEAVE = 4
+- WFH = 8
+- TRAINING = 9
+- SUSPENDED = 0
+- TERMINATED = excluded from calculation
+
+Attendance score rules:
+- Attendance Score = average of scored attendance records
+- OFF and TERMINATED are excluded from the denominator
+
+Attendance should appear in:
+- Evaluation Summary
+- Attendance Record section
+- Skill Board
+- Total Score calculation
+- Evaluation History
+
+Attendance interpretation:
+- 9.0–10.0 = Excellent attendance
+- 7.0–8.9 = Reliable
+- 5.0–6.9 = Needs improvement
+- 3.0–4.9 = Weak
+- 0–2.9 = Critical
+
+Attendance Record page section should include:
+- monthly attendance summary
+- status pill counts
+- attendance score
+- recent status log table
+
+Important:
+- Do NOT show the full attendance calculation formula on the page
+- keep the calculation internal
+- show only the result and useful summaries
+- keep OFF and TERMINATED excluded
+
+════════════════════════════════════════
+4. SKILL EVALUATION BOARD
+════════════════════════════════════════
+
+Keep the Skill Evaluation Board and make sure it uses 1–10 consistently.
+
+Use these categories:
+- Work Schedule / Reading / Plan
+- Drawings / Reading / Check
+- Materials / Order / Check
+- Cable Tray / Support
+- Power / LV / Conduit / Connection
+- Grounding / Lightning Protection
+- Lighting / Indoor / Outdoor / Exit
+- Team Member Control
+- Attitude / Safety / Compliance
+- Attendance / Punctuality / Reliability
+
+Each row should show:
+- category name
+- score (1–10)
+- level bar
+- 5-pip level indicator
+- interpretation label
+
+Use this pip mapping:
+- 9.0–10.0 = 5 pips
+- 7.0–8.9 = 4 pips
+- 5.0–6.9 = 3 pips
+- 3.0–4.9 = 2 pips
+- 0–2.9 = 1 pip
+
+Use these interpretation labels:
+- Excellent
+- Strong
+- Average
+- Weak
+- Critical
+
+Recommended usage:
+- general skill rows can use Excellent / Strong / Average / Weak
+- attendance row can use Reliable where appropriate
+
+Attendance row:
+- keep it visually distinct
+- mark it as Auto
+- calculate it from attendance records
+- do not require manual input for attendance score
+
+Skill Board footer:
+- show average skill score as x.xx / 10
+- show interpretation label
+- keep calculations internally consistent
+
+════════════════════════════════════════
+5. EVALUATION HISTORY
+════════════════════════════════════════
+
+Keep Evaluation History and make it consistent with the current 1–10 system.
+
+History entries should show:
+- Date
+- Evaluator
+- Project
+- SK
+- CT
+- AT
+- ATT
+- Total
+- Grade
+
+Use ATT instead of AC.
+
+Apply the fixed grade scale consistently:
+- 9.0–10.0 = Grade A
+- 8.0–8.9 = Grade B
+- 7.0–7.9 = Grade C
+- 5.0–6.9 = Grade D
+- below 5.0 = Grade F
+
+Examples:
+- 8.5 = Grade B
+- 8.2 = Grade B
+- 7.6 = Grade C
+
+Do not use inconsistent grades.
+
+════════════════════════════════════════
+6. CLEANUP RULES
+════════════════════════════════════════
+
+Important cleanup rules:
+- Reduce duplicate information
+- Keep the page clean
+- Do not add unnecessary sections
+- Do not overload the page with repeated labels
+- Keep current Admin background and shell unchanged
+- Keep the Worker Profile visually aligned with Admin Mode
+- Preserve the current refined layout direction
+- This is a refinement / completion pass, not a redesign
+
+Final priorities:
+- clean registry behavior
+- multiple inline registration rows
+- correct worker actions
+- unified 1–10 scoring
+- attendance integrated into evaluation
+- no duplicate identity fields
+- consistent grades and labels
+- no visible attendance formula

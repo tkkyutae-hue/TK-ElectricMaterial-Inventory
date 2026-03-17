@@ -391,6 +391,12 @@ export const workers = pgTable("workers", {
   trade: text("trade"),
   photoUrl: text("photo_url"),
   isActive: boolean("is_active").notNull().default(true),
+  // Profile fields
+  gender: text("gender"),
+  nationality: text("nationality"),
+  workerState: text("worker_state"),
+  dateOfTk: date("date_of_tk"),
+  project: text("project"),
   // Evaluation fields
   skill: integer("skill"),
   control: integer("control"),
@@ -411,3 +417,44 @@ export const insertWorkerSchema = createInsertSchema(workers).omit({
 export type Worker = typeof workers.$inferSelect;
 export type CreateWorkerRequest = z.infer<typeof insertWorkerSchema>;
 export type UpdateWorkerRequest = Partial<CreateWorkerRequest>;
+
+// ─── Worker Attendance ────────────────────────────────────────────────────────
+
+export const workerAttendance = pgTable("worker_attendance", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  status: text("status").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWorkerAttendanceSchema = createInsertSchema(workerAttendance).omit({
+  id: true, createdAt: true,
+});
+
+export type WorkerAttendance = typeof workerAttendance.$inferSelect;
+export type CreateWorkerAttendanceRequest = z.infer<typeof insertWorkerAttendanceSchema>;
+
+// ─── Worker Evaluations (History) ────────────────────────────────────────────
+
+export const workerEvaluations = pgTable("worker_evaluations", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  evaluationDate: date("evaluation_date").notNull(),
+  evaluatorName: text("evaluator_name"),
+  project: text("project"),
+  skill: integer("skill"),
+  control: integer("control"),
+  attitude: integer("attitude"),
+  attendance: integer("attendance"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWorkerEvaluationSchema = createInsertSchema(workerEvaluations).omit({
+  id: true, createdAt: true,
+});
+
+export type WorkerEvaluation = typeof workerEvaluations.$inferSelect;
+export type CreateWorkerEvaluationRequest = z.infer<typeof insertWorkerEvaluationSchema>;

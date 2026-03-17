@@ -1132,5 +1132,62 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Worker Attendance ──────────────────────────────────────────────────────
+  app.get("/api/workers/:id/attendance", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
+      const records = await storage.getWorkerAttendance(id);
+      res.json(records);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/workers/:id/attendance", isAuthenticated, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.id);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
+      const record = await storage.createWorkerAttendance({ ...req.body, workerId });
+      res.json(record);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/workers/:id/attendance/:recordId", isAuthenticated, async (req, res) => {
+    try {
+      const recordId = parseInt(req.params.recordId);
+      if (isNaN(recordId)) return res.status(400).json({ message: "Invalid record ID" });
+      await storage.deleteWorkerAttendance(recordId);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ── Worker Evaluations (History) ───────────────────────────────────────────
+  app.get("/api/workers/:id/evaluations", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
+      const evals = await storage.getWorkerEvaluations(id);
+      res.json(evals);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/workers/:id/evaluations", isAuthenticated, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.id);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
+      const evaluation = await storage.createWorkerEvaluation({ ...req.body, workerId });
+      res.json(evaluation);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

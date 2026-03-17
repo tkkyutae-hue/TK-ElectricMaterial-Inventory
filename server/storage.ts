@@ -19,6 +19,8 @@ import {
   type MovementDraft, type MovementDraftWithRelations,
   type DailyReport, type CreateDailyReportRequest, type UpdateDailyReportRequest,
   workers, type Worker, type CreateWorkerRequest, type UpdateWorkerRequest,
+  workerAttendance, type WorkerAttendance, type CreateWorkerAttendanceRequest,
+  workerEvaluations, type WorkerEvaluation, type CreateWorkerEvaluationRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -118,6 +120,13 @@ export interface IStorage {
   createWorker(data: CreateWorkerRequest): Promise<Worker>;
   updateWorker(id: number, data: UpdateWorkerRequest): Promise<Worker>;
   deleteWorker(id: number): Promise<void>;
+
+  getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]>;
+  createWorkerAttendance(data: CreateWorkerAttendanceRequest): Promise<WorkerAttendance>;
+  deleteWorkerAttendance(id: number): Promise<void>;
+
+  getWorkerEvaluations(workerId: number): Promise<WorkerEvaluation[]>;
+  createWorkerEvaluation(data: CreateWorkerEvaluationRequest): Promise<WorkerEvaluation>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1845,6 +1854,36 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWorker(id: number): Promise<void> {
     await db.delete(workers).where(eq(workers.id, id));
+  }
+
+  async getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]> {
+    return await db
+      .select()
+      .from(workerAttendance)
+      .where(eq(workerAttendance.workerId, workerId))
+      .orderBy(desc(workerAttendance.date));
+  }
+
+  async createWorkerAttendance(data: CreateWorkerAttendanceRequest): Promise<WorkerAttendance> {
+    const [row] = await db.insert(workerAttendance).values(data).returning();
+    return row;
+  }
+
+  async deleteWorkerAttendance(id: number): Promise<void> {
+    await db.delete(workerAttendance).where(eq(workerAttendance.id, id));
+  }
+
+  async getWorkerEvaluations(workerId: number): Promise<WorkerEvaluation[]> {
+    return await db
+      .select()
+      .from(workerEvaluations)
+      .where(eq(workerEvaluations.workerId, workerId))
+      .orderBy(desc(workerEvaluations.evaluationDate));
+  }
+
+  async createWorkerEvaluation(data: CreateWorkerEvaluationRequest): Promise<WorkerEvaluation> {
+    const [row] = await db.insert(workerEvaluations).values(data).returning();
+    return row;
   }
 }
 

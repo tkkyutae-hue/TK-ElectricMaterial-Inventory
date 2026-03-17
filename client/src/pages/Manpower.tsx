@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   HardHat, PlusCircle, Loader2, Users, CheckCircle2, XCircle,
-  ClipboardList, Check, X, UserCircle2, Trash2, ArrowUpDown,
+  ClipboardList, Check, X, UserCircle2, Trash2, ArrowUpDown, Camera,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,18 +58,29 @@ function AddWorkerRow({
   onSaved: () => void; onCancel: () => void; autoFocus?: boolean;
 }) {
   const { toast } = useToast();
-  const [fullName, setFullName] = useState("");
-  const [trade, setTrade]       = useState("");
+  const [fullName, setFullName]   = useState("");
+  const [trade, setTrade]         = useState("");
+  const [photoUrl, setPhotoUrl]   = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (autoFocus) nameRef.current?.focus();
   }, [autoFocus]);
 
+  function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhotoUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
   const createMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/workers", {
         fullName: fullName.trim(), trade: trade || null, isActive: true,
+        photoUrl: photoUrl || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
@@ -94,9 +105,19 @@ function AddWorkerRow({
     <tr className="bg-blue-50/60 border-b border-blue-100">
       <td className="px-5 py-2.5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full shrink-0 bg-slate-200 border border-slate-300 flex items-center justify-center">
-            <UserCircle2 className="w-5 h-5 text-slate-400" />
+          {/* Photo slot with click-to-upload */}
+          <div
+            className="w-9 h-9 rounded-full shrink-0 border border-dashed border-slate-300 bg-white flex items-center justify-center cursor-pointer hover:border-blue-400 overflow-hidden transition-colors"
+            onClick={() => fileRef.current?.click()}
+            title="Click to upload photo"
+          >
+            {photoUrl
+              ? <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+              : <Camera className="w-4 h-4 text-slate-300" />
+            }
           </div>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp"
+            className="hidden" onChange={handlePhotoFile} />
           <Input
             ref={nameRef}
             data-testid="input-inline-name"

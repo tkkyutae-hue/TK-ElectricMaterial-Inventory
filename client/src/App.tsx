@@ -25,6 +25,7 @@ import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
 import Reorder from "@/pages/Reorder";
 import Reports from "@/pages/Reports";
+import DailyReport from "@/pages/DailyReport";
 import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
 
@@ -87,7 +88,7 @@ function DailyReportRouter() {
   return (
     <AuthGuard>
       <DailyReportLayout>
-        <Reports />
+        <DailyReport />
       </DailyReportLayout>
     </AuthGuard>
   );

@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import {
   MapPin, Calendar, ClipboardList, CheckCircle2, AlertCircle,
-  Users, HardHat, FileText, PlusCircle, ChevronDown,
-  BarChart3, Clock, Milestone,
+  Users, FileText, BarChart3, Clock, Milestone, PlusCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +11,7 @@ import {
   MOCK_PROJECTS, STATUS_CFG, formatReportDate,
   type ProjectStatus,
 } from "@/lib/mock-daily-report";
+import { NewReportTab } from "@/pages/daily-report/NewReportTab";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
@@ -53,89 +53,6 @@ const MOCK_MILESTONES = [
 ];
 
 // ─── Tab content components ───────────────────────────────────────────────────
-function NewReportTab() {
-  return (
-    <div className="space-y-4">
-
-      {/* Placeholder notice */}
-      <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100">
-        <FileText className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-        <p className="text-sm text-blue-700">
-          The daily report form is coming soon. Below is a preview of the fields that will be available.
-        </p>
-      </div>
-
-      {/* Form skeleton */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-slate-700">Report Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-
-          {/* Date row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SkeletonField label="Report Date" icon={<Calendar className="w-3.5 h-3.5" />} placeholder="Mar 17, 2026" />
-            <SkeletonField label="Shift" icon={<Clock className="w-3.5 h-3.5" />} placeholder="Day Shift" dropdown />
-          </div>
-
-          {/* Crew row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SkeletonField label="Crew Size" icon={<Users className="w-3.5 h-3.5" />} placeholder="0 workers" />
-            <SkeletonField label="Foreman" icon={<HardHat className="w-3.5 h-3.5" />} placeholder="Foreman name" />
-          </div>
-
-          {/* Work description */}
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">
-              Work Performed
-            </label>
-            <div className="w-full h-24 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center">
-              <span className="text-xs text-slate-400">Description field — coming soon</span>
-            </div>
-          </div>
-
-          {/* Issues / weather row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SkeletonField label="Weather" icon={<ChevronDown className="w-3.5 h-3.5" />} placeholder="Select weather" dropdown />
-            <SkeletonField label="Issues / Delays" icon={<AlertCircle className="w-3.5 h-3.5" />} placeholder="None" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Submit placeholder */}
-      <div className="flex justify-end">
-        <Button
-          data-testid="btn-submit-report"
-          disabled
-          className="gap-2"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Submit Daily Report
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function SkeletonField({
-  label, icon, placeholder, dropdown = false,
-}: {
-  label: string; icon: React.ReactNode; placeholder: string; dropdown?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wide">
-        {label}
-      </label>
-      <div className="flex items-center gap-2 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50">
-        <span className="text-slate-400">{icon}</span>
-        <span className="text-sm text-slate-400 flex-1">{placeholder}</span>
-        {dropdown && <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-      </div>
-    </div>
-  );
-}
-
 function HistoryTab() {
   if (MOCK_HISTORY.length === 0) {
     return (

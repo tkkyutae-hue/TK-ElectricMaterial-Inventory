@@ -117,6 +117,7 @@ export interface IStorage {
   getWorker(id: number): Promise<Worker | undefined>;
   createWorker(data: CreateWorkerRequest): Promise<Worker>;
   updateWorker(id: number, data: UpdateWorkerRequest): Promise<Worker>;
+  deleteWorker(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1840,6 +1841,10 @@ export class DatabaseStorage implements IStorage {
       .returning();
     if (!row) throw new Error("Worker not found");
     return row;
+  }
+
+  async deleteWorker(id: number): Promise<void> {
+    await db.delete(workers).where(eq(workers.id, id));
   }
 }
 

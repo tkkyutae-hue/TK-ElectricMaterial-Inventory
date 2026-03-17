@@ -33,9 +33,9 @@ const TRADE_OPTIONS = [
   { value: "Assistant Manager",      label: "대리 — Assistant Manager"      },
   { value: "Staff",                  label: "사원 — Staff"                  },
   { value: "Project Engineer",       label: "공무 — Project Engineer"       },
-  { value: "Foreman",                label: "Foreman"                       },
-  { value: "Helper",                 label: "Helper"                        },
-  { value: "Safety",                 label: "Safety"                        },
+  { value: "Foreman",                label: "팀장 — Foreman"                },
+  { value: "Helper",                 label: "조공 — Helper"                 },
+  { value: "Safety",                 label: "안전관리자 — Safety"            },
 ];
 
 const SCORE_OPTIONS = ["1","2","3","4","5","6","7","8","9","10"];

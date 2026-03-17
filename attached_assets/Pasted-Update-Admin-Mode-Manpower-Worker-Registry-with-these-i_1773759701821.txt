@@ -1,0 +1,86 @@
+Update Admin Mode → Manpower Worker Registry with these improvements.
+
+1. Add delete action for each worker row
+- Add a Delete button/icon at the right side of every saved worker row
+- Deleting a worker should remove that worker from the registry
+- Update the summary counts after deletion
+- Keep the delete action clearly separate from Evaluate and Edit
+
+2. Normalize Trade / Classification display labels
+Currently some roles are shown as:
+- Korean — English
+but some are not consistent.
+
+Make all classification options use the same display format:
+
+- 부장 — General Manager
+- 차장 — Deputy General Manager
+- 과장 — Manager
+- 대리 — Assistant Manager
+- 사원 — Staff
+- 공무 — Project Engineer
+- 팀장 — Foreman
+- 조공 — Helper
+- 안전관리자 — Safety
+
+Use this same display style consistently in:
+- dropdown options
+- saved row display
+- filters/sort labels if used
+
+3. Show headcount by classification at the top
+Add a compact summary area showing how many workers belong to each classification.
+Example:
+- 팀장 — Foreman: 3
+- 조공 — Helper: 8
+- 안전관리자 — Safety: 2
+- 과장 — Manager: 1
+
+This should be based on the saved worker registry data.
+Keep the layout compact and visually consistent with the current page.
+
+4. Add sorting by classification
+Add a sort control so the worker list can be sorted by Trade / Classification.
+The worker registry should support grouping/sorting by classification similar to the reference image.
+A simple first version is enough:
+- Sort by classification ascending
+- Keep workers grouped by role order
+
+Use this classification order:
+1. 부장 — General Manager
+2. 차장 — Deputy General Manager
+3. 과장 — Manager
+4. 대리 — Assistant Manager
+5. 사원 — Staff
+6. 공무 — Project Engineer
+7. 팀장 — Foreman
+8. 조공 — Helper
+9. 안전관리자 — Safety
+
+5. Enable Evaluate action and change row click behavior
+Current issue:
+- the Evaluate button is disabled
+- clicking anywhere on the row opens the detail page
+
+Required behavior:
+- Enable the Evaluate button for saved worker rows
+- Clicking Evaluate should open the worker detail / evaluation page
+- Do NOT open the detail page when clicking anywhere else on the row
+- Row click should no longer trigger navigation
+- Only the Evaluate action should open the detail/evaluation page
+
+Important:
+- Do not redesign the overall Admin Mode layout
+- Do not redesign the Daily Report module
+- Do not change unrelated modules
+- Keep the current Worker Registry structure as much as possible
+- Focus only on:
+  - delete action
+  - classification label normalization
+  - headcount by classification
+  - sort by classification
+  - Evaluate button activation
+  - disabling row-wide click navigation
+
+Do one step at a time.
+Keep existing modules, routes, and screens unchanged unless explicitly mentioned.

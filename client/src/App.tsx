@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
 import { useAuth } from "@/hooks/use-auth";
-import { LanguageProvider, useLanguage } from "@/hooks/use-language";
+import { LanguageProvider, useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 
@@ -88,6 +88,8 @@ function DailyReportLayout({
           <ArrowLeft style={{ width: 14, height: 14 }} />
           <span>{label}</span>
         </button>
+        <div style={{ flex: 1 }} />
+        <LanguageSwitcher theme="light" />
       </header>
       <main style={{ flex: 1, padding: "24px 32px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
         {children}

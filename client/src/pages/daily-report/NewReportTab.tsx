@@ -533,6 +533,9 @@ export function NewReportTab({
         </div>
       </div>
 
+      {/* ── Sections: locked when submitted (pointer-events + opacity) ── */}
+      <div className="space-y-3" style={isSubmitted ? { opacity: 0.72, pointerEvents: "none", userSelect: "none" } : {}}>
+
       {/* ══════════════════════════════════════════════════════
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
@@ -1124,6 +1127,8 @@ export function NewReportTab({
           </div>
         </div>
       </Section>
+
+      </div>{/* end sections lock wrapper */}
 
       {/* ── Bottom action bar ── */}
       <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">

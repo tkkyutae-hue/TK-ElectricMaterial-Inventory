@@ -455,7 +455,7 @@ function EditScopeItemDialog({
   const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
 
   const filteredInvItems = allInventoryItems
-    .filter(it => !invSearch || it.name.toLowerCase().includes(invSearch.toLowerCase()))
+    .filter(it => flexMatch(invSearch, it.name))
     .slice(0, 12);
   const linkedInvName = allInventoryItems.find(it => it.id === linkedInvId)?.name ?? "";
 

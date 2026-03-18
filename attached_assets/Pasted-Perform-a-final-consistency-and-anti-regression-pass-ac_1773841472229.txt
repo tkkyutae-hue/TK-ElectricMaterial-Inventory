@@ -1,0 +1,73 @@
+Perform a final consistency and anti-regression pass across both Admin Project Mode and Daily Report Mode.
+
+Important:
+Do NOT redesign the UI.
+Do NOT shrink or expand sections randomly.
+Do NOT revert previously improved field widths, table widths, card paddings, or typography.
+This task is for consistency, navigation correctness, and data integrity only.
+
+Requirements:
+
+1. Shared search consistency
+- Use the same flexible search logic for:
+  - Scope item search in Admin Project Mode
+  - Material / inventory item search in Daily Report Mode
+- Matching should tolerate reordered words, partial matches, and common formatting differences.
+
+2. Scope / Daily Report / Progress data relationship
+- Scope Items define baseline estimated quantities.
+- Submitted Daily Reports update cumulative actual installed quantities.
+- Progress page must aggregate submitted report quantities only.
+- Draft reports must NOT affect cumulative actual progress.
+- Admin Overview cards must reflect this same logic consistently.
+
+3. Cross-page consistency
+- The same project should show matching numbers across:
+  - Admin Overview
+  - Admin Daily Reports
+  - Admin Progress
+  - Daily Report submission result
+- No conflicting totals.
+
+4. Report lifecycle rules
+- Draft:
+  - editable
+  - not included in progress
+  - not exported as final CSV
+- Submitted:
+  - read-only view unless explicit admin edit flow exists
+  - included in progress
+  - export allowed
+- Ensure these rules are enforced cleanly.
+
+5. Hours / quantity integrity
+- Man-hours should be derived only from manpower entries and break rule.
+- Installed quantities should be derived only from submitted quantities linked to scope items.
+- No placeholder/sample data should appear in live project pages.
+
+6. Input stability
+- Fix any remaining clipping, shifting, jumping, or resizing issues in:
+  - Prepared By
+  - Worker Name
+  - Material Item
+  - Unit fields
+  - Scope Link fields
+- Inputs should remain stable before and after selection.
+
+7. Language switch visibility
+- Keep language switch visible in Daily Report workspace header as previously requested.
+- Ensure switching language does not break layouts or route behavior.
+- English / Korean / Spanish labels should remain structurally aligned.
+
+8. Safe implementation rule
+- Before changing any shared component, verify it will not roll back existing layout improvements.
+- Prefer targeted edits over broad refactors.
+- Avoid replacing entire page components when only local logic needs to be updated.
+
+Deliverable expectation:
+- No layout rollback
+- No fake progress
+- Correct report routing
+- Smarter search
+- Stable inputs
+- Clean separation between Admin Project management pages and Daily Report entry pages

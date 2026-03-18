@@ -541,7 +541,7 @@ export function NewReportTab({
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
       <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
-        <div className="grid grid-cols-3 gap-x-5 gap-y-3.5">
+        <div className="grid grid-cols-3 gap-x-4 gap-y-3.5 max-w-xl">
 
           {/* Row 1 */}
           <div>
@@ -643,16 +643,16 @@ export function NewReportTab({
 
         {/* Manpower table — max-h + scroll only when rows exceed 5 */}
         <div className={manpower.length > 5 ? "max-h-[360px] overflow-y-auto pr-1" : ""}>
-          <table className="w-full text-sm" data-testid="table-manpower">
+          <table className="text-sm w-auto min-w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "min-w-[180px] w-[24%]" },
-              { label: "Trade",        cls: "min-w-[100px] w-[13%]" },
-              { label: "Status",       cls: "min-w-[100px] w-[13%]" },
-              { label: "Start",        cls: "w-[82px]" },
-              { label: "End",          cls: "w-[82px]" },
-              { label: "Break",        cls: "w-[50px] text-center" },
-              { label: "Hrs",          cls: "w-[52px] text-center" },
-              { label: "Notes",        cls: "min-w-[90px]" },
+              { label: "Worker Name",  cls: "w-[160px]" },
+              { label: "Trade",        cls: "w-[100px]" },
+              { label: "Status",       cls: "w-[100px]" },
+              { label: "Start",        cls: "w-[76px]" },
+              { label: "End",          cls: "w-[76px]" },
+              { label: "Break",        cls: "w-[46px] text-center" },
+              { label: "Hrs",          cls: "w-[48px] text-center" },
+              { label: "Notes",        cls: "w-[100px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
@@ -788,13 +788,13 @@ export function NewReportTab({
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
       <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
-        <table className="w-full text-sm" data-testid="table-tasks">
+        <table className="text-sm w-auto min-w-full" data-testid="table-tasks">
           <TH cols={[
-            { label: "Task Description",  cls: "min-w-[200px] w-[35%]" },
-            { label: "Area / Location",   cls: "min-w-[120px] w-[18%]" },
-            { label: "Status",            cls: "min-w-[130px] w-[15%]" },
-            { label: "Notes",             cls: "min-w-[110px]" },
-            { label: "Detail",            cls: "w-[58px] text-center" },
+            { label: "Task Description",  cls: "w-[220px]" },
+            { label: "Area / Location",   cls: "w-[130px]" },
+            { label: "Status",            cls: "w-[128px]" },
+            { label: "Notes",             cls: "w-[120px]" },
+            { label: "Detail",            cls: "w-[56px] text-center" },
           ]} />
           <tbody>
             {tasks.length === 0 && (
@@ -929,13 +929,13 @@ export function NewReportTab({
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
-        <table className="w-full text-sm" data-testid="table-materials">
+        <table className="text-sm w-auto min-w-full" data-testid="table-materials">
           <TH cols={[
-            { label: "Material / Inventory Item", cls: "min-w-[200px] w-[40%]" },
-            { label: "Unit",     cls: "w-[72px] text-center" },
-            { label: "Qty Used", cls: "w-[80px] text-center" },
-            { label: "Notes",    cls: "min-w-[100px]" },
-            ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "min-w-[140px]" }] : []),
+            { label: "Material / Inventory Item", cls: "w-[220px]" },
+            { label: "Unit",     cls: "w-[64px] text-center" },
+            { label: "Qty Used", cls: "w-[72px] text-center" },
+            { label: "Notes",    cls: "w-[120px]" },
+            ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[150px]" }] : []),
           ]} />
           <tbody>
             {materials.length === 0 && (
@@ -967,7 +967,7 @@ export function NewReportTab({
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                     onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                    className="h-8 text-xs text-center tabular-nums" />
+                    className="h-8 text-xs text-center tabular-nums w-[64px]" />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-mat-notes-${i}`} value={row.notes}
@@ -1047,13 +1047,13 @@ export function NewReportTab({
           </div>
         </div>
 
-        <table className="w-full text-sm" data-testid="table-equipment">
+        <table className="text-sm w-auto min-w-full" data-testid="table-equipment">
           <TH cols={[
-            { label: "Equipment Name", cls: "min-w-[180px] w-[38%]" },
-            { label: "Unit",           cls: "w-[70px] text-center" },
-            { label: "Qty",            cls: "w-[68px] text-center" },
-            { label: "Hours Used",     cls: "w-[88px] text-center" },
-            { label: "Notes",          cls: "min-w-[120px]" },
+            { label: "Equipment Name", cls: "w-[200px]" },
+            { label: "Unit",           cls: "w-[60px] text-center" },
+            { label: "Qty",            cls: "w-[60px] text-center" },
+            { label: "Hours Used",     cls: "w-[80px] text-center" },
+            { label: "Notes",          cls: "w-[120px]" },
           ]} />
           <tbody>
             {equipment.length === 0 && (
@@ -1069,17 +1069,17 @@ export function NewReportTab({
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
                     onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                    className="h-8 text-xs text-center" placeholder="DAY" />
+                    className="h-8 text-xs text-center w-[52px]" placeholder="EA" />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
                     onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                    className="h-8 text-xs text-center tabular-nums" />
+                    className="h-8 text-xs text-center tabular-nums w-[52px]" />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
                     onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
-                    className="h-8 text-xs text-center tabular-nums" />
+                    className="h-8 text-xs text-center tabular-nums w-[72px]" />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
@@ -1095,7 +1095,7 @@ export function NewReportTab({
         </table>
 
         <AddRow testId="btn-add-equipment" label="Add Custom"
-          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "DAY", qty: 1, hours: 0, notes: "" }])} />
+          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════

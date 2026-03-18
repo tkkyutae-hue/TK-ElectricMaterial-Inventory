@@ -7,6 +7,7 @@ import {
   Users, Edit, Save, X, Trash2, Plus, Pencil, CheckCircle2, MinusCircle,
   LayoutList, Hash, TrendingUp, AlertCircle, Download, Clock, FileText,
   ListTodo, Eye, Filter, FileBarChart, ChevronRight, ChevronLeft, DollarSign,
+  ChevronDown, Copy, FolderOpen, Boxes, Layers, Zap,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -67,6 +68,8 @@ const scopeItemSchema = z.object({
   remarks:               z.string().optional(),
   isActive:              z.boolean().default(true),
   linkedInventoryItemId: z.number().nullable().optional(),
+  scopeType:             z.enum(["primary", "support"]).default("primary"),
+  progressCountingMode:  z.enum(["exact", "family", "manual"]).default("exact"),
 });
 type ScopeItemFormData = z.infer<typeof scopeItemSchema>;
 
@@ -265,6 +268,62 @@ function EditProjectDialog({
   );
 }
 
+// ── Category order + bundle definitions ───────────────────────────────────────
+const CATEGORY_ORDER = [
+  "Conduit", "Fittings", "Flexible", "Cable / Wire",
+  "Boxes", "Devices", "Supports / Strut", "Grounding",
+  "Equipment / Special", "Other",
+];
+
+const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support" }[]> = {
+  "EMT Conduit Bundle": [
+    { itemName: "EMT Conduit", unit: "FT", category: "Conduit", scopeType: "primary" },
+    { itemName: "EMT Coupling", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "EMT Connector", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "EMT Set Screw Connector", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "EMT Compression Connector", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "EMT Strap", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "EMT Elbow", unit: "EA", category: "Fittings", scopeType: "support" },
+  ],
+  "Rigid Conduit Bundle": [
+    { itemName: "Rigid Metal Conduit", unit: "FT", category: "Conduit", scopeType: "primary" },
+    { itemName: "Rigid Coupling", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "Rigid Connector", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "Rigid Elbow 90°", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "Rigid Locknut", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "Rigid Strap", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+  ],
+  "Flexible Conduit Bundle": [
+    { itemName: "Flexible Conduit", unit: "FT", category: "Flexible", scopeType: "primary" },
+    { itemName: "Flexible Connector (Straight)", unit: "EA", category: "Flexible", scopeType: "support" },
+    { itemName: "Flexible Connector (90°)", unit: "EA", category: "Flexible", scopeType: "support" },
+    { itemName: "Liquidtight Flexible Conduit", unit: "FT", category: "Flexible", scopeType: "primary" },
+    { itemName: "Liquidtight Connector", unit: "EA", category: "Flexible", scopeType: "support" },
+  ],
+  "Cable Tray Bundle": [
+    { itemName: "Cable Tray (12\" wide)", unit: "FT", category: "Supports / Strut", scopeType: "primary" },
+    { itemName: "Cable Tray Coupler", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "Cable Tray Elbow", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "Cable Tray Cover", unit: "FT", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "Cable Tray Support Hanger", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+  ],
+  "Box / Device Bundle": [
+    { itemName: "4\" Square Box", unit: "EA", category: "Boxes", scopeType: "primary" },
+    { itemName: "4\" Square Box Cover", unit: "EA", category: "Boxes", scopeType: "support" },
+    { itemName: "Device Box (1G)", unit: "EA", category: "Boxes", scopeType: "primary" },
+    { itemName: "Duplex Receptacle", unit: "EA", category: "Devices", scopeType: "primary" },
+    { itemName: "Single Pole Switch", unit: "EA", category: "Devices", scopeType: "primary" },
+    { itemName: "Cover Plate", unit: "EA", category: "Devices", scopeType: "support" },
+  ],
+  "Grounding Bundle": [
+    { itemName: "Ground Rod", unit: "EA", category: "Grounding", scopeType: "primary" },
+    { itemName: "Ground Rod Clamp", unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Grounding Wire (#6 bare)", unit: "FT", category: "Grounding", scopeType: "primary" },
+    { itemName: "Grounding Bushing", unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Grounding Lug", unit: "EA", category: "Grounding", scopeType: "support" },
+  ],
+};
+
 // ── Pending row type for inline add ───────────────────────────────────────────
 type PendingRow = {
   localId: string;
@@ -274,6 +333,17 @@ type PendingRow = {
   category: string;
   linkedInventoryItemId: number | null;
   remarks: string;
+  scopeType: "primary" | "support";
+};
+
+type BundleRow = {
+  localId: string;
+  itemName: string;
+  unit: string;
+  estimatedQty: string;
+  category: string;
+  scopeType: "primary" | "support";
+  checked: boolean;
 };
 
 function newPendingRow(): PendingRow {
@@ -281,7 +351,24 @@ function newPendingRow(): PendingRow {
     localId: Math.random().toString(36).slice(2),
     itemName: "", unit: "", estimatedQty: "",
     category: "", linkedInventoryItemId: null, remarks: "",
+    scopeType: "primary",
   };
+}
+
+// ── Scope Type Chip ────────────────────────────────────────────────────────────
+function ScopeTypeChip({ scopeType }: { scopeType: string | null | undefined }) {
+  if (!scopeType || scopeType === "primary") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+        Primary
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">
+      Support
+    </span>
+  );
 }
 
 // ── Inline scope row ──────────────────────────────────────────────────────────
@@ -410,8 +497,26 @@ function InlineScopeRow({
             placeholder="e.g. Conduit"
             onChange={e => onChange({ ...row, category: e.target.value })}
             className="h-8 text-sm"
+            list={`cat-list-${rowIndex}`}
             data-testid={`inline-scope-category-${rowIndex}`}
           />
+          <datalist id={`cat-list-${rowIndex}`}>
+            {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
+          </datalist>
+        </div>
+
+        {/* Scope Type */}
+        <div className="w-28 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Scope Type</label>
+          <select
+            value={row.scopeType}
+            onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
+            className="h-8 w-full text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700"
+            data-testid={`inline-scope-type-${rowIndex}`}
+          >
+            <option value="primary">Primary</option>
+            <option value="support">Support</option>
+          </select>
         </div>
 
         {/* Delete button */}
@@ -437,69 +542,89 @@ function InlineScopeRow({
   );
 }
 
-// ── Edit Scope Item Dialog (for existing items only) ──────────────────────────
-function EditScopeItemDialog({
+// ── Add / Edit Scope Item Dialog ──────────────────────────────────────────────
+function ScopeItemDialog({
   projectId, item, open, onClose,
 }: {
   projectId: number;
-  item: ProjectScopeItem;
+  item: ProjectScopeItem | null;
   open: boolean;
   onClose: () => void;
 }) {
+  const isEdit = !!item;
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
   const [invSearch, setInvSearch] = useState("");
-  const [invOpen, setInvOpen]     = useState(false);
+  const [invOpen, setInvOpen] = useState(false);
   const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
 
-  const filteredInvItems = allInventoryItems
-    .filter(it => flexMatch(invSearch, it.name))
-    .slice(0, 12);
+  const filteredInvItems = allInventoryItems.filter(it => flexMatch(invSearch, it.name)).slice(0, 12);
   const linkedInvName = allInventoryItems.find(it => it.id === linkedInvId)?.name ?? "";
 
   const form = useForm<ScopeItemFormData>({
     resolver: zodResolver(scopeItemSchema),
-    defaultValues: { itemName: "", unit: "", estimatedQty: "", category: "", remarks: "", isActive: true, linkedInventoryItemId: null },
+    defaultValues: {
+      itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
+      isActive: true, linkedInventoryItemId: null,
+      scopeType: "primary", progressCountingMode: "exact",
+    },
   });
 
   useEffect(() => {
     if (open) {
-      const lid = (item as any)?.linkedInventoryItemId ?? null;
-      setLinkedInvId(lid);
-      setInvSearch(lid ? (allInventoryItems.find(it => it.id === lid)?.name ?? "") : "");
-      form.reset({
-        itemName: item.itemName ?? "",
-        unit: item.unit ?? "",
-        estimatedQty: item.estimatedQty ? String(item.estimatedQty) : "",
-        category: item.category ?? "",
-        remarks: item.remarks ?? "",
-        isActive: item.isActive ?? true,
-        linkedInventoryItemId: lid,
-      });
+      if (isEdit && item) {
+        const lid = (item as any)?.linkedInventoryItemId ?? null;
+        setLinkedInvId(lid);
+        setInvSearch(lid ? (allInventoryItems.find(it => it.id === lid)?.name ?? "") : "");
+        form.reset({
+          itemName: item.itemName ?? "",
+          unit: item.unit ?? "",
+          estimatedQty: item.estimatedQty ? String(item.estimatedQty) : "",
+          category: item.category ?? "",
+          remarks: item.remarks ?? "",
+          isActive: item.isActive ?? true,
+          linkedInventoryItemId: lid,
+          scopeType: ((item as any).scopeType as "primary" | "support") ?? "primary",
+          progressCountingMode: ((item as any).progressCountingMode as "exact" | "family" | "manual") ?? "exact",
+        });
+      } else {
+        setLinkedInvId(null);
+        setInvSearch("");
+        form.reset({
+          itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
+          isActive: true, linkedInventoryItemId: null,
+          scopeType: "primary", progressCountingMode: "exact",
+        });
+      }
     }
   }, [open, item?.id]);
 
-  const updateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("PATCH", `/api/scope-items/${item.id}`, data),
+  const saveMutation = useMutation({
+    mutationFn: (data: any) =>
+      isEdit
+        ? apiRequest("PATCH", `/api/scope-items/${item!.id}`, data)
+        : apiRequest("POST", `/api/projects/${projectId}/scope-items`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
-      toast({ title: "Scope item updated" });
+      toast({ title: isEdit ? "Scope item updated" : "Scope item added" });
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed to update", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),
   });
 
   function onSubmit(data: ScopeItemFormData) {
-    updateMutation.mutate({ ...data, estimatedQty: String(data.estimatedQty), linkedInventoryItemId: linkedInvId });
+    saveMutation.mutate({ ...data, estimatedQty: String(data.estimatedQty), linkedInventoryItemId: linkedInvId });
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader><DialogTitle>Edit Scope Item</DialogTitle></DialogHeader>
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Scope Item" : "Add Scope Item"}</DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <FormField control={form.control} name="itemName" render={({ field }) => (
@@ -513,12 +638,8 @@ function EditScopeItemDialog({
               <FormField control={form.control} name="unit" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit *</FormLabel>
-                  <FormControl>
-                    <Input {...field} list="edit-units-list" data-testid="select-scope-unit" />
-                  </FormControl>
-                  <datalist id="edit-units-list">
-                    {COMMON_UNITS.map(u => <option key={u} value={u} />)}
-                  </datalist>
+                  <FormControl><Input {...field} list="dlg-units-list" data-testid="select-scope-unit" /></FormControl>
+                  <datalist id="dlg-units-list">{COMMON_UNITS.map(u => <option key={u} value={u} />)}</datalist>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -530,10 +651,40 @@ function EditScopeItemDialog({
                 </FormItem>
               )} />
             </div>
-            <FormField control={form.control} name="category" render={({ field }) => (
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="category" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
+                  <FormControl><Input placeholder="e.g. Conduit" {...field} list="dlg-cat-list" data-testid="input-scope-category" /></FormControl>
+                  <datalist id="dlg-cat-list">{CATEGORY_ORDER.map(c => <option key={c} value={c} />)}</datalist>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="scopeType" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Scope Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger data-testid="select-scope-type"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="primary">Primary</SelectItem>
+                      <SelectItem value="support">Support</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <FormField control={form.control} name="progressCountingMode" render={({ field }) => (
               <FormItem>
-                <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                <FormControl><Input placeholder="e.g. Conduit, Wire…" {...field} data-testid="input-scope-category" /></FormControl>
+                <FormLabel>Progress Counting Mode</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger data-testid="select-scope-counting-mode"><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="exact">Exact Match Only</SelectItem>
+                    <SelectItem value="family">Family Match (same category)</SelectItem>
+                    <SelectItem value="manual">Manual Mapping</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )} />
@@ -571,11 +722,7 @@ function EditScopeItemDialog({
                   </div>
                 )}
               </div>
-              {linkedInvId && (
-                <p className="text-[11px] text-emerald-700 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Linked: {linkedInvName}
-                </p>
-              )}
+              {linkedInvId && <p className="text-[11px] text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Linked: {linkedInvName}</p>}
             </div>
             <FormField control={form.control} name="remarks" render={({ field }) => (
               <FormItem>
@@ -584,26 +731,26 @@ function EditScopeItemDialog({
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="isActive" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            {isEdit && (
+              <FormField control={form.control} name="isActive" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
+                    <FormControl><SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
-              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-scope-item">
+              <Button type="button" variant="outline" onClick={onClose} disabled={saveMutation.isPending}>Cancel</Button>
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={saveMutation.isPending} data-testid="button-save-scope-item">
                 <Save className="w-4 h-4 mr-1" />
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                {saveMutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Add Item"}
               </Button>
             </div>
           </form>
@@ -613,14 +760,252 @@ function EditScopeItemDialog({
   );
 }
 
+// ── Inline Variant Area ────────────────────────────────────────────────────────
+function VariantArea({
+  item, invItems, onSave, onClose,
+}: {
+  item: ProjectScopeItem;
+  invItems: any[];
+  onSave: (ids: number[]) => void;
+  onClose: () => void;
+}) {
+  const existing: number[] = (item as any).acceptedVariants ?? [];
+  const [selected, setSelected] = useState<number[]>(existing);
+  const [search, setSearch] = useState("");
+
+  const filtered = invItems.filter(it => flexMatch(search, it.name)).slice(0, 15);
+  const selectedItems = invItems.filter(it => selected.includes(it.id));
+
+  function toggle(id: number) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  return (
+    <tr>
+      <td colSpan={6} className="px-5 pb-4 pt-0">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-indigo-800">Accepted Variants — "{item.itemName}"</p>
+              <p className="text-[10px] text-indigo-500 mt-0.5">Inventory items accepted as substitutes for this scope item</p>
+            </div>
+            <button type="button" onClick={onClose} className="text-indigo-400 hover:text-indigo-600 p-1">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {selectedItems.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedItems.map(it => (
+                <span key={it.id} className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 border border-indigo-300 text-indigo-800 text-xs rounded-full">
+                  {it.name}
+                  <button type="button" onClick={() => toggle(it.id)} className="text-indigo-400 hover:text-indigo-700 ml-0.5">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search inventory items to add as variants…"
+            className="h-8 text-xs"
+            data-testid={`variant-search-${item.id}`}
+          />
+          {search && (
+            <div className="bg-white border border-slate-200 rounded-lg max-h-40 overflow-y-auto">
+              {filtered.length === 0
+                ? <p className="text-xs text-slate-400 px-3 py-2 italic">No matches</p>
+                : filtered.map(it => (
+                  <button key={it.id} type="button" onClick={() => toggle(it.id)}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${selected.includes(it.id) ? "bg-indigo-50 text-indigo-800 font-medium" : "text-slate-700"}`}
+                    data-testid={`variant-item-${it.id}`}>
+                    <span className="truncate">{it.name}</span>
+                    {selected.includes(it.id) && <CheckCircle2 className="w-3 h-3 text-indigo-600 shrink-0" />}
+                  </button>
+                ))
+              }
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-indigo-600">{selected.length} variant{selected.length !== 1 ? "s" : ""} selected</span>
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={onClose} className="h-7 text-xs">Cancel</Button>
+              <Button type="button" size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={() => onSave(selected)} data-testid={`button-save-variants-${item.id}`}>
+                Save Variants
+              </Button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Bundle Selector ────────────────────────────────────────────────────────────
+function BundleSelector({
+  onSave, onClose,
+}: {
+  onSave: (rows: Omit<BundleRow, "localId">[]) => void;
+  onClose: () => void;
+}) {
+  const [phase, setPhase] = useState<"select" | "configure">("select");
+  const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
+  const [bundleRows, setBundleRows] = useState<BundleRow[]>([]);
+
+  function pickBundle(name: string) {
+    const items = BUNDLE_DEFINITIONS[name];
+    setBundleRows(items.map(it => ({
+      localId: Math.random().toString(36).slice(2),
+      itemName: it.itemName, unit: it.unit,
+      estimatedQty: "", category: it.category,
+      scopeType: it.scopeType, checked: true,
+    })));
+    setSelectedBundle(name);
+    setPhase("configure");
+  }
+
+  function handleSave() {
+    const toSave = bundleRows
+      .filter(r => r.checked)
+      .map(({ localId: _l, checked: _c, ...rest }) => rest);
+    onSave(toSave);
+  }
+
+  const checkedCount = bundleRows.filter(r => r.checked).length;
+
+  if (phase === "select") {
+    return (
+      <div className="premium-card bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
+          <div>
+            <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+              <Boxes className="w-4 h-4 text-brand-600" /> Add by Bundle
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Select a bundle template to bulk-add related scope items</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">Cancel</Button>
+        </div>
+        <div className="p-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {Object.entries(BUNDLE_DEFINITIONS).map(([name, items]) => (
+            <button
+              key={name} type="button"
+              onClick={() => pickBundle(name)}
+              className="text-left p-4 border border-slate-200 rounded-xl hover:border-brand-300 hover:bg-brand-50/30 transition-all group"
+              data-testid={`bundle-card-${name.replace(/\s+/g, "-")}`}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-brand-50 border border-brand-100 rounded-lg group-hover:bg-brand-100 transition-colors shrink-0">
+                  <Layers className="w-3.5 h-3.5 text-brand-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800 leading-snug">{name}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{items.length} items</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="premium-card bg-white overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
+        <div>
+          <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+            <Layers className="w-4 h-4 text-brand-600" /> Configure: {selectedBundle}
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">Check items to include and fill in estimated quantities</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPhase("select")} className="text-xs">← Back</Button>
+          <Button size="sm" variant="outline" onClick={onClose} className="text-xs">Cancel</Button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50/80">
+            <tr>
+              <th className="px-4 py-2.5 w-8"></th>
+              <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs">Item</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-16">Unit</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-24">Est. Qty</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-28">Category</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-24">Type</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {bundleRows.map((row, i) => (
+              <tr key={row.localId} className={`transition-colors ${row.checked ? "bg-white" : "bg-slate-50 opacity-50"}`}>
+                <td className="px-4 py-2.5">
+                  <input type="checkbox" checked={row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, checked: e.target.checked } : r))}
+                    className="rounded" data-testid={`bundle-row-check-${i}`}
+                  />
+                </td>
+                <td className="px-4 py-2.5">
+                  <Input value={row.itemName} disabled={!row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, itemName: e.target.value } : r))}
+                    className="h-7 text-xs" data-testid={`bundle-row-name-${i}`} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <Input value={row.unit} disabled={!row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, unit: e.target.value } : r))}
+                    className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${i}`} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0" disabled={!row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, estimatedQty: e.target.value } : r))}
+                    className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${i}`} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <Input value={row.category} disabled={!row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, category: e.target.value } : r))}
+                    className="h-7 text-xs w-24" data-testid={`bundle-row-cat-${i}`} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <select value={row.scopeType} disabled={!row.checked}
+                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, scopeType: e.target.value as "primary" | "support" } : r))}
+                    className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white" data-testid={`bundle-row-type-${i}`}>
+                    <option value="primary">Primary</option>
+                    <option value="support">Support</option>
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+        <span className="text-xs text-slate-500">{checkedCount} of {bundleRows.length} items selected</span>
+        <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={handleSave}
+          disabled={checkedCount === 0} data-testid="button-save-bundle">
+          <Save className="w-4 h-4 mr-1.5" />
+          Add {checkedCount} Item{checkedCount !== 1 ? "s" : ""} to Scope
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Scope Items Tab ────────────────────────────────────────────────────────────
 function ScopeItemsTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [editItem, setEditItem]       = useState<ProjectScopeItem | null>(null);
+
+  type AddMode = "none" | "multiple" | "bundle";
+  const [dialogItem, setDialogItem] = useState<ProjectScopeItem | null | "new">(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectScopeItem | null>(null);
-  const [pendingRows, setPendingRows]  = useState<PendingRow[]>([]);
-  const [isSaving, setIsSaving]       = useState(false);
+  const [addMode, setAddMode] = useState<AddMode>("none");
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
+  const [variantOpen, setVariantOpen] = useState<number | null>(null);
+  const [movingItem, setMovingItem] = useState<number | null>(null);
 
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
@@ -639,66 +1024,114 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
-      apiRequest("PATCH", `/api/scope-items/${id}`, { isActive }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] }),
+  const patchMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/scope-items/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
+    },
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
   });
 
-  const totalItems  = scopeItems.length;
-  const totalQty    = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
-  const activeCount = scopeItems.filter(i => i.isActive).length;
+  const totalItems = scopeItems.length;
+  const totalQty = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
+  const primaryCount = scopeItems.filter(i => !((i as any).scopeType) || (i as any).scopeType === "primary").length;
 
-  function addRow() {
-    setPendingRows(prev => [...prev, newPendingRow()]);
+  const grouped = useMemo(() => {
+    const map = new Map<string, ProjectScopeItem[]>();
+    for (const item of scopeItems) {
+      const cat = item.category || "Other";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(item);
+    }
+    for (const [, items] of map) items.sort((a, b) => a.itemName.localeCompare(b.itemName));
+    const result: { cat: string; items: ProjectScopeItem[] }[] = [];
+    for (const cat of CATEGORY_ORDER) { if (map.has(cat)) result.push({ cat, items: map.get(cat)! }); }
+    for (const [cat, items] of map) { if (!CATEGORY_ORDER.includes(cat)) result.push({ cat, items }); }
+    return result;
+  }, [scopeItems]);
+
+  function toggleCat(cat: string) {
+    setCollapsedCats(prev => { const next = new Set(prev); if (next.has(cat)) next.delete(cat); else next.add(cat); return next; });
   }
 
-  function updateRow(localId: string, updated: PendingRow) {
-    setPendingRows(prev => prev.map(r => r.localId === localId ? updated : r));
-  }
+  function addRow() { setPendingRows(prev => [...prev, newPendingRow()]); }
+  function updateRow(localId: string, updated: PendingRow) { setPendingRows(prev => prev.map(r => r.localId === localId ? updated : r)); }
+  function removeRow(localId: string) { setPendingRows(prev => prev.filter(r => r.localId !== localId)); }
 
-  function removeRow(localId: string) {
-    setPendingRows(prev => prev.filter(r => r.localId !== localId));
-  }
-
-  async function saveAll() {
+  async function saveMultiple() {
     const validRows = pendingRows.filter(r => r.itemName.trim() && r.unit.trim() && r.estimatedQty.trim());
     if (validRows.length === 0) {
-      toast({ title: "Nothing to save", description: "Fill in at least Item Name, Unit, and Est. Qty for each row.", variant: "destructive" });
+      toast({ title: "Nothing to save", description: "Fill in at least Item Name, Unit, and Est. Qty.", variant: "destructive" });
       return;
-    }
-    const invalid = pendingRows.filter(r => !r.itemName.trim() || !r.unit.trim() || !r.estimatedQty.trim());
-    if (invalid.length > 0) {
-      toast({ title: "Incomplete rows", description: "Some rows are missing required fields (Name, Unit, Qty) and will be skipped.", variant: "destructive" });
     }
     setIsSaving(true);
     try {
-      await Promise.all(
-        validRows.map(row =>
-          apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
-            itemName:              row.itemName.trim(),
-            unit:                  row.unit.trim(),
-            estimatedQty:          row.estimatedQty,
-            category:              row.category.trim() || null,
-            remarks:               row.remarks.trim() || null,
-            linkedInventoryItemId: row.linkedInventoryItemId,
-            isActive:              true,
-          })
-        )
-      );
+      await Promise.all(validRows.map(row =>
+        apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
+          itemName: row.itemName.trim(), unit: row.unit.trim(),
+          estimatedQty: row.estimatedQty,
+          category: row.category.trim() || null,
+          remarks: row.remarks.trim() || null,
+          linkedInventoryItemId: row.linkedInventoryItemId,
+          scopeType: row.scopeType, isActive: true,
+        })
+      ));
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({ title: `${validRows.length} scope item${validRows.length > 1 ? "s" : ""} saved` });
-      setPendingRows([]);
+      setPendingRows([]); setAddMode("none");
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
+    } finally { setIsSaving(false); }
+  }
+
+  async function saveBundle(rows: Omit<BundleRow, "localId">[]) {
+    setIsSaving(true);
+    try {
+      await Promise.all(rows.map(row =>
+        apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
+          itemName: row.itemName.trim(), unit: row.unit.trim(),
+          estimatedQty: row.estimatedQty || "0",
+          category: row.category || null, scopeType: row.scopeType, isActive: true,
+        })
+      ));
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
+      toast({ title: `${rows.length} bundle item${rows.length !== 1 ? "s" : ""} added` });
+      setAddMode("none");
+    } catch (err: any) {
+      toast({ title: "Bundle save failed", description: err.message, variant: "destructive" });
+    } finally { setIsSaving(false); }
+  }
+
+  async function duplicateItem(item: ProjectScopeItem) {
+    try {
+      await apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
+        itemName: `${item.itemName} (Copy)`, unit: item.unit,
+        estimatedQty: String(item.estimatedQty), category: item.category ?? null,
+        remarks: item.remarks ?? null, linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,
+        scopeType: (item as any).scopeType ?? "primary", isActive: item.isActive,
+      });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      toast({ title: "Item duplicated" });
+    } catch (err: any) {
+      toast({ title: "Duplicate failed", description: err.message, variant: "destructive" });
     }
   }
 
-  const isAdding = pendingRows.length > 0;
+  async function saveVariants(item: ProjectScopeItem, ids: number[]) {
+    await patchMutation.mutateAsync({ id: item.id, data: { acceptedVariants: ids } });
+    setVariantOpen(null);
+    toast({ title: "Variants saved" });
+  }
+
+  async function moveToCategory(item: ProjectScopeItem, category: string) {
+    await patchMutation.mutateAsync({ id: item.id, data: { category } });
+    setMovingItem(null);
+  }
+
+  const isAdding = addMode === "multiple" && pendingRows.length > 0;
 
   return (
     <div className="space-y-5">
@@ -706,8 +1139,8 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Total Scope Items", value: totalItems, icon: LayoutList, color: "text-brand-600", bg: "bg-brand-50" },
-          { label: "Total Est. Qty",    value: totalQty.toLocaleString(), icon: Hash, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "Active Items",      value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Total Est. Qty", value: totalQty.toLocaleString(), icon: Hash, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "Primary Items", value: primaryCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
         ].map((s, i) => (
           <div key={i} className="premium-card bg-white p-4 flex items-center gap-3" data-testid={`scope-kpi-${i}`}>
             <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
@@ -719,115 +1152,216 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
         ))}
       </div>
 
-      {/* Existing scope items table */}
+      {/* Main table card */}
       <div className="premium-card bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Baseline quantities used as progress reference</p>
+            <p className="text-xs text-slate-400 mt-0.5">Grouped by category — click headers to collapse</p>
           </div>
-          <Button
-            size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
-            onClick={addRow}
-            data-testid="button-add-scope-item"
-          >
-            <Plus className="w-4 h-4 mr-1" /> Add Item
-          </Button>
+          {/* Split dropdown button */}
+          <div className="relative">
+            <div className="flex">
+              <Button size="sm"
+                className="bg-brand-700 hover:bg-brand-800 text-white rounded-r-none border-r border-brand-500/40"
+                onClick={() => { setDialogItem("new"); setShowAddMenu(false); }}
+                data-testid="button-add-scope-single">
+                <Plus className="w-4 h-4 mr-1" /> Add Item
+              </Button>
+              <button
+                className="bg-brand-700 hover:bg-brand-800 text-white px-2 rounded-r-lg flex items-center transition-colors"
+                onClick={() => setShowAddMenu(m => !m)}
+                data-testid="button-add-scope-menu">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {showAddMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 min-w-[200px] py-1">
+                {[
+                  { label: "Add Single Item",    Icon: Plus,   action: () => { setDialogItem("new"); setShowAddMenu(false); } },
+                  { label: "Add Multiple Items", Icon: Layers, action: () => { setAddMode("multiple"); setPendingRows([newPendingRow()]); setShowAddMenu(false); } },
+                  { label: "Add by Bundle",      Icon: Boxes,  action: () => { setAddMode("bundle"); setShowAddMenu(false); } },
+                ].map(({ label, Icon, action }) => (
+                  <button key={label} type="button" onClick={action}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-2.5"
+                    data-testid={`menu-scope-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+                    <Icon className="w-3.5 h-3.5 text-brand-600 shrink-0" /> {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
           <div className="p-8 text-center text-slate-400">Loading…</div>
-        ) : scopeItems.length === 0 && !isAdding ? (
+        ) : scopeItems.length === 0 && addMode === "none" ? (
           <div className="p-12 text-center">
             <LayoutList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No scope items yet</p>
             <p className="text-xs text-slate-400 mt-1">Add items to define the project's estimated work quantities.</p>
-            <Button size="sm" variant="outline" className="mt-4" onClick={addRow} data-testid="button-add-scope-item-empty">
+            <Button size="sm" variant="outline" className="mt-4" onClick={() => setDialogItem("new")} data-testid="button-add-scope-item-empty">
               <Plus className="w-4 h-4 mr-1" /> Add First Item
             </Button>
           </div>
-        ) : scopeItems.length > 0 ? (
+        ) : grouped.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80">
                 <tr>
-                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[35%]">Item</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[8%]">Unit</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Est. Qty</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[15%]">Category</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[12%]">Status</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[18%]">Actions</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[32%]">Item</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[9%]">Est. Qty</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">Category</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[10%]">Scope Type</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[29%]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {scopeItems.map((item) => (
-                  <tr key={item.id} className={`hover:bg-slate-50 transition-colors ${!item.isActive ? "opacity-50" : ""}`} data-testid={`scope-row-${item.id}`}>
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-900 leading-snug">{item.itemName}</p>
-                      {(item as any).linkedInventoryItemId && (() => {
-                        const invItem = allInvItems.find(it => it.id === (item as any).linkedInventoryItemId);
-                        return invItem ? (
-                          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
-                            <Package className="w-2.5 h-2.5" /> {invItem.name}
-                          </span>
-                        ) : null;
-                      })()}
-                      {item.remarks && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{item.remarks}</p>}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-bold text-slate-900 tabular-nums">
-                      {parseFloat(String(item.estimatedQty)).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-500 text-xs">{item.category || "—"}</td>
-                    <td className="px-4 py-3.5">
-                      {item.isActive ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" /> Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                          <MinusCircle className="w-3 h-3" /> Inactive
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                          onClick={() => toggleMutation.mutate({ id: item.id, isActive: !item.isActive })}
-                          title={item.isActive ? "Deactivate" : "Activate"}
-                          data-testid={`button-toggle-scope-${item.id}`}>
-                          {item.isActive ? <MinusCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                          onClick={() => setEditItem(item)}
-                          data-testid={`button-edit-scope-${item.id}`}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => setDeleteTarget(item)}
-                          data-testid={`button-delete-scope-${item.id}`}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {grouped.map(({ cat, items }) => {
+                  const isCollapsed = collapsedCats.has(cat);
+                  return (
+                    <Fragment key={cat}>
+                      {/* Category header row */}
+                      <tr className="bg-slate-50/80 border-t border-slate-200">
+                        <td colSpan={6} className="px-5 py-2">
+                          <button type="button" onClick={() => toggleCat(cat)}
+                            className="flex items-center gap-2 text-left hover:text-brand-700 transition-colors group"
+                            data-testid={`scope-cat-toggle-${cat.replace(/\s+/g, "-")}`}>
+                            {isCollapsed
+                              ? <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" />
+                              : <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" />
+                            }
+                            <span className="text-xs font-semibold text-slate-700 group-hover:text-brand-700">{cat}</span>
+                            <span className="text-[10px] text-slate-400 ml-1">{items.length} item{items.length !== 1 ? "s" : ""}</span>
+                            <span className="text-[10px] text-slate-300 ml-1">
+                              · {items.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0).toLocaleString()} total qty
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                      {/* Item rows */}
+                      {!isCollapsed && items.map((item) => (
+                        <Fragment key={item.id}>
+                          <tr
+                            className={`hover:bg-slate-50/70 transition-colors border-t border-slate-100 ${!item.isActive ? "opacity-40" : ""}`}
+                            data-testid={`scope-row-${item.id}`}
+                          >
+                            <td className="px-5 py-3">
+                              <p className="font-medium text-slate-900 leading-snug text-sm">{item.itemName}</p>
+                              {(item as any).linkedInventoryItemId && (() => {
+                                const inv = allInvItems.find(it => it.id === (item as any).linkedInventoryItemId);
+                                return inv ? (
+                                  <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
+                                    <Package className="w-2.5 h-2.5" /> {inv.name}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {((item as any).acceptedVariants ?? []).length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {((item as any).acceptedVariants as number[]).slice(0, 3).map((vid: number) => {
+                                    const inv = allInvItems.find(it => it.id === vid);
+                                    return inv ? (
+                                      <span key={vid} className="text-[10px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-700 rounded font-medium">
+                                        {inv.name}
+                                      </span>
+                                    ) : null;
+                                  })}
+                                  {((item as any).acceptedVariants as number[]).length > 3 && (
+                                    <span className="text-[10px] text-slate-400">+{((item as any).acceptedVariants as number[]).length - 3} more</span>
+                                  )}
+                                </div>
+                              )}
+                              {item.remarks && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{item.remarks}</p>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums text-sm">
+                              {parseFloat(String(item.estimatedQty)).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              {movingItem === item.id ? (
+                                <select
+                                  className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-28"
+                                  value={item.category ?? "Other"}
+                                  onChange={e => moveToCategory(item, e.target.value)}
+                                  onBlur={() => setMovingItem(null)}
+                                  autoFocus
+                                  data-testid={`scope-move-cat-${item.id}`}
+                                >
+                                  {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              ) : (
+                                <span className="text-xs text-slate-500">{item.category || "—"}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <ScopeTypeChip scopeType={(item as any).scopeType} />
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="ghost"
+                                  className="h-7 px-2 text-[10px] text-slate-400 hover:text-violet-600 hover:bg-violet-50 gap-1"
+                                  onClick={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
+                                  title="Add / Edit Variants" data-testid={`button-variant-scope-${item.id}`}>
+                                  <Zap className="w-3 h-3" />
+                                  <span className="hidden xl:inline">Variants</span>
+                                </Button>
+                                <Button size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                                  onClick={() => duplicateItem(item)} title="Duplicate"
+                                  data-testid={`button-duplicate-scope-${item.id}`}>
+                                  <Copy className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                                  onClick={() => setMovingItem(movingItem === item.id ? null : item.id)}
+                                  title="Move to Category" data-testid={`button-move-scope-${item.id}`}>
+                                  <FolderOpen className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                                  onClick={() => setDialogItem(item)} title="Edit"
+                                  data-testid={`button-edit-scope-${item.id}`}>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost"
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => setDeleteTarget(item)} title="Delete"
+                                  data-testid={`button-delete-scope-${item.id}`}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* Inline variant area */}
+                          {variantOpen === item.id && (
+                            <VariantArea
+                              item={item} invItems={allInvItems}
+                              onSave={(ids) => saveVariants(item, ids)}
+                              onClose={() => setVariantOpen(null)}
+                            />
+                          )}
+                        </Fragment>
+                      ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : null}
       </div>
 
-      {/* Inline add section */}
+      {/* Add Multiple inline section */}
       {isAdding && (
         <div className="premium-card bg-white overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
             <div>
-              <h3 className="font-semibold text-slate-900 text-sm">New Items</h3>
+              <h3 className="font-semibold text-slate-900 text-sm">Add Multiple Items</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and click "Save Scope Items"
+                {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and save
               </p>
             </div>
             <Button size="sm" variant="outline" className="border-brand-200 text-brand-700 hover:bg-brand-50" onClick={addRow}
@@ -837,59 +1371,50 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
           <div className="p-5 space-y-3">
             {pendingRows.map((row, i) => (
-              <InlineScopeRow
-                key={row.localId}
-                row={row}
-                invItems={allInvItems}
+              <InlineScopeRow key={row.localId} row={row} invItems={allInvItems}
                 onChange={updated => updateRow(row.localId, updated)}
-                onRemove={() => removeRow(row.localId)}
-                rowIndex={i}
-              />
+                onRemove={() => removeRow(row.localId)} rowIndex={i} />
             ))}
           </div>
           <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-            <button
-              type="button"
-              onClick={() => setPendingRows([])}
+            <button type="button" onClick={() => { setPendingRows([]); setAddMode("none"); }}
               className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-              data-testid="button-cancel-inline-scope"
-            >
+              data-testid="button-cancel-inline-scope">
               Cancel
             </button>
-            <Button
-              className="bg-brand-700 hover:bg-brand-800 text-white"
-              onClick={saveAll}
-              disabled={isSaving}
-              data-testid="button-save-scope-items"
-            >
+            <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={saveMultiple}
+              disabled={isSaving} data-testid="button-save-scope-items">
               <Save className="w-4 h-4 mr-1.5" />
-              {isSaving ? "Saving…" : `Save Scope Item${pendingRows.length !== 1 ? "s" : ""}`}
+              {isSaving ? "Saving…" : `Save ${pendingRows.length} Item${pendingRows.length !== 1 ? "s" : ""}`}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Edit dialog for existing items */}
-      {editItem && (
-        <EditScopeItemDialog
-          projectId={projectId}
-          item={editItem}
-          open={!!editItem}
-          onClose={() => setEditItem(null)}
-        />
+      {/* Bundle selector */}
+      {addMode === "bundle" && (
+        <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} />
       )}
 
-      {/* Delete confirm dialog */}
+      {/* Add / Edit dialog */}
+      <ScopeItemDialog
+        projectId={projectId}
+        item={dialogItem === "new" ? null : dialogItem}
+        open={dialogItem !== null}
+        onClose={() => setDialogItem(null)}
+      />
+
+      {/* Delete confirm */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader><DialogTitle>Delete Scope Item?</DialogTitle></DialogHeader>
           <p className="text-sm text-slate-600 py-2">
-            Remove <span className="font-semibold">"{deleteTarget?.itemName}"</span> from this project's scope?
-            This cannot be undone.
+            Remove <span className="font-semibold">"{deleteTarget?.itemName}"</span> from this project's scope? This cannot be undone.
           </p>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending} data-testid="button-confirm-delete-scope">
+            <Button variant="destructive" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending} data-testid="button-confirm-delete-scope">
               {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </Button>
           </div>

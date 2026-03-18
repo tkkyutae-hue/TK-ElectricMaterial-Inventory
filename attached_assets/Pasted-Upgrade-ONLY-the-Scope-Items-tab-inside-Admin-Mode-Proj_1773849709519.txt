@@ -1,0 +1,125 @@
+Upgrade ONLY the Scope Items tab inside Admin Mode → Projects → Project Detail.
+
+STRICT DO-NOT-CHANGE:
+- Do not change page width, content width, card width, panel width, input height, row height, spacing, or current layout dimensions
+- Do not change Overview tab, Daily Reports tab, Progress tab, Material Usage tab, global admin shell, or any other page/module
+- Keep all current visual sizing exactly as-is
+- No rollback of previously improved spacing or form sizing
+
+SCOPE ITEMS TAB CHANGES
+
+1. Replace the current single "Add Item" button with a split dropdown button.
+Menu options:
+- Add Single Item
+- Add Multiple Items
+- Add by Bundle
+
+2. Add Single Item
+- Keep current existing single-item behavior
+
+3. Add Multiple Items
+- Open INLINE inside the Scope Items section, not modal
+- Show editable table rows
+- Columns:
+  Item | Unit | Est. Qty | Category | Scope Type
+- Item field must be searchable and inventory-linked
+- Buttons:
+  Add Row / Save All / Cancel
+- User can add multiple rows before saving
+
+4. Add by Bundle
+- Open INLINE inside the Scope Items section, not modal
+- Show bundle cards:
+  EMT Conduit Bundle
+  Rigid Conduit Bundle
+  Flexible Conduit Bundle
+  Cable Tray Bundle
+  Box / Device Bundle
+  Grounding Bundle
+- After selecting a bundle, show checklist rows with:
+  checkbox | item name | unit | est. qty input
+- Provide:
+  Select All / Deselect All / Add Selected Items / Back
+- Example EMT bundle items:
+  EMT Conduit
+  EMT Coupling
+  EMT Connector
+  EMT Set Screw Connector
+  EMT Compression Connector
+  EMT Strap
+  EMT Elbow
+
+5. Group Scope Items by category instead of flat input order
+- Fixed category order:
+  Conduit
+  Fittings
+  Flexible
+  Cable / Wire
+  Boxes
+  Devices
+  Supports / Strut
+  Grounding
+  Equipment / Special
+  Other
+- Sort items alphabetically inside each category
+- Show category section headers with item count
+  Example: Flexible — 5 items
+- Each category header must support collapse / expand
+- Hide empty categories
+
+6. Remove Status column completely
+- Remove Status column from Scope Items table
+- Remove Active badge/chip from scope item rows
+- Remove any status-related filter chips above Scope Items
+- Final columns:
+  Item | Unit | Est. Qty | Category | Scope Type | Actions
+
+7. Add Scope Type field to each scope item
+- Values:
+  Primary
+  Support
+- Default = Primary
+- Show as small chip in table
+  Primary = green chip
+  Support = neutral/gray chip
+- In add/edit form:
+  Primary Scope Item
+  Support / Incidental Reference
+
+8. Add Accepted Variants to each scope item
+- In row actions, add:
+  Add Variant
+- Clicking it opens INLINE expanded area under the row
+- Show searchable multi-select from inventory items
+- Selected accepted variants appear as small tags below the item name
+- Example:
+  Scope Item: 1" Liquidtight Flexible Conduit
+  Accepted Variants:
+  1-1/4" Liquidtight Flexible Conduit
+  3/4" Liquidtight Flexible Conduit
+
+9. Add Progress Counting Mode in the edit form only
+- Options:
+  Exact Match Only
+  Family Match
+  Manual Mapping
+- Default = Exact Match Only
+
+10. Expand row quick actions
+- Add Variant
+- Duplicate Row
+- Edit
+- Delete
+- Move to Category
+- Move to Category can be a small dropdown on hover or inline action
+
+DATA RULES
+- Use existing project data structure
+- Do not create new database tables
+- Do not redesign backend
+- Scope Type and Accepted Variants can be stored as extra fields on existing scope item records
+- If needed, use lightweight placeholder/mock logic only for UI flow demonstration
+
+IMPLEMENTATION RULE
+- Do this in-place with minimal changes
+- Preserve all current sizing and spacing improvements exactly

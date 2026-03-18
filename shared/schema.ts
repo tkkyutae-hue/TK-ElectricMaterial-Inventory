@@ -371,6 +371,9 @@ export const projectScopeItems = pgTable("project_scope_items", {
   remarks: text("remarks"),
   linkedInventoryItemId: integer("linked_inventory_item_id").references(() => items.id, { onDelete: "set null" }),
   isActive: boolean("is_active").notNull().default(true),
+  scopeType: text("scope_type").default("primary"),
+  acceptedVariants: jsonb("accepted_variants").$type<number[]>().default([]),
+  progressCountingMode: text("progress_counting_mode").default("exact"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

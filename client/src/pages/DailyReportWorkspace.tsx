@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import {
   MapPin, Calendar, ClipboardList, AlertCircle,
   Users, FileText, BarChart3, Clock, PlusCircle, Info, Edit2, Loader2,
@@ -523,17 +522,10 @@ function projectLocation(p: Project): string {
 // ─── Main workspace page ──────────────────────────────────────────────────────
 export default function DailyReportWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<Tab>("new-report");
   const [editingReport, setEditingReport] = useState<any>(null);
 
   const numericProjectId = Number(projectId);
-
-  const WORKSPACE_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "new-report", label: t.drNewReport,     icon: <PlusCircle className="w-4 h-4" /> },
-    { id: "history",    label: t.drReportHistory, icon: <ClipboardList className="w-4 h-4" /> },
-    { id: "progress",   label: t.drProgress,      icon: <BarChart3 className="w-4 h-4" /> },
-  ];
 
   const {
     data: project,
@@ -609,9 +601,6 @@ export default function DailyReportWorkspace() {
               )}
             </div>
           </div>
-          <div className="shrink-0">
-            <LanguageSwitcher theme="light" />
-          </div>
         </CardContent>
       </Card>
 
@@ -621,7 +610,7 @@ export default function DailyReportWorkspace() {
         data-testid="tab-bar-workspace"
         role="tablist"
       >
-        {WORKSPACE_TABS.map((tab) => {
+        {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
@@ -654,7 +643,7 @@ export default function DailyReportWorkspace() {
                 <div className="flex items-center gap-2">
                   <Edit2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <p className="text-xs text-blue-800 font-medium">
-                    {t.drEditingBanner} #{editingReport.reportNumber || editingReport.id} — {editingReport.status === "submitted" ? t.drSubmitted : t.drDraft}
+                    Editing report #{editingReport.reportNumber || editingReport.id} — {editingReport.status === "submitted" ? "Submitted" : "Draft"}
                   </p>
                 </div>
                 <Button
@@ -664,7 +653,7 @@ export default function DailyReportWorkspace() {
                   className="text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 h-7 px-2"
                   onClick={() => setEditingReport(null)}
                 >
-                  {t.drEditingNew}
+                  + New Report
                 </Button>
               </div>
             )}

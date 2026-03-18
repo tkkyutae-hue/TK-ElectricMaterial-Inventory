@@ -135,6 +135,11 @@ export interface IStorage {
   createScopeItem(data: CreateProjectScopeItemRequest): Promise<ProjectScopeItem>;
   updateScopeItem(id: number, data: UpdateProjectScopeItemRequest): Promise<ProjectScopeItem>;
   deleteScopeItem(id: number): Promise<void>;
+  getProjectProgress(projectId: number): Promise<{
+    scopeItems: ProjectScopeItem[];
+    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1939,6 +1944,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScopeItem(id: number): Promise<void> {
     await db.delete(projectScopeItems).where(eq(projectScopeItems.id, id));
+  }
+
+  async getProjectProgress(projectId: number): Promise<{
+    scopeItems: ProjectScopeItem[];
+    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+  }> {
+    const scopes = await this.getScopeItems(projectId);
+
+    const submittedReports = await db
+      .select()
+      .from(dailyReports)
+      .where(and(eq(dailyReports.projectId, projectId), eq(dailyReports.status, "submitted")));
+
+    const actuals: Record<number, number> = {};
+    for (const report of submittedReports) {
+      const materials: any[] = (report.formData as any)?.materials ?? [];
+      for (const mat of materials) {
+        const sid = mat.scopeItemId;
+        const qty = typeof mat.qty === "number" ? mat.qty : parseFloat(mat.qty ?? "0") || 0;
+        if (sid && qty > 0) {
+          actuals[sid] = (actuals[sid] ?? 0) + qty;
+        }
+      }
+    }
+
+    let estTotal = 0;
+    let installed = 0;
+    const progress: Record<number, { cumulative: number; remaining: number; pct: number }> = {};
+
+    for (const scope of scopes) {
+      const estQty = parseFloat(String(scope.estimatedQty)) || 0;
+      const cumulative = actuals[scope.id] ?? 0;
+      const remaining = Math.max(0, estQty - cumulative);
+      const pct = estQty > 0 ? Math.min(100, Math.round((cumulative / estQty) * 1000) / 10) : 0;
+      progress[scope.id] = { cumulative, remaining, pct };
+      estTotal += estQty;
+      installed += cumulative;
+    }
+
+    const overallPct = estTotal > 0 ? Math.min(100, Math.round((installed / estTotal) * 1000) / 10) : 0;
+    const remaining = Math.max(0, estTotal - installed);
+
+    return { scopeItems: scopes, progress, summary: { overallPct, estTotal, installed, remaining } };
   }
 }
 

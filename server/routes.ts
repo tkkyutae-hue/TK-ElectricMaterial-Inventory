@@ -1200,6 +1200,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Project Scope Items ─────────────────────────────────────────────────────
 
+  app.get("/api/projects/:id/progress", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      const data = await storage.getProjectProgress(projectId);
+      res.json(data);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.get("/api/projects/:id/scope-items", isAuthenticated, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);

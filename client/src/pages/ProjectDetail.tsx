@@ -6,7 +6,7 @@ import { MovementForm } from "@/components/MovementForm";
 import {
   ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight,
   Users, Edit, Save, X, Trash2, Plus, Pencil, CheckCircle2, MinusCircle,
-  LayoutList, Hash,
+  LayoutList, Hash, TrendingUp, AlertCircle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -588,6 +588,147 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
   );
 }
 
+// ── Progress Tab ──────────────────────────────────────────────────────────────
+function ProgressTab({ projectId }: { projectId: number }) {
+  const { data, isLoading } = useQuery<{
+    scopeItems: any[];
+    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+  }>({
+    queryKey: ["/api/projects", projectId, "progress"],
+    queryFn: () => fetch(`/api/projects/${projectId}/progress`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  if (isLoading) return <div className="p-8 text-center text-slate-400">Loading progress…</div>;
+
+  const scopeItems = data?.scopeItems ?? [];
+  const progress   = data?.progress ?? {};
+  const summary    = data?.summary ?? { overallPct: 0, estTotal: 0, installed: 0, remaining: 0 };
+  const hasScopes  = scopeItems.length > 0;
+
+  const pctColor = (pct: number) =>
+    pct >= 100 ? "bg-emerald-500" : pct >= 70 ? "bg-brand-500" : pct >= 40 ? "bg-blue-400" : "bg-slate-300";
+
+  const summaryPctColor =
+    summary.overallPct >= 100 ? "text-emerald-600" :
+    summary.overallPct >= 70  ? "text-brand-600"   :
+    summary.overallPct >= 40  ? "text-blue-600"    : "text-slate-500";
+
+  return (
+    <div className="space-y-5">
+      {/* No scope items yet */}
+      {!hasScopes && (
+        <div className="premium-card bg-white p-12 text-center">
+          <TrendingUp className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">No scope items defined</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+            Add scope items in the <strong>Scope Items</strong> tab to enable progress tracking.
+          </p>
+        </div>
+      )}
+
+      {hasScopes && (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="premium-card bg-white p-5 col-span-2 sm:col-span-1 flex flex-col items-center justify-center gap-1" data-testid="progress-overall">
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Overall Progress</p>
+              <p className={`text-4xl font-display font-bold ${summaryPctColor}`}>{summary.overallPct.toFixed(1)}%</p>
+              <div className="w-full bg-slate-100 rounded-full h-2 mt-1">
+                <div className={`h-2 rounded-full transition-all ${pctColor(summary.overallPct)}`} style={{ width: `${Math.min(100, summary.overallPct)}%` }} />
+              </div>
+            </div>
+            {[
+              { label: "Est. Total",  value: summary.estTotal.toLocaleString(),   icon: Hash,       color: "text-slate-600",   bg: "bg-slate-50"   },
+              { label: "Installed",   value: summary.installed.toLocaleString(),  icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: "Remaining",   value: summary.remaining.toLocaleString(),  icon: AlertCircle, color: "text-amber-600",   bg: "bg-amber-50"   },
+            ].map((s, i) => (
+              <div key={i} className="premium-card bg-white p-5 flex items-start gap-3" data-testid={`progress-kpi-${i}`}>
+                <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
+                <div>
+                  <p className="text-xs text-slate-400">{s.label}</p>
+                  <p className="text-2xl font-display font-bold text-slate-900">{s.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* No submitted reports yet */}
+          {summary.installed === 0 && (
+            <div className="premium-card bg-white px-5 py-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50/40 border border-amber-100">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>No submitted daily reports yet — submit a report with linked scope items to see progress update.</span>
+            </div>
+          )}
+
+          {/* Progress table */}
+          <div className="premium-card bg-white overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-900 text-sm">Progress by Scope Item</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Only submitted daily reports are counted — draft reports are excluded</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50/80">
+                  <tr>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[30%]">Item</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Est. Qty</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[13%]">Installed</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Remaining</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600 w-[26%]">Progress</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {scopeItems.map((scope) => {
+                    const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)), pct: 0 };
+                    const estQty = parseFloat(String(scope.estimatedQty));
+                    return (
+                      <tr key={scope.id} className={`hover:bg-slate-50 transition-colors ${!scope.isActive ? "opacity-50" : ""}`} data-testid={`progress-row-${scope.id}`}>
+                        <td className="px-5 py-3.5">
+                          <p className="font-medium text-slate-900">{scope.itemName}</p>
+                          {scope.category && <p className="text-xs text-slate-400">{scope.category}</p>}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{scope.unit}</span>
+                        </td>
+                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
+                          {estQty.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-emerald-700">
+                          {p.cumulative.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3.5 text-right tabular-nums text-amber-700">
+                          {p.remaining.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-slate-100 rounded-full h-2 min-w-[60px]">
+                              <div
+                                className={`h-2 rounded-full transition-all ${pctColor(p.pct)}`}
+                                style={{ width: `${Math.min(100, p.pct)}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-bold tabular-nums w-12 text-right ${
+                              p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-brand-600" : "text-slate-400"
+                            }`}>
+                              {p.pct.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Project Details Sidebar ────────────────────────────────────────────────────
 function ProjectDetailsSidebar({ project }: { project: any }) {
   return (
@@ -740,6 +881,9 @@ export default function ProjectDetail() {
           <TabsTrigger value="scope" className="rounded-lg" data-testid="tab-scope-items">
             <LayoutList className="w-3.5 h-3.5 mr-1.5" />Scope Items
           </TabsTrigger>
+          <TabsTrigger value="progress" className="rounded-lg" data-testid="tab-progress">
+            <TrendingUp className="w-3.5 h-3.5 mr-1.5" />Progress
+          </TabsTrigger>
         </TabsList>
 
         {/* Transaction History */}
@@ -817,6 +961,11 @@ export default function ProjectDetail() {
         {/* Scope Items */}
         <TabsContent value="scope">
           <ScopeItemsTab projectId={id} />
+        </TabsContent>
+
+        {/* Progress */}
+        <TabsContent value="progress">
+          <ProgressTab projectId={id} />
         </TabsContent>
       </Tabs>
     </div>

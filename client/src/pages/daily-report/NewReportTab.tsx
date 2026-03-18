@@ -64,7 +64,7 @@ interface ManpowerRow {
   attendanceStatus: string; startTime: string; endTime: string;
   hoursWorked: number; notes: string;
 }
-interface MaterialRow  { id: number; description: string; unit: string; qty: number; notes: string; inventoryItemId: number | null }
+interface MaterialRow  { id: number; description: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
 interface EquipmentRow { id: number; name: string; unit: string; qty: number; hours: number; notes: string }
 
 function isWorkerBasedManpower(rows: any[]): boolean {
@@ -281,6 +281,11 @@ export function NewReportTab({
   // ── Registry queries ──
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: inventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+  const { data: scopeItems = [] }     = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "scope-items"],
+    queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!projectId,
+  });
   const activeWorkers                 = workers.filter((w) => w.isActive);
 
   // ── Existing reports for auto report number ──
@@ -320,7 +325,7 @@ export function NewReportTab({
     isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : []
   );
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
-    (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, ...m }))
+    (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, ...m }))
   );
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(fd?.equipment  ?? []);
 
@@ -381,6 +386,7 @@ export function NewReportTab({
       setLastSaved(new Date());
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports", projectId] });
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({
         title: status === "submitted" ? "Report submitted" : "Draft saved",
         description: status === "submitted"
@@ -825,14 +831,15 @@ export function NewReportTab({
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
         <table className="w-full text-sm" data-testid="table-materials">
           <TH cols={[
-            { label: "Material / Inventory Item", cls: "min-w-[220px] w-[50%]" },
-            { label: "Unit",                      cls: "w-[78px] text-center" },
-            { label: "Qty Used",                  cls: "w-[88px] text-center" },
-            { label: "Notes",                     cls: "min-w-[120px]" },
+            { label: "Material / Inventory Item", cls: "min-w-[200px] w-[40%]" },
+            { label: "Unit",     cls: "w-[72px] text-center" },
+            { label: "Qty Used", cls: "w-[80px] text-center" },
+            { label: "Notes",    cls: "min-w-[100px]" },
+            ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "min-w-[140px]" }] : []),
           ]} />
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={5} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 6 : 5} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => (
               <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
@@ -861,6 +868,23 @@ export function NewReportTab({
                     onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
                     className={cellInputCls} placeholder="Optional" />
                 </td>
+                {scopeItems.length > 0 && (
+                  <td className="py-1.5 px-2.5">
+                    <select
+                      data-testid={`select-scope-link-${i}`}
+                      value={row.scopeItemId ?? ""}
+                      onChange={(e) => setMaterials(materials.map((r) =>
+                        r.id === row.id ? { ...r, scopeItemId: e.target.value ? Number(e.target.value) : null } : r
+                      ))}
+                      className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600"
+                    >
+                      <option value="">— No link</option>
+                      {scopeItems.filter((s: any) => s.isActive).map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.itemName} ({s.unit})</option>
+                      ))}
+                    </select>
+                  </td>
+                )}
                 <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DelBtn testId={`btn-remove-mat-${i}`} onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))} />
                 </td>
@@ -870,11 +894,12 @@ export function NewReportTab({
         </table>
 
         <AddRow testId="btn-add-material" label="Add Material"
-          onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null }])} />
+          onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
             {inventoryItems.length} inventory items available — type to search
+            {scopeItems.length > 0 && <> · {scopeItems.length} scope items — use "Scope Link" to track progress</>}
           </p>
         )}
       </Section>

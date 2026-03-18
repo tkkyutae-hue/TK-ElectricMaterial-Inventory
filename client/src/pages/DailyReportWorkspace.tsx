@@ -7,7 +7,6 @@ import {
   Hash, Download, ListTodo,
 } from "lucide-react";
 import {
-  MOCK_PROGRESS_ITEMS, calcProgressRow, overallProgress,
   STATUS_CFG, type ProjectStatus,
 } from "@/lib/mock-daily-report";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -337,14 +336,47 @@ function HistoryTab({
   );
 }
 
-function ProgressTab() {
-  // Read-only view: cumulative from all previously submitted reports (todayQty = 0)
-  const rows    = MOCK_PROGRESS_ITEMS.map((item) => calcProgressRow(item, 0));
-  const overall = overallProgress(rows);
+function ProgressTab({ projectId }: { projectId: number }) {
+  const { data, isLoading } = useQuery<{
+    scopeItems: any[];
+    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+  }>({
+    queryKey: ["/api/projects", projectId, "progress"],
+    queryFn: () => fetch(`/api/projects/${projectId}/progress`, { credentials: "include" }).then(r => r.json()),
+  });
 
-  const totalEst    = rows.reduce((s, r) => s + r.estimatedQty,  0);
-  const totalActual = rows.reduce((s, r) => s + r.cumulativeQty, 0);
-  const totalRem    = rows.reduce((s, r) => s + r.remaining,      0);
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const scopeItems = data?.scopeItems?.filter((s: any) => s.isActive !== false) ?? [];
+  const progress   = data?.progress ?? {};
+  const summary    = data?.summary ?? { overallPct: 0, estTotal: 0, installed: 0, remaining: 0 };
+  const overall    = summary.overallPct;
+
+  if (scopeItems.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
+            <BarChart3 className="w-7 h-7 text-slate-400" />
+          </div>
+          <p className="text-sm font-medium text-slate-600">No scope items yet</p>
+          <p className="text-xs text-slate-400">The project manager will add scope items to enable progress tracking.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const pctBarColor = (pct: number) =>
+    pct >= 100 ? "bg-emerald-500" : pct >= 75 ? "bg-blue-500" : "bg-blue-400";
 
   return (
     <div className="space-y-4">
@@ -352,10 +384,10 @@ function ProgressTab() {
       {/* Summary stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Overall Progress", value: `${overall}%`, sub: "weighted by est. qty",  color: "text-blue-700",    bg: "bg-blue-50" },
-          { label: "Est. Total",        value: totalEst.toLocaleString(),    sub: "units in scope",  color: "text-slate-700",   bg: "bg-slate-100" },
-          { label: "Installed",         value: totalActual.toLocaleString(), sub: "cumulative actual", color: "text-emerald-700", bg: "bg-emerald-50" },
-          { label: "Remaining",         value: totalRem.toLocaleString(),    sub: "units left",     color: "text-amber-700",   bg: "bg-amber-50" },
+          { label: "Overall Progress", value: `${overall.toFixed(1)}%`, sub: "weighted by est. qty",    color: "text-blue-700",    bg: "bg-blue-50"    },
+          { label: "Est. Total",       value: summary.estTotal.toLocaleString(),    sub: "units to install",   color: "text-slate-700",   bg: "bg-slate-100"  },
+          { label: "Cumul. Actual",    value: summary.installed.toLocaleString(),   sub: "cumulative actual",  color: "text-emerald-700", bg: "bg-emerald-50" },
+          { label: "Remaining",        value: summary.remaining.toLocaleString(),   sub: "units left",         color: "text-amber-700",   bg: "bg-amber-50"   },
         ].map(({ label, value, sub, color, bg }) => (
           <Card key={label}>
             <CardContent className="pt-4 pb-4">
@@ -370,17 +402,17 @@ function ProgressTab() {
         ))}
       </div>
 
-      {/* Overall bar */}
+      {/* Overall completion bar */}
       <Card>
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Overall Completion</p>
-            <p className="text-sm font-bold text-blue-700">{overall}%</p>
+            <p className="text-sm font-bold text-blue-700">{overall.toFixed(1)}%</p>
           </div>
           <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-500"
-              style={{ width: `${overall}%` }}
+              className={`h-full rounded-full transition-all duration-500 ${pctBarColor(overall)}`}
+              style={{ width: `${Math.min(100, overall)}%` }}
             />
           </div>
           <p className="text-[11px] text-slate-400 mt-2">
@@ -389,7 +421,7 @@ function ProgressTab() {
         </CardContent>
       </Card>
 
-      {/* Quantity progress table */}
+      {/* Quantity-Based Progress table */}
       <Card>
         <CardHeader className="pb-2 flex-row items-center gap-2">
           <BarChart3 className="w-4 h-4 text-slate-500 shrink-0" />
@@ -411,44 +443,55 @@ function ProgressTab() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    data-testid={`row-progress-summary-${row.id}`}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="py-2.5 px-4 text-sm text-slate-700">{row.description}</td>
-                    <td className="py-2.5 px-4 text-xs text-slate-500 font-mono">{row.unit}</td>
-                    <td className="py-2.5 px-4 text-sm text-slate-500 font-mono">{row.estimatedQty.toLocaleString()}</td>
-                    <td className="py-2.5 px-4 text-sm font-semibold text-slate-700 font-mono">{row.cumulativeQty.toLocaleString()}</td>
-                    <td className={`py-2.5 px-4 text-sm font-mono ${row.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-600"}`}>
-                      {row.remaining.toLocaleString()}
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <div className="flex items-center gap-2 min-w-[100px]">
-                        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              row.pct >= 100 ? "bg-emerald-500" : row.pct >= 75 ? "bg-blue-500" : "bg-blue-400"
-                            }`}
-                            style={{ width: `${row.pct}%` }}
-                          />
+                {scopeItems.map((scope: any) => {
+                  const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)) || 0, pct: 0 };
+                  const estQty = parseFloat(String(scope.estimatedQty)) || 0;
+                  return (
+                    <tr
+                      key={scope.id}
+                      data-testid={`row-progress-summary-${scope.id}`}
+                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="py-2.5 px-4 text-sm text-slate-700">
+                        {scope.itemName}
+                        {scope.category && <span className="ml-1.5 text-[10px] text-slate-400">({scope.category})</span>}
+                      </td>
+                      <td className="py-2.5 px-4 text-xs text-slate-500 font-mono">{scope.unit}</td>
+                      <td className="py-2.5 px-4 text-sm text-slate-500 tabular-nums">{estQty.toLocaleString()}</td>
+                      <td className="py-2.5 px-4 text-sm font-semibold text-slate-700 tabular-nums">
+                        {p.cumulative > 0 ? (
+                          <span className="text-emerald-700">{p.cumulative.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-slate-300">0</span>
+                        )}
+                      </td>
+                      <td className={`py-2.5 px-4 text-sm tabular-nums ${p.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-600"}`}>
+                        {p.remaining.toLocaleString()}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2 min-w-[100px]">
+                          <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${pctBarColor(p.pct)}`}
+                              style={{ width: `${Math.min(100, p.pct)}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-semibold w-9 shrink-0 text-right tabular-nums ${p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-blue-600" : "text-slate-400"}`}>
+                            {p.pct.toFixed(0)}%
+                          </span>
                         </div>
-                        <span className={`text-xs font-semibold w-8 shrink-0 ${row.pct >= 100 ? "text-emerald-600" : "text-slate-600"}`}>
-                          {row.pct}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 bg-slate-50">
                   <td colSpan={2} className="py-2.5 px-4 text-xs font-semibold text-slate-600">Total</td>
-                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700 font-mono">{totalEst.toLocaleString()}</td>
-                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700 font-mono">{totalActual.toLocaleString()}</td>
-                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700 font-mono">{totalRem.toLocaleString()}</td>
-                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700">{overall}%</td>
+                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700 tabular-nums">{summary.estTotal.toLocaleString()}</td>
+                  <td className="py-2.5 px-4 text-xs font-bold text-emerald-700 tabular-nums">{summary.installed.toLocaleString()}</td>
+                  <td className="py-2.5 px-4 text-xs font-bold text-slate-700 tabular-nums">{summary.remaining.toLocaleString()}</td>
+                  <td className="py-2.5 px-4 text-xs font-bold text-blue-700">{overall.toFixed(1)}%</td>
                 </tr>
               </tfoot>
             </table>
@@ -637,7 +680,7 @@ export default function DailyReportWorkspace() {
             }}
           />
         )}
-        {activeTab === "progress" && <ProgressTab />}
+        {activeTab === "progress" && <ProgressTab projectId={numericProjectId} />}
       </div>
 
     </div>

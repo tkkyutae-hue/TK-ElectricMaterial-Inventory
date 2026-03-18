@@ -3,7 +3,11 @@ import { useRoute, useLocation } from "wouter";
 import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
 import { MovementForm } from "@/components/MovementForm";
-import { ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight, Users, Edit, Save, X, Trash2 } from "lucide-react";
+import {
+  ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight,
+  Users, Edit, Save, X, Trash2, Plus, Pencil, CheckCircle2, MinusCircle,
+  LayoutList, Hash,
+} from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +24,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { QuickEntryInput } from "@/components/QuickEntryInput";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { ProjectScopeItem } from "@shared/schema";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active:    { label: "Active",    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -28,7 +35,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   cancelled: { label: "Cancelled", className: "bg-rose-100 text-rose-700 border-rose-200" },
 };
 
-// ── Edit schema ───────────────────────────────────────────────────────────────
+// ── Edit project schema ────────────────────────────────────────────────────────
 const editSchema = z.object({
   name:         z.string().min(1, "Project name is required"),
   customerName: z.string().optional(),
@@ -40,32 +47,35 @@ const editSchema = z.object({
   endDate:      z.string().optional(),
   notes:        z.string().optional(),
 });
-
 type EditFormData = z.infer<typeof editSchema>;
 
-// ── Helper: convert empty strings → undefined for optional fields ─────────────
 function cleanFormData(data: EditFormData) {
   const clean: any = { ...data };
   const optionalFields: (keyof EditFormData)[] = [
     "customerName", "ownerName", "jobLocation", "poNumber", "startDate", "endDate", "notes",
   ];
-  optionalFields.forEach(f => {
-    if (clean[f] === "") clean[f] = null;
-  });
+  optionalFields.forEach(f => { if (clean[f] === "") clean[f] = null; });
   return clean;
 }
 
-// ── Edit Dialog ───────────────────────────────────────────────────────────────
+// ── Scope Item schema ──────────────────────────────────────────────────────────
+const scopeItemSchema = z.object({
+  itemName:     z.string().min(1, "Item name is required"),
+  unit:         z.string().min(1, "Unit is required"),
+  estimatedQty: z.string().min(1, "Qty is required"),
+  category:     z.string().optional(),
+  remarks:      z.string().optional(),
+  isActive:     z.boolean().default(true),
+});
+type ScopeItemFormData = z.infer<typeof scopeItemSchema>;
+
+const COMMON_UNITS = ["LF", "EA", "FT", "SF", "CY", "LB", "HR", "DAY", "GAL", "TON"];
+
+// ── Edit Project Dialog ────────────────────────────────────────────────────────
 function EditProjectDialog({
-  project,
-  open,
-  onClose,
-  allProjects,
+  project, open, onClose, allProjects,
 }: {
-  project: any;
-  open: boolean;
-  onClose: () => void;
-  allProjects: any[];
+  project: any; open: boolean; onClose: () => void; allProjects: any[];
 }) {
   const { toast } = useToast();
   const updateMutation = useUpdateProject();
@@ -73,44 +83,27 @@ function EditProjectDialog({
   const [, navigate] = useLocation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Build unique suggestion lists from existing project data
-  const customerSuggestions = [...new Set(
-    allProjects.map((p: any) => p.customerName).filter(Boolean)
-  )] as string[];
-  const ownerSuggestions = [...new Set(
-    allProjects.map((p: any) => p.ownerName).filter(Boolean)
-  )] as string[];
-  const locationSuggestions = [...new Set(
-    allProjects.map((p: any) => p.jobLocation).filter(Boolean)
-  )] as string[];
+  const customerSuggestions = [...new Set(allProjects.map((p: any) => p.customerName).filter(Boolean))] as string[];
+  const ownerSuggestions    = [...new Set(allProjects.map((p: any) => p.ownerName).filter(Boolean))] as string[];
+  const locationSuggestions = [...new Set(allProjects.map((p: any) => p.jobLocation).filter(Boolean))] as string[];
 
   const form = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
     defaultValues: {
-      name:         project.name || "",
-      customerName: project.customerName || "",
-      ownerName:    project.ownerName || "",
-      jobLocation:  project.jobLocation || "",
-      poNumber:     project.poNumber || "",
-      status:       project.status || "active",
-      startDate:    project.startDate || "",
-      endDate:      project.endDate || "",
-      notes:        project.notes || "",
+      name: project.name || "", customerName: project.customerName || "",
+      ownerName: project.ownerName || "", jobLocation: project.jobLocation || "",
+      poNumber: project.poNumber || "", status: project.status || "active",
+      startDate: project.startDate || "", endDate: project.endDate || "", notes: project.notes || "",
     },
   });
 
   useEffect(() => {
     if (open) {
       form.reset({
-        name:         project.name || "",
-        customerName: project.customerName || "",
-        ownerName:    project.ownerName || "",
-        jobLocation:  project.jobLocation || "",
-        poNumber:     project.poNumber || "",
-        status:       project.status || "active",
-        startDate:    project.startDate || "",
-        endDate:      project.endDate || "",
-        notes:        project.notes || "",
+        name: project.name || "", customerName: project.customerName || "",
+        ownerName: project.ownerName || "", jobLocation: project.jobLocation || "",
+        poNumber: project.poNumber || "", status: project.status || "active",
+        startDate: project.startDate || "", endDate: project.endDate || "", notes: project.notes || "",
       });
       setShowDeleteConfirm(false);
     }
@@ -141,13 +134,9 @@ function EditProjectDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Project</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Edit Project</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
-
-            {/* Name + Status */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
@@ -172,37 +161,21 @@ function EditProjectDialog({
                 </FormItem>
               )} />
             </div>
-
-            {/* Customer (searchable) */}
             <FormField control={form.control} name="customerName" render={({ field }) => (
               <FormItem>
                 <FormLabel>Customer</FormLabel>
                 <FormControl>
-                  <QuickEntryInput
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    suggestions={customerSuggestions}
-                    placeholder="e.g. Apex Commercial Group"
-                    testId="edit-customer-name"
-                  />
+                  <QuickEntryInput value={field.value ?? ""} onChange={field.onChange} suggestions={customerSuggestions} placeholder="e.g. Apex Commercial Group" testId="edit-customer-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-
-            {/* Project Owner (searchable) + PO Number */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="ownerName" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Project Owner</FormLabel>
                   <FormControl>
-                    <QuickEntryInput
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      suggestions={ownerSuggestions}
-                      placeholder="e.g. John Kim"
-                      testId="edit-owner-name"
-                    />
+                    <QuickEntryInput value={field.value ?? ""} onChange={field.onChange} suggestions={ownerSuggestions} placeholder="e.g. John Kim" testId="edit-owner-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -215,25 +188,15 @@ function EditProjectDialog({
                 </FormItem>
               )} />
             </div>
-
-            {/* Job Location (searchable) */}
             <FormField control={form.control} name="jobLocation" render={({ field }) => (
               <FormItem>
                 <FormLabel>Job Location</FormLabel>
                 <FormControl>
-                  <QuickEntryInput
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    suggestions={locationSuggestions}
-                    placeholder="e.g. 123 Main St, Dallas TX"
-                    testId="edit-job-location"
-                  />
+                  <QuickEntryInput value={field.value ?? ""} onChange={field.onChange} suggestions={locationSuggestions} placeholder="e.g. 123 Main St, Dallas TX" testId="edit-job-location" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-
-            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="startDate" render={({ field }) => (
                 <FormItem>
@@ -250,8 +213,6 @@ function EditProjectDialog({
                 </FormItem>
               )} />
             </div>
-
-            {/* Notes */}
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
                 <FormLabel>Notes</FormLabel>
@@ -259,60 +220,28 @@ function EditProjectDialog({
                 <FormMessage />
               </FormItem>
             )} />
-
-            {/* Action buttons */}
             <div className="flex justify-between items-center pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={updateMutation.isPending || deleteMutation.isPending}
-                data-testid="button-delete-project"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
+              <Button type="button" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1.5"
+                onClick={() => setShowDeleteConfirm(true)} disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-delete-project">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
               </Button>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>
                   <X className="w-4 h-4 mr-1" /> Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  className="bg-brand-700 hover:bg-brand-800"
-                  disabled={updateMutation.isPending || deleteMutation.isPending}
-                  data-testid="button-save-project"
-                >
+                <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-save-project">
                   <Save className="w-4 h-4 mr-1" />
                   {updateMutation.isPending ? "Saving…" : "Save Changes"}
                 </Button>
               </div>
             </div>
-
             {showDeleteConfirm && (
               <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm font-semibold text-red-900 mb-1">Delete "{project.name}"?</p>
-                <p className="text-xs text-red-700 mb-3">
-                  This action cannot be undone. Projects with logged movements cannot be deleted — set status to "Cancelled" instead.
-                </p>
+                <p className="text-xs text-red-700 mb-3">This action cannot be undone. Projects with logged movements cannot be deleted — set status to "Cancelled" instead.</p>
                 <div className="flex gap-2 justify-end">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={deleteMutation.isPending}
-                    data-testid="button-confirm-delete-project"
-                  >
+                  <Button type="button" size="sm" variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deleteMutation.isPending}>Cancel</Button>
+                  <Button type="button" size="sm" variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending} data-testid="button-confirm-delete-project">
                     {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
                   </Button>
                 </div>
@@ -325,7 +254,397 @@ function EditProjectDialog({
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Scope Item Form Dialog ─────────────────────────────────────────────────────
+function ScopeItemDialog({
+  projectId, item, open, onClose,
+}: {
+  projectId: number;
+  item?: ProjectScopeItem | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const isEdit = !!item;
+
+  const form = useForm<ScopeItemFormData>({
+    resolver: zodResolver(scopeItemSchema),
+    defaultValues: {
+      itemName: "", unit: "", estimatedQty: "", category: "", remarks: "", isActive: true,
+    },
+  });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        itemName:     item?.itemName ?? "",
+        unit:         item?.unit ?? "",
+        estimatedQty: item?.estimatedQty ? String(item.estimatedQty) : "",
+        category:     item?.category ?? "",
+        remarks:      item?.remarks ?? "",
+        isActive:     item?.isActive ?? true,
+      });
+    }
+  }, [open, item?.id]);
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", `/api/projects/${projectId}/scope-items`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      toast({ title: "Scope item added" });
+      onClose();
+    },
+    onError: (err: any) => toast({ title: "Failed to add", description: err.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PATCH", `/api/scope-items/${item!.id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      toast({ title: "Scope item updated" });
+      onClose();
+    },
+    onError: (err: any) => toast({ title: "Failed to update", description: err.message, variant: "destructive" }),
+  });
+
+  function onSubmit(data: ScopeItemFormData) {
+    const payload = { ...data, estimatedQty: String(data.estimatedQty) };
+    if (isEdit) updateMutation.mutate(payload);
+    else createMutation.mutate(payload);
+  }
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Scope Item" : "Add Scope Item"}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+            <FormField control={form.control} name="itemName" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Item Name <span className="text-red-500">*</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. EMT Conduit 3/4&quot;" {...field} data-testid="input-scope-item-name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="unit" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Unit <span className="text-red-500">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-scope-unit"><SelectValue placeholder="Select unit" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {COMMON_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="estimatedQty" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Est. Qty <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input type="number" min="0" step="any" placeholder="0" {...field} data-testid="input-scope-qty" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <FormField control={form.control} name="category" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Conduit, Wire, Devices…" {...field} data-testid="input-scope-category" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="remarks" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Remarks <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
+                <FormControl>
+                  <Textarea rows={2} className="resize-none" placeholder="Any notes…" {...field} data-testid="input-scope-remarks" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {isEdit && (
+              <FormField control={form.control} name="isActive" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={isPending} data-testid="button-save-scope-item">
+                <Save className="w-4 h-4 mr-1" />
+                {isPending ? "Saving…" : isEdit ? "Save Changes" : "Add Item"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Scope Items Tab ────────────────────────────────────────────────────────────
+function ScopeItemsTab({ projectId }: { projectId: number }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<ProjectScopeItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectScopeItem | null>(null);
+
+  const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
+    queryKey: ["/api/projects", projectId, "scope-items"],
+    queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/scope-items/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      toast({ title: "Scope item deleted" });
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
+      apiRequest("PATCH", `/api/scope-items/${id}`, { isActive }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] }),
+    onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
+  });
+
+  const totalItems = scopeItems.length;
+  const totalQty = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
+  const activeCount = scopeItems.filter(i => i.isActive).length;
+
+  function openAdd() { setEditItem(null); setDialogOpen(true); }
+  function openEdit(item: ProjectScopeItem) { setEditItem(item); setDialogOpen(true); }
+
+  return (
+    <div className="space-y-5">
+      {/* Summary strip */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Total Scope Items", value: totalItems, icon: LayoutList, color: "text-brand-600", bg: "bg-brand-50" },
+          { label: "Total Est. Qty",    value: totalQty.toLocaleString(), icon: Hash, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "Active Items",      value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+        ].map((s, i) => (
+          <div key={i} className="premium-card bg-white p-4 flex items-center gap-3" data-testid={`scope-kpi-${i}`}>
+            <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
+            <div>
+              <p className="text-xs text-slate-400">{s.label}</p>
+              <p className="text-xl font-display font-bold text-slate-900">{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table card */}
+      <div className="premium-card bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Baseline quantities used as progress reference</p>
+          </div>
+          <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white" onClick={openAdd} data-testid="button-add-scope-item">
+            <Plus className="w-4 h-4 mr-1" /> Add Item
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center text-slate-400">Loading…</div>
+        ) : scopeItems.length === 0 ? (
+          <div className="p-12 text-center">
+            <LayoutList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-500 font-medium">No scope items yet</p>
+            <p className="text-xs text-slate-400 mt-1">Add items to define the project's estimated work quantities.</p>
+            <Button size="sm" variant="outline" className="mt-4" onClick={openAdd} data-testid="button-add-scope-item-empty">
+              <Plus className="w-4 h-4 mr-1" /> Add First Item
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50/80">
+                <tr>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[35%]">Item</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[8%]">Unit</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Est. Qty</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[15%]">Category</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[12%]">Status</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[18%]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {scopeItems.map((item) => (
+                  <tr key={item.id} className={`hover:bg-slate-50 transition-colors ${!item.isActive ? "opacity-50" : ""}`} data-testid={`scope-row-${item.id}`}>
+                    <td className="px-5 py-3.5">
+                      <p className="font-medium text-slate-900 leading-snug">{item.itemName}</p>
+                      {item.remarks && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{item.remarks}</p>}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold text-slate-900 tabular-nums">
+                      {parseFloat(String(item.estimatedQty)).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-500 text-xs">{item.category || "—"}</td>
+                    <td className="px-4 py-3.5">
+                      {item.isActive ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" /> Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                          <MinusCircle className="w-3 h-3" /> Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                          onClick={() => toggleMutation.mutate({ id: item.id, isActive: !item.isActive })}
+                          title={item.isActive ? "Deactivate" : "Activate"}
+                          data-testid={`button-toggle-scope-${item.id}`}
+                        >
+                          {item.isActive ? <MinusCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                          onClick={() => openEdit(item)}
+                          data-testid={`button-edit-scope-${item.id}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => setDeleteTarget(item)}
+                          data-testid={`button-delete-scope-${item.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit dialog */}
+      <ScopeItemDialog
+        projectId={projectId}
+        item={editItem}
+        open={dialogOpen}
+        onClose={() => { setDialogOpen(false); setEditItem(null); }}
+      />
+
+      {/* Delete confirm dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader><DialogTitle>Delete Scope Item?</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-600 py-2">
+            Remove <span className="font-semibold">"{deleteTarget?.itemName}"</span> from this project's scope?
+            This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)} disabled={deleteMutation.isPending} data-testid="button-confirm-delete-scope">
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Project Details Sidebar ────────────────────────────────────────────────────
+function ProjectDetailsSidebar({ project }: { project: any }) {
+  return (
+    <Card className="premium-card border-none">
+      <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+        <CardTitle className="text-sm font-semibold text-slate-700">Project Details</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5 space-y-4 text-sm">
+        {project.poNumber && (
+          <div>
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">PO Number</p>
+            <p className="font-semibold text-brand-700">{project.poNumber}</p>
+          </div>
+        )}
+        {project.ownerName && (
+          <div>
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Project Owner</p>
+            <p className="font-semibold text-slate-900">{project.ownerName}</p>
+          </div>
+        )}
+        {project.jobLocation && (
+          <div className="flex gap-3">
+            <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <p className="text-slate-600">{project.jobLocation}</p>
+          </div>
+        )}
+        {(project.startDate || project.endDate) && (
+          <div className="flex gap-3">
+            <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-0.5">
+              {project.startDate && (
+                <p className="text-slate-600">
+                  <span className="text-slate-400">Start: </span>
+                  {format(new Date(project.startDate + "T00:00:00"), 'MMM d, yyyy')}
+                </p>
+              )}
+              {project.endDate && (
+                <p className="text-slate-600">
+                  <span className="text-slate-400">End: </span>
+                  {format(new Date(project.endDate + "T00:00:00"), 'MMM d, yyyy')}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        {project.notes && (
+          <div className="pt-3 border-t border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+            <p className="text-slate-600 leading-relaxed">{project.notes}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────────
 export default function ProjectDetail() {
   const [, params] = useRoute("/projects/:id");
   const id = Number(params?.id || "0");
@@ -348,9 +667,7 @@ export default function ProjectDetail() {
   project.recentActivity?.forEach((tx: any) => {
     if (!tx.item) return;
     const key = tx.item.id;
-    if (!usageMap[key]) {
-      usageMap[key] = { itemName: tx.item.name, sku: tx.item.sku, unit: tx.item.unitOfMeasure, issued: 0, returned: 0 };
-    }
+    if (!usageMap[key]) usageMap[key] = { itemName: tx.item.name, sku: tx.item.sku, unit: tx.item.unitOfMeasure, issued: 0, returned: 0 };
     if (tx.movementType === 'issue') usageMap[key].issued += tx.quantity;
     if (tx.movementType === 'return') usageMap[key].returned += tx.quantity;
   });
@@ -358,6 +675,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-start gap-4">
         <Link href="/projects" className="p-2 hover:bg-white rounded-full text-slate-500 transition-colors mt-1">
           <ArrowLeft className="w-5 h-5" />
@@ -387,24 +705,16 @@ export default function ProjectDetail() {
                 <DialogTitle>Log Material for {project.code}</DialogTitle>
               </DialogHeader>
               <div className="flex-1 flex flex-col min-h-0 px-6 pt-4 pb-6 overflow-hidden">
-                <MovementForm
-                  defaultType="issue"
-                  onSuccess={() => setLogOpen(false)}
-                  onCancel={() => setLogOpen(false)}
-                />
+                <MovementForm defaultType="issue" onSuccess={() => setLogOpen(false)} onCancel={() => setLogOpen(false)} />
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <EditProjectDialog
-        project={project}
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        allProjects={allProjects}
-      />
+      <EditProjectDialog project={project} open={editOpen} onClose={() => setEditOpen(false)} allProjects={allProjects} />
 
+      {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total Issued",   value: project.totalIssued || 0,  icon: ArrowUpRight,   color: "text-brand-600",   bg: "bg-brand-50" },
@@ -422,15 +732,20 @@ export default function ProjectDetail() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="activity">
-            <TabsList className="bg-slate-100 p-1 rounded-xl mb-4">
-              <TabsTrigger value="activity" className="rounded-lg">Transaction History</TabsTrigger>
-              <TabsTrigger value="summary" className="rounded-lg">Usage Summary</TabsTrigger>
-            </TabsList>
+      {/* Main tabs */}
+      <Tabs defaultValue="activity">
+        <TabsList className="bg-slate-100 p-1 rounded-xl mb-4">
+          <TabsTrigger value="activity" className="rounded-lg">Transaction History</TabsTrigger>
+          <TabsTrigger value="summary" className="rounded-lg">Usage Summary</TabsTrigger>
+          <TabsTrigger value="scope" className="rounded-lg" data-testid="tab-scope-items">
+            <LayoutList className="w-3.5 h-3.5 mr-1.5" />Scope Items
+          </TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="activity">
+        {/* Transaction History */}
+        <TabsContent value="activity">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
               <div className="premium-card bg-white overflow-hidden">
                 <div className="divide-y divide-slate-100">
                   {!project.recentActivity?.length ? (
@@ -456,9 +771,15 @@ export default function ProjectDetail() {
                   ))}
                 </div>
               </div>
-            </TabsContent>
+            </div>
+            <div><ProjectDetailsSidebar project={project} /></div>
+          </div>
+        </TabsContent>
 
-            <TabsContent value="summary">
+        {/* Usage Summary */}
+        <TabsContent value="summary">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
               <div className="premium-card bg-white overflow-hidden">
                 {usageSummary.length === 0 ? (
                   <div className="p-8 text-center text-slate-500">No material usage recorded yet.</div>
@@ -488,63 +809,16 @@ export default function ProjectDetail() {
                   </table>
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+            </div>
+            <div><ProjectDetailsSidebar project={project} /></div>
+          </div>
+        </TabsContent>
 
-        <div>
-          <Card className="premium-card border-none">
-            <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
-              <CardTitle className="text-sm font-semibold text-slate-700">Project Details</CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4 text-sm">
-              {project.poNumber && (
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">PO Number</p>
-                  <p className="font-semibold text-brand-700">{project.poNumber}</p>
-                </div>
-              )}
-              {project.ownerName && (
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">Project Owner</p>
-                  <p className="font-semibold text-slate-900">{project.ownerName}</p>
-                </div>
-              )}
-              {project.jobLocation && (
-                <div className="flex gap-3">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-slate-600">{project.jobLocation}</p>
-                </div>
-              )}
-              {(project.startDate || project.endDate) && (
-                <div className="flex gap-3">
-                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-0.5">
-                    {project.startDate && (
-                      <p className="text-slate-600">
-                        <span className="text-slate-400">Start: </span>
-                        {format(new Date(project.startDate + "T00:00:00"), 'MMM d, yyyy')}
-                      </p>
-                    )}
-                    {project.endDate && (
-                      <p className="text-slate-600">
-                        <span className="text-slate-400">End: </span>
-                        {format(new Date(project.endDate + "T00:00:00"), 'MMM d, yyyy')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {project.notes && (
-                <div className="pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Notes</p>
-                  <p className="text-slate-600 leading-relaxed">{project.notes}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        {/* Scope Items */}
+        <TabsContent value="scope">
+          <ScopeItemsTab projectId={id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

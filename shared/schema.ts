@@ -358,6 +358,30 @@ export type DraftItem = {
   reelSelections?: Record<string, number>;
 };
 
+// ─── Project Scope Items ──────────────────────────────────────────────────────
+// Baseline quantities for each project — used as the reference for progress tracking
+
+export const projectScopeItems = pgTable("project_scope_items", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  itemName: text("item_name").notNull(),
+  unit: text("unit").notNull(),
+  estimatedQty: numeric("estimated_qty", { precision: 12, scale: 2 }).notNull().default("0"),
+  category: text("category"),
+  remarks: text("remarks"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertProjectScopeItemSchema = createInsertSchema(projectScopeItems).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type ProjectScopeItem = typeof projectScopeItems.$inferSelect;
+export type CreateProjectScopeItemRequest = z.infer<typeof insertProjectScopeItemSchema>;
+export type UpdateProjectScopeItemRequest = Partial<CreateProjectScopeItemRequest>;
+
 // ─── Daily Reports ────────────────────────────────────────────────────────────
 
 export const dailyReports = pgTable("daily_reports", {

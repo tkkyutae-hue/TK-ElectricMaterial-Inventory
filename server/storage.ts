@@ -4,7 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
-  wireReels, movementDrafts, dailyReports,
+  wireReels, movementDrafts, dailyReports, projectScopeItems,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
@@ -18,6 +18,7 @@ import {
   type ProjectWithStats, type SupplierWithStats, type PurchaseRecommendationWithRelations,
   type MovementDraft, type MovementDraftWithRelations,
   type DailyReport, type CreateDailyReportRequest, type UpdateDailyReportRequest,
+  type ProjectScopeItem, type CreateProjectScopeItemRequest, type UpdateProjectScopeItemRequest,
   workers, type Worker, type CreateWorkerRequest, type UpdateWorkerRequest,
   workerAttendance, type WorkerAttendance, type CreateWorkerAttendanceRequest,
   workerEvaluations, type WorkerEvaluation, type CreateWorkerEvaluationRequest,
@@ -128,6 +129,12 @@ export interface IStorage {
 
   getWorkerEvaluations(workerId: number): Promise<WorkerEvaluation[]>;
   createWorkerEvaluation(data: CreateWorkerEvaluationRequest): Promise<WorkerEvaluation>;
+
+  getScopeItems(projectId: number): Promise<ProjectScopeItem[]>;
+  getScopeItem(id: number): Promise<ProjectScopeItem | undefined>;
+  createScopeItem(data: CreateProjectScopeItemRequest): Promise<ProjectScopeItem>;
+  updateScopeItem(id: number, data: UpdateProjectScopeItemRequest): Promise<ProjectScopeItem>;
+  deleteScopeItem(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1899,6 +1906,39 @@ export class DatabaseStorage implements IStorage {
   async createWorkerEvaluation(data: CreateWorkerEvaluationRequest): Promise<WorkerEvaluation> {
     const [row] = await db.insert(workerEvaluations).values(data).returning();
     return row;
+  }
+
+  // ─── Project Scope Items ────────────────────────────────────────────────────
+
+  async getScopeItems(projectId: number): Promise<ProjectScopeItem[]> {
+    return await db
+      .select()
+      .from(projectScopeItems)
+      .where(eq(projectScopeItems.projectId, projectId))
+      .orderBy(asc(projectScopeItems.id));
+  }
+
+  async getScopeItem(id: number): Promise<ProjectScopeItem | undefined> {
+    const [row] = await db.select().from(projectScopeItems).where(eq(projectScopeItems.id, id));
+    return row;
+  }
+
+  async createScopeItem(data: CreateProjectScopeItemRequest): Promise<ProjectScopeItem> {
+    const [row] = await db.insert(projectScopeItems).values(data).returning();
+    return row;
+  }
+
+  async updateScopeItem(id: number, data: UpdateProjectScopeItemRequest): Promise<ProjectScopeItem> {
+    const [row] = await db
+      .update(projectScopeItems)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(projectScopeItems.id, id))
+      .returning();
+    return row;
+  }
+
+  async deleteScopeItem(id: number): Promise<void> {
+    await db.delete(projectScopeItems).where(eq(projectScopeItems.id, id));
   }
 }
 

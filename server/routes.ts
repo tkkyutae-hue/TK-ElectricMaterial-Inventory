@@ -1198,5 +1198,72 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Project Scope Items ─────────────────────────────────────────────────────
+
+  app.get("/api/projects/:id/scope-items", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      const items = await storage.getScopeItems(projectId);
+      res.json(items);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/projects/:id/scope-items", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      // Duplicate check: same project + itemName + unit
+      const existing = await storage.getScopeItems(projectId);
+      const dup = existing.find(
+        (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
+             && s.unit.trim().toLowerCase() === String(req.body.unit ?? "").trim().toLowerCase()
+      );
+      if (dup) return res.status(409).json({ message: `A scope item "${req.body.itemName} / ${req.body.unit}" already exists for this project.` });
+      const item = await storage.createScopeItem({ ...req.body, projectId });
+      res.json(item);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/scope-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
+      const existing = await storage.getScopeItem(id);
+      if (!existing) return res.status(404).json({ message: "Scope item not found" });
+      // Duplicate check (exclude self)
+      if (req.body.itemName !== undefined || req.body.unit !== undefined) {
+        const siblings = await storage.getScopeItems(existing.projectId);
+        const newName = String(req.body.itemName ?? existing.itemName).trim().toLowerCase();
+        const newUnit = String(req.body.unit ?? existing.unit).trim().toLowerCase();
+        const dup = siblings.find(
+          (s) => s.id !== id
+              && s.itemName.trim().toLowerCase() === newName
+              && s.unit.trim().toLowerCase() === newUnit
+        );
+        if (dup) return res.status(409).json({ message: `A scope item "${req.body.itemName ?? existing.itemName} / ${req.body.unit ?? existing.unit}" already exists for this project.` });
+      }
+      const updated = await storage.updateScopeItem(id, req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/scope-items/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
+      await storage.deleteScopeItem(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

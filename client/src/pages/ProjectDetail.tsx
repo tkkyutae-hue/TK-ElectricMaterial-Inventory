@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { MovementForm } from "@/components/MovementForm";
@@ -6,7 +6,7 @@ import {
   ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight,
   Users, Edit, Save, X, Trash2, Plus, Pencil, CheckCircle2, MinusCircle,
   LayoutList, Hash, TrendingUp, AlertCircle, Download, Clock, FileText,
-  ListTodo, Eye, Filter, FileBarChart,
+  ListTodo, Eye, Filter, FileBarChart, ChevronRight,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -661,11 +661,85 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
   );
 }
 
+// ── Progress Drill-Down Row ────────────────────────────────────────────────────
+function DrillDownRows({
+  entries, unit, estQty,
+}: {
+  entries: { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[];
+  unit: string;
+  estQty: number;
+}) {
+  if (entries.length === 0) {
+    return (
+      <tr>
+        <td />
+        <td colSpan={6} className="px-4 pb-3 pt-0">
+          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs text-slate-400 italic">
+            No submitted reports have logged quantities for this item yet.
+          </div>
+        </td>
+      </tr>
+    );
+  }
+  return (
+    <tr>
+      <td />
+      <td colSpan={6} className="px-4 pb-4 pt-0">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+          {/* Sub-table header */}
+          <div className="grid grid-cols-[90px_110px_1fr_90px_110px] gap-0 bg-slate-100/80 border-b border-slate-200 px-4 py-2">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Report #</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Date</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Prepared By</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">Qty</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">Running Total</span>
+          </div>
+          {/* Sub-table rows */}
+          {entries.map((e, i) => {
+            const pct = estQty > 0 ? Math.min(100, Math.round((e.runningTotal / estQty) * 1000) / 10) : 0;
+            return (
+              <div
+                key={`${e.reportId}-${i}`}
+                className="grid grid-cols-[90px_110px_1fr_90px_110px] gap-0 px-4 py-2.5 border-b border-slate-100 last:border-0 hover:bg-white/70 transition-colors"
+              >
+                <span className="text-xs font-mono font-semibold text-brand-700">
+                  {e.reportNumber ? `#${e.reportNumber}` : `ID ${e.reportId}`}
+                </span>
+                <span className="text-xs text-slate-600">
+                  {e.reportDate ? format(new Date(e.reportDate + "T00:00:00"), "MMM d, yyyy") : "—"}
+                </span>
+                <span className="text-xs text-slate-600 truncate pr-2">{e.preparedBy || <span className="text-slate-300 italic">—</span>}</span>
+                <span className="text-xs font-semibold text-emerald-700 tabular-nums text-right">
+                  +{e.qty.toLocaleString()} {unit}
+                </span>
+                <div className="flex items-center justify-end gap-1.5">
+                  <span className="text-xs tabular-nums text-slate-700 font-medium">{e.runningTotal.toLocaleString()}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">({pct.toFixed(1)}%)</span>
+                </div>
+              </div>
+            );
+          })}
+          {/* Summary footer */}
+          <div className="px-4 py-2 bg-slate-100/60 border-t border-slate-200 flex items-center justify-between">
+            <span className="text-[10px] text-slate-400">{entries.length} submitted report{entries.length !== 1 ? "s" : ""} contributed</span>
+            <span className="text-xs font-bold text-emerald-700">
+              Total: {entries[entries.length - 1]?.runningTotal?.toLocaleString() ?? 0} / {estQty.toLocaleString()} {unit}
+            </span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ── Progress Tab ──────────────────────────────────────────────────────────────
 function ProgressTab({ projectId }: { projectId: number }) {
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
   const { data, isLoading } = useQuery<{
     scopeItems: any[];
     progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
     summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
   }>({
     queryKey: ["/api/projects", projectId, "progress"],
@@ -676,6 +750,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
 
   const scopeItems = data?.scopeItems ?? [];
   const progress   = data?.progress ?? {};
+  const drillDown  = data?.drillDown ?? {};
   const summary    = data?.summary ?? { overallPct: 0, estTotal: 0, installed: 0, remaining: 0 };
   const hasScopes  = scopeItems.length > 0;
 
@@ -686,6 +761,14 @@ function ProgressTab({ projectId }: { projectId: number }) {
     summary.overallPct >= 100 ? "text-emerald-600" :
     summary.overallPct >= 70  ? "text-brand-600"   :
     summary.overallPct >= 40  ? "text-blue-600"    : "text-slate-500";
+
+  function toggleRow(id: number) {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-5">
@@ -736,60 +819,111 @@ function ProgressTab({ projectId }: { projectId: number }) {
 
           {/* Progress table */}
           <div className="premium-card bg-white overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-900 text-sm">Progress by Scope Item</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Only submitted daily reports are counted — draft reports are excluded</p>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-900 text-sm">Progress by Scope Item</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Click any row to see which submitted reports contributed to that item's total</p>
+              </div>
+              {expandedRows.size > 0 && (
+                <button
+                  onClick={() => setExpandedRows(new Set())}
+                  className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+                >
+                  Collapse all
+                </button>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80">
                   <tr>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[30%]">Item</th>
+                    <th className="w-9 px-2" />
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[28%]">Item</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Est. Qty</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[13%]">Installed</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Remaining</th>
-                    <th className="px-4 py-3 font-semibold text-slate-600 w-[26%]">Progress</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[11%]">Est. Qty</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Installed</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[11%]">Remaining</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">Progress</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {scopeItems.map((scope) => {
                     const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)), pct: 0 };
                     const estQty = parseFloat(String(scope.estimatedQty));
+                    const entries = drillDown[scope.id] ?? [];
+                    const isExpanded = expandedRows.has(scope.id);
+                    const hasDrillDown = p.cumulative > 0;
+
                     return (
-                      <tr key={scope.id} className={`hover:bg-slate-50 transition-colors ${!scope.isActive ? "opacity-50" : ""}`} data-testid={`progress-row-${scope.id}`}>
-                        <td className="px-5 py-3.5">
-                          <p className="font-medium text-slate-900">{scope.itemName}</p>
-                          {scope.category && <p className="text-xs text-slate-400">{scope.category}</p>}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{scope.unit}</span>
-                        </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                          {estQty.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-emerald-700">
-                          {p.cumulative.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-amber-700">
-                          {p.remaining.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-slate-100 rounded-full h-2 min-w-[60px]">
-                              <div
-                                className={`h-2 rounded-full transition-all ${pctColor(p.pct)}`}
-                                style={{ width: `${Math.min(100, p.pct)}%` }}
-                              />
+                      <Fragment key={scope.id}>
+                        {/* Main progress row */}
+                        <tr
+                          data-testid={`progress-row-${scope.id}`}
+                          onClick={() => hasDrillDown && toggleRow(scope.id)}
+                          className={[
+                            "transition-colors border-b border-slate-100",
+                            hasDrillDown ? "cursor-pointer" : "",
+                            isExpanded ? "bg-brand-50/30 border-b-0" : hasDrillDown ? "hover:bg-slate-50" : "",
+                            !scope.isActive ? "opacity-50" : "",
+                          ].join(" ")}
+                        >
+                          {/* Expand toggle */}
+                          <td className="px-2 py-3.5 text-center">
+                            {hasDrillDown ? (
+                              <span className={`inline-flex items-center justify-center w-5 h-5 rounded transition-transform text-slate-400 ${isExpanded ? "rotate-90 text-brand-600" : ""}`}>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </span>
+                            ) : (
+                              <span className="inline-block w-5 h-5" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <p className="font-medium text-slate-900">{scope.itemName}</p>
+                            {scope.category && <p className="text-xs text-slate-400">{scope.category}</p>}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{scope.unit}</span>
+                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
+                            {estQty.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-emerald-700">
+                            {p.cumulative > 0 ? (
+                              <span className="flex items-center justify-end gap-1">
+                                {p.cumulative.toLocaleString()}
+                                {entries.length > 0 && (
+                                  <span className="text-[10px] font-normal text-slate-400 ml-0.5">({entries.length}r)</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums text-amber-700">
+                            {p.remaining.toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-slate-100 rounded-full h-2 min-w-[60px]">
+                                <div
+                                  className={`h-2 rounded-full transition-all ${pctColor(p.pct)}`}
+                                  style={{ width: `${Math.min(100, p.pct)}%` }}
+                                />
+                              </div>
+                              <span className={`text-xs font-bold tabular-nums w-12 text-right ${
+                                p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-brand-600" : "text-slate-400"
+                              }`}>
+                                {p.pct.toFixed(1)}%
+                              </span>
                             </div>
-                            <span className={`text-xs font-bold tabular-nums w-12 text-right ${
-                              p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-brand-600" : "text-slate-400"
-                            }`}>
-                              {p.pct.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
+                          </td>
+                        </tr>
+
+                        {/* Drill-down expanded row */}
+                        {isExpanded && (
+                          <DrillDownRows entries={entries} unit={scope.unit} estQty={estQty} />
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

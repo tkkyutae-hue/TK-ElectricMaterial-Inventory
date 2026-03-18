@@ -1949,6 +1949,7 @@ export class DatabaseStorage implements IStorage {
   async getProjectProgress(projectId: number): Promise<{
     scopeItems: ProjectScopeItem[];
     progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
     summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
   }> {
     const scopes = await this.getScopeItems(projectId);
@@ -1956,18 +1957,40 @@ export class DatabaseStorage implements IStorage {
     const submittedReports = await db
       .select()
       .from(dailyReports)
-      .where(and(eq(dailyReports.projectId, projectId), eq(dailyReports.status, "submitted")));
+      .where(and(eq(dailyReports.projectId, projectId), eq(dailyReports.status, "submitted")))
+      .orderBy(asc(dailyReports.reportDate), asc(dailyReports.createdAt));
 
-    const actuals: Record<number, number> = {};
+    // Build per-scope drillDown entries (sorted chronologically)
+    const rawEntries: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number }[]> = {};
     for (const report of submittedReports) {
-      const materials: any[] = (report.formData as any)?.materials ?? [];
+      const fd = report.formData as any;
+      const materials: any[] = fd?.materials ?? [];
+      const reportDate = report.reportDate ?? (report.createdAt ? new Date(report.createdAt).toISOString().slice(0, 10) : "");
+      const preparedBy = fd?.preparedBy ?? report.preparedBy ?? null;
       for (const mat of materials) {
         const sid = mat.scopeItemId;
         const qty = typeof mat.qty === "number" ? mat.qty : parseFloat(mat.qty ?? "0") || 0;
         if (sid && qty > 0) {
-          actuals[sid] = (actuals[sid] ?? 0) + qty;
+          if (!rawEntries[sid]) rawEntries[sid] = [];
+          rawEntries[sid].push({ reportId: report.id, reportNumber: report.reportNumber, reportDate, preparedBy, qty });
         }
       }
+    }
+
+    // Build drillDown with running totals
+    const drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]> = {};
+    for (const [sidStr, entries] of Object.entries(rawEntries)) {
+      const sid = Number(sidStr);
+      let running = 0;
+      drillDown[sid] = entries.map(e => {
+        running += e.qty;
+        return { ...e, runningTotal: running };
+      });
+    }
+
+    const actuals: Record<number, number> = {};
+    for (const [sid, entries] of Object.entries(drillDown)) {
+      actuals[Number(sid)] = entries[entries.length - 1]?.runningTotal ?? 0;
     }
 
     let estTotal = 0;
@@ -1987,7 +2010,7 @@ export class DatabaseStorage implements IStorage {
     const overallPct = estTotal > 0 ? Math.min(100, Math.round((installed / estTotal) * 1000) / 10) : 0;
     const remaining = Math.max(0, estTotal - installed);
 
-    return { scopeItems: scopes, progress, summary: { overallPct, estTotal, installed, remaining } };
+    return { scopeItems: scopes, progress, drillDown, summary: { overallPct, estTotal, installed, remaining } };
   }
 }
 

@@ -1,0 +1,77 @@
+Do not rebuild the page. Keep the current admin project detail layout and styling.
+
+Fix the Admin > Projects > Project Detail page for Scope Items and Progress with these exact changes:
+
+1) Scope Items input UX change
+- Remove the current modal popup for adding a scope item.
+- When the user clicks "Add Item" in the Scope Items tab, open an inline editable row/table area inside the page, similar to the Admin Inventory item-entry style.
+- The user must be able to add multiple scope items in one session without opening a modal repeatedly.
+- Each new row should contain:
+  - Item / Description
+  - Unit
+  - Estimated Qty
+  - Category
+  - Linked Inventory Item
+  - Remarks
+  - Delete row action
+
+2) Inventory-linked item search
+- In the Scope Items row, the Item field must support searchable inventory lookup like Inventory Mode.
+- Typing in the field should show matching inventory items from the inventory database.
+- Selecting an inventory item should auto-fill:
+  - Item name
+  - Default unit
+  - Linked inventory item id/reference
+  - Optional category if available
+- Manual custom scope items are still allowed if no inventory item is selected.
+
+3) Multiple item entry behavior
+- Allow adding multiple scope rows before saving.
+- Add a clear "Save Scope Items" action for the inline list.
+- Do not force one-by-one modal entry.
+
+4) Progress must not show fake/sample data
+- Right now the Progress tab is showing items and percentages even before scope items are created. This is incorrect.
+- Progress must be project-specific and based only on actual saved scope items + submitted daily reports for that project.
+- If a project has no scope items:
+  - Overall progress must be 0.0%
+  - Installed = 0
+  - Remaining = 0
+  - Est. Total = 0
+  - Do not render any fake quantity-based progress rows
+  - Show a clean empty state message: "No scope items defined yet. Add scope items first to enable progress tracking."
+
+5) Project-specific data isolation
+- Scope Items, Daily Reports, and Progress must be isolated per project.
+- Welding Shop project must not show demo/sample scope items from another project.
+- Remove any hardcoded or seeded progress rows from the UI.
+
+6) Progress calculation rules
+- Progress is driven by:
+  - Scope Items estimated quantity (baseline)
+  - Submitted daily reports only
+- Draft reports must not affect progress
+- For each scope item:
+  - cumulative actual = sum of submitted daily report quantities mapped to that scope item
+  - remaining = max(estimated qty - cumulative actual, 0)
+  - progress % = cumulative actual / estimated qty
+- Overall project progress:
+  - weighted by estimated quantity
+  - if no scope items exist, overall progress = 0%
+
+7) Scope summary cards
+- Total Scope Items = count of saved scope items
+- Total Est. Qty = sum of all estimated quantities
+- Active Items = count of scope items not yet fully completed
+- Make sure these values are also project-specific and not mocked
+
+8) Keep current styling
+- Keep the current TK Electric admin visual style
+- Do not redesign the entire page
+- Only improve the behavior and data integrity
+
+After implementing, verify these cases:
+- empty project with no scope items
+- project with manually entered scope item
+- project with inventory-linked scope item
+- progress stays 0 until at least one submitted daily report exists

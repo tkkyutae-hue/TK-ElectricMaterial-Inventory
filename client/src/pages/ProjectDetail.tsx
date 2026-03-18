@@ -255,37 +255,203 @@ function EditProjectDialog({
   );
 }
 
-// ── Scope Item Form Dialog ─────────────────────────────────────────────────────
-function ScopeItemDialog({
+// ── Pending row type for inline add ───────────────────────────────────────────
+type PendingRow = {
+  localId: string;
+  itemName: string;
+  unit: string;
+  estimatedQty: string;
+  category: string;
+  linkedInventoryItemId: number | null;
+  remarks: string;
+};
+
+function newPendingRow(): PendingRow {
+  return {
+    localId: Math.random().toString(36).slice(2),
+    itemName: "", unit: "", estimatedQty: "",
+    category: "", linkedInventoryItemId: null, remarks: "",
+  };
+}
+
+// ── Inline scope row ──────────────────────────────────────────────────────────
+function InlineScopeRow({
+  row, invItems, onChange, onRemove, rowIndex,
+}: {
+  row: PendingRow;
+  invItems: any[];
+  onChange: (updated: PendingRow) => void;
+  onRemove: () => void;
+  rowIndex: number;
+}) {
+  const [invSearch, setInvSearch] = useState(
+    row.linkedInventoryItemId
+      ? (invItems.find(it => it.id === row.linkedInventoryItemId)?.name ?? row.itemName)
+      : row.itemName
+  );
+  const [invOpen, setInvOpen] = useState(false);
+
+  const filtered = invItems
+    .filter(it => !invSearch || it.name.toLowerCase().includes(invSearch.toLowerCase()))
+    .slice(0, 10);
+
+  function selectInv(it: any) {
+    setInvSearch(it.name);
+    setInvOpen(false);
+    onChange({
+      ...row,
+      itemName: it.name,
+      unit: it.unitOfMeasure ?? row.unit,
+      linkedInventoryItemId: it.id,
+      category: it.subcategory ?? row.category,
+    });
+  }
+
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3" data-testid={`inline-scope-row-${rowIndex}`}>
+      {/* Row 1: main fields */}
+      <div className="flex items-start gap-2">
+        {/* Item / inventory search */}
+        <div className="flex-1 min-w-0 space-y-1">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Item / Description *</label>
+          <div className="relative">
+            <Input
+              value={invSearch}
+              placeholder="Search inventory or enter name…"
+              onChange={(e) => {
+                const val = e.target.value;
+                setInvSearch(val);
+                setInvOpen(true);
+                if (row.linkedInventoryItemId && val !== invItems.find(it => it.id === row.linkedInventoryItemId)?.name) {
+                  onChange({ ...row, itemName: val, linkedInventoryItemId: null });
+                } else {
+                  onChange({ ...row, itemName: val });
+                }
+              }}
+              onFocus={() => setInvOpen(true)}
+              onBlur={() => setTimeout(() => setInvOpen(false), 150)}
+              className={`h-8 text-sm ${row.linkedInventoryItemId ? "border-emerald-300 bg-emerald-50/60" : ""}`}
+              data-testid={`inline-scope-name-${rowIndex}`}
+            />
+            {row.linkedInventoryItemId && (
+              <button type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                onClick={() => { setInvSearch(""); onChange({ ...row, itemName: "", linkedInventoryItemId: null }); }}>
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {invOpen && filtered.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded-lg shadow-xl max-h-44 overflow-y-auto">
+                {filtered.map(it => (
+                  <button key={it.id} type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => selectInv(it)}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${row.linkedInventoryItemId === it.id ? "bg-emerald-50 text-emerald-800 font-semibold" : "text-slate-700"}`}>
+                    <span className="truncate">{it.name}</span>
+                    <span className="text-[10px] text-slate-400 font-mono shrink-0">{it.unitOfMeasure ?? ""}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {row.linkedInventoryItemId && (
+            <p className="text-[10px] text-emerald-700 flex items-center gap-1">
+              <CheckCircle2 className="w-2.5 h-2.5" /> Inventory item linked
+            </p>
+          )}
+        </div>
+
+        {/* Unit */}
+        <div className="w-20 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Unit *</label>
+          <Input
+            value={row.unit}
+            placeholder="EA"
+            onChange={e => onChange({ ...row, unit: e.target.value })}
+            className="h-8 text-sm"
+            list={`units-list-${rowIndex}`}
+            data-testid={`inline-scope-unit-${rowIndex}`}
+          />
+          <datalist id={`units-list-${rowIndex}`}>
+            {COMMON_UNITS.map(u => <option key={u} value={u} />)}
+          </datalist>
+        </div>
+
+        {/* Est. Qty */}
+        <div className="w-24 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Est. Qty *</label>
+          <Input
+            type="number"
+            min="0"
+            step="any"
+            value={row.estimatedQty}
+            placeholder="0"
+            onChange={e => onChange({ ...row, estimatedQty: e.target.value })}
+            className="h-8 text-sm"
+            data-testid={`inline-scope-qty-${rowIndex}`}
+          />
+        </div>
+
+        {/* Category */}
+        <div className="w-32 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Category</label>
+          <Input
+            value={row.category}
+            placeholder="e.g. Conduit"
+            onChange={e => onChange({ ...row, category: e.target.value })}
+            className="h-8 text-sm"
+            data-testid={`inline-scope-category-${rowIndex}`}
+          />
+        </div>
+
+        {/* Delete button */}
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-6 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+          data-testid={`inline-scope-remove-${rowIndex}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Row 2: remarks */}
+      <Input
+        value={row.remarks}
+        placeholder="Remarks (optional)"
+        onChange={e => onChange({ ...row, remarks: e.target.value })}
+        className="h-7 text-xs text-slate-500 bg-white"
+        data-testid={`inline-scope-remarks-${rowIndex}`}
+      />
+    </div>
+  );
+}
+
+// ── Edit Scope Item Dialog (for existing items only) ──────────────────────────
+function EditScopeItemDialog({
   projectId, item, open, onClose,
 }: {
   projectId: number;
-  item?: ProjectScopeItem | null;
+  item: ProjectScopeItem;
   open: boolean;
   onClose: () => void;
 }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const isEdit = !!item;
 
   const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
-
-  const [invSearch, setInvSearch]   = useState("");
-  const [invOpen,   setInvOpen]     = useState(false);
+  const [invSearch, setInvSearch] = useState("");
+  const [invOpen, setInvOpen]     = useState(false);
   const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
 
   const filteredInvItems = allInventoryItems
     .filter(it => !invSearch || it.name.toLowerCase().includes(invSearch.toLowerCase()))
     .slice(0, 12);
-
   const linkedInvName = allInventoryItems.find(it => it.id === linkedInvId)?.name ?? "";
 
   const form = useForm<ScopeItemFormData>({
     resolver: zodResolver(scopeItemSchema),
-    defaultValues: {
-      itemName: "", unit: "", estimatedQty: "", category: "", remarks: "", isActive: true,
-      linkedInventoryItemId: null,
-    },
+    defaultValues: { itemName: "", unit: "", estimatedQty: "", category: "", remarks: "", isActive: true, linkedInventoryItemId: null },
   });
 
   useEffect(() => {
@@ -294,31 +460,22 @@ function ScopeItemDialog({
       setLinkedInvId(lid);
       setInvSearch(lid ? (allInventoryItems.find(it => it.id === lid)?.name ?? "") : "");
       form.reset({
-        itemName:              item?.itemName ?? "",
-        unit:                  item?.unit ?? "",
-        estimatedQty:          item?.estimatedQty ? String(item.estimatedQty) : "",
-        category:              item?.category ?? "",
-        remarks:               item?.remarks ?? "",
-        isActive:              item?.isActive ?? true,
+        itemName: item.itemName ?? "",
+        unit: item.unit ?? "",
+        estimatedQty: item.estimatedQty ? String(item.estimatedQty) : "",
+        category: item.category ?? "",
+        remarks: item.remarks ?? "",
+        isActive: item.isActive ?? true,
         linkedInventoryItemId: lid,
       });
     }
   }, [open, item?.id]);
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/projects/${projectId}/scope-items`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
-      toast({ title: "Scope item added" });
-      onClose();
-    },
-    onError: (err: any) => toast({ title: "Failed to add", description: err.message, variant: "destructive" }),
-  });
-
   const updateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("PATCH", `/api/scope-items/${item!.id}`, data),
+    mutationFn: (data: any) => apiRequest("PATCH", `/api/scope-items/${item.id}`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({ title: "Scope item updated" });
       onClose();
     },
@@ -326,55 +483,39 @@ function ScopeItemDialog({
   });
 
   function onSubmit(data: ScopeItemFormData) {
-    const payload = {
-      ...data,
-      estimatedQty: String(data.estimatedQty),
-      linkedInventoryItemId: linkedInvId,
-    };
-    if (isEdit) updateMutation.mutate(payload);
-    else createMutation.mutate(payload);
+    updateMutation.mutate({ ...data, estimatedQty: String(data.estimatedQty), linkedInventoryItemId: linkedInvId });
   }
-
-  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Scope Item" : "Add Scope Item"}</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Edit Scope Item</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <FormField control={form.control} name="itemName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Name <span className="text-red-500">*</span></FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. EMT Conduit 3/4&quot;" {...field} data-testid="input-scope-item-name" />
-                </FormControl>
+                <FormLabel>Item Name *</FormLabel>
+                <FormControl><Input {...field} data-testid="input-scope-item-name" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="unit" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit <span className="text-red-500">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-scope-unit"><SelectValue placeholder="Select unit" /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {COMMON_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Unit *</FormLabel>
+                  <FormControl>
+                    <Input {...field} list="edit-units-list" data-testid="select-scope-unit" />
+                  </FormControl>
+                  <datalist id="edit-units-list">
+                    {COMMON_UNITS.map(u => <option key={u} value={u} />)}
+                  </datalist>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="estimatedQty" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Est. Qty <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input type="number" min="0" step="any" placeholder="0" {...field} data-testid="input-scope-qty" />
-                  </FormControl>
+                  <FormLabel>Est. Qty *</FormLabel>
+                  <FormControl><Input type="number" min="0" step="any" placeholder="0" {...field} data-testid="input-scope-qty" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -382,16 +523,13 @@ function ScopeItemDialog({
             <FormField control={form.control} name="category" render={({ field }) => (
               <FormItem>
                 <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Conduit, Wire, Devices…" {...field} data-testid="input-scope-category" />
-                </FormControl>
+                <FormControl><Input placeholder="e.g. Conduit, Wire…" {...field} data-testid="input-scope-category" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-            {/* Inventory Item Link */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
-                Inventory Item Link <span className="text-slate-400 font-normal text-xs">(optional — enables auto-link in daily reports)</span>
+                Inventory Item Link <span className="text-slate-400 font-normal text-xs">(optional)</span>
               </label>
               <div className="relative">
                 <Input
@@ -401,11 +539,10 @@ function ScopeItemDialog({
                   onChange={(e) => { setInvSearch(e.target.value); setInvOpen(true); if (!e.target.value) setLinkedInvId(null); }}
                   onFocus={() => setInvOpen(true)}
                   onBlur={() => setTimeout(() => setInvOpen(false), 150)}
-                  className={linkedInvId ? "border-emerald-300 bg-emerald-50 text-emerald-800" : ""}
+                  className={linkedInvId ? "border-emerald-300 bg-emerald-50" : ""}
                 />
                 {linkedInvId && (
-                  <button type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     onClick={() => { setLinkedInvId(null); setInvSearch(""); }}>
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -414,11 +551,11 @@ function ScopeItemDialog({
                   <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                     {filteredInvItems.map(it => (
                       <button key={it.id} type="button"
-                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseDown={e => e.preventDefault()}
                         onClick={() => { setLinkedInvId(it.id); setInvSearch(it.name); setInvOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors ${linkedInvId === it.id ? "bg-emerald-50 text-emerald-800 font-medium" : "text-slate-700"}`}>
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between gap-2 ${linkedInvId === it.id ? "bg-emerald-50 text-emerald-800 font-medium" : "text-slate-700"}`}>
                         <span className="truncate">{it.name}</span>
-                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">{it.unitOfMeasure ?? ""}</span>
+                        <span className="text-[10px] text-slate-400 font-mono shrink-0">{it.unitOfMeasure ?? ""}</span>
                       </button>
                     ))}
                   </div>
@@ -433,34 +570,30 @@ function ScopeItemDialog({
             <FormField control={form.control} name="remarks" render={({ field }) => (
               <FormItem>
                 <FormLabel>Remarks <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                <FormControl>
-                  <Textarea rows={2} className="resize-none" placeholder="Any notes…" {...field} data-testid="input-scope-remarks" />
-                </FormControl>
+                <FormControl><Textarea rows={2} className="resize-none" placeholder="Any notes…" {...field} data-testid="input-scope-remarks" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-            {isEdit && (
-              <FormField control={form.control} name="isActive" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
+            <FormField control={form.control} name="isActive" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
-              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={isPending} data-testid="button-save-scope-item">
+              <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>Cancel</Button>
+              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-scope-item">
                 <Save className="w-4 h-4 mr-1" />
-                {isPending ? "Saving…" : isEdit ? "Save Changes" : "Add Item"}
+                {updateMutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
             </div>
           </form>
@@ -474,9 +607,10 @@ function ScopeItemDialog({
 function ScopeItemsTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<ProjectScopeItem | null>(null);
+  const [editItem, setEditItem]       = useState<ProjectScopeItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProjectScopeItem | null>(null);
+  const [pendingRows, setPendingRows]  = useState<PendingRow[]>([]);
+  const [isSaving, setIsSaving]       = useState(false);
 
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
@@ -488,6 +622,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/scope-items/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({ title: "Scope item deleted" });
       setDeleteTarget(null);
     },
@@ -501,12 +636,59 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
     onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
   });
 
-  const totalItems = scopeItems.length;
-  const totalQty = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
+  const totalItems  = scopeItems.length;
+  const totalQty    = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
   const activeCount = scopeItems.filter(i => i.isActive).length;
 
-  function openAdd() { setEditItem(null); setDialogOpen(true); }
-  function openEdit(item: ProjectScopeItem) { setEditItem(item); setDialogOpen(true); }
+  function addRow() {
+    setPendingRows(prev => [...prev, newPendingRow()]);
+  }
+
+  function updateRow(localId: string, updated: PendingRow) {
+    setPendingRows(prev => prev.map(r => r.localId === localId ? updated : r));
+  }
+
+  function removeRow(localId: string) {
+    setPendingRows(prev => prev.filter(r => r.localId !== localId));
+  }
+
+  async function saveAll() {
+    const validRows = pendingRows.filter(r => r.itemName.trim() && r.unit.trim() && r.estimatedQty.trim());
+    if (validRows.length === 0) {
+      toast({ title: "Nothing to save", description: "Fill in at least Item Name, Unit, and Est. Qty for each row.", variant: "destructive" });
+      return;
+    }
+    const invalid = pendingRows.filter(r => !r.itemName.trim() || !r.unit.trim() || !r.estimatedQty.trim());
+    if (invalid.length > 0) {
+      toast({ title: "Incomplete rows", description: "Some rows are missing required fields (Name, Unit, Qty) and will be skipped.", variant: "destructive" });
+    }
+    setIsSaving(true);
+    try {
+      await Promise.all(
+        validRows.map(row =>
+          apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
+            itemName:              row.itemName.trim(),
+            unit:                  row.unit.trim(),
+            estimatedQty:          row.estimatedQty,
+            category:              row.category.trim() || null,
+            remarks:               row.remarks.trim() || null,
+            linkedInventoryItemId: row.linkedInventoryItemId,
+            isActive:              true,
+          })
+        )
+      );
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
+      toast({ title: `${validRows.length} scope item${validRows.length > 1 ? "s" : ""} saved` });
+      setPendingRows([]);
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const isAdding = pendingRows.length > 0;
 
   return (
     <div className="space-y-5">
@@ -527,30 +709,34 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
         ))}
       </div>
 
-      {/* Table card */}
+      {/* Existing scope items table */}
       <div className="premium-card bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
             <p className="text-xs text-slate-400 mt-0.5">Baseline quantities used as progress reference</p>
           </div>
-          <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white" onClick={openAdd} data-testid="button-add-scope-item">
+          <Button
+            size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
+            onClick={addRow}
+            data-testid="button-add-scope-item"
+          >
             <Plus className="w-4 h-4 mr-1" /> Add Item
           </Button>
         </div>
 
         {isLoading ? (
           <div className="p-8 text-center text-slate-400">Loading…</div>
-        ) : scopeItems.length === 0 ? (
+        ) : scopeItems.length === 0 && !isAdding ? (
           <div className="p-12 text-center">
             <LayoutList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No scope items yet</p>
             <p className="text-xs text-slate-400 mt-1">Add items to define the project's estimated work quantities.</p>
-            <Button size="sm" variant="outline" className="mt-4" onClick={openAdd} data-testid="button-add-scope-item-empty">
+            <Button size="sm" variant="outline" className="mt-4" onClick={addRow} data-testid="button-add-scope-item-empty">
               <Plus className="w-4 h-4 mr-1" /> Add First Item
             </Button>
           </div>
-        ) : (
+        ) : scopeItems.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80">
@@ -598,29 +784,20 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm" variant="ghost"
-                          className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
                           onClick={() => toggleMutation.mutate({ id: item.id, isActive: !item.isActive })}
                           title={item.isActive ? "Deactivate" : "Activate"}
-                          data-testid={`button-toggle-scope-${item.id}`}
-                        >
+                          data-testid={`button-toggle-scope-${item.id}`}>
                           {item.isActive ? <MinusCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                         </Button>
-                        <Button
-                          size="sm" variant="ghost"
-                          className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                          onClick={() => openEdit(item)}
-                          data-testid={`button-edit-scope-${item.id}`}
-                        >
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                          onClick={() => setEditItem(item)}
+                          data-testid={`button-edit-scope-${item.id}`}>
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
-                        <Button
-                          size="sm" variant="ghost"
-                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => setDeleteTarget(item)}
-                          data-testid={`button-delete-scope-${item.id}`}
-                        >
+                          data-testid={`button-delete-scope-${item.id}`}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -630,16 +807,67 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Add/Edit dialog */}
-      <ScopeItemDialog
-        projectId={projectId}
-        item={editItem}
-        open={dialogOpen}
-        onClose={() => { setDialogOpen(false); setEditItem(null); }}
-      />
+      {/* Inline add section */}
+      {isAdding && (
+        <div className="premium-card bg-white overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">New Items</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and click "Save Scope Items"
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="border-brand-200 text-brand-700 hover:bg-brand-50" onClick={addRow}
+              data-testid="button-add-more-scope-row">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+            </Button>
+          </div>
+          <div className="p-5 space-y-3">
+            {pendingRows.map((row, i) => (
+              <InlineScopeRow
+                key={row.localId}
+                row={row}
+                invItems={allInvItems}
+                onChange={updated => updateRow(row.localId, updated)}
+                onRemove={() => removeRow(row.localId)}
+                rowIndex={i}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+            <button
+              type="button"
+              onClick={() => setPendingRows([])}
+              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+              data-testid="button-cancel-inline-scope"
+            >
+              Cancel
+            </button>
+            <Button
+              className="bg-brand-700 hover:bg-brand-800 text-white"
+              onClick={saveAll}
+              disabled={isSaving}
+              data-testid="button-save-scope-items"
+            >
+              <Save className="w-4 h-4 mr-1.5" />
+              {isSaving ? "Saving…" : `Save Scope Item${pendingRows.length !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit dialog for existing items */}
+      {editItem && (
+        <EditScopeItemDialog
+          projectId={projectId}
+          item={editItem}
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+        />
+      )}
 
       {/* Delete confirm dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>

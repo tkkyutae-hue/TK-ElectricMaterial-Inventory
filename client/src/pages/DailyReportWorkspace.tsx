@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "wouter";
+import { useState, useEffect } from "react";
+import { useParams, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   MapPin, Calendar, ClipboardList, AlertCircle,
@@ -522,10 +522,29 @@ function projectLocation(p: Project): string {
 // ─── Main workspace page ──────────────────────────────────────────────────────
 export default function DailyReportWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
+  const searchStr     = useSearch();
+  const urlReportId   = new URLSearchParams(searchStr).get("reportId");
+
   const [activeTab, setActiveTab] = useState<Tab>("new-report");
   const [editingReport, setEditingReport] = useState<any>(null);
+  const [autoLoadDone, setAutoLoadDone]   = useState(false);
 
   const numericProjectId = Number(projectId);
+
+  // Auto-open a specific report when ?reportId= is in the URL
+  useEffect(() => {
+    if (!urlReportId || autoLoadDone) return;
+    setAutoLoadDone(true);
+    fetch(`/api/daily-reports/${urlReportId}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(report => {
+        if (report?.id) {
+          setEditingReport(report);
+          setActiveTab("new-report");
+        }
+      })
+      .catch(() => {});
+  }, [urlReportId, autoLoadDone]);
 
   const {
     data: project,

@@ -1,0 +1,75 @@
+Update ONLY the Admin Project Mode project detail pages. Do NOT modify Daily Report entry form layout in this task.
+
+Goal:
+Improve Admin Project visibility for scope, transactions, and daily report navigation while keeping the current project detail page structure.
+
+Requirements:
+
+1. Scope Items input behavior
+- Replace the current single-item modal flow with a multi-item add experience similar to Admin Inventory item selection.
+- When clicking "Add Item", open an inline or side-panel style selector that supports adding multiple scope items more efficiently.
+- Item search must support inventory-linked search with flexible word order and fuzzy matching.
+- Example:
+  - "3/4 EMT Conduit"
+  - "EMT Conduit 3/4"
+  - "Conduit EMT 3/4"
+should find the same inventory item.
+- Apply the same smarter search behavior here as in Daily Report materials.
+
+2. Scope item linking
+- Scope items should support direct inventory linking.
+- If linked to inventory, unit should auto-fill from inventory.
+- Estimated quantity remains manually entered.
+- Keep category optional.
+
+3. Admin Project Overview improvements
+- Add a new "Transactions" section/tab between Overview and Scope Items, or add a clearly labeled transactions block inside the project detail navigation structure.
+- It must show recent project-related transactions with filters and summary visibility.
+
+4. Transaction visibility in Admin Project
+- Show latest 10 project transactions on Overview or in a dedicated Transactions tab.
+- Include:
+  - Date
+  - Item name
+  - Type (Issue / Return)
+  - Quantity
+  - Unit
+  - Logged by / user if available
+- Also show summarized counts for issued and returned materials by date and item.
+- Make it easy to understand what was delivered to this project and what was returned.
+
+5. Daily Reports navigation bug
+- In Admin Project > Daily Reports, clicking "View" on a submitted report must open that specific report view, not the New Report creation screen.
+- Submitted reports should open read-only report detail view.
+- Draft reports should open editable draft view.
+- New Report button should still open a fresh report.
+
+6. Clear separation of modes
+- Make the distinction between:
+  - Admin Project Mode
+  - Daily Report Mode
+very clear in routing and page behavior.
+- Admin Project page should act as management / overview / analytics / history.
+- Daily Report page should act as data entry / editing / submission workspace.
+- Do not mix those route behaviors.
+
+7. Progress data source protection
+- Progress in Admin Project must only be calculated from:
+  - Scope Items Est. Qty
+  - Submitted Daily Reports actual quantities linked to scope items
+- If no scope items exist, progress must stay empty / zero state.
+- If no submitted reports exist, cumulative actual must remain zero.
+- Never show placeholder fake progress data.
+
+8. Preserve current good layout
+- Do NOT reset the card spacing, top summary cards, tab layout, or clean project overview layout that is currently working.
+- Only extend functionality carefully.
+
+Acceptance checklist:
+- Scope item adding is faster and supports multi-item workflow.
+- Scope item search works with flexible word order.
+- Transactions can be reviewed inside Admin Project detail.
+- Overview can show latest 10 transactions.
+- View button in Daily Reports opens the correct report page.
+- Admin vs Daily Report behavior is clearly separated.
+- Progress never shows fake data when scope/reports do not exist.

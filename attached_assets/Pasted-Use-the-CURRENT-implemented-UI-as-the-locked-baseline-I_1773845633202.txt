@@ -1,0 +1,140 @@
+Use the CURRENT implemented UI as the locked baseline.
+
+IMPORTANT
+- Do NOT redesign.
+- Do NOT rollback any current spacing, section heights, card proportions, or field widths.
+- Daily Report mode is mostly fine now. Only fix the left/right field width rollback issue there.
+- Main task is ADMIN MODE > PROJECT DETAIL improvement.
+
+========================================
+A. DAILY REPORT MODE — MINIMAL FIX ONLY
+========================================
+1. Restore the current improved field widths/layout that were previously made larger and cleaner.
+2. Fix the rollback issue where section/table/input widths became cramped again.
+3. Do not change logic, structure, or styling beyond width restoration.
+
+========================================
+B. ADMIN MODE > PROJECT DETAIL
+========================================
+
+Keep the current project detail layout style, but make these changes:
+
+1. OVERVIEW > RECENT TRANSACTIONS
+- In Overview, do NOT show the full recent transaction list at once.
+- Show only 10 rows per page.
+- Add simple pagination controls:
+  - Previous
+  - Next
+  - page indicator
+- Default sort: newest first.
+
+2. TAB ORDER
+- Reorder project detail tabs/sections to:
+  - Overview
+  - Scope Items
+  - Material Usage
+  - Daily Reports
+  - Progress
+- Scope Items must be placed between Overview and Material Usage.
+
+3. RENAME “TRANSACTIONS” TO “MATERIAL USAGE”
+- Rename the current Transactions tab/header to “Material Usage”.
+- This tab should be an item-level material usage summary, not a raw log dump.
+- Group duplicate item names into one row.
+- Remove “Logged By”.
+- Show columns like:
+  - Item Name
+  - Issued Qty
+  - Returned Qty
+  - Net Used
+  - Unit
+  - Material Value
+- Net Used = Issued - Returned
+- Material Value = net used quantity × item unit cost/value
+- Keep rows unique by item.
+- Add totals row at bottom:
+  - Total Issued
+  - Total Returned
+  - Total Net Used
+  - Total Value
+
+4. PERMISSION UPDATE
+- Manager and Admin roles can edit submitted Daily Reports from Admin Mode > Project Detail > Daily Reports.
+- Viewer/Staff cannot edit submitted reports.
+- Draft editing rules remain unchanged.
+- Submitted report edit should open that exact submitted report record, not a blank new report page.
+
+5. PROGRESS IMPROVEMENT
+Enhance progress so the total progress visually separates:
+- Total estimated quantity
+- Cumulative completed quantity up to yesterday
+- Today’s submitted quantity
+- Remaining quantity
+
+Required behavior:
+- Show “today’s work” in a different color from previous cumulative work.
+- Example:
+  - Previous completed = one color
+  - Today completed = highlighted accent color
+  - Remaining = neutral color
+- Display summary values clearly:
+  - Total Scope Qty
+  - Completed To Date
+  - Yesterday Completed
+  - Today Added
+  - Remaining
+  - Overall Progress %
+
+6. PROGRESS TABLE ENHANCEMENT
+In the Progress tab, for each scope item show:
+- Est. Qty
+- Completed Before Today
+- Today Added
+- New Completed Total
+- Remaining
+- Progress %
+- Use stacked progress bars:
+  - previous completed color
+  - today added color
+  - remaining background
+- Do not count draft reports.
+- Only submitted daily reports affect progress.
+
+7. OVERVIEW CARD IMPROVEMENT
+Update overview cards to match the new logic:
+- Daily Reports: total / submitted / draft
+- Progress summary:
+  - overall %
+  - completed
+  - remaining
+  - total scope qty
+  - today added (if there is a submitted report today)
+- Material summary:
+  - total issued
+  - total returned
+  - net used
+  - total value
+
+========================================
+C. DATA / LOGIC RULES
+========================================
+1. Do not use fake placeholder progress values.
+2. Progress must come only from:
+   - scope item estimated quantities
+   - submitted daily report quantities linked to scope items
+3. Material Usage values must come from real issue/return records.
+4. Group duplicate material names consistently.
+5. Keep all current styling language and admin UI tone.
+
+========================================
+D. ANTI-REGRESSION CHECK
+========================================
+Before finishing, verify:
+- no width rollback in Daily Report mode
+- no section/card size rollback
+- current improved layout remains intact
+- Material Usage replaces Transactions cleanly
+- Scope Items moved between Overview and Material Usage
+- Overview recent transactions paginates 10 rows at a time
+- Manager/Admin can edit submitted reports correctly
+- Progress clearly separates previous completed vs today added

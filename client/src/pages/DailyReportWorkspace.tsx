@@ -523,7 +523,9 @@ function projectLocation(p: Project): string {
 export default function DailyReportWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
   const searchStr     = useSearch();
-  const urlReportId   = new URLSearchParams(searchStr).get("reportId");
+  const searchParams  = new URLSearchParams(searchStr);
+  const urlReportId   = searchParams.get("reportId");
+  const forceEdit     = searchParams.get("forceEdit") === "true";
 
   const [activeTab, setActiveTab] = useState<Tab>("new-report");
   const [editingReport, setEditingReport] = useState<any>(null);
@@ -681,6 +683,7 @@ export default function DailyReportWorkspace() {
               projectId={numericProjectId}
               reportId={editingReport?.id ?? null}
               initialData={editingReport}
+              forceEdit={forceEdit}
               onSaved={(id, status) => {
                 setEditingReport((prev: any) =>
                   prev ? { ...prev, id, status } : { id, status, projectId: numericProjectId }

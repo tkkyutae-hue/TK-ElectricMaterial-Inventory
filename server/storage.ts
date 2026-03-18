@@ -137,8 +137,9 @@ export interface IStorage {
   deleteScopeItem(id: number): Promise<void>;
   getProjectProgress(projectId: number): Promise<{
     scopeItems: ProjectScopeItem[];
-    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
-    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+    progress: Record<number, { cumulative: number; remaining: number; pct: number; todayAdded: number; completedBeforeToday: number }>;
+    drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number; todayAdded: number };
   }>;
 }
 
@@ -1948,11 +1949,12 @@ export class DatabaseStorage implements IStorage {
 
   async getProjectProgress(projectId: number): Promise<{
     scopeItems: ProjectScopeItem[];
-    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    progress: Record<number, { cumulative: number; remaining: number; pct: number; todayAdded: number; completedBeforeToday: number }>;
     drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
-    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number; todayAdded: number };
   }> {
     const scopes = await this.getScopeItems(projectId);
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD in UTC
 
     const submittedReports = await db
       .select()
@@ -1989,28 +1991,37 @@ export class DatabaseStorage implements IStorage {
     }
 
     const actuals: Record<number, number> = {};
-    for (const [sid, entries] of Object.entries(drillDown)) {
-      actuals[Number(sid)] = entries[entries.length - 1]?.runningTotal ?? 0;
+    const todayAddedByScope: Record<number, number> = {};
+    for (const [sidStr, entries] of Object.entries(drillDown)) {
+      const sid = Number(sidStr);
+      actuals[sid] = entries[entries.length - 1]?.runningTotal ?? 0;
+      todayAddedByScope[sid] = entries
+        .filter(e => e.reportDate === todayStr)
+        .reduce((s, e) => s + e.qty, 0);
     }
 
     let estTotal = 0;
     let installed = 0;
-    const progress: Record<number, { cumulative: number; remaining: number; pct: number }> = {};
+    let totalTodayAdded = 0;
+    const progress: Record<number, { cumulative: number; remaining: number; pct: number; todayAdded: number; completedBeforeToday: number }> = {};
 
     for (const scope of scopes) {
       const estQty = parseFloat(String(scope.estimatedQty)) || 0;
       const cumulative = actuals[scope.id] ?? 0;
+      const todayAdded = todayAddedByScope[scope.id] ?? 0;
+      const completedBeforeToday = Math.max(0, cumulative - todayAdded);
       const remaining = Math.max(0, estQty - cumulative);
       const pct = estQty > 0 ? Math.min(100, Math.round((cumulative / estQty) * 1000) / 10) : 0;
-      progress[scope.id] = { cumulative, remaining, pct };
+      progress[scope.id] = { cumulative, remaining, pct, todayAdded, completedBeforeToday };
       estTotal += estQty;
       installed += cumulative;
+      totalTodayAdded += todayAdded;
     }
 
     const overallPct = estTotal > 0 ? Math.min(100, Math.round((installed / estTotal) * 1000) / 10) : 0;
     const remaining = Math.max(0, estTotal - installed);
 
-    return { scopeItems: scopes, progress, drillDown, summary: { overallPct, estTotal, installed, remaining } };
+    return { scopeItems: scopes, progress, drillDown, summary: { overallPct, estTotal, installed, remaining, todayAdded: totalTodayAdded } };
   }
 }
 

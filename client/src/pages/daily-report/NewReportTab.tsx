@@ -344,10 +344,11 @@ function MaterialSearch({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function NewReportTab({
-  projectId, reportId, initialData, onSaved,
+  projectId, reportId, initialData, onSaved, forceEdit = false,
 }: {
   projectId: number; reportId?: number | null; initialData?: any;
   onSaved?: (id: number, status: string) => void;
+  forceEdit?: boolean;
 }) {
   const { toast }   = useToast();
   const queryClient = useQueryClient();
@@ -420,7 +421,7 @@ export function NewReportTab({
   const totalManhours = manpower.reduce((s, r) => s + r.hoursWorked, 0);
 
   // ── Submit validation ──
-  const isSubmitted  = savedStatus === "submitted";
+  const isSubmitted  = savedStatus === "submitted" && !forceEdit;
   const canSubmit    = !!reportDate && !!preparedBy.trim() && (manpower.length > 0 || tasks.length > 0);
   const submitHelper = !canSubmit && !isSubmitted
     ? (!preparedBy.trim()

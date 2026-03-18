@@ -53,6 +53,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Current user ────────────────────────────────────────────────────────────
+  app.get("/api/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.getUser(userId);
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { passwordHash: _ph, ...safe } = user as any;
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Dashboard ──────────────────────────────────────────────────────────────
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
     try {

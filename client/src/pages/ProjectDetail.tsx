@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { MovementForm } from "@/components/MovementForm";
@@ -6,7 +6,7 @@ import {
   ArrowLeft, MapPin, Calendar, Package, ArrowUpRight, ArrowDownRight,
   Users, Edit, Save, X, Trash2, Plus, Pencil, CheckCircle2, MinusCircle,
   LayoutList, Hash, TrendingUp, AlertCircle, Download, Clock, FileText,
-  ListTodo, Eye, Filter, FileBarChart, ChevronRight,
+  ListTodo, Eye, Filter, FileBarChart, ChevronRight, ChevronLeft, DollarSign,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -976,9 +976,9 @@ function ProgressTab({ projectId }: { projectId: number }) {
 
   const { data, isLoading } = useQuery<{
     scopeItems: any[];
-    progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
+    progress: Record<number, { cumulative: number; remaining: number; pct: number; todayAdded: number; completedBeforeToday: number }>;
     drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
-    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number; todayAdded: number };
   }>({
     queryKey: ["/api/projects", projectId, "progress"],
     queryFn: () => fetch(`/api/projects/${projectId}/progress`, { credentials: "include" }).then(r => r.json()),
@@ -989,11 +989,8 @@ function ProgressTab({ projectId }: { projectId: number }) {
   const scopeItems = data?.scopeItems ?? [];
   const progress   = data?.progress ?? {};
   const drillDown  = data?.drillDown ?? {};
-  const summary    = data?.summary ?? { overallPct: 0, estTotal: 0, installed: 0, remaining: 0 };
+  const summary    = data?.summary ?? { overallPct: 0, estTotal: 0, installed: 0, remaining: 0, todayAdded: 0 };
   const hasScopes  = scopeItems.length > 0;
-
-  const pctColor = (pct: number) =>
-    pct >= 100 ? "bg-emerald-500" : pct >= 70 ? "bg-brand-500" : pct >= 40 ? "bg-blue-400" : "bg-slate-300";
 
   const summaryPctColor =
     summary.overallPct >= 100 ? "text-emerald-600" :
@@ -1010,7 +1007,6 @@ function ProgressTab({ projectId }: { projectId: number }) {
 
   return (
     <div className="space-y-5">
-      {/* No scope items yet */}
       {!hasScopes && (
         <div className="premium-card bg-white p-12 text-center">
           <TrendingUp className="w-10 h-10 text-slate-200 mx-auto mb-3" />
@@ -1024,30 +1020,47 @@ function ProgressTab({ projectId }: { projectId: number }) {
       {hasScopes && (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="premium-card bg-white p-5 col-span-2 sm:col-span-1 flex flex-col items-center justify-center gap-1" data-testid="progress-overall">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Overall % — spans 2 cols on small */}
+            <div className="premium-card bg-white p-4 col-span-2 sm:col-span-1 lg:col-span-2 flex flex-col items-center justify-center gap-1" data-testid="progress-overall">
               <p className="text-xs text-slate-400 uppercase tracking-wide">Overall Progress</p>
               <p className={`text-4xl font-display font-bold ${summaryPctColor}`}>{summary.overallPct.toFixed(1)}%</p>
-              <div className="w-full bg-slate-100 rounded-full h-2 mt-1">
-                <div className={`h-2 rounded-full transition-all ${pctColor(summary.overallPct)}`} style={{ width: `${Math.min(100, summary.overallPct)}%` }} />
-              </div>
+              {/* Stacked bar */}
+              {(() => {
+                const prevInstalled = Math.max(0, summary.installed - summary.todayAdded);
+                const prevPct = summary.estTotal > 0 ? Math.min(100, (prevInstalled / summary.estTotal) * 100) : 0;
+                const todayPct = summary.estTotal > 0 ? Math.min(100 - prevPct, (summary.todayAdded / summary.estTotal) * 100) : 0;
+                return (
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden relative mt-1">
+                    <div className="absolute left-0 top-0 h-full bg-emerald-500" style={{ width: `${prevPct}%` }} />
+                    <div className="absolute top-0 h-full bg-brand-400" style={{ left: `${prevPct}%`, width: `${todayPct}%` }} />
+                  </div>
+                );
+              })()}
+              {summary.todayAdded > 0 && (
+                <div className="flex gap-3 mt-1">
+                  <span className="flex items-center gap-1 text-[9px] text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Prev</span>
+                  <span className="flex items-center gap-1 text-[9px] text-brand-600"><span className="w-2 h-2 rounded-full bg-brand-400 inline-block" />Today</span>
+                </div>
+              )}
             </div>
             {[
-              { label: "Est. Total",  value: summary.estTotal.toLocaleString(),   icon: Hash,       color: "text-slate-600",   bg: "bg-slate-50"   },
-              { label: "Installed",   value: summary.installed.toLocaleString(),  icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Remaining",   value: summary.remaining.toLocaleString(),  icon: AlertCircle, color: "text-amber-600",   bg: "bg-amber-50"   },
+              { label: "Est. Total",      value: summary.estTotal.toLocaleString(),                             icon: Hash,          color: "text-slate-600",   bg: "bg-slate-50"   },
+              { label: "Installed",       value: summary.installed.toLocaleString(),                            icon: CheckCircle2,  color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: "Today Added",     value: summary.todayAdded > 0 ? `+${summary.todayAdded.toLocaleString()}` : "0",   icon: TrendingUp,    color: "text-brand-600",   bg: "bg-brand-50"   },
+              { label: "Remaining",       value: summary.remaining.toLocaleString(),                            icon: AlertCircle,   color: "text-amber-600",   bg: "bg-amber-50"   },
+              { label: "Scope Items",     value: scopeItems.length.toLocaleString(),                            icon: ListTodo,      color: "text-indigo-600",  bg: "bg-indigo-50"  },
             ].map((s, i) => (
-              <div key={i} className="premium-card bg-white p-5 flex items-start gap-3" data-testid={`progress-kpi-${i}`}>
+              <div key={i} className="premium-card bg-white p-4 flex items-start gap-3" data-testid={`progress-kpi-${i}`}>
                 <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
                 <div>
                   <p className="text-xs text-slate-400">{s.label}</p>
-                  <p className="text-2xl font-display font-bold text-slate-900">{s.value}</p>
+                  <p className="text-xl font-display font-bold text-slate-900">{s.value}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* No submitted reports yet */}
           {summary.installed === 0 && (
             <div className="premium-card bg-white px-5 py-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50/40 border border-amber-100">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -1055,7 +1068,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
             </div>
           )}
 
-          {/* Progress table */}
+          {/* Progress table with stacked bars */}
           <div className="premium-card bg-white overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between">
               <div>
@@ -1076,25 +1089,30 @@ function ProgressTab({ projectId }: { projectId: number }) {
                 <thead className="bg-slate-50/80">
                   <tr>
                     <th className="w-9 px-2" />
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[28%]">Item</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[24%]">Item</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[11%]">Est. Qty</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[12%]">Installed</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[11%]">Remaining</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Est. Qty</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%] text-emerald-600">Before Today</th>
+                    <th className="text-right px-4 py-3 font-semibold text-brand-600 w-[10%]">Today</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Total</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Remaining</th>
                     <th className="px-4 py-3 font-semibold text-slate-600">Progress</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scopeItems.map((scope) => {
-                    const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)), pct: 0 };
+                    const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)), pct: 0, todayAdded: 0, completedBeforeToday: 0 };
                     const estQty = parseFloat(String(scope.estimatedQty));
                     const entries = drillDown[scope.id] ?? [];
                     const isExpanded = expandedRows.has(scope.id);
                     const hasDrillDown = p.cumulative > 0;
 
+                    // Stacked bar percentages
+                    const prevPct  = estQty > 0 ? Math.min(100, (p.completedBeforeToday / estQty) * 100) : 0;
+                    const todayPct = estQty > 0 ? Math.min(100 - prevPct, (p.todayAdded / estQty) * 100) : 0;
+
                     return (
                       <Fragment key={scope.id}>
-                        {/* Main progress row */}
                         <tr
                           data-testid={`progress-row-${scope.id}`}
                           onClick={() => hasDrillDown && toggleRow(scope.id)}
@@ -1105,7 +1123,6 @@ function ProgressTab({ projectId }: { projectId: number }) {
                             !scope.isActive ? "opacity-50" : "",
                           ].join(" ")}
                         >
-                          {/* Expand toggle */}
                           <td className="px-2 py-3.5 text-center">
                             {hasDrillDown ? (
                               <span className={`inline-flex items-center justify-center w-5 h-5 rounded transition-transform text-slate-400 ${isExpanded ? "rotate-90 text-brand-600" : ""}`}>
@@ -1122,10 +1139,14 @@ function ProgressTab({ projectId }: { projectId: number }) {
                           <td className="px-4 py-3.5">
                             <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{scope.unit}</span>
                           </td>
-                          <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                            {estQty.toLocaleString()}
+                          <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">{estQty.toLocaleString()}</td>
+                          <td className="px-4 py-3.5 text-right tabular-nums text-emerald-700 font-medium">
+                            {p.completedBeforeToday > 0 ? p.completedBeforeToday.toLocaleString() : <span className="text-slate-300">—</span>}
                           </td>
-                          <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-emerald-700">
+                          <td className="px-4 py-3.5 text-right tabular-nums text-brand-600 font-medium">
+                            {p.todayAdded > 0 ? `+${p.todayAdded.toLocaleString()}` : <span className="text-slate-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-slate-800">
                             {p.cumulative > 0 ? (
                               <span className="flex items-center justify-end gap-1">
                                 {p.cumulative.toLocaleString()}
@@ -1137,16 +1158,13 @@ function ProgressTab({ projectId }: { projectId: number }) {
                               <span className="text-slate-300">0</span>
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-right tabular-nums text-amber-700">
-                            {p.remaining.toLocaleString()}
-                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums text-amber-700">{p.remaining.toLocaleString()}</td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-slate-100 rounded-full h-2 min-w-[60px]">
-                                <div
-                                  className={`h-2 rounded-full transition-all ${pctColor(p.pct)}`}
-                                  style={{ width: `${Math.min(100, p.pct)}%` }}
-                                />
+                              {/* Stacked progress bar */}
+                              <div className="flex-1 bg-slate-100 rounded-full h-2 min-w-[60px] relative overflow-hidden">
+                                <div className="absolute left-0 top-0 h-full bg-emerald-500 transition-all" style={{ width: `${prevPct}%` }} />
+                                <div className="absolute top-0 h-full bg-brand-400 transition-all" style={{ left: `${prevPct}%`, width: `${todayPct}%` }} />
                               </div>
                               <span className={`text-xs font-bold tabular-nums w-12 text-right ${
                                 p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-brand-600" : "text-slate-400"
@@ -1157,7 +1175,6 @@ function ProgressTab({ projectId }: { projectId: number }) {
                           </td>
                         </tr>
 
-                        {/* Drill-down expanded row */}
                         {isExpanded && (
                           <DrillDownRows entries={entries} unit={scope.unit} estQty={estQty} />
                         )}
@@ -1233,160 +1250,123 @@ function ReportStatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Transactions Tab ───────────────────────────────────────────────────────────
-function TransactionsTab({ projectId }: { projectId: number }) {
-  const [filter, setFilter] = useState<"all" | "issue" | "return">("all");
-
+// ── Material Usage Tab ─────────────────────────────────────────────────────────
+function MaterialUsageTab({ projectId }: { projectId: number }) {
   const { data: movements = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/movements", { projectId }],
-    queryFn: () => fetch(`/api/movements?projectId=${projectId}&limit=200`, { credentials: "include" }).then(r => r.json()),
+    queryKey: ["/api/movements", { projectId, limit: 500 }],
+    queryFn: () => fetch(`/api/movements?projectId=${projectId}&limit=500`, { credentials: "include" }).then(r => r.json()),
     enabled: !!projectId,
   });
 
-  const sorted = [...movements].sort((a, b) => {
-    const da = a.transactionDate ?? a.createdAt ?? "";
-    const db = b.transactionDate ?? b.createdAt ?? "";
-    return da > db ? -1 : da < db ? 1 : 0;
-  });
+  const grouped = useMemo(() => {
+    const map: Record<string, { name: string; unit: string; issuedQty: number; returnedQty: number; unitCost: number | null }> = {};
+    for (const m of movements) {
+      const name = m.item?.name ?? m.itemName ?? `Item #${m.itemId}`;
+      const unit = m.item?.unitOfMeasure ?? "—";
+      if (!map[name]) map[name] = { name, unit, issuedQty: 0, returnedQty: 0, unitCost: null };
+      const qty = Number(m.quantity ?? 0);
+      if (m.movementType === "issue") {
+        map[name].issuedQty += qty;
+        const snap = m.unitCostSnapshot ? Number(m.unitCostSnapshot) : null;
+        if (snap && snap > 0 && !map[name].unitCost) map[name].unitCost = snap;
+      } else if (m.movementType === "return") {
+        map[name].returnedQty += qty;
+      }
+    }
+    return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
+  }, [movements]);
 
-  const filtered = filter === "all" ? sorted : sorted.filter(m => m.movementType === filter);
+  const totalIssued   = grouped.reduce((s, g) => s + g.issuedQty, 0);
+  const totalReturned = grouped.reduce((s, g) => s + g.returnedQty, 0);
+  const totalNetUsed  = totalIssued - totalReturned;
+  const totalValue    = grouped.reduce((s, g) => {
+    const net = Math.max(0, g.issuedQty - g.returnedQty);
+    return s + (g.unitCost ? net * g.unitCost : 0);
+  }, 0);
 
-  const totalIssued   = movements.filter(m => m.movementType === "issue").reduce((s: number, m: any) => s + Number(m.quantity ?? 0), 0);
-  const totalReturned = movements.filter(m => m.movementType === "return").reduce((s: number, m: any) => s + Number(m.quantity ?? 0), 0);
+  const fmtValue = (v: number) =>
+    v > 0 ? `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
 
   return (
     <div className="space-y-4">
       {/* KPI strip */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="premium-card bg-white p-4 flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-brand-50"><ArrowUpRight className="w-4 h-4 text-brand-600" /></div>
-          <div>
-            <p className="text-xs text-slate-400">Total Issued</p>
-            <p className="text-2xl font-display font-bold text-slate-900">{totalIssued.toLocaleString()}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Total Issued",   value: totalIssued.toLocaleString(),   icon: ArrowUpRight,  color: "text-brand-600",   bg: "bg-brand-50"   },
+          { label: "Total Returned", value: totalReturned.toLocaleString(), icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Net Used",       value: totalNetUsed.toLocaleString(),  icon: Package,       color: "text-slate-600",   bg: "bg-slate-50"   },
+          { label: "Material Value", value: fmtValue(totalValue),           icon: DollarSign,    color: "text-indigo-600",  bg: "bg-indigo-50"  },
+        ].map((s, i) => (
+          <div key={i} className="premium-card bg-white p-4 flex items-center gap-3" data-testid={`matusage-kpi-${i}`}>
+            <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
+            <div>
+              <p className="text-xs text-slate-400">{s.label}</p>
+              <p className="text-xl font-display font-bold text-slate-900">{s.value}</p>
+            </div>
           </div>
-        </div>
-        <div className="premium-card bg-white p-4 flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-emerald-50"><ArrowDownRight className="w-4 h-4 text-emerald-600" /></div>
-          <div>
-            <p className="text-xs text-slate-400">Total Returned</p>
-            <p className="text-2xl font-display font-bold text-slate-900">{totalReturned.toLocaleString()}</p>
-          </div>
-        </div>
-        <div className="premium-card bg-white p-4 flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-slate-50"><Package className="w-4 h-4 text-slate-600" /></div>
-          <div>
-            <p className="text-xs text-slate-400">Net Used</p>
-            <p className="text-2xl font-display font-bold text-slate-900">{(totalIssued - totalReturned).toLocaleString()}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="flex items-center gap-2">
-        <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-        {(["all", "issue", "return"] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            data-testid={`filter-txn-${f}`}
-            className={[
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors",
-              filter === f
-                ? f === "issue"  ? "bg-brand-100 text-brand-700 border border-brand-200"
-                  : f === "return" ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                  : "bg-slate-800 text-white"
-                : "bg-white text-slate-500 border border-slate-200 hover:border-slate-300",
-            ].join(" ")}
-          >
-            {f === "all"    ? `All (${movements.length})`
-              : f === "issue"  ? `Issued (${movements.filter(m => m.movementType === "issue").length})`
-              : `Returned (${movements.filter(m => m.movementType === "return").length})`}
-          </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="premium-card bg-white p-10 text-center text-slate-400 text-sm">Loading transactions…</div>
-      ) : filtered.length === 0 ? (
+        <div className="premium-card bg-white p-10 text-center text-slate-400 text-sm">Loading material usage…</div>
+      ) : grouped.length === 0 ? (
         <div className="premium-card bg-white p-12 text-center">
           <Package className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">No transactions</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {filter === "all" ? "No material movements logged for this project." : `No ${filter} transactions.`}
-          </p>
+          <p className="text-slate-500 font-medium">No material movements</p>
+          <p className="text-xs text-slate-400 mt-1">No material movements logged for this project yet.</p>
         </div>
       ) : (
         <div className="premium-card bg-white overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+            <Package className="w-4 h-4 text-slate-400" />
+            <h3 className="font-semibold text-slate-900 text-sm">Item-Level Material Usage</h3>
+            <span className="text-xs text-slate-400 ml-1">({grouped.length} item{grouped.length !== 1 ? "s" : ""})</span>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" data-testid="table-transactions">
+            <table className="w-full text-sm" data-testid="table-material-usage">
               <thead className="bg-slate-50/80 border-b border-slate-100">
                 <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[100px]">Date</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Item Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">Type</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">Qty</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs">Item Name</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[60px]">Unit</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Logged By</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Notes</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[100px]">Issued Qty</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[110px]">Returned Qty</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">Net Used</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[120px]">Material Value</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((m: any) => {
-                  const isIssue  = m.movementType === "issue";
-                  const isReturn = m.movementType === "return";
-                  const dateStr  = m.transactionDate ?? m.createdAt;
+                {grouped.map((g, i) => {
+                  const netUsed = Math.max(0, g.issuedQty - g.returnedQty);
+                  const value   = g.unitCost ? netUsed * g.unitCost : null;
                   return (
-                    <tr key={m.id} data-testid={`row-txn-${m.id}`} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                        {dateStr ? format(new Date(dateStr), "MMM d, yyyy") : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-700 font-medium">
-                        {m.item?.name ?? m.itemName ?? `Item #${m.itemId}`}
-                      </td>
+                    <tr key={i} data-testid={`row-matusage-${i}`} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3 text-xs text-slate-800 font-medium">{g.name}</td>
                       <td className="px-4 py-3">
-                        {isIssue ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-50 text-brand-700 border border-brand-100">
-                            <ArrowUpRight className="w-2.5 h-2.5" />Issue
-                          </span>
-                        ) : isReturn ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            <ArrowDownRight className="w-2.5 h-2.5" />Return
-                          </span>
-                        ) : (
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
-                            {m.movementType ?? "—"}
-                          </span>
-                        )}
+                        <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{g.unit}</span>
                       </td>
-                      <td className="px-4 py-3 text-right text-xs font-mono font-semibold text-slate-700">
-                        {isReturn ? (
-                          <span className="text-emerald-600">+{Number(m.quantity ?? 0).toLocaleString()}</span>
-                        ) : (
-                          <span className={isIssue ? "text-brand-700" : "text-slate-600"}>
-                            {Number(m.quantity ?? 0).toLocaleString()}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs font-mono text-slate-500">
-                        {m.item?.unitOfMeasure ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
-                        {m.createdBy ?? <span className="text-slate-300 italic">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px] truncate">
-                        {m.notes ?? <span className="italic text-slate-300">—</span>}
+                      <td className="px-4 py-3 text-right text-xs font-mono font-semibold text-brand-700">{g.issuedQty.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right text-xs font-mono font-semibold text-emerald-600">{g.returnedQty > 0 ? g.returnedQty.toLocaleString() : <span className="text-slate-300">0</span>}</td>
+                      <td className="px-4 py-3 text-right text-xs font-mono font-bold text-slate-900">{netUsed.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right text-xs font-mono text-indigo-700">
+                        {value !== null ? fmtValue(value) : <span className="text-slate-300">—</span>}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
+              {/* Totals row */}
+              <tfoot>
+                <tr className="bg-slate-50 border-t-2 border-slate-200">
+                  <td className="px-5 py-3 text-xs font-bold text-slate-700 uppercase tracking-wide">Total</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3 text-right text-xs font-bold text-brand-700 tabular-nums">{totalIssued.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-xs font-bold text-emerald-600 tabular-nums">{totalReturned.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-xs font-bold text-slate-900 tabular-nums">{totalNetUsed.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-xs font-bold text-indigo-700 tabular-nums">{totalValue > 0 ? fmtValue(totalValue) : "—"}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-          {movements.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-400 text-right">
-              Showing {filtered.length} of {movements.length} transaction{movements.length !== 1 ? "s" : ""}
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -1394,20 +1374,24 @@ function TransactionsTab({ projectId }: { projectId: number }) {
 }
 
 // ── Overview Tab ───────────────────────────────────────────────────────────────
+const TXN_PAGE_SIZE = 10;
+
 function OverviewTab({ project, projectId }: { project: any; projectId: number }) {
+  const [txnPage, setTxnPage] = useState(0);
+
   const { data: reports = [] } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
     queryFn: () => fetch(`/api/daily-reports?projectId=${projectId}`, { credentials: "include" }).then(r => r.json()),
     enabled: !!projectId,
   });
-  const { data: recentMovements = [] } = useQuery<any[]>({
-    queryKey: ["/api/movements", { projectId, limit: 10 }],
-    queryFn: () => fetch(`/api/movements?projectId=${projectId}&limit=10`, { credentials: "include" }).then(r => r.json()),
+  const { data: allMovements = [] } = useQuery<any[]>({
+    queryKey: ["/api/movements", { projectId, limit: 500 }],
+    queryFn: () => fetch(`/api/movements?projectId=${projectId}&limit=500`, { credentials: "include" }).then(r => r.json()),
     enabled: !!projectId,
   });
   const { data: progressData } = useQuery<{
     scopeItems: any[];
-    summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
+    summary: { overallPct: number; estTotal: number; installed: number; remaining: number; todayAdded: number };
   }>({
     queryKey: ["/api/projects", projectId, "progress"],
     queryFn: () => fetch(`/api/projects/${projectId}/progress`, { credentials: "include" }).then(r => r.json()),
@@ -1419,6 +1403,7 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
   const overallPct      = progressData?.summary?.overallPct ?? 0;
   const totalScopeItems = progressData?.scopeItems?.length ?? 0;
   const totalEstQty     = progressData?.summary?.estTotal ?? 0;
+  const todayAdded      = progressData?.summary?.todayAdded ?? 0;
   const statusCfg       = statusConfig[project.status] || { label: project.status, className: "bg-slate-100 text-slate-600" };
 
   const submittedReports = reports.filter(r => r.status === "submitted");
@@ -1426,8 +1411,32 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
     ? [...submittedReports].sort((a, b) => (b.reportDate ?? "") > (a.reportDate ?? "") ? 1 : -1)[0]?.reportDate ?? null
     : null;
 
+  // Material KPIs from real movement data
+  const matIssued   = allMovements.filter(m => m.movementType === "issue").reduce((s: number, m: any) => s + Number(m.quantity ?? 0), 0);
+  const matReturned = allMovements.filter(m => m.movementType === "return").reduce((s: number, m: any) => s + Number(m.quantity ?? 0), 0);
+  const matNetUsed  = matIssued - matReturned;
+  const matValue    = allMovements.reduce((s: number, m: any) => {
+    if (m.movementType !== "issue") return s;
+    const snap = m.unitCostSnapshot ? Number(m.unitCostSnapshot) : 0;
+    return s + snap * Number(m.quantity ?? 0);
+  }, 0);
+
+  // Paginated movements (newest first)
+  const sortedMovements = useMemo(() =>
+    [...allMovements].sort((a, b) => {
+      const da = a.transactionDate ?? a.createdAt ?? "";
+      const db = b.transactionDate ?? b.createdAt ?? "";
+      return da > db ? -1 : da < db ? 1 : 0;
+    }), [allMovements]);
+
+  const totalTxnPages   = Math.ceil(sortedMovements.length / TXN_PAGE_SIZE);
+  const pageMovements   = sortedMovements.slice(txnPage * TXN_PAGE_SIZE, (txnPage + 1) * TXN_PAGE_SIZE);
+
   const pctColor = overallPct >= 100 ? "bg-emerald-500" : overallPct >= 70 ? "bg-brand-500" : overallPct >= 40 ? "bg-blue-400" : "bg-slate-300";
   const pctText  = overallPct >= 100 ? "text-emerald-600" : overallPct >= 70 ? "text-brand-600" : overallPct >= 40 ? "text-blue-600" : "text-slate-400";
+
+  const fmtValue = (v: number) =>
+    v > 0 ? `$${v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "—";
 
   return (
     <div className="space-y-5">
@@ -1525,20 +1534,43 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
               <span className={`text-4xl font-display font-bold ${pctText}`}>{overallPct.toFixed(1)}%</span>
               <span className="text-xs text-slate-400 mb-1">complete</span>
             </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${pctColor}`} style={{ width: `${Math.min(100, overallPct)}%` }} />
-            </div>
+            {/* Stacked bar: prev completed + today added */}
+            {(() => {
+              const installed = progressData?.summary?.installed ?? 0;
+              const estTotal  = progressData?.summary?.estTotal ?? 0;
+              const prevInstalled = Math.max(0, installed - todayAdded);
+              const prevPct  = estTotal > 0 ? Math.min(100, (prevInstalled / estTotal) * 100) : 0;
+              const todayPct = estTotal > 0 ? Math.min(100 - prevPct, (todayAdded / estTotal) * 100) : 0;
+              return (
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden relative">
+                  <div className="absolute left-0 top-0 h-full bg-emerald-500 transition-all" style={{ width: `${prevPct}%` }} />
+                  <div className="absolute top-0 h-full bg-brand-400 transition-all" style={{ left: `${prevPct}%`, width: `${todayPct}%` }} />
+                </div>
+              );
+            })()}
+            {todayAdded > 0 && (
+              <div className="flex items-center gap-3 mt-2">
+                <span className="flex items-center gap-1 text-[10px] text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Previous</span>
+                <span className="flex items-center gap-1 text-[10px] text-brand-600"><span className="w-2 h-2 rounded-full bg-brand-400 inline-block" />Today: +{todayAdded.toLocaleString()}</span>
+              </div>
+            )}
             {progressData && (
-              <div className="flex gap-3 mt-3 pt-3 border-t border-slate-100">
-                <div className="flex-1">
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100">
+                <div>
                   <p className="text-[10px] text-slate-400">Installed</p>
                   <p className="text-sm font-bold text-emerald-700">{progressData.summary.installed.toLocaleString()}</p>
                 </div>
-                <div className="flex-1">
+                <div>
                   <p className="text-[10px] text-slate-400">Remaining</p>
                   <p className="text-sm font-bold text-amber-700">{progressData.summary.remaining.toLocaleString()}</p>
                 </div>
-                <div className="flex-1">
+                {todayAdded > 0 && (
+                  <div>
+                    <p className="text-[10px] text-brand-500">Today Added</p>
+                    <p className="text-sm font-bold text-brand-600">+{todayAdded.toLocaleString()}</p>
+                  </div>
+                )}
+                <div>
                   <p className="text-[10px] text-slate-400">Est. Total</p>
                   <p className="text-sm font-bold text-slate-700">{progressData.summary.estTotal.toLocaleString()}</p>
                 </div>
@@ -1578,15 +1610,15 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
         </div>
       </div>
 
-      {/* ── Material KPIs ── */}
+      {/* ── Material KPIs (real movement data) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Issued",   value: project.totalIssued || 0,  icon: ArrowUpRight,   color: "text-brand-600",   bg: "bg-brand-50" },
-          { label: "Total Returned", value: project.totalReturned || 0, icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Net Used",       value: (project.totalIssued || 0) - (project.totalReturned || 0), icon: Package, color: "text-slate-600", bg: "bg-slate-50" },
-          { label: "Transactions",   value: project.recentActivity?.length || 0, icon: ChevronRight, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "Total Issued",   value: matIssued.toLocaleString(),  icon: ArrowUpRight,  color: "text-brand-600",   bg: "bg-brand-50"   },
+          { label: "Total Returned", value: matReturned.toLocaleString(),icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Net Used",       value: matNetUsed.toLocaleString(),  icon: Package,       color: "text-slate-600",   bg: "bg-slate-50"   },
+          { label: "Est. Value",     value: fmtValue(matValue),           icon: DollarSign,    color: "text-indigo-600",  bg: "bg-indigo-50"  },
         ].map((s, i) => (
-          <div key={i} className="premium-card bg-white p-4 flex items-start gap-3">
+          <div key={i} className="premium-card bg-white p-4 flex items-start gap-3" data-testid={`overview-mat-kpi-${i}`}>
             <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
             <div>
               <p className="text-xs text-slate-400">{s.label}</p>
@@ -1596,14 +1628,16 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
         ))}
       </div>
 
-      {/* ── Latest Transactions ── */}
-      {recentMovements.length > 0 && (
+      {/* ── Recent Transactions (paginated, 10/page) ── */}
+      {sortedMovements.length > 0 && (
         <div className="premium-card bg-white overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
               <ArrowUpRight className="w-3.5 h-3.5 text-brand-500" />Recent Material Transactions
             </p>
-            <span className="text-[10px] text-slate-400">Latest {recentMovements.length}</span>
+            <span className="text-[10px] text-slate-400">
+              {sortedMovements.length} total — newest first
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -1618,13 +1652,13 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {recentMovements.map((m: any) => {
+                {pageMovements.map((m: any) => {
                   const isIssue = m.movementType === "issue";
                   const dateStr = m.transactionDate ?? m.createdAt;
                   return (
                     <tr key={m.id} className="hover:bg-slate-50/40 transition-colors">
                       <td className="px-4 py-2 text-slate-500 whitespace-nowrap">
-                        {dateStr ? format(new Date(dateStr), "MMM d") : "—"}
+                        {dateStr ? format(new Date(dateStr), "MMM d, yy") : "—"}
                       </td>
                       <td className="px-4 py-2 text-slate-700 font-medium truncate max-w-[200px]">
                         {m.item?.name ?? m.itemName ?? `Item #${m.itemId}`}
@@ -1655,6 +1689,33 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
               </tbody>
             </table>
           </div>
+          {/* Pagination controls */}
+          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">
+              {txnPage * TXN_PAGE_SIZE + 1}–{Math.min((txnPage + 1) * TXN_PAGE_SIZE, sortedMovements.length)} of {sortedMovements.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                data-testid="btn-txn-prev"
+                onClick={() => setTxnPage(p => Math.max(0, p - 1))}
+                disabled={txnPage === 0}
+                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[11px] text-slate-500 font-semibold tabular-nums">
+                {txnPage + 1} / {Math.max(1, totalTxnPages)}
+              </span>
+              <button
+                data-testid="btn-txn-next"
+                onClick={() => setTxnPage(p => Math.min(totalTxnPages - 1, p + 1))}
+                disabled={txnPage >= totalTxnPages - 1}
+                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1666,6 +1727,12 @@ function DailyReportsTab({ projectId, project }: { projectId: number; project: a
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [filter, setFilter] = useState<"all" | "draft" | "submitted">("all");
+
+  const { data: me } = useQuery<{ role: string; username: string }>({
+    queryKey: ["/api/me"],
+    queryFn: () => fetch("/api/me", { credentials: "include" }).then(r => r.json()),
+  });
+  const canForceEdit = me?.role === "admin" || me?.role === "manager";
 
   const { data: reports = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
@@ -1815,12 +1882,15 @@ function DailyReportsTab({ projectId, project }: { projectId: number; project: a
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs h-7 px-2.5 gap-1"
+                            className={`text-xs h-7 px-2.5 gap-1 ${submitted && canForceEdit ? "border-brand-200 text-brand-700 hover:bg-brand-50" : ""}`}
                             data-testid={`btn-edit-report-${r.id}`}
-                            onClick={() => navigate(`/daily-report/${projectId}?reportId=${r.id}`)}
+                            onClick={() => {
+                              const forceEditParam = submitted && canForceEdit ? "&forceEdit=true" : "";
+                              navigate(`/daily-report/${projectId}?reportId=${r.id}${forceEditParam}`);
+                            }}
                           >
-                            {submitted ? <Eye className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
-                            {submitted ? "View" : "Edit"}
+                            {submitted && canForceEdit ? <Pencil className="w-3 h-3" /> : submitted ? <Eye className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                            {submitted && canForceEdit ? "Edit" : submitted ? "View" : "Edit"}
                           </Button>
                           {submitted && (
                             <Button
@@ -1972,11 +2042,11 @@ export default function ProjectDetail() {
           <TabsTrigger value="overview" className="rounded-lg" data-testid="tab-overview">
             <FileBarChart className="w-3.5 h-3.5 mr-1.5" />Overview
           </TabsTrigger>
-          <TabsTrigger value="transactions" className="rounded-lg" data-testid="tab-transactions">
-            <ArrowUpRight className="w-3.5 h-3.5 mr-1.5" />Transactions
-          </TabsTrigger>
           <TabsTrigger value="scope" className="rounded-lg" data-testid="tab-scope-items">
             <LayoutList className="w-3.5 h-3.5 mr-1.5" />Scope Items
+          </TabsTrigger>
+          <TabsTrigger value="material-usage" className="rounded-lg" data-testid="tab-material-usage">
+            <Package className="w-3.5 h-3.5 mr-1.5" />Material Usage
           </TabsTrigger>
           <TabsTrigger value="reports" className="rounded-lg" data-testid="tab-reports">
             <FileText className="w-3.5 h-3.5 mr-1.5" />Daily Reports
@@ -1991,14 +2061,14 @@ export default function ProjectDetail() {
           <OverviewTab project={project} projectId={id} />
         </TabsContent>
 
-        {/* Transactions */}
-        <TabsContent value="transactions">
-          <TransactionsTab projectId={id} />
-        </TabsContent>
-
         {/* Scope Items */}
         <TabsContent value="scope">
           <ScopeItemsTab projectId={id} />
+        </TabsContent>
+
+        {/* Material Usage */}
+        <TabsContent value="material-usage">
+          <MaterialUsageTab projectId={id} />
         </TabsContent>
 
         {/* Daily Reports */}

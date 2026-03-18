@@ -38,16 +38,35 @@ const EQUIPMENT_PRESETS = [
   "Forklift", "Trench", "Excavator Small", "Excavator Big",
 ];
 
+// Foreman-or-above filter — matches common supervisory trade names
+const FOREMAN_PLUS_KW = ["foreman", "superintendent", "supervisor", "lead", "manager", "pm", "super", "gc", "master"];
+function isForemanPlus(trade: string | null | undefined): boolean {
+  if (!trade) return false;
+  const t = trade.toLowerCase();
+  return FOREMAN_PLUS_KW.some(kw => t.includes(kw));
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 let _uid = 1000;
 function uid() { return ++_uid; }
 
-function calcHours(start: string, end: string, status: string): number {
+function calcHours(start: string, end: string, status: string, lunchBreak: boolean): number {
   if (!HOURS_COMPUTED.has(status) || !start || !end) return 0;
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
   const mins = (eh * 60 + em) - (sh * 60 + sm);
-  return Math.max(0, Math.round(mins / 60 * 10) / 10);
+  const gross = Math.max(0, Math.round(mins / 60 * 10) / 10);
+  return lunchBreak ? Math.max(0, Math.round((gross - 1) * 10) / 10) : gross;
+}
+
+// Flexible word-order match for material search
+function flexMatch(name: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const n = name.toLowerCase();
+  if (n.includes(q)) return true;
+  const words = q.split(/\s+/).filter(Boolean);
+  return words.length > 1 && words.every(w => n.includes(w));
 }
 
 function fmtTime(d: Date) {
@@ -62,7 +81,7 @@ interface TaskRow {
 interface ManpowerRow {
   id: number; workerId: number | null; workerName: string; trade: string;
   attendanceStatus: string; startTime: string; endTime: string;
-  hoursWorked: number; notes: string;
+  hoursWorked: number; lunchBreak: boolean; notes: string;
 }
 interface MaterialRow  { id: number; description: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
 interface EquipmentRow { id: number; name: string; unit: string; qty: number; hours: number; notes: string }
@@ -223,7 +242,59 @@ function WorkerCombobox({
   );
 }
 
-// ─── Material Combobox (inventory-linked) ────────────────────────────────────
+// ─── Prepared By Combobox (Foreman+ workers) ─────────────────────────────────
+function PreparedByCombobox({
+  value, allWorkers, onChange, disabled,
+}: {
+  value: string; allWorkers: Worker[];
+  onChange: (name: string, id: number | null) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+
+  const foremanPlus = allWorkers.filter(w => w.isActive && isForemanPlus(w.trade));
+  const filtered = foremanPlus
+    .filter(w => !query || w.fullName.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 10);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  return (
+    <div className="relative">
+      <Input
+        data-testid="input-prepared-by"
+        value={query}
+        placeholder={foremanPlus.length > 0 ? "Select or type Foreman name…" : "Enter name…"}
+        disabled={disabled}
+        className={`h-9 text-sm ${!value && !disabled ? "border-slate-300" : ""}`}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          onChange(e.target.value, null);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto">
+          {filtered.map(w => (
+            <button key={w.id} type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { setQuery(w.fullName); setOpen(false); onChange(w.fullName, w.id); }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 transition-colors">
+              <HardHat className="w-3 h-3 text-slate-400 shrink-0" />
+              <span className="font-medium text-slate-800 truncate">{w.fullName}</span>
+              {w.trade && <span className="text-slate-400 ml-auto shrink-0 text-[10px]">{w.trade}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Material Combobox (inventory-linked, flexible word-order search) ─────────
 function MaterialSearch({
   row, inventoryItems, testId, onChange,
 }: {
@@ -234,8 +305,8 @@ function MaterialSearch({
   const [query, setQuery] = useState(row.description);
 
   const filtered = inventoryItems
-    .filter((item) => !query || item.name.toLowerCase().includes(query.toLowerCase()))
-    .slice(0, 10);
+    .filter(item => flexMatch(item.name, query))
+    .slice(0, 12);
 
   useEffect(() => { setQuery(row.description); }, [row.description]);
 
@@ -244,7 +315,11 @@ function MaterialSearch({
       <Input data-testid={testId} value={query}
         placeholder="Search inventory or enter manually…"
         className={cellInputCls}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); onChange({ description: e.target.value, inventoryItemId: null }); }}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          onChange({ description: e.target.value, inventoryItemId: null });
+        }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
@@ -296,12 +371,13 @@ export function NewReportTab({
   });
 
   // ── General Info state ──
-  const [reportNumber, setReportNumber] = useState<string>(fd?.reportNumber ?? "");
-  const [preparedBy,   setPreparedBy]   = useState<string>(fd?.preparedBy    ?? "");
-  const [reportDate,   setReportDate]   = useState<string>(fd?.reportDate    ?? new Date().toISOString().slice(0, 10));
-  const [shift,        setShift]        = useState<string>(fd?.shift         ?? "day");
-  const [weather,      setWeather]      = useState<string>(fd?.weather       ?? "clear");
-  const [temperature,  setTemperature]  = useState<string>(fd?.temperature   ?? "72");
+  const [reportNumber,  setReportNumber]  = useState<string>(fd?.reportNumber ?? "");
+  const [preparedBy,    setPreparedBy]    = useState<string>(fd?.preparedBy   ?? "");
+  const [preparedById,  setPreparedById]  = useState<number | null>(fd?.preparedById ?? null);
+  const [reportDate,    setReportDate]    = useState<string>(fd?.reportDate   ?? new Date().toISOString().slice(0, 10));
+  const [shift,         setShift]         = useState<string>(fd?.shift        ?? "day");
+  const [weather,       setWeather]       = useState<string>(fd?.weather      ?? "clear");
+  const [temperature,   setTemperature]   = useState<string>(fd?.temperature  ?? "72");
 
   // Auto-generate report number
   const autoNumApplied = useRef(false);
@@ -313,17 +389,18 @@ export function NewReportTab({
 
   // ── Manpower section-level defaults ──
   const [defStart,      setDefStart]      = useState("07:00");
-  const [defEnd,        setDefEnd]        = useState("15:30");
-  const [defAttendance, setDefAttendance] = useState("ATTEND");
+  const [defEnd,        setDefEnd]        = useState("17:00");
+  const [defLunchBreak, setDefLunchBreak] = useState(true);
 
   // ── Dynamic rows ──
   const [tasks, setTasks] = useState<TaskRow[]>(() =>
     (fd?.tasks ?? []).map((t: any) => ({ expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], ...t }))
   );
 
-  const [manpower, setManpower] = useState<ManpowerRow[]>(
-    isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : []
-  );
+  const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
+    const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
+    return rows.map((r: any) => ({ lunchBreak: true, ...r }));
+  });
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, ...m }))
   );
@@ -362,7 +439,7 @@ export function NewReportTab({
   // ── Form data builder ──
   function buildFormData() {
     return {
-      reportDate, reportNumber, preparedBy, shift, weather, temperature,
+      reportDate, reportNumber, preparedBy, preparedById, shift, weather, temperature,
       tasks, manpower, materials, equipment,
       generalNotes, safetyNotes, inspectorVisitor,
     };
@@ -472,10 +549,12 @@ export function NewReportTab({
 
           <div>
             <FL>Prepared By</FL>
-            <Input data-testid="input-prepared-by" value={preparedBy}
-              onChange={(e) => setPreparedBy(e.target.value)}
-              className={`h-9 text-sm ${!preparedBy && !isSubmitted ? "border-slate-300" : ""}`}
-              placeholder="Your name" />
+            <PreparedByCombobox
+              value={preparedBy}
+              allWorkers={activeWorkers}
+              disabled={isSubmitted}
+              onChange={(name, id) => { setPreparedBy(name); setPreparedById(id); }}
+            />
           </div>
 
           <div>
@@ -531,7 +610,7 @@ export function NewReportTab({
       <Section num={2} title="Manpower" icon={<Users className="w-4 h-4" />} summary={mpSummary}>
 
         {/* Section-level defaults */}
-        <div className="flex items-center gap-3 flex-wrap mb-4 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-4 flex-wrap mb-4 pb-4 border-b border-slate-100">
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest shrink-0 flex items-center gap-1.5">
             <Clock className="w-3 h-3" /> Row defaults
           </span>
@@ -545,37 +624,35 @@ export function NewReportTab({
             <Input type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)}
               data-testid="input-def-end" className="h-7 text-xs w-28" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">Status</label>
-            <Select value={defAttendance} onValueChange={setDefAttendance}>
-              <SelectTrigger data-testid="select-def-attendance" className="h-7 text-xs w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ATTENDANCE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <span className="text-[10px] text-slate-300 italic ml-1">applied to new rows only</span>
+          <button type="button" data-testid="toggle-def-lunch-break"
+            onClick={() => setDefLunchBreak(v => !v)}
+            className={`flex items-center gap-1.5 h-7 px-3 rounded-md border text-[11px] font-medium transition-colors ${
+              defLunchBreak
+                ? "bg-amber-50 border-amber-200 text-amber-700"
+                : "border-slate-200 text-slate-400 bg-white"
+            }`}>
+            <span className="text-[13px] leading-none">☕</span>
+            Lunch Break {defLunchBreak ? "ON (−1h)" : "OFF"}
+          </button>
+          <span className="text-[10px] text-slate-300 italic">applied to new rows only</span>
         </div>
 
         {/* Manpower table — max-h + scroll only when rows exceed 5 */}
         <div className={manpower.length > 5 ? "max-h-[360px] overflow-y-auto pr-1" : ""}>
           <table className="w-full text-sm" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "min-w-[190px] w-[26%]" },
-              { label: "Trade",        cls: "min-w-[110px] w-[14%]" },
-              { label: "Status",       cls: "min-w-[108px] w-[13%]" },
+              { label: "Worker Name",  cls: "min-w-[180px] w-[24%]" },
+              { label: "Trade",        cls: "min-w-[100px] w-[13%]" },
+              { label: "Status",       cls: "min-w-[100px] w-[13%]" },
               { label: "Start",        cls: "w-[82px]" },
               { label: "End",          cls: "w-[82px]" },
-              { label: "Hrs",          cls: "w-[54px] text-center" },
-              { label: "Notes",        cls: "min-w-[100px]" },
+              { label: "Break",        cls: "w-[50px] text-center" },
+              { label: "Hrs",          cls: "w-[52px] text-center" },
+              { label: "Notes",        cls: "min-w-[90px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
-                <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
+                <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">
                   No workers added — click Add Worker below
                 </td></tr>
               )}
@@ -597,7 +674,7 @@ export function NewReportTab({
                     <td className="py-1.5 px-2.5">
                       <Select value={row.attendanceStatus}
                         onValueChange={(v) => {
-                          const hrs = calcHours(row.startTime, row.endTime, v);
+                          const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
                         }}>
                         <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs">
@@ -613,7 +690,7 @@ export function NewReportTab({
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-mp-start-${i}`} type="time" value={row.startTime}
                         onChange={(e) => {
-                          const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus);
+                          const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus, row.lunchBreak);
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
                         }}
                         className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
@@ -622,11 +699,29 @@ export function NewReportTab({
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-mp-end-${i}`} type="time" value={row.endTime}
                         onChange={(e) => {
-                          const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus);
+                          const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus, row.lunchBreak);
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
                         }}
                         className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
                         disabled={!hoursActive} />
+                    </td>
+                    <td className="py-1.5 px-1">
+                      <div className="flex justify-center">
+                        <button type="button" data-testid={`toggle-mp-break-${i}`}
+                          onClick={() => {
+                            const nb = !row.lunchBreak;
+                            const hrs = calcHours(row.startTime, row.endTime, row.attendanceStatus, nb);
+                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, lunchBreak: nb, hoursWorked: hrs } : r));
+                          }}
+                          title={row.lunchBreak ? "Lunch break applied (−1h) — click to disable" : "No break deduction — click to enable"}
+                          className={`h-6 w-8 rounded text-[9px] font-bold border transition-colors ${
+                            row.lunchBreak && hoursActive
+                              ? "bg-amber-50 border-amber-200 text-amber-600"
+                              : "border-slate-200 text-slate-300 bg-transparent"
+                          }`}>
+                          {row.lunchBreak && hoursActive ? "−1h" : "—"}
+                        </button>
+                      </div>
                     </td>
                     <td className="py-1.5 px-2.5">
                       <ROCell center>
@@ -670,9 +765,10 @@ export function NewReportTab({
         <AddRow testId="btn-add-manpower" label="Add Worker"
           onClick={() => setManpower([...manpower, {
             id: uid(), workerId: null, workerName: "", trade: "",
-            attendanceStatus: defAttendance,
+            attendanceStatus: "ATTEND",
             startTime: defStart, endTime: defEnd,
-            hoursWorked: calcHours(defStart, defEnd, defAttendance),
+            lunchBreak: defLunchBreak,
+            hoursWorked: calcHours(defStart, defEnd, "ATTEND", defLunchBreak),
             notes: "",
           }])} />
 
@@ -854,16 +950,15 @@ export function NewReportTab({
                       setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                     }} />
                 </td>
-                <td className="py-1.5 px-2.5">
-                  {row.inventoryItemId ? (
-                    <div className="h-8 flex items-center justify-center px-2 text-xs font-mono text-slate-600 bg-slate-50 rounded-md border border-slate-200">
-                      {row.unit || "—"}
-                    </div>
-                  ) : (
-                    <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center font-mono" placeholder="EA" />
-                  )}
+                <td className="py-1.5 px-2.5 w-[72px]">
+                  <Input
+                    data-testid={`input-mat-unit-${i}`}
+                    value={row.unit}
+                    onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                    readOnly={!!row.inventoryItemId}
+                    className={`h-8 text-xs text-center font-mono w-[60px] ${row.inventoryItemId ? "bg-slate-50 border-slate-200 text-slate-600 cursor-default" : ""}`}
+                    placeholder="EA"
+                  />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
@@ -880,9 +975,22 @@ export function NewReportTab({
                     <select
                       data-testid={`select-scope-link-${i}`}
                       value={row.scopeItemId ?? ""}
-                      onChange={(e) => setMaterials(materials.map((r) =>
-                        r.id === row.id ? { ...r, scopeItemId: e.target.value ? Number(e.target.value) : null } : r
-                      ))}
+                      onChange={(e) => {
+                        const scopeId = e.target.value ? Number(e.target.value) : null;
+                        let patch: Partial<MaterialRow> = { scopeItemId: scopeId };
+                        if (scopeId) {
+                          const scope = scopeItems.find((s: any) => s.id === scopeId);
+                          if (scope?.linkedInventoryItemId) {
+                            const invItem = inventoryItems.find((inv: any) => inv.id === scope.linkedInventoryItemId);
+                            if (invItem) {
+                              patch.inventoryItemId = invItem.id;
+                              patch.description    = invItem.name;
+                              patch.unit           = invItem.unitOfMeasure ?? row.unit;
+                            }
+                          }
+                        }
+                        setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                      }}
                       className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600"
                     >
                       <option value="">— No link</option>
@@ -927,7 +1035,7 @@ export function NewReportTab({
             {EQUIPMENT_PRESETS.map((name) => (
               <button key={name} type="button"
                 data-testid={`btn-eq-preset-${name.replace(/ /g, "-").toLowerCase()}`}
-                onClick={() => setEquipment([...equipment, { id: uid(), name, unit: "DAY", qty: 1, hours: 0, notes: "" }])}
+                onClick={() => setEquipment([...equipment, { id: uid(), name, unit: "EA", qty: 1, hours: 0, notes: "" }])}
                 className="px-2.5 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
                 + {name}
               </button>

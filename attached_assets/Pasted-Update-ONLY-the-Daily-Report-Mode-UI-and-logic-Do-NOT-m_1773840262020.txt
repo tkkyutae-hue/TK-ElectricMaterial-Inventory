@@ -1,0 +1,92 @@
+Update ONLY the Daily Report Mode UI and logic. Do NOT modify Admin Project pages in this task.
+
+Goal:
+Improve data entry accuracy, role-based selection, labor-hour calculation, and materials/equipment behavior without changing the overall card layout, spacing, or section sizes that are already improved.
+
+Requirements:
+
+1. Prepared By field
+- Change "Prepared By" from free text to searchable select / autocomplete.
+- Only allow workers/users with rank/classification >= Foreman.
+- Include listing + typing search.
+- Display full name cleanly without clipping.
+- Save both display name and internal id.
+
+2. Manpower row defaults
+- Remove the "Status" field from Row Defaults.
+- Add a checkbox/toggle for "Lunch Break Applied" (or "Break Deduction").
+- Default should be ON.
+- If ON, deduct 1 hour from total hours.
+- If OFF, do not deduct 1 hour.
+- Set default start/end time to 7:00 AM – 5:00 PM.
+- New manpower rows should inherit these defaults.
+
+3. Manpower calculation logic
+- Keep per-row status.
+- Hours must be calculated from start/end time and break deduction rule.
+- Example:
+  - 7:00 AM to 5:00 PM with break ON = 9.0 hrs
+  - 7:00 AM to 5:00 PM with break OFF = 10.0 hrs
+- Update summary man-hours immediately.
+
+4. Manpower worker selection UX
+- Worker name input must support both typing and dropdown listing.
+- No clipped names.
+- No duplicate ghost text or double-rendered names.
+- Keep current section/card sizing intact.
+- Do not collapse or stretch columns unexpectedly.
+
+5. Materials search behavior
+- Improve inventory item search to support flexible word order and fuzzy matching.
+- Example:
+  - "3/4 EMT Conduit"
+  - "EMT Conduit 3/4"
+  - "Conduit EMT 3/4"
+  - "emt 3/4"
+should all find the same item if it exists.
+- Apply this smarter search to all inventory-linked material search fields in Daily Report Mode.
+
+6. Materials scope link behavior
+- If the user selects a Scope Link first, automatically populate the Material / Inventory Item field with the linked inventory item when available.
+- If the scope item has an inventory link, unit should auto-fill from that linked inventory item.
+- If the inventory item is manually changed later, allow the scope link to be updated accordingly or cleared.
+- Keep the relationship clean and predictable.
+
+7. Materials unit stability
+- Fix the bug where the Unit field width or text alignment changes after selecting an item.
+- Unit cell must stay visually stable.
+- Keep consistent width, alignment, font size, and padding.
+
+8. Equipment unit correction
+- Change default equipment unit from DAY to EA.
+- Since equipment here is being counted by quantity of machines used, EA is the correct default.
+- Apply EA to quick-add equipment presets too:
+  - Scissor Lift
+  - Boom Lift
+  - One Man Lift
+  - Reach Forklift
+  - Forklift
+  - Trench
+  - Excavator Small
+  - Excavator Big
+
+9. Work Task detail area
+- Keep current task detail behavior.
+- Do not remove the detail/attachment section.
+- Preserve existing card dimensions and clean spacing.
+
+10. Preserve layout
+- Very important:
+  - Do NOT revert section widths, field widths, card paddings, row heights, or header layout that were already improved.
+  - This task is functional refinement only, with minimal visual adjustments needed for stability.
+
+Acceptance checklist:
+- Prepared By only shows/searches Foreman+ users.
+- Row Defaults now use break toggle instead of default status.
+- Default manpower time is 7:00 AM to 5:00 PM.
+- Hours change correctly depending on break toggle.
+- Worker names are searchable and not clipped.
+- Material search works with flexible word order.
+- Scope link can auto-fill material item.
+- Material unit no longer jumps or resizes.
+- Equipment unit is EA everywhere in Daily Report Mode.

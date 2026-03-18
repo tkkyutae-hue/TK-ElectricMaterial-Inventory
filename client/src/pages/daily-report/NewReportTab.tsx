@@ -845,7 +845,14 @@ export function NewReportTab({
               <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
                 <td className="py-1.5 px-2.5">
                   <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                    onChange={(p) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
+                    onChange={(p) => {
+                      let patch: Partial<MaterialRow> = { ...p };
+                      if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                        const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                        if (matched) patch.scopeItemId = matched.id;
+                      }
+                      setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                    }} />
                 </td>
                 <td className="py-1.5 px-2.5">
                   {row.inventoryItemId ? (
@@ -899,7 +906,9 @@ export function NewReportTab({
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
             {inventoryItems.length} inventory items available — type to search
-            {scopeItems.length > 0 && <> · {scopeItems.length} scope items — use "Scope Link" to track progress</>}
+            {scopeItems.length > 0 && (
+              <> · Scope Link auto-fills when an inventory item is linked to a scope item</>
+            )}
           </p>
         )}
       </Section>

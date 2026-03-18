@@ -1,0 +1,86 @@
+현재 Project Detail의 Scope Items / Daily Reports / Progress 구조는 유지하고,
+이제 데이터 연결 로직을 안정화해줘.
+
+목표:
+Project Scope Items를 기준 물량으로 사용하고,
+Daily Report에서 입력된 Materials 실적이 submitted 상태일 때만 Progress에 누적 반영되도록 만든다.
+
+핵심 요구사항:
+
+1. Scope Items와 Daily Report Materials를 문자열 비교가 아니라 고유 ID 기준으로 연결
+- 가능하면 scopeItemId 또는 inventoryItemId 기반으로 저장
+- material name 텍스트만으로 progress 계산하지 말 것
+- inventory item을 선택하면 해당 item의 linked scope item이 있으면 연결
+- manual item이면 별도로 manual material record로 저장하되 progress 포함 여부를 명확히 관리
+
+2. Progress 계산 규칙 고정
+- draft report는 progress 계산 제외
+- submitted report만 반영
+- cumulative actual = submitted reports material qty 합계
+- remaining = estimated qty - cumulative actual
+- remaining < 0 이면 0 처리
+- progress % = cumulative actual / estimated qty * 100
+- estimated qty가 0이면 progress %는 0 처리
+
+3. Daily Report submit 로직 강화
+- report submit 시 material rows를 progress-linked records로 확정 저장
+- draft 수정 중 값은 progress에 반영하지 않음
+- submitted 이후 수정 정책도 정리:
+  - 가장 안전한 방식은 submitted report는 direct overwrite보다 revision 또는 re-open 방식 고려
+  - 우선은 submitted report edit 허용 시 progress 재계산이 정확히 되도록 처리
+
+4. Project Detail > Progress 탭 개선
+- summary cards 유지:
+  - overall progress
+  - est total
+  - installed / cumulative actual
+  - remaining
+- progress table 유지:
+  - item name
+  - unit
+  - estimated qty
+  - cumulative actual
+  - remaining
+  - progress %
+- 표는 project scope items 기준으로만 렌더링
+
+5. Project Detail > Overview 탭 보강
+아래 요약 카드 추가:
+- total scope items
+- total estimated qty
+- submitted reports
+- draft reports
+- overall progress %
+- last submitted report date
+
+6. Project Detail > Daily Reports 탭 보강
+리스트 컬럼:
+- report no
+- report date
+- prepared by
+- status
+- workers
+- man-hours
+- tasks
+- materials
+- last updated
+- actions (view / edit / export)
+필터:
+- all
+- submitted
+- draft
+
+7. Export 정책
+- export excel은 New Report 편집 화면에서는 숨김 또는 비활성화 유지
+- submitted report만 Daily Reports / Report History에서 export 가능
+
+8. UI/UX 주의사항
+- 기존 디자인 톤 유지
+- 관리자 기준 가독성 우선
+- 빈 상태(empty state) 문구도 더 실무적으로 정리
+- 기존 기능 깨지지 않게 점진적으로 수정
+
+중요:
+이번 작업의 핵심은 UI보다 데이터 정합성이다.
+반드시 project scope items ↔ submitted daily report materials ↔ progress aggregate
+이 세 구조가 안정적으로 연결되게 구현해줘.

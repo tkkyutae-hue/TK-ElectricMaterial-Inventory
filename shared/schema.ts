@@ -369,6 +369,7 @@ export const projectScopeItems = pgTable("project_scope_items", {
   estimatedQty: numeric("estimated_qty", { precision: 12, scale: 2 }).notNull().default("0"),
   category: text("category"),
   remarks: text("remarks"),
+  linkedInventoryItemId: integer("linked_inventory_item_id").references(() => items.id, { onDelete: "set null" }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

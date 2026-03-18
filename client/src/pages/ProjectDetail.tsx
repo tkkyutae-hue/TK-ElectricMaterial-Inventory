@@ -60,12 +60,13 @@ function cleanFormData(data: EditFormData) {
 
 // ── Scope Item schema ──────────────────────────────────────────────────────────
 const scopeItemSchema = z.object({
-  itemName:     z.string().min(1, "Item name is required"),
-  unit:         z.string().min(1, "Unit is required"),
-  estimatedQty: z.string().min(1, "Qty is required"),
-  category:     z.string().optional(),
-  remarks:      z.string().optional(),
-  isActive:     z.boolean().default(true),
+  itemName:              z.string().min(1, "Item name is required"),
+  unit:                  z.string().min(1, "Unit is required"),
+  estimatedQty:          z.string().min(1, "Qty is required"),
+  category:              z.string().optional(),
+  remarks:               z.string().optional(),
+  isActive:              z.boolean().default(true),
+  linkedInventoryItemId: z.number().nullable().optional(),
 });
 type ScopeItemFormData = z.infer<typeof scopeItemSchema>;
 
@@ -267,22 +268,39 @@ function ScopeItemDialog({
   const qc = useQueryClient();
   const isEdit = !!item;
 
+  const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+
+  const [invSearch, setInvSearch]   = useState("");
+  const [invOpen,   setInvOpen]     = useState(false);
+  const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
+
+  const filteredInvItems = allInventoryItems
+    .filter(it => !invSearch || it.name.toLowerCase().includes(invSearch.toLowerCase()))
+    .slice(0, 12);
+
+  const linkedInvName = allInventoryItems.find(it => it.id === linkedInvId)?.name ?? "";
+
   const form = useForm<ScopeItemFormData>({
     resolver: zodResolver(scopeItemSchema),
     defaultValues: {
       itemName: "", unit: "", estimatedQty: "", category: "", remarks: "", isActive: true,
+      linkedInventoryItemId: null,
     },
   });
 
   useEffect(() => {
     if (open) {
+      const lid = (item as any)?.linkedInventoryItemId ?? null;
+      setLinkedInvId(lid);
+      setInvSearch(lid ? (allInventoryItems.find(it => it.id === lid)?.name ?? "") : "");
       form.reset({
-        itemName:     item?.itemName ?? "",
-        unit:         item?.unit ?? "",
-        estimatedQty: item?.estimatedQty ? String(item.estimatedQty) : "",
-        category:     item?.category ?? "",
-        remarks:      item?.remarks ?? "",
-        isActive:     item?.isActive ?? true,
+        itemName:              item?.itemName ?? "",
+        unit:                  item?.unit ?? "",
+        estimatedQty:          item?.estimatedQty ? String(item.estimatedQty) : "",
+        category:              item?.category ?? "",
+        remarks:               item?.remarks ?? "",
+        isActive:              item?.isActive ?? true,
+        linkedInventoryItemId: lid,
       });
     }
   }, [open, item?.id]);
@@ -308,7 +326,11 @@ function ScopeItemDialog({
   });
 
   function onSubmit(data: ScopeItemFormData) {
-    const payload = { ...data, estimatedQty: String(data.estimatedQty) };
+    const payload = {
+      ...data,
+      estimatedQty: String(data.estimatedQty),
+      linkedInventoryItemId: linkedInvId,
+    };
     if (isEdit) updateMutation.mutate(payload);
     else createMutation.mutate(payload);
   }
@@ -366,6 +388,48 @@ function ScopeItemDialog({
                 <FormMessage />
               </FormItem>
             )} />
+            {/* Inventory Item Link */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">
+                Inventory Item Link <span className="text-slate-400 font-normal text-xs">(optional — enables auto-link in daily reports)</span>
+              </label>
+              <div className="relative">
+                <Input
+                  placeholder="Search inventory items to link…"
+                  value={invSearch}
+                  data-testid="input-scope-inv-link"
+                  onChange={(e) => { setInvSearch(e.target.value); setInvOpen(true); if (!e.target.value) setLinkedInvId(null); }}
+                  onFocus={() => setInvOpen(true)}
+                  onBlur={() => setTimeout(() => setInvOpen(false), 150)}
+                  className={linkedInvId ? "border-emerald-300 bg-emerald-50 text-emerald-800" : ""}
+                />
+                {linkedInvId && (
+                  <button type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    onClick={() => { setLinkedInvId(null); setInvSearch(""); }}>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {invOpen && filteredInvItems.length > 0 && (
+                  <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                    {filteredInvItems.map(it => (
+                      <button key={it.id} type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { setLinkedInvId(it.id); setInvSearch(it.name); setInvOpen(false); }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors ${linkedInvId === it.id ? "bg-emerald-50 text-emerald-800 font-medium" : "text-slate-700"}`}>
+                        <span className="truncate">{it.name}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">{it.unitOfMeasure ?? ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {linkedInvId && (
+                <p className="text-[11px] text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Linked: {linkedInvName}
+                </p>
+              )}
+            </div>
             <FormField control={form.control} name="remarks" render={({ field }) => (
               <FormItem>
                 <FormLabel>Remarks <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
@@ -418,6 +482,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
     queryKey: ["/api/projects", projectId, "scope-items"],
     queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
   });
+  const { data: allInvItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/scope-items/${id}`),
@@ -503,6 +568,14 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                   <tr key={item.id} className={`hover:bg-slate-50 transition-colors ${!item.isActive ? "opacity-50" : ""}`} data-testid={`scope-row-${item.id}`}>
                     <td className="px-5 py-3.5">
                       <p className="font-medium text-slate-900 leading-snug">{item.itemName}</p>
+                      {(item as any).linkedInventoryItemId && (() => {
+                        const invItem = allInvItems.find(it => it.id === (item as any).linkedInventoryItemId);
+                        return invItem ? (
+                          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
+                            <Package className="w-2.5 h-2.5" /> {invItem.name}
+                          </span>
+                        ) : null;
+                      })()}
                       {item.remarks && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{item.remarks}</p>}
                     </td>
                     <td className="px-4 py-3.5">
@@ -796,6 +869,7 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
     enabled: !!projectId,
   });
   const { data: progressData } = useQuery<{
+    scopeItems: any[];
     summary: { overallPct: number; estTotal: number; installed: number; remaining: number };
   }>({
     queryKey: ["/api/projects", projectId, "progress"],
@@ -806,7 +880,14 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
   const draftCount      = reports.filter(r => r.status === "draft").length;
   const submittedCount  = reports.filter(r => r.status === "submitted").length;
   const overallPct      = progressData?.summary?.overallPct ?? 0;
+  const totalScopeItems = progressData?.scopeItems?.length ?? 0;
+  const totalEstQty     = progressData?.summary?.estTotal ?? 0;
   const statusCfg       = statusConfig[project.status] || { label: project.status, className: "bg-slate-100 text-slate-600" };
+
+  const submittedReports = reports.filter(r => r.status === "submitted");
+  const lastSubmittedDate = submittedReports.length > 0
+    ? [...submittedReports].sort((a, b) => (b.reportDate ?? "") > (a.reportDate ?? "") ? 1 : -1)[0]?.reportDate ?? null
+    : null;
 
   const pctColor = overallPct >= 100 ? "bg-emerald-500" : overallPct >= 70 ? "bg-brand-500" : overallPct >= 40 ? "bg-blue-400" : "bg-slate-300";
   const pctText  = overallPct >= 100 ? "text-emerald-600" : overallPct >= 70 ? "text-brand-600" : overallPct >= 40 ? "text-blue-600" : "text-slate-400";
@@ -930,6 +1011,36 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
         </div>
       </div>
 
+      {/* ── Scope & Progress Summary strip ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="premium-card bg-white p-4 flex items-center gap-3" data-testid="overview-scope-count">
+          <div className="p-2 rounded-xl bg-indigo-50"><LayoutList className="w-4 h-4 text-indigo-600" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Scope Items</p>
+            <p className="text-2xl font-display font-bold text-slate-900">{totalScopeItems}</p>
+          </div>
+        </div>
+        <div className="premium-card bg-white p-4 flex items-center gap-3" data-testid="overview-est-qty">
+          <div className="p-2 rounded-xl bg-brand-50"><Hash className="w-4 h-4 text-brand-600" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Total Est. Qty</p>
+            <p className="text-2xl font-display font-bold text-slate-900">{totalEstQty.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="premium-card bg-white p-4 flex items-center gap-3 col-span-2 sm:col-span-1" data-testid="overview-last-submitted">
+          <div className="p-2 rounded-xl bg-slate-50"><Clock className="w-4 h-4 text-slate-500" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Last Submitted Report</p>
+            <p className="text-sm font-semibold text-slate-800 mt-0.5">
+              {lastSubmittedDate
+                ? format(new Date(lastSubmittedDate + "T00:00:00"), "MMM d, yyyy")
+                : <span className="text-slate-400 font-normal text-xs">No submitted reports yet</span>
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Material KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
@@ -1028,6 +1139,7 @@ function DailyReportsTab({ projectId, project }: { projectId: number; project: a
                   <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[70px]">Workers</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">Man-hrs</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[65px]">Tasks</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[75px]">Materials</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Last Updated</th>
                   <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[130px]">Actions</th>
                 </tr>
@@ -1035,10 +1147,11 @@ function DailyReportsTab({ projectId, project }: { projectId: number; project: a
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((r, idx) => {
                   const fd = r.formData ?? {};
-                  const manpower = Array.isArray(fd.manpower) ? fd.manpower : [];
-                  const tasks    = Array.isArray(fd.tasks) ? fd.tasks : [];
-                  const workers  = manpower.length;
-                  const manHrs   = manpower.reduce((s: number, mp: any) => s + Number(mp.hoursWorked ?? 0), 0);
+                  const manpower  = Array.isArray(fd.manpower)  ? fd.manpower  : [];
+                  const tasks     = Array.isArray(fd.tasks)     ? fd.tasks     : [];
+                  const materials = Array.isArray(fd.materials) ? fd.materials : [];
+                  const workers   = manpower.length;
+                  const manHrs    = manpower.reduce((s: number, mp: any) => s + Number(mp.hoursWorked ?? 0), 0);
                   const submitted = r.status === "submitted";
                   const dateStr  = r.reportDate ?? null;
                   const updatedAt = r.updatedAt ? new Date(r.updatedAt) : null;
@@ -1085,6 +1198,13 @@ function DailyReportsTab({ projectId, project }: { projectId: number; project: a
                         {tasks.length > 0 ? (
                           <span className="flex items-center justify-center gap-1 text-xs text-slate-600">
                             <ListTodo className="w-3 h-3 text-slate-400" />{tasks.length}
+                          </span>
+                        ) : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {materials.length > 0 ? (
+                          <span className="flex items-center justify-center gap-1 text-xs text-slate-600">
+                            <Package className="w-3 h-3 text-slate-400" />{materials.length}
                           </span>
                         ) : <span className="text-slate-300 text-xs">—</span>}
                       </td>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import {
   Calendar, Users, Package, Truck, FileText, ChevronDown, ChevronRight,
   Plus, Trash2, Save, Send, AlertTriangle, CheckCircle2,
@@ -197,7 +198,8 @@ function WorkerCombobox({
   return (
     <div className="relative">
       <Input data-testid={testId} value={query} placeholder="Type name or search…"
-        className="h-8 text-xs"
+        title={query}
+        className="h-8 text-xs truncate"
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
@@ -275,6 +277,7 @@ export function NewReportTab({
   onSaved?: (id: number, status: string) => void;
 }) {
   const { toast }   = useToast();
+  const { t }       = useLanguage();
   const queryClient = useQueryClient();
   const fd          = initialData?.formData ?? null;
 
@@ -343,15 +346,17 @@ export function NewReportTab({
   const totalManhours = manpower.reduce((s, r) => s + r.hoursWorked, 0);
 
   // ── Submit validation ──
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const isSubmitted  = savedStatus === "submitted";
-  const canSubmit    = !!reportDate && !!preparedBy.trim() && (manpower.length > 0 || tasks.length > 0);
-  const submitHelper = !canSubmit && !isSubmitted
-    ? (!preparedBy.trim()
-        ? "Add Prepared By to submit"
-        : manpower.length === 0 && tasks.length === 0
-        ? "Add at least one worker or task to submit"
-        : "")
-    : "";
+  const canSubmit    = !!reportDate && !!preparedBy.trim();
+  const missingBy    = submitAttempted && !preparedBy.trim();
+  const missingDate  = submitAttempted && !reportDate;
+
+  function handleSubmit() {
+    setSubmitAttempted(true);
+    if (!canSubmit) return;
+    saveMutation.mutate("submitted");
+  }
 
   // ── Summaries ──
   const mpSummary  = manpower.length  ? `${totalWorkers}w · ${totalManhours.toFixed(1)}h` : undefined;
@@ -416,26 +421,21 @@ export function NewReportTab({
               disabled={saveMutation.isPending || isSubmitted}
               onClick={() => saveMutation.mutate("draft")}>
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Draft
+              {t.drSaveDraft}
             </Button>
 
-            <div className="relative group">
-              <Button data-testid="btn-submit-report"
-                size="sm"
-                className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
-                disabled={saveMutation.isPending || isSubmitted || !canSubmit}
-                onClick={() => saveMutation.mutate("submitted")}>
-                {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
-                {isSubmitted ? "Submitted" : "Submit Report"}
-              </Button>
-            </div>
+            <Button data-testid="btn-submit-report"
+              size="sm"
+              className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+              disabled={saveMutation.isPending || isSubmitted}
+              onClick={handleSubmit}>
+              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+              {isSubmitted ? t.drSubmitted : t.drSubmitReport}
+            </Button>
           </div>
 
           {/* Right: status */}
           <div className="flex items-center gap-3">
-            {submitHelper && (
-              <span className="text-[11px] text-slate-400 italic">{submitHelper}</span>
-            )}
             <div className="w-px h-5 bg-slate-200" />
             <div className="flex flex-col items-end">
               <Badge variant="outline" className={
@@ -445,10 +445,10 @@ export function NewReportTab({
                   ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200 py-0.5 px-2.5"
                   : "text-[11px] text-slate-400 border-slate-200 bg-white py-0.5 px-2.5"
               }>
-                {isSubmitted ? "✓ Submitted" : savedStatus === "draft" ? "Draft" : "Unsaved"}
+                {isSubmitted ? t.drSubmitted : savedStatus === "draft" ? t.drDraft : t.drUnsaved}
               </Badge>
               {lastSaved && (
-                <span className="text-[10px] text-slate-400 mt-0.5">Last saved: {fmtTime(lastSaved)}</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t.drLastSaved} {fmtTime(lastSaved)}</span>
               )}
             </div>
           </div>
@@ -459,48 +459,59 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
-      <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
+      <Section num={1} title={t.drGeneralInfo} icon={<Calendar className="w-4 h-4" />}>
         <div className="grid grid-cols-3 gap-x-5 gap-y-3.5">
 
           {/* Row 1 */}
           <div>
-            <FL>Report No.</FL>
+            <FL>{t.drReportNo}</FL>
             <div className="h-9 flex items-center px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-mono font-semibold text-slate-600 tracking-widest select-none">
-              {reportNumber || <span className="text-slate-300 font-sans font-normal text-xs italic">auto…</span>}
+              {reportNumber || <span className="text-slate-300 font-sans font-normal text-xs italic">{t.drAutoLabel}</span>}
             </div>
           </div>
 
           <div>
-            <FL>Prepared By</FL>
+            <FL>{t.drPreparedBy}</FL>
             <Input data-testid="input-prepared-by" value={preparedBy}
-              onChange={(e) => setPreparedBy(e.target.value)}
-              className={`h-9 text-sm ${!preparedBy && !isSubmitted ? "border-slate-300" : ""}`}
-              placeholder="Your name" />
+              onChange={(e) => { setPreparedBy(e.target.value); }}
+              className={`h-9 text-sm ${missingBy ? "border-red-400 focus:border-red-500" : ""}`}
+              placeholder={t.drYourName} />
+            {missingBy && (
+              <p className="mt-1 text-[11px] text-red-500 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 shrink-0" /> {t.drValidPreparedBy}
+              </p>
+            )}
           </div>
 
           <div>
-            <FL>Report Date</FL>
+            <FL>{t.drReportDate}</FL>
             <Input data-testid="input-report-date" type="date" value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)} className="h-9 text-sm" />
+              onChange={(e) => setReportDate(e.target.value)}
+              className={`h-9 text-sm ${missingDate ? "border-red-400 focus:border-red-500" : ""}`} />
+            {missingDate && (
+              <p className="mt-1 text-[11px] text-red-500 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 shrink-0" /> {t.drValidDate}
+              </p>
+            )}
           </div>
 
           {/* Row 2 */}
           <div>
-            <FL>Shift</FL>
+            <FL>{t.drShift}</FL>
             <Select value={shift} onValueChange={setShift}>
               <SelectTrigger data-testid="select-shift" className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="day">Day Shift</SelectItem>
-                <SelectItem value="night">Night Shift</SelectItem>
-                <SelectItem value="both">Both Shifts</SelectItem>
+                <SelectItem value="day">{t.drDayShift}</SelectItem>
+                <SelectItem value="night">{t.drNightShift}</SelectItem>
+                <SelectItem value="both">{t.drBothShifts}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <FL>Weather</FL>
+            <FL>{t.drWeather}</FL>
             <Select value={weather} onValueChange={setWeather}>
               <SelectTrigger data-testid="select-weather" className="h-9 text-sm">
                 <SelectValue />
@@ -517,7 +528,7 @@ export function NewReportTab({
           </div>
 
           <div>
-            <FL>Temperature (°F)</FL>
+            <FL>{t.drTemperature}</FL>
             <Input data-testid="input-temperature" type="number" value={temperature}
               onChange={(e) => setTemperature(e.target.value)} className="h-9 text-sm" placeholder="°F" />
           </div>
@@ -528,25 +539,25 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
-      <Section num={2} title="Manpower" icon={<Users className="w-4 h-4" />} summary={mpSummary}>
+      <Section num={2} title={t.drManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}>
 
         {/* Section-level defaults */}
         <div className="flex items-center gap-3 flex-wrap mb-4 pb-4 border-b border-slate-100">
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest shrink-0 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" /> Row defaults
+            <Clock className="w-3 h-3" /> {t.drRowDefaults}
           </span>
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">Start</label>
+            <label className="text-[11px] text-slate-500">{t.drStart}</label>
             <Input type="time" value={defStart} onChange={(e) => setDefStart(e.target.value)}
               data-testid="input-def-start" className="h-7 text-xs w-28" />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">End</label>
+            <label className="text-[11px] text-slate-500">{t.drEnd}</label>
             <Input type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)}
               data-testid="input-def-end" className="h-7 text-xs w-28" />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">Status</label>
+            <label className="text-[11px] text-slate-500">{t.drStatus}</label>
             <Select value={defAttendance} onValueChange={setDefAttendance}>
               <SelectTrigger data-testid="select-def-attendance" className="h-7 text-xs w-28">
                 <SelectValue />
@@ -558,25 +569,25 @@ export function NewReportTab({
               </SelectContent>
             </Select>
           </div>
-          <span className="text-[10px] text-slate-300 italic ml-1">applied to new rows only</span>
+          <span className="text-[10px] text-slate-300 italic ml-1">{t.drDefaultsNote}</span>
         </div>
 
         {/* Manpower table — max-h + scroll only when rows exceed 5 */}
         <div className={manpower.length > 5 ? "max-h-[360px] overflow-y-auto pr-1" : ""}>
-          <table className="w-full text-sm" data-testid="table-manpower">
+          <table className="w-full table-fixed text-sm" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "min-w-[190px] w-[26%]" },
-              { label: "Trade",        cls: "min-w-[110px] w-[14%]" },
-              { label: "Status",       cls: "min-w-[108px] w-[13%]" },
-              { label: "Start",        cls: "w-[82px]" },
-              { label: "End",          cls: "w-[82px]" },
-              { label: "Hrs",          cls: "w-[54px] text-center" },
-              { label: "Notes",        cls: "min-w-[100px]" },
+              { label: t.drWorkerName, cls: "w-[24%]" },
+              { label: t.drTrade,     cls: "w-[13%]" },
+              { label: t.drStatus,    cls: "w-[14%]" },
+              { label: t.drStart,     cls: "w-[9%]" },
+              { label: t.drEnd,       cls: "w-[9%]" },
+              { label: t.drHrs,       cls: "w-[7%] text-center" },
+              { label: t.drNotes,     cls: "" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
                 <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
-                  No workers added — click Add Worker below
+                  {t.drNoWorkers}
                 </td></tr>
               )}
               {manpower.map((row, i) => {
@@ -649,10 +660,10 @@ export function NewReportTab({
               {manpower.length > 0 && (
                 <tr className="border-t border-slate-200 bg-slate-50">
                   <td colSpan={5} className="py-2 px-2.5">
-                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Summary</span>
+                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{t.drSummary}</span>
                     <span className="ml-3 text-xs">
                       <span className="font-bold text-slate-800">{totalWorkers}</span>
-                      <span className="text-slate-500"> worker{totalWorkers !== 1 ? "s" : ""}</span>
+                      <span className="text-slate-500"> {totalWorkers !== 1 ? t.drWorkerSummaryPl : t.drWorkerSummary}</span>
                     </span>
                   </td>
                   <td className="py-2 px-2.5">
@@ -660,14 +671,14 @@ export function NewReportTab({
                       {totalManhours.toFixed(1)}
                     </div>
                   </td>
-                  <td colSpan={2} className="py-2 px-2.5 text-[10px] text-slate-400">man-hrs</td>
+                  <td colSpan={2} className="py-2 px-2.5 text-[10px] text-slate-400">{t.drManHrs}</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        <AddRow testId="btn-add-manpower" label="Add Worker"
+        <AddRow testId="btn-add-manpower" label={t.drAddWorker}
           onClick={() => setManpower([...manpower, {
             id: uid(), workerId: null, workerName: "", trade: "",
             attendanceStatus: defAttendance,
@@ -679,7 +690,7 @@ export function NewReportTab({
         {activeWorkers.length === 0 && (
           <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1.5">
             <Info className="w-3 h-3 shrink-0" />
-            No registered workers found. You can still enter names manually.
+            {t.drNoWorkersNote}
           </p>
         )}
       </Section>
@@ -687,19 +698,19 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
-      <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
-        <table className="w-full text-sm" data-testid="table-tasks">
+      <Section num={3} title={t.drWorkTasks} icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
+        <table className="w-full table-fixed text-sm" data-testid="table-tasks">
           <TH cols={[
-            { label: "Task Description",  cls: "min-w-[200px] w-[35%]" },
-            { label: "Area / Location",   cls: "min-w-[120px] w-[18%]" },
-            { label: "Status",            cls: "min-w-[130px] w-[15%]" },
-            { label: "Notes",             cls: "min-w-[110px]" },
-            { label: "Detail",            cls: "w-[58px] text-center" },
+            { label: t.drTaskDesc,    cls: "w-[36%]" },
+            { label: t.drAreaLocation,cls: "w-[18%]" },
+            { label: t.drStatus,      cls: "w-[15%]" },
+            { label: t.drNotes,       cls: "" },
+            { label: t.drDetail,      cls: "w-[58px] text-center" },
           ]} />
           <tbody>
             {tasks.length === 0 && (
               <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">
-                No tasks yet — click Add Task below
+                {t.drNoTasks}
               </td></tr>
             )}
             {tasks.map((row, i) => {
@@ -711,12 +722,12 @@ export function NewReportTab({
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-task-desc-${i}`} value={row.description}
                         onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Describe the task…" />
+                        className={cellInputCls} placeholder={t.drDescribeTask} />
                     </td>
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-task-area-${i}`} value={row.area}
                         onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Area / Zone" />
+                        className={cellInputCls} placeholder={t.drAreaZone} />
                     </td>
                     <td className="py-1.5 px-2.5">
                       <div className="relative">
@@ -771,41 +782,38 @@ export function NewReportTab({
                     <tr key={`${row.id}-detail`} className={`border-b border-slate-100 ${cfg.rowBg}`}>
                       <td colSpan={6} className="px-3 pb-3 pt-0">
                         <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-3">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Task Detail &amp; Attachments</p>
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{t.drTaskDetailTitle}</p>
                           <div className="grid grid-cols-2 gap-3">
-                            {/* Drawing upload placeholder */}
                             <div>
                               <p className="text-[10px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-                                <Paperclip className="w-3 h-3" /> Drawings
+                                <Paperclip className="w-3 h-3" /> {t.drDrawings}
                                 {row.drawingFiles.length > 0 && <span className="ml-1 text-blue-600">({row.drawingFiles.length})</span>}
                               </p>
                               <button type="button"
                                 onClick={() => toast({ title: "Drawing upload", description: "File attachment is coming in the next update." })}
                                 className="w-full h-16 border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
                                 <Paperclip className="w-4 h-4" />
-                                <span>PDF, DWG, or image</span>
+                                <span>{t.drDrawingHint}</span>
                               </button>
                             </div>
-                            {/* Photo upload placeholder */}
                             <div>
                               <p className="text-[10px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-                                <Camera className="w-3 h-3" /> Site Photos
+                                <Camera className="w-3 h-3" /> {t.drSitePhotos}
                                 {row.photoFiles.length > 0 && <span className="ml-1 text-blue-600">({row.photoFiles.length})</span>}
                               </p>
                               <button type="button"
                                 onClick={() => toast({ title: "Photo upload", description: "Photo attachment is coming in the next update." })}
                                 className="w-full h-16 border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
                                 <Camera className="w-4 h-4" />
-                                <span>JPG, PNG, HEIC</span>
+                                <span>{t.drPhotoHint}</span>
                               </button>
                             </div>
                           </div>
-                          {/* Extra task notes */}
                           <div>
-                            <p className="text-[10px] text-slate-400 font-medium mb-1">Additional Notes</p>
+                            <p className="text-[10px] text-slate-400 font-medium mb-1">{t.drAdditionalNotes}</p>
                             <Textarea value={row.detailNotes}
                               onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
-                              placeholder="Additional task notes, issues encountered, corrective actions…"
+                              placeholder={t.drAdditionalNotesPlaceholder}
                               className="text-xs min-h-[64px] resize-y bg-white" />
                           </div>
                         </div>
@@ -818,7 +826,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        <AddRow testId="btn-add-task" label="Add Task"
+        <AddRow testId="btn-add-task" label={t.drAddTask}
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
             expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [],
@@ -828,18 +836,18 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
-      <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
-        <table className="w-full text-sm" data-testid="table-materials">
+      <Section num={4} title={t.drMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
+        <table className="w-full table-fixed text-sm" data-testid="table-materials">
           <TH cols={[
-            { label: "Material / Inventory Item", cls: "min-w-[200px] w-[40%]" },
-            { label: "Unit",     cls: "w-[72px] text-center" },
-            { label: "Qty Used", cls: "w-[80px] text-center" },
-            { label: "Notes",    cls: "min-w-[100px]" },
-            ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "min-w-[140px]" }] : []),
+            { label: t.drMatItem,  cls: "w-[40%]" },
+            { label: t.drUnit,     cls: "w-[72px] text-center" },
+            { label: t.drQtyUsed,  cls: "w-[80px] text-center" },
+            { label: t.drNotes,    cls: "" },
+            ...(scopeItems.length > 0 ? [{ label: t.drScopeLink, cls: "w-[140px]" }] : []),
           ]} />
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 6 : 5} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 6 : 5} className="py-7 text-center text-xs text-slate-300 italic">{t.drNoMaterials}</td></tr>
             )}
             {materials.map((row, i) => (
               <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
@@ -855,15 +863,17 @@ export function NewReportTab({
                     }} />
                 </td>
                 <td className="py-1.5 px-2.5">
-                  {row.inventoryItemId ? (
-                    <div className="h-8 flex items-center justify-center px-2 text-xs font-mono text-slate-600 bg-slate-50 rounded-md border border-slate-200">
-                      {row.unit || "—"}
-                    </div>
-                  ) : (
-                    <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center font-mono" placeholder="EA" />
-                  )}
+                  <div className="w-full h-8 flex items-center justify-center">
+                    {row.inventoryItemId ? (
+                      <div className="w-full h-8 flex items-center justify-center px-2 text-xs font-mono text-slate-600 bg-slate-50 rounded-md border border-slate-200">
+                        {row.unit || "—"}
+                      </div>
+                    ) : (
+                      <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                        className="h-8 text-xs text-center font-mono" placeholder="EA" />
+                    )}
+                  </div>
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
@@ -885,7 +895,7 @@ export function NewReportTab({
                       ))}
                       className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600"
                     >
-                      <option value="">— No link</option>
+                      <option value="">{t.drNoLink}</option>
                       {scopeItems.filter((s: any) => s.isActive).map((s: any) => (
                         <option key={s.id} value={s.id}>{s.itemName} ({s.unit})</option>
                       ))}
@@ -900,14 +910,14 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        <AddRow testId="btn-add-material" label="Add Material"
+        <AddRow testId="btn-add-material" label={t.drAddMaterial}
           onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
-            {inventoryItems.length} inventory items available — type to search
+            {inventoryItems.length} {t.drItemsAvailable}
             {scopeItems.length > 0 && (
-              <> · Scope Link auto-fills when an inventory item is linked to a scope item</>
+              <> · {t.drAutoFillNote}</>
             )}
           </p>
         )}
@@ -916,18 +926,18 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
-      <Section num={5} title="Equipment" icon={<Truck className="w-4 h-4" />} summary={eqSummary} defaultOpen={false}>
+      <Section num={5} title={t.drEquipment} icon={<Truck className="w-4 h-4" />} summary={eqSummary} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
         <div className="mb-4">
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-            <Wrench className="w-3 h-3" /> Quick Add
+            <Wrench className="w-3 h-3" /> {t.drQuickAdd}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {EQUIPMENT_PRESETS.map((name) => (
               <button key={name} type="button"
                 data-testid={`btn-eq-preset-${name.replace(/ /g, "-").toLowerCase()}`}
-                onClick={() => setEquipment([...equipment, { id: uid(), name, unit: "DAY", qty: 1, hours: 0, notes: "" }])}
+                onClick={() => setEquipment([...equipment, { id: uid(), name, unit: "EA", qty: 1, hours: 0, notes: "" }])}
                 className="px-2.5 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
                 + {name}
               </button>
@@ -935,29 +945,29 @@ export function NewReportTab({
           </div>
         </div>
 
-        <table className="w-full text-sm" data-testid="table-equipment">
+        <table className="w-full table-fixed text-sm" data-testid="table-equipment">
           <TH cols={[
-            { label: "Equipment Name", cls: "min-w-[180px] w-[38%]" },
-            { label: "Unit",           cls: "w-[70px] text-center" },
-            { label: "Qty",            cls: "w-[68px] text-center" },
-            { label: "Hours Used",     cls: "w-[88px] text-center" },
-            { label: "Notes",          cls: "min-w-[120px]" },
+            { label: t.drEquipName, cls: "w-[38%]" },
+            { label: t.drUnit,      cls: "w-[70px] text-center" },
+            { label: t.drQty,       cls: "w-[68px] text-center" },
+            { label: t.drHoursUsed, cls: "w-[88px] text-center" },
+            { label: t.drNotes,     cls: "" },
           ]} />
           <tbody>
             {equipment.length === 0 && (
-              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">No equipment logged yet — use Quick Add above or add manually</td></tr>
+              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">{t.drNoEquipment}</td></tr>
             )}
             {equipment.map((row, i) => (
               <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-name-${i}`} value={row.name}
                     onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                    className={cellInputCls} placeholder="Equipment name…" />
+                    className={cellInputCls} placeholder={t.drEquipOptional} />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
                     onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                    className="h-8 text-xs text-center" placeholder="DAY" />
+                    className="h-8 text-xs text-center" placeholder="EA" />
                 </td>
                 <td className="py-1.5 px-2.5">
                   <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
@@ -982,36 +992,36 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        <AddRow testId="btn-add-equipment" label="Add Custom"
-          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "DAY", qty: 1, hours: 0, notes: "" }])} />
+        <AddRow testId="btn-add-equipment" label={t.drAddCustom}
+          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════
           §6 — Notes / Remarks
       ══════════════════════════════════════════════════════ */}
-      <Section num={6} title="Notes / Remarks" icon={<FileText className="w-4 h-4" />}
+      <Section num={6} title={t.drNotesRemarks} icon={<FileText className="w-4 h-4" />}
         summary={generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : undefined}
         defaultOpen={false}>
         <div className="space-y-4">
           <div>
-            <FL>General Notes</FL>
+            <FL>{t.drGeneralNotes}</FL>
             <Textarea data-testid="input-general-notes" value={generalNotes}
               onChange={(e) => setGeneralNotes(e.target.value)}
-              placeholder="Any general observations, site conditions, or notes for the record…"
+              placeholder={t.drGnlNotesPlaceholder}
               className="text-sm min-h-[88px] resize-y" />
           </div>
           <div>
-            <FL>Safety Observations</FL>
+            <FL>{t.drSafetyObs}</FL>
             <Textarea data-testid="input-safety-notes" value={safetyNotes}
               onChange={(e) => setSafetyNotes(e.target.value)}
-              placeholder="Safety incidents, near misses, toolbox talk topics, PPE compliance, hazard observations…"
+              placeholder={t.drSafetyPlaceholder}
               className="text-sm min-h-[80px] resize-y" />
           </div>
           <div>
-            <FL>Inspector / Visitor on Site</FL>
+            <FL>{t.drInspectorVisitor}</FL>
             <Input data-testid="input-inspector-visitor" value={inspectorVisitor}
               onChange={(e) => setInspectorVisitor(e.target.value)}
-              placeholder="Name and affiliation of any inspector or visitor present today"
+              placeholder={t.drInspectorPlaceholder}
               className="h-9 text-sm" />
           </div>
         </div>
@@ -1019,26 +1029,21 @@ export function NewReportTab({
 
       {/* ── Bottom action bar ── */}
       <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Button data-testid="btn-save-draft-bottom" variant="outline" size="sm"
-              className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
-              disabled={saveMutation.isPending || isSubmitted}
-              onClick={() => saveMutation.mutate("draft")}>
-              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Draft
-            </Button>
-            <Button data-testid="btn-submit-report-bottom" size="sm"
-              className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
-              disabled={saveMutation.isPending || isSubmitted || !canSubmit}
-              onClick={() => saveMutation.mutate("submitted")}>
-              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
-              {isSubmitted ? "Submitted" : "Submit Report"}
-            </Button>
-          </div>
-          {submitHelper && (
-            <span className="text-[11px] text-slate-400 italic">{submitHelper}</span>
-          )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button data-testid="btn-save-draft-bottom" variant="outline" size="sm"
+            className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
+            disabled={saveMutation.isPending || isSubmitted}
+            onClick={() => saveMutation.mutate("draft")}>
+            {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {t.drSaveDraft}
+          </Button>
+          <Button data-testid="btn-submit-report-bottom" size="sm"
+            className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+            disabled={saveMutation.isPending || isSubmitted}
+            onClick={handleSubmit}>
+            {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+            {isSubmitted ? t.drSubmitted : t.drSubmitReport}
+          </Button>
         </div>
       </div>
 

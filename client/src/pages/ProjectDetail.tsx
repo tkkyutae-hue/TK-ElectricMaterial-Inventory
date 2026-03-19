@@ -9,6 +9,7 @@ import {
   ListTodo, Eye, Filter, FileBarChart, ChevronRight, ChevronLeft, DollarSign,
   ChevronDown, Copy, FolderOpen, Boxes, Layers, Zap,
   Pipette, Wrench, LayoutGrid, Shield, Box, ToggleLeft, Cpu,
+  Square, CheckSquare,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -1394,6 +1395,9 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [variantOpen, setVariantOpen] = useState<number | null>(null);
   const [movingItem, setMovingItem] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [undoSnackbar, setUndoSnackbar] = useState<{ message: string; onUndo: () => void } | null>(null);
+  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
@@ -1524,6 +1528,64 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
     setMovingItem(null);
   }
 
+  function toggleSelectItem(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    const visibleIds = grouped.flatMap(g =>
+      collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id)
+    );
+    setSelectedIds(new Set(visibleIds));
+  }
+
+  function showUndoSnack(message: string, onUndo: () => void) {
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    setUndoSnackbar({ message, onUndo });
+    undoTimeoutRef.current = setTimeout(() => setUndoSnackbar(null), 5500);
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    const snapshot = scopeItems.filter(i => ids.includes(i.id));
+    setSelectedIds(new Set());
+    try {
+      await Promise.all(ids.map(id => apiRequest("DELETE", `/api/scope-items/${id}`)));
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
+      showUndoSnack(
+        `${ids.length} scope item${ids.length !== 1 ? "s" : ""} deleted`,
+        async () => {
+          try {
+            await Promise.all(snapshot.map(item =>
+              apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
+                itemName: item.itemName, unit: item.unit,
+                estimatedQty: String(item.estimatedQty),
+                category: item.category ?? null,
+                remarks: item.remarks ?? null,
+                linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,
+                scopeType: (item as any).scopeType ?? "primary",
+                isActive: item.isActive,
+              })
+            ));
+            qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+            qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
+            setUndoSnackbar(null);
+            toast({ title: `${snapshot.length} item${snapshot.length !== 1 ? "s" : ""} restored` });
+          } catch (err: any) {
+            toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+          }
+        }
+      );
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
+  }
+
   const isAdding = addMode === "multiple" && pendingRows.length > 0;
 
   return (
@@ -1580,6 +1642,74 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
             )}
           </div>
         </div>
+
+        {/* Bulk action bar — visible when items are selected */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 border-b border-slate-200">
+            <span className="text-xs font-semibold text-slate-700" data-testid="bulk-selected-count">{selectedIds.size} selected</span>
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button type="button" onClick={selectAllVisible}
+                className="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+                data-testid="button-select-visible">
+                Select Visible
+              </button>
+              <button type="button" onClick={() => setSelectedIds(new Set())}
+                className="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+                data-testid="button-clear-selection">
+                Clear
+              </button>
+              <button type="button" onClick={deleteSelected}
+                className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-100 transition-colors"
+                data-testid="button-bulk-delete-scope">
+                <Trash2 className="w-3 h-3" /> Delete Selected
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Multi Add editor — inline, top of card, above table */}
+        {isAdding && (
+          <div className="border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-brand-50/40">
+              <div>
+                <h3 className="font-semibold text-slate-900 text-sm">Add Multiple Items</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and save
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="border-brand-200 text-brand-700 hover:bg-brand-50" onClick={addRow}
+                data-testid="button-add-more-scope-row">
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+              </Button>
+            </div>
+            <div className="p-5 space-y-3">
+              {pendingRows.map((row, i) => (
+                <InlineScopeRow key={row.localId} row={row} invItems={allInvItems}
+                  onChange={updated => updateRow(row.localId, updated)}
+                  onRemove={() => removeRow(row.localId)} rowIndex={i} />
+              ))}
+            </div>
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/50">
+              <button type="button" onClick={() => { setPendingRows([]); setAddMode("none"); }}
+                className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                data-testid="button-cancel-inline-scope">
+                Cancel
+              </button>
+              <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={saveMultiple}
+                disabled={isSaving} data-testid="button-save-scope-items">
+                <Save className="w-4 h-4 mr-1.5" />
+                {isSaving ? "Saving…" : `Save ${pendingRows.length} Item${pendingRows.length !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Bundle selector — inline, top of card, above table */}
+        {addMode === "bundle" && (
+          <div className="border-b border-slate-100">
+            <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} invItems={allInvItems} />
+          </div>
+        )}
 
         {isLoading ? (
           <div className="p-8 text-center text-slate-400">Loading…</div>
@@ -1723,6 +1853,15 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                               data-testid={`button-delete-scope-${item.id}`}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
+                            <Button size="sm" variant="ghost"
+                              className={`h-7 w-7 p-0 transition-colors ${selectedIds.has(item.id) ? "text-brand-600 bg-brand-50 hover:bg-brand-100" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"}`}
+                              onClick={() => toggleSelectItem(item.id)}
+                              title={selectedIds.has(item.id) ? "Deselect" : "Select for bulk action"}
+                              data-testid={`button-select-scope-${item.id}`}>
+                              {selectedIds.has(item.id)
+                                ? <CheckSquare className="w-3.5 h-3.5" />
+                                : <Square className="w-3.5 h-3.5" />}
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -1829,48 +1968,6 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
         ) : null}
       </div>
 
-      {/* Add Multiple inline section */}
-      {isAdding && (
-        <div className="premium-card bg-white overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
-            <div>
-              <h3 className="font-semibold text-slate-900 text-sm">Add Multiple Items</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and save
-              </p>
-            </div>
-            <Button size="sm" variant="outline" className="border-brand-200 text-brand-700 hover:bg-brand-50" onClick={addRow}
-              data-testid="button-add-more-scope-row">
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
-            </Button>
-          </div>
-          <div className="p-5 space-y-3">
-            {pendingRows.map((row, i) => (
-              <InlineScopeRow key={row.localId} row={row} invItems={allInvItems}
-                onChange={updated => updateRow(row.localId, updated)}
-                onRemove={() => removeRow(row.localId)} rowIndex={i} />
-            ))}
-          </div>
-          <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-            <button type="button" onClick={() => { setPendingRows([]); setAddMode("none"); }}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-              data-testid="button-cancel-inline-scope">
-              Cancel
-            </button>
-            <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={saveMultiple}
-              disabled={isSaving} data-testid="button-save-scope-items">
-              <Save className="w-4 h-4 mr-1.5" />
-              {isSaving ? "Saving…" : `Save ${pendingRows.length} Item${pendingRows.length !== 1 ? "s" : ""}`}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Bundle selector */}
-      {addMode === "bundle" && (
-        <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} invItems={allInvItems} />
-      )}
-
       {/* Add / Edit dialog */}
       <ScopeItemDialog
         projectId={projectId}
@@ -1879,7 +1976,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
         onClose={() => setDialogItem(null)}
       />
 
-      {/* Delete confirm */}
+      {/* Delete confirm — single item */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader><DialogTitle>Delete Scope Item?</DialogTitle></DialogHeader>
@@ -1895,6 +1992,26 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Undo snackbar — bottom-right fixed overlay */}
+      {undoSnackbar && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl"
+          data-testid="undo-snackbar">
+          <span className="font-medium">{undoSnackbar.message}</span>
+          <button
+            onClick={undoSnackbar.onUndo}
+            className="font-bold text-brand-400 hover:text-brand-300 transition-colors"
+            data-testid="button-undo-delete">
+            Undo
+          </button>
+          <button
+            onClick={() => { setUndoSnackbar(null); if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current); }}
+            className="text-slate-500 hover:text-white transition-colors ml-1"
+            data-testid="button-dismiss-snackbar">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,145 @@
+Scope Items tab only.
+
+IMPORTANT:
+Keep the current improved page exactly as-is except for the changes below.
+
+ANTI-REGRESSION:
+Do NOT change:
+- page width
+- card width
+- panel width
+- row height
+- row padding
+- table density
+- grouped category layout
+- category collapse behavior
+- current spacing
+- current icon action alignment
+- current admin shell
+- any other tab or page
+
+Also:
+- Add Item should default to Multi Add
+- remove Single Add from the prompt/workflow entirely
+- do NOT restore or reintroduce Single Add anywhere
+
+==================================================
+1. ADD ITEM BEHAVIOR
+==================================================
+
+The current Add Item button should open Multi Add by default.
+Do NOT show Single Add as an option.
+Keep Add by Bundle if already implemented.
+
+When clicking Add Item:
+- default action = open inline Multi Add editor at the TOP of the Scope Items card
+- do NOT render the add form at the bottom of the list
+- user should not need to scroll down to add items
+
+If Add by Bundle exists:
+- keep it available from the same Add Item control
+- but Multi Add remains the default entry mode
+
+==================================================
+2. MULTI ADD POSITION
+==================================================
+
+Move the entire inline add editor area to the top of the Scope Items section,
+directly under the section header / actions area,
+above the grouped category list.
+
+This applies to:
+- Multi Add editor
+- Add by Bundle panel
+- any inline item creation UI
+
+Do NOT place add UI below the existing scope item rows.
+
+==================================================
+3. BULK DELETE
+==================================================
+
+Add multi-select + bulk delete for Scope Items.
+
+Selection UI rules:
+- do NOT add a new large checkbox column on the far left
+- do NOT place big checkboxes before item names
+- do NOT increase row height
+- do NOT change row padding
+- do NOT make selection controls visually heavy or detached
+- selection controls must match the current subtle admin UI
+
+Use this pattern:
+- place a small, subtle selection checkbox inside the Actions area of each row
+- size should match the existing small action icons
+- muted by default, clearer on hover/selected state
+- aligned with the existing Actions controls
+
+Bulk actions:
+- when one or more rows are selected, show a compact bulk action bar above the grouped list
+- include:
+  - selected count
+  - Delete Selected
+  - Select Visible
+  - Clear Selection
+- keep this bar compact and visually consistent with the existing admin controls
+
+Delete behavior:
+- Delete Selected removes selected rows immediately
+- do NOT show repeated confirmation modals
+- after deletion, show a small bottom-right toast/snackbar with:
+  - message like “3 scope items deleted”
+  - Undo action
+
+Undo behavior:
+- Undo restores deleted rows to the original category and original position
+- keep grouping intact after restore
+
+==================================================
+4. SELECTION / CHECKBOX STYLE
+==================================================
+
+Very important:
+Do NOT make checkboxes large.
+Do NOT use bold contrasting checkbox backgrounds that clash with the current page.
+Do NOT separate checkboxes into a dedicated oversized selection zone.
+Do NOT move selection controls to the left of item names.
+
+The checkbox / selection style must:
+- live inside the Actions area only
+- be small and subtle
+- visually match the muted icon buttons already used on each row
+- preserve current table proportions
+
+==================================================
+5. KEEP EXISTING GROUPED SCOPE LAYOUT
+==================================================
+
+Preserve the current grouped category structure and visual hierarchy.
+Do NOT break:
+- category headers
+- color accents
+- collapsed/expanded behavior
+- current sorting/grouping behavior already applied
+
+==================================================
+6. FINAL RULE
+==================================================
+
+This task is only for the Scope Items tab.
+
+Do NOT modify:
+- Overview
+- Material Usage
+- Daily Reports
+- Progress
+- other project pages
+- global shell
+
+Implement only:
+- Multi Add as the default Add Item flow
+- Add UI rendered at the top
+- remove Single Add from the workflow
+- multi-select / bulk delete
+- Undo toast
+- subtle checkbox placement inside Actions only

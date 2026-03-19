@@ -1754,7 +1754,7 @@ export function NewReportTab({
           <TH cols={[
             { label: "Size",      cls: "w-[52px] text-center" },
             { label: "Material Name" },
-            { label: "Category",  cls: "w-[120px]" },
+            { label: "Category",  cls: "w-[160px]" },
             { label: "Qty Used",  cls: "w-[80px] text-center" },
             { label: "Unit",      cls: "w-[64px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
@@ -1809,7 +1809,7 @@ export function NewReportTab({
                   {/* Category — read-only, derived from linked inventory item */}
                   <td className="py-1.5 px-2.5">
                     {categoryName ? (
-                      <span style={{ fontSize: 11, color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: "100%" }}>{categoryName}</span>
+                      <span style={{ fontSize: 11, color: "#666", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.4, display: "block" }}>{categoryName}</span>
                     ) : (
                       <span style={{ fontSize: 11, color: "#ccc" }}>—</span>
                     )}
@@ -1818,7 +1818,7 @@ export function NewReportTab({
                   <td className="py-1.5 px-2">
                     <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-right tabular-nums w-full" />
+                      className="h-8 text-xs text-center tabular-nums w-full" />
                   </td>
                   {/* Unit */}
                   <td className="py-1.5 px-2">

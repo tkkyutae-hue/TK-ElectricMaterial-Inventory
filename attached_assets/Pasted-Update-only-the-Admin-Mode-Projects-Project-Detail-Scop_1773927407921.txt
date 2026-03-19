@@ -1,0 +1,243 @@
+Update only the Admin Mode → Projects → Project Detail → Scope Items bundle editor.
+
+Do NOT change:
+- page width
+- card width
+- table width
+- row height
+- spacing
+- any shell layout
+- Overview tab
+- Material Usage tab
+- Daily Reports tab
+- Progress tab
+- any Daily Report mode UI
+
+This task is ONLY for the Scope Items bundle editor behavior and data mapping.
+
+ANTI-REGRESSION
+- Do not change existing layout dimensions or spacing.
+- Do not move cards, tabs, panels, or table positions.
+- Do not restyle the page.
+- Only fix bundle generation, item mapping, category assignment, and size options.
+
+GOAL
+Make the Scope Items bundle editor stable, inventory-linked, and predictable.
+All default bundle rows must use exact inventory item names, exact unit values, and correct categories.
+
+==================================================
+1. SIZE BUTTON RULES
+==================================================
+
+For EMT Conduit Bundle and Rigid Conduit Bundle:
+- remove 1/2" completely
+- show only these sizes, in this exact order:
+  3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+- do not auto-sort sizes
+- do not infer missing sizes
+- explicitly include:
+  EMT: must include 3-1/2" and 6"
+  Rigid: must include 3-1/2"
+
+When selected size changes:
+- fully regenerate bundle rows for that size
+- do not keep stale item names, units, or categories from previously selected size
+
+==================================================
+2. INVENTORY NAME MAPPING — STRICT RULE
+==================================================
+
+Do NOT generate item names by string concatenation.
+Do NOT use template strings like:
+- EMT Conduit 3/4"
+- Rigid Conduit 3/4"
+unless that exact name exists in inventory.
+
+Instead:
+- always resolve each default bundle row from the actual inventory dataset
+- use the exact inventory display name for the selected family + size
+- item name shown in the bundle editor must exactly match the Admin Inventory item name
+- unit must exactly match the inventory item unit
+- category should use the intended project category mapping described below
+
+If an exact inventory item match exists, use it.
+If no exact inventory item exists:
+- show that row as unresolved
+- leave it selectable/editable
+- do not silently create a fake default name
+
+This exact-match rule must work for:
+- EMT bundle
+- Rigid bundle
+- Flexible bundle
+- Cable Tray bundle
+- Box / Device bundle
+- Grounding bundle
+
+==================================================
+3. SEARCH / LISTING BUG FIX
+==================================================
+
+Fix bundle editor search/listing so inventory suggestions open correctly for ALL bundle rows.
+
+Currently some bundles fail to show inventory suggestions.
+Fix this for:
+- Rigid bundle
+- Flexible bundle
+- Cable Tray bundle
+- Box / Device bundle
+- Grounding bundle
+
+Expected behavior:
+- every row in bundle editor must support inventory search
+- when user types in the row input, matching inventory items must appear in dropdown
+- dropdown must work for the first row and all following rows
+- dropdown must work after size changes
+- dropdown must work after switching between bundle types
+
+==================================================
+4. EMT BUNDLE — FIX DEFAULT ROWS
+==================================================
+
+EMT bundle must always generate the correct default rows for the selected size.
+
+Use exact inventory-linked defaults.
+The default structure should represent these intended row types:
+- EMT Conduit
+- EMT Coupling
+- EMT Connector
+- EMT Set Screw Connector
+- EMT Compression Connector
+- EMT Support item
+- EMT Elbow if that size/item exists in inventory for the template being used
+
+Important:
+- do not classify EMT Set Screw Connector or EMT Set Screw Coupling as Equipment
+- do not classify EMT support items as Equipment unless inventory truly defines them as equipment
+- use correct project categories below
+
+Project category mapping for EMT bundle:
+- EMT Conduit -> Conduit
+- EMT Coupling / EMT Connector / EMT Set Screw Connector / EMT Compression Connector / EMT Elbow -> Fittings & Connectors
+- EMT Strap / EMT Clamp / EMT Support / Unistrut Pipe Clamp -> EMT Support
+
+If the matched inventory item is a support item, category must be EMT Support.
+
+==================================================
+5. RIGID BUNDLE — FIX DEFAULT ROWS
+==================================================
+
+Rigid bundle must always generate the correct default rows for the selected size.
+
+Use exact inventory-linked defaults.
+The default structure should represent these intended row types:
+- Rigid Conduit
+- Rigid Coupling
+- Rigid Connector or Compression Connector if that is how inventory defines it
+- Rigid Elbow 90 if applicable
+- Rigid Locknut if applicable
+- Rigid Strap / One-Hole Strap / support item if applicable
+
+Important:
+- do not classify Rigid Coupling as Equipment
+- do not classify Rigid support items as Equipment unless inventory truly defines them as equipment
+
+Project category mapping for Rigid bundle:
+- Rigid Conduit -> Conduit
+- Rigid Coupling / Rigid Connector / Compression Connector / Locknut / Elbow -> Fittings & Connectors
+- Strap / One-Hole Strap / support item -> EMT Support
+
+==================================================
+6. CABLE TRAY / FLEXIBLE / BOX-DEVICE / GROUNDING
+==================================================
+
+Apply the same exact inventory mapping rule to these bundles.
+
+Flexible bundle:
+- every row must list inventory suggestions
+- selected defaults must use exact inventory item names
+- selected defaults must use exact inventory units
+
+Cable Tray bundle:
+- every row must list inventory suggestions
+- default names must match inventory exactly
+- do not use fake generated names if the inventory uses a different naming pattern
+
+Box / Device bundle:
+- every row must list inventory suggestions
+- default names must match inventory exactly
+
+Grounding bundle:
+- every row must list inventory suggestions
+- default names must match inventory exactly
+
+==================================================
+7. CATEGORY ENUM — FIXED VALUES
+==================================================
+
+Do not dynamically invent category labels.
+Use fixed project category values.
+
+For this task, use only these category values where applicable:
+- Conduit
+- Fittings & Connectors
+- EMT Support
+- Flexible
+- Cable Tray
+- Boxes
+- Devices
+- Grounding
+- Equipment
+
+If an item belongs to conduit family:
+- main run item -> Conduit
+- connectors/couplings/elbows/locknuts -> Fittings & Connectors
+- straps/clamps/support hangers/unistrut pipe clamp -> EMT Support
+
+==================================================
+8. ROW COUNT STABILITY
+==================================================
+
+Do not randomly add or remove rows.
+Bundle templates must stay stable.
+
+- EMT bundle should produce the full intended default set for the selected size
+- Rigid bundle should produce the full intended default set for the selected size
+- row count must come from the bundle template + matched inventory availability
+- do not duplicate rows accidentally
+- do not omit rows because of stale state
+
+Before save:
+- detect duplicate inventory items inside the current bundle editor
+- if duplicates exist, highlight them
+- prevent save until duplicates are resolved
+
+==================================================
+9. SAVE BEHAVIOR
+==================================================
+
+Saving bundle items must preserve:
+- exact inventory item name
+- exact inventory unit
+- corrected project category
+- selected scope type
+
+Do not rewrite names after save.
+Do not reclassify categories after save.
+Do not turn correctly mapped fittings into Equipment.
+
+==================================================
+10. IMPLEMENTATION NOTE
+==================================================
+
+This task is a targeted bug-fix and mapping update.
+Do not redesign the page.
+Do not refactor unrelated modules.
+Do not touch Daily Report mode.
+
+Primary success criteria:
+1. EMT and Rigid size buttons are correct
+2. all bundle rows show inventory suggestions
+3. bundle default names match Admin Inventory exactly
+4. categories are no longer misclassified as Equipment
+5. Cable Tray / Flexible / Box-Device / Grounding rows also resolve inventory correctly

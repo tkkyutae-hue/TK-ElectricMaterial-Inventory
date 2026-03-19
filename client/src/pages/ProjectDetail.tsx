@@ -431,6 +431,7 @@ function resolveDisplayCategory(storedCat: string | null | undefined, itemName: 
     "equipment / special":   "Equipment",
     "equipment":             "Equipment",
     "other":                 "Equipment",
+    "emt support":           "Fittings & Connectors",
   };
   return catMap[cat] || "Equipment";
 }
@@ -454,52 +455,52 @@ function normalizeCategory(cat: string | null | undefined): string {
   return resolveDisplayCategory(cat, "");
 }
 
-const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support" }[]> = {
+const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support"; searchWords: string[] }[]> = {
   "EMT Conduit Bundle": [
-    { itemName: "EMT Conduit",              unit: "FT", category: "Conduit",               scopeType: "primary" },
-    { itemName: "EMT Coupling",             unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "EMT Connector",            unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "EMT Set Screw Connector",  unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "EMT Compression Connector",unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "EMT Strap",                unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "EMT Elbow",                unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Conduit",               unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["emt", "conduit"] },
+    { itemName: "EMT Coupling",              unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "coupling"] },
+    { itemName: "EMT Connector",             unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "connector"] },
+    { itemName: "EMT Set Screw Connector",   unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw"] },
+    { itemName: "EMT Compression Connector", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression"] },
+    { itemName: "EMT Strap",                 unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["emt", "strap"] },
+    { itemName: "EMT Elbow",                 unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "elbow"] },
   ],
   "Rigid Conduit Bundle": [
-    { itemName: "Rigid Metal Conduit",  unit: "FT", category: "Conduit",               scopeType: "primary" },
-    { itemName: "Rigid Coupling",       unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Rigid Connector",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Rigid Elbow 90°",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Rigid Locknut",        unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Rigid Strap",          unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Rigid Metal Conduit", unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["rigid", "conduit"] },
+    { itemName: "Rigid Coupling",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "coupling"] },
+    { itemName: "Rigid Connector",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "connector"] },
+    { itemName: "Rigid Elbow",         unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "elbow"] },
+    { itemName: "Rigid Locknut",       unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "locknut"] },
+    { itemName: "Rigid Strap",         unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["rigid", "strap"] },
   ],
   "Flexible Conduit Bundle": [
-    { itemName: "Flexible Conduit",              unit: "FT", category: "Conduit",               scopeType: "primary" },
-    { itemName: "Flexible Connector (Straight)", unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Flexible Connector (90°)",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
-    { itemName: "Liquidtight Flexible Conduit",  unit: "FT", category: "Conduit",               scopeType: "primary" },
-    { itemName: "Liquidtight Connector",         unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Flexible Conduit",             unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["flexible", "conduit"] },
+    { itemName: "Flexible Connector Straight",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["flexible", "connector", "straight"] },
+    { itemName: "Flexible Connector 90",        unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["flexible", "connector"] },
+    { itemName: "Liquidtight Flexible Conduit", unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["liquidtight", "conduit"] },
+    { itemName: "Liquidtight Connector",        unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["liquidtight", "connector"] },
   ],
   "Cable Tray Bundle": [
-    { itemName: "Cable Tray (12\" wide)",    unit: "FT", category: "Cable Tray", scopeType: "primary" },
-    { itemName: "Cable Tray Coupler",        unit: "EA", category: "Cable Tray", scopeType: "support" },
-    { itemName: "Cable Tray Elbow",          unit: "EA", category: "Cable Tray", scopeType: "support" },
-    { itemName: "Cable Tray Cover",          unit: "FT", category: "Cable Tray", scopeType: "support" },
-    { itemName: "Cable Tray Support Hanger", unit: "EA", category: "Cable Tray", scopeType: "support" },
+    { itemName: "Cable Tray",               unit: "FT", category: "Cable Tray", scopeType: "primary", searchWords: ["cable", "tray"] },
+    { itemName: "Cable Tray Coupler",       unit: "EA", category: "Cable Tray", scopeType: "support", searchWords: ["cable", "tray", "coupler"] },
+    { itemName: "Cable Tray Elbow",         unit: "EA", category: "Cable Tray", scopeType: "support", searchWords: ["cable", "tray", "elbow"] },
+    { itemName: "Cable Tray Cover",         unit: "FT", category: "Cable Tray", scopeType: "support", searchWords: ["cable", "tray", "cover"] },
+    { itemName: "Cable Tray Support Hanger",unit: "EA", category: "Cable Tray", scopeType: "support", searchWords: ["cable", "tray", "support"] },
   ],
   "Box / Device Bundle": [
-    { itemName: "4\" Square Box",     unit: "EA", category: "Boxes",   scopeType: "primary" },
-    { itemName: "4\" Square Box Cover",unit: "EA", category: "Boxes",   scopeType: "support" },
-    { itemName: "Device Box (1G)",    unit: "EA", category: "Boxes",   scopeType: "primary" },
-    { itemName: "Duplex Receptacle",  unit: "EA", category: "Devices", scopeType: "primary" },
-    { itemName: "Single Pole Switch", unit: "EA", category: "Devices", scopeType: "primary" },
-    { itemName: "Cover Plate",        unit: "EA", category: "Devices", scopeType: "support" },
+    { itemName: "4\" Square Box",      unit: "EA", category: "Boxes",   scopeType: "primary", searchWords: ["square", "box"] },
+    { itemName: "4\" Square Box Cover", unit: "EA", category: "Boxes",   scopeType: "support", searchWords: ["square", "box", "cover"] },
+    { itemName: "Device Box",           unit: "EA", category: "Boxes",   scopeType: "primary", searchWords: ["device", "box"] },
+    { itemName: "Duplex Receptacle",    unit: "EA", category: "Devices", scopeType: "primary", searchWords: ["duplex", "receptacle"] },
+    { itemName: "Single Pole Switch",   unit: "EA", category: "Devices", scopeType: "primary", searchWords: ["single", "pole", "switch"] },
+    { itemName: "Cover Plate",          unit: "EA", category: "Devices", scopeType: "support", searchWords: ["cover", "plate"] },
   ],
   "Grounding Bundle": [
-    { itemName: "Ground Rod",            unit: "EA", category: "Grounding", scopeType: "primary" },
-    { itemName: "Ground Rod Clamp",      unit: "EA", category: "Grounding", scopeType: "support" },
-    { itemName: "Grounding Wire (#6 bare)", unit: "FT", category: "Grounding", scopeType: "primary" },
-    { itemName: "Grounding Bushing",     unit: "EA", category: "Grounding", scopeType: "support" },
-    { itemName: "Grounding Lug",         unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Ground Rod",       unit: "EA", category: "Grounding", scopeType: "primary", searchWords: ["ground", "rod"] },
+    { itemName: "Ground Rod Clamp", unit: "EA", category: "Grounding", scopeType: "support", searchWords: ["ground", "rod", "clamp"] },
+    { itemName: "Grounding Wire",   unit: "FT", category: "Grounding", scopeType: "primary", searchWords: ["grounding", "wire"] },
+    { itemName: "Grounding Bushing",unit: "EA", category: "Grounding", scopeType: "support", searchWords: ["grounding", "bushing"] },
+    { itemName: "Grounding Lug",    unit: "EA", category: "Grounding", scopeType: "support", searchWords: ["grounding", "lug"] },
   ],
 };
 
@@ -535,10 +536,10 @@ function newBundleRow(): BundleRow {
   };
 }
 
-// Size lists per bundle type
+// Size lists per bundle type — 1/2" excluded from EMT and Rigid per spec
 const BUNDLE_SIZES: Record<string, string[]> = {
-  "EMT Conduit Bundle":      ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
-  "Rigid Conduit Bundle":    ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","5\"","6\""],
+  "EMT Conduit Bundle":      ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
+  "Rigid Conduit Bundle":    ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","5\"","6\""],
   "Flexible Conduit Bundle": ["3/8\"","1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\""],
   "Cable Tray Bundle":       ["4\"","6\"","9\"","12\"","18\"","24\"","30\"","36\""],
   "Box / Device Bundle":     ["1G","2G","4\" Square","4-11/16\""],
@@ -737,7 +738,7 @@ function InlineScopeRow({
 
 // ── Bundle scope row (searchable, used in BundleSelector configure phase) ──────
 function BundleScopeRow({
-  row, invItems, onChange, onRemove, rowIndex, bundleType, bundleSize,
+  row, invItems, onChange, onRemove, rowIndex, bundleType, bundleSize, isDuplicate,
 }: {
   row: BundleRow;
   invItems: any[];
@@ -746,6 +747,7 @@ function BundleScopeRow({
   rowIndex: number;
   bundleType?: string;
   bundleSize?: string;
+  isDuplicate?: boolean;
 }) {
   const [invSearch, setInvSearch] = useState(
     row.linkedInventoryItemId
@@ -811,12 +813,12 @@ function BundleScopeRow({
   function selectInv(it: any) {
     setInvSearch(it.name);
     setInvOpen(false);
+    // Keep the template category — do NOT override it with inventory subcategory
     onChange({
       ...row,
       itemName: it.name,
       unit: it.unitOfMeasure ?? row.unit,
       linkedInventoryItemId: it.id,
-      category: normalizeCategory(it.subcategory) || row.category,
     });
   }
 
@@ -846,7 +848,7 @@ function BundleScopeRow({
 
   return (
     <Fragment>
-      <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : "bg-white"}`}
+      <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : isDuplicate ? "bg-red-50 border-red-200" : "bg-white"}`}
         data-testid={`bundle-row-${rowIndex}`}>
         {/* Checkbox */}
         <td className="px-3 py-2">
@@ -914,6 +916,7 @@ function BundleScopeRow({
             data-testid={`bundle-row-cat-${rowIndex}`} />
           <datalist id={`bundle-cat-list-${rowIndex}`}>
             {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
+            <option value="EMT Support" />
           </datalist>
         </td>
         {/* Scope type */}
@@ -1256,22 +1259,25 @@ function BundleSelector({
 
   const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
 
-  // Generate rows from bundle definition + size, auto-matching real inventory items
+  // Resolve one inventory match for a bundle template item + selected size
+  function resolveInvMatch(searchWords: string[], sizeNorm: string) {
+    return sizeNorm
+      ? invItems.find(inv => {
+          const n = inv.name.toLowerCase();
+          return searchWords.every(w => n.includes(w)) && n.includes(sizeNorm);
+        })
+      : invItems.find(inv => {
+          const n = inv.name.toLowerCase();
+          return searchWords.every(w => n.includes(w));
+        });
+  }
+
+  // Fully regenerate bundle rows from template + selected size (always fresh, no stale state)
   function buildRows(bundleName: string, size: string): BundleRow[] {
     const items = BUNDLE_DEFINITIONS[bundleName] ?? [];
-    const sizeNorm = size ? size.toLowerCase().replace(/['"]/g, "").trim() : "";
+    const sizeNorm = size ? size.toLowerCase().replace(/['"#]/g, "").trim() : "";
     return items.map(it => {
-      const baseKeywords = it.itemName.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
-      // Try to find a matching inventory item by keywords + size
-      const match = sizeNorm
-        ? invItems.find(inv => {
-            const n = inv.name.toLowerCase();
-            return baseKeywords.every(w => n.includes(w)) && n.includes(sizeNorm);
-          })
-        : invItems.find(inv => {
-            const n = inv.name.toLowerCase();
-            return baseKeywords.every(w => n.includes(w));
-          });
+      const match = resolveInvMatch(it.searchWords, sizeNorm);
       return {
         localId: Math.random().toString(36).slice(2),
         itemName: match ? match.name : "",
@@ -1293,35 +1299,11 @@ function BundleSelector({
     setPhase("configure");
   }
 
+  // Size change always does a full row regeneration — no stale names/units/categories
   function handleSizeChange(size: string) {
     setSelectedSize(size);
     if (!selectedBundle) return;
-    const sizeNorm = size.toLowerCase().replace(/['"]/g, "").trim();
-    setBundleRows(prev => {
-      const origItems = BUNDLE_DEFINITIONS[selectedBundle] ?? [];
-      return prev.map((row, i) => {
-        const orig = origItems[i];
-        if (!orig) return row;
-        // If user manually linked a different item, respect their choice
-        if (row.linkedInventoryItemId) {
-          // Only override if the current linked item doesn't match the new size
-          const linked = invItems.find(it => it.id === row.linkedInventoryItemId);
-          if (linked && linked.name.toLowerCase().includes(sizeNorm)) return row;
-        }
-        // Try to find inventory match for new size
-        const baseKeywords = orig.itemName.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
-        const match = invItems.find(inv => {
-          const n = inv.name.toLowerCase();
-          return baseKeywords.every(w => n.includes(w)) && n.includes(sizeNorm);
-        });
-        return {
-          ...row,
-          itemName: match ? match.name : "",
-          unit: match ? (match.unitOfMeasure || orig.unit) : orig.unit,
-          linkedInventoryItemId: match ? match.id : null,
-        };
-      });
-    });
+    setBundleRows(buildRows(selectedBundle, size));
   }
 
   function addManualRow() {
@@ -1336,7 +1318,23 @@ function BundleSelector({
     setBundleRows(prev => prev.filter(r => r.localId !== localId));
   }
 
+  // Find duplicate linked inventory IDs among checked rows
+  const duplicateInvIds: Set<number> = useMemo(() => {
+    const checked = bundleRows.filter(r => r.checked && r.linkedInventoryItemId);
+    const idCounts = new Map<number, number>();
+    checked.forEach(r => {
+      const id = r.linkedInventoryItemId!;
+      idCounts.set(id, (idCounts.get(id) ?? 0) + 1);
+    });
+    const dups = new Set<number>();
+    idCounts.forEach((count, id) => { if (count > 1) dups.add(id); });
+    return dups;
+  }, [bundleRows]);
+
+  const hasDuplicates = duplicateInvIds.size > 0;
+
   function handleSave() {
+    if (hasDuplicates) return;
     const toSave = bundleRows
       .filter(r => r.checked && r.itemName.trim())
       .map(({ localId: _l, checked: _c, ...rest }) => rest);
@@ -1446,11 +1444,22 @@ function BundleSelector({
                 onRemove={() => removeRow(row.localId)}
                 bundleType={selectedBundle ?? undefined}
                 bundleSize={selectedSize}
+                isDuplicate={!!(row.linkedInventoryItemId && duplicateInvIds.has(row.linkedInventoryItemId))}
               />
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Duplicate warning */}
+      {hasDuplicates && (
+        <div className="px-5 py-2.5 bg-red-50 border-t border-red-200">
+          <p className="text-xs text-red-700 font-medium flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            Duplicate inventory items detected — highlighted rows share the same item. Remove duplicates before saving.
+          </p>
+        </div>
+      )}
 
       {/* Footer actions */}
       <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
@@ -1462,7 +1471,7 @@ function BundleSelector({
           </Button>
         </div>
         <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={handleSave}
-          disabled={checkedCount === 0} data-testid="button-save-bundle">
+          disabled={checkedCount === 0 || hasDuplicates} data-testid="button-save-bundle">
           <Save className="w-4 h-4 mr-1.5" />
           Add {checkedCount} Item{checkedCount !== 1 ? "s" : ""} to Scope
         </Button>

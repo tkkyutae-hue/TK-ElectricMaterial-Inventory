@@ -935,29 +935,29 @@ export function NewReportTab({
                 <div
                   onClick={() => setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
                   className="cursor-pointer hover:bg-[#f8faf9] transition-colors"
-                  style={{ display: "grid", gridTemplateColumns: "1fr 180px 130px 44px", alignItems: "center", padding: "12px 14px" }}>
+                  style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 160px 130px 40px", alignItems: "center", padding: "12px 14px" }}>
 
                   {/* Col 1: Description + Area */}
-                  <div className="pr-[14px] border-r border-slate-100 min-w-0" onClick={e => e.stopPropagation()}>
+                  <div className="pr-[14px] border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent font-semibold text-slate-800 placeholder:text-slate-300 truncate"
+                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent font-semibold text-slate-800 placeholder:text-slate-300 truncate w-full"
                       style={{ fontSize: 12.5 }} placeholder="Task description…" />
                     <Input data-testid={`input-task-area-${i}`} value={row.area}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent text-slate-400 placeholder:text-slate-300 mt-0.5 truncate"
+                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent text-slate-400 placeholder:text-slate-300 mt-0.5 truncate w-full"
                       style={{ fontSize: 10.5 }} placeholder="Area / Location" />
                   </div>
 
                   {/* Col 2: Workers summary */}
-                  <div className="px-3 border-r border-slate-100" onClick={e => e.stopPropagation()}>
+                  <div className="px-3 border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                     <p style={{ fontSize: 8 }} className="font-semibold text-slate-400 uppercase tracking-widest mb-1">Workers</p>
                     {row.workers.length === 0 ? (
                       <span className="text-[11px] text-slate-300 italic">+ Assign</span>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        {/* Stacked avatars */}
-                        <div className="flex items-center">
+                      <div className="flex items-center gap-1.5 overflow-hidden">
+                        {/* Stacked avatars — shrink-0 so they never compress */}
+                        <div className="flex items-center shrink-0">
                           {allAvatars.slice(0, 3).map((w, wi) => (
                             <div key={wi} style={{
                               width: 20, height: 20, borderRadius: "50%",
@@ -980,7 +980,8 @@ export function NewReportTab({
                             }}>+{row.workers.length - 3}</div>
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-600 truncate">
+                        {/* Name — truncates when too long */}
+                        <span className="text-[10px] text-slate-600 truncate min-w-0">
                           {mainWorker ? mainWorker.name.split(" ")[0] : ""}
                           {assistWorkers.length > 0 && (
                             <span className="text-slate-400"> · {assistWorkers.length} assist</span>
@@ -991,11 +992,11 @@ export function NewReportTab({
                   </div>
 
                   {/* Col 3: Status */}
-                  <div className="px-3 border-r border-slate-100" onClick={e => e.stopPropagation()}>
+                  <div className="px-3 border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                     <div className="relative">
                       <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
                       <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
-                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text}`}>
+                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1013,7 +1014,7 @@ export function NewReportTab({
                   </div>
 
                   {/* Col 4: Chevron + delete */}
-                  <div className="flex items-center justify-center gap-1 pl-1">
+                  <div className="flex items-center justify-center gap-1 pl-1 overflow-hidden">
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
                     <button type="button" data-testid={`btn-remove-task-${i}`}
                       onClick={e => { e.stopPropagation(); setTasks(tasks.filter(r => r.id !== row.id)); }}

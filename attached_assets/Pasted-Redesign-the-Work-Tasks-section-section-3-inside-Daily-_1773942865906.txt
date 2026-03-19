@@ -1,0 +1,205 @@
+Redesign the Work Tasks section (section 3) inside Daily Report → New Report.
+
+Do NOT change:
+- Page width, card width, outer section card style
+- Section header (number badge, icon, title, collapse chevron)
+- Any other section (General Info, Manpower, Materials, Equipment, Notes)
+- Admin Mode or any other module
+- The "+ Add Task" button label and position
+
+════════════════════════════════════════
+CHANGE 1 — Replace flat table with task cards
+════════════════════════════════════════
+The current Work Tasks uses a flat table layout where everything
+is cramped into a single row per task.
+
+Replace it with a vertical list of task cards.
+Each task is its own card — a rounded bordered box.
+
+When there are no tasks:
+  Show: "No tasks yet — click Add Task below"
+  (same as current empty state text, keep styling)
+
+════════════════════════════════════════
+CHANGE 2 — Task card: main row structure
+════════════════════════════════════════
+Each task card has two areas:
+  A) Main row — always visible, compact summary
+  B) Detail panel — hidden by default, expands on click
+
+MAIN ROW layout (single row, click anywhere to expand/collapse detail):
+  Use a CSS grid with these columns:
+
+  [Task Description + Area]  [Workers Summary]  [Status]  [Toggle ▾]
+
+  Column 1 — Task Description + Area (flex: 1, takes most space):
+    Top line:    Task Description input (font-size 12.5px, font-weight 600)
+    Bottom line: Area / Location input (font-size 10.5px, muted color)
+    These are still editable inputs, not static text.
+
+  Column 2 — Workers Summary (fixed ~180px):
+    Label: "Workers" (8px uppercase, muted)
+    Main worker: avatar initials + name (one line)
+    Assist workers: stacked avatar thumbnails + count label
+      Show max 3 avatars then "+N" overflow avatar
+      Example: [CM] [JM] [MT] [+3]  ·  6 assist
+      If no workers assigned yet: show "+ Assign" placeholder text
+
+  Column 3 — Status (fixed ~130px):
+    Same status dropdown/chip as current: In Progress / Completed / On Hold
+    Keep current behavior unchanged.
+
+  Column 4 — Toggle (fixed ~40px):
+    A chevron icon ▾ / ▲
+    Clicking the main row OR the chevron toggles the detail panel
+    Chevron rotates 180° when open
+
+Left edge of each card:
+  3px colored border:
+    In Progress → blue (#1d6ecc)
+    Completed   → green (#16a34a)
+    On Hold     → amber (#d97706)
+
+════════════════════════════════════════
+CHANGE 3 — Task card: detail panel
+════════════════════════════════════════
+When expanded, show a detail panel below the main row.
+Background: slightly off-white (bg3 / #f8faf9).
+Border-top: 1px solid var(--border).
+Padding: 16px.
+
+Detail panel layout — 3 columns:
+
+  Column A — Worker Assignment (full list):
+    Label: "Worker Assignment" (small uppercase)
+    Show a list of assigned workers, one per row:
+      Each row: [avatar] [full name] [role badge]
+      Main worker: green background row + "Main" badge (green)
+      Assist workers: normal background + "Assist" badge (gray)
+    At the bottom: "+ Assign worker from Manpower" button
+      This button opens a dropdown showing workers from the
+      current report's Manpower section
+      Clicking a name adds them as Assist (or Main if none assigned yet)
+    If Manpower section has no workers yet:
+      Show disabled button with tooltip:
+      "Add workers in the Manpower section first"
+
+  Column B — Site Photos:
+    Label: "Site Photos" (small uppercase)
+    Photo upload grid — same style as existing attachments
+    Accept: JPG, PNG, HEIC
+    Show uploaded thumbnails
+    "+ Add" slot at the end
+    Keep same upload behavior as existing site photos
+
+  Column C — Notes:
+    Label: "Notes" (small uppercase)
+    A resizable textarea
+    Placeholder: "Issues encountered, corrective actions..."
+    Same style as existing textarea inputs
+
+════════════════════════════════════════
+CHANGE 4 — Remove Notes column from main row
+════════════════════════════════════════
+The current main row table has a "NOTES" column.
+Remove it entirely from the main row.
+Notes now live only inside the detail panel (Column C above).
+
+════════════════════════════════════════
+CHANGE 5 — Remove Drawings upload from detail panel
+════════════════════════════════════════
+The current detail panel ("TASK DETAIL & ATTACHMENTS") has:
+  - Drawings (PDF, DWG, or image)
+  - Site Photos (JPG, PNG, HEIC)
+
+Remove the Drawings upload area entirely.
+Keep Site Photos only.
+
+Note: A shared project Drawing Board will be added in a future phase.
+For now, per-task drawing upload is removed without replacement.
+
+════════════════════════════════════════
+CHANGE 6 — "Detail" button → "Photos / Files" label
+════════════════════════════════════════
+The current table has a DETAIL column with a 📎 icon-only button.
+This button was confusing because it had no text label.
+
+In the new card layout, the detail panel is toggled by clicking
+the main row — there is no separate "Detail" button needed.
+
+However, if you keep a separate expand button, label it:
+  "📎 Photos / Files"
+instead of just the 📎 icon.
+
+════════════════════════════════════════
+WORKER ASSIGNMENT — DATA SOURCE
+════════════════════════════════════════
+The worker list shown in the detail panel assignment dropdown
+must come from the Manpower section of the CURRENT report.
+
+Specifically:
+  - Read the worker rows from the Manpower section (section 2)
+  - Use the worker names entered there
+  - If Manpower section has entries, show them in the dropdown
+  - If Manpower section is empty, show disabled state with message
+
+This is a UI-level link — read the Manpower data that's
+already in the form state. No new backend query needed.
+
+When a worker is assigned to a task:
+  - Store: worker name + role (Main or Assist)
+  - Show in the main row workers summary (avatar stack)
+  - Show in the detail panel worker list
+
+════════════════════════════════════════
+AVATAR STYLE
+════════════════════════════════════════
+Worker avatars = small circles showing initials.
+Size: 20×20px in main row stack, 22×22px in detail list.
+Border-radius: 50%.
+Main worker: green background (#dcfce7), green text (#16a34a), green border
+Assist workers: blue background (#dbeafe), blue text (#1d6ecc), blue border
+Overflow avatar "+N": indigo background (#e0e7ff), indigo text (#4338ca)
+Stack overlap: each avatar overlaps the previous by 6px (negative margin-right)
+Show border: 1.5px solid white (to separate stacked avatars visually)
+
+════════════════════════════════════════
+TASK CARD SPACING & STYLE
+════════════════════════════════════════
+Card container:
+  background: white
+  border: 1px solid var(--border2)
+  border-radius: 10px
+  overflow: hidden
+  margin-bottom: 10px (gap between cards)
+  left border: 3px solid [status color] (see Change 2)
+
+Main row:
+  padding: 12px 14px
+  display: grid
+  grid-template-columns: 1fr 180px 130px 40px
+  align-items: center
+  cursor: pointer
+  background: white
+  hover: background var(--bg3)
+
+Vertical dividers between columns:
+  border-right: 1px solid var(--border) on columns 1, 2, 3
+  padding-right: 14px on col 1, padding-left: 12px on cols 2 and 3
+
+Detail panel:
+  background: var(--bg3) / #f8faf9
+  border-top: 1px solid var(--border)
+  padding: 16px
+  display: none by default
+  display: block (or grid) when expanded
+
+════════════════════════════════════════
+KEEP UNCHANGED
+════════════════════════════════════════
+- Section number (3) and section header style
+- The "+ Add Task" button at the bottom
+- Status values: In Progress, Completed, On Hold
+- Collapse/expand behavior of the whole section card
+- Area / Location input field (move to main row col 1 bottom line)
+- All existing form data (if tasks already exist, re-render them in new card format)

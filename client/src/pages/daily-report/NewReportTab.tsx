@@ -19,12 +19,12 @@ import { Badge } from "@/components/ui/badge";
 import type { Worker } from "@shared/schema";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string; rowBg: string }> = {
-  "not-started": { label: "Not Started",  dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "" },
-  "in-progress":  { label: "In Progress", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "" },
-  "completed":    { label: "Completed",   dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "" },
-  "delayed":      { label: "Delayed",     dot: "bg-amber-500",   text: "text-amber-700",   rowBg: "bg-amber-50/30" },
-  "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30" },
+const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string; rowBg: string; borderColor: string }> = {
+  "not-started": { label: "Not Started",  dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "",             borderColor: "#94a3b8" },
+  "in-progress":  { label: "In Progress", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "",             borderColor: "#1d6ecc" },
+  "completed":    { label: "Completed",   dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "",             borderColor: "#16a34a" },
+  "delayed":      { label: "Delayed",     dot: "bg-amber-500",   text: "text-amber-700",   rowBg: "bg-amber-50/30", borderColor: "#d97706" },
+  "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#ef4444" },
 };
 
 const ATTENDANCE_STATUSES = [
@@ -80,10 +80,16 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+function initials(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+interface TaskWorker { name: string; role: "main" | "assist" }
 interface TaskRow {
   id: number; description: string; area: string; status: string; notes: string;
   expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: string[];
+  workers: TaskWorker[];
 }
 interface ManpowerRow {
   id: number; workerId: number | null; workerName: string; trade: string;
@@ -405,8 +411,9 @@ export function NewReportTab({
 
   // ── Dynamic rows ──
   const [tasks, setTasks] = useState<TaskRow[]>(() =>
-    (fd?.tasks ?? []).map((t: any) => ({ expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], ...t }))
+    (fd?.tasks ?? []).map((t: any) => ({ expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], ...t }))
   );
+  const [assignOpen, setAssignOpen] = useState<number | null>(null);
 
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
@@ -906,142 +913,237 @@ export function NewReportTab({
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
       <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
-        <div className="overflow-x-auto">
-        <table className="text-sm w-full" data-testid="table-tasks">
-          <TH cols={[
-            { label: "Task Description",  cls: "w-[220px]" },
-            { label: "Area / Location",   cls: "w-[130px]" },
-            { label: "Status",            cls: "w-[128px]" },
-            { label: "Notes",             cls: "w-[120px]" },
-            { label: "Detail",            cls: "w-[56px] text-center" },
-          ]} />
-          <tbody>
-            {tasks.length === 0 && (
-              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">
-                No tasks yet — click Add Task below
-              </td></tr>
-            )}
-            {tasks.map((row, i) => {
-              const cfg = TASK_STATUS_CFG[row.status] ?? TASK_STATUS_CFG["not-started"];
-              return (
-                <>
-                  {/* Main row */}
-                  <tr key={row.id} className={`border-b border-slate-100 group ${cfg.rowBg} ${row.expanded ? "border-b-0" : ""}`}>
-                    <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-task-desc-${i}`} value={row.description}
-                        onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Describe the task…" />
-                    </td>
-                    <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-task-area-${i}`} value={row.area}
-                        onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Area / Zone" />
-                    </td>
-                    <td className="py-1.5 px-2.5">
-                      <div className="relative">
-                        <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
-                        <Select value={row.status}
-                          onValueChange={(v) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, status: v } : r))}>
-                          <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(TASK_STATUS_CFG).map(([val, c]) => (
-                              <SelectItem key={val} value={val}>
-                                <span className="flex items-center gap-2">
-                                  <span className={`w-2 h-2 rounded-full ${c.dot} shrink-0`} />
-                                  {c.label}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </td>
-                    <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-task-notes-${i}`} value={row.notes}
-                        onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Optional" />
-                    </td>
-                    {/* Expand / attachment toggle */}
-                    <td className="py-1.5 px-2 text-center">
-                      <button type="button" data-testid={`btn-task-expand-${i}`}
-                        onClick={() => setTasks(tasks.map((r) => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
-                        title="Attachments & detail"
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-medium transition-colors ${
-                          row.expanded || row.drawingFiles.length > 0 || row.photoFiles.length > 0
-                            ? "border-blue-200 bg-blue-50 text-blue-600"
-                            : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
-                        }`}>
-                        <Paperclip className="w-3 h-3" />
-                        {row.drawingFiles.length + row.photoFiles.length > 0
-                          ? row.drawingFiles.length + row.photoFiles.length
-                          : <ChevronRight className={`w-3 h-3 transition-transform ${row.expanded ? "rotate-90" : ""}`} />
-                        }
-                      </button>
-                    </td>
-                    <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DelBtn testId={`btn-remove-task-${i}`} onClick={() => setTasks(tasks.filter((r) => r.id !== row.id))} />
-                    </td>
-                  </tr>
 
-                  {/* Expandable detail row */}
-                  {row.expanded && (
-                    <tr key={`${row.id}-detail`} className={`border-b border-slate-100 ${cfg.rowBg}`}>
-                      <td colSpan={6} className="px-3 pb-3 pt-0">
-                        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 space-y-3">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Task Detail &amp; Attachments</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            {/* Drawing upload placeholder */}
-                            <div>
-                              <p className="text-[10px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-                                <Paperclip className="w-3 h-3" /> Drawings
-                                {row.drawingFiles.length > 0 && <span className="ml-1 text-blue-600">({row.drawingFiles.length})</span>}
-                              </p>
-                              <button type="button"
-                                onClick={() => toast({ title: "Drawing upload", description: "File attachment is coming in the next update." })}
-                                className="w-full h-16 border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
-                                <Paperclip className="w-4 h-4" />
-                                <span>PDF, DWG, or image</span>
-                              </button>
-                            </div>
-                            {/* Photo upload placeholder */}
-                            <div>
-                              <p className="text-[10px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-                                <Camera className="w-3 h-3" /> Site Photos
-                                {row.photoFiles.length > 0 && <span className="ml-1 text-blue-600">({row.photoFiles.length})</span>}
-                              </p>
-                              <button type="button"
-                                onClick={() => toast({ title: "Photo upload", description: "Photo attachment is coming in the next update." })}
-                                className="w-full h-16 border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
-                                <Camera className="w-4 h-4" />
-                                <span>JPG, PNG, HEIC</span>
-                              </button>
-                            </div>
-                          </div>
-                          {/* Extra task notes */}
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-medium mb-1">Additional Notes</p>
-                            <Textarea value={row.detailNotes}
-                              onChange={(e) => setTasks(tasks.map((r) => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
-                              placeholder="Additional task notes, issues encountered, corrective actions…"
-                              className="text-xs min-h-[64px] resize-y bg-white" />
-                          </div>
+        {/* Empty state */}
+        {tasks.length === 0 && (
+          <p className="py-7 text-center text-xs text-slate-300 italic">No tasks yet — click Add Task below</p>
+        )}
+
+        {/* Task cards */}
+        <div className="space-y-[10px]" data-testid="task-cards">
+          {tasks.map((row, i) => {
+            const cfg = TASK_STATUS_CFG[row.status] ?? TASK_STATUS_CFG["not-started"];
+            const mainWorker   = row.workers.find(w => w.role === "main");
+            const assistWorkers = row.workers.filter(w => w.role === "assist");
+            const allAvatars   = [...(mainWorker ? [mainWorker] : []), ...assistWorkers];
+
+            return (
+              <div key={row.id} data-testid={`task-card-${i}`} className="group"
+                style={{ background: "white", border: "1px solid #d0dbd2", borderLeft: `3px solid ${cfg.borderColor}`, borderRadius: 10, overflow: "hidden" }}>
+
+                {/* ── Main row ── */}
+                <div
+                  onClick={() => setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
+                  className="cursor-pointer hover:bg-[#f8faf9] transition-colors"
+                  style={{ display: "grid", gridTemplateColumns: "1fr 180px 130px 44px", alignItems: "center", padding: "12px 14px" }}>
+
+                  {/* Col 1: Description + Area */}
+                  <div className="pr-[14px] border-r border-slate-100 min-w-0" onClick={e => e.stopPropagation()}>
+                    <Input data-testid={`input-task-desc-${i}`} value={row.description}
+                      onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
+                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent font-semibold text-slate-800 placeholder:text-slate-300 truncate"
+                      style={{ fontSize: 12.5 }} placeholder="Task description…" />
+                    <Input data-testid={`input-task-area-${i}`} value={row.area}
+                      onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
+                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent text-slate-400 placeholder:text-slate-300 mt-0.5 truncate"
+                      style={{ fontSize: 10.5 }} placeholder="Area / Location" />
+                  </div>
+
+                  {/* Col 2: Workers summary */}
+                  <div className="px-3 border-r border-slate-100" onClick={e => e.stopPropagation()}>
+                    <p style={{ fontSize: 8 }} className="font-semibold text-slate-400 uppercase tracking-widest mb-1">Workers</p>
+                    {row.workers.length === 0 ? (
+                      <span className="text-[11px] text-slate-300 italic">+ Assign</span>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        {/* Stacked avatars */}
+                        <div className="flex items-center">
+                          {allAvatars.slice(0, 3).map((w, wi) => (
+                            <div key={wi} style={{
+                              width: 20, height: 20, borderRadius: "50%",
+                              marginLeft: wi > 0 ? -6 : 0, border: "1.5px solid white",
+                              background: w.role === "main" ? "#dcfce7" : "#dbeafe",
+                              color: w.role === "main" ? "#16a34a" : "#1d6ecc",
+                              fontSize: 8, fontWeight: 700,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              position: "relative", zIndex: 3 - wi, flexShrink: 0,
+                            }}>{initials(w.name)}</div>
+                          ))}
+                          {row.workers.length > 3 && (
+                            <div style={{
+                              width: 20, height: 20, borderRadius: "50%",
+                              marginLeft: -6, border: "1.5px solid white",
+                              background: "#e0e7ff", color: "#4338ca",
+                              fontSize: 8, fontWeight: 700,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              position: "relative", zIndex: 0, flexShrink: 0,
+                            }}>+{row.workers.length - 3}</div>
+                          )}
                         </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
+                        <span className="text-[10px] text-slate-600 truncate">
+                          {mainWorker ? mainWorker.name.split(" ")[0] : ""}
+                          {assistWorkers.length > 0 && (
+                            <span className="text-slate-400"> · {assistWorkers.length} assist</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
+                  {/* Col 3: Status */}
+                  <div className="px-3 border-r border-slate-100" onClick={e => e.stopPropagation()}>
+                    <div className="relative">
+                      <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
+                      <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
+                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(TASK_STATUS_CFG).map(([val, c]) => (
+                            <SelectItem key={val} value={val}>
+                              <span className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${c.dot} shrink-0`} />
+                                {c.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Col 4: Chevron + delete */}
+                  <div className="flex items-center justify-center gap-1 pl-1">
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
+                    <button type="button" data-testid={`btn-remove-task-${i}`}
+                      onClick={e => { e.stopPropagation(); setTasks(tasks.filter(r => r.id !== row.id)); }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-400">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Detail panel ── */}
+                {row.expanded && (
+                  <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16 }}>
+                    <div className="grid grid-cols-3 gap-5">
+
+                      {/* Col A: Worker Assignment */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Worker Assignment</p>
+
+                        {/* Assigned list */}
+                        {row.workers.length > 0 && (
+                          <div className="space-y-1 mb-2">
+                            {row.workers.map((w, wi) => (
+                              <div key={wi} className={`flex items-center gap-2 px-2 py-1.5 rounded-md ${w.role === "main" ? "bg-green-50" : "bg-white border border-slate-100"}`}>
+                                <div style={{
+                                  width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                                  background: w.role === "main" ? "#dcfce7" : "#dbeafe",
+                                  color: w.role === "main" ? "#16a34a" : "#1d6ecc",
+                                  border: `1.5px solid ${w.role === "main" ? "#86efac" : "#93c5fd"}`,
+                                  fontSize: 9, fontWeight: 700,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>{initials(w.name)}</div>
+                                <span className="text-[11px] text-slate-700 flex-1 min-w-0 truncate">{w.name}</span>
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                  w.role === "main" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                                }`}>{w.role === "main" ? "Main" : "Assist"}</span>
+                                <button type="button"
+                                  onClick={() => setTasks(tasks.map(r => r.id === row.id
+                                    ? { ...r, workers: r.workers.filter((_, idx) => idx !== wi) } : r))}
+                                  className="text-slate-200 hover:text-red-400 transition-colors shrink-0">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Assign dropdown */}
+                        {manpower.length === 0 ? (
+                          <button type="button" disabled
+                            title="Add workers in the Manpower section first"
+                            className="w-full text-left text-[11px] text-slate-300 border border-dashed border-slate-200 rounded-md px-3 py-2 cursor-not-allowed">
+                            + Assign worker from Manpower
+                          </button>
+                        ) : (
+                          <div className="relative">
+                            <button type="button"
+                              onClick={e => { e.stopPropagation(); setAssignOpen(assignOpen === row.id ? null : row.id); }}
+                              className="w-full text-left text-[11px] text-blue-600 border border-dashed border-blue-200 rounded-md px-3 py-2 hover:bg-blue-50 transition-colors">
+                              + Assign worker from Manpower
+                            </button>
+                            {assignOpen === row.id && (
+                              <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[200px]">
+                                {manpower
+                                  .filter(mp => mp.workerName && !row.workers.some(w => w.name === mp.workerName))
+                                  .map(mp => (
+                                    <button key={mp.id} type="button"
+                                      className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        const isFirst = row.workers.length === 0;
+                                        setTasks(tasks.map(r => r.id === row.id
+                                          ? { ...r, workers: [...r.workers, { name: mp.workerName, role: isFirst ? "main" : "assist" }] }
+                                          : r));
+                                        setAssignOpen(null);
+                                      }}>
+                                      <div style={{
+                                        width: 18, height: 18, borderRadius: "50%",
+                                        background: "#dbeafe", color: "#1d6ecc",
+                                        fontSize: 8, fontWeight: 700,
+                                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                                      }}>{initials(mp.workerName)}</div>
+                                      <span className="flex-1">{mp.workerName}</span>
+                                      {row.workers.length === 0
+                                        ? <span className="text-[9px] text-green-600 shrink-0">→ Main</span>
+                                        : <span className="text-[9px] text-slate-400 shrink-0">Assist</span>}
+                                    </button>
+                                  ))}
+                                {manpower.filter(mp => mp.workerName && !row.workers.some(w => w.name === mp.workerName)).length === 0 && (
+                                  <p className="px-3 py-2 text-[11px] text-slate-400 italic">All workers assigned</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Col B: Site Photos */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                          Site Photos {row.photoFiles.length > 0 && <span className="text-blue-600 normal-case">({row.photoFiles.length})</span>}
+                        </p>
+                        <button type="button"
+                          onClick={() => toast({ title: "Photo upload", description: "Photo attachment is coming in the next update." })}
+                          className="w-full h-[72px] border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
+                          <Camera className="w-4 h-4" />
+                          <span>JPG, PNG, HEIC</span>
+                        </button>
+                      </div>
+
+                      {/* Col C: Notes */}
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Notes</p>
+                        <Textarea value={row.detailNotes}
+                          onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
+                          placeholder="Issues encountered, corrective actions..."
+                          className="text-xs min-h-[72px] resize-y bg-white" />
+                      </div>
+
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
+
         <AddRow testId="btn-add-task" label="Add Task"
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
-            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [],
+            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [],
           }])} />
       </Section>
 

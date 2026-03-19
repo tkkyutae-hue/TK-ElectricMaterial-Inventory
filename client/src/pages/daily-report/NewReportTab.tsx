@@ -929,7 +929,7 @@ export function NewReportTab({
 
             return (
               <div key={row.id} data-testid={`task-card-${i}`} className="group"
-                style={{ background: "white", border: "1px solid #d0dbd2", borderLeft: `3px solid ${cfg.borderColor}`, borderRadius: 10, overflow: "hidden" }}>
+                style={{ background: "white", border: "1px solid #d0dbd2", borderLeft: `3px solid ${cfg.borderColor}`, borderRadius: 10 }}>
 
                 {/* ── Main row ── */}
                 <div
@@ -996,7 +996,7 @@ export function NewReportTab({
                     <div className="relative">
                       <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
                       <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
-                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`}>
+                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`} style={{ minWidth: 120 }}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1026,7 +1026,7 @@ export function NewReportTab({
 
                 {/* ── Detail panel ── */}
                 {row.expanded && (
-                  <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16 }}>
+                  <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
                     <div className="grid grid-cols-3 gap-5">
 
                       {/* Col A: Worker Assignment */}

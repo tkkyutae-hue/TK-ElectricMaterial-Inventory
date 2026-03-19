@@ -1854,6 +1854,10 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  async deleteDailyReport(id: number): Promise<void> {
+    await db.delete(dailyReports).where(eq(dailyReports.id, id));
+  }
+
   // ─── Workers ─────────────────────────────────────────────────────────────────
 
   async getWorkers(): Promise<Worker[]> {

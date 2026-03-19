@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Calendar, Users, Package, Truck, FileText, ChevronDown, ChevronRight,
   Plus, Trash2, Save, Send, AlertTriangle, CheckCircle2,
@@ -352,7 +353,10 @@ export function NewReportTab({
 }) {
   const { toast }   = useToast();
   const queryClient = useQueryClient();
+  const { isManagerOrAbove } = useAuth();
   const fd          = initialData?.formData ?? null;
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Registry queries ──
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
@@ -478,9 +482,58 @@ export function NewReportTab({
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!reportId) throw new Error("No report ID");
+      return apiRequest("DELETE", `/api/daily-reports/${reportId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-reports", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-reports-summary"] });
+      toast({ title: "Report deleted", description: "The daily report has been permanently deleted." });
+      onSaved?.(-1, "deleted");
+    },
+    onError: (err: any) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
+
+      {/* ── Delete confirmation modal ── */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-50 shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Delete Report</h3>
+                <p className="text-xs text-slate-500 mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-700 mb-5">Are you sure you want to delete this report?</p>
+            <div className="flex items-center gap-2 justify-end">
+              <Button variant="outline" size="sm" className="h-9"
+                onClick={() => setShowDeleteConfirm(false)}
+                data-testid="btn-delete-cancel">
+                Cancel
+              </Button>
+              <Button size="sm"
+                className="h-9 gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold"
+                disabled={deleteMutation.isPending}
+                onClick={() => { deleteMutation.mutate(); setShowDeleteConfirm(false); }}
+                data-testid="btn-delete-confirm">
+                {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Top action bar ── */}
       <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
@@ -507,6 +560,17 @@ export function NewReportTab({
                 {isSubmitted ? "Submitted" : "Submit Report"}
               </Button>
             </div>
+
+            {isManagerOrAbove && reportId && (
+              <Button data-testid="btn-delete-report"
+                variant="outline" size="sm"
+                className="gap-2 h-9 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                disabled={deleteMutation.isPending}
+                onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Report
+              </Button>
+            )}
           </div>
 
           {/* Right: status */}
@@ -541,7 +605,7 @@ export function NewReportTab({
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
       <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
-        <div className="grid grid-cols-3 gap-x-4 gap-y-3.5 max-w-xl">
+        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
 
           {/* Row 1 */}
           <div>
@@ -1149,6 +1213,16 @@ export function NewReportTab({
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
               {isSubmitted ? "Submitted" : "Submit Report"}
             </Button>
+            {isManagerOrAbove && reportId && (
+              <Button data-testid="btn-delete-report-bottom"
+                variant="outline" size="sm"
+                className="gap-2 h-9 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                disabled={deleteMutation.isPending}
+                onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Report
+              </Button>
+            )}
           </div>
           {submitHelper && (
             <span className="text-[11px] text-slate-400 italic">{submitHelper}</span>

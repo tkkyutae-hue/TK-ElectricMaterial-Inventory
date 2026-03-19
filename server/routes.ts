@@ -1111,6 +1111,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/daily-reports/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
+      const role = req.user?.role ?? "viewer";
+      if (role !== "admin" && role !== "manager") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      await storage.deleteDailyReport(id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Workers ─────────────────────────────────────────────────────────────────
 
   app.get("/api/workers", isAuthenticated, async (_req, res) => {

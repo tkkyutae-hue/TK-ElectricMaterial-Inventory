@@ -685,6 +685,11 @@ export default function DailyReportWorkspace() {
               initialData={editingReport}
               forceEdit={forceEdit}
               onSaved={(id, status) => {
+                if (status === "deleted") {
+                  setEditingReport(null);
+                  setActiveTab("history");
+                  return;
+                }
                 setEditingReport((prev: any) =>
                   prev ? { ...prev, id, status } : { id, status, projectId: numericProjectId }
                 );

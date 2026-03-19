@@ -1,0 +1,142 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE 1 — Column order: swap QTY USED and UNIT
+
+  Old order: Material / Inventory Item | UNIT | QTY USED | SCOPE LINK | NOTES
+  New order: Material / Inventory Item | QTY USED | UNIT | SCOPE LINK | NOTES
+
+  Update both <colgroup> / <th> header and every <td> in each row.
+
+  Column widths:
+    Material / Inventory Item : flex (fills remaining space)
+    QTY USED                  : 80px
+    UNIT                      : 72px
+    SCOPE LINK                : 130px
+    NOTES                     : 120px
+    Delete button             : 32px
+
+CHANGE 2 — Size badge: show item size separately on the LEFT of the item name
+
+  Inside the Material/Inventory Item cell, split the item name into:
+    1. Size badge  — leftmost, extracted from item name
+    2. Item name   — everything after the size token
+
+  SIZE EXTRACTION RULE:
+    If item name starts with a size token, separate it out.
+    Size token patterns to detect:
+      - Starts with #  followed by digits or digits+letters  (e.g. "#1", "#10", "#4/0")
+      - Starts with digits followed by /  (e.g. "3/4\"", "1/2\"")
+      - Starts with digits followed by "  (e.g. "2\"", "4\"")
+    If no size token is found, show "—" in the badge (muted gray).
+
+  Cell structure:
+    <div class="item-cell">
+      <span class="size-badge">{size}</span>       ← extracted size token
+      <div class="item-name-wrap">
+        <span class="item-name">{name without size}</span>
+        <span class="inv-tag">Inv</span>            ← if inventory-linked
+      </div>
+    </div>
+
+  .item-cell:
+    display: flex
+    align-items: center
+    gap: 7px
+
+  .size-badge:
+    flex-shrink: 0
+    font-size: 11px
+    font-weight: 600
+    color: #555
+    background: #f0f0f0
+    border: 1px solid #e0e0e0
+    border-radius: 5px
+    padding: 2px 7px
+    min-width: 36px
+    text-align: center
+    white-space: nowrap
+
+  .size-badge (no size / manual entry):
+    color: #ccc
+    background: #fafafa
+    border-color: #eee
+
+  .size-badge (duplicate warning state):
+    background: #fff3cd
+    border-color: #ffc107
+    color: #856404
+
+  .item-name-wrap:
+    display: flex
+    align-items: center
+    gap: 5px
+    min-width: 0
+
+  .item-name:
+    font-size: 13px
+    color: #1a1a1a
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+CHANGE 3 — Apply same size badge to search dropdown items
+
+  Each dropdown list item structure:
+    <div class="dd-item">
+      <span class="dd-size">{size token}</span>    ← same extraction logic
+      <span class="dd-name">{name without size}</span>
+      <span class="dd-dup-label">이미 추가됨</span> ← only if already added
+      <span class="dd-unit">FT / EA</span>
+    </div>
+
+  .dd-item layout:
+    display: flex
+    align-items: center
+    gap: 8px
+    padding: 8px 10px
+
+  .dd-size:
+    flex-shrink: 0
+    font-size: 11px
+    font-weight: 600
+    color: #555
+    background: #f0f0f0
+    border: 1px solid #e0e0e0
+    border-radius: 4px
+    padding: 1px 6px
+    min-width: 32px
+    text-align: center
+
+  .dd-size (duplicate item):
+    background: #fff3cd
+    border-color: #ffc107
+    color: #856404
+
+  .dd-name:
+    flex: 1
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-size: 13px
+    color: #1a1a1a
+
+  .dd-unit:
+    flex-shrink: 0
+    font-size: 11px
+    color: #999
+    background: #f3f3f3
+    border-radius: 4px
+    padding: 1px 6px
+
+CONSTRAINTS:
+  - Scope all CSS to .materials-section or the component file only
+  - Do NOT change row height, card width, or other sections
+  - Do NOT change duplicate detection logic, unit lock logic, or scope link behavior
+  - Size badge extraction must be purely display-side — do NOT alter the underlying data model
+  - Must work in both light and dark mode (use CSS variables where applicable)
+==================================================

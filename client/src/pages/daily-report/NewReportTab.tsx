@@ -1750,15 +1750,15 @@ export function NewReportTab({
       ══════════════════════════════════════════════════════ */}
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
         <div>
-        <table className="text-sm w-full" data-testid="table-materials">
+        <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Size",      cls: "w-[56px] text-center" },
+            { label: "Size",      cls: "w-[52px] text-center" },
             { label: "Material Name" },
-            { label: "Category",  cls: "w-[130px]" },
+            { label: "Category",  cls: "w-[120px]" },
             { label: "Qty Used",  cls: "w-[80px] text-center" },
-            { label: "Unit",      cls: "w-[72px] text-center" },
+            { label: "Unit",      cls: "w-[64px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
-            { label: "Notes",     cls: "w-[120px]" },
+            { label: "Notes",     cls: "w-[110px]" },
           ]} />
           <tbody>
             {materials.length === 0 && (
@@ -1815,19 +1815,19 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* Qty Used */}
-                  <td className="py-1.5 px-2.5">
+                  <td className="py-1.5 px-2">
                     <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center tabular-nums w-[64px]" />
+                      className="h-8 text-xs text-right tabular-nums w-full" />
                   </td>
                   {/* Unit */}
-                  <td className="py-1.5 px-2.5">
+                  <td className="py-1.5 px-2">
                     <Input
                       data-testid={`input-mat-unit-${i}`}
                       value={row.unit}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
                       readOnly={!!row.inventoryItemId}
-                      className={`h-8 text-xs text-center font-mono w-[60px] ${row.inventoryItemId ? "bg-slate-50 border-slate-200 text-slate-600 cursor-default" : ""}`}
+                      className={`h-8 text-xs text-center font-mono w-full ${row.inventoryItemId ? "bg-slate-50 border-slate-200 text-slate-600 cursor-default" : ""}`}
                       placeholder="EA"
                     />
                   </td>

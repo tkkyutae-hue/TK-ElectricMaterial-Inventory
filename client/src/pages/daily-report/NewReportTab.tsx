@@ -27,6 +27,27 @@ const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string
   "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#ef4444" },
 };
 
+const TRADE_COLOR_CFG: Record<string, { bg: string; color: string; border: string }> = {
+  "Foreman":     { bg: "#dcfce7", color: "#16a34a", border: "#86efac" },
+  "Helper":      { bg: "#dbeafe", color: "#1d6ecc", border: "#bfdbfe" },
+  "Safety":      { bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
+  "Apprentice":  { bg: "#fef3c7", color: "#d97706", border: "#fde68a" },
+  "Electrician": { bg: "#ede9fe", color: "#7c3aed", border: "#c4b5fd" },
+  "Supervisor":  { bg: "#ccfbf1", color: "#0d9488", border: "#99f6e4" },
+};
+const DEFAULT_TRADE_COLOR = { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" };
+function tradeBadge(trade: string | undefined) {
+  if (!trade) return null;
+  const t = TRADE_COLOR_CFG[trade] ?? DEFAULT_TRADE_COLOR;
+  return (
+    <span style={{
+      display: "inline-flex", padding: "1px 7px", borderRadius: 4,
+      fontSize: 9.5, fontWeight: 700, border: `1px solid ${t.border}`,
+      background: t.bg, color: t.color, whiteSpace: "nowrap", flexShrink: 0,
+    }}>{trade}</span>
+  );
+}
+
 const ATTENDANCE_STATUSES = [
   "ATTEND", "PTO", "SICK", "ABSENT", "OFF",
   "LATE", "EARLY_LEAVE", "WFH", "TRAINING", "SUSPENDED", "TERMINATED",
@@ -935,7 +956,7 @@ export function NewReportTab({
                 <div
                   onClick={() => setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
                   className="cursor-pointer hover:bg-[#f8faf9] transition-colors"
-                  style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 160px 130px 40px", alignItems: "center", padding: "12px 14px" }}>
+                  style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 160px 148px 40px", alignItems: "center", padding: "12px 14px" }}>
 
                   {/* Col 1: Description + Area */}
                   <div className="pr-[14px] border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -992,11 +1013,11 @@ export function NewReportTab({
                   </div>
 
                   {/* Col 3: Status */}
-                  <div className="px-3 border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <div className="px-2 border-r border-slate-100" onClick={e => e.stopPropagation()}>
                     <div className="relative">
                       <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
                       <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
-                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`} style={{ minWidth: 120 }}>
+                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`} style={{ minWidth: 120, whiteSpace: "nowrap" }}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1047,7 +1068,7 @@ export function NewReportTab({
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                 }}>{initials(w.name)}</div>
                                 <span className="text-[11px] text-slate-700 flex-1 min-w-0 truncate">{w.name}</span>
-                                {w.trade && <span className="text-[10px] text-slate-400 shrink-0">{w.trade}</span>}
+                                {tradeBadge(w.trade)}
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                                   w.role === "main" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
                                 }`}>{w.role === "main" ? "Main" : "Assist"}</span>
@@ -1097,7 +1118,8 @@ export function NewReportTab({
                                         fontSize: 8, fontWeight: 700,
                                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                                       }}>{initials(mp.workerName)}</div>
-                                      <span className="flex-1">{mp.workerName}</span>
+                                      <span className="flex-1 truncate">{mp.workerName}</span>
+                                      {tradeBadge(mp.trade)}
                                       {row.workers.length === 0
                                         ? <span className="text-[9px] text-green-600 shrink-0">→ Main</span>
                                         : <span className="text-[9px] text-slate-400 shrink-0">Assist</span>}

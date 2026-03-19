@@ -818,29 +818,29 @@ export function NewReportTab({
 
               {/* Summary row — individual tds mirror each column so HRS aligns perfectly */}
               {manpower.length > 0 && (
-                <tr className="border-t border-slate-200 bg-slate-50">
+                <tr style={{ borderTop: "2px solid #d0dbd2", background: "#eef2ef" }}>
                   {/* Worker Name + Trade + Status: SUMMARY label + Present + Exceptions */}
-                  <td colSpan={3} className="py-2 px-2.5">
+                  <td colSpan={3} className="px-3" style={{ paddingTop: 10, paddingBottom: 10 }}>
                     <div className="flex items-center gap-0">
-                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-3">
+                      <span className="text-[11px] uppercase tracking-wider mr-3" style={{ fontWeight: 700, color: "#3d5c42" }}>
                         Summary
                       </span>
                       <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
                         <span className="text-[11px] text-slate-500">Present:</span>
-                        <span className="text-[11px] font-bold text-slate-800">{presentCount}</span>
+                        <span className="text-[11px] tabular-nums" style={{ fontWeight: 700, color: "#16a34a" }}>{presentCount}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-[11px] text-slate-500">Exceptions:</span>
-                        <span className="text-[11px] font-bold text-slate-800">{exceptionsCount}</span>
+                        <span className="text-[11px] tabular-nums" style={{ fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8" }}>{exceptionsCount}</span>
                       </div>
                     </div>
                   </td>
                   {/* Start: empty */}
-                  <td className="py-2 px-2.5" />
+                  <td style={{ paddingTop: 10, paddingBottom: 10 }} />
                   {/* End: empty */}
-                  <td className="py-2 px-2.5" />
+                  <td style={{ paddingTop: 10, paddingBottom: 10 }} />
                   {/* Break: break chip */}
-                  <td className="py-2 px-2.5 text-center">
+                  <td className="px-2.5 text-center" style={{ paddingTop: 10, paddingBottom: 10 }}>
                     {defLunchBreak ? (
                       <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[9px] font-semibold text-amber-700 whitespace-nowrap">
                         ● ON
@@ -852,11 +852,13 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* HRS: total man-hours — aligned directly under HRS header */}
-                  <td className="py-2 px-2.5 text-center">
-                    <span className="text-[11px] font-bold text-slate-800 tabular-nums">{totalManhours.toFixed(1)}</span>
+                  <td className="px-2.5 text-center" style={{ paddingTop: 10, paddingBottom: 10 }}>
+                    <span className="tabular-nums leading-none" style={{ fontSize: 16, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a" }}>
+                      {totalManhours.toFixed(1)}
+                    </span>
                   </td>
                   {/* Notes: man-hrs label + issues indicator */}
-                  <td colSpan={2} className="py-2 px-2.5">
+                  <td colSpan={2} className="px-2.5" style={{ paddingTop: 10, paddingBottom: 10 }}>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-slate-400">man-hrs</span>
                       <span className="text-slate-200">|</span>

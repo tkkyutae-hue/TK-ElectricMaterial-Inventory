@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { MovementForm } from "@/components/MovementForm";
@@ -356,6 +356,26 @@ type BundleRow = {
   category: string;
   scopeType: "primary" | "support";
   checked: boolean;
+  linkedInventoryItemId?: number | null;
+};
+
+function newBundleRow(): BundleRow {
+  return {
+    localId: Math.random().toString(36).slice(2),
+    itemName: "", unit: "EA", estimatedQty: "",
+    category: "Other", scopeType: "primary",
+    checked: true, linkedInventoryItemId: null,
+  };
+}
+
+// Size lists per bundle type
+const BUNDLE_SIZES: Record<string, string[]> = {
+  "EMT Conduit Bundle":      ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","4\""],
+  "Rigid Conduit Bundle":    ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","4\"","5\"","6\""],
+  "Flexible Conduit Bundle": ["3/8\"","1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\""],
+  "Cable Tray Bundle":       ["4\"","6\"","9\"","12\"","18\"","24\"","30\"","36\""],
+  "Box / Device Bundle":     ["1G","2G","4\" Square","4-11/16\""],
+  "Grounding Bundle":        ["#6","#4","#2","#1/0","#2/0","3/4\" Rod","5/8\" Rod"],
 };
 
 function newPendingRow(): PendingRow {
@@ -545,6 +565,150 @@ function InlineScopeRow({
         data-testid={`inline-scope-remarks-${rowIndex}`}
       />
     </div>
+  );
+}
+
+// ── Bundle scope row (searchable, used in BundleSelector configure phase) ──────
+function BundleScopeRow({
+  row, invItems, onChange, onRemove, rowIndex,
+}: {
+  row: BundleRow;
+  invItems: any[];
+  onChange: (updated: BundleRow) => void;
+  onRemove: () => void;
+  rowIndex: number;
+}) {
+  const [invSearch, setInvSearch] = useState(
+    row.linkedInventoryItemId
+      ? (invItems.find(it => it.id === row.linkedInventoryItemId)?.name ?? row.itemName)
+      : row.itemName
+  );
+  const [invOpen, setInvOpen] = useState(false);
+
+  const filtered = invItems.filter(it => flexMatch(invSearch, it.name)).slice(0, 10);
+
+  function selectInv(it: any) {
+    setInvSearch(it.name);
+    setInvOpen(false);
+    onChange({
+      ...row,
+      itemName: it.name,
+      unit: it.unitOfMeasure ?? row.unit,
+      linkedInventoryItemId: it.id,
+      category: normalizeCategory(it.subcategory) || row.category,
+    });
+  }
+
+  // Sync invSearch when row.itemName changes externally (size update)
+  const prevName = useRef(row.itemName);
+  useEffect(() => {
+    if (row.itemName !== prevName.current && !row.linkedInventoryItemId) {
+      setInvSearch(row.itemName);
+    }
+    prevName.current = row.itemName;
+  }, [row.itemName, row.linkedInventoryItemId]);
+
+  return (
+    <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : "bg-white"}`}
+      data-testid={`bundle-row-${rowIndex}`}>
+      {/* Checkbox */}
+      <td className="px-3 py-2">
+        <input type="checkbox" checked={row.checked}
+          onChange={e => onChange({ ...row, checked: e.target.checked })}
+          className="rounded" data-testid={`bundle-row-check-${rowIndex}`} />
+      </td>
+      {/* Item / inventory search */}
+      <td className="px-2 py-2">
+        <div className="relative">
+          <Input
+            value={invSearch}
+            placeholder="Search inventory…"
+            disabled={!row.checked}
+            onChange={e => {
+              const val = e.target.value;
+              setInvSearch(val);
+              setInvOpen(true);
+              if (row.linkedInventoryItemId && val !== invItems.find(it => it.id === row.linkedInventoryItemId)?.name) {
+                onChange({ ...row, itemName: val, linkedInventoryItemId: null });
+              } else {
+                onChange({ ...row, itemName: val });
+              }
+            }}
+            onFocus={() => row.checked && setInvOpen(true)}
+            onBlur={() => setTimeout(() => setInvOpen(false), 150)}
+            className={`h-7 text-xs ${row.linkedInventoryItemId ? "border-emerald-300 bg-emerald-50/60" : ""}`}
+            data-testid={`bundle-row-name-${rowIndex}`}
+          />
+          {row.checked && row.linkedInventoryItemId && (
+            <button type="button"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              onClick={() => { setInvSearch(""); onChange({ ...row, itemName: "", linkedInventoryItemId: null }); }}>
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {invOpen && row.checked && filtered.length > 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+              {filtered.map(it => (
+                <button key={it.id} type="button"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => selectInv(it)}
+                  className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 ${row.linkedInventoryItemId === it.id ? "bg-emerald-50 text-emerald-800 font-semibold" : "text-slate-700"}`}>
+                  <span className="truncate">{it.name}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0">{it.unitOfMeasure}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {row.checked && row.linkedInventoryItemId && (
+          <p className="text-[9px] text-emerald-600 mt-0.5 flex items-center gap-0.5">
+            <CheckCircle2 className="w-2 h-2" /> linked
+          </p>
+        )}
+      </td>
+      {/* Unit */}
+      <td className="px-2 py-2 w-14">
+        <Input value={row.unit} disabled={!row.checked}
+          onChange={e => onChange({ ...row, unit: e.target.value })}
+          className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${rowIndex}`} />
+      </td>
+      {/* Est. Qty */}
+      <td className="px-2 py-2 w-20">
+        <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0"
+          disabled={!row.checked}
+          onChange={e => onChange({ ...row, estimatedQty: e.target.value })}
+          className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${rowIndex}`} />
+      </td>
+      {/* Category */}
+      <td className="px-2 py-2 w-28">
+        <Input value={row.category} disabled={!row.checked}
+          onChange={e => onChange({ ...row, category: e.target.value })}
+          className="h-7 text-xs w-28"
+          list={`bundle-cat-list-${rowIndex}`}
+          data-testid={`bundle-row-cat-${rowIndex}`} />
+        <datalist id={`bundle-cat-list-${rowIndex}`}>
+          {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
+        </datalist>
+      </td>
+      {/* Scope type */}
+      <td className="px-2 py-2 w-20">
+        <select value={row.scopeType} disabled={!row.checked}
+          onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
+          className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
+          data-testid={`bundle-row-type-${rowIndex}`}>
+          <option value="primary">Primary</option>
+          <option value="support">Support</option>
+        </select>
+      </td>
+      {/* Delete */}
+      <td className="px-2 py-2 w-8">
+        <button type="button" onClick={onRemove}
+          className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+          data-testid={`bundle-row-delete-${rowIndex}`}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -851,35 +1015,80 @@ function VariantArea({
 
 // ── Bundle Selector ────────────────────────────────────────────────────────────
 function BundleSelector({
-  onSave, onClose,
+  onSave, onClose, invItems,
 }: {
   onSave: (rows: Omit<BundleRow, "localId">[]) => void;
   onClose: () => void;
+  invItems: any[];
 }) {
   const [phase, setPhase] = useState<"select" | "configure">("select");
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string>("");
   const [bundleRows, setBundleRows] = useState<BundleRow[]>([]);
 
-  function pickBundle(name: string) {
-    const items = BUNDLE_DEFINITIONS[name];
-    setBundleRows(items.map(it => ({
+  const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
+
+  // Generate rows from bundle definition + size
+  function buildRows(bundleName: string, size: string): BundleRow[] {
+    const items = BUNDLE_DEFINITIONS[bundleName] ?? [];
+    return items.map(it => ({
       localId: Math.random().toString(36).slice(2),
-      itemName: it.itemName, unit: it.unit,
-      estimatedQty: "", category: it.category,
-      scopeType: it.scopeType, checked: true,
-    })));
+      itemName: size ? `${it.itemName} ${size}` : it.itemName,
+      unit: it.unit,
+      estimatedQty: "",
+      category: it.category,
+      scopeType: it.scopeType,
+      checked: true,
+      linkedInventoryItemId: null,
+    }));
+  }
+
+  function pickBundle(name: string) {
+    const defaultSize = BUNDLE_SIZES[name]?.[0] ?? "";
     setSelectedBundle(name);
+    setSelectedSize(defaultSize);
+    setBundleRows(buildRows(name, defaultSize));
     setPhase("configure");
+  }
+
+  function handleSizeChange(size: string) {
+    setSelectedSize(size);
+    if (!selectedBundle) return;
+    // Re-apply size to rows that are still named from the bundle (not manually edited)
+    setBundleRows(prev => {
+      const origItems = BUNDLE_DEFINITIONS[selectedBundle] ?? [];
+      return prev.map((row, i) => {
+        // If this is an original bundle row (not a manually added blank row)
+        const orig = origItems[i];
+        if (!orig || row.linkedInventoryItemId) return row;
+        return {
+          ...row,
+          itemName: size ? `${orig.itemName} ${size}` : orig.itemName,
+        };
+      });
+    });
+  }
+
+  function addManualRow() {
+    setBundleRows(prev => [...prev, newBundleRow()]);
+  }
+
+  function updateRow(localId: string, updated: BundleRow) {
+    setBundleRows(prev => prev.map(r => r.localId === localId ? updated : r));
+  }
+
+  function removeRow(localId: string) {
+    setBundleRows(prev => prev.filter(r => r.localId !== localId));
   }
 
   function handleSave() {
     const toSave = bundleRows
-      .filter(r => r.checked)
+      .filter(r => r.checked && r.itemName.trim())
       .map(({ localId: _l, checked: _c, ...rest }) => rest);
     onSave(toSave);
   }
 
-  const checkedCount = bundleRows.filter(r => r.checked).length;
+  const checkedCount = bundleRows.filter(r => r.checked && r.itemName.trim()).length;
 
   if (phase === "select") {
     return (
@@ -889,7 +1098,7 @@ function BundleSelector({
             <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
               <Boxes className="w-4 h-4 text-brand-600" /> Add by Bundle
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Select a bundle template to bulk-add related scope items</p>
+            <p className="text-xs text-slate-400 mt-0.5">Select a bundle template — then pick a size and confirm items</p>
           </div>
           <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">Cancel</Button>
         </div>
@@ -907,7 +1116,7 @@ function BundleSelector({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 leading-snug">{name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{items.length} items</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{items.length} items · click to configure</p>
                 </div>
               </div>
             </button>
@@ -919,74 +1128,82 @@ function BundleSelector({
 
   return (
     <div className="premium-card bg-white overflow-hidden">
+      {/* Configure header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
         <div>
           <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-            <Layers className="w-4 h-4 text-brand-600" /> Configure: {selectedBundle}
+            <Layers className="w-4 h-4 text-brand-600" /> {selectedBundle}
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">Check items to include and fill in estimated quantities</p>
+          <p className="text-xs text-slate-400 mt-0.5">Check items to include · search inventory · fill quantities</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setPhase("select")} className="text-xs">← Back</Button>
           <Button size="sm" variant="outline" onClick={onClose} className="text-xs">Cancel</Button>
         </div>
       </div>
+
+      {/* Size selector bar */}
+      {availableSizes.length > 0 && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-600 shrink-0">Size</span>
+          <div className="flex flex-wrap gap-1.5">
+            {availableSizes.map(sz => (
+              <button
+                key={sz} type="button"
+                onClick={() => handleSizeChange(sz)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  selectedSize === sz
+                    ? "bg-brand-700 text-white border-brand-700"
+                    : "border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50"
+                }`}
+                data-testid={`bundle-size-${sz.replace(/[^a-z0-9]/gi, "-")}`}
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
+          <span className="text-[10px] text-slate-400 ml-1">Applies to item names automatically</span>
+        </div>
+      )}
+
+      {/* Items table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50/80">
             <tr>
-              <th className="px-4 py-2.5 w-8"></th>
-              <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs">Item</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-16">Unit</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-24">Est. Qty</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-28">Category</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs w-24">Type</th>
+              <th className="px-3 py-2.5 w-8"></th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs">Item (search inventory)</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-14">Unit</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Est. Qty</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-28">Category</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Type</th>
+              <th className="w-8"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {bundleRows.map((row, i) => (
-              <tr key={row.localId} className={`transition-colors ${row.checked ? "bg-white" : "bg-slate-50 opacity-50"}`}>
-                <td className="px-4 py-2.5">
-                  <input type="checkbox" checked={row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, checked: e.target.checked } : r))}
-                    className="rounded" data-testid={`bundle-row-check-${i}`}
-                  />
-                </td>
-                <td className="px-4 py-2.5">
-                  <Input value={row.itemName} disabled={!row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, itemName: e.target.value } : r))}
-                    className="h-7 text-xs" data-testid={`bundle-row-name-${i}`} />
-                </td>
-                <td className="px-3 py-2.5">
-                  <Input value={row.unit} disabled={!row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, unit: e.target.value } : r))}
-                    className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${i}`} />
-                </td>
-                <td className="px-3 py-2.5">
-                  <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0" disabled={!row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, estimatedQty: e.target.value } : r))}
-                    className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${i}`} />
-                </td>
-                <td className="px-3 py-2.5">
-                  <Input value={row.category} disabled={!row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, category: e.target.value } : r))}
-                    className="h-7 text-xs w-24" data-testid={`bundle-row-cat-${i}`} />
-                </td>
-                <td className="px-3 py-2.5">
-                  <select value={row.scopeType} disabled={!row.checked}
-                    onChange={e => setBundleRows(prev => prev.map(r => r.localId === row.localId ? { ...r, scopeType: e.target.value as "primary" | "support" } : r))}
-                    className="h-7 text-xs border border-slate-200 rounded px-1.5 bg-white" data-testid={`bundle-row-type-${i}`}>
-                    <option value="primary">Primary</option>
-                    <option value="support">Support</option>
-                  </select>
-                </td>
-              </tr>
+              <BundleScopeRow
+                key={row.localId}
+                row={row}
+                invItems={invItems}
+                rowIndex={i}
+                onChange={updated => updateRow(row.localId, updated)}
+                onRemove={() => removeRow(row.localId)}
+              />
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Footer actions */}
       <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-        <span className="text-xs text-slate-500">{checkedCount} of {bundleRows.length} items selected</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500">{checkedCount} item{checkedCount !== 1 ? "s" : ""} will be added</span>
+          <Button size="sm" variant="outline" className="text-xs border-slate-200 text-slate-600 hover:bg-slate-50" onClick={addManualRow}
+            data-testid="button-bundle-add-row">
+            <Plus className="w-3 h-3 mr-1" /> Add Row
+          </Button>
+        </div>
         <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={handleSave}
           disabled={checkedCount === 0} data-testid="button-save-bundle">
           <Save className="w-4 h-4 mr-1.5" />
@@ -1171,13 +1388,13 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
             <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
             <p className="text-xs text-slate-400 mt-0.5">Grouped by category — click headers to collapse</p>
           </div>
-          {/* Split dropdown button */}
+          {/* Split button: main = Add Multiple, arrow = Add by Bundle */}
           <div className="relative">
             <div className="flex">
               <Button size="sm"
                 className="bg-brand-700 hover:bg-brand-800 text-white rounded-r-none border-r border-brand-500/40"
-                onClick={() => { setDialogItem("new"); setShowAddMenu(false); }}
-                data-testid="button-add-scope-single">
+                onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); setShowAddMenu(false); }}
+                data-testid="button-add-scope-multiple">
                 <Plus className="w-4 h-4 mr-1" /> Add Item
               </Button>
               <button
@@ -1188,18 +1405,13 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
               </button>
             </div>
             {showAddMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 min-w-[200px] py-1">
-                {[
-                  { label: "Add Single Item",    Icon: Plus,   action: () => { setDialogItem("new"); setShowAddMenu(false); } },
-                  { label: "Add Multiple Items", Icon: Layers, action: () => { setAddMode("multiple"); setPendingRows([newPendingRow()]); setShowAddMenu(false); } },
-                  { label: "Add by Bundle",      Icon: Boxes,  action: () => { setAddMode("bundle"); setShowAddMenu(false); } },
-                ].map(({ label, Icon, action }) => (
-                  <button key={label} type="button" onClick={action}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-2.5"
-                    data-testid={`menu-scope-${label.toLowerCase().replace(/\s+/g, "-")}`}>
-                    <Icon className="w-3.5 h-3.5 text-brand-600 shrink-0" /> {label}
-                  </button>
-                ))}
+              <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 min-w-[180px] py-1">
+                <button type="button"
+                  onClick={() => { setAddMode("bundle"); setShowAddMenu(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-2.5"
+                  data-testid="menu-scope-add-by-bundle">
+                  <Boxes className="w-3.5 h-3.5 text-brand-600 shrink-0" /> Add by Bundle
+                </button>
               </div>
             )}
           </div>
@@ -1212,7 +1424,9 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
             <LayoutList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No scope items yet</p>
             <p className="text-xs text-slate-400 mt-1">Add items to define the project's estimated work quantities.</p>
-            <Button size="sm" variant="outline" className="mt-4" onClick={() => setDialogItem("new")} data-testid="button-add-scope-item-empty">
+            <Button size="sm" variant="outline" className="mt-4"
+              onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); }}
+              data-testid="button-add-scope-item-empty">
               <Plus className="w-4 h-4 mr-1" /> Add First Item
             </Button>
           </div>
@@ -1412,7 +1626,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
 
       {/* Bundle selector */}
       {addMode === "bundle" && (
-        <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} />
+        <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} invItems={allInvItems} />
       )}
 
       {/* Add / Edit dialog */}

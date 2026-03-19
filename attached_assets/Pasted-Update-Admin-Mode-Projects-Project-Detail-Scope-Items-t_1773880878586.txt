@@ -1,0 +1,106 @@
+Update Admin Mode → Projects → Project Detail → Scope Items tab.
+
+IMPORTANT:
+Do NOT change page width, card width, table spacing, row height, sidebar, topbar, or other tabs.
+Only modify the Scope Items tab behavior described below.
+
+1) Change the Add Item control behavior
+- Remove the "Add Single Item" option completely.
+- The main "Add Item" button should now directly open the "Add Multiple Items" inline editor by default.
+- Keep the small dropdown arrow on the right side of the button.
+- Clicking the dropdown arrow should show only one alternate option:
+  - Add by Bundle
+
+So the final behavior is:
+- Main button click = Add Multiple Items
+- Arrow dropdown = Add by Bundle
+- No single-item flow anymore
+
+2) Add Multiple Items should remain inline
+- Keep Add Multiple Items as an inline table editor inside the Scope Items section.
+- Columns:
+  Item | Unit | Est. Qty | Category | Scope Type | Actions
+- Allow searchable item selection from inventory
+- Allow typing to search
+- Allow adding multiple rows
+- Keep Save All / Cancel / Add Row actions
+
+3) Improve Add by Bundle flow
+When user chooses Add by Bundle:
+- Show bundle cards such as:
+  EMT Conduit Bundle
+  Rigid Conduit Bundle
+  Flexible Conduit Bundle
+  Cable Tray Bundle
+  Box / Device Bundle
+  Grounding Bundle
+
+After selecting a bundle:
+- Add a Size selector at the top of the bundle panel
+- Example sizes:
+  1/2"
+  3/4"
+  1"
+  1-1/4"
+  1-1/2"
+  2"
+  2-1/2"
+  3"
+  4"
+  5"
+  6"
+- Size options should adapt depending on bundle type if needed
+
+4) Size-aware related fittings
+After user selects a bundle type and size:
+- Auto-populate the bundle item list with matching related fittings for that selected size
+- Example for EMT Conduit Bundle:
+  EMT Conduit [selected size]
+  EMT Coupling [selected size]
+  EMT Connector [selected size]
+  EMT Set Screw Connector [selected size]
+  EMT Compression Connector [selected size]
+  EMT Strap [selected size]
+  EMT Elbow [selected size]
+- Example:
+  if size = 3/4", related items should default to 3/4" versions
+
+5) Keep manual search/edit capability
+Even when items are auto-generated from a bundle:
+- Each row/item must still be editable
+- User must be able to type and search inventory manually to replace or adjust the item
+- User must be able to change the selected item even after bundle auto-fill
+- Unit should auto-fill from the selected inventory item
+- Category should auto-fill when possible
+
+6) Add delete/remove control for bundle-generated rows
+Some bundle items may not be needed.
+So for every generated bundle row:
+- Add a Delete / Remove row button
+- User can remove any unnecessary item before saving
+- This must work inside the bundle workflow before final add/save
+
+7) Bundle editor layout
+Inside the bundle editor:
+- Show rows in an editable table format
+- Columns:
+  Included | Item | Unit | Est. Qty | Category | Actions
+- "Included" can be a checkbox
+- "Actions" should include delete/remove
+- User can uncheck or delete unnecessary rows
+- User can still add an extra manual row if needed
+
+8) Final save behavior
+When user confirms the bundle:
+- Add all remaining included rows into Scope Items
+- Preserve current category grouping behavior already implemented
+- Preserve current row styling and table sizing
+- Do not reintroduce the old flat unordered layout
+
+9) Anti-regression
+Do NOT:
+- bring back Add Single Item
+- change page or card widths
+- enlarge row heights
+- modify Overview / Material Usage / Daily Reports / Progress tabs
+- change current grouped category display styling outside this Add Item workflow

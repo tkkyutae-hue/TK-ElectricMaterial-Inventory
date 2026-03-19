@@ -260,15 +260,16 @@ function WorkerCombobox({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
-        <div className="absolute z-[100] top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto">
+        <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden" style={{ minWidth: 240 }}>
           {filtered.map((w) => (
             <button key={w.id} type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setQuery(w.fullName); setOpen(false); onChange({ workerId: w.id, workerName: w.fullName, trade: w.trade ?? "" }); }}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 transition-colors">
-              <HardHat className="w-3 h-3 text-slate-400 shrink-0" />
-              <span className="font-medium text-slate-700 truncate">{w.fullName}</span>
-              {w.trade && <span className="text-slate-400 ml-auto shrink-0 text-[10px]">{w.trade}</span>}
+              className="w-full text-left hover:bg-slate-50 transition-colors"
+              style={{ padding: "7px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+              <HardHat className="w-3.5 h-3.5 text-slate-400" style={{ flexShrink: 0 }} />
+              <span className="font-medium text-slate-700" style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.fullName}</span>
+              {w.trade && <span className="text-slate-400" style={{ flexShrink: 0, fontSize: 11, marginLeft: 8 }}>{w.trade}</span>}
             </button>
           ))}
         </div>
@@ -933,14 +934,14 @@ export function NewReportTab({
         <div>
           <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "w-[220px]" },
-              { label: "Trade",        cls: "w-[110px]" },
+              { label: "Worker Name",  cls: "min-w-[200px]" },
+              { label: "Trade",        cls: "w-[65px]" },
               { label: "Status",       cls: "w-[140px]" },
               { label: "Start",        cls: "w-[76px]" },
               { label: "End",          cls: "w-[76px]" },
               { label: "Break",        cls: "w-[46px] text-center" },
               { label: "Hrs",          cls: "w-[48px] text-center" },
-              { label: "Notes",        cls: "w-[120px]" },
+              { label: "Notes",        cls: "w-[55px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (

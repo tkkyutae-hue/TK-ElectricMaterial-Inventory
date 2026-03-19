@@ -55,6 +55,18 @@ const ATTENDANCE_STATUSES = [
 
 const HOURS_COMPUTED = new Set(["ATTEND", "LATE", "EARLY_LEAVE", "WFH", "TRAINING"]);
 
+const EQ_STATUS_CFG = {
+  operational: { label: "✓  Operational",  border: "#86efac", bg: "#f0fdf4", color: "#15803d" },
+  partial:     { label: "⚠  Partial Issue", border: "#fde68a", bg: "#fffbeb", color: "#b45309" },
+  broken:      { label: "✕  Broken Down",   border: "#fecdd3", bg: "#fff1f2", color: "#e11d48" },
+} as const;
+
+const EQ_TAG_CFG: Record<string, { bg: string; border: string; color: string; label: string }> = {
+  repair:  { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c", label: "🔧 Repair Requested" },
+  return:  { bg: "#f0f9ff", border: "#bae6fd", color: "#0369a1", label: "↩ Return Scheduled" },
+  pending: { bg: "#faf5ff", border: "#e9d5ff", color: "#7c3aed", label: "⏳ Pending" },
+};
+
 const EQUIPMENT_PRESETS = [
   "Scissor Lift", "Boom Lift", "One Man Lift", "Reach Forklift",
   "Forklift", "Trench", "Excavator Small", "Excavator Big",
@@ -119,7 +131,11 @@ interface ManpowerRow {
   hoursWorked: number; lunchBreak: boolean; notes: string;
 }
 interface MaterialRow  { id: number; description: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
-interface EquipmentRow { id: number; name: string; unit: string; qty: number; hours: number; notes: string }
+interface EquipmentRow {
+  id: number; name: string; size: string; brand: string;
+  unit: string; qty: number; hours: number; notes: string;
+  eqStatus: "operational" | "partial" | "broken"; tags: string[];
+}
 
 function isWorkerBasedManpower(rows: any[]): boolean {
   return rows.length === 0 || "workerId" in rows[0];
@@ -138,10 +154,10 @@ const SECTION_ICON_STYLE: Record<number, { bg: string; icon: string }> = {
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 // overflow-hidden removed so combobox dropdowns are not clipped
 function Section({
-  num, title, icon, defaultOpen = true, summary, children,
+  num, title, icon, defaultOpen = true, summary, alert, children,
 }: {
   num: number; title: string; icon: React.ReactNode;
-  defaultOpen?: boolean; summary?: string; children: React.ReactNode;
+  defaultOpen?: boolean; summary?: string; alert?: React.ReactNode; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const ic = SECTION_ICON_STYLE[num] ?? { bg: "bg-slate-100", icon: "text-slate-500" };
@@ -161,6 +177,7 @@ function Section({
           {!open && summary && (
             <span className="ml-1 text-[11px] text-slate-400 truncate">{summary}</span>
           )}
+          {alert && <span className="ml-2 shrink-0">{alert}</span>}
         </div>
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-3 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -612,6 +629,13 @@ export function NewReportTab({
   const mpSummary  = manpower.length  ? `${totalWorkers}w · ${totalManhours.toFixed(1)}h` : undefined;
   const matSummary = materials.length ? `${materials.length} item${materials.length !== 1 ? "s" : ""}` : undefined;
   const eqSummary  = equipment.length ? `${equipment.length} item${equipment.length !== 1 ? "s" : ""}` : undefined;
+  const eqIssueCount = equipment.filter(r => r.eqStatus === "partial" || r.eqStatus === "broken").length;
+  const eqAlert = eqIssueCount > 0 ? (
+    <span style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 20, padding: "3px 12px", fontSize: 12, color: "#e11d48", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      {eqIssueCount} issue{eqIssueCount !== 1 ? "s" : ""}
+    </span>
+  ) : undefined;
   const taskSummary = tasks.length ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
 
   function handleDeleteTask(task: TaskRow, index: number) {
@@ -1894,7 +1918,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
-      <Section num={5} title="Equipment" icon={<Truck className="w-4 h-4" />} summary={eqSummary} defaultOpen={false}>
+      <Section num={5} title="Equipment" icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
         <div className="mb-4">
@@ -1905,7 +1929,7 @@ export function NewReportTab({
             {EQUIPMENT_PRESETS.map((name) => (
               <button key={name} type="button"
                 data-testid={`btn-eq-preset-${name.replace(/ /g, "-").toLowerCase()}`}
-                onClick={() => setEquipment([...equipment, { id: uid(), name, unit: "EA", qty: 1, hours: 0, notes: "" }])}
+                onClick={() => setEquipment([...equipment, { id: uid(), name, size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])}
                 className="px-2.5 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">
                 + {name}
               </button>
@@ -1914,56 +1938,146 @@ export function NewReportTab({
         </div>
 
         <div className="overflow-x-auto">
-        <table className="text-sm w-full" data-testid="table-equipment">
+        <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: 900 }} data-testid="table-equipment">
           <TH cols={[
+            { label: "Size",           cls: "w-[80px] text-center" },
             { label: "Equipment Name", cls: "w-[200px]" },
-            { label: "Unit",           cls: "w-[60px] text-center" },
-            { label: "Qty",            cls: "w-[60px] text-center" },
-            { label: "Hours Used",     cls: "w-[80px] text-center" },
+            { label: "Brand",          cls: "w-[100px]" },
+            { label: "Qty",            cls: "w-[64px] text-center" },
+            { label: "Unit",           cls: "w-[64px] text-center" },
+            { label: "Hours Used",     cls: "w-[96px] text-center" },
+            { label: "Status",         cls: "w-[180px]" },
             { label: "Notes",          cls: "w-[120px]" },
           ]} />
           <tbody>
             {equipment.length === 0 && (
-              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">No equipment logged yet — use Quick Add above or add manually</td></tr>
+              <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">No equipment logged yet — use Quick Add above or add manually</td></tr>
             )}
-            {equipment.map((row, i) => (
-              <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
-                <td className="py-1.5 px-2.5">
-                  <Input data-testid={`input-eq-name-${i}`} value={row.name}
-                    onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                    className={cellInputCls} placeholder="Equipment name…" />
-                </td>
-                <td className="py-1.5 px-2.5">
-                  <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
-                    onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                    className="h-8 text-xs text-center w-[52px]" placeholder="EA" />
-                </td>
-                <td className="py-1.5 px-2.5">
-                  <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
-                    onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                    className="h-8 text-xs text-center tabular-nums w-[52px]" />
-                </td>
-                <td className="py-1.5 px-2.5">
-                  <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
-                    onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
-                    className="h-8 text-xs text-center tabular-nums w-[72px]" />
-                </td>
-                <td className="py-1.5 px-2.5">
-                  <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
-                    onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                    className={cellInputCls} placeholder="Optional" />
-                </td>
-                <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
-                </td>
-              </tr>
-            ))}
+            {equipment.map((row, i) => {
+              const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
+              const rowBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : undefined;
+              const visibleTags = row.eqStatus === "broken"
+                ? ["repair", "return"]
+                : row.eqStatus === "partial"
+                ? ["repair", "return", "pending"]
+                : [];
+              return (
+                <tr key={row.id} className="border-b border-slate-100 last:border-0 group" style={rowBg ? { background: rowBg } : undefined}>
+                  {/* SIZE */}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-size-${i}`} value={row.size}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
+                      className="h-8 text-xs text-center w-full" placeholder='e.g. 40T' />
+                  </td>
+                  {/* EQUIPMENT NAME */}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-name-${i}`} value={row.name}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
+                      className={cellInputCls} placeholder="Equipment name…" />
+                  </td>
+                  {/* BRAND */}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
+                      className={cellInputCls} placeholder="Brand…" />
+                  </td>
+                  {/* QTY */}
+                  <td className="py-1.5 px-2">
+                    <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                      className="h-8 text-xs text-center tabular-nums w-full" />
+                  </td>
+                  {/* UNIT */}
+                  <td className="py-1.5 px-2">
+                    <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                      className="h-8 text-xs text-center w-full" placeholder="EA" />
+                  </td>
+                  {/* HOURS USED */}
+                  <td className="py-1.5 px-2">
+                    <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
+                      className="h-8 text-xs text-center tabular-nums w-full" />
+                  </td>
+                  {/* STATUS */}
+                  <td className="py-1.5 px-2.5">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {/* Operation state dropdown */}
+                      <div style={{ position: "relative" }}>
+                        <select
+                          data-testid={`select-eq-status-${i}`}
+                          value={row.eqStatus}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as "operational" | "partial" | "broken";
+                            setEquipment(equipment.map((r) => {
+                              if (r.id !== row.id) return r;
+                              let tags = r.tags;
+                              if (newStatus === "operational") tags = [];
+                              else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
+                              return { ...r, eqStatus: newStatus, tags };
+                            }));
+                          }}
+                          style={{
+                            border: `1px solid ${eqCfg.border}`,
+                            borderRadius: 7, padding: "5px 28px 5px 9px",
+                            fontSize: 12, background: eqCfg.bg, color: eqCfg.color,
+                            appearance: "none", width: "100%", cursor: "pointer",
+                            fontWeight: 500, outline: "none",
+                          }}>
+                          <option value="operational">✓  Operational</option>
+                          <option value="partial">⚠  Partial Issue</option>
+                          <option value="broken">✕  Broken Down</option>
+                        </select>
+                        <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>
+                      </div>
+                      {/* Action tags */}
+                      {visibleTags.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {visibleTags.map((tag) => {
+                            const tc = EQ_TAG_CFG[tag];
+                            const active = row.tags.includes(tag);
+                            return (
+                              <button key={tag} type="button"
+                                data-testid={`btn-eq-tag-${tag}-${i}`}
+                                onClick={() => setEquipment(equipment.map((r) => {
+                                  if (r.id !== row.id) return r;
+                                  const tags = r.tags.includes(tag) ? r.tags.filter(t => t !== tag) : [...r.tags, tag];
+                                  return { ...r, tags };
+                                }))}
+                                style={{
+                                  background: active ? tc.bg : "#f5f5f5",
+                                  border: `1px solid ${active ? tc.border : "#e5e5e5"}`,
+                                  color: active ? tc.color : "#aaa",
+                                  borderRadius: 5, padding: "3px 8px",
+                                  fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+                                  cursor: "pointer",
+                                }}>
+                                {tc.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  {/* NOTES */}
+                  <td className="py-1.5 px-2.5">
+                    <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
+                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
+                      className={cellInputCls} placeholder="Optional" />
+                  </td>
+                  {/* DELETE */}
+                  <td className="py-1.5 px-1 w-[32px] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-
         </div>
         <AddRow testId="btn-add-equipment" label="Add Custom"
-          onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
+          onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════

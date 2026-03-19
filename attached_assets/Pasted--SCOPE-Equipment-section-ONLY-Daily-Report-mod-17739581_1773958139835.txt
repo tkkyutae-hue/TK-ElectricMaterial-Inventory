@@ -1,0 +1,117 @@
+==================================================
+SCOPE: Equipment section ONLY — Daily Report mode.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [EquipmentSection component path]
+==================================================
+
+CHANGE 1 — Remove color dot from Equipment Name cell
+
+  Delete the <span class="eq-dot"> element from every equipment row.
+  The Equipment Name cell should contain ONLY the text input:
+    <td><input class="cell-input" value="Boom Lift" /></td>
+  No icons, no dots, no prefixes.
+
+CHANGE 2 — Add STATUS column
+
+  New column order:
+    SIZE | EQUIPMENT NAME | BRAND | QTY | UNIT | HOURS USED | STATUS | NOTES | [del]
+
+  STATUS column width: 180px
+
+  Each STATUS cell contains two parts stacked vertically (gap: 5px):
+
+  Part 1 — Operation state dropdown:
+    <div class="status-select-wrap">
+      <select class="status-select {status-class}">
+        <option>✓  Operational</option>
+        <option>⚠  Partial Issue</option>
+        <option>✕  Broken Down</option>
+      </select>
+    </div>
+
+    .status-select base style:
+      border: 1px solid #ebebeb
+      border-radius: 7px
+      padding: 5px 22px 5px 9px
+      font-size: 12px
+      background: #fafafa
+      appearance: none
+      width: 100%
+      cursor: pointer
+
+    State-based overrides (apply class to <select>):
+      .status-ok      → border #86efac, background #f0fdf4, color #15803d
+      .status-partial → border #fde68a, background #fffbeb, color #b45309
+      .status-broken  → border #fecdd3, background #fff1f2, color #e11d48
+
+    Chevron arrow: position absolute, right 8px, color #aaa
+
+  Part 2 — Action tags (only show when relevant):
+    Render below the dropdown as flex row, gap 4px, flex-wrap wrap
+
+    Tag styles:
+      .tag-repair : background #fff7ed, border 1px solid #fed7aa,
+                    color #c2410c, text "🔧 Repair Requested"
+      .tag-return : background #f0f9ff, border 1px solid #bae6fd,
+                    color #0369a1, text "↩ Return Scheduled"
+      .tag-pending: background #faf5ff, border 1px solid #e9d5ff,
+                    color #7c3aed, text "⏳ Pending"
+
+    All tags: border-radius 5px, padding 3px 8px, font-size 11px,
+              font-weight 600, white-space nowrap
+
+    Logic:
+      Operational  → no tags shown
+      Partial Issue → show relevant tags based on user selection
+      Broken Down  → show Repair Requested tag by default
+                     optionally show Return Scheduled if marked
+
+  Tags should be toggleable (clicking adds/removes them).
+
+CHANGE 3 — Row background tinting by status
+
+  Operational  → default white (no change)
+  Partial Issue → background #fffdf4 on all td in that row
+  Broken Down  → background #fff8f8 on all td in that row
+
+  Use row-level class:
+    .row-broken  td { background: #fff8f8 }
+    .row-partial td { background: #fffdf4 }
+
+CHANGE 4 — Header: add issue count chip
+
+  In the section header right side, add an alert chip:
+    Only show when 1+ equipment rows have Partial Issue or Broken Down status
+    background: #fff1f2
+    border: 1px solid #fecdd3
+    border-radius: 20px
+    padding: 3px 12px
+    font-size: 12px
+    color: #e11d48
+    font-weight: 600
+    text: "{count} issues"
+    Show warning triangle SVG icon on the left
+
+CHANGE 5 — Remove Hours Used progress bar
+
+  If a gradient/progress bar was previously added under the Hours Used
+  input, remove it entirely.
+  Hours Used cell should be a plain input only:
+    <td><input class="cell-input center" value="8" /></td>
+
+UPDATED column widths (table-layout: fixed, min-width: 900px):
+  SIZE          :  80px
+  EQUIPMENT NAME: 200px
+  BRAND         : 100px
+  QTY           :  64px
+  UNIT          :  64px
+  HOURS USED    :  96px
+  STATUS        : 180px
+  NOTES         : 120px
+  Delete        :  32px
+
+CONSTRAINTS:
+  - Scope all changes to .equipment-section or component file only
+  - Do NOT change Quick Add buttons, summary bar, or other sections
+  - Must work in light and dark mode
+==================================================

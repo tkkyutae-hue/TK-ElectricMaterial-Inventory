@@ -359,15 +359,16 @@ function PreparedByCombobox({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && filtered.length > 0 && (
-        <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto">
+        <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden">
           {filtered.map(w => (
             <button key={w.id} type="button"
               onMouseDown={e => e.preventDefault()}
               onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 transition-colors">
-              <HardHat className="w-3 h-3 text-slate-400 shrink-0" />
+              style={{ padding: "8px 12px" }}
+              className="w-full text-left text-xs hover:bg-slate-50 flex items-center gap-2.5 transition-colors">
+              <HardHat className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
               <span className="font-medium text-slate-800 truncate">{w.fullName}</span>
-              {w.trade && <span className="text-slate-400 ml-auto shrink-0 text-[10px]">{w.trade}</span>}
+              {w.trade && <span className="text-slate-400 ml-auto flex-shrink-0 text-[10px]">{w.trade}</span>}
             </button>
           ))}
         </div>
@@ -781,8 +782,9 @@ export function NewReportTab({
 
           <div>
             <FL>Report Date</FL>
-            <Input data-testid="input-report-date" type="date" value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)} className="h-9 text-sm" />
+            <input data-testid="input-report-date" type="date" value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="block h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
           </div>
 
           {/* Row 2 */}

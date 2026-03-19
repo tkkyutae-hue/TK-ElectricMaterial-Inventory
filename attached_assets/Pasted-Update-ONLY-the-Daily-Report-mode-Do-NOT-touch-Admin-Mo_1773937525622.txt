@@ -1,0 +1,62 @@
+Update ONLY the Daily Report mode.
+
+Do NOT touch:
+- Admin Mode
+- Overview / Scope Items / Material Usage / Progress
+- outer page width
+- outer card width
+- current restored wider internal width of sections
+
+Fix these remaining issues only:
+
+1) Add missing action buttons
+For BOTH the top action bar and bottom action bar:
+- add Submit button next to Save Draft
+- add Delete button for Manager and above only
+- button order must be: Save Draft / Submit / Delete
+- Delete visible only for:
+  - General Manager
+  - Deputy General Manager
+  - Manager
+- Delete hidden for Assistant Manager and below
+
+2) Fix clipped name fields in Manpower
+The Worker Name field is still too narrow and text is getting cut off.
+Make the Worker Name column visibly wider so full names are readable.
+Also slightly rebalance the Manpower row widths so:
+- Worker Name gets more width
+- Trade keeps enough width
+- Start / End / Break / Hrs stay compact
+Do NOT shrink the whole section again.
+
+3) Remove nested scrolling / clipped dropdown content
+Current problem:
+there is scroll inside scroll, and listed items are being cut off in Manpower and Materials.
+
+Fix:
+- remove nested inner scroll containers for the input/list area when not necessary
+- dropdown/search result panels must fully display visible items
+- Materials list/search area must not clip item names
+- if vertical scroll is needed, only the main section body should scroll, not multiple nested inner boxes
+- do not show a tiny inner scroll area that cuts off results
+
+4) Fix Materials column layout
+Materials row still looks compressed in the left item area.
+Make the Material / Inventory Item field wider so item names are readable.
+Keep Unit / Qty Used / Notes compact.
+Do NOT change outer card width.
+
+5) Keep the already-correct parts unchanged
+Do NOT:
+- change General Info width again
+- shrink Manpower / Work Tasks / Materials / Equipment again
+- restyle buttons globally
+- touch unrelated components
+
+Success result:
+- Submit button exists at top and bottom
+- Delete button exists at top and bottom for Manager and above only
+- Worker names are readable in Manpower
+- Materials item names are readable
+- no nested double-scroll clipping in Manpower or Materials
+- current restored section width stays intact

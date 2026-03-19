@@ -711,18 +711,18 @@ export function NewReportTab({
           <span className="text-[10px] text-slate-300 italic">applied to new rows only</span>
         </div>
 
-        {/* Manpower table — max-h + scroll only when rows exceed 5 */}
-        <div className={`overflow-x-auto${manpower.length > 5 ? " max-h-[360px] overflow-y-auto pr-1" : ""}`}>
+        {/* Manpower table — no overflow-x-auto so dropdown panels are not clipped */}
+        <div>
           <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "w-[160px]" },
-              { label: "Trade",        cls: "w-[100px]" },
+              { label: "Worker Name",  cls: "w-[220px]" },
+              { label: "Trade",        cls: "w-[110px]" },
               { label: "Status",       cls: "w-[100px]" },
               { label: "Start",        cls: "w-[76px]" },
               { label: "End",          cls: "w-[76px]" },
               { label: "Break",        cls: "w-[46px] text-center" },
               { label: "Hrs",          cls: "w-[48px] text-center" },
-              { label: "Notes",        cls: "w-[100px]" },
+              { label: "Notes",        cls: "w-[120px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
@@ -989,7 +989,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        </div>{/* end overflow-x-auto */}
+        </div>
         <AddRow testId="btn-add-task" label="Add Task"
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
@@ -1001,10 +1001,10 @@ export function NewReportTab({
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
-        <div className="overflow-x-auto">
+        <div>
         <table className="text-sm w-full" data-testid="table-materials">
           <TH cols={[
-            { label: "Material / Inventory Item", cls: "w-[220px]" },
+            { label: "Material / Inventory Item", cls: "w-[300px]" },
             { label: "Unit",     cls: "w-[64px] text-center" },
             { label: "Qty Used", cls: "w-[72px] text-center" },
             { label: "Notes",    cls: "w-[120px]" },
@@ -1085,7 +1085,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        </div>{/* end overflow-x-auto */}
+        </div>
         <AddRow testId="btn-add-material" label="Add Material"
           onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
@@ -1169,7 +1169,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
-        </div>{/* end overflow-x-auto */}
+        </div>
         <AddRow testId="btn-add-equipment" label="Add Custom"
           onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
       </Section>

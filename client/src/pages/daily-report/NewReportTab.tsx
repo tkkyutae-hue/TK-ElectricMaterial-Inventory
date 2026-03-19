@@ -816,60 +816,57 @@ export function NewReportTab({
                 );
               })}
 
-              {/* Summary row */}
+              {/* Summary row — individual tds mirror each column so HRS aligns perfectly */}
               {manpower.length > 0 && (
                 <tr className="border-t border-slate-200 bg-slate-50">
-                  <td colSpan={9} className="py-2 px-2.5">
-                    <div className="flex items-center gap-0 flex-wrap">
-
-                      {/* Label */}
-                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-4">
+                  {/* Worker Name + Trade + Status: SUMMARY label + Present + Exceptions */}
+                  <td colSpan={3} className="py-2 px-2.5">
+                    <div className="flex items-center gap-0">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-3">
                         Summary
                       </span>
-
-                      {/* Present */}
                       <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
                         <span className="text-[11px] text-slate-500">Present:</span>
                         <span className="text-[11px] font-bold text-slate-800">{presentCount}</span>
                       </div>
-
-                      {/* Exceptions */}
-                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
+                      <div className="flex items-center gap-1">
                         <span className="text-[11px] text-slate-500">Exceptions:</span>
                         <span className="text-[11px] font-bold text-slate-800">{exceptionsCount}</span>
                       </div>
-
-                      {/* Total Man-hours */}
-                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
-                        <span className="text-[11px] text-slate-500">Total Man-hours:</span>
-                        <span className="text-[11px] font-bold text-slate-800 tabular-nums">{totalManhours.toFixed(1)}</span>
-                        <span className="text-[10px] text-slate-400">man-hrs</span>
-                      </div>
-
-                      {/* Break */}
-                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
-                        {defLunchBreak ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
-                            ● Break: ON
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-medium text-slate-500">
-                            Break: OFF
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Issues */}
-                      <div className="flex items-center">
-                        {exceptionsCount === 0 ? (
-                          <span className="text-[11px] text-slate-400">Issues: None</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
-                            ⚠ {exceptionsCount} flagged
-                          </span>
-                        )}
-                      </div>
-
+                    </div>
+                  </td>
+                  {/* Start: empty */}
+                  <td className="py-2 px-2.5" />
+                  {/* End: empty */}
+                  <td className="py-2 px-2.5" />
+                  {/* Break: break chip */}
+                  <td className="py-2 px-2.5 text-center">
+                    {defLunchBreak ? (
+                      <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[9px] font-semibold text-amber-700 whitespace-nowrap">
+                        ● ON
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-medium text-slate-500 whitespace-nowrap">
+                        OFF
+                      </span>
+                    )}
+                  </td>
+                  {/* HRS: total man-hours — aligned directly under HRS header */}
+                  <td className="py-2 px-2.5 text-center">
+                    <span className="text-[11px] font-bold text-slate-800 tabular-nums">{totalManhours.toFixed(1)}</span>
+                  </td>
+                  {/* Notes: man-hrs label + issues indicator */}
+                  <td colSpan={2} className="py-2 px-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400">man-hrs</span>
+                      <span className="text-slate-200">|</span>
+                      {exceptionsCount === 0 ? (
+                        <span className="text-[11px] text-slate-400">Issues: None</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                          ⚠ {exceptionsCount} flagged
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>

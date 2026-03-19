@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { useRoute, useLocation } from "wouter";
 import { useProjects, useProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import { MovementForm } from "@/components/MovementForm";
@@ -536,8 +537,8 @@ function newBundleRow(): BundleRow {
 
 // Size lists per bundle type
 const BUNDLE_SIZES: Record<string, string[]> = {
-  "EMT Conduit Bundle":      ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","4\""],
-  "Rigid Conduit Bundle":    ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","4\"","5\"","6\""],
+  "EMT Conduit Bundle":      ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
+  "Rigid Conduit Bundle":    ["1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","5\"","6\""],
   "Flexible Conduit Bundle": ["3/8\"","1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\""],
   "Cable Tray Bundle":       ["4\"","6\"","9\"","12\"","18\"","24\"","30\"","36\""],
   "Box / Device Bundle":     ["1G","2G","4\" Square","4-11/16\""],
@@ -736,13 +737,15 @@ function InlineScopeRow({
 
 // ── Bundle scope row (searchable, used in BundleSelector configure phase) ──────
 function BundleScopeRow({
-  row, invItems, onChange, onRemove, rowIndex,
+  row, invItems, onChange, onRemove, rowIndex, bundleType, bundleSize,
 }: {
   row: BundleRow;
   invItems: any[];
   onChange: (updated: BundleRow) => void;
   onRemove: () => void;
   rowIndex: number;
+  bundleType?: string;
+  bundleSize?: string;
 }) {
   const [invSearch, setInvSearch] = useState(
     row.linkedInventoryItemId
@@ -750,8 +753,60 @@ function BundleScopeRow({
       : row.itemName
   );
   const [invOpen, setInvOpen] = useState(false);
+  const [dropRect, setDropRect] = useState<DOMRect | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = invItems.filter(it => flexMatch(invSearch, it.name)).slice(0, 10);
+  // Sync display text when row changes externally (size change / auto-match)
+  const prevLinkedId = useRef(row.linkedInventoryItemId);
+  const prevItemName = useRef(row.itemName);
+  useEffect(() => {
+    const idChanged = row.linkedInventoryItemId !== prevLinkedId.current;
+    const nameChanged = row.itemName !== prevItemName.current;
+    if (idChanged) {
+      if (row.linkedInventoryItemId) {
+        const item = invItems.find(it => it.id === row.linkedInventoryItemId);
+        if (item) setInvSearch(item.name);
+      } else {
+        setInvSearch(row.itemName);
+      }
+      prevLinkedId.current = row.linkedInventoryItemId;
+    } else if (nameChanged && !row.linkedInventoryItemId) {
+      setInvSearch(row.itemName);
+    }
+    prevItemName.current = row.itemName;
+  }, [row.itemName, row.linkedInventoryItemId, invItems]);
+
+  // Bundle-type-aware + search filtering
+  const filtered = useMemo(() => {
+    const query = invSearch.trim();
+    let pool = invItems;
+
+    // When no query, pre-filter to bundle-relevant items
+    if (!query && bundleType) {
+      const bt = bundleType.toLowerCase();
+      pool = invItems.filter(it => {
+        const n = it.name.toLowerCase();
+        if (bt.includes("emt conduit")) return n.includes("emt");
+        if (bt.includes("rigid conduit")) return n.includes("rigid") && !n.includes("flexible") && !n.includes("liquidtight");
+        if (bt.includes("flexible conduit")) return n.includes("flexible") || n.includes("liquidtight");
+        if (bt.includes("cable tray")) return n.includes("cable tray") || n.includes("tray");
+        if (bt.includes("box") || bt.includes("device")) {
+          return n.includes("box") || n.includes("receptacle") || n.includes("switch") || n.includes("plate") || n.includes("duplex") || n.includes("device");
+        }
+        if (bt.includes("grounding")) return n.includes("ground");
+        return true;
+      });
+    }
+
+    if (!query) return pool.slice(0, 10);
+    return pool.filter(it => flexMatch(query, it.name)).slice(0, 10);
+  }, [invSearch, invItems, bundleType]);
+
+  function openDrop() {
+    if (!row.checked) return;
+    if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
+    setInvOpen(true);
+  }
 
   function selectInv(it: any) {
     setInvSearch(it.name);
@@ -765,116 +820,123 @@ function BundleScopeRow({
     });
   }
 
-  // Sync invSearch when row.itemName changes externally (size update)
-  const prevName = useRef(row.itemName);
-  useEffect(() => {
-    if (row.itemName !== prevName.current && !row.linkedInventoryItemId) {
-      setInvSearch(row.itemName);
-    }
-    prevName.current = row.itemName;
-  }, [row.itemName, row.linkedInventoryItemId]);
+  // Portal-based dropdown — renders to document.body to escape overflow clipping
+  const dropdownPortal = invOpen && row.checked && filtered.length > 0 && dropRect
+    ? createPortal(
+        <div style={{
+          position: "fixed",
+          top: dropRect.bottom + 2,
+          left: dropRect.left,
+          width: dropRect.width,
+          zIndex: 9999,
+        }} className="bg-white border border-slate-200 rounded-lg shadow-2xl max-h-44 overflow-y-auto">
+          {filtered.map(it => (
+            <button key={it.id} type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => selectInv(it)}
+              className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 ${row.linkedInventoryItemId === it.id ? "bg-emerald-50 text-emerald-800 font-semibold" : "text-slate-700"}`}>
+              <span className="truncate">{it.name}</span>
+              <span className="text-[10px] text-slate-400 shrink-0">{it.unitOfMeasure}</span>
+            </button>
+          ))}
+        </div>,
+        document.body
+      )
+    : null;
 
   return (
-    <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : "bg-white"}`}
-      data-testid={`bundle-row-${rowIndex}`}>
-      {/* Checkbox */}
-      <td className="px-3 py-2">
-        <input type="checkbox" checked={row.checked}
-          onChange={e => onChange({ ...row, checked: e.target.checked })}
-          className="rounded" data-testid={`bundle-row-check-${rowIndex}`} />
-      </td>
-      {/* Item / inventory search */}
-      <td className="px-2 py-2">
-        <div className="relative">
-          <Input
-            value={invSearch}
-            placeholder="Search inventory…"
-            disabled={!row.checked}
-            onChange={e => {
-              const val = e.target.value;
-              setInvSearch(val);
-              setInvOpen(true);
-              if (row.linkedInventoryItemId && val !== invItems.find(it => it.id === row.linkedInventoryItemId)?.name) {
-                onChange({ ...row, itemName: val, linkedInventoryItemId: null });
-              } else {
-                onChange({ ...row, itemName: val });
-              }
-            }}
-            onFocus={() => row.checked && setInvOpen(true)}
-            onBlur={() => setTimeout(() => setInvOpen(false), 150)}
-            className={`h-7 text-xs ${row.linkedInventoryItemId ? "border-emerald-300 bg-emerald-50/60" : ""}`}
-            data-testid={`bundle-row-name-${rowIndex}`}
-          />
+    <Fragment>
+      <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : "bg-white"}`}
+        data-testid={`bundle-row-${rowIndex}`}>
+        {/* Checkbox */}
+        <td className="px-3 py-2">
+          <input type="checkbox" checked={row.checked}
+            onChange={e => onChange({ ...row, checked: e.target.checked })}
+            className="rounded" data-testid={`bundle-row-check-${rowIndex}`} />
+        </td>
+        {/* Item / inventory search */}
+        <td className="px-2 py-2">
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              value={invSearch}
+              placeholder="Search inventory…"
+              disabled={!row.checked}
+              onChange={e => {
+                const val = e.target.value;
+                setInvSearch(val);
+                if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
+                setInvOpen(true);
+                if (row.linkedInventoryItemId && val !== invItems.find(it => it.id === row.linkedInventoryItemId)?.name) {
+                  onChange({ ...row, itemName: val, linkedInventoryItemId: null });
+                } else {
+                  onChange({ ...row, itemName: val });
+                }
+              }}
+              onFocus={openDrop}
+              onBlur={() => setTimeout(() => setInvOpen(false), 200)}
+              className={`h-7 text-xs ${row.linkedInventoryItemId ? "border-emerald-300 bg-emerald-50/60" : ""}`}
+              data-testid={`bundle-row-name-${rowIndex}`}
+            />
+            {row.checked && row.linkedInventoryItemId && (
+              <button type="button"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                onClick={() => { setInvSearch(""); onChange({ ...row, itemName: "", linkedInventoryItemId: null }); }}>
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
           {row.checked && row.linkedInventoryItemId && (
-            <button type="button"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={() => { setInvSearch(""); onChange({ ...row, itemName: "", linkedInventoryItemId: null }); }}>
-              <X className="w-3 h-3" />
-            </button>
+            <p className="text-[9px] text-emerald-600 mt-0.5 flex items-center gap-0.5">
+              <CheckCircle2 className="w-2 h-2" /> linked
+            </p>
           )}
-          {invOpen && row.checked && filtered.length > 0 && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-              {filtered.map(it => (
-                <button key={it.id} type="button"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => selectInv(it)}
-                  className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 ${row.linkedInventoryItemId === it.id ? "bg-emerald-50 text-emerald-800 font-semibold" : "text-slate-700"}`}>
-                  <span className="truncate">{it.name}</span>
-                  <span className="text-[10px] text-slate-400 shrink-0">{it.unitOfMeasure}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {row.checked && row.linkedInventoryItemId && (
-          <p className="text-[9px] text-emerald-600 mt-0.5 flex items-center gap-0.5">
-            <CheckCircle2 className="w-2 h-2" /> linked
-          </p>
-        )}
-      </td>
-      {/* Unit */}
-      <td className="px-2 py-2 w-14">
-        <Input value={row.unit} disabled={!row.checked}
-          onChange={e => onChange({ ...row, unit: e.target.value })}
-          className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${rowIndex}`} />
-      </td>
-      {/* Est. Qty */}
-      <td className="px-2 py-2 w-20">
-        <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0"
-          disabled={!row.checked}
-          onChange={e => onChange({ ...row, estimatedQty: e.target.value })}
-          className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${rowIndex}`} />
-      </td>
-      {/* Category */}
-      <td className="px-2 py-2 w-28">
-        <Input value={row.category} disabled={!row.checked}
-          onChange={e => onChange({ ...row, category: e.target.value })}
-          className="h-7 text-xs w-28"
-          list={`bundle-cat-list-${rowIndex}`}
-          data-testid={`bundle-row-cat-${rowIndex}`} />
-        <datalist id={`bundle-cat-list-${rowIndex}`}>
-          {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
-        </datalist>
-      </td>
-      {/* Scope type */}
-      <td className="px-2 py-2 w-20">
-        <select value={row.scopeType} disabled={!row.checked}
-          onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
-          className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
-          data-testid={`bundle-row-type-${rowIndex}`}>
-          <option value="primary">Primary</option>
-          <option value="support">Support</option>
-        </select>
-      </td>
-      {/* Delete */}
-      <td className="px-2 py-2 w-8">
-        <button type="button" onClick={onRemove}
-          className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-          data-testid={`bundle-row-delete-${rowIndex}`}>
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </td>
-    </tr>
+        </td>
+        {/* Unit */}
+        <td className="px-2 py-2 w-14">
+          <Input value={row.unit} disabled={!row.checked}
+            onChange={e => onChange({ ...row, unit: e.target.value })}
+            className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${rowIndex}`} />
+        </td>
+        {/* Est. Qty */}
+        <td className="px-2 py-2 w-20">
+          <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0"
+            disabled={!row.checked}
+            onChange={e => onChange({ ...row, estimatedQty: e.target.value })}
+            className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${rowIndex}`} />
+        </td>
+        {/* Category */}
+        <td className="px-2 py-2 w-28">
+          <Input value={row.category} disabled={!row.checked}
+            onChange={e => onChange({ ...row, category: e.target.value })}
+            className="h-7 text-xs w-28"
+            list={`bundle-cat-list-${rowIndex}`}
+            data-testid={`bundle-row-cat-${rowIndex}`} />
+          <datalist id={`bundle-cat-list-${rowIndex}`}>
+            {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
+          </datalist>
+        </td>
+        {/* Scope type */}
+        <td className="px-2 py-2 w-20">
+          <select value={row.scopeType} disabled={!row.checked}
+            onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
+            className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
+            data-testid={`bundle-row-type-${rowIndex}`}>
+            <option value="primary">Primary</option>
+            <option value="support">Support</option>
+          </select>
+        </td>
+        {/* Delete */}
+        <td className="px-2 py-2 w-8">
+          <button type="button" onClick={onRemove}
+            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+            data-testid={`bundle-row-delete-${rowIndex}`}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </td>
+      </tr>
+      {dropdownPortal}
+    </Fragment>
   );
 }
 
@@ -1194,19 +1256,33 @@ function BundleSelector({
 
   const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
 
-  // Generate rows from bundle definition + size
+  // Generate rows from bundle definition + size, auto-matching real inventory items
   function buildRows(bundleName: string, size: string): BundleRow[] {
     const items = BUNDLE_DEFINITIONS[bundleName] ?? [];
-    return items.map(it => ({
-      localId: Math.random().toString(36).slice(2),
-      itemName: size ? `${it.itemName} ${size}` : it.itemName,
-      unit: it.unit,
-      estimatedQty: "",
-      category: it.category,
-      scopeType: it.scopeType,
-      checked: true,
-      linkedInventoryItemId: null,
-    }));
+    const sizeNorm = size ? size.toLowerCase().replace(/['"]/g, "").trim() : "";
+    return items.map(it => {
+      const baseKeywords = it.itemName.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+      // Try to find a matching inventory item by keywords + size
+      const match = sizeNorm
+        ? invItems.find(inv => {
+            const n = inv.name.toLowerCase();
+            return baseKeywords.every(w => n.includes(w)) && n.includes(sizeNorm);
+          })
+        : invItems.find(inv => {
+            const n = inv.name.toLowerCase();
+            return baseKeywords.every(w => n.includes(w));
+          });
+      return {
+        localId: Math.random().toString(36).slice(2),
+        itemName: match ? match.name : "",
+        unit: match ? (match.unitOfMeasure || it.unit) : it.unit,
+        estimatedQty: "",
+        category: it.category,
+        scopeType: it.scopeType,
+        checked: true,
+        linkedInventoryItemId: match ? match.id : null,
+      };
+    });
   }
 
   function pickBundle(name: string) {
@@ -1220,16 +1296,29 @@ function BundleSelector({
   function handleSizeChange(size: string) {
     setSelectedSize(size);
     if (!selectedBundle) return;
-    // Re-apply size to rows that are still named from the bundle (not manually edited)
+    const sizeNorm = size.toLowerCase().replace(/['"]/g, "").trim();
     setBundleRows(prev => {
       const origItems = BUNDLE_DEFINITIONS[selectedBundle] ?? [];
       return prev.map((row, i) => {
-        // If this is an original bundle row (not a manually added blank row)
         const orig = origItems[i];
-        if (!orig || row.linkedInventoryItemId) return row;
+        if (!orig) return row;
+        // If user manually linked a different item, respect their choice
+        if (row.linkedInventoryItemId) {
+          // Only override if the current linked item doesn't match the new size
+          const linked = invItems.find(it => it.id === row.linkedInventoryItemId);
+          if (linked && linked.name.toLowerCase().includes(sizeNorm)) return row;
+        }
+        // Try to find inventory match for new size
+        const baseKeywords = orig.itemName.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+        const match = invItems.find(inv => {
+          const n = inv.name.toLowerCase();
+          return baseKeywords.every(w => n.includes(w)) && n.includes(sizeNorm);
+        });
         return {
           ...row,
-          itemName: size ? `${orig.itemName} ${size}` : orig.itemName,
+          itemName: match ? match.name : "",
+          unit: match ? (match.unitOfMeasure || orig.unit) : orig.unit,
+          linkedInventoryItemId: match ? match.id : null,
         };
       });
     });
@@ -1355,6 +1444,8 @@ function BundleSelector({
                 rowIndex={i}
                 onChange={updated => updateRow(row.localId, updated)}
                 onRemove={() => removeRow(row.localId)}
+                bundleType={selectedBundle ?? undefined}
+                bundleSize={selectedSize}
               />
             ))}
           </tbody>

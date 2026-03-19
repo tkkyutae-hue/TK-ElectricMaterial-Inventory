@@ -1,0 +1,139 @@
+Fix Admin Mode → Projects → Project Detail → Scope Items tab only.
+
+Do NOT change:
+- page width
+- card width
+- spacing
+- grouped category layout
+- button positions
+- any other tab or page
+
+This is a bug-fix task for bundle auto-fill + inventory binding.
+The current problem is:
+bundle rows show typed text, but the inventory dropdown/search results do NOT populate correctly.
+
+Apply these fixes:
+
+1) Bundle rows must use the same searchable inventory component used elsewhere in Admin Inventory
+Do NOT use a plain text input for bundle row item fields.
+Use the exact same searchable inventory selector/autocomplete component that already works in Inventory/Admin item search.
+
+2) Every bundle row must open inventory results while typing
+When user types in any bundle row item field, the inventory result list must appear.
+This must work for all bundles:
+- EMT Conduit Bundle
+- Rigid Conduit Bundle
+- Flexible Conduit Bundle
+- Cable Tray Bundle
+- Box / Device Bundle
+- Grounding Bundle
+
+3) Fix broken autocomplete for these bundles
+Currently not working:
+- Rigid Conduit bundle first row
+- all Flexible Conduit bundle rows
+- all Cable Tray bundle rows
+- all Box / Device bundle rows
+- all Grounding bundle rows
+
+Make autocomplete/search results work in every row of every bundle.
+
+4) Bundle row item input must be bound to real inventory records
+Each row must store:
+- inventory item id
+- inventory item name
+- inventory unit
+- inventory category / family if available
+
+Do NOT treat the row as free text only.
+Selecting a search result must bind the row to the actual inventory record.
+
+5) Inventory results must be filtered by bundle type + selected size
+When a bundle and size are selected, item suggestions must be filtered intelligently.
+
+Examples:
+- Rigid Conduit bundle + 1" size:
+  show 1" Rigid Conduit related items, not EMT or wrong size
+- Flexible Conduit bundle + 3/4":
+  show 3/4" Liquidtight / Flexible related items from inventory
+- Cable Tray bundle + 12":
+  show 12" cable tray related items from inventory
+- Grounding bundle:
+  show grounding items from inventory
+- Box / Device bundle:
+  show box / device related items from inventory
+
+6) Inventory size mapping must be respected
+Bundle size options must reflect actual inventory-supported sizes.
+If inventory has specific sizes, use those as source of truth.
+Do NOT show incomplete or broken size mapping.
+
+Also fix missing size support:
+- EMT bundle must include 3-1/2" and 6"
+- Rigid bundle must include 3-1/2"
+
+7) Default bundle rows must pre-bind to matching inventory items
+When a size is selected, each default row should try to auto-select the closest matching inventory item.
+If a valid inventory match exists:
+- auto-fill item name from inventory
+- auto-fill inventory id
+- auto-fill unit from inventory
+If no valid match exists:
+- leave row empty and searchable
+- do NOT insert fake/generated item names
+
+8) Remove manual fake naming logic
+Do NOT generate labels like:
+- EMT Conduit 3/4
+- EMT Strap 3/4
+- Cable Tray Coupler 4
+unless that exact label exists in inventory.
+
+Inventory is the source of truth for displayed default names.
+
+9) Fix dropdown rendering in bundle rows
+The search result dropdown must:
+- open under the active row input
+- stay aligned to the correct row
+- not render behind other rows
+- not get clipped by the bundle container
+- not disappear immediately while typing
+
+10) Keyboard + click behavior
+In every bundle row:
+- typing updates results live
+- arrow keys can move through results
+- enter selects highlighted result
+- click selects result
+- blur should not instantly destroy results before selection
+- once selected, the chosen inventory label stays in the field
+
+11) Unit must come from selected inventory item
+After selecting an inventory item:
+- unit auto-fills from inventory
+- unit must not remain wrong or blank
+- unit field should stay stable and consistent
+
+12) Apply this to every row, not only the first row
+The working behavior must be identical for:
+- first row
+- middle rows
+- added rows
+- duplicated rows
+- bundle-generated default rows
+
+13) Technical requirement
+Refactor bundle row item fields to reuse the existing inventory autocomplete/search logic instead of custom duplicated logic.
+The current duplicated bundle-row implementation is broken.
+Replace it with the same proven inventory selector behavior used elsewhere in the app.
+
+14) Keep current UI
+Do NOT redesign the bundle UI.
+Do NOT change widths or spacing.
+Only fix the broken inventory search/autocomplete/data binding behavior inside the existing layout.
+
+Success criteria:
+- Typing in any bundle row shows inventory results
+- Selecting a result binds a real inventory item
+- Default bundle rows use exact inventory-linked names
+- Rigid, Flexible, Cable Tray, Box/Device, and Grounding bundles all work correctly

@@ -282,18 +282,64 @@ function PreparedByCombobox({
   value, allWorkers, onChange, disabled,
 }: {
   value: string; allWorkers: Worker[];
-  onChange: (name: string, id: number | null) => void;
+  onChange: (name: string, id: number | null, trade?: string) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(() =>
+    value ? allWorkers.find(w => w.fullName === value) ?? null : null
+  );
 
   const foremanPlus = allWorkers.filter(w => w.isActive && isForemanPlus(w.trade));
   const filtered = foremanPlus
     .filter(w => !query || w.fullName.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 10);
 
-  useEffect(() => { setQuery(value); }, [value]);
+  useEffect(() => {
+    setQuery(value);
+    if (!value) { setSelectedWorker(null); return; }
+    const found = allWorkers.find(w => w.fullName === value);
+    if (found) setSelectedWorker(found);
+  }, [value, allWorkers]);
+
+  const displayWorker = selectedWorker ?? (value ? allWorkers.find(w => w.fullName === value) ?? null : null);
+
+  if (displayWorker && value) {
+    return (
+      <div style={{ position: "relative", height: 36 }}>
+        <div style={{
+          background: "#dcfce7", border: "1px solid #86efac",
+          color: "#16a34a", fontWeight: 600, borderRadius: 8,
+          padding: "0 38px 0 10px", height: 36,
+          display: "flex", alignItems: "center", fontSize: 13,
+          userSelect: "none", cursor: "default", overflow: "hidden",
+        }}>
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {displayWorker.fullName}{displayWorker.trade ? `  ·  ${displayWorker.trade}` : ""}
+          </span>
+        </div>
+        {!disabled && (
+          <button type="button"
+            data-testid="btn-clear-prepared-by"
+            title="Clear selection"
+            onClick={() => { setSelectedWorker(null); setQuery(""); onChange("", null, ""); }}
+            style={{
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+              width: 20, height: 20, borderRadius: "50%",
+              background: "#86efac", color: "#16a34a",
+              fontSize: 12, fontWeight: 700, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "none", flexShrink: 0,
+            }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.background = "#16a34a"; b.style.color = "white"; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = "#86efac"; b.style.color = "#16a34a"; }}>
+            ×
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -306,6 +352,7 @@ function PreparedByCombobox({
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
+          setSelectedWorker(null);
           onChange(e.target.value, null);
         }}
         onFocus={() => setOpen(true)}
@@ -316,7 +363,7 @@ function PreparedByCombobox({
           {filtered.map(w => (
             <button key={w.id} type="button"
               onMouseDown={e => e.preventDefault()}
-              onClick={() => { setQuery(w.fullName); setOpen(false); onChange(w.fullName, w.id); }}
+              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
               className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2 transition-colors">
               <HardHat className="w-3 h-3 text-slate-400 shrink-0" />
               <span className="font-medium text-slate-800 truncate">{w.fullName}</span>
@@ -395,6 +442,11 @@ export function NewReportTab({
   // ── Registry queries ──
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: inventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+  const { data: project }             = useQuery<any>({
+    queryKey: ["/api/projects", projectId],
+    queryFn: () => fetch(`/api/projects/${projectId}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!projectId,
+  });
   const { data: scopeItems = [] }     = useQuery<any[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
     queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
@@ -410,10 +462,11 @@ export function NewReportTab({
   });
 
   // ── General Info state ──
-  const [reportNumber,  setReportNumber]  = useState<string>(fd?.reportNumber ?? "");
-  const [preparedBy,    setPreparedBy]    = useState<string>(fd?.preparedBy   ?? "");
-  const [preparedById,  setPreparedById]  = useState<number | null>(fd?.preparedById ?? null);
-  const [reportDate,    setReportDate]    = useState<string>(fd?.reportDate   ?? new Date().toISOString().slice(0, 10));
+  const [reportNumber,    setReportNumber]    = useState<string>(fd?.reportNumber ?? "");
+  const [preparedBy,      setPreparedBy]      = useState<string>(fd?.preparedBy   ?? "");
+  const [preparedById,    setPreparedById]    = useState<number | null>(fd?.preparedById ?? null);
+  const [preparedByTrade, setPreparedByTrade] = useState<string>(fd?.preparedByTrade ?? "");
+  const [reportDate,      setReportDate]      = useState<string>(fd?.reportDate   ?? new Date().toISOString().slice(0, 10));
   const [shift,         setShift]         = useState<string>(fd?.shift        ?? "day");
   const [weather,       setWeather]       = useState<string>(fd?.weather      ?? "clear");
   const [temperature,   setTemperature]   = useState<string>(fd?.temperature  ?? "72");
@@ -643,7 +696,13 @@ export function NewReportTab({
             <div className="relative group">
               <Button data-testid="btn-submit-report"
                 size="sm"
-                className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+                className={`gap-2 h-9 ${
+                  isSubmitted
+                    ? "bg-emerald-600 hover:bg-emerald-600 text-white font-semibold"
+                    : canSubmit
+                    ? "bg-[#16a34a] hover:bg-[#15803d] text-white font-bold border border-[#16a34a]"
+                    : "bg-[#f3f4f6] border border-[#e5e7eb] text-[#9ca3af] font-semibold opacity-60 cursor-not-allowed"
+                }`}
                 disabled={saveMutation.isPending || isSubmitted || !canSubmit}
                 onClick={() => saveMutation.mutate("submitted")}>
                 {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
@@ -706,12 +765,17 @@ export function NewReportTab({
           </div>
 
           <div>
-            <FL>Prepared By</FL>
+            <FL>
+              Prepared By
+              <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>
+                * Required to submit
+              </span>
+            </FL>
             <PreparedByCombobox
               value={preparedBy}
               allWorkers={activeWorkers}
               disabled={isSubmitted}
-              onChange={(name, id) => { setPreparedBy(name); setPreparedById(id); }}
+              onChange={(name, id, trade) => { setPreparedBy(name); setPreparedById(id); setPreparedByTrade(trade ?? ""); }}
             />
           </div>
 
@@ -759,7 +823,68 @@ export function NewReportTab({
               onChange={(e) => setTemperature(e.target.value)} className="h-9 text-sm" placeholder="°F" />
           </div>
 
+          {/* Row 3: Auto-filled project fields */}
+          <div>
+            <FL>
+              <span>🔒 PROJECT LOCATION</span>
+              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
+            </FL>
+            <div data-testid="field-project-location" style={{
+              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
+              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
+              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
+            }}>
+              <span style={{ fontSize: 13, opacity: 0.5 }}>📍</span>
+              <span>{project?.jobLocation || "—"}</span>
+            </div>
+          </div>
+
+          <div>
+            <FL>
+              <span>🔒 OWNER / MANAGER</span>
+              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
+            </FL>
+            <div data-testid="field-project-owner" style={{
+              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
+              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
+              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
+            }}>
+              <span style={{ fontSize: 13, opacity: 0.5 }}>👤</span>
+              <span>{project?.ownerName || "—"}</span>
+            </div>
+          </div>
+
+          <div>
+            <FL>
+              <span>🔒 PO NUMBER</span>
+              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
+            </FL>
+            <div data-testid="field-project-po" style={{
+              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
+              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
+              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
+            }}>
+              <span style={{ fontSize: 13, opacity: 0.5 }}>📋</span>
+              <span>{project?.poNumber || "—"}</span>
+            </div>
+          </div>
+
         </div>
+
+        {/* Submit readiness indicator */}
+        <div style={{
+          marginTop: 14,
+          background: preparedBy.trim() ? "#dcfce7" : "#fef3c7",
+          border: preparedBy.trim() ? "1px solid #86efac" : "1px solid #fde68a",
+          borderRadius: 8, padding: "9px 14px",
+          fontSize: 10.5,
+          color: preparedBy.trim() ? "#16a34a" : "#d97706",
+        }}>
+          {preparedBy.trim()
+            ? `✓ Ready to submit — Prepared By: ${preparedBy}${preparedByTrade ? ` (${preparedByTrade})` : ""}`
+            : "⚠ Add Prepared By to enable submission"}
+        </div>
+
       </Section>
 
       {/* ══════════════════════════════════════════════════════
@@ -1772,7 +1897,13 @@ export function NewReportTab({
               Save Draft
             </Button>
             <Button data-testid="btn-submit-report-bottom" size="sm"
-              className={`gap-2 h-9 font-semibold ${isSubmitted ? "bg-emerald-600 hover:bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+              className={`gap-2 h-9 ${
+                isSubmitted
+                  ? "bg-emerald-600 hover:bg-emerald-600 text-white font-semibold"
+                  : canSubmit
+                  ? "bg-[#16a34a] hover:bg-[#15803d] text-white font-bold border border-[#16a34a]"
+                  : "bg-[#f3f4f6] border border-[#e5e7eb] text-[#9ca3af] font-semibold opacity-60 cursor-not-allowed"
+              }`}
               disabled={saveMutation.isPending || isSubmitted || !canSubmit}
               onClick={() => saveMutation.mutate("submitted")}>
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}

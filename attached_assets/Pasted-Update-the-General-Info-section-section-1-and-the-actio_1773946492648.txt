@@ -1,0 +1,161 @@
+Update the General Info section (section 1) and the action bar
+inside Daily Report → New Report.
+
+Do NOT change:
+- Page width, card width, or outer layout
+- Any other section (Manpower, Work Tasks, Materials, Equipment, Notes)
+- Admin Mode or any other module
+- Current field sizes, font sizes, or spacing
+
+════════════════════════════════════════
+FIX 1 — Prepared By: show name + role + clear button
+════════════════════════════════════════
+When a person is selected in the Prepared By field:
+
+  Display format inside the field:
+    "[Full Name]  ·  [Trade/Role]"
+    Example: "Alfredo Perez Rodriguez  ·  Foreman"
+
+  Field style when filled:
+    background: #dcfce7 (green-lt)
+    border: 1px solid #86efac (green-md)
+    color: #16a34a (green)
+    font-weight: 600
+
+  Show a × clear button on the right inside the field:
+    position: absolute, right: 10px, vertically centered
+    width/height: 20px, border-radius: 50%
+    background: #86efac, color: #16a34a
+    font-size: 12px, font-weight: 700
+    cursor: pointer
+    hover: background #16a34a, color white
+    title attribute: "Clear selection"
+
+  When clicked: clear the selection, restore placeholder text,
+    revert field to default style (white background, gray border)
+
+  Hide the × button when no person is selected.
+
+Add a "* Required to submit" note next to the Prepared By label:
+  font-size: 9px
+  color: #dc2626 (red)
+  font-weight: 500
+
+════════════════════════════════════════
+FIX 2 — Submit button: disable until Prepared By is filled
+════════════════════════════════════════
+The Submit Report button in the action bar must be disabled
+when Prepared By is empty.
+
+DISABLED state (Prepared By empty):
+  background: #f3f4f6
+  border: 1px solid #e5e7eb
+  color: #9ca3af
+  cursor: not-allowed
+  opacity: 0.6
+  pointer-events: none (cannot click)
+
+ENABLED state (Prepared By filled):
+  background: #16a34a
+  border: 1px solid #16a34a
+  color: white
+  cursor: pointer
+  font-weight: 700
+  The button becomes fully clickable
+
+The "Add Prepared By to submit" hint text:
+  Show it only when Prepared By is EMPTY
+  Hide it when Prepared By is filled
+  Position: same as current (right of buttons)
+
+════════════════════════════════════════
+FIX 3 — Add Row 3: auto-filled project fields (3 columns)
+════════════════════════════════════════
+Add a third row below the Shift / Weather / Temperature row.
+
+IMPORTANT: Use 3 columns (not 2) to match the grid of rows 1 and 2.
+
+Row 3 fields:
+
+  Column 1 — Project Location:
+    Label: "PROJECT LOCATION"
+    Label prefix: 🔒 icon before the text
+    Label suffix: small "auto-filled" text
+      font-size: 8px, color: var(--text4), font-weight: 400,
+      text-transform: none, letter-spacing: 0
+    Value: pulled from current project's Location field
+    Example: "KDC / KISS"
+
+  Column 2 — Owner / Manager:
+    Label: "OWNER / MANAGER"
+    Label prefix: 🔒 icon
+    Label suffix: "auto-filled"
+    Value: pulled from current project's Owner/Manager field
+    Example: "Mr. John chung"
+
+  Column 3 — PO Number:
+    Label: "PO NUMBER"
+    Label prefix: 🔒 icon
+    Label suffix: "auto-filled"
+    Value: pulled from current project's PO Number field
+    Example: "TKM10KB3001_R1"
+
+All 3 fields in Row 3 — read-only style:
+  background: #f8faf9 (bg3)
+  border: 1px solid #e2e8e3 (border)
+  color: #3d5c42 (text2)
+  border-radius: 8px
+  padding: 10px 14px
+  cursor: default
+  user-select: none
+  display: flex, align-items: center, gap: 6px
+
+Icon inside each field (before the value text):
+  Column 1: 📍
+  Column 2: 👤
+  Column 3: 📋
+  font-size: 13px, opacity: 0.5
+
+If a value is not available from project data: show "—" in color #9db8a2
+
+These fields must NEVER be editable.
+Do not show a cursor or focus state when clicked.
+
+════════════════════════════════════════
+FIX 4 — Submit readiness indicator
+════════════════════════════════════════
+Add a thin status bar at the BOTTOM of the General Info section body,
+below Row 3.
+
+This bar shows whether the report is ready to submit.
+
+WARNING state (Prepared By empty):
+  background: #fef3c7 (amber-lt)
+  border: 1px solid #fde68a (amber-bd)
+  border-radius: 8px
+  padding: 9px 14px
+  font-size: 10.5px
+  color: #d97706
+  text: "⚠ Add Prepared By to enable submission"
+
+READY state (Prepared By filled):
+  background: #dcfce7 (green-lt)
+  border: 1px solid #86efac (green-md)
+  color: #16a34a
+  text: "✓ Ready to submit — Prepared By: [Name] ([Trade])"
+
+The bar switches between states instantly when Prepared By changes.
+
+════════════════════════════════════════
+FIX 5 — Grid alignment: all rows must be 3 columns
+════════════════════════════════════════
+Rows 1, 2, and 3 must all use the same 3-column grid:
+  grid-template-columns: 1fr 1fr 1fr
+  gap: 16px
+
+This ensures all fields align vertically across rows.
+Row 3 previously had only 2 columns — this is now corrected
+by adding PO Number as the third field (Fix 3 above).
+
+Do not change any column widths or gaps from the current rows 1 and 2.
+Only make Row 3 match the same grid.

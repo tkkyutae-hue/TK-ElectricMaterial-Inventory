@@ -719,7 +719,7 @@ export function NewReportTab({
             <TH cols={[
               { label: "Worker Name",  cls: "w-[220px]" },
               { label: "Trade",        cls: "w-[110px]" },
-              { label: "Status",       cls: "w-[100px]" },
+              { label: "Status",       cls: "w-[140px]" },
               { label: "Start",        cls: "w-[76px]" },
               { label: "End",          cls: "w-[76px]" },
               { label: "Break",        cls: "w-[46px] text-center" },
@@ -753,7 +753,7 @@ export function NewReportTab({
                           const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
                         }}>
-                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs">
+                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs" style={{ minWidth: "140px", width: "140px" }}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

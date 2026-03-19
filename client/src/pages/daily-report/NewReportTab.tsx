@@ -474,7 +474,12 @@ function MaterialSearch({
                   borderRadius: 4, padding: "1px 6px",
                   minWidth: 32, textAlign: "center", whiteSpace: "nowrap",
                 }}>{size || "—"}</span>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "#1a1a1a" }}>{rest || item.name}</span>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "#1a1a1a" }}>{rest || item.name}</span>
+                  {item.category?.name && (
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: "#aaa" }}>{item.category.name}</span>
+                  )}
+                </div>
                 {item.unitOfMeasure && (
                   <span style={{ flexShrink: 0, fontSize: 11, color: "#999", background: "#f3f3f3", borderRadius: 4, padding: "1px 6px" }}>{item.unitOfMeasure}</span>
                 )}
@@ -1749,6 +1754,7 @@ export function NewReportTab({
           <TH cols={[
             { label: "Size",      cls: "w-[56px] text-center" },
             { label: "Material Name" },
+            { label: "Category",  cls: "w-[130px]" },
             { label: "Qty Used",  cls: "w-[80px] text-center" },
             { label: "Unit",      cls: "w-[72px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
@@ -1756,10 +1762,12 @@ export function NewReportTab({
           ]} />
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 8 : 7} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => {
               const { size, rest } = extractSize(row.description);
+              const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
+              const categoryName: string = linkedItem?.category?.name ?? "";
               return (
                 <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
                   {/* SIZE column — dedicated cell */}
@@ -1797,6 +1805,14 @@ export function NewReportTab({
                         }}>Inv</span>
                       )}
                     </div>
+                  </td>
+                  {/* Category — read-only, derived from linked inventory item */}
+                  <td className="py-1.5 px-2.5">
+                    {categoryName ? (
+                      <span style={{ fontSize: 11, color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block", maxWidth: "100%" }}>{categoryName}</span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: "#ccc" }}>—</span>
+                    )}
                   </td>
                   {/* Qty Used */}
                   <td className="py-1.5 px-2.5">

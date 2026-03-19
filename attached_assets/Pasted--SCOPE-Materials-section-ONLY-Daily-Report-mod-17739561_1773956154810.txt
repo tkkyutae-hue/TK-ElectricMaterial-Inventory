@@ -1,0 +1,97 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE — Add CATEGORY column between MATERIAL NAME and QTY USED
+
+  New column order:
+    SIZE | MATERIAL NAME | CATEGORY | QTY USED | UNIT | NOTES | [delete]
+
+  CATEGORY column:
+    width: 130px
+    header: "CATEGORY"
+
+  CATEGORY cell behavior:
+    - If the inventory item has a category assigned, show it as a
+      read-only muted label
+    - If no category exists, show a faint "—" placeholder
+    - Category text should be secondary (smaller, muted)
+
+  CATEGORY cell structure:
+    Inventory-linked row with category:
+      <span class="category-label">{Category Name}</span>
+
+    No category:
+      <span class="category-empty">—</span>
+
+  .category-label:
+    font-size: 11px
+    color: #666
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+    display: block
+    max-width: 100%
+
+  .category-empty:
+    font-size: 11px
+    color: #ccc
+
+  Example values:
+    "Wire & Cable"
+    "Conduit"
+    "Connectors"
+    "Transformers"
+    "Hardware"
+
+CATEGORY in search dropdown:
+  Add category as a third line or secondary label under the item name:
+
+    <div class="dd-item">
+      <span class="dd-size">{size}</span>
+      <div class="dd-name-wrap">
+        <span class="dd-name">{name}</span>
+        <span class="dd-category">{category}</span>
+      </div>
+      <span class="dd-unit">FT / EA</span>
+    </div>
+
+  .dd-name-wrap:
+    display: flex
+    flex-direction: column
+    flex: 1
+    min-width: 0
+
+  .dd-name:
+    font-size: 13px
+    color: #1a1a1a
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+  .dd-category:
+    font-size: 11px
+    color: #aaa
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+UPDATED column widths:
+  SIZE          :  56px
+  MATERIAL NAME :  flex (fills remaining)
+  CATEGORY      : 130px
+  QTY USED      :  80px
+  UNIT          :  72px
+  NOTES         : 120px
+  Delete        :  32px
+
+CONSTRAINTS:
+  - Category value must come from the inventory item's existing
+    category field — do NOT invent or hardcode categories
+  - If inventory item has no category field, leave cell as "—"
+  - Display only — do NOT make category editable in this view
+  - Scope all changes to .materials-section or component file only
+  - Do NOT change row height, card width, or other sections
+==================================================

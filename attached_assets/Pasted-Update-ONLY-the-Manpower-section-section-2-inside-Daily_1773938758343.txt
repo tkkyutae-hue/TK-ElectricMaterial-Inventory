@@ -1,0 +1,77 @@
+Update ONLY the Manpower section (section 2) inside Daily Report → New Report.
+
+Do NOT change:
+- Page width, card width, or outer section width
+- Any other section (General Info, Work Tasks, Materials, Equipment, Notes)
+- Admin Mode or any other module
+- Row Defaults bar (Start / End / Lunch Break)
+- Column headers (WORKER NAME / TRADE / STATUS / START / END / BREAK / HRS / NOTES)
+- Individual row inputs and their layout
+- The "+ Add Worker" button
+
+════════════════════════════════════════
+FIX 1 — Upgrade the Summary row
+════════════════════════════════════════
+The current Summary row shows:
+  SUMMARY  4 workers  ........  [36.0]  man-hrs
+
+Replace this with a more useful compact summary bar.
+
+New summary bar layout (single row, same width as the table):
+  Present: X  |  Exceptions: X  |  Total Man-hours: XX.X man-hrs  |  Break: ON  |  Issues: None
+
+Rules for each value:
+
+PRESENT count:
+  = number of rows where STATUS = "ATTEND"
+  If no STATUS column exists, count all rows that have a worker name filled in
+
+EXCEPTIONS count:
+  = number of rows where STATUS is anything other than "ATTEND"
+  This includes: LATE, ABSENT, SICK, PTO, EARLY LEAVE, WFH, SUSPENDED, or any non-ATTEND value
+  If all rows are ATTEND, show: Exceptions: 0
+
+TOTAL MAN-HOURS:
+  = sum of all HRS values across all rows (already calculated, just move it here)
+  Format: XX.X man-hrs
+  Show in slightly bolder weight
+
+BREAK:
+  = reflect the current Lunch Break toggle state
+  If Lunch Break is ON: show "Break: ON" in a small amber/yellow chip (matching current amber chip style)
+  If Lunch Break is OFF: show "Break: OFF" in a muted gray chip
+
+ISSUES indicator:
+  If Exceptions count = 0: show "Issues: None" in muted gray text
+  If Exceptions count > 0: show "⚠ X flagged" as a small warning badge
+    - background: light amber/yellow (matching current amber chip style)
+    - color: amber/orange
+    - text: "⚠ 1 flagged" or "⚠ 2 flagged" etc.
+
+Summary bar styling:
+  - Same background as the current summary row (light gray / bg3)
+  - Keep "SUMMARY" label on the left as it currently is
+  - Separate each value with a thin vertical divider or clear spacing
+  - Font size: same as current summary text (small, compact)
+  - Do not make the summary bar taller than the current summary row
+
+════════════════════════════════════════
+FIX 2 — Align total hours under HRS column
+════════════════════════════════════════
+Currently the total hours value (e.g. "36.0") appears visually
+near the BREAK column area, which is misaligned.
+
+Move the total hours display so it sits directly under the HRS column.
+
+Rules:
+  - The total hours number must align with the HRS column header above it
+  - The "man-hrs" label sits immediately to the right of the total number
+  - This is now part of the new Summary bar (Fix 1 above)
+    so the alignment fix is achieved by placing "Total Man-hours: XX.X man-hrs"
+    in the correct position within the summary bar
+
+If the summary bar uses flex layout, make sure the Total Man-hours value
+is positioned to horizontally align under the HRS column.
+
+Do NOT place total hours under BREAK column.
+Do NOT change the HRS value in each individual row — keep those unchanged.

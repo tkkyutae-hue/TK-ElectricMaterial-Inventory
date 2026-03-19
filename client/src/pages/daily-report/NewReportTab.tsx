@@ -427,8 +427,10 @@ export function NewReportTab({
   const [lastSaved,   setLastSaved]   = useState<Date | null>(null);
 
   // ── Computed ──
-  const totalWorkers  = manpower.length;
-  const totalManhours = manpower.reduce((s, r) => s + r.hoursWorked, 0);
+  const totalWorkers    = manpower.length;
+  const totalManhours   = manpower.reduce((s, r) => s + r.hoursWorked, 0);
+  const presentCount    = manpower.filter((r) => r.attendanceStatus === "ATTEND").length;
+  const exceptionsCount = manpower.filter((r) => r.attendanceStatus !== "ATTEND").length;
 
   // ── Submit validation ──
   const isSubmitted  = savedStatus === "submitted" && !forceEdit;
@@ -817,19 +819,59 @@ export function NewReportTab({
               {/* Summary row */}
               {manpower.length > 0 && (
                 <tr className="border-t border-slate-200 bg-slate-50">
-                  <td colSpan={5} className="py-2 px-2.5">
-                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Summary</span>
-                    <span className="ml-3 text-xs">
-                      <span className="font-bold text-slate-800">{totalWorkers}</span>
-                      <span className="text-slate-500"> worker{totalWorkers !== 1 ? "s" : ""}</span>
-                    </span>
-                  </td>
-                  <td className="py-2 px-2.5">
-                    <div className="h-6 flex items-center justify-center px-1 rounded-md bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 tabular-nums">
-                      {totalManhours.toFixed(1)}
+                  <td colSpan={9} className="py-2 px-2.5">
+                    <div className="flex items-center gap-0 flex-wrap">
+
+                      {/* Label */}
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-4">
+                        Summary
+                      </span>
+
+                      {/* Present */}
+                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
+                        <span className="text-[11px] text-slate-500">Present:</span>
+                        <span className="text-[11px] font-bold text-slate-800">{presentCount}</span>
+                      </div>
+
+                      {/* Exceptions */}
+                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
+                        <span className="text-[11px] text-slate-500">Exceptions:</span>
+                        <span className="text-[11px] font-bold text-slate-800">{exceptionsCount}</span>
+                      </div>
+
+                      {/* Total Man-hours */}
+                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
+                        <span className="text-[11px] text-slate-500">Total Man-hours:</span>
+                        <span className="text-[11px] font-bold text-slate-800 tabular-nums">{totalManhours.toFixed(1)}</span>
+                        <span className="text-[10px] text-slate-400">man-hrs</span>
+                      </div>
+
+                      {/* Break */}
+                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
+                        {defLunchBreak ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                            ● Break: ON
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-medium text-slate-500">
+                            Break: OFF
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Issues */}
+                      <div className="flex items-center">
+                        {exceptionsCount === 0 ? (
+                          <span className="text-[11px] text-slate-400">Issues: None</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                            ⚠ {exceptionsCount} flagged
+                          </span>
+                        )}
+                      </div>
+
                     </div>
                   </td>
-                  <td colSpan={2} className="py-2 px-2.5 text-[10px] text-slate-400">man-hrs</td>
                 </tr>
               )}
             </tbody>

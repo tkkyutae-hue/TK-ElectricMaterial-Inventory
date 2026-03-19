@@ -1,0 +1,212 @@
+Scope Item Bundle Rules — Final Reference
+
+Use the following as the fixed default template for EMT Bundle and Rigid Bundle inside:
+Admin Mode → Projects → Project Detail → Scope Items
+
+Do not improvise names.
+Do not guess categories.
+Always use the exact inventory naming convention.
+
+==================================================
+1. EMT BUNDLE — FIXED DEFAULT STRUCTURE
+==================================================
+
+Available size buttons:
+3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+
+When an EMT size is selected, generate these default rows in this exact order:
+
+1. "{size} EMT Conduit"
+   - Unit: FT
+   - Category: Conduit
+   - Type: Primary
+
+2. "{size} EMT Compression Coupling"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+3. "{size} EMT Compression Connector"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+4. "{size} EMT Set Screw Coupling"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+5. "{size} EMT Set Screw Connector"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+6. "{size} EMT One-Hole Strap"
+   - Unit: EA
+   - Category: EMT Support
+   - Type: Support
+
+7. Clamp row naming rule:
+   - For 3/4" and 1":
+     "{size} EMT Unistrut Pipe Clamp"
+     Category: EMT Support
+   - For 1-1/4" and larger:
+     "{size} Unistrut Pipe Clamp"
+     Category: EMT Support
+
+   - Unit: EA
+   - Type: Support
+
+Important EMT rules:
+- Never use Rigid clamp names inside EMT bundle
+- Never duplicate compression connector/coupling rows
+- Do not auto-insert wrong categories like Equipment or Other
+- Conduit row only = Primary
+- All other EMT rows = Support
+
+==================================================
+2. RIGID BUNDLE — FIXED DEFAULT STRUCTURE
+==================================================
+
+Available size buttons:
+3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 5", 6"
+
+When a Rigid size is selected, generate these default rows in this exact order:
+
+1. "{size} Rigid Conduit"
+   - Unit: FT
+   - Category: Conduit
+   - Type: Primary
+
+2. "{size} Rigid Compression Coupling"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+3. "{size} Rigid Compression Connector"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+4. "{size} Rigid Coupling"
+   - Unit: EA
+   - Category: Fittings & Connectors
+   - Type: Support
+
+5. "{size} Rigid One-Hole Strap"
+   - Unit: EA
+   - Category: Rigid Support
+   - Type: Support
+
+6. Clamp row naming rule:
+   - For 3/4" and 1":
+     "{size} Rigid Unistrut Pipe Clamp"
+     Category: Rigid Support
+   - For 1-1/4" and larger:
+     "{size} Unistrut Pipe Clamp"
+     Category: Rigid Support
+
+   - Unit: EA
+   - Type: Support
+
+Important Rigid rules:
+- Never use EMT clamp names inside Rigid bundle
+- Never set Rigid clamp/support category to EMT Support
+- Never duplicate compression connector/coupling rows
+- Conduit row only = Primary
+- All other Rigid rows = Support
+
+==================================================
+3. INVENTORY NAME MATCHING RULE
+==================================================
+
+All default row names must follow the exact inventory item names already used in Admin Inventory.
+
+Do not reword names.
+Do not swap word order.
+Do not create approximate names.
+
+Examples:
+- Correct: "3/4\" EMT Conduit"
+- Wrong: "EMT Conduit 3/4\""
+
+- Correct: "3/4\" Rigid Conduit"
+- Wrong: "Rigid Conduit 3/4\""
+
+- Correct: "1-1/4\" Unistrut Pipe Clamp"
+- Wrong: "1-1/4\" EMT Unistrut Pipe Clamp" if inventory uses universal naming
+
+==================================================
+4. SIZE SWITCHING BEHAVIOR
+==================================================
+
+When user changes the size button inside a bundle:
+- fully replace the current default bundle rows with the new selected size template
+- do not keep leftover rows from previous size
+- do not mix sizes in the default generated bundle
+- do not create duplicates
+
+==================================================
+5. CATEGORY AUTO-ASSIGN RULE
+==================================================
+
+Category must be assigned automatically based on the generated row type.
+
+EMT:
+- EMT Conduit → Conduit
+- EMT Compression Coupling / Connector / Set Screw Coupling / Set Screw Connector → Fittings & Connectors
+- EMT One-Hole Strap → EMT Support
+- EMT Unistrut Pipe Clamp / Unistrut Pipe Clamp in EMT bundle → EMT Support
+
+Rigid:
+- Rigid Conduit → Conduit
+- Rigid Compression Coupling / Compression Connector / Coupling → Fittings & Connectors
+- Rigid One-Hole Strap → Rigid Support
+- Rigid Unistrut Pipe Clamp / Unistrut Pipe Clamp in Rigid bundle → Rigid Support
+
+Never assign:
+- Equipment
+- Other
+- wrong support category
+unless the user manually changes it later.
+
+==================================================
+6. TYPE DEFAULT RULE
+==================================================
+
+For both EMT and Rigid:
+- Main conduit row = Primary
+- All fittings, connectors, straps, clamps = Support
+
+==================================================
+7. VALIDATION RULES
+==================================================
+
+Before enabling "Add Items to Scope":
+- block save if duplicate inventory items exist in the same bundle
+- highlight duplicate rows
+- show a clear inline error
+- require user to fix duplicates first
+
+If inventory match is missing:
+- row stays editable
+- do not silently insert wrong item
+- do not auto-assign random similar item
+
+==================================================
+8. UI / UX EXPECTATION
+==================================================
+
+The screenshots provided by the user are the visual reference for correct output.
+
+Expected result:
+- EMT and Rigid bundles must open with the exact row structure shown in the screenshots
+- category pills must already be correct
+- item names must already be correct
+- size buttons must reflect only the approved size list
+- no extra rows
+- no missing rows
+- no duplicate connector rows
+- no wrong clamp naming
+
+Treat the screenshots as the source of truth.

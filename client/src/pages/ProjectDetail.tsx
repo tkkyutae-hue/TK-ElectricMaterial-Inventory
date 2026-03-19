@@ -432,6 +432,7 @@ function resolveDisplayCategory(storedCat: string | null | undefined, itemName: 
     "equipment":             "Equipment",
     "other":                 "Equipment",
     "emt support":           "Fittings & Connectors",
+    "rigid support":         "Fittings & Connectors",
   };
   return catMap[cat] || "Equipment";
 }
@@ -455,24 +456,46 @@ function normalizeCategory(cat: string | null | undefined): string {
   return resolveDisplayCategory(cat, "");
 }
 
-const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support"; searchWords: string[] }[]> = {
-  "EMT Conduit Bundle": [
-    { itemName: "EMT Conduit",               unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["emt", "conduit"] },
-    { itemName: "EMT Coupling",              unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "coupling"] },
-    { itemName: "EMT Connector",             unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "connector"] },
-    { itemName: "EMT Set Screw Connector",   unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw"] },
-    { itemName: "EMT Compression Connector", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression"] },
-    { itemName: "EMT Strap",                 unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["emt", "strap"] },
-    { itemName: "EMT Elbow",                 unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "elbow"] },
-  ],
-  "Rigid Conduit Bundle": [
-    { itemName: "Rigid Metal Conduit", unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["rigid", "conduit"] },
-    { itemName: "Rigid Coupling",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "coupling"] },
-    { itemName: "Rigid Connector",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "connector"] },
-    { itemName: "Rigid Elbow",         unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "elbow"] },
-    { itemName: "Rigid Locknut",       unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "locknut"] },
-    { itemName: "Rigid Strap",         unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["rigid", "strap"] },
-  ],
+type BundleTemplateItem = {
+  itemName: string;
+  unit: string;
+  category: string;
+  scopeType: "primary" | "support";
+  searchWords: string[];
+};
+
+// Size-aware EMT template — clamp name changes for 3/4" and 1"
+function getEMTTemplate(size: string): BundleTemplateItem[] {
+  const isSmall = size === '3/4"' || size === '1"';
+  return [
+    { itemName: "EMT Conduit",                unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["emt", "conduit"] },
+    { itemName: "EMT Compression Coupling",   unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "coupling"] },
+    { itemName: "EMT Compression Connector",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "connector"] },
+    { itemName: "EMT Set Screw Coupling",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "coupling"] },
+    { itemName: "EMT Set Screw Connector",    unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "connector"] },
+    { itemName: "EMT One-Hole Strap",         unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["emt", "strap"] },
+    isSmall
+      ? { itemName: "EMT Unistrut Pipe Clamp", unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["emt", "unistrut", "pipe", "clamp"] }
+      : { itemName: "Unistrut Pipe Clamp",     unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
+  ];
+}
+
+// Size-aware Rigid template — clamp name changes for 3/4" and 1"
+function getRigidTemplate(size: string): BundleTemplateItem[] {
+  const isSmall = size === '3/4"' || size === '1"';
+  return [
+    { itemName: "Rigid Conduit",               unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["rigid", "conduit"] },
+    { itemName: "Rigid Compression Coupling",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "compression", "coupling"] },
+    { itemName: "Rigid Compression Connector", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "compression", "connector"] },
+    { itemName: "Rigid Coupling",              unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "coupling"] },
+    { itemName: "Rigid One-Hole Strap",        unit: "EA", category: "Rigid Support",          scopeType: "support", searchWords: ["rigid", "strap"] },
+    isSmall
+      ? { itemName: "Rigid Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "unistrut", "pipe", "clamp"] }
+      : { itemName: "Unistrut Pipe Clamp",       unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
+  ];
+}
+
+const BUNDLE_DEFINITIONS: Record<string, BundleTemplateItem[]> = {
   "Flexible Conduit Bundle": [
     { itemName: "Flexible Conduit",             unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["flexible", "conduit"] },
     { itemName: "Flexible Connector Straight",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["flexible", "connector", "straight"] },
@@ -917,6 +940,7 @@ function BundleScopeRow({
           <datalist id={`bundle-cat-list-${rowIndex}`}>
             {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
             <option value="EMT Support" />
+            <option value="Rigid Support" />
           </datalist>
         </td>
         {/* Scope type */}
@@ -1274,13 +1298,21 @@ function BundleSelector({
 
   // Fully regenerate bundle rows from template + selected size (always fresh, no stale state)
   function buildRows(bundleName: string, size: string): BundleRow[] {
-    const items = BUNDLE_DEFINITIONS[bundleName] ?? [];
+    // EMT and Rigid use size-aware template functions (clamp name changes per size)
+    let items: BundleTemplateItem[];
+    if (bundleName === "EMT Conduit Bundle") {
+      items = getEMTTemplate(size);
+    } else if (bundleName === "Rigid Conduit Bundle") {
+      items = getRigidTemplate(size);
+    } else {
+      items = BUNDLE_DEFINITIONS[bundleName] ?? [];
+    }
     const sizeNorm = size ? size.toLowerCase().replace(/['"#]/g, "").trim() : "";
     return items.map(it => {
       const match = resolveInvMatch(it.searchWords, sizeNorm);
       return {
         localId: Math.random().toString(36).slice(2),
-        itemName: match ? match.name : "",
+        itemName: match ? match.name : it.itemName,
         unit: match ? (match.unitOfMeasure || it.unit) : it.unit,
         estimatedQty: "",
         category: it.category,
@@ -1356,7 +1388,14 @@ function BundleSelector({
           <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">Cancel</Button>
         </div>
         <div className="p-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {Object.entries(BUNDLE_DEFINITIONS).map(([name, items]) => (
+          {[
+            { name: "EMT Conduit Bundle",      count: 7 },
+            { name: "Rigid Conduit Bundle",    count: 6 },
+            { name: "Flexible Conduit Bundle", count: (BUNDLE_DEFINITIONS["Flexible Conduit Bundle"] ?? []).length },
+            { name: "Cable Tray Bundle",        count: (BUNDLE_DEFINITIONS["Cable Tray Bundle"] ?? []).length },
+            { name: "Box / Device Bundle",     count: (BUNDLE_DEFINITIONS["Box / Device Bundle"] ?? []).length },
+            { name: "Grounding Bundle",        count: (BUNDLE_DEFINITIONS["Grounding Bundle"] ?? []).length },
+          ].map(({ name, count }) => (
             <button
               key={name} type="button"
               onClick={() => pickBundle(name)}
@@ -1369,7 +1408,7 @@ function BundleSelector({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 leading-snug">{name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{items.length} items · click to configure</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{count} items · click to configure</p>
                 </div>
               </div>
             </button>

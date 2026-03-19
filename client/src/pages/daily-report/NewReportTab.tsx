@@ -701,7 +701,14 @@ export function NewReportTab({
               data-testid="input-def-end" className="h-7 text-xs w-28" />
           </div>
           <button type="button" data-testid="toggle-def-lunch-break"
-            onClick={() => setDefLunchBreak(v => !v)}
+            onClick={() => {
+              const next = !defLunchBreak;
+              setDefLunchBreak(next);
+              setManpower(prev => prev.map(r => {
+                const hrs = calcHours(r.startTime, r.endTime, r.attendanceStatus, next);
+                return { ...r, lunchBreak: next, hoursWorked: hrs };
+              }));
+            }}
             className={`flex items-center gap-1.5 h-7 px-3 rounded-md border text-[11px] font-medium transition-colors ${
               defLunchBreak
                 ? "bg-amber-50 border-amber-200 text-amber-700"
@@ -710,7 +717,7 @@ export function NewReportTab({
             <span className="text-[13px] leading-none">☕</span>
             Lunch Break {defLunchBreak ? "ON (−1h)" : "OFF"}
           </button>
-          <span className="text-[10px] text-slate-300 italic">applied to new rows only</span>
+          <span className="text-[10px] text-slate-300 italic">applies to all rows</span>
         </div>
 
         {/* Manpower table — no overflow-x-auto so dropdown panels are not clipped */}

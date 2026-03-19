@@ -271,9 +271,21 @@ function EditProjectDialog({
 // ── Category order + bundle definitions ───────────────────────────────────────
 const CATEGORY_ORDER = [
   "Conduit", "Fittings", "Flexible", "Cable / Wire",
-  "Boxes", "Devices", "Supports / Strut", "Grounding",
-  "Equipment / Special", "Other",
+  "Boxes / Devices", "Supports / Strut", "Grounding",
+  "Tray / Covers", "Equipment / Special", "Other",
 ];
+
+// Normalize legacy or variant category names into canonical CATEGORY_ORDER values
+function normalizeCategory(cat: string | null | undefined): string {
+  if (!cat) return "Other";
+  const c = cat.trim();
+  if (c === "Boxes" || c === "Devices" || c === "Box / Device") return "Boxes / Devices";
+  if (c === "Cable" || c === "Wire" || c === "Cable/Wire") return "Cable / Wire";
+  if (c === "Tray" || c === "Covers" || c === "Cable Tray") return "Tray / Covers";
+  if (c === "Supports" || c === "Strut") return "Supports / Strut";
+  if (c === "Equipment" || c === "Special") return "Equipment / Special";
+  return c;
+}
 
 const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support" }[]> = {
   "EMT Conduit Bundle": [
@@ -308,12 +320,12 @@ const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; categ
     { itemName: "Cable Tray Support Hanger", unit: "EA", category: "Supports / Strut", scopeType: "support" },
   ],
   "Box / Device Bundle": [
-    { itemName: "4\" Square Box", unit: "EA", category: "Boxes", scopeType: "primary" },
-    { itemName: "4\" Square Box Cover", unit: "EA", category: "Boxes", scopeType: "support" },
-    { itemName: "Device Box (1G)", unit: "EA", category: "Boxes", scopeType: "primary" },
-    { itemName: "Duplex Receptacle", unit: "EA", category: "Devices", scopeType: "primary" },
-    { itemName: "Single Pole Switch", unit: "EA", category: "Devices", scopeType: "primary" },
-    { itemName: "Cover Plate", unit: "EA", category: "Devices", scopeType: "support" },
+    { itemName: "4\" Square Box", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
+    { itemName: "4\" Square Box Cover", unit: "EA", category: "Boxes / Devices", scopeType: "support" },
+    { itemName: "Device Box (1G)", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
+    { itemName: "Duplex Receptacle", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
+    { itemName: "Single Pole Switch", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
+    { itemName: "Cover Plate", unit: "EA", category: "Boxes / Devices", scopeType: "support" },
   ],
   "Grounding Bundle": [
     { itemName: "Ground Rod", unit: "EA", category: "Grounding", scopeType: "primary" },
@@ -355,18 +367,12 @@ function newPendingRow(): PendingRow {
   };
 }
 
-// ── Scope Type Chip ────────────────────────────────────────────────────────────
+// ── Scope Type Chip ── Only rendered for non-primary items ────────────────────
 function ScopeTypeChip({ scopeType }: { scopeType: string | null | undefined }) {
-  if (!scopeType || scopeType === "primary") {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-        Primary
-      </span>
-    );
-  }
+  if (!scopeType || scopeType === "primary") return null;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">
-      Support
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 border border-slate-200 whitespace-nowrap ml-1.5">
+      sup
     </span>
   );
 }
@@ -1040,11 +1046,17 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
   const grouped = useMemo(() => {
     const map = new Map<string, ProjectScopeItem[]>();
     for (const item of scopeItems) {
-      const cat = item.category || "Other";
+      const cat = normalizeCategory(item.category);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(item);
     }
-    for (const [, items] of map) items.sort((a, b) => a.itemName.localeCompare(b.itemName));
+    for (const [, items] of map) items.sort((a, b) => {
+      // Primary items first within each category
+      const aType = (a as any).scopeType ?? "primary";
+      const bType = (b as any).scopeType ?? "primary";
+      if (aType !== bType) return aType === "primary" ? -1 : 1;
+      return a.itemName.localeCompare(b.itemName);
+    });
     const result: { cat: string; items: ProjectScopeItem[] }[] = [];
     for (const cat of CATEGORY_ORDER) { if (map.has(cat)) result.push({ cat, items: map.get(cat)! }); }
     for (const [cat, items] of map) { if (!CATEGORY_ORDER.includes(cat)) result.push({ cat, items }); }
@@ -1209,12 +1221,11 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80">
                 <tr>
-                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[32%]">Item</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[38%]">Item</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[9%]">Est. Qty</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Est. Qty</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">Category</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[10%]">Scope Type</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[29%]">Actions</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1224,7 +1235,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                     <Fragment key={cat}>
                       {/* Category header row */}
                       <tr className="bg-slate-50/80 border-t border-slate-200">
-                        <td colSpan={6} className="px-5 py-2">
+                        <td colSpan={5} className="px-5 py-2">
                           <button type="button" onClick={() => toggleCat(cat)}
                             className="flex items-center gap-2 text-left hover:text-brand-700 transition-colors group"
                             data-testid={`scope-cat-toggle-${cat.replace(/\s+/g, "-")}`}>
@@ -1235,44 +1246,54 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                             <span className="text-xs font-semibold text-slate-700 group-hover:text-brand-700">{cat}</span>
                             <span className="text-[10px] text-slate-400 ml-1">{items.length} item{items.length !== 1 ? "s" : ""}</span>
                             <span className="text-[10px] text-slate-300 ml-1">
-                              · {items.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0).toLocaleString()} total qty
+                              · {items.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0).toLocaleString()} total
                             </span>
                           </button>
                         </td>
                       </tr>
                       {/* Item rows */}
-                      {!isCollapsed && items.map((item) => (
+                      {!isCollapsed && items.map((item) => {
+                        const invLinked = (item as any).linkedInventoryItemId
+                          ? allInvItems.find(it => it.id === (item as any).linkedInventoryItemId)
+                          : null;
+                        const variants = (item as any).acceptedVariants as number[] ?? [];
+                        const isSupport = (item as any).scopeType === "support";
+                        return (
                         <Fragment key={item.id}>
                           <tr
                             className={`hover:bg-slate-50/70 transition-colors border-t border-slate-100 ${!item.isActive ? "opacity-40" : ""}`}
                             data-testid={`scope-row-${item.id}`}
                           >
+                            {/* Item name cell — primary title + inline sup chip + secondary inv tag */}
                             <td className="px-5 py-3">
-                              <p className="font-medium text-slate-900 leading-snug text-sm">{item.itemName}</p>
-                              {(item as any).linkedInventoryItemId && (() => {
-                                const inv = allInvItems.find(it => it.id === (item as any).linkedInventoryItemId);
-                                return inv ? (
-                                  <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-medium">
-                                    <Package className="w-2.5 h-2.5" /> {inv.name}
-                                  </span>
-                                ) : null;
-                              })()}
-                              {((item as any).acceptedVariants ?? []).length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {((item as any).acceptedVariants as number[]).slice(0, 3).map((vid: number) => {
+                              <div className="flex items-baseline gap-0 flex-wrap">
+                                <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
+                                  {item.itemName}
+                                </p>
+                                {isSupport && <ScopeTypeChip scopeType="support" />}
+                              </div>
+                              {invLinked && (
+                                <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[240px]" title={invLinked.name}>
+                                  <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                                  <span className="truncate">{invLinked.name}</span>
+                                </span>
+                              )}
+                              {variants.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {variants.slice(0, 2).map((vid: number) => {
                                     const inv = allInvItems.find(it => it.id === vid);
                                     return inv ? (
-                                      <span key={vid} className="text-[10px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-700 rounded font-medium">
+                                      <span key={vid} className="text-[9px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-600 rounded truncate max-w-[120px]" title={inv.name}>
                                         {inv.name}
                                       </span>
                                     ) : null;
                                   })}
-                                  {((item as any).acceptedVariants as number[]).length > 3 && (
-                                    <span className="text-[10px] text-slate-400">+{((item as any).acceptedVariants as number[]).length - 3} more</span>
+                                  {variants.length > 2 && (
+                                    <span className="text-[9px] text-slate-400">+{variants.length - 2}</span>
                                   )}
                                 </div>
                               )}
-                              {item.remarks && <p className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{item.remarks}</p>}
+                              {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[240px]">{item.remarks}</p>}
                             </td>
                             <td className="px-4 py-3">
                               <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
@@ -1283,8 +1304,8 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                             <td className="px-4 py-3">
                               {movingItem === item.id ? (
                                 <select
-                                  className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-28"
-                                  value={item.category ?? "Other"}
+                                  className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-32"
+                                  value={normalizeCategory(item.category)}
                                   onChange={e => moveToCategory(item, e.target.value)}
                                   onBlur={() => setMovingItem(null)}
                                   autoFocus
@@ -1293,11 +1314,8 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                                   {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                               ) : (
-                                <span className="text-xs text-slate-500">{item.category || "—"}</span>
+                                <span className="text-xs text-slate-500">{normalizeCategory(item.category)}</span>
                               )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <ScopeTypeChip scopeType={(item as any).scopeType} />
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -1344,7 +1362,8 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                             />
                           )}
                         </Fragment>
-                      ))}
+                      );
+                      })}
                     </Fragment>
                   );
                 })}

@@ -434,7 +434,11 @@ export function NewReportTab({
   const [tasks, setTasks] = useState<TaskRow[]>(() =>
     (fd?.tasks ?? []).map((t: any) => ({ expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], ...t }))
   );
-  const [assignOpen, setAssignOpen] = useState<number | null>(null);
+  const [assignOpen,     setAssignOpen]     = useState<number | null>(null);
+  const [deleteConfirm,  setDeleteConfirm]  = useState<number | null>(null);
+  const [undoState,      setUndoState]      = useState<{ task: TaskRow; index: number; progress: number } | null>(null);
+  const undoTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const undoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
@@ -475,7 +479,36 @@ export function NewReportTab({
   const mpSummary  = manpower.length  ? `${totalWorkers}w · ${totalManhours.toFixed(1)}h` : undefined;
   const matSummary = materials.length ? `${materials.length} item${materials.length !== 1 ? "s" : ""}` : undefined;
   const eqSummary  = equipment.length ? `${equipment.length} item${equipment.length !== 1 ? "s" : ""}` : undefined;
-  const taskSummary = tasks.length    ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
+  const taskSummary = tasks.length ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
+
+  function handleDeleteTask(task: TaskRow, index: number) {
+    setDeleteConfirm(null);
+    setTasks(prev => prev.filter(r => r.id !== task.id));
+    if (undoTimerRef.current)    clearTimeout(undoTimerRef.current);
+    if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
+    let progress = 100;
+    setUndoState({ task, index, progress });
+    undoIntervalRef.current = setInterval(() => {
+      progress -= 2;
+      setUndoState(prev => prev ? { ...prev, progress: Math.max(0, progress) } : null);
+    }, 100);
+    undoTimerRef.current = setTimeout(() => {
+      if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
+      setUndoState(null);
+    }, 5000);
+  }
+
+  function handleUndo() {
+    if (!undoState) return;
+    if (undoTimerRef.current)    clearTimeout(undoTimerRef.current);
+    if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
+    setTasks(prev => {
+      const arr = [...prev];
+      arr.splice(undoState.index, 0, undoState.task);
+      return arr;
+    });
+    setUndoState(null);
+  }
 
   // ── Form data builder ──
   function buildFormData() {
@@ -1047,12 +1080,31 @@ export function NewReportTab({
                   <div className="flex items-center justify-center gap-1 pl-1 overflow-hidden">
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
                     <button type="button" data-testid={`btn-remove-task-${i}`}
-                      onClick={e => { e.stopPropagation(); setTasks(tasks.filter(r => r.id !== row.id)); }}
+                      onClick={e => { e.stopPropagation(); setDeleteConfirm(row.id); }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
+
+                {/* ── Delete confirm bar ── */}
+                {deleteConfirm === row.id && (
+                  <div style={{ background: "#fee2e2", borderTop: "1px solid #fecaca", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#dc2626" }}
+                    onClick={e => e.stopPropagation()}>
+                    <span style={{ flex: 1 }}>Delete this task?</span>
+                    <button type="button"
+                      onClick={() => setDeleteConfirm(null)}
+                      className="px-2.5 py-1 text-slate-600 border border-slate-200 rounded text-[11px] bg-white hover:bg-slate-50 transition-colors">
+                      Cancel
+                    </button>
+                    <button type="button"
+                      onClick={() => handleDeleteTask(row, i)}
+                      className="px-2.5 py-1 text-white rounded text-[11px] hover:bg-red-700 transition-colors"
+                      style={{ background: "#dc2626" }}>
+                      Delete
+                    </button>
+                  </div>
+                )}
 
                 {/* ── Detail panel ── */}
                 {row.expanded && (
@@ -1178,6 +1230,27 @@ export function NewReportTab({
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
             expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [],
           }])} />
+
+        {/* ── Undo toast ── */}
+        {undoState && (
+          <div style={{
+            position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+            background: "#1f2937", color: "white", borderRadius: 8,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.2)", zIndex: 9999,
+            minWidth: 240, overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 18px" }}>
+              <span style={{ flex: 1, fontSize: 11.5 }}>Task deleted</span>
+              <button type="button" onClick={handleUndo}
+                style={{ color: "#86efac", fontWeight: 700, fontSize: 11.5, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Undo
+              </button>
+            </div>
+            <div style={{ height: 3, background: "#374151" }}>
+              <div style={{ height: "100%", background: "#86efac", width: `${undoState.progress}%`, transition: "width 0.1s linear" }} />
+            </div>
+          </div>
+        )}
       </Section>
 
       {/* ══════════════════════════════════════════════════════

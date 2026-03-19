@@ -39,12 +39,18 @@ const EQUIPMENT_PRESETS = [
   "Forklift", "Trench", "Excavator Small", "Excavator Big",
 ];
 
-// Foreman-or-above filter — matches common supervisory trade names
-const FOREMAN_PLUS_KW = ["foreman", "superintendent", "supervisor", "lead", "manager", "pm", "super", "gc", "master"];
+// Exact rank allowlist for "Prepared By" — Foreman and above
+const PREPARED_BY_RANKS = new Set([
+  "general manager",
+  "deputy general manager",
+  "manager",
+  "assistant manager",
+  "project engineer",
+  "foreman",
+]);
 function isForemanPlus(trade: string | null | undefined): boolean {
   if (!trade) return false;
-  const t = trade.toLowerCase();
-  return FOREMAN_PLUS_KW.some(kw => t.includes(kw));
+  return PREPARED_BY_RANKS.has(trade.toLowerCase().trim());
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -706,8 +712,8 @@ export function NewReportTab({
         </div>
 
         {/* Manpower table — max-h + scroll only when rows exceed 5 */}
-        <div className={manpower.length > 5 ? "max-h-[360px] overflow-y-auto pr-1" : ""}>
-          <table className="text-sm w-auto min-w-full" data-testid="table-manpower">
+        <div className={`overflow-x-auto${manpower.length > 5 ? " max-h-[360px] overflow-y-auto pr-1" : ""}`}>
+          <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
               { label: "Worker Name",  cls: "w-[160px]" },
               { label: "Trade",        cls: "w-[100px]" },
@@ -852,7 +858,8 @@ export function NewReportTab({
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
       <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
-        <table className="text-sm w-auto min-w-full" data-testid="table-tasks">
+        <div className="overflow-x-auto">
+        <table className="text-sm w-full" data-testid="table-tasks">
           <TH cols={[
             { label: "Task Description",  cls: "w-[220px]" },
             { label: "Area / Location",   cls: "w-[130px]" },
@@ -982,6 +989,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
+        </div>{/* end overflow-x-auto */}
         <AddRow testId="btn-add-task" label="Add Task"
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
@@ -993,7 +1001,8 @@ export function NewReportTab({
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
-        <table className="text-sm w-auto min-w-full" data-testid="table-materials">
+        <div className="overflow-x-auto">
+        <table className="text-sm w-full" data-testid="table-materials">
           <TH cols={[
             { label: "Material / Inventory Item", cls: "w-[220px]" },
             { label: "Unit",     cls: "w-[64px] text-center" },
@@ -1076,6 +1085,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
+        </div>{/* end overflow-x-auto */}
         <AddRow testId="btn-add-material" label="Add Material"
           onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
@@ -1111,7 +1121,8 @@ export function NewReportTab({
           </div>
         </div>
 
-        <table className="text-sm w-auto min-w-full" data-testid="table-equipment">
+        <div className="overflow-x-auto">
+        <table className="text-sm w-full" data-testid="table-equipment">
           <TH cols={[
             { label: "Equipment Name", cls: "w-[200px]" },
             { label: "Unit",           cls: "w-[60px] text-center" },
@@ -1158,6 +1169,7 @@ export function NewReportTab({
           </tbody>
         </table>
 
+        </div>{/* end overflow-x-auto */}
         <AddRow testId="btn-add-equipment" label="Add Custom"
           onClick={() => setEquipment([...equipment, { id: uid(), name: "", unit: "EA", qty: 1, hours: 0, notes: "" }])} />
       </Section>

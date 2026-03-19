@@ -1,0 +1,132 @@
+Update ONLY the Daily Report mode for the project report screen.
+
+STRICT ANTI-REGRESSION:
+Do NOT touch Admin Mode pages.
+Do NOT touch Scope Items, Material Usage, Overview, Progress, Inventory, or any other module.
+Do NOT change the overall page width.
+Do NOT change the outer card/container width.
+Do NOT change the global page layout structure.
+Do NOT apply any auto-responsive resizing or layout cleanup outside the exact items below.
+
+════════════════════════════
+1) PREPARED BY DROPDOWN FILTER
+════════════════════════════
+Use the existing full rank master list, but filter Prepared By to Foreman and above only.
+
+Full rank master list:
+- General Manager
+- Deputy General Manager
+- Manager
+- Assistant Manager
+- Staff
+- Project Engineer
+- Foreman
+- Helper
+- Safety
+
+Prepared By must ONLY show:
+- General Manager
+- Deputy General Manager
+- Manager
+- Assistant Manager
+- Project Engineer
+- Foreman
+
+Do NOT show:
+- Staff
+- Helper
+- Safety
+
+If Project Engineer is currently missing, add it.
+
+════════════════════════════
+2) TOP / BOTTOM ACTION BUTTONS
+════════════════════════════
+For BOTH the top action bar and the bottom action bar in Daily Report mode:
+
+Required buttons:
+- Save Draft
+- Submit
+- Delete (manager and above only)
+
+Button order:
+- Save Draft
+- Submit
+- Delete
+
+Delete button visibility:
+- show for General Manager
+- show for Deputy General Manager
+- show for Manager
+- hide for Assistant Manager and below
+
+Keep the action bars compact.
+Do NOT widen the action bar containers.
+
+════════════════════════════
+3) GENERAL INFO
+════════════════════════════
+Do NOT redesign General Info.
+Only make sure it does NOT become wider, stretched, or glued together.
+Keep it clean and balanced, but do NOT expand it.
+
+════════════════════════════
+4) RESTORE INTERNAL WIDTH OF 4 SECTIONS
+════════════════════════════
+Restore the INTERNAL content width of these 4 sections to the previous wider state:
+
+- Manpower
+- Work Tasks
+- Materials
+- Equipment
+
+Important:
+- Do NOT change the overall page width
+- Do NOT change the outer card width
+- Do NOT change General Info
+- Do NOT change section/card spacing outside the cards
+- Do NOT change page structure
+
+Current problem:
+These 4 sections became too narrow horizontally inside their cards.
+
+Required fix:
+- restore the previous wider internal content width
+- widen only the INSIDE content area of each section
+- restore the previous wider width for:
+  - section header row
+  - table header row
+  - empty-state row
+  - inline input row
+  - add button row
+  - equipment quick add row
+- make columns span properly again across the usable section width
+- do NOT keep the compressed/narrow internal table layout
+
+In short:
+Keep the outer cards exactly the same size,
+but restore the inner content width of Manpower, Work Tasks, Materials, and Equipment to the previous wider state.
+
+════════════════════════════
+5) DO NOT CHANGE ANYTHING ELSE
+════════════════════════════
+Do NOT:
+- restyle other pages
+- change typography globally
+- change input heights
+- change row heights
+- change button style globally
+- refactor unrelated components
+- rename fields
+- change permissions outside the requested Delete button rule
+- alter mobile behavior
+
+SUCCESS CRITERIA:
+- Prepared By shows only Foreman-and-above ranks
+- Project Engineer appears in Prepared By
+- Top action bar has Save Draft + Submit + role-based Delete
+- Bottom action bar has Save Draft + Submit + role-based Delete
+- General Info stays stable and not over-stretched
+- Manpower / Work Tasks / Materials / Equipment regain their previous wider INTERNAL width
+- Outer card width remains unchanged
+- No layout regression on any other module

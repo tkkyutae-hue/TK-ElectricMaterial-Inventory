@@ -464,34 +464,55 @@ type BundleTemplateItem = {
   searchWords: string[];
 };
 
-// Size-aware EMT template — clamp name changes for 3/4" and 1"
+// EMT bundle template — size-aware:
+//   Small (3/4", 1"): One-Hole Strap + EMT Unistrut Pipe Clamp (no elbow)
+//   Large (≥1-1/4"): 90 Elbow replaces One-Hole Strap + universal Unistrut Pipe Clamp
 function getEMTTemplate(size: string): BundleTemplateItem[] {
   const isSmall = size === '3/4"' || size === '1"';
+  const base: BundleTemplateItem[] = [
+    { itemName: "EMT Conduit",               unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["emt", "conduit"] },
+    { itemName: "EMT Compression Coupling",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "coupling"] },
+    { itemName: "EMT Compression Connector", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "connector"] },
+    { itemName: "EMT Set Screw Coupling",    unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "coupling"] },
+    { itemName: "EMT Set Screw Connector",   unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "connector"] },
+  ];
+  if (isSmall) {
+    return [
+      ...base,
+      { itemName: "EMT One-Hole Strap",      unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["emt", "strap"] },
+      { itemName: "EMT Unistrut Pipe Clamp", unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["emt", "unistrut", "pipe", "clamp"] },
+    ];
+  }
   return [
-    { itemName: "EMT Conduit",                unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["emt", "conduit"] },
-    { itemName: "EMT Compression Coupling",   unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "coupling"] },
-    { itemName: "EMT Compression Connector",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "compression", "connector"] },
-    { itemName: "EMT Set Screw Coupling",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "coupling"] },
-    { itemName: "EMT Set Screw Connector",    unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "set", "screw", "connector"] },
-    { itemName: "EMT One-Hole Strap",         unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["emt", "strap"] },
-    isSmall
-      ? { itemName: "EMT Unistrut Pipe Clamp", unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["emt", "unistrut", "pipe", "clamp"] }
-      : { itemName: "Unistrut Pipe Clamp",     unit: "EA", category: "EMT Support", scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
+    ...base,
+    { itemName: "EMT 90 Elbow",         unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "elbow", "90"] },
+    { itemName: "Unistrut Pipe Clamp",  unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
   ];
 }
 
-// Size-aware Rigid template — clamp name changes for 3/4" and 1"
+// Rigid bundle template — size-aware:
+//   Small (3/4", 1"): One-Hole Strap + Rigid Unistrut Pipe Clamp (no elbow)
+//   Large (≥1-1/4"): 90 Elbow replaces One-Hole Strap + universal Unistrut Pipe Clamp
+//   No Set Screw items. Row 4 = Rigid Threaded Coupling (not Compression).
 function getRigidTemplate(size: string): BundleTemplateItem[] {
   const isSmall = size === '3/4"' || size === '1"';
-  return [
+  const base: BundleTemplateItem[] = [
     { itemName: "Rigid Conduit",               unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["rigid", "conduit"] },
     { itemName: "Rigid Compression Coupling",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "compression", "coupling"] },
     { itemName: "Rigid Compression Connector", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "compression", "connector"] },
-    { itemName: "Rigid Coupling",              unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "coupling"] },
-    { itemName: "Rigid One-Hole Strap",        unit: "EA", category: "Rigid Support",          scopeType: "support", searchWords: ["rigid", "strap"] },
-    isSmall
-      ? { itemName: "Rigid Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "unistrut", "pipe", "clamp"] }
-      : { itemName: "Unistrut Pipe Clamp",       unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
+    { itemName: "Rigid Threaded Coupling",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "threaded", "coupling"] },
+  ];
+  if (isSmall) {
+    return [
+      ...base,
+      { itemName: "Rigid One-Hole Strap",      unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "strap"] },
+      { itemName: "Rigid Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "unistrut", "pipe", "clamp"] },
+    ];
+  }
+  return [
+    ...base,
+    { itemName: "Rigid 90 Elbow",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "elbow", "90"] },
+    { itemName: "Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support",          scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
   ];
 }
 
@@ -562,7 +583,7 @@ function newBundleRow(): BundleRow {
 // Size lists per bundle type — 1/2" excluded from EMT and Rigid per spec
 const BUNDLE_SIZES: Record<string, string[]> = {
   "EMT Conduit Bundle":      ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
-  "Rigid Conduit Bundle":    ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","5\"","6\""],
+  "Rigid Conduit Bundle":    ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
   "Flexible Conduit Bundle": ["3/8\"","1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\""],
   "Cable Tray Bundle":       ["4\"","6\"","9\"","12\"","18\"","24\"","30\"","36\""],
   "Box / Device Bundle":     ["1G","2G","4\" Square","4-11/16\""],
@@ -1283,12 +1304,18 @@ function BundleSelector({
 
   const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
 
-  // Resolve one inventory match for a bundle template item + selected size
+  // Resolve one inventory match for a bundle template item + selected size.
+  // Size matching uses startsWith (after stripping quotes from both sides) so that
+  // "4" does not accidentally match "1-1/4" items (the old n.includes() bug).
   function resolveInvMatch(searchWords: string[], sizeNorm: string) {
     return sizeNorm
       ? invItems.find(inv => {
           const n = inv.name.toLowerCase();
-          return searchWords.every(w => n.includes(w)) && n.includes(sizeNorm);
+          // Strip quotes/hash from the item name for size comparison
+          const nNorm = n.replace(/['"#]/g, "").trim();
+          // Size must appear at the very start of the item name followed by a space
+          const sizeMatch = nNorm.startsWith(sizeNorm + " ") || nNorm === sizeNorm;
+          return sizeMatch && searchWords.every(w => n.includes(w));
         })
       : invItems.find(inv => {
           const n = inv.name.toLowerCase();

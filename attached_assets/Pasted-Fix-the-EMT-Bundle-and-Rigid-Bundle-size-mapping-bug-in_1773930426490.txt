@@ -1,0 +1,73 @@
+Fix the EMT Bundle and Rigid Bundle size-mapping bug inside Admin Mode → Projects → Project Detail → Scope Items.
+
+CRITICAL:
+Do not change page width, card width, spacing, row height, table layout, sidebar, topbar, or any other page/module.
+Do not redesign the UI.
+Only fix the bundle generation logic and item defaults described below.
+
+BUG TO FIX
+When adding items by bundle, selecting 4" sometimes generates rows with 1-1/4" item names.
+This is wrong.
+The selected size chip must control every generated row consistently.
+
+REQUIRED FIXES
+
+1. Bundle size mapping must be correct
+- EMT Bundle and Rigid Bundle must both use the currently selected size chip as the single source of truth.
+- If user selects 4", every generated row must use 4".
+- If user selects 3/4", every generated row must use 3/4".
+- No stale size value, previous size, index mismatch, or carry-over is allowed.
+
+2. Use one shared selectedSize source everywhere
+The following must all use the exact same selectedSize value:
+- generated item label shown in the row
+- inventory search default query
+- linked inventory matching logic
+- final saved payload
+
+3. Regenerate rows when size changes
+- If the bundle panel is open and the user switches size chips, all auto-generated rows must refresh immediately using the new selected size.
+- No old size text may remain in any row.
+
+4. Fix EMT bundle defaults
+- EMT does have Set Screw Connector and Set Screw Coupling.
+- EMT does NOT use “EMT to EMT Pull Elbow” here.
+- For EMT bundle:
+  - for sizes 3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+  - remove One-Hole Strap rows for 1-1/4" and larger
+  - add 90 Elbow row directly below Set Screw Connector for 1-1/4" and larger
+- Keep correct inventory-linked names as much as possible.
+
+5. Fix Rigid bundle defaults
+- Rigid does NOT have Set Screw items.
+- Rigid does NOT use pull elbows here.
+- Use 90 Elbow only.
+- Replace the wrong Compression Coupling duplicate row with Threaded Coupling.
+- Remove One-Hole Strap rows for 1-1/4" and larger.
+- Rigid 5" size chip should not exist.
+- Rigid Unistrut Pipe Clamp must link correctly:
+  - 3/4" and 1" must reconnect to the existing admin inventory items
+  - 1-1/4" and larger should continue using Universal / Unistrut Pipe Clamp inventory items as already intended
+
+6. EMT size options
+Show only:
+3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+Do not show 1/2".
+
+7. Rigid size options
+Show only:
+3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+Do not show 1/2" or 5".
+
+VALIDATION BEFORE FINISHING
+Please verify these exact cases:
+- EMT 3/4" bundle generates all rows as 3/4"
+- EMT 4" bundle generates all rows as 4"
+- EMT 6" bundle generates all rows as 6"
+- Rigid 3/4" bundle generates all rows as 3/4"
+- Rigid 4" bundle generates all rows as 4"
+- Switching bundle size while panel is open immediately refreshes row names and linked inventory results
+- No duplicate wrong-size rows remain
+- No duplicate Compression Coupling rows remain in Rigid
+- No Set Screw rows remain in Rigid
+- No Pull Elbow rows are used in EMT or Rigid bundle defaults

@@ -1,0 +1,74 @@
+<input value="Alfredo Perez Rodriguez" />
+<span>Foreman</span>   ← input 밖에 따로 존재
+```
+
+---
+
+## 복붙용 수정 프롬프트
+```
+==================================================
+SCOPE: Manpower section only — Worker Name cell display state.
+File: [ManpowerSection component path]
+==================================================
+
+PROBLEM:
+When a worker is selected, the role/trade text renders
+OUTSIDE the input field box, causing layout overflow.
+
+FIX — Wrap name + role inside a single container div:
+
+Replace the current worker name cell markup with this structure:
+
+  <div class="worker-name-cell">
+    <span class="worker-name-text">Alfredo Perez Rodriguez</span>
+    <span class="worker-role-text">Foreman</span>
+  </div>
+
+  OR if keeping an <input>:
+
+  <div class="worker-name-cell">
+    <input class="worker-name-input" value="Alfredo Perez Rodriguez" readonly />
+    <span class="worker-role-text">Foreman</span>
+  </div>
+
+CSS for .worker-name-cell:
+  display: flex
+  align-items: center
+  width: 100%
+  border: 1px solid #ddd          ← the border goes on the WRAPPER, not the input
+  border-radius: 6px
+  height: 32px
+  overflow: hidden
+  background: #fff
+
+CSS for input inside .worker-name-cell:
+  flex: 1
+  min-width: 0
+  border: none                    ← remove input's own border
+  outline: none
+  background: transparent
+  font-size: 13px
+  padding: 0 9px
+
+CSS for .worker-role-text:
+  flex-shrink: 0                  ← never shrinks
+  font-size: 11px
+  color: #999
+  padding-right: 9px
+  white-space: nowrap
+  background: transparent         ← no background
+  border: none                    ← no left border / divider
+
+IMPORTANT:
+  - The border must be on the wrapper div, NOT on the input element
+  - Role text must be INSIDE the wrapper div
+  - Role text must NOT have its own border or background
+  - This applies to both display state AND edit/search state
+  - Dropdown list items are separate — do not change dropdown markup
+
+Focused state (when input is active):
+  .worker-name-cell:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+  }
+==================================================

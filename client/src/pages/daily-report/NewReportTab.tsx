@@ -238,8 +238,9 @@ function WorkerCombobox({
   row: ManpowerRow; allWorkers: Worker[]; takenIds: Set<number | null>;
   testId: string; onChange: (patch: Partial<ManpowerRow>) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState(row.workerName);
+  const [open, setOpen]       = useState(false);
+  const [query, setQuery]     = useState(row.workerName);
+  const [focused, setFocused] = useState(false);
 
   const filtered = allWorkers
     .filter((w) => !takenIds.has(w.id) || w.id === row.workerId)
@@ -250,15 +251,45 @@ function WorkerCombobox({
 
   return (
     <div className="relative">
-      <Input data-testid={testId} value={query} placeholder="Type name or search…"
-        className="h-8 text-xs"
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-          onChange({ workerName: e.target.value, workerId: null, trade: row.trade });
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)} />
+      {/* Wrapper div carries the border — input inside is borderless */}
+      <div
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          display: "flex", alignItems: "center",
+          width: "100%", height: 32,
+          border: `1px solid ${focused ? "#3b82f6" : "#e2e8f0"}`,
+          borderRadius: 6, background: "#fff", overflow: "hidden",
+          boxShadow: focused ? "0 0 0 2px rgba(59,130,246,0.15)" : "none",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+        }}>
+        <input
+          data-testid={testId}
+          value={query}
+          placeholder="Type name or search…"
+          style={{
+            flex: 1, minWidth: 0,
+            border: "none", outline: "none",
+            background: "transparent",
+            fontSize: 13, padding: "0 9px",
+            color: "#1e293b",
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            onChange({ workerName: e.target.value, workerId: null, trade: "" });
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)} />
+        {row.trade && (
+          <span style={{
+            flexShrink: 0, fontSize: 11, color: "#94a3b8",
+            paddingRight: 9, whiteSpace: "nowrap",
+          }}>
+            {row.trade}
+          </span>
+        )}
+      </div>
       {open && filtered.length > 0 && (
         <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden" style={{ minWidth: 240 }}>
           {filtered.map((w) => (
@@ -953,22 +984,11 @@ export function NewReportTab({
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                 return (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
-                    {/* Worker Name + role badge */}
+                    {/* Worker Name — role badge is rendered inside WorkerCombobox wrapper */}
                     <td className="py-1.5 px-2.5">
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
-                            testId={`input-mp-worker-${i}`}
-                            onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
-                        </div>
-                        {row.trade && (
-                          <span data-testid={`text-mp-trade-${i}`}
-                            style={{ flexShrink: 0, fontSize: 10, color: "#64748b", whiteSpace: "nowrap",
-                              maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {row.trade}
-                          </span>
-                        )}
-                      </div>
+                      <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
+                        testId={`input-mp-worker-${i}`}
+                        onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
                     </td>
                     {/* Status */}
                     <td className="py-1.5 px-2.5">

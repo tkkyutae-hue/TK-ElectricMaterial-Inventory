@@ -8,6 +8,7 @@ import {
   LayoutList, Hash, TrendingUp, AlertCircle, Download, Clock, FileText,
   ListTodo, Eye, Filter, FileBarChart, ChevronRight, ChevronLeft, DollarSign,
   ChevronDown, Copy, FolderOpen, Boxes, Layers, Zap,
+  Pipette, Wrench, LayoutGrid, Shield, Box, ToggleLeft, Cpu,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -268,71 +269,235 @@ function EditProjectDialog({
   );
 }
 
-// ── Category order + bundle definitions ───────────────────────────────────────
+// ── Category order + config ────────────────────────────────────────────────────
 const CATEGORY_ORDER = [
-  "Conduit", "Fittings", "Flexible", "Cable / Wire",
-  "Boxes / Devices", "Supports / Strut", "Grounding",
-  "Tray / Covers", "Equipment / Special", "Other",
+  "Conduit", "Fittings & Connectors", "Cable Tray", "Cable / Wire",
+  "Grounding", "Boxes", "Devices", "Equipment",
 ];
 
-// Normalize legacy or variant category names into canonical CATEGORY_ORDER values
+type CatConfig = {
+  accent: string;
+  iconBg: string;
+  subtitle: string;
+  subGroups?: { key: string; label: string }[];
+};
+
+const CATEGORY_CONFIG: Record<string, CatConfig> = {
+  "Conduit": {
+    accent: "#0891b2", iconBg: "#e0f7fa",
+    subtitle: "선관 본체 · Flexible · EMT · Rigid",
+    subGroups: [
+      { key: "flexible", label: "Flexible (Liquidtight)" },
+      { key: "emt",      label: "EMT" },
+      { key: "rigid",    label: "Rigid" },
+    ],
+  },
+  "Fittings & Connectors": {
+    accent: "#4f6ef7", iconBg: "#eef2ff",
+    subtitle: "Connector · Coupling · Strap · Bushing · Clamp",
+    subGroups: [
+      { key: "flexible", label: "Flexible Connectors" },
+      { key: "emt",      label: "EMT Fittings" },
+      { key: "rigid",    label: "Rigid Fittings" },
+    ],
+  },
+  "Cable Tray": {
+    accent: "#d97706", iconBg: "#fef3c7",
+    subtitle: "Straight · Cover · Elbow · Vertical Out",
+  },
+  "Cable / Wire": {
+    accent: "#7c3aed", iconBg: "#ede9fe",
+    subtitle: "Multi-Conductor · Single Conductor",
+  },
+  "Grounding": {
+    accent: "#16a34a", iconBg: "#dcfce7",
+    subtitle: "Ground Wire · Bonding",
+  },
+  "Boxes": {
+    accent: "#1d6ecc", iconBg: "#dbeafe",
+    subtitle: "Junction Box · Pull Box · Panel",
+  },
+  "Devices": {
+    accent: "#ea580c", iconBg: "#fff7ed",
+    subtitle: "Receptacle · Switch · Lighting",
+  },
+  "Equipment": {
+    accent: "#7e22ce", iconBg: "#f3e8ff",
+    subtitle: "Transformer · Motor · Special",
+  },
+};
+
+const CAT_ICONS: Record<string, React.ElementType> = {
+  "Conduit":               Pipette,
+  "Fittings & Connectors": Wrench,
+  "Cable Tray":            LayoutGrid,
+  "Cable / Wire":          Zap,
+  "Grounding":             Shield,
+  "Boxes":                 Box,
+  "Devices":               ToggleLeft,
+  "Equipment":             Cpu,
+};
+
+// Resolve which of the 8 display categories an item belongs to.
+// Uses item name keywords first, then falls back to stored category string.
+function resolveDisplayCategory(storedCat: string | null | undefined, itemName: string): string {
+  const name = itemName.toLowerCase();
+  const cat  = (storedCat ?? "").trim().toLowerCase();
+
+  // Cable Tray
+  if (name.includes("cable tray") || name.includes("checkered")) return "Cable Tray";
+
+  // Grounding wire / rod / bar
+  if (
+    (name.includes("ground") && (name.includes("wire") || name.includes("rod") || name.includes("bar"))) ||
+    cat === "grounding"
+  ) return "Grounding";
+
+  // Fittings / connectors
+  const isFitting =
+    name.includes("connector") ||
+    name.includes("coupling") ||
+    name.includes("strap") ||
+    (name.includes("bushing") && !name.includes("ground")) ||
+    name.includes("locknut") ||
+    name.includes("pipe clamp") ||
+    name.includes("conduit clamp") ||
+    name.includes("lug") ||
+    (name.includes("elbow") && !name.includes("cable tray"));
+  if (isFitting) return "Fittings & Connectors";
+
+  // Conduit runs
+  const isConduit =
+    (name.includes("conduit") && !name.includes("connector") && !name.includes("clamp")) ||
+    name.includes("mc cable");
+  if (isConduit) return "Conduit";
+
+  // Wire / Cable runs
+  const isCableOrWire =
+    (name.includes("wire") && !name.includes("ground")) ||
+    (name.includes("cable") && !name.includes("cable tray") && !name.includes("ground")) ||
+    name.includes("thhn") ||
+    name.includes("conductor") ||
+    name.includes("(c+g)") ||
+    name.includes("single wire") ||
+    name.includes("multi-conductor");
+  if (isCableOrWire) return "Cable / Wire";
+
+  // Boxes / enclosures
+  const isBox =
+    name.includes("box") ||
+    name.includes("enclosure") ||
+    name.includes("pull box") ||
+    name.includes("junction");
+  if (isBox) return "Boxes";
+
+  // Devices
+  const isDevice =
+    name.includes("receptacle") ||
+    name.includes("switch") ||
+    name.includes("outlet") ||
+    name.includes("fixture") ||
+    name.includes("exit sign") ||
+    name.includes("duplex") ||
+    name.includes("plug");
+  if (isDevice) return "Devices";
+
+  // Equipment
+  const isEquipment =
+    name.includes("transformer") ||
+    name.includes("motor") ||
+    name.includes("mcc") ||
+    name.includes("panel") ||
+    name.includes("vfd") ||
+    name.includes("ups");
+  if (isEquipment) return "Equipment";
+
+  // Category-string fallback map
+  const catMap: Record<string, string> = {
+    "conduit":               "Conduit",
+    "flexible":              "Conduit",
+    "fittings":              "Fittings & Connectors",
+    "fittings & connectors": "Fittings & Connectors",
+    "supports / strut":      "Fittings & Connectors",
+    "cable / wire":          "Cable / Wire",
+    "cable tray":            "Cable Tray",
+    "tray / covers":         "Cable Tray",
+    "grounding":             "Grounding",
+    "boxes":                 "Boxes",
+    "boxes / devices":       "Boxes",
+    "devices":               "Devices",
+    "equipment / special":   "Equipment",
+    "equipment":             "Equipment",
+    "other":                 "Equipment",
+  };
+  return catMap[cat] || "Equipment";
+}
+
+// Returns a sub-group key for Conduit / Fittings categories
+function resolveSubGroup(displayCat: string, itemName: string): string | null {
+  const name = itemName.toLowerCase();
+  if (displayCat === "Conduit" || displayCat === "Fittings & Connectors") {
+    if (
+      name.includes("liquidtight") ||
+      (name.includes("flexible") && (name.includes("conduit") || name.includes("connector")))
+    ) return "flexible";
+    if (name.includes("emt")) return "emt";
+    if (name.includes("rigid")) return "rigid";
+  }
+  return null;
+}
+
+// Legacy shim — keeps inventory auto-fill working
 function normalizeCategory(cat: string | null | undefined): string {
-  if (!cat) return "Other";
-  const c = cat.trim();
-  if (c === "Boxes" || c === "Devices" || c === "Box / Device") return "Boxes / Devices";
-  if (c === "Cable" || c === "Wire" || c === "Cable/Wire") return "Cable / Wire";
-  if (c === "Tray" || c === "Covers" || c === "Cable Tray") return "Tray / Covers";
-  if (c === "Supports" || c === "Strut") return "Supports / Strut";
-  if (c === "Equipment" || c === "Special") return "Equipment / Special";
-  return c;
+  return resolveDisplayCategory(cat, "");
 }
 
 const BUNDLE_DEFINITIONS: Record<string, { itemName: string; unit: string; category: string; scopeType: "primary" | "support" }[]> = {
   "EMT Conduit Bundle": [
-    { itemName: "EMT Conduit", unit: "FT", category: "Conduit", scopeType: "primary" },
-    { itemName: "EMT Coupling", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "EMT Connector", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "EMT Set Screw Connector", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "EMT Compression Connector", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "EMT Strap", unit: "EA", category: "Supports / Strut", scopeType: "support" },
-    { itemName: "EMT Elbow", unit: "EA", category: "Fittings", scopeType: "support" },
+    { itemName: "EMT Conduit",              unit: "FT", category: "Conduit",               scopeType: "primary" },
+    { itemName: "EMT Coupling",             unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Connector",            unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Set Screw Connector",  unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Compression Connector",unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Strap",                unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "EMT Elbow",                unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
   ],
   "Rigid Conduit Bundle": [
-    { itemName: "Rigid Metal Conduit", unit: "FT", category: "Conduit", scopeType: "primary" },
-    { itemName: "Rigid Coupling", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "Rigid Connector", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "Rigid Elbow 90°", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "Rigid Locknut", unit: "EA", category: "Fittings", scopeType: "support" },
-    { itemName: "Rigid Strap", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "Rigid Metal Conduit",  unit: "FT", category: "Conduit",               scopeType: "primary" },
+    { itemName: "Rigid Coupling",       unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Rigid Connector",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Rigid Elbow 90°",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Rigid Locknut",        unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Rigid Strap",          unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
   ],
   "Flexible Conduit Bundle": [
-    { itemName: "Flexible Conduit", unit: "FT", category: "Flexible", scopeType: "primary" },
-    { itemName: "Flexible Connector (Straight)", unit: "EA", category: "Flexible", scopeType: "support" },
-    { itemName: "Flexible Connector (90°)", unit: "EA", category: "Flexible", scopeType: "support" },
-    { itemName: "Liquidtight Flexible Conduit", unit: "FT", category: "Flexible", scopeType: "primary" },
-    { itemName: "Liquidtight Connector", unit: "EA", category: "Flexible", scopeType: "support" },
+    { itemName: "Flexible Conduit",              unit: "FT", category: "Conduit",               scopeType: "primary" },
+    { itemName: "Flexible Connector (Straight)", unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Flexible Connector (90°)",      unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
+    { itemName: "Liquidtight Flexible Conduit",  unit: "FT", category: "Conduit",               scopeType: "primary" },
+    { itemName: "Liquidtight Connector",         unit: "EA", category: "Fittings & Connectors", scopeType: "support" },
   ],
   "Cable Tray Bundle": [
-    { itemName: "Cable Tray (12\" wide)", unit: "FT", category: "Supports / Strut", scopeType: "primary" },
-    { itemName: "Cable Tray Coupler", unit: "EA", category: "Supports / Strut", scopeType: "support" },
-    { itemName: "Cable Tray Elbow", unit: "EA", category: "Supports / Strut", scopeType: "support" },
-    { itemName: "Cable Tray Cover", unit: "FT", category: "Supports / Strut", scopeType: "support" },
-    { itemName: "Cable Tray Support Hanger", unit: "EA", category: "Supports / Strut", scopeType: "support" },
+    { itemName: "Cable Tray (12\" wide)",    unit: "FT", category: "Cable Tray", scopeType: "primary" },
+    { itemName: "Cable Tray Coupler",        unit: "EA", category: "Cable Tray", scopeType: "support" },
+    { itemName: "Cable Tray Elbow",          unit: "EA", category: "Cable Tray", scopeType: "support" },
+    { itemName: "Cable Tray Cover",          unit: "FT", category: "Cable Tray", scopeType: "support" },
+    { itemName: "Cable Tray Support Hanger", unit: "EA", category: "Cable Tray", scopeType: "support" },
   ],
   "Box / Device Bundle": [
-    { itemName: "4\" Square Box", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
-    { itemName: "4\" Square Box Cover", unit: "EA", category: "Boxes / Devices", scopeType: "support" },
-    { itemName: "Device Box (1G)", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
-    { itemName: "Duplex Receptacle", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
-    { itemName: "Single Pole Switch", unit: "EA", category: "Boxes / Devices", scopeType: "primary" },
-    { itemName: "Cover Plate", unit: "EA", category: "Boxes / Devices", scopeType: "support" },
+    { itemName: "4\" Square Box",     unit: "EA", category: "Boxes",   scopeType: "primary" },
+    { itemName: "4\" Square Box Cover",unit: "EA", category: "Boxes",   scopeType: "support" },
+    { itemName: "Device Box (1G)",    unit: "EA", category: "Boxes",   scopeType: "primary" },
+    { itemName: "Duplex Receptacle",  unit: "EA", category: "Devices", scopeType: "primary" },
+    { itemName: "Single Pole Switch", unit: "EA", category: "Devices", scopeType: "primary" },
+    { itemName: "Cover Plate",        unit: "EA", category: "Devices", scopeType: "support" },
   ],
   "Grounding Bundle": [
-    { itemName: "Ground Rod", unit: "EA", category: "Grounding", scopeType: "primary" },
-    { itemName: "Ground Rod Clamp", unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Ground Rod",            unit: "EA", category: "Grounding", scopeType: "primary" },
+    { itemName: "Ground Rod Clamp",      unit: "EA", category: "Grounding", scopeType: "support" },
     { itemName: "Grounding Wire (#6 bare)", unit: "FT", category: "Grounding", scopeType: "primary" },
-    { itemName: "Grounding Bushing", unit: "EA", category: "Grounding", scopeType: "support" },
-    { itemName: "Grounding Lug", unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Grounding Bushing",     unit: "EA", category: "Grounding", scopeType: "support" },
+    { itemName: "Grounding Lug",         unit: "EA", category: "Grounding", scopeType: "support" },
   ],
 };
 
@@ -1263,12 +1428,11 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
   const grouped = useMemo(() => {
     const map = new Map<string, ProjectScopeItem[]>();
     for (const item of scopeItems) {
-      const cat = normalizeCategory(item.category);
+      const cat = resolveDisplayCategory(item.category, item.itemName);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(item);
     }
     for (const [, items] of map) items.sort((a, b) => {
-      // Primary items first within each category
       const aType = (a as any).scopeType ?? "primary";
       const bType = (b as any).scopeType ?? "primary";
       if (aType !== bType) return aType === "primary" ? -1 : 1;
@@ -1433,7 +1597,7 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
         ) : grouped.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50/80">
+              <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[38%]">Item</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
@@ -1442,146 +1606,224 @@ function ScopeItemsTab({ projectId }: { projectId: number }) {
                   <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {grouped.map(({ cat, items }) => {
-                  const isCollapsed = collapsedCats.has(cat);
+              {grouped.map(({ cat, items }) => {
+                const cfg = CATEGORY_CONFIG[cat] ?? { accent: "#64748b", iconBg: "#f1f5f9", subtitle: "" };
+                const CatIcon = CAT_ICONS[cat] ?? LayoutList;
+                const isCollapsed = collapsedCats.has(cat);
+                const catTotalQty = items.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
+
+                // Build sub-group entries for Conduit / Fittings
+                const sgDefs = cfg.subGroups ?? [];
+                const sgMap = new Map<string | null, ProjectScopeItem[]>();
+                for (const item of items) {
+                  const sg = sgDefs.length ? resolveSubGroup(cat, item.itemName) : null;
+                  if (!sgMap.has(sg)) sgMap.set(sg, []);
+                  sgMap.get(sg)!.push(item);
+                }
+                const activeSgEntries = sgDefs
+                  .map(sg => ({ ...sg, items: sgMap.get(sg.key) ?? [] }))
+                  .filter(sg => sg.items.length > 0);
+                const ungroupedItems = sgMap.get(null) ?? [];
+
+                const renderItemRow = (item: ProjectScopeItem) => {
+                  const invLinked = (item as any).linkedInventoryItemId
+                    ? allInvItems.find(it => it.id === (item as any).linkedInventoryItemId)
+                    : null;
+                  const variants = (item as any).acceptedVariants as number[] ?? [];
+                  const isSupport = (item as any).scopeType === "support";
                   return (
-                    <Fragment key={cat}>
-                      {/* Category header row */}
-                      <tr className="bg-slate-50/80 border-t border-slate-200">
-                        <td colSpan={5} className="px-5 py-2">
-                          <button type="button" onClick={() => toggleCat(cat)}
-                            className="flex items-center gap-2 text-left hover:text-brand-700 transition-colors group"
-                            data-testid={`scope-cat-toggle-${cat.replace(/\s+/g, "-")}`}>
-                            {isCollapsed
-                              ? <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" />
-                              : <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" />
-                            }
-                            <span className="text-xs font-semibold text-slate-700 group-hover:text-brand-700">{cat}</span>
-                            <span className="text-[10px] text-slate-400 ml-1">{items.length} item{items.length !== 1 ? "s" : ""}</span>
-                            <span className="text-[10px] text-slate-300 ml-1">
-                              · {items.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0).toLocaleString()} total
+                    <Fragment key={item.id}>
+                      <tr
+                        style={{ borderLeft: `3px solid ${cfg.accent}55` }}
+                        className={`transition-colors border-t border-slate-100/80 ${!item.isActive ? "opacity-40" : ""}`}
+                        data-testid={`scope-row-${item.id}`}
+                        onMouseEnter={e => (e.currentTarget.style.background = `${cfg.accent}08`)}
+                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-baseline gap-0 flex-wrap">
+                            <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
+                              {item.itemName}
+                            </p>
+                            {isSupport && <ScopeTypeChip scopeType="support" />}
+                          </div>
+                          {invLinked && (
+                            <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[240px]" title={invLinked.name}>
+                              <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
+                              <span className="truncate">{invLinked.name}</span>
                             </span>
-                          </button>
+                          )}
+                          {variants.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {variants.slice(0, 2).map((vid: number) => {
+                                const inv = allInvItems.find(it => it.id === vid);
+                                return inv ? (
+                                  <span key={vid} className="text-[9px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-600 rounded truncate max-w-[120px]" title={inv.name}>
+                                    {inv.name}
+                                  </span>
+                                ) : null;
+                              })}
+                              {variants.length > 2 && <span className="text-[9px] text-slate-400">+{variants.length - 2}</span>}
+                            </div>
+                          )}
+                          {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[240px]">{item.remarks}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums text-sm">
+                          {parseFloat(String(item.estimatedQty)).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          {movingItem === item.id ? (
+                            <select
+                              className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-36"
+                              value={resolveDisplayCategory(item.category, item.itemName)}
+                              onChange={e => moveToCategory(item, e.target.value)}
+                              onBlur={() => setMovingItem(null)}
+                              autoFocus
+                              data-testid={`scope-move-cat-${item.id}`}
+                            >
+                              {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          ) : (
+                            <span className="text-xs" style={{ color: cfg.accent }}>{resolveDisplayCategory(item.category, item.itemName)}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="ghost"
+                              className="h-7 px-2 text-[10px] text-slate-400 hover:text-violet-600 hover:bg-violet-50 gap-1"
+                              onClick={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
+                              title="Add / Edit Variants" data-testid={`button-variant-scope-${item.id}`}>
+                              <Zap className="w-3 h-3" />
+                              <span className="hidden xl:inline">Variants</span>
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                              onClick={() => duplicateItem(item)} title="Duplicate"
+                              data-testid={`button-duplicate-scope-${item.id}`}>
+                              <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                              onClick={() => setMovingItem(movingItem === item.id ? null : item.id)}
+                              title="Move to Category" data-testid={`button-move-scope-${item.id}`}>
+                              <FolderOpen className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
+                              onClick={() => setDialogItem(item)} title="Edit"
+                              data-testid={`button-edit-scope-${item.id}`}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => setDeleteTarget(item)} title="Delete"
+                              data-testid={`button-delete-scope-${item.id}`}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
-                      {/* Item rows */}
-                      {!isCollapsed && items.map((item) => {
-                        const invLinked = (item as any).linkedInventoryItemId
-                          ? allInvItems.find(it => it.id === (item as any).linkedInventoryItemId)
-                          : null;
-                        const variants = (item as any).acceptedVariants as number[] ?? [];
-                        const isSupport = (item as any).scopeType === "support";
-                        return (
-                        <Fragment key={item.id}>
-                          <tr
-                            className={`hover:bg-slate-50/70 transition-colors border-t border-slate-100 ${!item.isActive ? "opacity-40" : ""}`}
-                            data-testid={`scope-row-${item.id}`}
-                          >
-                            {/* Item name cell — primary title + inline sup chip + secondary inv tag */}
-                            <td className="px-5 py-3">
-                              <div className="flex items-baseline gap-0 flex-wrap">
-                                <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
-                                  {item.itemName}
-                                </p>
-                                {isSupport && <ScopeTypeChip scopeType="support" />}
-                              </div>
-                              {invLinked && (
-                                <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[240px]" title={invLinked.name}>
-                                  <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
-                                  <span className="truncate">{invLinked.name}</span>
-                                </span>
-                              )}
-                              {variants.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-0.5">
-                                  {variants.slice(0, 2).map((vid: number) => {
-                                    const inv = allInvItems.find(it => it.id === vid);
-                                    return inv ? (
-                                      <span key={vid} className="text-[9px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-600 rounded truncate max-w-[120px]" title={inv.name}>
-                                        {inv.name}
-                                      </span>
-                                    ) : null;
-                                  })}
-                                  {variants.length > 2 && (
-                                    <span className="text-[9px] text-slate-400">+{variants.length - 2}</span>
-                                  )}
-                                </div>
-                              )}
-                              {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[240px]">{item.remarks}</p>}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums text-sm">
-                              {parseFloat(String(item.estimatedQty)).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-3">
-                              {movingItem === item.id ? (
-                                <select
-                                  className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-32"
-                                  value={normalizeCategory(item.category)}
-                                  onChange={e => moveToCategory(item, e.target.value)}
-                                  onBlur={() => setMovingItem(null)}
-                                  autoFocus
-                                  data-testid={`scope-move-cat-${item.id}`}
-                                >
-                                  {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                              ) : (
-                                <span className="text-xs text-slate-500">{normalizeCategory(item.category)}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 px-2 text-[10px] text-slate-400 hover:text-violet-600 hover:bg-violet-50 gap-1"
-                                  onClick={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
-                                  title="Add / Edit Variants" data-testid={`button-variant-scope-${item.id}`}>
-                                  <Zap className="w-3 h-3" />
-                                  <span className="hidden xl:inline">Variants</span>
-                                </Button>
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                                  onClick={() => duplicateItem(item)} title="Duplicate"
-                                  data-testid={`button-duplicate-scope-${item.id}`}>
-                                  <Copy className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                                  onClick={() => setMovingItem(movingItem === item.id ? null : item.id)}
-                                  title="Move to Category" data-testid={`button-move-scope-${item.id}`}>
-                                  <FolderOpen className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                                  onClick={() => setDialogItem(item)} title="Edit"
-                                  data-testid={`button-edit-scope-${item.id}`}>
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                  onClick={() => setDeleteTarget(item)} title="Delete"
-                                  data-testid={`button-delete-scope-${item.id}`}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                          {/* Inline variant area */}
-                          {variantOpen === item.id && (
-                            <VariantArea
-                              item={item} invItems={allInvItems}
-                              onSave={(ids) => saveVariants(item, ids)}
-                              onClose={() => setVariantOpen(null)}
-                            />
-                          )}
-                        </Fragment>
-                      );
-                      })}
+                      {variantOpen === item.id && (
+                        <VariantArea
+                          item={item} invItems={allInvItems}
+                          onSave={(ids) => saveVariants(item, ids)}
+                          onClose={() => setVariantOpen(null)}
+                        />
+                      )}
                     </Fragment>
                   );
-                })}
-              </tbody>
+                };
+
+                return (
+                  <tbody key={cat}>
+                    {/* ── Category header ── */}
+                    <tr>
+                      <td colSpan={5} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleCat(cat)}
+                          style={{ background: `${cfg.accent}0d` }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
+                          data-testid={`scope-cat-toggle-${cat.replace(/[\s/&]+/g, "-")}`}
+                        >
+                          {/* Icon box */}
+                          <div
+                            style={{ background: cfg.iconBg, width: 28, height: 28, color: cfg.accent }}
+                            className="rounded-md flex items-center justify-center shrink-0"
+                          >
+                            <CatIcon className="w-4 h-4" />
+                          </div>
+                          {/* Name + subtitle */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold leading-tight" style={{ color: cfg.accent }}>{cat}</p>
+                            <p className="text-[9px] text-slate-400 leading-tight mt-0.5 truncate">{cfg.subtitle}</p>
+                          </div>
+                          {/* Count chip */}
+                          <span
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap"
+                            style={{ background: `${cfg.accent}1a`, color: cfg.accent }}
+                          >
+                            {items.length} item{items.length !== 1 ? "s" : ""}
+                          </span>
+                          {/* Total qty */}
+                          <span
+                            className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right"
+                            style={{ color: cfg.accent }}
+                          >
+                            {catTotalQty.toLocaleString()}
+                          </span>
+                          {/* Chevron */}
+                          <ChevronDown
+                            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                            style={{ color: cfg.accent }}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* ── Item rows (with optional sub-group labels) ── */}
+                    {!isCollapsed && (
+                      activeSgEntries.length > 0 ? (
+                        <>
+                          {activeSgEntries.map(sg => (
+                            <Fragment key={sg.key}>
+                              {/* Sub-group label row */}
+                              <tr style={{ background: `${cfg.accent}08`, borderLeft: `3px solid ${cfg.accent}33` }}>
+                                <td
+                                  colSpan={5}
+                                  style={{
+                                    paddingLeft: 22, paddingTop: 5, paddingBottom: 5,
+                                    borderBottom: `1px solid ${cfg.accent}1f`,
+                                  }}
+                                >
+                                  <span style={{
+                                    color: `${cfg.accent}b3`,
+                                    fontSize: 8,
+                                    letterSpacing: "1.2px",
+                                    fontWeight: 700,
+                                  }}>
+                                    └ {sg.label.toUpperCase()}
+                                  </span>
+                                </td>
+                              </tr>
+                              {sg.items.map(renderItemRow)}
+                            </Fragment>
+                          ))}
+                          {ungroupedItems.map(renderItemRow)}
+                        </>
+                      ) : (
+                        items.map(renderItemRow)
+                      )
+                    )}
+
+                    {/* ── Category spacer ── */}
+                    <tr><td colSpan={5} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+                  </tbody>
+                );
+              })}
             </table>
           </div>
         ) : null}

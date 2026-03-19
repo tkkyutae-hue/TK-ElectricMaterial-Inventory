@@ -1,0 +1,227 @@
+Restructure the category grouping system inside the Scope Items tab of the Project Detail page.
+
+Do NOT change:
+- Overall page layout, width, or card sizing
+- The tab navigation (Overview / Scope Items / Material Usage / Daily Reports / Progress)
+- Material Usage tab
+- Daily Reports tab
+- Progress tab
+- Overview tab
+- Any other page or module
+
+════════════════════════════════════════
+CORE PROBLEM TO FIX
+════════════════════════════════════════
+The current category system mixes conduit runs and fittings/connectors
+into the same or adjacent categories (e.g. "Flexible" contains both
+the conduit itself and its connectors).
+
+This becomes a problem when EMT and Rigid conduit are added later —
+connectors and runs will be impossible to distinguish at a glance.
+
+The fix: separate "Conduit" (runs only) from "Fittings & Connectors"
+(all connectors, couplings, straps, bushings) into distinct top-level categories.
+
+════════════════════════════════════════
+NEW CATEGORY SYSTEM — 8 top-level groups
+════════════════════════════════════════
+Replace the current category grouping with this fixed 8-category system.
+Display them in this exact order, top to bottom:
+
+  1. Conduit
+  2. Fittings & Connectors
+  3. Cable Tray
+  4. Cable / Wire
+  5. Grounding
+  6. Boxes
+  7. Devices
+  8. Equipment
+
+════════════════════════════════════════
+CATEGORY DEFINITIONS
+════════════════════════════════════════
+Use these rules to assign existing scope items to the new categories:
+
+1. CONDUIT
+   → Conduit runs (the pipe/tube itself) only
+   → Includes: Liquidtight Flexible Conduit, EMT Conduit, Rigid Conduit, MC Cable (if applicable)
+   → Does NOT include connectors, couplings, or fittings
+
+2. FITTINGS & CONNECTORS
+   → All connector/coupling/strap/bushing/elbow items regardless of conduit type
+   → Includes: Liquidtight Connector Straight, EMT Set Screw Connector,
+     EMT Coupling, EMT Strap, Conduit Clamp, Ground Bushing, Plastic Bushing,
+     Unistrut Pipe Clamp, and similar fitting items
+   → This category catches fittings for ALL conduit types in one place
+
+3. CABLE TRAY
+   → Cable tray straight sections, covers, and tray fittings
+   → Includes: Cable Tray Straight, Checkered Cable Tray Cover,
+     Cable Tray Horizontal Elbow, Cable Tray Vertical Out
+
+4. CABLE / WIRE
+   → Wire and cable runs
+   → Includes: Multi-Conductor cable, Single Conductor wire, THHN, etc.
+   → Does NOT include ground wire (see Grounding)
+
+5. GROUNDING
+   → Grounding wire and bonding items
+   → Includes: #2/#6/#10 Grounding Wire, ground bars, ground rods
+
+6. BOXES
+   → Enclosures and boxes
+   → Includes: Junction Box, Pull Box, Metal Square Deep Box, Panel
+
+7. DEVICES
+   → Electrical devices installed at endpoints
+   → Includes: Receptacle, Switch, Outlet, Lighting Fixture, Exit Sign
+
+8. EQUIPMENT
+   → Major electrical equipment
+   → Includes: Transformer, Motor, MCC, Panel Board, Special Equipment
+
+════════════════════════════════════════
+VISUAL DESIGN — CATEGORY HEADERS
+════════════════════════════════════════
+Each category must have a visually distinct header row.
+Use a color stripe system so categories are immediately scannable.
+
+Header row structure (left to right):
+  [4px left accent bar] [icon box 28×28px] [name + subtitle] [right: item count chip + total qty + chevron]
+
+Color theme per category:
+  1. Conduit            → accent #0891b2  (teal/cyan)   icon bg #e0f7fa
+  2. Fittings           → accent #4f6ef7  (indigo)      icon bg #eef2ff
+  3. Cable Tray         → accent #d97706  (amber)       icon bg #fef3c7
+  4. Cable / Wire       → accent #7c3aed  (purple)      icon bg #ede9fe
+  5. Grounding          → accent #16a34a  (green)       icon bg #dcfce7
+  6. Boxes              → accent #1d6ecc  (blue)        icon bg #dbeafe
+  7. Devices            → accent #ea580c  (orange)      icon bg #fff7ed
+  8. Equipment          → accent #7e22ce  (deep purple) icon bg #f3e8ff
+
+Header background: very light tint of the accent color (3–5% opacity)
+Header text: dark shade of the accent color
+
+The 4px left accent bar is the most important visual cue.
+It must be consistently applied to both the header row AND each item row within that category.
+
+Item rows within a category:
+  - left border: 3px solid, color = accent color at ~40% opacity
+  - background: very faint tint of accent (1–2% opacity) so rows feel grouped
+  - hover background: slightly stronger tint
+
+════════════════════════════════════════
+CATEGORY HEADER CONTENT
+════════════════════════════════════════
+Each header shows:
+  - Icon (text icon, consistent with existing app icon style)
+  - Category name (bold, ~12px)
+  - Subtitle (smaller, ~9px, muted) — describes what's inside
+  - Item count chip (e.g. "6 items") — styled with category accent color
+  - Total quantity (e.g. "528" or "1,266") — monospace, accent color
+  - Collapse/expand chevron (right side)
+
+Suggested subtitles:
+  Conduit          → "선관 본체 · Flexible · EMT · Rigid"
+  Fittings         → "Connector · Coupling · Strap · Bushing · Clamp"
+  Cable Tray       → "Straight · Cover · Elbow · Vertical Out"
+  Cable / Wire     → "Multi-Conductor · Single Conductor"
+  Grounding        → "Ground Wire · Bonding"
+  Boxes            → "Junction Box · Pull Box · Panel"
+  Devices          → "Receptacle · Switch · Lighting"
+  Equipment        → "Transformer · Motor · Special"
+
+════════════════════════════════════════
+SUB-GROUPS WITHIN CATEGORIES
+════════════════════════════════════════
+Within Conduit and Fittings, add sub-group labels to separate by conduit type.
+Sub-group labels are thin separator rows with small uppercase text.
+
+For Conduit category, sub-groups:
+  - "Flexible (Liquidtight)"   → all liquidtight conduit runs
+  - "EMT"                      → EMT conduit runs (add when items exist)
+  - "Rigid"                    → Rigid conduit runs (add when items exist)
+
+For Fittings & Connectors category, sub-groups:
+  - "Flexible Connectors"      → all liquidtight connectors
+  - "EMT Fittings"             → EMT connectors, couplings, straps (add when items exist)
+  - "Rigid Fittings"           → Rigid fittings (add when items exist)
+
+Sub-group label styling:
+  - left padding: 22px (indented)
+  - font: 8px, uppercase, letter-spacing 1.2px
+  - color: category accent color at 70% opacity
+  - background: very faint category accent tint
+  - border-bottom: 1px solid, category accent at 12% opacity
+  - prefix: small "└" or dash character for visual hierarchy
+
+Only show sub-group labels that have items in them.
+If no EMT items exist yet, do not show the EMT sub-group label.
+
+════════════════════════════════════════
+VISUAL GAP BETWEEN CATEGORIES
+════════════════════════════════════════
+Add a visible gap between each category group.
+
+Implementation:
+  Each category group (header + its item rows) is a container div.
+  Add border-bottom: 4px solid [page background color] to each container.
+  This creates a clean visual separation without padding or margin tricks.
+
+The gap should be ~4px — enough to clearly separate categories while
+not making the list feel fragmented.
+
+Do NOT add padding inside the category container.
+The gap is only between category blocks, not inside them.
+
+════════════════════════════════════════
+COLLAPSE / EXPAND BEHAVIOR
+════════════════════════════════════════
+Each category header is clickable and toggles collapse/expand for its items.
+When collapsed:
+  - item rows are hidden
+  - sub-group labels are hidden
+  - chevron rotates -90deg
+  - header still shows count and total
+
+Default state: all categories expanded.
+
+════════════════════════════════════════
+CATEGORY ASSIGNMENT FOR CURRENT ITEMS
+════════════════════════════════════════
+Reassign existing scope items to the new categories as follows:
+
+  45 kVA / 480V Transformer-Indoor(NEMA1)          → Equipment
+  12" Cable Tray Horizontal Elbow                  → Cable Tray
+  12" Cable Tray Vertical Out                      → Cable Tray
+  2" Liquidtight Flexible Conduit Connector Str.   → Fittings & Connectors (sub: Flexible)
+  1" Liquidtight Flexible Conduit Connector Str.   → Fittings & Connectors (sub: Flexible)
+  2" Liquidtight Flexible Conduit                  → Conduit (sub: Flexible)
+  3/4" Liquidtight Flexible Conduit Connector Str. → Fittings & Connectors (sub: Flexible)
+  4" x 4" x 2-1/8" Metal Square Deep Box          → Boxes
+  1" Liquidtight Flexible Conduit                  → Conduit (sub: Flexible)
+  3/4" Liquidtight Flexible Conduit                → Conduit (sub: Flexible)
+  #2 Grounding Wire                                → Grounding
+  #10(2C+G) Cable                                  → Cable / Wire
+  12" Cable Tray Straight                          → Cable Tray
+  20A Duplex Receptacle                            → Devices
+  #10 Grounding Wire                               → Grounding
+  #6 Grounding Wire                                → Grounding
+  #6-Black Single Wire                             → Cable / Wire
+  12" Checkered Cable Tray Cover (14" Length)      → Cable Tray
+  12" Checkered Cable Tray Cover (11" Length)      → Cable Tray
+
+Any items in Material Usage that appear as scope items
+(e.g. 1-1/4" EMT Unistrut Pipe Clamp, 1-1/4" Conduit Clamp, etc.)
+should be assigned to Fittings & Connectors when added as scope items.
+
+════════════════════════════════════════
+DO NOT CHANGE
+════════════════════════════════════════
+- Item row columns: Item | Unit | Est. Qty | Category | Actions
+- Actions buttons per row (Add Variant, Duplicate, Move, Edit, Delete)
+- Add Item button and its dropdown behavior
+- Table header row
+- Summary cards above the table (Total Scope Items / Total Est. Qty / Primary Items)
+- Any existing scope item data
+- Any existing item names or quantities

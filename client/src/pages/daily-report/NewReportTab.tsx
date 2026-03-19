@@ -273,6 +273,7 @@ function WorkerCombobox({
             background: "transparent",
             fontSize: 13, padding: "0 9px",
             color: "#1e293b",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -965,13 +966,13 @@ export function NewReportTab({
         <div>
           <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name" },
-              { label: "Status",  cls: "w-[130px]" },
-              { label: "Start",   cls: "w-[76px]" },
-              { label: "End",     cls: "w-[76px]" },
-              { label: "Break",   cls: "w-[46px] text-center" },
-              { label: "Hrs",     cls: "w-[48px] text-center" },
-              { label: "Notes",   cls: "w-[90px]" },
+              { label: "Worker Name", cls: "w-[280px]" },
+              { label: "Status",      cls: "w-[130px]" },
+              { label: "Start",       cls: "w-[76px]" },
+              { label: "End",         cls: "w-[76px]" },
+              { label: "Break",       cls: "w-[46px] text-center" },
+              { label: "Hrs",         cls: "w-[48px] text-center" },
+              { label: "Notes",       cls: "w-[130px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (

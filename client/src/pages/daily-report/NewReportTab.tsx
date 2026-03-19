@@ -934,18 +934,17 @@ export function NewReportTab({
         <div>
           <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name",  cls: "min-w-[200px]" },
-              { label: "Trade",        cls: "w-[65px]" },
-              { label: "Status",       cls: "w-[140px]" },
-              { label: "Start",        cls: "w-[76px]" },
-              { label: "End",          cls: "w-[76px]" },
-              { label: "Break",        cls: "w-[46px] text-center" },
-              { label: "Hrs",          cls: "w-[48px] text-center" },
-              { label: "Notes",        cls: "w-[55px]" },
+              { label: "Worker Name" },
+              { label: "Status",  cls: "w-[130px]" },
+              { label: "Start",   cls: "w-[76px]" },
+              { label: "End",     cls: "w-[76px]" },
+              { label: "Break",   cls: "w-[46px] text-center" },
+              { label: "Hrs",     cls: "w-[48px] text-center" },
+              { label: "Notes",   cls: "w-[90px]" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
-                <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">
+                <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
                   No workers added — click Add Worker below
                 </td></tr>
               )}
@@ -954,23 +953,31 @@ export function NewReportTab({
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                 return (
                   <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
+                    {/* Worker Name + role badge */}
                     <td className="py-1.5 px-2.5">
-                      <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
-                        testId={`input-mp-worker-${i}`}
-                        onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
+                            testId={`input-mp-worker-${i}`}
+                            onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
+                        </div>
+                        {row.trade && (
+                          <span data-testid={`text-mp-trade-${i}`}
+                            style={{ flexShrink: 0, fontSize: 10, color: "#64748b", whiteSpace: "nowrap",
+                              maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {row.trade}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-mp-trade-${i}`} value={row.trade}
-                        onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, trade: e.target.value } : r))}
-                        className={cellInputCls} placeholder="e.g. Electrician" />
-                    </td>
+                    {/* Status */}
                     <td className="py-1.5 px-2.5">
                       <Select value={row.attendanceStatus}
                         onValueChange={(v) => {
                           const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
                         }}>
-                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs" style={{ minWidth: "140px", width: "140px" }}>
+                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs" style={{ minWidth: "120px", width: "120px" }}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -980,6 +987,7 @@ export function NewReportTab({
                         </SelectContent>
                       </Select>
                     </td>
+                    {/* Start */}
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-mp-start-${i}`} type="time" value={row.startTime}
                         onChange={(e) => {
@@ -989,6 +997,7 @@ export function NewReportTab({
                         className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
                         disabled={!hoursActive} />
                     </td>
+                    {/* End */}
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-mp-end-${i}`} type="time" value={row.endTime}
                         onChange={(e) => {
@@ -998,6 +1007,7 @@ export function NewReportTab({
                         className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
                         disabled={!hoursActive} />
                     </td>
+                    {/* Break toggle */}
                     <td className="py-1.5 px-1">
                       <div className="flex justify-center">
                         <button type="button" data-testid={`toggle-mp-break-${i}`}
@@ -1016,11 +1026,13 @@ export function NewReportTab({
                         </button>
                       </div>
                     </td>
+                    {/* Hrs */}
                     <td className="py-1.5 px-2.5">
                       <ROCell center>
                         {hoursActive ? row.hoursWorked.toFixed(1) : <span className="text-slate-300">—</span>}
                       </ROCell>
                     </td>
+                    {/* Notes */}
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
                         onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
@@ -1032,66 +1044,56 @@ export function NewReportTab({
                   </tr>
                 );
               })}
-
-              {/* Summary row — individual tds mirror each column so HRS aligns perfectly */}
-              {manpower.length > 0 && (
-                <tr style={{ borderTop: "2px solid #d0dbd2", background: "#eef2ef" }}>
-                  {/* Worker Name + Trade + Status: SUMMARY label + Present + Exceptions */}
-                  <td colSpan={3} className="px-3" style={{ paddingTop: 10, paddingBottom: 10 }}>
-                    <div className="flex items-center gap-0">
-                      <span className="text-[11px] uppercase tracking-wider mr-3" style={{ fontWeight: 700, color: "#3d5c42" }}>
-                        Summary
-                      </span>
-                      <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-200">
-                        <span className="text-[11px] text-slate-500">Present:</span>
-                        <span className="text-[11px] tabular-nums" style={{ fontWeight: 700, color: "#16a34a" }}>{presentCount}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[11px] text-slate-500">Exceptions:</span>
-                        <span className="text-[11px] tabular-nums" style={{ fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8" }}>{exceptionsCount}</span>
-                      </div>
-                    </div>
-                  </td>
-                  {/* Start: empty */}
-                  <td style={{ paddingTop: 10, paddingBottom: 10 }} />
-                  {/* End: empty */}
-                  <td style={{ paddingTop: 10, paddingBottom: 10 }} />
-                  {/* Break: break chip */}
-                  <td className="px-2.5 text-center" style={{ paddingTop: 10, paddingBottom: 10 }}>
-                    {defLunchBreak ? (
-                      <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[9px] font-semibold text-amber-700 whitespace-nowrap">
-                        ● ON
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[9px] font-medium text-slate-500 whitespace-nowrap">
-                        OFF
-                      </span>
-                    )}
-                  </td>
-                  {/* HRS: total man-hours — aligned directly under HRS header */}
-                  <td className="px-2.5 text-center" style={{ paddingTop: 10, paddingBottom: 10 }}>
-                    <span className="tabular-nums leading-none" style={{ fontSize: 16, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a" }}>
-                      {totalManhours.toFixed(1)}
-                    </span>
-                  </td>
-                  {/* Notes: man-hrs label + issues indicator */}
-                  <td colSpan={2} className="px-2.5" style={{ paddingTop: 10, paddingBottom: 10 }}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400">man-hrs</span>
-                      <span className="text-slate-200">|</span>
-                      {exceptionsCount === 0 ? (
-                        <span className="text-[11px] text-slate-400">Issues: None</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[10px] font-semibold text-amber-700">
-                          ⚠ {exceptionsCount} flagged
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
+
+          {/* Summary bar — full-width flex div, not a table row */}
+          {manpower.length > 0 && (
+            <div data-testid="manpower-summary-bar" style={{
+              borderTop: "2px solid #d0dbd2", background: "#eef2ef",
+              padding: "9px 14px", display: "flex", alignItems: "center",
+            }}>
+              {/* Left: label, Present, Exceptions */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#3d5c42", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Summary
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, marginRight: 0, borderRight: "1px solid #c8d9cc" }}>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>Present:</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>{presentCount}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>Exceptions:</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8", fontVariantNumeric: "tabular-nums" }}>{exceptionsCount}</span>
+                </div>
+              </div>
+              {/* Right: Break, Total Work Hrs, Issues */}
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                {defLunchBreak ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
+                    ● Break: ON
+                  </span>
+                ) : (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", border: "1px solid #e2e8f0", fontSize: 10, fontWeight: 500, color: "#94a3b8", whiteSpace: "nowrap" }}>
+                    Break: OFF
+                  </span>
+                )}
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+                  <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>Total Work Hrs:</span>
+                  <span style={{ fontSize: 17, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                    {totalManhours.toFixed(1)}
+                  </span>
+                </div>
+                {exceptionsCount === 0 ? (
+                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>Issues: None</span>
+                ) : (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
+                    ⚠ {exceptionsCount} flagged
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <AddRow testId="btn-add-manpower" label="Add Worker"

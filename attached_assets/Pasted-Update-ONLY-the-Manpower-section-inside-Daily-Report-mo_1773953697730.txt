@@ -1,0 +1,108 @@
+Update ONLY the Manpower section inside Daily Report mode.
+
+Do NOT change:
+- page width
+- outer card width
+- section width
+- row height
+- other sections
+- Admin Mode pages
+- overall page layout and styling
+
+GOAL:
+Remove the wasted Trade column, show each worker's role inside the Worker Name field area, and redesign the Summary row so it no longer gets compressed by Break / HRS / Notes column widths.
+
+1. REMOVE THE TRADE COLUMN COMPLETELY
+- Delete the Trade column from the Manpower table header
+- Delete the Trade cell from each manpower row
+- Reclaim that width and give it mainly to:
+  - Worker Name column
+  - Notes column
+
+2. SHOW ROLE INSIDE THE WORKER NAME FIELD
+For each manpower row, render Worker Name as:
+- worker full name on the left
+- worker role/classification on the far right inside the same Worker Name field area
+
+Format example:
+Alfredo Perez Rodriguez                          Foreman
+Angel Pulido                                    Helper
+Fidel Rene Contreras Flores                     Safety
+
+Rules:
+- Full name should have highest visual priority
+- Role text should be smaller, muted, and right-aligned
+- Role must stay readable, but should not overpower the name
+- Keep it single-line if possible
+- If truncation is needed, truncate the name late, not early
+
+3. APPLY THE SAME RULE TO THE WORKER SEARCH DROPDOWN
+In the worker search dropdown:
+- show full worker name on the left
+- show role on the right in smaller muted text
+- keep dropdown wide enough so longer names remain readable
+- prioritize full name visibility over role visibility
+
+4. NEW MANPOWER COLUMN ORDER
+After removing Trade, the row should be:
+
+- Worker Name
+- Status
+- Start
+- End
+- Break
+- HRS
+- Notes
+
+5. REALLOCATE WIDTHS
+Rebalance the manpower row widths like this:
+- Worker Name = widest column
+- Status = medium
+- Start / End = medium
+- Break = compact
+- HRS = compact
+- Notes = medium-small but still readable
+
+Requirements:
+- Notes must not collapse into "Op"
+- "Optional" should be readable again
+- Start / End / Break / HRS must remain clearly readable
+- Do not create horizontal overflow
+- Do not create a nested horizontal scroll
+
+6. REDESIGN THE SUMMARY ROW
+The current summary row is getting squeezed because it is still tied to table column widths.
+Break that dependency.
+
+Make Summary a clean full-width summary bar below the worker rows, not a fake table row.
+
+Recommended layout:
+Left side:
+- SUMMARY
+- Present: X
+- Exceptions: X
+
+Right side:
+- Break: ON / OFF
+- Total Work Hrs: XX.X
+- Issues: None / flagged count
+
+Important:
+- Total Work Hrs must visually belong to HRS, not under Break
+- Issues must not get crushed
+- Summary should feel like an info bar, not a compressed table row
+
+7. KEEP THE CURRENT LOOK
+- keep current manpower card width
+- keep current padding rhythm
+- keep current input heights
+- keep current typography style
+- do not restyle the whole page
+
+SUCCESS CRITERIA:
+- Trade column is gone
+- Worker Name column is wider
+- Each worker row shows name + role inside the Worker Name area
+- Dropdown also shows name + role clearly
+- Notes is readable again
+- Summary row is no longer compressed by Break / HRS / Notes columns

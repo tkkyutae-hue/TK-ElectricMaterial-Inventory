@@ -1,0 +1,110 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE 1 — Rename column header
+  "MATERIAL / INVENTORY ITEM"  →  "MATERIAL NAME"
+
+CHANGE 2 — Add dedicated SIZE column
+
+  New column order:
+    SIZE | MATERIAL NAME | QTY USED | UNIT | SCOPE LINK | NOTES | [delete]
+
+  SIZE column:
+    width: 56px
+    header: "SIZE"
+    text-align: center
+
+  Each SIZE cell:
+    - Extract size token from the item name using this rule:
+        Starts with #  + digits/letters  →  e.g. "#1", "#10", "#4/0"
+        Starts with digits + /"          →  e.g. '3/4"', '1/2"', '2"'
+    - If size token found: show it in the size badge
+    - If no size token:    show "—" (muted gray)
+    - Do NOT show the size token inside the Material Name cell anymore
+      (remove it from the name display once it's in the SIZE column)
+
+  SIZE cell structure:
+    <td class="col-size">
+      <span class="size-badge">{token}</span>
+    </td>
+
+  .col-size:
+    width: 56px
+    text-align: center
+
+  .size-badge:
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    font-size: 11px
+    font-weight: 600
+    color: #555
+    background: #f0f0f0
+    border: 1px solid #e0e0e0
+    border-radius: 5px
+    padding: 2px 7px
+    min-width: 36px
+    white-space: nowrap
+
+  .size-badge (no size):
+    color: #ccc
+    background: #fafafa
+    border-color: #eee
+    font-weight: 400
+
+CHANGE 3 — Material Name cell (simplified, size removed)
+
+  After extracting the size token, the name cell shows only:
+    {name without size prefix}  +  [Inv] or [Manual] tag
+
+  Example:
+    Full inventory name: "#10 Compression Lug"
+    SIZE column:         #10
+    MATERIAL NAME cell:  Compression Lug  [Inv]
+
+    Full name: "3/4\" EMT Conduit"
+    SIZE column:         3/4"
+    MATERIAL NAME cell:  EMT Conduit  [Inv]
+
+    Full name: "#10-Blue Single Wire"
+    SIZE column:         #10
+    MATERIAL NAME cell:  Blue Single Wire  [Inv]
+
+  .item-name:
+    font-size: 13px
+    color: #1a1a1a
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+
+CHANGE 4 — Apply same SIZE extraction to search dropdown
+
+  Each dropdown item:
+    <div class="dd-item">
+      <span class="dd-size">{size token or —}</span>
+      <span class="dd-name">{name without size}</span>
+      <span class="dd-dup-label">이미 추가됨</span>  ← only if duplicate
+      <span class="dd-unit">FT / EA</span>
+    </div>
+
+  .dd-size:
+    flex-shrink: 0
+    font-size: 11px
+    font-weight: 600
+    color: #555
+    background: #f0f0f0
+    border: 1px solid #e0e0e0
+    border-radius: 4px
+    padding: 1px 6px
+    min-width: 32px
+    text-align: center
+
+CONSTRAINTS:
+  - Size extraction is display-only — do NOT modify the data model or stored item names
+  - Scope all changes to .materials-section or the component file only
+  - Do NOT change row height, card width, or other sections
+  - Must work in light and dark mode
+==================================================

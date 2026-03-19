@@ -1747,7 +1747,8 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" data-testid="table-materials">
           <TH cols={[
-            { label: "Material / Inventory Item" },
+            { label: "Size",      cls: "w-[56px] text-center" },
+            { label: "Material Name" },
             { label: "Qty Used",  cls: "w-[80px] text-center" },
             { label: "Unit",      cls: "w-[72px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
@@ -1755,25 +1756,27 @@ export function NewReportTab({
           ]} />
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 6 : 5} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => {
               const { size, rest } = extractSize(row.description);
               return (
                 <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
-                  {/* Material / Inventory Item — size badge + search input + Inv tag */}
+                  {/* SIZE column — dedicated cell */}
+                  <td className="py-1.5 px-1 text-center">
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: size ? 600 : 400,
+                      color: size ? "#555" : "#ccc",
+                      background: size ? "#f0f0f0" : "#fafafa",
+                      border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
+                      borderRadius: 5, padding: "2px 7px",
+                      minWidth: 36, whiteSpace: "nowrap",
+                    }}>{size || "—"}</span>
+                  </td>
+                  {/* Material Name — search input + Inv tag */}
                   <td className="py-1.5 px-2.5">
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      {/* Size badge */}
-                      <span style={{
-                        flexShrink: 0, fontSize: 11, fontWeight: 600,
-                        color: size ? "#555" : "#ccc",
-                        background: size ? "#f0f0f0" : "#fafafa",
-                        border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                        borderRadius: 5, padding: "2px 7px",
-                        minWidth: 36, textAlign: "center", whiteSpace: "nowrap",
-                      }}>{size || "—"}</span>
-                      {/* Search input — flex 1 */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                           onChange={(p) => {
@@ -1785,7 +1788,6 @@ export function NewReportTab({
                             setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                           }} />
                       </div>
-                      {/* Inv tag — only when linked to inventory */}
                       {row.inventoryItemId && (
                         <span style={{
                           flexShrink: 0, fontSize: 10, fontWeight: 600,

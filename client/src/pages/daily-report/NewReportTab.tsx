@@ -85,7 +85,7 @@ function initials(name: string): string {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface TaskWorker { name: string; role: "main" | "assist" }
+interface TaskWorker { name: string; role: "main" | "assist"; trade?: string }
 interface TaskRow {
   id: number; description: string; area: string; status: string; notes: string;
   expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: string[];
@@ -1047,6 +1047,7 @@ export function NewReportTab({
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                 }}>{initials(w.name)}</div>
                                 <span className="text-[11px] text-slate-700 flex-1 min-w-0 truncate">{w.name}</span>
+                                {w.trade && <span className="text-[10px] text-slate-400 shrink-0">{w.trade}</span>}
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                                   w.role === "main" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
                                 }`}>{w.role === "main" ? "Main" : "Assist"}</span>
@@ -1086,7 +1087,7 @@ export function NewReportTab({
                                         e.stopPropagation();
                                         const isFirst = row.workers.length === 0;
                                         setTasks(tasks.map(r => r.id === row.id
-                                          ? { ...r, workers: [...r.workers, { name: mp.workerName, role: isFirst ? "main" : "assist" }] }
+                                          ? { ...r, workers: [...r.workers, { name: mp.workerName, role: isFirst ? "main" : "assist", trade: mp.trade || undefined }] }
                                           : r));
                                         setAssignOpen(null);
                                       }}>

@@ -1,0 +1,186 @@
+Add a Drawing Board panel to the Work Tasks section (section 3).
+This is Phase 2, building on top of the Phase 1 card layout.
+Phase 1 must already be applied before running this prompt.
+
+Do NOT change:
+- The task card layout from Phase 1
+- Worker assignment (Main / Assist)
+- Any other section or module
+- Page width or overall form layout
+
+════════════════════════════════════════
+WHAT TO ADD
+════════════════════════════════════════
+Inside the Work Tasks section, add a Drawing Board panel
+at the TOP of the section body, before the task card list.
+
+This is a shared project-level drawing area.
+One drawing covers the entire report — not per-task.
+Tasks link to specific pins placed on this shared drawing.
+
+════════════════════════════════════════
+DRAWING BOARD — EMPTY STATE
+════════════════════════════════════════
+When no drawing has been uploaded yet:
+
+Show a placeholder panel:
+  border: 1px solid var(--border2)
+  border-radius: 10px
+  background: var(--bg3)
+
+  Header bar:
+    Left: "📐 Project Drawing Board" label (10.5px, font-weight 700)
+    Right: "+ Upload Drawing" button (green outlined)
+
+  Body:
+    Dashed upload area (same style as existing file upload areas)
+    Center content:
+      Icon: 📐 (large, muted)
+      Text: "Upload a project drawing to mark work areas"
+      Sub-text: "PDF, DWG, JPG, PNG — drag & drop or click"
+    Clicking anywhere in the dashed area opens file picker
+    Accept: image/*, .pdf, .dwg
+
+════════════════════════════════════════
+DRAWING BOARD — WITH DRAWING UPLOADED
+════════════════════════════════════════
+After upload, show:
+
+Header bar:
+  Left: "📐 Project Drawing Board" + filename
+  Right buttons:
+    [📍 Add Pin]  [Replace]  [▲ Collapse / ▼ Expand]
+
+Drawing canvas area:
+  Show the uploaded image filling the full panel width
+  Max height: 280px, overflow: hidden
+  Object-fit: contain (show full image, no cropping)
+  Background: #f1f5f2 (light gray-green)
+  Position: relative (for pin overlay)
+
+Collapsed state:
+  When user clicks "▲ Collapse":
+    Hide the canvas area
+    Show a one-line summary bar instead:
+      "X pins placed · Y linked to tasks · Z unlinked"
+      + "▼ Expand drawing" link on the right
+  When user clicks "▼ Expand": restore full canvas
+
+════════════════════════════════════════
+PIN SYSTEM
+════════════════════════════════════════
+Pins are circular markers placed on the drawing.
+Each pin has an ID: A1, A2, A3... (auto-incremented)
+
+PIN STATES:
+  Linked pin   → green circle (#16a34a), white text
+  Unlinked pin → blue circle (#1d6ecc), white text
+
+PIN SIZE: 26×26px, border-radius: 50%
+PIN SHADOW: box-shadow: 0 2px 8px rgba(0,0,0,0.25)
+
+ADD PIN MODE:
+  When user clicks [📍 Add Pin] button:
+    - Button becomes active/highlighted (purple style)
+    - Cursor changes to crosshair on the canvas
+    - Clicking the canvas places a new pin at that position
+    - New pin gets next auto ID (A1, A2, ...)
+    - New pin is "unlinked" (blue) by default
+    - Pin placement stores: x%, y% (percentage of canvas size)
+      so it stays in position if canvas resizes
+    - After placing, Add Pin mode stays active
+      user can keep placing more pins
+    - Clicking [📍 Add Pin] again or pressing Escape deactivates
+
+CLICKING AN EXISTING PIN:
+  Show a small popover/tooltip above the pin:
+    Pin ID: "A1"
+    Linked task: "Install EMT Conduit" (or "Not linked")
+    Actions:
+      [Link to task ▾]  [Rename]  [Delete]
+  "Link to task" opens a small dropdown of existing task descriptions
+  Selecting a task links this pin to that task
+
+════════════════════════════════════════
+TASK CARD — DRAWING REF INTEGRATION
+════════════════════════════════════════
+After Phase 2, each task card main row gains a Drawing Ref indicator.
+
+In the task card main row (below the Area / Location line):
+  If linked: show a small purple badge: "📍 A1"
+  If not linked: show a subtle dashed badge: "📍 Link pin"
+
+Clicking the "📍 Link pin" badge:
+  Opens a small dropdown listing all unlinked pins
+  User selects a pin to link this task to that pin
+
+Clicking an existing "📍 A1" badge:
+  Expands the drawing (if collapsed) and highlights/pulses that pin
+
+In the task card detail panel (Phase 1 Column B area):
+  Add a "Drawing Reference" block above Site Photos:
+    If linked:
+      Show a small preview card:
+        Purple pin circle (shows ID) + "Pin [ID] — [task area]"
+        Sub-text: "Click to jump to this area on drawing ↑"
+        Clicking it expands the drawing and scrolls to/highlights the pin
+    If not linked:
+      Show: "No drawing area linked"
+      + "Link to a pin on the drawing above" (clickable, triggers pin dropdown)
+
+════════════════════════════════════════
+LEGEND BAR
+════════════════════════════════════════
+Below the drawing canvas, show a small legend bar:
+  background: var(--bg3)
+  border-top: 1px solid var(--border)
+  padding: 7px 12px
+  font-size: 9px
+  color: var(--text4)
+
+  Content:
+    Left: [green dot] Linked to task  [blue dot] Not yet linked
+    Right: "Click drawing to add pin · Click pin to link or rename"
+
+════════════════════════════════════════
+TECHNICAL IMPLEMENTATION NOTES
+════════════════════════════════════════
+Pin positions:
+  Store as percentage values (x: 42.5%, y: 30.2%)
+  not pixel values — so layout resizing doesn't break positions
+
+Pin data structure per pin:
+  id: "A1"
+  x: 42.5   (% from left)
+  y: 30.2   (% from top)
+  linked_task_index: null or number (index of task in list)
+
+Drawing image:
+  Store as a data URL or blob URL in component state
+  No backend upload needed for now — local state only
+  (can be wired to real storage in a later step)
+
+When a task is deleted:
+  Any pin linked to that task becomes unlinked (blue)
+  Pin stays on the drawing
+
+When a pin is deleted:
+  The linked task's Drawing Ref badge resets to "📍 Link pin"
+
+════════════════════════════════════════
+STYLE CONSISTENCY
+════════════════════════════════════════
+Drawing Board panel style:
+  border: 1px solid var(--border2)
+  border-radius: 10px
+  overflow: hidden
+  margin-bottom: 18px (space before task card list)
+
+Header bar:
+  padding: 9px 14px
+  background: var(--bg3)
+  border-bottom: 1px solid var(--border)
+  font-size: 10.5px
+
+Keep all existing Phase 1 styles unchanged.
+Do not change section card style, task card style, or worker avatars.

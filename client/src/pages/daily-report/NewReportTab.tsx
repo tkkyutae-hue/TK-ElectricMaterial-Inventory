@@ -110,8 +110,9 @@ interface TaskWorker { name: string; role: "main" | "assist"; trade?: string }
 interface TaskRow {
   id: number; description: string; area: string; status: string; notes: string;
   expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: string[];
-  workers: TaskWorker[];
+  workers: TaskWorker[]; linkedPinId: string | null;
 }
+interface DrawingPin { id: string; x: number; y: number; linkedTaskId: number | null }
 interface ManpowerRow {
   id: number; workerId: number | null; workerName: string; trade: string;
   attendanceStatus: string; startTime: string; endTime: string;
@@ -440,6 +441,17 @@ export function NewReportTab({
   const undoTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const undoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Drawing Board state
+  const [drawingUrl,       setDrawingUrl]       = useState<string | null>(null);
+  const [drawingFilename,  setDrawingFilename]  = useState("");
+  const [pins,             setPins]             = useState<DrawingPin[]>([]);
+  const [drawingCollapsed, setDrawingCollapsed] = useState(false);
+  const [addPinMode,       setAddPinMode]       = useState(false);
+  const [selectedPinId,    setSelectedPinId]    = useState<string | null>(null);
+  const [pinLinkOpen,      setPinLinkOpen]      = useState<string | null>(null);
+  const [taskPinOpen,      setTaskPinOpen]      = useState<number | null>(null);
+  const drawingInputRef    = useRef<HTMLInputElement>(null);
+
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
     return rows.map((r: any) => ({ lunchBreak: true, ...r }));
@@ -484,6 +496,10 @@ export function NewReportTab({
   function handleDeleteTask(task: TaskRow, index: number) {
     setDeleteConfirm(null);
     setTasks(prev => prev.filter(r => r.id !== task.id));
+    // Unlink any pin that was pointing at this task
+    if (task.linkedPinId) {
+      setPins(prev => prev.map(p => p.id === task.linkedPinId ? { ...p, linkedTaskId: null } : p));
+    }
     if (undoTimerRef.current)    clearTimeout(undoTimerRef.current);
     if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
     let progress = 100;
@@ -502,11 +518,16 @@ export function NewReportTab({
     if (!undoState) return;
     if (undoTimerRef.current)    clearTimeout(undoTimerRef.current);
     if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
+    const restoredTask = undoState.task;
     setTasks(prev => {
       const arr = [...prev];
-      arr.splice(undoState.index, 0, undoState.task);
+      arr.splice(undoState.index, 0, restoredTask);
       return arr;
     });
+    // Re-link the pin that was unlinked on delete
+    if (restoredTask.linkedPinId) {
+      setPins(prev => prev.map(p => p.id === restoredTask.linkedPinId ? { ...p, linkedTaskId: restoredTask.id } : p));
+    }
     setUndoState(null);
   }
 
@@ -968,6 +989,200 @@ export function NewReportTab({
       ══════════════════════════════════════════════════════ */}
       <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
 
+        {/* ── Drawing Board ── */}
+        <div style={{ border: "1px solid #d0dbd2", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
+
+          {/* Header */}
+          <div style={{ padding: "9px 14px", background: "#f4f7f5", borderBottom: drawingUrl ? "1px solid #e2e8e4" : undefined, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ flex: 1, fontSize: 10.5, fontWeight: 700, color: "#3d5c45" }}>
+              📐 Project Drawing Board{drawingFilename ? ` · ${drawingFilename}` : ""}
+            </span>
+            {drawingUrl ? (
+              <>
+                <button type="button"
+                  onClick={() => { setAddPinMode(m => !m); setSelectedPinId(null); }}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5,
+                    padding: "3px 9px", borderRadius: 5,
+                    border: addPinMode ? "1px solid #a78bfa" : "1px solid #d0dbd2",
+                    background: addPinMode ? "#ede9fe" : "white",
+                    color: addPinMode ? "#7c3aed" : "#3d5c45", cursor: "pointer", fontWeight: addPinMode ? 700 : 400,
+                  }}>📍 Add Pin</button>
+                <button type="button" onClick={() => drawingInputRef.current?.click()}
+                  style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
+                  Replace
+                </button>
+                <button type="button" onClick={() => { setDrawingCollapsed(c => !c); setAddPinMode(false); setSelectedPinId(null); }}
+                  style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
+                  {drawingCollapsed ? "▼ Expand" : "▲ Collapse"}
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => drawingInputRef.current?.click()}
+                style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #4ade80", borderRadius: 5, background: "white", color: "#16a34a", cursor: "pointer", fontWeight: 600 }}>
+                + Upload Drawing
+              </button>
+            )}
+          </div>
+
+          {/* Body */}
+          {!drawingUrl ? (
+            /* Empty upload area */
+            <div style={{ padding: "18px 18px 14px", background: "#f8faf9" }}
+              onClick={() => drawingInputRef.current?.click()}>
+              <div style={{
+                border: "2px dashed #c8d9cb", borderRadius: 8, minHeight: 110,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 6, cursor: "pointer", padding: 20,
+              }}>
+                <span style={{ fontSize: 32, lineHeight: 1 }}>📐</span>
+                <p style={{ fontSize: 11, color: "#9db8a2", textAlign: "center" }}>Upload a project drawing to mark work areas</p>
+                <p style={{ fontSize: 9.5, color: "#b8cebe", textAlign: "center" }}>PDF, DWG, JPG, PNG — drag & drop or click</p>
+              </div>
+            </div>
+          ) : drawingCollapsed ? (
+            /* Collapsed summary bar */
+            <div style={{ padding: "7px 14px", background: "#f8faf9", display: "flex", alignItems: "center", gap: 8, fontSize: 10.5, color: "#6b8a70" }}>
+              <span style={{ flex: 1 }}>
+                {pins.length} pin{pins.length !== 1 ? "s" : ""} placed ·{" "}
+                {pins.filter(p => p.linkedTaskId !== null).length} linked to task{pins.filter(p => p.linkedTaskId !== null).length !== 1 ? "s" : ""} ·{" "}
+                {pins.filter(p => p.linkedTaskId === null).length} unlinked
+              </span>
+              <button type="button" onClick={() => setDrawingCollapsed(false)}
+                style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                ▼ Expand drawing
+              </button>
+            </div>
+          ) : (
+            /* Drawing canvas with pins */
+            <>
+              <div
+                style={{ position: "relative", maxHeight: 280, overflow: "hidden", background: "#f1f5f2", cursor: addPinMode ? "crosshair" : "default" }}
+                onClick={e => {
+                  if (!addPinMode) { setSelectedPinId(null); setPinLinkOpen(null); return; }
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top)  / rect.height) * 100;
+                  const nextId = `A${pins.length + 1}`;
+                  setPins(prev => [...prev, { id: nextId, x, y, linkedTaskId: null }]);
+                }}>
+                <img src={drawingUrl} alt="Project drawing"
+                  style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block" }} />
+                {/* Pins */}
+                {pins.map(pin => {
+                  const isLinked = pin.linkedTaskId !== null;
+                  const linkedTask = isLinked ? tasks.find(t => t.id === pin.linkedTaskId) : null;
+                  return (
+                    <div key={pin.id}
+                      style={{
+                        position: "absolute", left: `${pin.x}%`, top: `${pin.y}%`,
+                        width: 26, height: 26, borderRadius: "50%",
+                        background: isLinked ? "#16a34a" : "#1d6ecc",
+                        color: "white", fontSize: 9, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transform: "translate(-50%, -50%)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.25)", cursor: "pointer", zIndex: 10, userSelect: "none",
+                      }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (selectedPinId === pin.id) { setSelectedPinId(null); setPinLinkOpen(null); }
+                        else { setSelectedPinId(pin.id); setPinLinkOpen(null); }
+                      }}>
+                      {pin.id}
+                      {/* Pin popover */}
+                      {selectedPinId === pin.id && (
+                        <div style={{
+                          position: "absolute", bottom: "calc(100% + 10px)", left: "50%", transform: "translateX(-50%)",
+                          background: "white", border: "1px solid #d0dbd2", borderRadius: 8, padding: "10px 12px",
+                          minWidth: 190, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", fontSize: 11, zIndex: 50,
+                          color: "#1c2b1f", cursor: "default", textAlign: "left",
+                        }} onClick={e => e.stopPropagation()}>
+                          <p style={{ fontWeight: 700, marginBottom: 4 }}>Pin {pin.id}</p>
+                          <p style={{ color: "#6b8a70", fontSize: 10, marginBottom: 8 }}>
+                            {linkedTask ? `→ ${linkedTask.description || `Task ${tasks.indexOf(linkedTask) + 1}`}` : "Not linked"}
+                          </p>
+                          <div style={{ position: "relative", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button type="button"
+                              onClick={() => setPinLinkOpen(pinLinkOpen === pin.id ? null : pin.id)}
+                              style={{ fontSize: 10, color: "#4338ca", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                              Link to task ▾
+                            </button>
+                            <button type="button"
+                              onClick={() => {
+                                // Unlink the task that pointed to this pin
+                                if (pin.linkedTaskId !== null) {
+                                  setTasks(prev => prev.map(t => t.id === pin.linkedTaskId ? { ...t, linkedPinId: null } : t));
+                                }
+                                setPins(prev => prev.filter(p => p.id !== pin.id));
+                                setSelectedPinId(null); setPinLinkOpen(null);
+                              }}
+                              style={{ fontSize: 10, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                              Delete pin
+                            </button>
+                            {pinLinkOpen === pin.id && (
+                              <div style={{
+                                position: "absolute", top: "100%", left: 0, marginTop: 4,
+                                background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200,
+                              }}>
+                                {tasks.length === 0 ? (
+                                  <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>No tasks yet</p>
+                                ) : tasks.map((t, ti) => (
+                                  <button key={t.id} type="button"
+                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
+                                    className="hover:bg-slate-50"
+                                    onClick={() => {
+                                      // Unlink previous task if any
+                                      if (pin.linkedTaskId !== null) {
+                                        setTasks(prev => prev.map(t2 => t2.id === pin.linkedTaskId ? { ...t2, linkedPinId: null } : t2));
+                                      }
+                                      // Unlink any other pin that was linked to this task
+                                      const existingPin = pins.find(p => p.id !== pin.id && p.linkedTaskId === t.id);
+                                      if (existingPin) {
+                                        setPins(prev => prev.map(p => p.id === existingPin.id ? { ...p, linkedTaskId: null } : p));
+                                        setTasks(prev => prev.map(t2 => t2.id === t.id ? { ...t2, linkedPinId: null } : t2));
+                                      }
+                                      setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: t.id } : p));
+                                      setTasks(prev => prev.map(t2 => t2.id === t.id ? { ...t2, linkedPinId: pin.id } : t2));
+                                      setPinLinkOpen(null); setSelectedPinId(null);
+                                    }}>
+                                    {t.description || `Task ${ti + 1}`}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend bar */}
+              <div style={{ background: "#f4f7f5", borderTop: "1px solid #e2e8e4", padding: "7px 12px", display: "flex", alignItems: "center", fontSize: 9, color: "#6b8a70" }}>
+                <span style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> Linked to task
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1d6ecc", display: "inline-block" }} /> Not yet linked
+                  </span>
+                </span>
+                <span>Click drawing to add pin · Click pin to link or rename</span>
+              </div>
+            </>
+          )}
+        </div>
+        <input ref={drawingInputRef} type="file" accept="image/*,.pdf,.dwg" className="hidden"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            setDrawingUrl(url); setDrawingFilename(file.name);
+            setDrawingCollapsed(false); setAddPinMode(false);
+            e.target.value = "";
+          }} />
+
         {/* Empty state */}
         {tasks.length === 0 && (
           <p className="py-7 text-center text-xs text-slate-300 italic">No tasks yet — click Add Task below</p>
@@ -998,11 +1213,66 @@ export function NewReportTab({
                       className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white font-semibold placeholder:text-[#6b8a70] truncate w-full rounded-sm"
                       style={{ fontSize: 12.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "3px 6px" }}
                       placeholder="Task description…" />
-                    <Input data-testid={`input-task-area-${i}`} value={row.area}
-                      onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                      className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white placeholder:text-[#6b8a70] mt-1.5 truncate w-full rounded-sm"
-                      style={{ fontSize: 10.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "2px 6px" }}
-                      placeholder="Area / Location" />
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
+                      <Input data-testid={`input-task-area-${i}`} value={row.area}
+                        onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
+                        className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white placeholder:text-[#6b8a70] truncate rounded-sm"
+                        style={{ fontSize: 10.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "2px 6px", flex: 1, minWidth: 0 }}
+                        placeholder="Area / Location" />
+                      {/* Drawing Ref badge */}
+                      {row.linkedPinId ? (
+                        <button type="button"
+                          data-testid={`badge-pin-linked-${i}`}
+                          onClick={() => { setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 3,
+                            background: "#ede9fe", color: "#7c3aed",
+                            border: "1px solid #c4b5fd", borderRadius: 4,
+                            padding: "1px 6px", fontSize: 9.5, fontWeight: 700,
+                            cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                          }}>
+                          📍 {row.linkedPinId}
+                        </button>
+                      ) : (
+                        <div style={{ position: "relative", flexShrink: 0 }}>
+                          <button type="button"
+                            data-testid={`badge-pin-link-${i}`}
+                            onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 3,
+                              border: "1px dashed #c4b5fd", color: "#7c3aed",
+                              borderRadius: 4, padding: "1px 6px", fontSize: 9.5,
+                              cursor: "pointer", background: "transparent", whiteSpace: "nowrap",
+                            }}>
+                            📍 Link pin
+                          </button>
+                          {taskPinOpen === row.id && (
+                            <div style={{
+                              position: "absolute", top: "100%", left: 0, marginTop: 3, zIndex: 60,
+                              background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", minWidth: 150,
+                            }}>
+                              {pins.filter(p => p.linkedTaskId === null).length === 0 ? (
+                                <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>
+                                  {pins.length === 0 ? "No pins on drawing yet" : "All pins are linked"}
+                                </p>
+                              ) : pins.filter(p => p.linkedTaskId === null).map(pin => (
+                                <button key={pin.id} type="button"
+                                  style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
+                                  className="hover:bg-slate-50"
+                                  onClick={() => {
+                                    setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: row.id } : p));
+                                    setTasks(prev => prev.map(r => r.id === row.id ? { ...r, linkedPinId: pin.id } : r));
+                                    setTaskPinOpen(null);
+                                  }}>
+                                  📍 {pin.id}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Col 2: Workers summary */}
@@ -1195,8 +1465,35 @@ export function NewReportTab({
                         )}
                       </div>
 
-                      {/* Col B: Site Photos */}
+                      {/* Col B: Drawing Reference + Site Photos */}
                       <div>
+                        {/* Drawing Reference */}
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Drawing Reference</p>
+                        {row.linkedPinId ? (
+                          <div
+                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 6, marginBottom: 10, cursor: "pointer" }}
+                            onClick={() => { setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}>
+                            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                              {row.linkedPinId}
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 11, fontWeight: 600, color: "#4338ca", lineHeight: 1.3 }}>
+                                Pin {row.linkedPinId} — {row.area || "Drawing area"}
+                              </p>
+                              <p style={{ fontSize: 9.5, color: "#7c3aed", lineHeight: 1.3 }}>Click to jump to this area on drawing ↑</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ marginBottom: 10 }}>
+                            <p style={{ fontSize: 10.5, color: "#9db8a2" }}>No drawing area linked</p>
+                            <button type="button"
+                              style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 3 }}
+                              onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}>
+                              Link to a pin on the drawing above
+                            </button>
+                          </div>
+                        )}
+
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
                           Site Photos {row.photoFiles.length > 0 && <span className="text-blue-600 normal-case">({row.photoFiles.length})</span>}
                         </p>
@@ -1228,7 +1525,7 @@ export function NewReportTab({
         <AddRow testId="btn-add-task" label="Add Task"
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
-            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [],
+            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], linkedPinId: null,
           }])} />
 
         {/* ── Undo toast ── */}

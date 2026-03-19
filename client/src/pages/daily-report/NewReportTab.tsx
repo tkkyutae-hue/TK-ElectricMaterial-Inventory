@@ -962,12 +962,14 @@ export function NewReportTab({
                   <div className="pr-[14px] border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent font-semibold text-slate-800 placeholder:text-slate-300 truncate w-full"
-                      style={{ fontSize: 12.5 }} placeholder="Task description…" />
+                      className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white font-semibold placeholder:text-[#6b8a70] truncate w-full rounded-sm"
+                      style={{ fontSize: 12.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "3px 6px" }}
+                      placeholder="Task description…" />
                     <Input data-testid={`input-task-area-${i}`} value={row.area}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                      className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent text-slate-400 placeholder:text-slate-300 mt-0.5 truncate w-full"
-                      style={{ fontSize: 10.5 }} placeholder="Area / Location" />
+                      className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white placeholder:text-[#6b8a70] mt-1.5 truncate w-full rounded-sm"
+                      style={{ fontSize: 10.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "2px 6px" }}
+                      placeholder="Area / Location" />
                   </div>
 
                   {/* Col 2: Workers summary */}
@@ -1001,13 +1003,20 @@ export function NewReportTab({
                             }}>+{row.workers.length - 3}</div>
                           )}
                         </div>
-                        {/* Name — truncates when too long */}
-                        <span className="text-[10px] text-slate-600 truncate min-w-0">
-                          {mainWorker ? mainWorker.name.split(" ")[0] : ""}
+                        {/* Name + assist count — two lines */}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] text-slate-700 font-medium truncate leading-tight">
+                            {mainWorker ? (() => {
+                              const parts = mainWorker.name.trim().split(/\s+/);
+                              return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+                            })() : ""}
+                          </span>
                           {assistWorkers.length > 0 && (
-                            <span className="text-slate-400"> · {assistWorkers.length} assist</span>
+                            <span className="leading-tight" style={{ fontSize: 10, color: "#6b8a70", fontWeight: 600 }}>
+                              + {assistWorkers.length} assist
+                            </span>
                           )}
-                        </span>
+                        </div>
                       </div>
                     )}
                   </div>

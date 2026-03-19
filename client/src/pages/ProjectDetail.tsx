@@ -517,14 +517,29 @@ function getRigidTemplate(size: string): BundleTemplateItem[] {
   ];
 }
 
+// Flexible bundle template — type-aware (Metal Flexible or Liquidtight Flexible).
+// Always 3 rows: conduit + connector straight + connector 90°.
+// Uses exact inventory naming: "{size} {Type} Conduit", etc.
+function getFlexibleTemplate(flexType: string): BundleTemplateItem[] {
+  if (flexType === "Metal Flexible") {
+    return [
+      { itemName: "Metal Flexible Conduit",                    unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["metal", "flexible", "conduit"] },
+      { itemName: "Metal Flexible Conduit Connector Straight", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["metal", "flexible", "conduit", "connector", "straight"] },
+      { itemName: "Metal Flexible Conduit Connector 90°",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["metal", "flexible", "conduit", "connector", "90"] },
+    ];
+  }
+  if (flexType === "Liquidtight Flexible") {
+    return [
+      { itemName: "Liquidtight Flexible Conduit",                    unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["liquidtight", "flexible", "conduit"] },
+      { itemName: "Liquidtight Flexible Conduit Connector Straight", unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["liquidtight", "flexible", "conduit", "connector", "straight"] },
+      { itemName: "Liquidtight Flexible Conduit Connector 90°",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["liquidtight", "flexible", "conduit", "connector", "90"] },
+    ];
+  }
+  return [];
+}
+
 const BUNDLE_DEFINITIONS: Record<string, BundleTemplateItem[]> = {
-  "Flexible Conduit Bundle": [
-    { itemName: "Flexible Conduit",             unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["flexible", "conduit"] },
-    { itemName: "Flexible Connector Straight",  unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["flexible", "connector", "straight"] },
-    { itemName: "Flexible Connector 90",        unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["flexible", "connector"] },
-    { itemName: "Liquidtight Flexible Conduit", unit: "FT", category: "Conduit",               scopeType: "primary", searchWords: ["liquidtight", "conduit"] },
-    { itemName: "Liquidtight Connector",        unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["liquidtight", "connector"] },
-  ],
+  "Flexible Conduit Bundle": [],
   "Cable Tray Bundle": [
     { itemName: "Cable Tray",               unit: "FT", category: "Cable Tray", scopeType: "primary", searchWords: ["cable", "tray"] },
     { itemName: "Cable Tray Coupler",       unit: "EA", category: "Cable Tray", scopeType: "support", searchWords: ["cable", "tray", "coupler"] },
@@ -585,7 +600,7 @@ function newBundleRow(): BundleRow {
 const BUNDLE_SIZES: Record<string, string[]> = {
   "EMT Conduit Bundle":      ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
   "Rigid Conduit Bundle":    ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
-  "Flexible Conduit Bundle": ["3/8\"","1/2\"","3/4\"","1\"","1-1/4\"","1-1/2\"","2\""],
+  "Flexible Conduit Bundle": ["3/4\"","1\"","1-1/4\"","1-1/2\"","2\"","2-1/2\"","3\"","3-1/2\"","4\"","6\""],
   "Cable Tray Bundle":       ["4\"","6\"","9\"","12\"","18\"","24\"","30\"","36\""],
   "Box / Device Bundle":     ["1G","2G","4\" Square","4-11/16\""],
   "Grounding Bundle":        ["#6","#4","#2","#1/0","#2/0","3/4\" Rod","5/8\" Rod"],
@@ -1301,6 +1316,7 @@ function BundleSelector({
   const [phase, setPhase] = useState<"select" | "configure">("select");
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
+  const [flexibleType, setFlexibleType] = useState<string>("Metal Flexible");
   const [bundleRows, setBundleRows] = useState<BundleRow[]>([]);
 
   const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
@@ -1332,13 +1348,14 @@ function BundleSelector({
   }
 
   // Fully regenerate bundle rows from template + selected size (always fresh, no stale state)
-  function buildRows(bundleName: string, size: string): BundleRow[] {
-    // EMT and Rigid use size-aware template functions (clamp name changes per size)
+  function buildRows(bundleName: string, size: string, flexType?: string): BundleRow[] {
     let items: BundleTemplateItem[];
     if (bundleName === "EMT Conduit Bundle") {
       items = getEMTTemplate(size);
     } else if (bundleName === "Rigid Conduit Bundle") {
       items = getRigidTemplate(size);
+    } else if (bundleName === "Flexible Conduit Bundle") {
+      items = getFlexibleTemplate(flexType ?? flexibleType);
     } else {
       items = BUNDLE_DEFINITIONS[bundleName] ?? [];
     }
@@ -1360,17 +1377,26 @@ function BundleSelector({
 
   function pickBundle(name: string) {
     const defaultSize = BUNDLE_SIZES[name]?.[0] ?? "";
+    const defaultFlexType = "Metal Flexible";
     setSelectedBundle(name);
     setSelectedSize(defaultSize);
-    setBundleRows(buildRows(name, defaultSize));
+    if (name === "Flexible Conduit Bundle") setFlexibleType(defaultFlexType);
+    setBundleRows(buildRows(name, defaultSize, defaultFlexType));
     setPhase("configure");
   }
 
-  // Size change always does a full row regeneration — no stale names/units/categories
+  // Size change: full row regeneration
   function handleSizeChange(size: string) {
     setSelectedSize(size);
     if (!selectedBundle) return;
-    setBundleRows(buildRows(selectedBundle, size));
+    setBundleRows(buildRows(selectedBundle, size, flexibleType));
+  }
+
+  // Flexible type change: regenerate with new type, keep current size
+  function handleFlexTypeChange(flexType: string) {
+    setFlexibleType(flexType);
+    if (selectedBundle !== "Flexible Conduit Bundle") return;
+    setBundleRows(buildRows("Flexible Conduit Bundle", selectedSize, flexType));
   }
 
   function addManualRow() {
@@ -1426,7 +1452,7 @@ function BundleSelector({
           {[
             { name: "EMT Conduit Bundle",      count: 7 },
             { name: "Rigid Conduit Bundle",    count: 6 },
-            { name: "Flexible Conduit Bundle", count: (BUNDLE_DEFINITIONS["Flexible Conduit Bundle"] ?? []).length },
+            { name: "Flexible Conduit Bundle", count: 3 },
             { name: "Cable Tray Bundle",        count: (BUNDLE_DEFINITIONS["Cable Tray Bundle"] ?? []).length },
             { name: "Box / Device Bundle",     count: (BUNDLE_DEFINITIONS["Box / Device Bundle"] ?? []).length },
             { name: "Grounding Bundle",        count: (BUNDLE_DEFINITIONS["Grounding Bundle"] ?? []).length },
@@ -1468,6 +1494,29 @@ function BundleSelector({
           <Button size="sm" variant="outline" onClick={onClose} className="text-xs">Cancel</Button>
         </div>
       </div>
+
+      {/* Flexible type selector — Flexible Conduit Bundle only */}
+      {selectedBundle === "Flexible Conduit Bundle" && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-600 shrink-0">Flexible Type</span>
+          <div className="flex gap-1.5">
+            {["Metal Flexible", "Liquidtight Flexible"].map(ft => (
+              <button
+                key={ft} type="button"
+                onClick={() => handleFlexTypeChange(ft)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  flexibleType === ft
+                    ? "bg-brand-700 text-white border-brand-700"
+                    : "border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50"
+                }`}
+                data-testid={`bundle-flex-type-${ft.replace(/\s+/g, "-").toLowerCase()}`}
+              >
+                {ft}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Size selector bar */}
       {availableSizes.length > 0 && (

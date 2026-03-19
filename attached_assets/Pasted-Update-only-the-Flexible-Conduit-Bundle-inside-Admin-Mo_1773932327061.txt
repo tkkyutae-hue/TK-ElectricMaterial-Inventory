@@ -1,0 +1,86 @@
+Update only the Flexible Conduit Bundle inside:
+
+Admin Mode → Projects → Project Detail → Scope Items → Add Item → Add by Bundle → Flexible Conduit Bundle
+
+IMPORTANT:
+- Do NOT change page width, card width, spacing, row height, or layout.
+- Do NOT touch Overview / Material Usage / Daily Reports / Progress.
+- Do NOT change EMT bundle or Rigid bundle.
+- Only fix the Flexible Conduit Bundle behavior below.
+
+==================================================
+FLEXIBLE CONDUIT BUNDLE — REQUIRED CHANGES
+==================================================
+
+1) Remove wrong size options and use inventory sizes only
+- Remove 3/8" from the Flexible bundle size selector.
+- Use inventory-based size options only:
+  3/4", 1", 1-1/4", 1-1/2", 2", 2-1/2", 3", 3-1/2", 4", 6"
+- Do NOT show 5".
+
+2) Add type selector above the size selector
+Add a required selector ABOVE the size chips:
+
+  Flexible Type:
+  - Metal Flexible
+  - Liquidtight Flexible
+
+This type must be selected first.
+Then show the size chips below it.
+
+3) Default selected rows must be only 3 items
+When opening the Flexible bundle, prefill ONLY these 3 rows:
+
+For Metal Flexible:
+- [size] Metal Flexible Conduit
+- [size] Metal Flexible Connector Straight
+- [size] Metal Flexible Connector 90°
+
+For Liquidtight Flexible:
+- [size] Liquidtight Flexible Conduit
+- [size] Liquidtight Flexible Connector Straight
+- [size] Liquidtight Flexible Connector 90°
+
+Do NOT pre-add extra rows.
+Do NOT include both Metal Flexible and Liquidtight rows at the same time.
+Only show rows for the selected Flexible Type.
+
+4) Exact inventory-linked names only
+All default item names must use exact inventory item names.
+Do NOT use generic names like:
+- Flexible Conduit
+- Flexible Connector Straight
+- Flexible Connector 90
+- Liquidtight Connector
+
+Instead, use exact inventory-linked item names for the chosen type and size.
+
+5) Behavior
+- When Flexible Type changes, regenerate the 3 default rows for that type only.
+- When size changes, update all 3 row names to the selected size.
+- Keep current Unit / Category / Type columns.
+- Keep current bundle UI layout.
+
+==================================================
+EXPECTED RESULT
+==================================================
+
+If user selects:
+- Flexible Type = Metal Flexible
+- Size = 3/4"
+
+Rows should be:
+- 3/4" Metal Flexible Conduit
+- 3/4" Metal Flexible Connector Straight
+- 3/4" Metal Flexible Connector 90°
+
+If user selects:
+- Flexible Type = Liquidtight Flexible
+- Size = 1-1/4"
+
+Rows should be:
+- 1-1/4" Liquidtight Flexible Conduit
+- 1-1/4" Liquidtight Flexible Connector Straight
+- 1-1/4" Liquidtight Flexible Connector 90°
+
+Only implement these Flexible bundle changes.

@@ -1191,8 +1191,18 @@ export function NewReportTab({
                   const nextId = `A${pins.length + 1}`;
                   setPins(prev => [...prev, { id: nextId, x, y, linkedTaskId: null }]);
                 }}>
-                <img src={drawingUrl} alt="Project drawing"
-                  style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block" }} />
+                {drawingFilename.toLowerCase().endsWith(".pdf") ? (
+                  <iframe
+                    src={drawingUrl}
+                    width="100%"
+                    height="280px"
+                    style={{ border: "none", background: "#f1f5f2", display: "block" }}
+                    title="Project drawing PDF"
+                  />
+                ) : (
+                  <img src={drawingUrl} alt="Project drawing"
+                    style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
+                )}
                 {/* Pins */}
                 {pins.map(pin => {
                   const isLinked = pin.linkedTaskId !== null;

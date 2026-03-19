@@ -485,7 +485,7 @@ function getEMTTemplate(size: string): BundleTemplateItem[] {
   }
   return [
     ...base,
-    { itemName: "EMT 90 Elbow",         unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "elbow", "90"] },
+    { itemName: "EMT Elbow 90°",        unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["emt", "elbow", "90"] },
     { itemName: "Unistrut Pipe Clamp",  unit: "EA", category: "EMT Support",            scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
   ];
 }
@@ -506,12 +506,13 @@ function getRigidTemplate(size: string): BundleTemplateItem[] {
     return [
       ...base,
       { itemName: "Rigid One-Hole Strap",      unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "strap"] },
-      { itemName: "Rigid Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "unistrut", "pipe", "clamp"] },
+      // DB has a typo: "Unisturt" not "Unistrut" — use "unist" prefix to match both spellings
+      { itemName: "Rigid Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support", scopeType: "support", searchWords: ["rigid", "unist", "pipe", "clamp"] },
     ];
   }
   return [
     ...base,
-    { itemName: "Rigid 90 Elbow",      unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "elbow", "90"] },
+    { itemName: "Rigid Elbow 90°",     unit: "EA", category: "Fittings & Connectors", scopeType: "support", searchWords: ["rigid", "elbow", "90"] },
     { itemName: "Unistrut Pipe Clamp", unit: "EA", category: "Rigid Support",          scopeType: "support", searchWords: ["unistrut", "pipe", "clamp"] },
   ];
 }
@@ -1304,17 +1305,24 @@ function BundleSelector({
 
   const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
 
+  // Normalize size strings so hyphen and space formats compare equal:
+  // "2-1/2" ↔ "2 1/2", "3-1/2" ↔ "3 1/2", "1-1/4" ↔ "1 1/4"
+  // Some inventory items use spaces (e.g. "2 1/2\" Rigid Elbow 90°") while
+  // BUNDLE_SIZES use hyphens (e.g. "2-1/2\"") — this reconciles both.
+  function normSize(s: string): string {
+    return s.replace(/(\d)-(\d)/g, "$1 $2");
+  }
+
   // Resolve one inventory match for a bundle template item + selected size.
-  // Size matching uses startsWith (after stripping quotes from both sides) so that
-  // "4" does not accidentally match "1-1/4" items (the old n.includes() bug).
+  // Size must appear at the START of the item name (after stripping quotes/hash)
+  // so "4" cannot accidentally match "1-1/4" items.
   function resolveInvMatch(searchWords: string[], sizeNorm: string) {
     return sizeNorm
       ? invItems.find(inv => {
           const n = inv.name.toLowerCase();
-          // Strip quotes/hash from the item name for size comparison
-          const nNorm = n.replace(/['"#]/g, "").trim();
-          // Size must appear at the very start of the item name followed by a space
-          const sizeMatch = nNorm.startsWith(sizeNorm + " ") || nNorm === sizeNorm;
+          const nNorm = normSize(n.replace(/['"#]/g, "").trim());
+          const normSz = normSize(sizeNorm);
+          const sizeMatch = nNorm.startsWith(normSz + " ") || nNorm === normSz;
           return sizeMatch && searchWords.every(w => n.includes(w));
         })
       : invItems.find(inv => {

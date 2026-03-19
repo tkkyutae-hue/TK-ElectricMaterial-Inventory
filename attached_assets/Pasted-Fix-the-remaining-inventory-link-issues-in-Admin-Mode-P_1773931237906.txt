@@ -1,0 +1,114 @@
+Fix the remaining inventory-link issues in Admin Mode → Projects → Project Detail → Scope Items bundle builder.
+
+IMPORTANT:
+- Do NOT change layout, widths, spacing, card sizes, table sizing, or page structure.
+- Do NOT touch Overview, Material Usage, Daily Reports, Progress, or global admin shell.
+- Only fix the exact bundle-item inventory mapping issues below.
+
+==================================================
+GOAL
+==================================================
+Make all EMT / Rigid bundle rows use exact inventory-linked item names so the bundle rows auto-link correctly.
+
+Use exact inventory item names.
+Do not use approximate names.
+Do not invent fallback names.
+Do not change category logic unless noted below.
+
+==================================================
+FIX 1 — RIGID UNISTRUT PIPE CLAMP exact matching
+==================================================
+The following Rigid bundle support rows must exact-match inventory items:
+
+- 3/4" Rigid Unistrut Pipe Clamp
+- 1" Rigid Unistrut Pipe Clamp
+
+These currently are not linking correctly.
+Make sure the bundle builder uses those exact names for 3/4" and 1" rigid sizes.
+
+==================================================
+FIX 2 — EMT ELBOW 90° exact matching
+==================================================
+For EMT bundle sizes 1-1/4" and above, the elbow row must use the exact inventory item naming:
+
+- 1-1/4" EMT Elbow 90°
+- 1-1/2" EMT Elbow 90°
+- 2" EMT Elbow 90°
+- 2-1/2" EMT Elbow 90°
+- 3" EMT Elbow 90°
+- 3-1/2" EMT Elbow 90°
+- 4" EMT Elbow 90°
+- 6" EMT Elbow 90°
+
+Use exact inventory names only.
+
+==================================================
+FIX 3 — RIGID ELBOW 90° exact matching
+==================================================
+For Rigid bundle rows where elbow is included, use exact inventory names such as:
+
+- 3/4" Rigid Elbow 90°
+- 1" Rigid Elbow 90°
+- 1-1/4" Rigid Elbow 90°
+- 1-1/2" Rigid Elbow 90°
+- 2" Rigid Elbow 90°
+- 2-1/2" Rigid Elbow 90°
+- 3" Rigid Elbow 90°
+- 3-1/2" Rigid Elbow 90°
+- 4" Rigid Elbow 90°
+- 6" Rigid Elbow 90°
+
+Rigid does NOT use set screw fittings.
+Do NOT add or restore any rigid set screw row.
+
+==================================================
+FIX 4 — SIZE LABEL FORMAT must match inventory exactly
+==================================================
+Bundle size-to-item text must use the same size formatting as inventory exact names.
+
+Very important:
+- preserve inventory size formatting exactly
+- if inventory uses 2 1/2" then use 2 1/2"
+- if inventory uses 3 1/2" then use 3 1/2"
+- if inventory uses 1-1/4" then use 1-1/4"
+
+Do not normalize or reformat size strings if that breaks exact matching.
+
+==================================================
+FIX 5 — NO FALLBACK / NO WRONG SUBSTITUTE
+==================================================
+If an exact linked inventory item does not exist for that bundle row:
+- leave the row empty / unresolved
+- do NOT substitute another item
+- do NOT silently map to a wrong item
+- do NOT duplicate another fitting row
+
+Wrong behavior examples that must not happen:
+- duplicate compression coupling
+- wrong category because of bad fallback
+- wrong item inserted just to fill the row
+
+==================================================
+VALIDATION CHECKS AFTER FIX
+==================================================
+After implementing, verify these cases:
+
+A. EMT bundle
+- 1-1/4" EMT Elbow 90° links correctly
+- 2-1/2" EMT Elbow 90° links correctly
+- 3-1/2" EMT Elbow 90° links correctly
+- 4" EMT Elbow 90° links correctly
+- 6" EMT Elbow 90° links correctly
+
+B. Rigid bundle
+- 3/4" Rigid Elbow 90° links correctly
+- 1" Rigid Elbow 90° links correctly
+- 3/4" Rigid Unistrut Pipe Clamp links correctly
+- 1" Rigid Unistrut Pipe Clamp links correctly
+
+C. No duplicates
+- no duplicate compression rows
+- no wrong fallback substitutions
+- no set screw rows in rigid bundle
+
+Only make these exact mapping fixes.

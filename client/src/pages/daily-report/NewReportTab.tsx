@@ -20,13 +20,19 @@ import type { Worker } from "@shared/schema";
 import { PdfViewer } from "./PdfViewer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string; rowBg: string; borderColor: string }> = {
-  "not-started": { label: "Not Started",  dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "",             borderColor: "#94a3b8" },
-  "in-progress":  { label: "In Progress", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "",             borderColor: "#1d6ecc" },
-  "completed":    { label: "Completed",   dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "",             borderColor: "#16a34a" },
-  "delayed":      { label: "Delayed",     dot: "bg-amber-500",   text: "text-amber-700",   rowBg: "bg-amber-50/30", borderColor: "#d97706" },
-  "blocked":      { label: "Blocked",     dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#ef4444" },
+const TASK_STATUS_CFG: Record<string, {
+  label: string; dotColor: string;
+  badgeBg: string; badgeBorder: string; badgeText: string;
+  accentColor: string;
+  dot: string; text: string; rowBg: string; borderColor: string;
+}> = {
+  "not-started": { label: "Not Started", dotColor: "#d0d0d0", badgeBg: "#f5f5f5", badgeBorder: "#e5e5e5", badgeText: "#aaa",    accentColor: "#e0e0e0", dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "",               borderColor: "#e0e0e0" },
+  "in-progress":  { label: "In Progress", dotColor: "#3b82f6", badgeBg: "#eff6ff", badgeBorder: "#bfdbfe", badgeText: "#1d4ed8", accentColor: "#818cf8", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "",               borderColor: "#818cf8" },
+  "completed":    { label: "Completed",   dotColor: "#22c55e", badgeBg: "#f0fdf4", badgeBorder: "#86efac", badgeText: "#15803d", accentColor: "#22c55e", dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "",               borderColor: "#22c55e" },
+  "delayed":      { label: "Delayed",     dotColor: "#f97316", badgeBg: "#fff7ed", badgeBorder: "#fdba74", badgeText: "#c2410c", accentColor: "#f97316", dot: "bg-orange-500",  text: "text-orange-700",  rowBg: "bg-amber-50/30", borderColor: "#f97316" },
+  "blocked":      { label: "Blocked",     dotColor: "#f43f5e", badgeBg: "#fff1f2", badgeBorder: "#fecdd3", badgeText: "#e11d48", accentColor: "#f43f5e", dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#f43f5e" },
 };
+const AVATAR_COLORS = ["#818cf8", "#34d399", "#f97316", "#3b82f6"];
 
 const TRADE_COLOR_CFG: Record<string, { bg: string; color: string; border: string }> = {
   "Foreman":     { bg: "#dcfce7", color: "#16a34a", border: "#86efac" },
@@ -155,10 +161,11 @@ const SECTION_ICON_STYLE: Record<number, { bg: string; icon: string }> = {
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 // overflow-hidden removed so combobox dropdowns are not clipped
 function Section({
-  num, title, icon, defaultOpen = true, summary, alert, children,
+  num, title, icon, defaultOpen = true, summary, alert, headerRight, children,
 }: {
   num: number; title: string; icon: React.ReactNode;
-  defaultOpen?: boolean; summary?: string; alert?: React.ReactNode; children: React.ReactNode;
+  defaultOpen?: boolean; summary?: string; alert?: React.ReactNode;
+  headerRight?: React.ReactNode; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const ic = SECTION_ICON_STYLE[num] ?? { bg: "bg-slate-100", icon: "text-slate-500" };
@@ -180,7 +187,10 @@ function Section({
           )}
           {alert && <span className="ml-2 shrink-0">{alert}</span>}
         </div>
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-3 ${open ? "rotate-180" : ""}`} />
+        <div className="flex items-center gap-2 shrink-0 ml-3">
+          {headerRight}
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </div>
       </button>
       {open && (
         <CardContent className="pt-0 pb-6 px-5 border-t border-slate-100">
@@ -638,6 +648,25 @@ export function NewReportTab({
     </span>
   ) : undefined;
   const taskSummary = tasks.length ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
+
+  const taskChipStyle = (bg: string, border: string, color: string): React.CSSProperties => ({
+    borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 600,
+    border: `1px solid ${border}`, background: bg, color, display: "inline-flex", alignItems: "center",
+  });
+  const taskStatusChips = tasks.length > 0 ? (
+    <span className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      {(() => {
+        const inProg  = tasks.filter(t => t.status === "in-progress").length;
+        const done    = tasks.filter(t => t.status === "completed").length;
+        const blocked = tasks.filter(t => t.status === "blocked").length;
+        return (<>
+          {inProg  > 0 && <span style={taskChipStyle("#eff6ff","#bfdbfe","#1d4ed8")}>{inProg} In Progress</span>}
+          {done    > 0 && <span style={taskChipStyle("#f0fdf4","#86efac","#15803d")}>{done} Completed</span>}
+          {blocked > 0 && <span style={taskChipStyle("#fff1f2","#fecdd3","#e11d48")}>{blocked} Blocked</span>}
+        </>);
+      })()}
+    </span>
+  ) : undefined;
 
   function handleDeleteTask(task: TaskRow, index: number) {
     setDeleteConfirm(null);
@@ -1197,7 +1226,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
-      <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary}>
+      <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
 
         {/* ── Drawing Board ── */}
         <div style={{ border: "1px solid #d0dbd2", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
@@ -1411,162 +1440,173 @@ export function NewReportTab({
         <div className="space-y-[10px]" data-testid="task-cards">
           {tasks.map((row, i) => {
             const cfg = TASK_STATUS_CFG[row.status] ?? TASK_STATUS_CFG["not-started"];
-            const mainWorker   = row.workers.find(w => w.role === "main");
-            const assistWorkers = row.workers.filter(w => w.role === "assist");
-            const allAvatars   = [...(mainWorker ? [mainWorker] : []), ...assistWorkers];
+            const mainWorker = row.workers.find(w => w.role === "main");
 
             return (
               <div key={row.id} data-testid={`task-card-${i}`} className="group"
-                style={{ background: "white", border: "1px solid #d0dbd2", borderLeft: `3px solid ${cfg.borderColor}`, borderRadius: 10 }}>
+                style={{ background: "white", border: "1px solid #d0dbd2", borderLeft: `4px solid ${cfg.accentColor}`, borderRadius: 10 }}>
 
                 {/* ── Main row ── */}
                 <div
                   onClick={() => setTasks(tasks.map(r => r.id === row.id ? { ...r, expanded: !r.expanded } : r))}
                   className="cursor-pointer hover:bg-[#f8faf9] transition-colors"
-                  style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 160px 148px 40px", alignItems: "center", padding: "12px 14px" }}>
+                  style={{ display: "flex", alignItems: "center", minHeight: 56, paddingRight: 12 }}>
 
-                  {/* Col 1: Description + Area */}
-                  <div className="pr-[14px] border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
-                    <Input data-testid={`input-task-desc-${i}`} value={row.description}
-                      onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                      className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white font-semibold placeholder:text-[#6b8a70] truncate w-full rounded-sm"
-                      style={{ fontSize: 12.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "3px 6px" }}
-                      placeholder="Task description…" />
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
-                      <Input data-testid={`input-task-area-${i}`} value={row.area}
-                        onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className="shadow-none h-auto focus-visible:ring-0 focus:border-[#86efac] bg-white placeholder:text-[#6b8a70] truncate rounded-sm"
-                        style={{ fontSize: 10.5, border: "1px solid #d0dbd2", color: "#0f1a12", padding: "2px 6px", flex: 1, minWidth: 0 }}
-                        placeholder="Area / Location" />
-                      {/* Drawing Ref badge */}
-                      {row.linkedPinId ? (
-                        <button type="button"
-                          data-testid={`badge-pin-linked-${i}`}
-                          onClick={() => { setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 3,
-                            background: "#ede9fe", color: "#7c3aed",
-                            border: "1px solid #c4b5fd", borderRadius: 4,
-                            padding: "1px 6px", fontSize: 9.5, fontWeight: 700,
-                            cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                          }}>
-                          📍 {row.linkedPinId}
-                        </button>
-                      ) : (
-                        <div style={{ position: "relative", flexShrink: 0 }}>
-                          <button type="button"
-                            data-testid={`badge-pin-link-${i}`}
-                            onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 3,
-                              border: "1px dashed #c4b5fd", color: "#7c3aed",
-                              borderRadius: 4, padding: "1px 6px", fontSize: 9.5,
-                              cursor: "pointer", background: "transparent", whiteSpace: "nowrap",
-                            }}>
-                            📍 Link pin
-                          </button>
-                          {taskPinOpen === row.id && (
-                            <div style={{
-                              position: "absolute", top: "100%", left: 0, marginTop: 3, zIndex: 60,
-                              background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
-                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", minWidth: 150,
-                            }}>
-                              {pins.filter(p => p.linkedTaskId === null).length === 0 ? (
-                                <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>
-                                  {pins.length === 0 ? "No pins on drawing yet" : "All pins are linked"}
-                                </p>
-                              ) : pins.filter(p => p.linkedTaskId === null).map(pin => (
-                                <button key={pin.id} type="button"
-                                  style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
-                                  className="hover:bg-slate-50"
-                                  onClick={() => {
-                                    setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: row.id } : p));
-                                    setTasks(prev => prev.map(r => r.id === row.id ? { ...r, linkedPinId: pin.id } : r));
-                                    setTaskPinOpen(null);
-                                  }}>
-                                  📍 {pin.id}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                  {/* Task # */}
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#9db8a2", flexShrink: 0, padding: "0 8px 0 12px" }}>
+                    #{i + 1}
+                  </span>
+
+                  {/* Pin badge */}
+                  {row.linkedPinId ? (
+                    <button type="button"
+                      data-testid={`badge-pin-linked-${i}`}
+                      onClick={e => { e.stopPropagation(); setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0,
+                        background: row.status === "completed" ? "#f0fdf4" : "#f5f3ff",
+                        color: row.status === "completed" ? "#15803d" : "#7c3aed",
+                        border: `1px solid ${row.status === "completed" ? "#86efac" : "#ddd6fe"}`,
+                        borderRadius: 4, padding: "2px 7px", fontSize: 9.5, fontWeight: 700,
+                        cursor: "pointer", whiteSpace: "nowrap",
+                      }}>
+                      📍 {row.linkedPinId}
+                    </button>
+                  ) : (
+                    <div style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                      <button type="button"
+                        data-testid={`badge-pin-link-${i}`}
+                        onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#ccc",
+                          borderRadius: 4, padding: "2px 7px", fontSize: 9.5, fontWeight: 700,
+                          cursor: "pointer", whiteSpace: "nowrap",
+                        }}>
+                        — No pin
+                      </button>
+                      {taskPinOpen === row.id && (
+                        <div style={{
+                          position: "absolute", top: "100%", left: 0, marginTop: 3, zIndex: 60,
+                          background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", minWidth: 150,
+                        }}>
+                          {pins.filter(p => p.linkedTaskId === null).length === 0 ? (
+                            <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>
+                              {pins.length === 0 ? "No pins on drawing yet" : "All pins are linked"}
+                            </p>
+                          ) : pins.filter(p => p.linkedTaskId === null).map(pin => (
+                            <button key={pin.id} type="button"
+                              style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
+                              className="hover:bg-slate-50"
+                              onClick={() => {
+                                setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: row.id } : p));
+                                setTasks(prev => prev.map(r => r.id === row.id ? { ...r, linkedPinId: pin.id } : r));
+                                setTaskPinOpen(null);
+                              }}>
+                              📍 {pin.id}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* Divider */}
+                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
+
+                  {/* Description + Location — flex:1 */}
+                  <div style={{ flex: 1, minWidth: 0 }} onClick={e => e.stopPropagation()}>
+                    <Input data-testid={`input-task-desc-${i}`} value={row.description}
+                      onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
+                      className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#ccc] truncate w-full p-0"
+                      style={{ fontSize: 13, color: "#1a1a1a" }}
+                      placeholder="Task description…" />
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <Input data-testid={`input-task-area-${i}`} value={row.area}
+                        onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
+                        className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent placeholder:text-[#bbb] truncate p-0 w-full"
+                        style={{ fontSize: 11, color: "#bbb" }}
+                        placeholder="Area / Location" />
+                    </div>
                   </div>
 
-                  {/* Col 2: Workers summary */}
-                  <div className="px-3 border-r border-slate-100 overflow-hidden" onClick={e => e.stopPropagation()}>
-                    <p style={{ fontSize: 8 }} className="font-semibold text-slate-400 uppercase tracking-widest mb-1">Workers</p>
+                  {/* Divider */}
+                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
+
+                  {/* Worker display */}
+                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     {row.workers.length === 0 ? (
-                      <span className="text-[11px] text-slate-300 italic">+ Assign</span>
+                      <span style={{ fontSize: 12, color: "#ddd" }}>No workers assigned</span>
                     ) : (
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        {/* Stacked avatars — shrink-0 so they never compress */}
-                        <div className="flex items-center shrink-0">
-                          {allAvatars.slice(0, 3).map((w, wi) => (
-                            <div key={wi} style={{
-                              width: 20, height: 20, borderRadius: "50%",
-                              marginLeft: wi > 0 ? -6 : 0, border: "1.5px solid white",
-                              background: w.role === "main" ? "#dcfce7" : "#dbeafe",
-                              color: w.role === "main" ? "#16a34a" : "#1d6ecc",
-                              fontSize: 8, fontWeight: 700,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              position: "relative", zIndex: 3 - wi, flexShrink: 0,
-                            }}>{initials(w.name)}</div>
-                          ))}
-                          {row.workers.length > 3 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {mainWorker && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <div style={{
-                              width: 20, height: 20, borderRadius: "50%",
-                              marginLeft: -6, border: "1.5px solid white",
-                              background: "#e0e7ff", color: "#4338ca",
-                              fontSize: 8, fontWeight: 700,
+                              width: 28, height: 28, borderRadius: "50%",
+                              background: AVATAR_COLORS[0], color: "#fff",
+                              fontSize: 10, fontWeight: 700, flexShrink: 0,
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              position: "relative", zIndex: 0, flexShrink: 0,
-                            }}>+{row.workers.length - 3}</div>
-                          )}
-                        </div>
-                        {/* Name + assist count — two lines */}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[10px] text-slate-700 font-medium truncate leading-tight">
-                            {mainWorker ? (() => {
-                              const parts = mainWorker.name.trim().split(/\s+/);
-                              return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
-                            })() : ""}
-                          </span>
-                          {assistWorkers.length > 0 && (
-                            <span className="leading-tight" style={{ fontSize: 10, color: "#6b8a70", fontWeight: 600 }}>
-                              + {assistWorkers.length} assist
-                            </span>
-                          )}
-                        </div>
+                            }}>{initials(mainWorker.name)}</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                              <span style={{ fontSize: 12, fontWeight: 500, color: "#1a1a1a", whiteSpace: "nowrap" }}>
+                                {(() => {
+                                  const parts = mainWorker.name.trim().split(/\s+/);
+                                  return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+                                })()}
+                              </span>
+                              <span style={{ fontSize: 10, color: "#aaa", whiteSpace: "nowrap" }}>
+                                {mainWorker.trade || "Worker"} · Main
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        {row.workers.length > 1 && (
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                            background: "#f0f0f0", border: "1.5px solid #e0e0e0",
+                            borderRadius: 20, padding: "2px 9px",
+                            fontSize: 11, fontWeight: 700, color: "#666",
+                          }}>+{row.workers.length - 1}</span>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Col 3: Status */}
-                  <div className="px-2 border-r border-slate-100" onClick={e => e.stopPropagation()}>
-                    <div className="relative">
-                      <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full z-10 pointer-events-none ${cfg.dot}`} />
-                      <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
-                        <SelectTrigger data-testid={`select-task-status-${i}`} className={`h-8 text-xs pl-6 ${cfg.text} w-full`} style={{ minWidth: 120, whiteSpace: "nowrap" }}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(TASK_STATUS_CFG).map(([val, c]) => (
-                            <SelectItem key={val} value={val}>
-                              <span className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${c.dot} shrink-0`} />
-                                {c.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  {/* Divider */}
+                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
+
+                  {/* Status Select — single dot badge style */}
+                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <Select value={row.status} onValueChange={v => setTasks(tasks.map(r => r.id === row.id ? { ...r, status: v } : r))}>
+                      <SelectTrigger data-testid={`select-task-status-${i}`}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 7,
+                          borderRadius: 20, padding: "5px 10px 5px 13px",
+                          fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                          border: `1px solid ${cfg.badgeBorder}`,
+                          background: cfg.badgeBg, color: cfg.badgeText,
+                          height: "auto", minWidth: 0, boxShadow: "none",
+                        }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: cfg.dotColor, flexShrink: 0, display: "inline-block" }} />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TASK_STATUS_CFG).map(([val, c]) => (
+                          <SelectItem key={val} value={val}>
+                            <span className="flex items-center gap-2">
+                              <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dotColor, display: "inline-block", flexShrink: 0 }} />
+                              {c.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {/* Col 4: Chevron + delete */}
-                  <div className="flex items-center justify-center gap-1 pl-1 overflow-hidden">
+                  {/* Chevron + delete */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, paddingLeft: 8, flexShrink: 0 }}>
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${row.expanded ? "rotate-180" : ""}`} />
                     <button type="button" data-testid={`btn-remove-task-${i}`}
                       onClick={e => { e.stopPropagation(); setDeleteConfirm(row.id); }}

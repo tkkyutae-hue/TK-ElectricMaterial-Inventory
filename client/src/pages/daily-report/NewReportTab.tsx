@@ -62,6 +62,28 @@ const ATTENDANCE_STATUSES = [
 
 const HOURS_COMPUTED = new Set(["ATTEND", "LATE", "EARLY_LEAVE", "WFH", "TRAINING"]);
 
+const STATUS_COLOR_CFG: Record<string, { color: string; bg: string; border: string }> = {
+  "ATTEND":      { color: "#15803d", bg: "#f0fdf4", border: "#86efac" },
+  "PTO":         { color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
+  "SICK":        { color: "#9d174d", bg: "#fdf2f8", border: "#fbcfe8" },
+  "ABSENT":      { color: "#e11d48", bg: "#fff1f2", border: "#fecdd3" },
+  "OFF":         { color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
+  "LATE":        { color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  "EARLY_LEAVE": { color: "#c2410c", bg: "#fff7ed", border: "#fed7aa" },
+  "WFH":         { color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" },
+  "TRAINING":    { color: "#0369a1", bg: "#f0f9ff", border: "#bae6fd" },
+  "SUSPENDED":   { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+  "TERMINATED":  { color: "#dc2626", bg: "#fff1f2", border: "#fecdd3" },
+};
+
+function tradeIconColor(trade?: string): string {
+  if (!trade) return "#6366f1";
+  const t = trade.toLowerCase();
+  if (t.includes("general manager") || t.includes("gm")) return "#d97706";
+  if (t.includes("project engineer") || t.includes("pe") || t.includes("engineer")) return "#059669";
+  return "#6366f1";
+}
+
 const EQ_STATUS_CFG = {
   operational: { label: "✓  Operational",  border: "#86efac", bg: "#f0fdf4", color: "#15803d" },
   partial:     { label: "⚠  Partial Issue", border: "#fde68a", bg: "#fffbeb", color: "#b45309" },
@@ -313,11 +335,29 @@ function WorkerCombobox({
         {row.trade && (
           <span style={{
             flexShrink: 0, fontSize: 11, color: "#94a3b8",
-            paddingRight: 9, whiteSpace: "nowrap",
+            whiteSpace: "nowrap",
           }}>
             {row.trade}
           </span>
         )}
+        <button
+          type="button"
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => { setQuery(""); setOpen(false); onChange({ workerName: "", workerId: null, trade: "" }); }}
+          style={{
+            width: 20, height: 20, borderRadius: "50%",
+            background: "#f0f0f0", border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginRight: 6, flexShrink: 0,
+            color: "#aaa", fontSize: 10,
+            opacity: query ? 1 : 0,
+            pointerEvents: query ? "auto" : "none",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={e => { const b = e.currentTarget; b.style.background = "#f43f5e"; b.style.color = "#fff"; }}
+          onMouseLeave={e => { const b = e.currentTarget; b.style.background = "#f0f0f0"; b.style.color = "#aaa"; }}>
+          ×
+        </button>
       </div>
       {open && filtered.length > 0 && (
         <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden" style={{ minWidth: 240 }}>
@@ -425,11 +465,33 @@ function PreparedByCombobox({
             <button key={w.id} type="button"
               onMouseDown={e => e.preventDefault()}
               onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
-              style={{ padding: "8px 12px" }}
-              className="w-full text-left text-xs hover:bg-slate-50 flex items-center gap-2.5 transition-colors">
-              <HardHat className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              <span className="font-medium text-slate-800 truncate">{w.fullName}</span>
-              {w.trade && <span className="text-slate-400 ml-auto flex-shrink-0 text-[10px]">{w.trade}</span>}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 12px", minHeight: 40,
+                width: "100%", textAlign: "left",
+                background: "none", border: "none", cursor: "pointer",
+              }}
+              className="hover:bg-slate-50 transition-colors">
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "#e0e7ff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, overflow: "hidden",
+              }}>
+                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade) }} />
+              </div>
+              <span style={{
+                flex: 1, minWidth: 0,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                fontSize: 13, color: "#1a1a1a",
+              }}>
+                {w.fullName}
+              </span>
+              {w.trade && (
+                <span style={{ flexShrink: 0, fontSize: 11, color: "#aaa", whiteSpace: "nowrap" }}>
+                  {w.trade}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1062,7 +1124,7 @@ export function NewReportTab({
               { label: "End",         cls: "w-[76px]" },
               { label: "Break",       cls: "w-[46px] text-center" },
               { label: "Hrs",         cls: "w-[48px] text-center" },
-              { label: "Notes",       cls: "w-[130px]" },
+              { label: "Notes",       cls: "w-[130px] text-center" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
@@ -1083,40 +1145,89 @@ export function NewReportTab({
                     </td>
                     {/* Status */}
                     <td className="py-1.5 px-2.5">
-                      <Select value={row.attendanceStatus}
-                        onValueChange={(v) => {
-                          const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
-                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
-                        }}>
-                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8 text-xs" style={{ minWidth: "120px", width: "120px" }}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ATTENDANCE_STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {(() => {
+                        const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
+                        return (
+                          <Select value={row.attendanceStatus}
+                            onValueChange={(v) => {
+                              const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
+                              setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
+                            }}>
+                            <SelectTrigger
+                              data-testid={`select-mp-status-${i}`}
+                              className="h-8"
+                              style={{
+                                minWidth: "120px", width: "120px",
+                                padding: "5px 24px 5px 8px",
+                                fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 10.5 : 11,
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                color: sc.color,
+                                background: sc.bg,
+                                border: `1px solid ${sc.border}`,
+                              }}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ATTENDANCE_STATUSES.map((s) => (
+                                <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </td>
                     {/* Start */}
                     <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-mp-start-${i}`} type="time" value={row.startTime}
-                        onChange={(e) => {
-                          const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus, row.lunchBreak);
-                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
-                        }}
-                        className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
-                        disabled={!hoursActive} />
+                      <div style={{
+                        display: "flex", alignItems: "center",
+                        padding: "5px 7px", gap: 5, height: 32,
+                        border: "1px solid #e0e0e0", borderRadius: 7,
+                        opacity: !hoursActive ? 0.4 : 1,
+                        pointerEvents: !hoursActive ? "none" : "auto",
+                      }}>
+                        <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <input
+                          data-testid={`input-mp-start-${i}`}
+                          type="time"
+                          value={row.startTime}
+                          disabled={!hoursActive}
+                          onChange={(e) => {
+                            const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus, row.lunchBreak);
+                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
+                          }}
+                          style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
+                        />
+                      </div>
                     </td>
                     {/* End */}
                     <td className="py-1.5 px-2.5">
-                      <Input data-testid={`input-mp-end-${i}`} type="time" value={row.endTime}
-                        onChange={(e) => {
-                          const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus, row.lunchBreak);
-                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
-                        }}
-                        className={`h-8 text-xs ${!hoursActive ? "opacity-40 pointer-events-none" : ""}`}
-                        disabled={!hoursActive} />
+                      <div style={{
+                        display: "flex", alignItems: "center",
+                        padding: "5px 7px", gap: 5, height: 32,
+                        border: "1px solid #e0e0e0", borderRadius: 7,
+                        opacity: !hoursActive ? 0.4 : 1,
+                        pointerEvents: !hoursActive ? "none" : "auto",
+                      }}>
+                        <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <input
+                          data-testid={`input-mp-end-${i}`}
+                          type="time"
+                          value={row.endTime}
+                          disabled={!hoursActive}
+                          onChange={(e) => {
+                            const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus, row.lunchBreak);
+                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
+                          }}
+                          style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
+                        />
+                      </div>
                     </td>
                     {/* Break toggle */}
                     <td className="py-1.5 px-1">
@@ -1144,10 +1255,11 @@ export function NewReportTab({
                       </ROCell>
                     </td>
                     {/* Notes */}
-                    <td className="py-1.5 px-2.5">
+                    <td className="py-1.5 px-2.5" style={{ textAlign: "center", verticalAlign: "middle" }}>
                       <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
                         onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Optional" />
+                        className={cellInputCls} placeholder="Optional"
+                        style={{ textAlign: "center", fontSize: 12, color: row.notes ? "#1a1a1a" : "#bbb" }} />
                     </td>
                     <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />

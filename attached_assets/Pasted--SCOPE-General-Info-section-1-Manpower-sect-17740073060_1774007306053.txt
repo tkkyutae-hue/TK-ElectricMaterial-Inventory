@@ -1,0 +1,135 @@
+==================================================
+SCOPE: General Info (section 1) + Manpower (section 2).
+Do NOT change other sections or global styles.
+==================================================
+
+[General Info] FIX 1 — Prepared By dropdown icon alignment
+
+Each dropdown item must be a flex row:
+  display: flex
+  align-items: center    ← vertical center
+  gap: 10px
+  padding: 9px 12px
+  min-height: 40px       ← consistent row height
+
+Icon container (left):
+  width: 28px
+  height: 28px
+  border-radius: 50%
+  background: #e0e7ff
+  display: flex, align-items: center, justify-content: center
+  flex-shrink: 0         ← never overflow
+  overflow: hidden
+
+Name (center):
+  flex: 1, min-width: 0
+  overflow: hidden, text-overflow: ellipsis, white-space: nowrap
+  font-size: 13px, color: #1a1a1a
+
+Role (right):
+  flex-shrink: 0
+  font-size: 11px, color: #aaa
+  white-space: nowrap
+
+Role icon color by role type:
+  Foreman          → #6366f1 (indigo)
+  General Manager  → #d97706 (amber)
+  Project Engineer → #059669 (green)
+
+==================================================
+
+[Manpower] FIX 2 — Worker Name clear button
+
+Wrap the worker name input in a flex container:
+  <div class="name-cell-wrap">        ← border, border-radius, height:32px
+    <input class="name-input" />      ← flex:1, no border, bg transparent
+    <span class="name-role" />        ← role text, flex-shrink:0, color:#aaa
+    <button class="name-clear" />     ← clear X button
+  </div>
+
+.name-clear:
+  width: 20px, height: 20px
+  border-radius: 50%
+  background: #f0f0f0
+  border: none, cursor: pointer
+  display: flex, align-items: center, justify-content: center
+  margin-right: 6px
+  flex-shrink: 0
+  color: #aaa, font-size: 10px
+
+.name-clear:hover:
+  background: #f43f5e, color: #fff
+
+Show name-clear only when input has a value.
+Hide (opacity:0, pointer-events:none) when input is empty.
+
+On click: clear the input value, reset role text.
+
+==================================================
+
+[Manpower] FIX 3 — Status dropdown: prevent clipping
+
+.status-select:
+  padding: 5px 24px 5px 8px   ← right padding for arrow only
+  font-size: 11px
+  font-weight: 600
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+  width: 100%
+
+For "EARLY LEAVE" specifically:
+  font-size: 10.5px            ← slightly smaller to prevent clipping
+
+Status color classes:
+  ATTEND     → color #15803d, bg #f0fdf4, border #86efac
+  EARLY LEAVE→ color #c2410c, bg #fff7ed, border #fed7aa
+  WFH        → color #1d4ed8, bg #eff6ff, border #bfdbfe
+  SUSPENDED  → color #7c3aed, bg #f5f3ff, border #ddd6fe
+  TRAINING   → color #0369a1, bg #f0f9ff, border #bae6fd
+  LATE       → color #b45309, bg #fffbeb, border #fde68a
+  OFF        → color #6b7280, bg #f9fafb, border #e5e7eb
+  ABSENT     → color #e11d48, bg #fff1f2, border #fecdd3
+  SICK       → color #9d174d, bg #fdf2f8, border #fbcfe8
+  PTO        → color #0f766e, bg #f0fdfa, border #99f6e4
+
+==================================================
+
+[Manpower] FIX 4 — Start / End time: more compact
+
+.time-cell:
+  display: flex, align-items: center
+  padding: 5px 7px             ← reduce from current
+  gap: 5px
+  height: 32px
+  font-size: 12px
+  border: 1px solid #e0e0e0
+  border-radius: 7px
+
+Clock icon:
+  font-size: 12px, color: #ccc, flex-shrink: 0
+  Do NOT add extra padding around the icon
+
+==================================================
+
+[Manpower] FIX 5 — Notes column alignment
+
+Table header:
+  th.notes { text-align: center }
+
+Table cell:
+  td.notes {
+    text-align: center
+    vertical-align: middle
+    font-size: 12px
+    color: #bbb
+  }
+
+==================================================
+
+CONSTRAINTS:
+  - Do NOT change functionality of any field
+  - Do NOT change other sections
+  - Scope all CSS to component files only
+  - Must work in light and dark mode
+==================================================

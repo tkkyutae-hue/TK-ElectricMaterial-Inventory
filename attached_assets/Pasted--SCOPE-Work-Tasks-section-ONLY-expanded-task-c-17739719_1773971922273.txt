@@ -1,0 +1,159 @@
+==================================================
+SCOPE: Work Tasks section ONLY — expanded task card.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [WorkTasksSection / TaskCard component path]
+==================================================
+
+CHANGE 1 — Drawing board: remove scroll, increase height
+
+  Current problem:
+    Drawing canvas has overflow scroll, causing pins to shift
+    when the user scrolls inside the drawing area.
+
+  Fix:
+    .drawing-canvas {
+      height: 340px         ← increase from current value
+      overflow: hidden      ← remove scroll entirely
+      position: relative
+    }
+    Do NOT add overflow: auto or overflow: scroll anywhere
+    on the drawing canvas container.
+
+CHANGE 2 — Task location text: make it more visible
+
+  Current problem:
+    Area / Location text under the task title is too faint.
+
+  Fix:
+    .task-location-input, .task-location-text {
+      color: #555
+      font-weight: 500
+      font-size: 12px
+    }
+    placeholder color stays #ccc (faint is OK for empty state)
+    filled value must be clearly readable
+
+CHANGE 3 — Expanded card body: 3-column layout
+
+  Column order and widths:
+    Worker Assignment  : 1fr
+    작업사진            : 1.6fr   ← widest, center focus
+    Drawing Ref + Notes: 0.9fr   ← compact, right corner
+
+  grid-template-columns: 1fr 1.6fr 0.9fr
+  Each column separated by border-right: 1px solid #f5f5f5
+
+CHANGE 4 — 작업사진 (Site Photos → rename to 작업사진)
+
+  Rename the column label from "SITE PHOTOS" to "작업사진"
+
+  Layout: 2×2 grid of photo slots
+    display: grid
+    grid-template-columns: 1fr 1fr
+    gap: 8px
+
+  Empty slot style:
+    border: 1.5px dashed #e0e0e0
+    border-radius: 10px
+    aspect-ratio: 1
+    display: flex, flex-direction: column
+    align-items: center, justify-content: center
+    background: #fafafa
+    cursor: pointer
+    Label: "사진 추가" in font-size 11px, color #ccc
+    hover: border-color #818cf8, background #f5f3ff
+
+  Uploaded photo slot style:
+    border: 1.5px solid #e0e0e0
+    border-radius: 10px
+    aspect-ratio: 1
+    position: relative
+    overflow: hidden
+    background: #1a1a2e
+
+CHANGE 5 — Photo delete button: always visible, bottom-right
+
+  For every uploaded photo slot, render a delete button:
+
+    <button class="photo-del-btn">
+      ✕ (SVG X icon, 9×9px)
+    </button>
+
+  .photo-del-btn:
+    position: absolute
+    bottom: 8px
+    right: 8px
+    width: 24px
+    height: 24px
+    border-radius: 50%
+    background: rgba(0, 0, 0, 0.55)
+    border: 1.5px solid rgba(255, 255, 255, 0.3)
+    color: #fff
+    font-size: 10px
+    cursor: pointer
+    display: flex, align-items: center, justify-content: center
+    z-index: 2
+    backdrop-filter: blur(4px)
+    transition: background 0.15s, transform 0.12s
+
+  IMPORTANT: button is ALWAYS visible — do NOT use opacity:0
+  or hide it behind hover. It must be visible at all times.
+
+  hover state:
+    background: #f43f5e
+    border-color: #f43f5e
+    transform: scale(1.1)
+
+  On click: remove the photo from that slot,
+            revert slot to empty state
+
+CHANGE 6 — Drawing Reference: compact, right corner
+
+  Move Drawing Reference out of its own full column.
+  Place it at the TOP of the right corner column,
+  above the Notes textarea.
+
+  Compact card style:
+    background: #f5f3ff
+    border: 1px solid #ddd6fe
+    border-radius: 7px
+    padding: 8px 10px
+    display: flex, align-items: center, gap: 8px
+    margin-bottom: 10px
+    cursor: pointer
+
+  Pin dot (small):
+    width: 20px, height: 20px, border-radius: 50%
+    background: #7c3aed, font-size: 8px, color: #fff
+
+  Pin name: font-size 11px, font-weight 600, color #7c3aed
+  Pin hint: "Jump to drawing ↑" font-size 10px, color #a78bfa
+
+  Column label style (subdued):
+    font-size: 9px, color: #ccc, letter-spacing: 0.08em
+
+CHANGE 7 — Notes: compact, right corner below Drawing Ref
+
+  Place Notes textarea below the Drawing Reference card
+  in the same right corner column.
+
+  .notes-textarea:
+    border: 1px solid #ebebeb
+    border-radius: 8px
+    padding: 8px 10px
+    font-size: 12px
+    width: 100%
+    background: #fff
+    resize: none
+    min-height: 130px
+    placeholder font-size: 11px, color: #ccc, font-style italic
+    focus: border-color #818cf8
+
+CONSTRAINTS:
+  - Do NOT change the drawing board pin logic or pin rendering
+  - Do NOT change the collapsed card layout
+  - Do NOT change Worker Assignment column behavior
+  - Do NOT change other sections or global styles
+  - Scope all changes to the expanded TaskCard component only
+  - Must work in light and dark mode
+==================================================

@@ -600,6 +600,8 @@ export function NewReportTab({
   const [pinLinkOpen,      setPinLinkOpen]      = useState<string | null>(null);
   const [taskPinOpen,      setTaskPinOpen]      = useState<number | null>(null);
   const drawingInputRef    = useRef<HTMLInputElement>(null);
+  const photoInputRef      = useRef<HTMLInputElement>(null);
+  const [photoTaskId,      setPhotoTaskId]      = useState<number | null>(null);
 
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
@@ -1296,7 +1298,7 @@ export function NewReportTab({
             /* Drawing canvas with pins */
             <>
               <div
-                style={{ position: "relative", maxHeight: 280, overflow: "hidden", background: "#f1f5f2", cursor: addPinMode ? "crosshair" : "default" }}
+                style={{ position: "relative", height: 340, overflow: "hidden", background: "#f1f5f2", cursor: addPinMode ? "crosshair" : "default" }}
                 onClick={e => {
                   if (!addPinMode) { setSelectedPinId(null); setPinLinkOpen(null); return; }
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -1309,12 +1311,12 @@ export function NewReportTab({
                   <PdfViewer
                     url={drawingUrl!}
                     filename={drawingFilename}
-                    height={280}
+                    height={340}
                     onReplaceClick={() => drawingInputRef.current?.click()}
                   />
                 ) : (
                   <img src={drawingUrl!} alt="Project drawing"
-                    style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
+                    style={{ width: "100%", height: 340, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
                 )}
                 {/* Pins */}
                 {pins.map(pin => {
@@ -1430,6 +1432,20 @@ export function NewReportTab({
             setDrawingCollapsed(false); setAddPinMode(false);
             e.target.value = "";
           }} />
+        <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file || photoTaskId === null) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+              const dataUrl = ev.target?.result as string;
+              setTasks(prev => prev.map(r => r.id === photoTaskId
+                ? { ...r, photoFiles: [...r.photoFiles, dataUrl].slice(0, 4) } : r));
+            };
+            reader.readAsDataURL(file);
+            e.target.value = "";
+            setPhotoTaskId(null);
+          }} />
 
         {/* Empty state */}
         {tasks.length === 0 && (
@@ -1526,8 +1542,8 @@ export function NewReportTab({
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                       <Input data-testid={`input-task-area-${i}`} value={row.area}
                         onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent placeholder:text-[#bbb] truncate p-0 w-full"
-                        style={{ fontSize: 11, color: "#bbb" }}
+                        className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent placeholder:text-[#ccc] truncate p-0 w-full"
+                        style={{ fontSize: 12, color: "#555", fontWeight: 500 }}
                         placeholder="Area / Location" />
                     </div>
                   </div>
@@ -1637,11 +1653,11 @@ export function NewReportTab({
                 {/* ── Detail panel ── */}
                 {row.expanded && (
                   <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
-                    <div className="grid grid-cols-3 gap-5">
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.9fr", gap: 0 }}>
 
                       {/* Col A: Worker Assignment */}
-                      <div>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Worker Assignment</p>
+                      <div style={{ paddingRight: 16, borderRight: "1px solid #f5f5f5" }}>
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Worker Assignment</p>
 
                         {/* Assigned list */}
                         {row.workers.length > 0 && (
@@ -1723,53 +1739,121 @@ export function NewReportTab({
                         )}
                       </div>
 
-                      {/* Col B: Drawing Reference + Site Photos */}
-                      <div>
-                        {/* Drawing Reference */}
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Drawing Reference</p>
+                      {/* Col B: 작업사진 — 2×2 photo grid */}
+                      <div style={{ padding: "0 16px", borderRight: "1px solid #f5f5f5" }}>
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+                          작업사진{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
+                        </p>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {[0, 1, 2, 3].map(slotIdx => {
+                            const photoUrl = row.photoFiles[slotIdx];
+                            if (photoUrl) {
+                              return (
+                                <div key={slotIdx} style={{
+                                  border: "1.5px solid #e0e0e0", borderRadius: 10,
+                                  aspectRatio: "1", position: "relative",
+                                  overflow: "hidden", background: "#1a1a2e",
+                                }}>
+                                  <img src={photoUrl} alt={`Photo ${slotIdx + 1}`}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                  <button type="button"
+                                    onClick={() => setTasks(tasks.map(r => r.id === row.id
+                                      ? { ...r, photoFiles: r.photoFiles.filter((_, fi) => fi !== slotIdx) } : r))}
+                                    style={{
+                                      position: "absolute", bottom: 8, right: 8,
+                                      width: 24, height: 24, borderRadius: "50%",
+                                      background: "rgba(0,0,0,0.55)",
+                                      border: "1.5px solid rgba(255,255,255,0.3)",
+                                      color: "#fff", fontSize: 10, cursor: "pointer",
+                                      display: "flex", alignItems: "center", justifyContent: "center",
+                                      zIndex: 2, backdropFilter: "blur(4px)",
+                                      transition: "background 0.15s, transform 0.12s",
+                                    }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#f43f5e"; (e.currentTarget as HTMLElement).style.borderColor = "#f43f5e"; (e.currentTarget as HTMLElement).style.transform = "scale(1.1)"; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.55)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.3)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
+                                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+                                  </button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <button key={slotIdx} type="button"
+                                onClick={() => { setPhotoTaskId(row.id); photoInputRef.current?.click(); }}
+                                style={{
+                                  border: "1.5px dashed #e0e0e0", borderRadius: 10,
+                                  aspectRatio: "1", display: "flex", flexDirection: "column",
+                                  alignItems: "center", justifyContent: "center",
+                                  background: "#fafafa", cursor: "pointer",
+                                  transition: "border-color 0.15s, background 0.15s",
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#818cf8"; (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLElement).style.background = "#fafafa"; }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+                                <span style={{ fontSize: 11, color: "#ccc" }}>사진 추가</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Col C: Drawing Reference (compact) + Notes */}
+                      <div style={{ paddingLeft: 16 }}>
+                        {/* Drawing Reference — compact */}
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Drawing Ref</p>
                         {row.linkedPinId ? (
                           <div
-                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 6, marginBottom: 10, cursor: "pointer" }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8,
+                              background: "#f5f3ff", border: "1px solid #ddd6fe",
+                              borderRadius: 7, padding: "8px 10px",
+                              marginBottom: 10, cursor: "pointer",
+                            }}
                             onClick={() => { setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}>
-                            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7c3aed", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                              {row.linkedPinId}
-                            </div>
+                            <div style={{
+                              width: 20, height: 20, borderRadius: "50%",
+                              background: "#7c3aed", fontSize: 8, color: "#fff",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontWeight: 700, flexShrink: 0,
+                            }}>{row.linkedPinId}</div>
                             <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, color: "#4338ca", lineHeight: 1.3 }}>
-                                Pin {row.linkedPinId} — {row.area || "Drawing area"}
+                              <p style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", lineHeight: 1.3 }}>
+                                Pin {row.linkedPinId}
                               </p>
-                              <p style={{ fontSize: 9.5, color: "#7c3aed", lineHeight: 1.3 }}>Click to jump to this area on drawing ↑</p>
+                              <p style={{ fontSize: 10, color: "#a78bfa", lineHeight: 1.3 }}>Jump to drawing ↑</p>
                             </div>
                           </div>
                         ) : (
-                          <div style={{ marginBottom: 10 }}>
-                            <p style={{ fontSize: 10.5, color: "#9db8a2" }}>No drawing area linked</p>
-                            <button type="button"
-                              style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 3 }}
-                              onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}>
-                              Link to a pin on the drawing above
-                            </button>
+                          <div style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            background: "#f9f9f9", border: "1px solid #ebebeb",
+                            borderRadius: 7, padding: "8px 10px",
+                            marginBottom: 10, cursor: "pointer",
+                          }}
+                          onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}>
+                            <div style={{
+                              width: 20, height: 20, borderRadius: "50%",
+                              background: "#e5e5e5", fontSize: 8, color: "#aaa",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontWeight: 700, flexShrink: 0,
+                            }}>—</div>
+                            <div>
+                              <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", lineHeight: 1.3 }}>No pin linked</p>
+                              <p style={{ fontSize: 10, color: "#ccc", lineHeight: 1.3 }}>Click to link ↑</p>
+                            </div>
                           </div>
                         )}
 
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                          Site Photos {row.photoFiles.length > 0 && <span className="text-blue-600 normal-case">({row.photoFiles.length})</span>}
-                        </p>
-                        <button type="button"
-                          onClick={() => toast({ title: "Photo upload", description: "Photo attachment is coming in the next update." })}
-                          className="w-full h-[72px] border-2 border-dashed border-slate-200 rounded-lg text-xs text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors flex flex-col items-center justify-center gap-1">
-                          <Camera className="w-4 h-4" />
-                          <span>JPG, PNG, HEIC</span>
-                        </button>
-                      </div>
-
-                      {/* Col C: Notes */}
-                      <div>
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Notes</p>
+                        {/* Notes */}
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Notes</p>
                         <Textarea value={row.detailNotes}
                           onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
                           placeholder="Issues encountered, corrective actions..."
-                          className="text-xs min-h-[72px] resize-y bg-white" />
+                          style={{
+                            border: "1px solid #ebebeb", borderRadius: 8,
+                            padding: "8px 10px", fontSize: 12, width: "100%",
+                            background: "#fff", resize: "none", minHeight: 130,
+                          }}
+                          className="shadow-none focus-visible:ring-0 focus-visible:border-[#818cf8] placeholder:text-[11px] placeholder:italic placeholder:text-[#ccc]" />
                       </div>
 
                     </div>

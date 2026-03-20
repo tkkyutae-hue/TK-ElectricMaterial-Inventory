@@ -1589,7 +1589,6 @@ export function NewReportTab({
                           background: cfg.badgeBg, color: cfg.badgeText,
                           height: "auto", minWidth: 0, boxShadow: "none",
                         }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: cfg.dotColor, flexShrink: 0, display: "inline-block" }} />
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

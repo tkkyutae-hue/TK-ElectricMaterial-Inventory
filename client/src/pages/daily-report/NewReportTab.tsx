@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { Worker } from "@shared/schema";
+import { PdfViewer } from "./PdfViewer";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TASK_STATUS_CFG: Record<string, { label: string; dot: string; text: string; rowBg: string; borderColor: string }> = {
@@ -1276,15 +1277,14 @@ export function NewReportTab({
                   setPins(prev => [...prev, { id: nextId, x, y, linkedTaskId: null }]);
                 }}>
                 {drawingFilename.toLowerCase().endsWith(".pdf") ? (
-                  <iframe
-                    src={drawingUrl}
-                    width="100%"
-                    height="280px"
-                    style={{ border: "none", background: "#f1f5f2", display: "block" }}
-                    title="Project drawing PDF"
+                  <PdfViewer
+                    url={drawingUrl!}
+                    filename={drawingFilename}
+                    height={280}
+                    onReplaceClick={() => drawingInputRef.current?.click()}
                   />
                 ) : (
-                  <img src={drawingUrl} alt="Project drawing"
+                  <img src={drawingUrl!} alt="Project drawing"
                     style={{ width: "100%", maxHeight: 280, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
                 )}
                 {/* Pins */}

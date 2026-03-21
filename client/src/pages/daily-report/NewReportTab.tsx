@@ -500,6 +500,106 @@ function PreparedByCombobox({
   );
 }
 
+// ─── Person Card Combobox (Reporter / Project Manager) ────────────────────────
+function PersonCardCombobox({
+  value, allWorkers, onChange, disabled, variant, testId,
+}: {
+  value: string; allWorkers: Worker[];
+  onChange: (name: string, id: number | null, trade?: string) => void;
+  disabled?: boolean; variant: "reporter" | "pm"; testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(() =>
+    value ? allWorkers.find(w => w.fullName === value) ?? null : null
+  );
+  const isReporter = variant === "reporter";
+  const vs = isReporter
+    ? { border: "1.5px solid #6ee7b7", bg: "#f0fdf4", avatarBg: "#10b981", subColor: "#10b981" }
+    : { border: "1.5px solid #a5b4fc", bg: "#eef2ff", avatarBg: "#6366f1", subColor: "#818cf8" };
+  const candidates = isReporter
+    ? allWorkers.filter(w => w.isActive && isForemanPlus(w.trade))
+    : allWorkers.filter(w => w.isActive);
+  const filtered = candidates
+    .filter(w => !query || w.fullName.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 10);
+
+  useEffect(() => {
+    setQuery(value);
+    if (!value) { setSelectedWorker(null); return; }
+    const found = allWorkers.find(w => w.fullName === value);
+    if (found) setSelectedWorker(found);
+  }, [value, allWorkers]);
+
+  const displayWorker = selectedWorker ?? (value ? allWorkers.find(w => w.fullName === value) ?? null : null);
+  function getInitials(name: string) {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  }
+
+  if (displayWorker && value) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, border: vs.border, borderRadius: 10, background: vs.bg, padding: "8px 12px", minHeight: 52 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: vs.avatarBg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+          {getInitials(displayWorker.fullName)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayWorker.fullName}</div>
+          <div style={{ fontSize: 10, color: vs.subColor }}>{displayWorker.trade || (isReporter ? "Reporter" : "Project Manager")}</div>
+        </div>
+        {!disabled && (
+          <button type="button" data-testid={testId ? `${testId}-clear` : undefined}
+            onClick={() => { setSelectedWorker(null); setQuery(""); onChange("", null, ""); }}
+            style={{ width: 20, height: 20, borderRadius: "50%", background: vs.avatarBg, color: "#fff", border: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
+            ✕
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px dashed #d1d5db", borderRadius: 10, background: "#fafafa", padding: "8px 12px", cursor: disabled ? "default" : "pointer", minHeight: 52, transition: "border-color 0.15s, background 0.15s" }}
+        onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.background = "#f5f3ff"; } }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.background = "#fafafa"; }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2}>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <input data-testid={testId} value={query}
+            placeholder={isReporter ? "Select reporter…" : "Select project manager…"}
+            disabled={disabled}
+            onChange={e => { setQuery(e.target.value); setOpen(true); onChange(e.target.value, null); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#374151", fontWeight: 400, width: "100%" }} />
+          <div style={{ fontSize: 10, color: "#d1d5db" }}>{isReporter ? "Required to submit" : "Optional"}</div>
+        </div>
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-48 overflow-y-auto overflow-x-hidden">
+          {filtered.map(w => (
+            <button key={w.id} type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { setQuery(w.fullName); setOpen(false); setSelectedWorker(w); onChange(w.fullName, w.id, w.trade); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", minHeight: 40, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer" }}
+              className="hover:bg-slate-50 transition-colors">
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+                <HardHat style={{ width: 14, height: 14, color: tradeIconColor(w.trade) }} />
+              </div>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "#1a1a1a" }}>{w.fullName}</span>
+              {w.trade && <span style={{ flexShrink: 0, fontSize: 11, color: "#aaa", whiteSpace: "nowrap" }}>{w.trade}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Material Combobox (inventory-linked, flexible word-order search) ─────────
 // ─── Size extractor (display-only, no data model changes) ────────────────────
 function extractSize(name: string): { size: string; rest: string } {
@@ -625,9 +725,14 @@ export function NewReportTab({
   const [preparedById,    setPreparedById]    = useState<number | null>(fd?.preparedById ?? null);
   const [preparedByTrade, setPreparedByTrade] = useState<string>(fd?.preparedByTrade ?? "");
   const [reportDate,      setReportDate]      = useState<string>(fd?.reportDate   ?? new Date().toISOString().slice(0, 10));
-  const [shift,         setShift]         = useState<string>(fd?.shift        ?? "day");
-  const [weather,       setWeather]       = useState<string>(fd?.weather      ?? "clear");
-  const [temperature,   setTemperature]   = useState<string>(fd?.temperature  ?? "72");
+  const [shift,           setShift]           = useState<string>(fd?.shift           ?? "day");
+  const [weather,         setWeather]         = useState<string>(fd?.weather         ?? "clear");
+  const [temperature,     setTemperature]     = useState<string>(fd?.temperature     ?? "72");
+  const [temperatureHigh, setTemperatureHigh] = useState<string>(fd?.temperatureHigh ?? fd?.temperature ?? "72");
+  const [temperatureLow,  setTemperatureLow]  = useState<string>(fd?.temperatureLow  ?? "62");
+  const [projectManager,      setProjectManager]      = useState<string>(fd?.projectManager      ?? "");
+  const [projectManagerId,    setProjectManagerId]    = useState<number | null>(fd?.projectManagerId    ?? null);
+  const [projectManagerTrade, setProjectManagerTrade] = useState<string>(fd?.projectManagerTrade ?? "");
 
   // Auto-generate report number
   const autoNumApplied = useRef(false);
@@ -693,7 +798,7 @@ export function NewReportTab({
   const isSubmitted  = savedStatus === "submitted" && !forceEdit;
   const canSubmit    = !!preparedBy.trim();
   const submitHelper = !canSubmit && !isSubmitted
-    ? "Add Prepared By to enable submission"
+    ? "Add Reporter to enable submission"
     : "";
 
   // ── Summaries ──
@@ -769,7 +874,9 @@ export function NewReportTab({
   // ── Form data builder ──
   function buildFormData() {
     return {
-      reportDate, reportNumber, preparedBy, preparedById, shift, weather, temperature,
+      reportDate, reportNumber, preparedBy, preparedById, preparedByTrade, shift, weather,
+      temperature: temperatureHigh, temperatureHigh, temperatureLow,
+      projectManager, projectManagerId, projectManagerTrade,
       tasks, manpower, materials, equipment,
       generalNotes, safetyNotes, inspectorVisitor,
     };
@@ -936,138 +1043,158 @@ export function NewReportTab({
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
       <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Row 1 */}
-          <div>
-            <FL>Report No.</FL>
-            <div className="h-9 flex items-center px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-mono font-semibold text-slate-600 tracking-widest select-none">
-              {reportNumber || <span className="text-slate-300 font-sans font-normal text-xs italic">auto…</span>}
+          {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}
+          <div style={{ display: "grid", gridTemplateColumns: "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
+
+            {/* Col 1: Report No */}
+            <div>
+              <FL>Report No.</FL>
+              <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
+                {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}
+              </div>
+            </div>
+
+            {/* Col 2: Shift */}
+            <div>
+              <FL>Shift</FL>
+              <select data-testid="select-shift" value={shift} onChange={e => setShift(e.target.value)}
+                style={{ width: 130, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
+                <option value="day">Day Shift</option>
+                <option value="night">Night Shift</option>
+                <option value="both">Both Shifts</option>
+              </select>
+            </div>
+
+            {/* Col 3: Weather + Temperature combined */}
+            <div>
+              <FL>Weather &amp; Temperature</FL>
+              <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
+                <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
+                  style={{ flex: 1, border: "none", padding: "0 10px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
+                  <option value="clear">☀️ Clear</option>
+                  <option value="partly-cloudy">⛅ Partly Cloudy</option>
+                  <option value="overcast">☁️ Overcast</option>
+                  <option value="rain">🌧️ Rain</option>
+                  <option value="wind">💨 Windy</option>
+                  <option value="heat">🌡️ Extreme Heat</option>
+                </select>
+                <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px 0 8px", flexShrink: 0 }}>
+                  <span style={{ color: "#f87171", fontSize: 10, fontWeight: 700 }}>H</span>
+                  <input data-testid="input-temp-high" type="number" value={temperatureHigh} onChange={e => setTemperatureHigh(e.target.value)}
+                    style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                  <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
+                  <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
+                    style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: 6 }}>°F</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Col 4: Report Date */}
+            <div>
+              <FL>Report Date</FL>
+              <input data-testid="input-report-date" type="date" value={reportDate}
+                onChange={e => setReportDate(e.target.value)}
+                style={{ width: 148, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
             </div>
           </div>
 
-          <div>
-            <FL>
-              Prepared By
-              <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>
-                * Required to submit
-              </span>
-            </FL>
-            <PreparedByCombobox
-              value={preparedBy}
-              allWorkers={activeWorkers}
-              disabled={isSubmitted}
-              onChange={(name, id, trade) => { setPreparedBy(name); setPreparedById(id); setPreparedByTrade(trade ?? ""); }}
-            />
-          </div>
-
-          <div>
-            <FL>Report Date</FL>
-            <input data-testid="input-report-date" type="date" value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)}
-              className="block h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" />
-          </div>
-
-          {/* Row 2 */}
-          <div>
-            <FL>Shift</FL>
-            <Select value={shift} onValueChange={setShift}>
-              <SelectTrigger data-testid="select-shift" className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">Day Shift</SelectItem>
-                <SelectItem value="night">Night Shift</SelectItem>
-                <SelectItem value="both">Both Shifts</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <FL>Weather</FL>
-            <Select value={weather} onValueChange={setWeather}>
-              <SelectTrigger data-testid="select-weather" className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="clear">☀️  Clear</SelectItem>
-                <SelectItem value="partly-cloudy">⛅  Partly Cloudy</SelectItem>
-                <SelectItem value="overcast">☁️  Overcast</SelectItem>
-                <SelectItem value="rain">🌧️  Rain</SelectItem>
-                <SelectItem value="wind">💨  Windy</SelectItem>
-                <SelectItem value="heat">🌡️  Extreme Heat</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <FL>Temperature (°F)</FL>
-            <Input data-testid="input-temperature" type="number" value={temperature}
-              onChange={(e) => setTemperature(e.target.value)} className="h-9 text-sm" placeholder="°F" />
-          </div>
-
-          {/* Row 3: Auto-filled project fields */}
-          <div>
-            <FL>
-              <span>🔒 PROJECT LOCATION</span>
-              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
-            </FL>
-            <div data-testid="field-project-location" style={{
-              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
-              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
-              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
-            }}>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>📍</span>
-              <span>{project?.jobLocation || "—"}</span>
+          {/* ROW 2 — Reporter | Project Manager */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <FL>
+                Reporter
+                <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>* Required</span>
+              </FL>
+              <PersonCardCombobox
+                variant="reporter"
+                value={preparedBy}
+                allWorkers={activeWorkers}
+                disabled={isSubmitted}
+                testId="input-prepared-by"
+                onChange={(name, id, trade) => { setPreparedBy(name); setPreparedById(id); setPreparedByTrade(trade ?? ""); }}
+              />
+            </div>
+            <div>
+              <FL>Project Manager</FL>
+              <PersonCardCombobox
+                variant="pm"
+                value={projectManager}
+                allWorkers={activeWorkers}
+                disabled={isSubmitted}
+                testId="input-project-manager"
+                onChange={(name, id, trade) => { setProjectManager(name); setProjectManagerId(id); setProjectManagerTrade(trade ?? ""); }}
+              />
             </div>
           </div>
 
-          <div>
-            <FL>
-              <span>🔒 OWNER / MANAGER</span>
-              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
-            </FL>
-            <div data-testid="field-project-owner" style={{
-              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
-              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
-              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
-            }}>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>👤</span>
-              <span>{project?.ownerName || "—"}</span>
+          {/* ROW 3 — Auto-filled strip */}
+          <div style={{ display: "flex", border: "1px solid #e8eaff", borderRadius: 10, background: "#f8faff", overflow: "hidden" }}>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: "1px solid #eef0ff" }}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2}>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>Project Location</div>
+                <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: "1px solid #eef0ff" }}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2}>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>Owner / Manager</div>
+                <div data-testid="field-project-owner" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.ownerName || "—"}</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#fefce8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth={2}>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>PO Number</div>
+                <div data-testid="field-project-po" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.poNumber || "—"}</div>
+              </div>
             </div>
           </div>
 
-          <div>
-            <FL>
-              <span>🔒 PO NUMBER</span>
-              <span style={{ fontSize: 8, color: "#9db8a2", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginLeft: 5 }}>auto-filled</span>
-            </FL>
-            <div data-testid="field-project-po" style={{
-              background: "#f8faf9", border: "1px solid #e2e8e3", color: "#3d5c42",
-              borderRadius: 8, padding: "10px 14px", cursor: "default", userSelect: "none",
-              display: "flex", alignItems: "center", gap: 6, fontSize: 13, minHeight: 36,
-            }}>
-              <span style={{ fontSize: 13, opacity: 0.5 }}>📋</span>
-              <span>{project?.poNumber || "—"}</span>
+          {/* ROW 4 — Submit status bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderRadius: 10, background: preparedBy.trim() ? "#ecfdf5" : "#fffbeb", border: preparedBy.trim() ? "1.5px solid #6ee7b7" : "1.5px solid #fde68a" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: preparedBy.trim() ? "#10b981" : "#f59e0b", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: preparedBy.trim() ? "#065f46" : "#92400e" }}>
+                  {preparedBy.trim() ? "Ready to Submit" : "Not Ready to Submit"}
+                </div>
+                <div style={{ fontSize: 10, color: preparedBy.trim() ? "#6ee7b7" : "#fbbf24" }}>
+                  {preparedBy.trim()
+                    ? `${preparedBy}${preparedByTrade ? ` · ${preparedByTrade}` : ""}`
+                    : "Add Reporter to enable submission"}
+                </div>
+              </div>
             </div>
+            {preparedBy.trim() ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={2}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>
+              </svg>
+            )}
           </div>
 
         </div>
-
-        {/* Submit readiness indicator */}
-        <div style={{
-          marginTop: 14,
-          background: preparedBy.trim() ? "#dcfce7" : "#fef3c7",
-          border: preparedBy.trim() ? "1px solid #86efac" : "1px solid #fde68a",
-          borderRadius: 8, padding: "9px 14px",
-          fontSize: 10.5,
-          color: preparedBy.trim() ? "#16a34a" : "#d97706",
-        }}>
-          {preparedBy.trim()
-            ? `✓ Ready to submit — Prepared By: ${preparedBy}${preparedByTrade ? ` (${preparedByTrade})` : ""}`
-            : "⚠ Add Prepared By to enable submission"}
-        </div>
-
       </Section>
 
       {/* ══════════════════════════════════════════════════════

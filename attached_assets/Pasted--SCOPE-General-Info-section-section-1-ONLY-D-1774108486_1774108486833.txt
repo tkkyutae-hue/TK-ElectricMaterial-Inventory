@@ -1,0 +1,142 @@
+==================================================
+SCOPE: General Info section (section 1) ONLY.
+Do NOT change other sections, Admin Mode, or global styles.
+Target file: [GeneralInfo component path]
+==================================================
+
+CHANGE 1 — Remove existing layout, replace with 4-row structure
+
+  ROW 1 — grid: 72px | 130px | 1fr | 148px, gap 10px, align-items end
+    Col 1: Report No.
+      <input> centered, font-size 16px, font-weight 700,
+      letter-spacing 0.06em, text-align center
+      width: 72px fixed
+
+    Col 2: Shift
+      <select> standard dropdown, width: 130px fixed
+
+    Col 3: Weather & Temperature  (single combined field)
+      Structure:
+        <div class="weather-combo">           ← flex row, border 1px #d1d5db,
+                                                 border-radius 8px, overflow hidden
+          <select class="weather-sel" />      ← flex:1, no border, weather options
+          <div class="weather-sep" />         ← 1px divider, #e8e8e8, margin 6px 0
+          <div class="temp-group">
+            <span class="temp-label high">H</span>   ← color #f87171, font-size 10px bold
+            <input type="number" />                   ← width 44px, text-align center
+            <span class="temp-label low">L</span>    ← color #60a5fa, font-size 10px bold
+            <input type="number" />                   ← width 44px, text-align center
+            <span class="temp-unit">°F</span>         ← color #9ca3af, padding-right 10px
+          </div>
+        </div>
+
+    Col 4: Report Date
+      <input type="date">, width: 148px fixed, standard border style
+
+  ROW 2 — grid: 1fr 1fr, gap 10px
+    Col 1: Reporter  (* Required)
+    Col 2: Project Manager
+
+    Each person field has two states:
+
+    FILLED state:
+      <div class="person-card reporter/pm">
+        <div class="avatar">{initials}</div>    ← 32px circle, font 10px bold
+        <div class="person-info">
+          <div class="person-name">{Full Name}</div>   ← 13px, font-weight 600
+          <div class="person-sub">{Role}</div>         ← 10px
+        </div>
+        <button class="pclear">✕</button>              ← 20px circle
+      </div>
+
+      Reporter style:  border 1.5px solid #6ee7b7, bg #f0fdf4
+        avatar bg: #10b981, sub color: #10b981, clear bg: #10b981
+
+      Project Manager style: border 1.5px solid #a5b4fc, bg #eef2ff
+        avatar bg: #6366f1, sub color: #818cf8, clear bg: #6366f1
+
+    EMPTY state:
+      border: 1.5px dashed #d1d5db, bg #fafafa, cursor pointer
+      hover: border-color #6366f1, bg #f5f3ff
+      avatar: bg #e5e7eb, show person SVG icon inside
+      name text: color #d1d5db, font-weight 400
+      sub text:
+        Reporter → "Required to submit", color #d1d5db
+        PM       → "Optional",           color #d1d5db
+
+  ROW 3 — Auto-filled strip (3 equal columns)
+    <div class="af-strip">   ← flex row, border 1px solid #e8eaff,
+                                border-radius 10px, bg #f8faff, overflow hidden
+
+    Each .af-item:
+      flex: 1, padding 12px 16px
+      border-right: 1px solid #eef0ff (last child: none)
+      display flex, align-items center, gap 10px
+
+    Icon (.af-ico): 30px × 30px, border-radius 7px
+      Location icon  → bg #fef2f2, stroke #ef4444
+      Owner icon     → bg #ede9fe, stroke #6366f1
+      PO Number icon → bg #fefce8, stroke #ca8a04
+
+    Label (.af-lbl):
+      font-size: 10px, font-weight 700, color #a5b4fc
+      letter-spacing 0.06em, text-transform uppercase, margin-bottom 3px
+
+    Value (.af-val):
+      font-size: 14px      ← larger than before
+      font-weight: 600
+      color: #1e293b
+      white-space: nowrap, overflow hidden, text-overflow ellipsis
+
+    Content:
+      Item 1: Project Location  → value from project data
+      Item 2: Owner / Manager   → value from project data
+      Item 3: PO Number         → value from project data
+    All three are read-only (auto-filled, not editable)
+
+  ROW 4 — Submit status bar
+    <div class="status-bar ready/warn">
+      flex row, justify-content space-between, align-items center
+      padding: 10px 16px, border-radius 10px
+
+    READY state: bg #ecfdf5, border 1.5px solid #6ee7b7
+      dot: 8px circle #10b981
+      main text: "Ready to Submit", 12px bold, color #065f46
+      sub text: "{Reporter Name} · {Role}", 10px, color #6ee7b7
+      right icon: checkmark SVG, stroke #10b981
+
+    NOT READY state: bg #fffbeb, border 1.5px solid #fde68a
+      dot: 8px circle #f59e0b
+      main text: "Not Ready to Submit", 12px bold, color #92400e
+      sub text: "Add Reporter to enable submission", 10px, color #fbbf24
+      right icon: warning triangle SVG, stroke #f59e0b
+
+    Logic:
+      Show READY   when Reporter field is filled
+      Show NOT READY when Reporter field is empty
+
+CHANGE 2 — Remove old layout
+  Delete the previous 3-column grid layout (Report No / Prepared By / Date row,
+  Shift / Weather / Temperature row, Project Location / Owner / PO Number row)
+  Replace entirely with the 4-row structure above.
+
+FIELD LABELS (all fields):
+  font-size: 10px, font-weight 700, color #9ca3af
+  letter-spacing 0.06em, text-transform uppercase, margin-bottom 5px
+
+STANDARD INPUT style:
+  border: 1px solid #d1d5db, border-radius 8px, padding 9px 12px
+  font-size 13px, color #111, background #fff, outline none
+  focus: border-color #6366f1, box-shadow 0 0 0 3px rgba(99,102,241,0.1)
+
+OUTER PADDING:
+  .general-info-body { padding: 20px 24px; display flex; flex-direction column; gap 14px }
+
+CONSTRAINTS:
+  - Rename "Prepared By" field to "Reporter" throughout
+  - Add new "Project Manager" field (separate from Owner/Manager auto-fill)
+  - Project Manager is optional, Reporter is required
+  - Do NOT change section card width, border-radius, or header
+  - Do NOT touch other sections or global styles
+  - Must work in light and dark mode (use CSS variables for colors where applicable)
+==================================================

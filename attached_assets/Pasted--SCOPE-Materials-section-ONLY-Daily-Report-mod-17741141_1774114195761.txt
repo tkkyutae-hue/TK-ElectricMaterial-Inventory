@@ -1,0 +1,168 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE 1 — Column order and widths (table-layout: fixed)
+
+  PHOTO        :  56px
+  SIZE         :  72px
+  MATERIAL NAME:  auto (flex, fills remaining space)
+  QTY USED     :  80px
+  UNIT         :  64px
+  [delete btn] :  36px
+
+  Remove NOTES column entirely (col, th, td).
+  Remove CATEGORY column entirely (col, th, td).
+
+CHANGE 2 — PHOTO column
+
+  Header: "PHOTO" (centered)
+
+  Each cell renders a thumbnail from inventory item's image_url field:
+
+  If image_url exists:
+    <img src="{image_url}"
+         class="thumb"
+         onerror="this.style.display='none';
+                  this.nextElementSibling.style.display='flex'" />
+    <div class="thumb-empty" style="display:none"> ← fallback
+
+  If no image_url:
+    <div class="thumb-empty"> ← show placeholder directly
+
+  .thumb:
+    width: 36px, height: 36px
+    border-radius: 7px
+    object-fit: cover
+    border: 1px solid #e8e8e8
+    display: block, margin: 0 auto
+    cursor: pointer
+    transition: transform 0.12s, box-shadow 0.12s
+    hover: transform scale(1.1),
+           box-shadow 0 3px 12px rgba(0,0,0,0.15)
+
+  .thumb-empty:
+    width: 36px, height: 36px
+    border-radius: 7px
+    border: 1.5px dashed #e0e0e0
+    background: #fafafa
+    display: flex, align-items center, justify-content center
+    margin: 0 auto
+    color: #ddd
+    Show image SVG icon inside
+
+CHANGE 3 — SIZE extraction from item name (display only)
+
+  Extract size token from the inventory item name and show in SIZE column.
+  Remove the extracted token from the MATERIAL NAME display.
+  Do NOT modify the underlying data.
+
+  Extraction rules (in priority order):
+    1. Starts with #N or #N/N     → e.g. "#1", "#10", "#4/0"
+       SIZE: "#1"   NAME: "(3C+G) Cable"
+    2. Starts with N" or N/N"     → e.g. '3/4"', '1"', '2"'
+       SIZE: '3/4"' NAME: "EMT Conduit"
+    3. Starts with N.N kVA / NkVA → e.g. "112.5 kVA"
+       SIZE: "112.5 kVA"  NAME: "480V-208Y/120V Transformer..."
+    4. Starts with NA / NmA       → e.g. "100A", "200A"
+       SIZE: "100A"  NAME: "240V / NEMA1 Fusible Disconnect Switch"
+    5. No match → SIZE shows "—" (muted), NAME unchanged
+
+  .size-badge:
+    display: inline-flex, align-items center, justify-content center
+    background: #f0f0f0, border: 1px solid #e0e0e0
+    border-radius: 5px, padding: 3px 7px
+    font-size: 11px, font-weight: 600, color: #555
+    min-width: 36px, white-space: nowrap
+
+  .size-badge.none:
+    color: #ccc, background: #fafafa, border-color: #eee, font-weight: 400
+
+CHANGE 4 — MATERIAL NAME cell
+
+  Structure:
+    <div class="name-cell">
+      <span class="item-name">{name without size prefix}</span>
+      <span class="inv-tag">Inv</span>   ← only if inventory-linked
+    </div>
+
+  .name-cell:
+    display: flex, align-items: center, gap: 6px
+    overflow: hidden, min-width: 0   ← required
+
+  .item-name:
+    font-size: 13px, color: #1a1a1a
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+    flex-shrink: 1
+    min-width: 0   ← required for ellipsis in flex
+
+  .inv-tag:
+    flex-shrink: 0
+    font-size: 10px
+    background: #e8f5e9, color: #2e7d32, border: 1px solid #a5d6a7
+    border-radius: 4px, padding: 1px 5px
+
+CHANGE 5 — Search dropdown: add thumbnail + size
+
+  Each dropdown item layout:
+    <div class="dd-item">
+      <img class="dd-thumb" src="{image_url}" onerror="fallback" />
+      <div class="dd-thumb-empty" style="display:none"> ← fallback
+      <span class="dd-size">{extracted size}</span>
+      <div class="dd-info">
+        <div class="dd-name">{name without size}</div>
+        <div class="dd-cat">{category}</div>
+      </div>
+      <span class="dd-unit">{unit}</span>
+    </div>
+
+  .dd-thumb:
+    width: 40px, height: 40px
+    border-radius: 7px, object-fit: cover
+    border: 1px solid #e8e8e8, flex-shrink: 0
+    background: #f5f5f5
+
+  .dd-thumb-empty:
+    width: 40px, height: 40px
+    border-radius: 7px
+    border: 1.5px dashed #e0e0e0, background: #fafafa
+    display: flex, align-items center, justify-content center
+    flex-shrink: 0, color: #ddd
+
+  .dd-size:
+    flex-shrink: 0
+    font-size: 11px, font-weight: 600, color: #555
+    background: #f0f0f0, border: 1px solid #e0e0e0
+    border-radius: 4px, padding: 2px 7px
+    min-width: 36px, text-align: center, white-space: nowrap
+
+  .dd-info: flex: 1, min-width: 0
+  .dd-name: font-size 13px, font-weight 500, ellipsis
+  .dd-cat:  font-size 10px, color #aaa, margin-top 1px
+  .dd-unit: flex-shrink 0, font-size 11px, color #999,
+            background #f3f3f3, border-radius 4px, padding 2px 7px
+
+CHANGE 6 — Delete button per row
+
+  .del-btn:
+    width: 24px, height: 24px, border-radius: 50%
+    background: #f3f4f6, border: none, cursor: pointer
+    display: flex, align-items center, justify-content center
+    color: #9ca3af, font-size: 10px, margin: 0 auto
+    transition: all 0.12s
+    hover: background #fee2e2, color #ef4444
+
+CHANGE 7 — QTY USED alignment
+  text-align: center on both <th> and <td>
+
+CONSTRAINTS:
+  - SIZE extraction is display-only — do NOT modify stored item names
+  - image_url comes from the inventory item's existing field
+  - If image_url is null/empty, show thumb-empty placeholder
+  - Scope all changes to .materials-section or component file only
+  - Do NOT change other sections or global styles
+  - Must work in light and dark mode
+==================================================

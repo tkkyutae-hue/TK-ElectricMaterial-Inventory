@@ -613,7 +613,23 @@ function extractSize(name: string): { size: string; rest: string } {
   // integer or decimal + "  (e.g. 2", 4", 1.5")
   m = name.match(/^(\d+(?:\.\d+)?")\s+(.*)/);
   if (m) return { size: m[1], rest: m[2] };
+  // kVA  (e.g. "112.5 kVA", "100kVA")
+  m = name.match(/^(\d+(?:\.\d+)?\s*kVA)\s+(.*)/i);
+  if (m) return { size: m[1].replace(/\s+/, ""), rest: m[2] };
+  // Amps / milliamps  (e.g. "100A", "200A", "50mA")
+  m = name.match(/^(\d+(?:\.\d+)?m?A)\s+(.*)/i);
+  if (m) return { size: m[1], rest: m[2] };
   return { size: "", rest: name };
+}
+
+function ThumbPlaceholder({ size }: { size: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: 7, border: "1.5px dashed #e0e0e0", background: "#fafafa", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#ddd" }}>
+      <svg width={size * 0.44} height={size * 0.44} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+      </svg>
+    </div>
+  );
 }
 
 function MaterialSearch({
@@ -623,13 +639,21 @@ function MaterialSearch({
   onChange: (patch: Partial<MaterialRow>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState(row.description);
+  const initQuery = row.inventoryItemId
+    ? (extractSize(row.description).rest || row.description)
+    : row.description;
+  const [query, setQuery] = useState(initQuery);
 
   const filtered = inventoryItems
     .filter(item => flexMatch(item.name, query))
     .slice(0, 12);
 
-  useEffect(() => { setQuery(row.description); }, [row.description]);
+  useEffect(() => {
+    const next = row.inventoryItemId
+      ? (extractSize(row.description).rest || row.description)
+      : row.description;
+    setQuery(next);
+  }, [row.description, row.inventoryItemId]);
 
   return (
     <div className="relative">
@@ -644,34 +668,48 @@ function MaterialSearch({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
-        <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-44 overflow-y-auto" style={{ minWidth: 260 }}>
+        <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-56 overflow-y-auto" style={{ minWidth: 320 }}>
           {filtered.map((item) => {
             const { size, rest } = extractSize(item.name);
             return (
               <button key={item.id} type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  setQuery(item.name); setOpen(false);
+                  setQuery(rest || item.name); setOpen(false);
                   onChange({ description: item.name, unit: item.unitOfMeasure ?? row.unit, inventoryItemId: item.id });
                 }}
                 className="w-full text-left hover:bg-slate-50 transition-colors"
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px" }}>
+                {/* Thumbnail */}
+                {item.imageUrl ? (
+                  <>
+                    <img src={item.imageUrl} alt=""
+                      style={{ width: 40, height: 40, borderRadius: 7, objectFit: "cover", border: "1px solid #e8e8e8", flexShrink: 0, background: "#f5f5f5" }}
+                      onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
+                    <div style={{ display: "none" }}><ThumbPlaceholder size={40} /></div>
+                  </>
+                ) : (
+                  <ThumbPlaceholder size={40} />
+                )}
+                {/* Size badge */}
                 <span style={{
                   flexShrink: 0, fontSize: 11, fontWeight: 600,
                   color: size ? "#555" : "#ccc",
                   background: size ? "#f0f0f0" : "#fafafa",
                   border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                  borderRadius: 4, padding: "1px 6px",
-                  minWidth: 32, textAlign: "center", whiteSpace: "nowrap",
+                  borderRadius: 4, padding: "2px 7px",
+                  minWidth: 36, textAlign: "center", whiteSpace: "nowrap",
                 }}>{size || "—"}</span>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, color: "#1a1a1a" }}>{rest || item.name}</span>
+                {/* Name + category */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{rest || item.name}</div>
                   {item.category?.name && (
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11, color: "#aaa" }}>{item.category.name}</span>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10, color: "#aaa", marginTop: 1 }}>{item.category.name}</div>
                   )}
                 </div>
+                {/* Unit */}
                 {item.unitOfMeasure && (
-                  <span style={{ flexShrink: 0, fontSize: 11, color: "#999", background: "#f3f3f3", borderRadius: 4, padding: "1px 6px" }}>{item.unitOfMeasure}</span>
+                  <span style={{ flexShrink: 0, fontSize: 11, color: "#999", background: "#f3f3f3", borderRadius: 4, padding: "2px 7px" }}>{item.unitOfMeasure}</span>
                 )}
               </button>
             );
@@ -2147,25 +2185,40 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Size",      cls: "w-[52px] text-center" },
+            { label: "Photo",     cls: "w-[56px] text-center" },
+            { label: "Size",      cls: "w-[72px] text-center" },
             { label: "Material Name" },
-            { label: "Category",  cls: "w-[220px]" },
             { label: "Qty Used",  cls: "w-[80px] text-center" },
             { label: "Unit",      cls: "w-[64px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
-            { label: "Notes",     cls: "w-[110px]" },
+            { label: "",          cls: "w-[36px]" },
           ]} />
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 8 : 7} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => {
-              const { size, rest } = extractSize(row.description);
+              const { size } = extractSize(row.description);
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
-              const categoryName: string = linkedItem?.category?.name ?? "";
+              const imgUrl: string = linkedItem?.imageUrl ?? "";
               return (
                 <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
-                  {/* SIZE column — dedicated cell */}
+                  {/* PHOTO column */}
+                  <td className="py-1.5 px-1 text-center">
+                    {imgUrl ? (
+                      <>
+                        <img src={imgUrl} alt=""
+                          style={{ width: 36, height: 36, borderRadius: 7, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.15)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+                          onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
+                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={36} /></div>
+                      </>
+                    ) : (
+                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={36} /></div>
+                    )}
+                  </td>
+                  {/* SIZE column */}
                   <td className="py-1.5 px-1 text-center">
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -2179,7 +2232,7 @@ export function NewReportTab({
                   </td>
                   {/* Material Name — search input + Inv tag */}
                   <td className="py-1.5 px-2.5">
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", minWidth: 0 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                           onChange={(p) => {
@@ -2194,43 +2247,31 @@ export function NewReportTab({
                       {row.inventoryItemId && (
                         <span style={{
                           flexShrink: 0, fontSize: 10, fontWeight: 600,
-                          color: "#16a34a", background: "#dcfce7",
-                          border: "1px solid #86efac", borderRadius: 4,
+                          color: "#2e7d32", background: "#e8f5e9",
+                          border: "1px solid #a5d6a7", borderRadius: 4,
                           padding: "1px 5px", whiteSpace: "nowrap",
                         }}>Inv</span>
                       )}
                     </div>
                   </td>
-                  {/* Category — read-only, derived from linked inventory item */}
-                  <td className="py-1.5 px-2.5">
-                    {categoryName ? (
-                      <span style={{ fontSize: 11, color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{categoryName}</span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: "#ccc" }}>—</span>
-                    )}
-                  </td>
                   {/* Qty Used */}
-                  <td className="py-1.5 px-2">
+                  <td className="py-1.5 px-2 text-center">
                     <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
                       className="h-8 text-xs text-center tabular-nums w-full" />
                   </td>
                   {/* Unit */}
                   <td className="py-1.5 px-2">
-                    <Input
-                      data-testid={`input-mat-unit-${i}`}
-                      value={row.unit}
+                    <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
                       readOnly={!!row.inventoryItemId}
                       className={`h-8 text-xs text-center font-mono w-full ${row.inventoryItemId ? "bg-slate-50 border-slate-200 text-slate-600 cursor-default" : ""}`}
-                      placeholder="EA"
-                    />
+                      placeholder="EA" />
                   </td>
                   {/* Scope Link */}
                   {scopeItems.length > 0 && (
                     <td className="py-1.5 px-2.5">
-                      <select
-                        data-testid={`select-scope-link-${i}`}
+                      <select data-testid={`select-scope-link-${i}`}
                         value={row.scopeItemId ?? ""}
                         onChange={(e) => {
                           const scopeId = e.target.value ? Number(e.target.value) : null;
@@ -2239,17 +2280,12 @@ export function NewReportTab({
                             const scope = scopeItems.find((s: any) => s.id === scopeId);
                             if (scope?.linkedInventoryItemId) {
                               const invItem = inventoryItems.find((inv: any) => inv.id === scope.linkedInventoryItemId);
-                              if (invItem) {
-                                patch.inventoryItemId = invItem.id;
-                                patch.description    = invItem.name;
-                                patch.unit           = invItem.unitOfMeasure ?? row.unit;
-                              }
+                              if (invItem) { patch.inventoryItemId = invItem.id; patch.description = invItem.name; patch.unit = invItem.unitOfMeasure ?? row.unit; }
                             }
                           }
                           setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                         }}
-                        className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600"
-                      >
+                        className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600">
                         <option value="">— No link</option>
                         {scopeItems.filter((s: any) => s.isActive).map((s: any) => (
                           <option key={s.id} value={s.id}>{s.itemName} ({s.unit})</option>
@@ -2257,14 +2293,15 @@ export function NewReportTab({
                       </select>
                     </td>
                   )}
-                  {/* Notes */}
-                  <td className="py-1.5 px-2.5">
-                    <Input data-testid={`input-mat-notes-${i}`} value={row.notes}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className={cellInputCls} placeholder="Optional" />
-                  </td>
+                  {/* Delete */}
                   <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DelBtn testId={`btn-remove-mat-${i}`} onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))} />
+                    <button type="button" data-testid={`btn-remove-mat-${i}`}
+                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                      style={{ width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", margin: "0 auto", transition: "all 0.12s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.color = "#9ca3af"; }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </td>
                 </tr>
               );

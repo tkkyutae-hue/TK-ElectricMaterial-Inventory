@@ -691,13 +691,9 @@ export function NewReportTab({
 
   // ── Submit validation ──
   const isSubmitted  = savedStatus === "submitted" && !forceEdit;
-  const canSubmit    = !!reportDate && !!preparedBy.trim() && (manpower.length > 0 || tasks.length > 0);
+  const canSubmit    = !!preparedBy.trim();
   const submitHelper = !canSubmit && !isSubmitted
-    ? (!preparedBy.trim()
-        ? "Add Prepared By to submit"
-        : manpower.length === 0 && tasks.length === 0
-        ? "Add at least one worker or task to submit"
-        : "")
+    ? "Add Prepared By to enable submission"
     : "";
 
   // ── Summaries ──

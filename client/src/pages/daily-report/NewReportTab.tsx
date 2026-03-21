@@ -668,7 +668,7 @@ function MaterialSearch({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
-        <div className="absolute z-[100] top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-xl max-h-56 overflow-y-auto" style={{ minWidth: 320 }}>
+        <div style={{ position: "absolute", zIndex: 9999, top: "calc(100% + 4px)", left: 0, minWidth: 400, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.10)", overflowY: "auto", maxHeight: 280 }}>
           {filtered.map((item) => {
             const { size, rest } = extractSize(item.name);
             return (
@@ -2185,11 +2185,11 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Photo",     cls: "w-[56px] text-center" },
-            { label: "Size",      cls: "w-[72px] text-center" },
+            { label: "Photo",     cls: "w-[48px] text-center" },
+            { label: "Size",      cls: "w-[56px] text-center" },
             { label: "Material Name" },
-            { label: "Qty Used",  cls: "w-[80px] text-center" },
-            { label: "Unit",      cls: "w-[64px] text-center" },
+            { label: "Qty Used",  cls: "w-[72px] text-center" },
+            { label: "Unit",      cls: "w-[60px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
             { label: "",          cls: "w-[36px]" },
           ]} />
@@ -2231,8 +2231,8 @@ export function NewReportTab({
                     }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — search input + Inv tag */}
-                  <td className="py-1.5 px-2.5">
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", minWidth: 0 }}>
+                  <td className="py-1.5 px-2.5" style={{ overflow: "visible" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                           onChange={(p) => {
@@ -2294,12 +2294,12 @@ export function NewReportTab({
                     </td>
                   )}
                   {/* Delete */}
-                  <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="py-1.5 px-1">
                     <button type="button" data-testid={`btn-remove-mat-${i}`}
                       onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                      style={{ width: 24, height: 24, borderRadius: "50%", background: "#f3f4f6", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", margin: "0 auto", transition: "all 0.12s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#ef4444"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.color = "#9ca3af"; }}>
+                      style={{ width: 24, height: 24, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", margin: "0 auto", transition: "all 0.12s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#fca5a5"; e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#f87171"; e.currentTarget.style.transform = "scale(1)"; }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </td>

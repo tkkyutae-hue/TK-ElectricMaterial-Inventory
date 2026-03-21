@@ -1,0 +1,88 @@
+==================================================
+SCOPE: Materials section ONLY — 5 bug fixes.
+==================================================
+
+FIX 1 — Delete button: always visible, not hidden
+
+  Current problem: button is white/invisible until hover.
+
+  .del-btn default state:
+    background: #fee2e2        ← light red always visible
+    border: 1px solid #fecaca
+    color: #f87171
+    opacity: 1
+    visibility: visible
+
+  .del-btn:hover:
+    background: #fca5a5
+    color: #dc2626
+    transform: scale(1.05)
+
+  Do NOT use background: transparent or #f3f4f6 as default.
+  Button must be visually identifiable at all times.
+
+FIX 2 — SIZE column: reduce width
+
+  Current: 72px → too wide
+  New: 56px
+
+  .col-size { width: 56px }
+
+FIX 3 — MATERIAL NAME column: wider
+
+  Current: too narrow due to other columns taking too much space
+  
+  Reduce other columns to give name more room:
+    PHOTO  : 48px
+    SIZE   : 56px
+    NAME   : auto   ← flex, takes all remaining space
+    QTY    : 72px
+    UNIT   : 60px
+    DELETE : 36px
+
+  Total fixed: 48+56+72+60+36 = 272px
+  Name gets: table width - 272px
+
+FIX 4 — UNIT column: reduce width
+
+  Current: too wide
+  New: 60px, text-align: center
+  Unit pill fills 100% of the 60px cell.
+
+FIX 5 — Search dropdown: restore inventory dropdown
+
+  Current problem: dropdown disappeared, only manual typing works.
+
+  The inventory search dropdown must reappear when user
+  clicks or types in the search input.
+
+  Restore previous dropdown behavior:
+    - On input focus: show dropdown panel with inventory items
+    - On input change: filter items matching the typed string
+    - Each dropdown item shows: thumbnail + size + name + unit
+    - On item click: populate the row with selected item data
+
+  Do NOT remove the onFocus / onChange handlers that trigger
+  the dropdown. Check that the dropdown panel is not hidden
+  by z-index, overflow:hidden on a parent, or display:none.
+
+  Dropdown panel requirements:
+    position: absolute
+    z-index: 50          ← high enough to appear above other rows
+    top: calc(100% + 4px)
+    left: 0
+    min-width: 400px
+    background: #fff
+    border: 1px solid #e0e0e0
+    border-radius: 10px
+    box-shadow: 0 6px 24px rgba(0,0,0,0.10)
+    overflow-y: auto
+    max-height: 280px
+
+  Parent td/div must NOT have overflow: hidden.
+  Wrapper div must be position: relative.
+
+CONSTRAINTS:
+  - Only fix these 5 issues
+  - Do NOT change other sections
+==================================================

@@ -1,0 +1,71 @@
+==================================================
+SCOPE: Action bar (Save Draft + Submit button) ONLY.
+Target: top and bottom action bars of the Daily Report page.
+==================================================
+
+PROBLEM:
+When Reporter is selected and the report is ready to submit,
+the Submit button renders as a blank white/invisible area.
+The button exists but has no visible style in its active state.
+
+FIX — Submit button: active vs disabled states
+
+DISABLED state (Reporter not filled):
+  <button class="submit-btn" disabled>
+  background: #f3f4f6
+  border: 1px solid #e5e7eb
+  color: #d1d5db
+  cursor: not-allowed
+  opacity: 1  ← do NOT use opacity to hide, use color instead
+
+ACTIVE state (Reporter is filled — READY TO SUBMIT):
+  <button class="submit-btn" active>
+  background: #10b981         ← solid green, clearly visible
+  border: 1px solid #059669
+  color: #ffffff
+  cursor: pointer
+  font-weight: 600
+  box-shadow: 0 1px 4px rgba(16,185,129,0.3)
+
+  hover:
+    background: #059669
+    box-shadow: 0 2px 8px rgba(16,185,129,0.4)
+
+  active (click):
+    transform: scale(0.98)
+
+Both states:
+  border-radius: 8px
+  padding: 8px 20px
+  font-size: 13px
+  display: inline-flex
+  align-items: center
+  gap: 7px
+  transition: all 0.15s
+
+Icon inside button:
+  Show checkmark SVG (width 14px) on the left when active
+  Show lock SVG or no icon when disabled
+
+Logic:
+  Button switches from disabled → active state
+  when Reporter field has a value selected.
+  Do NOT use opacity or display:none to toggle —
+  change background, border, color, cursor only.
+
+SAVE DRAFT BUTTON (unchanged):
+  border: 1.5px solid #d0d5dd
+  border-radius: 8px
+  padding: 8px 16px
+  font-size: 13px
+  font-weight: 500
+  color: #374151
+  background: #ffffff
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08)
+  Always visible regardless of Reporter state.
+
+CONSTRAINTS:
+  - Apply to BOTH top and bottom action bars
+  - Do NOT change Save Draft button style
+  - Do NOT change other sections
+==================================================

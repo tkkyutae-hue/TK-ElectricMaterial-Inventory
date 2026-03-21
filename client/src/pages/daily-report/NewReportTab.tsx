@@ -982,22 +982,35 @@ export function NewReportTab({
               Save Draft
             </Button>
 
-            <div className="relative group">
-              <Button data-testid="btn-submit-report"
-                size="sm"
-                className={`gap-2 h-9 ${
-                  isSubmitted
-                    ? "bg-emerald-600 hover:bg-emerald-600 text-white font-semibold"
-                    : canSubmit
-                    ? "bg-[#16a34a] hover:bg-[#15803d] text-white font-bold border border-[#16a34a]"
-                    : "bg-[#f3f4f6] border border-[#e5e7eb] text-[#9ca3af] font-semibold opacity-60 cursor-not-allowed"
-                }`}
-                disabled={saveMutation.isPending || isSubmitted || !canSubmit}
-                onClick={() => saveMutation.mutate("submitted")}>
-                {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
-                {isSubmitted ? "Submitted" : "Submit Report"}
-              </Button>
-            </div>
+            <button data-testid="btn-submit-report"
+              disabled={saveMutation.isPending || isSubmitted || !canSubmit}
+              onClick={() => saveMutation.mutate("submitted")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "8px 20px", borderRadius: 8, fontSize: 13,
+                fontWeight: (isSubmitted || canSubmit) ? 600 : 400,
+                transition: "all 0.15s",
+                cursor: (!canSubmit && !isSubmitted) ? "not-allowed" : "pointer",
+                border: (isSubmitted || canSubmit) ? "1px solid #059669" : "1px solid #e5e7eb",
+                background: isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6",
+                color: (isSubmitted || canSubmit) ? "#ffffff" : "#d1d5db",
+                boxShadow: (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none",
+                opacity: 1,
+              }}
+              onMouseEnter={e => { if (canSubmit || isSubmitted) { e.currentTarget.style.background = "#059669"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(16,185,129,0.4)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6"; e.currentTarget.style.boxShadow = (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none"; }}
+              onMouseDown={e => { if (canSubmit || isSubmitted) e.currentTarget.style.transform = "scale(0.98)"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+              {saveMutation.isPending
+                ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                : isSubmitted
+                ? <CheckCircle2 style={{ width: 14, height: 14 }} />
+                : canSubmit
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              }
+              {isSubmitted ? "Submitted" : "Submit Report"}
+            </button>
 
             {isManagerOrAbove && reportId && (
               <Button data-testid="btn-delete-report"
@@ -2482,19 +2495,35 @@ export function NewReportTab({
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save Draft
             </Button>
-            <Button data-testid="btn-submit-report-bottom" size="sm"
-              className={`gap-2 h-9 ${
-                isSubmitted
-                  ? "bg-emerald-600 hover:bg-emerald-600 text-white font-semibold"
-                  : canSubmit
-                  ? "bg-[#16a34a] hover:bg-[#15803d] text-white font-bold border border-[#16a34a]"
-                  : "bg-[#f3f4f6] border border-[#e5e7eb] text-[#9ca3af] font-semibold opacity-60 cursor-not-allowed"
-              }`}
+            <button data-testid="btn-submit-report-bottom"
               disabled={saveMutation.isPending || isSubmitted || !canSubmit}
-              onClick={() => saveMutation.mutate("submitted")}>
-              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+              onClick={() => saveMutation.mutate("submitted")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "8px 20px", borderRadius: 8, fontSize: 13,
+                fontWeight: (isSubmitted || canSubmit) ? 600 : 400,
+                transition: "all 0.15s",
+                cursor: (!canSubmit && !isSubmitted) ? "not-allowed" : "pointer",
+                border: (isSubmitted || canSubmit) ? "1px solid #059669" : "1px solid #e5e7eb",
+                background: isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6",
+                color: (isSubmitted || canSubmit) ? "#ffffff" : "#d1d5db",
+                boxShadow: (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none",
+                opacity: 1,
+              }}
+              onMouseEnter={e => { if (canSubmit || isSubmitted) { e.currentTarget.style.background = "#059669"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(16,185,129,0.4)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6"; e.currentTarget.style.boxShadow = (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none"; }}
+              onMouseDown={e => { if (canSubmit || isSubmitted) e.currentTarget.style.transform = "scale(0.98)"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+              {saveMutation.isPending
+                ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                : isSubmitted
+                ? <CheckCircle2 style={{ width: 14, height: 14 }} />
+                : canSubmit
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              }
               {isSubmitted ? "Submitted" : "Submit Report"}
-            </Button>
+            </button>
             {isManagerOrAbove && reportId && (
               <Button data-testid="btn-delete-report-bottom"
                 variant="outline" size="sm"

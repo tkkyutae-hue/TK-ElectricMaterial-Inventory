@@ -16,7 +16,7 @@ import {
   Download,
   ArrowLeft,
   HardHat,
-  Cpu,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -48,7 +48,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/suppliers", label: t.navSuppliers, icon: Truck },
         { href: "/projects", label: t.navProjects, icon: Briefcase },
         { href: "/manpower", label: t.navManpower, icon: HardHat },
-        { href: "/equipment", label: t.navEquipment, icon: Cpu },
+        { href: "/equipment", label: t.navEquipment, icon: Wrench },
         { href: "/reorder", label: t.navReorder, icon: ShoppingCart },
       ],
     },

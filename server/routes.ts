@@ -1307,8 +1307,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Equipment ───────────────────────────────────────────────────────────────
+  // Accessible to admin + manager only (not field staff/viewer)
 
-  app.get("/api/equipment", isAuthenticated, async (_req, res) => {
+  app.get("/api/equipment", isAuthenticated, requireManager, async (_req, res) => {
     try {
       res.json(await storage.getEquipment());
     } catch (err: any) {
@@ -1316,7 +1317,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/equipment/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/equipment/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
@@ -1328,37 +1329,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/equipment", isAuthenticated, async (req, res) => {
+  app.post("/api/equipment", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const body = {
-        ...req.body,
-        assignedProjectId: req.body.assignedProjectId ? Number(req.body.assignedProjectId) : null,
-      };
-      if (!body.equipNo?.trim()) return res.status(400).json({ message: "Equipment number is required" });
-      if (!body.name?.trim()) return res.status(400).json({ message: "Name is required" });
-      const created = await storage.createEquipment(body);
+      // Only master data fields accepted from admin forms; live fields (status, assignedProjectId) are future auto-populated
+      const { equipNo, name, serialNumber, sizeSpec, brand, location, equipType } = req.body;
+      if (!String(equipNo ?? "").trim()) return res.status(400).json({ message: "Equipment number is required" });
+      if (!String(name ?? "").trim()) return res.status(400).json({ message: "Name is required" });
+      const created = await storage.createEquipment({
+        equipNo: String(equipNo).trim(),
+        name: String(name).trim(),
+        serialNumber: serialNumber ? String(serialNumber).trim() : null,
+        sizeSpec: sizeSpec ? String(sizeSpec).trim() : null,
+        brand: brand ? String(brand).trim() : null,
+        location: location ? String(location).trim() : null,
+        isActive: true,
+        status: "standby",
+      });
       res.status(201).json(created);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
   });
 
-  app.put("/api/equipment/:id", isAuthenticated, async (req, res) => {
+  // PATCH is the preferred endpoint; PUT kept for backward compat
+  async function handleEquipmentUpdate(req: any, res: any) {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
-      const body = {
-        ...req.body,
-        assignedProjectId: req.body.assignedProjectId ? Number(req.body.assignedProjectId) : null,
-      };
-      const updated = await storage.updateEquipment(id, body);
+      // Only update master data fields
+      const { equipNo, name, serialNumber, sizeSpec, brand, location } = req.body;
+      const patch: Record<string, any> = {};
+      if (equipNo  !== undefined) patch.equipNo      = String(equipNo).trim();
+      if (name     !== undefined) patch.name         = String(name).trim();
+      if (serialNumber !== undefined) patch.serialNumber = serialNumber ? String(serialNumber).trim() : null;
+      if (sizeSpec !== undefined) patch.sizeSpec     = sizeSpec ? String(sizeSpec).trim() : null;
+      if (brand    !== undefined) patch.brand        = brand ? String(brand).trim() : null;
+      if (location !== undefined) patch.location     = location ? String(location).trim() : null;
+      const updated = await storage.updateEquipment(id, patch);
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
-  });
+  }
 
-  app.delete("/api/equipment/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/equipment/:id", isAuthenticated, requireManager, handleEquipmentUpdate);
+  app.put("/api/equipment/:id", isAuthenticated, requireManager, handleEquipmentUpdate);
+
+  app.delete("/api/equipment/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });

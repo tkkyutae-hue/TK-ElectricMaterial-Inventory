@@ -22,6 +22,7 @@ import {
   workers, type Worker, type CreateWorkerRequest, type UpdateWorkerRequest,
   workerAttendance, type WorkerAttendance, type CreateWorkerAttendanceRequest,
   workerEvaluations, type WorkerEvaluation, type CreateWorkerEvaluationRequest,
+  equipment, type Equipment, type EquipmentWithProject, type CreateEquipmentRequest, type UpdateEquipmentRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -141,6 +142,12 @@ export interface IStorage {
     drillDown: Record<number, { reportId: number; reportNumber: string | null; reportDate: string; preparedBy: string | null; qty: number; runningTotal: number }[]>;
     summary: { overallPct: number; estTotal: number; installed: number; remaining: number; todayAdded: number };
   }>;
+
+  getEquipment(): Promise<EquipmentWithProject[]>;
+  getEquipmentItem(id: number): Promise<EquipmentWithProject | undefined>;
+  createEquipment(data: CreateEquipmentRequest): Promise<Equipment>;
+  updateEquipment(id: number, data: UpdateEquipmentRequest): Promise<Equipment>;
+  deleteEquipment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2026,6 +2033,51 @@ export class DatabaseStorage implements IStorage {
     const remaining = Math.max(0, estTotal - installed);
 
     return { scopeItems: scopes, progress, drillDown, summary: { overallPct, estTotal, installed, remaining, todayAdded: totalTodayAdded } };
+  }
+
+  // ─── Equipment ───────────────────────────────────────────────────────────────
+
+  async getEquipment(): Promise<EquipmentWithProject[]> {
+    const rows = await db
+      .select()
+      .from(equipment)
+      .leftJoin(projects, eq(equipment.assignedProjectId, projects.id))
+      .where(eq(equipment.isActive, true))
+      .orderBy(asc(equipment.equipNo));
+
+    return rows.map((r) => ({
+      ...r.equipment,
+      project: r.projects ?? null,
+    }));
+  }
+
+  async getEquipmentItem(id: number): Promise<EquipmentWithProject | undefined> {
+    const [r] = await db
+      .select()
+      .from(equipment)
+      .leftJoin(projects, eq(equipment.assignedProjectId, projects.id))
+      .where(eq(equipment.id, id));
+
+    if (!r) return undefined;
+    return { ...r.equipment, project: r.projects ?? null };
+  }
+
+  async createEquipment(data: CreateEquipmentRequest): Promise<Equipment> {
+    const [row] = await db.insert(equipment).values(data).returning();
+    return row;
+  }
+
+  async updateEquipment(id: number, data: UpdateEquipmentRequest): Promise<Equipment> {
+    const [row] = await db
+      .update(equipment)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(equipment.id, id))
+      .returning();
+    return row;
+  }
+
+  async deleteEquipment(id: number): Promise<void> {
+    await db.update(equipment).set({ isActive: false, updatedAt: new Date() }).where(eq(equipment.id, id));
   }
 }
 

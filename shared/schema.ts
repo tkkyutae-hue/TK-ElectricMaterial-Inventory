@@ -486,3 +486,32 @@ export const insertWorkerEvaluationSchema = createInsertSchema(workerEvaluations
 
 export type WorkerEvaluation = typeof workerEvaluations.$inferSelect;
 export type CreateWorkerEvaluationRequest = z.infer<typeof insertWorkerEvaluationSchema>;
+
+// ─── Equipment ────────────────────────────────────────────────────────────────
+// Master data managed by admin; live fields are snapshot from daily reports.
+
+export const equipment = pgTable("equipment", {
+  id: serial("id").primaryKey(),
+  equipNo: text("equip_no").notNull(),
+  name: text("name").notNull(),
+  serialNumber: text("serial_number"),
+  sizeSpec: text("size_spec"),
+  brand: text("brand"),
+  location: text("location"),
+  // Live snapshot fields — updated when daily reports reference this equipment
+  status: text("status").default("standby"), // operational | standby | partial_issue | broken_down
+  assignedProjectId: integer("assigned_project_id").references(() => projects.id, { onDelete: "set null" }),
+  lastReportedAt: timestamp("last_reported_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type Equipment = typeof equipment.$inferSelect;
+export type EquipmentWithProject = Equipment & { project?: Project | null };
+export type CreateEquipmentRequest = z.infer<typeof insertEquipmentSchema>;
+export type UpdateEquipmentRequest = Partial<CreateEquipmentRequest>;

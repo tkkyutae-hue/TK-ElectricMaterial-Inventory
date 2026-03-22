@@ -1306,5 +1306,68 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Equipment ───────────────────────────────────────────────────────────────
+
+  app.get("/api/equipment", isAuthenticated, async (_req, res) => {
+    try {
+      res.json(await storage.getEquipment());
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/equipment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
+      const item = await storage.getEquipmentItem(id);
+      if (!item) return res.status(404).json({ message: "Equipment not found" });
+      res.json(item);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/equipment", isAuthenticated, async (req, res) => {
+    try {
+      const body = {
+        ...req.body,
+        assignedProjectId: req.body.assignedProjectId ? Number(req.body.assignedProjectId) : null,
+      };
+      if (!body.equipNo?.trim()) return res.status(400).json({ message: "Equipment number is required" });
+      if (!body.name?.trim()) return res.status(400).json({ message: "Name is required" });
+      const created = await storage.createEquipment(body);
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/equipment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
+      const body = {
+        ...req.body,
+        assignedProjectId: req.body.assignedProjectId ? Number(req.body.assignedProjectId) : null,
+      };
+      const updated = await storage.updateEquipment(id, body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/equipment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
+      await storage.deleteEquipment(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

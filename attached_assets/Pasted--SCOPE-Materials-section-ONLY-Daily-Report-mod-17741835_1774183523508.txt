@@ -1,0 +1,139 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE 1 — Column order and widths (table-layout: fixed)
+
+  <colgroup>:
+    <col style="width:44px">   ← PHOTO
+    <col style="width:96px">   ← SIZE
+    <col>                      ← MATERIAL NAME (auto, no fixed width)
+    <col style="width:68px">   ← QTY USED
+    <col style="width:60px">   ← UNIT
+    <col style="width:32px">   ← DELETE
+
+  Remove NOTES column entirely.
+  Remove CATEGORY column entirely.
+
+CHANGE 2 — PHOTO column
+
+  Header: "PHOTO" (text-align: center)
+
+  If inventory item has image_url:
+    <img class="thumb" src="{image_url}"
+         onerror="this.style.display='none';
+                  this.nextElementSibling.style.display='flex'" />
+    <div class="thumb-empty" style="display:none">
+
+  If no image_url:
+    <div class="thumb-empty">
+
+  .thumb:
+    width: 36px, height: 36px, border-radius: 7px
+    object-fit: cover, border: 1px solid #e8e8e8
+    display: block, margin: 0 auto, cursor: pointer
+    transition: transform 0.12s, box-shadow 0.12s
+    hover: transform scale(1.1),
+           box-shadow 0 3px 12px rgba(0,0,0,0.15)
+
+  .thumb-empty:
+    width: 36px, height: 36px, border-radius: 7px
+    border: 1.5px dashed #e0e0e0, background: #fafafa
+    display: flex, align-items: center, justify-content: center
+    margin: 0 auto, color: #ddd
+    Show image placeholder SVG icon inside
+
+CHANGE 3 — SIZE column
+
+  Header: "SIZE" (text-align: center)
+
+  Extract size token from inventory item name (display only).
+  Do NOT modify stored data.
+
+  Extraction rules (priority order):
+    1. /^(#[\d]+(?:\/[\d]+)?)/
+       "#1(4C+G) Cable"     → SIZE "#1",        NAME "(4C+G) Cable"
+       "#10-Blue Single..."  → SIZE "#10",       NAME "Blue Single Wire"
+       "#10 Compression Lug"→ SIZE "#10",       NAME "Compression Lug"
+
+    2. /^([\d.]+\s*kVA)/i
+       "112.5 kVA / 480V..." → SIZE "112.5 kVA", NAME "480V-208Y/120V..."
+
+    3. /^([\d]+A)\s/
+       "100A 240V / NEMA1..."→ SIZE "100A",     NAME "240V / NEMA1..."
+
+    4. /^([\d]+\/[\d]+")/
+       '3/4" EMT Conduit'   → SIZE '3/4"',      NAME "EMT Conduit"
+
+    5. /^([\d]+")/
+       '1" EMT Conduit'     → SIZE '1"',         NAME "EMT Conduit"
+
+    6. No match → SIZE "—" (muted)
+
+  After extraction, strip leading separators from name:
+    name = name.replace(/^[\s\/\-]+/, '').trim()
+
+  .size-badge:
+    display: inline-flex, align-items: center, justify-content: center
+    background: #f0f0f0, border: 1px solid #e0e0e0
+    border-radius: 5px, padding: 3px 8px
+    font-size: 11px, font-weight: 600, color: #555
+    white-space: nowrap
+    max-width: 100%           ← stays within 96px column
+    overflow: hidden, text-overflow: ellipsis
+
+  .size-badge.none:
+    color: #ccc, background: #fafafa
+    border-color: #eee, font-weight: 400
+
+CHANGE 4 — MATERIAL NAME column
+
+  Header: "MATERIAL NAME"
+
+  Structure:
+    <div class="name-cell">
+      <span class="item-name">{name without size prefix}</span>
+      <span class="inv-tag">Inv</span>   ← only if inventory-linked
+    </div>
+
+  .name-cell:
+    display: flex, align-items: center, gap: 6px
+    overflow: hidden, min-width: 0    ← REQUIRED
+
+  .item-name:
+    font-size: 13px, color: #1a1a1a
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+    flex-shrink: 1
+    min-width: 0                      ← REQUIRED for ellipsis in flex
+
+  .inv-tag:
+    flex-shrink: 0, font-size: 10px
+    background: #e8f5e9, color: #2e7d32
+    border: 1px solid #a5d6a7
+    border-radius: 4px, padding: 1px 5px
+
+CHANGE 5 — QTY USED column
+  text-align: center on <th> and <td>
+  .qty-input: text-align center, width 100%, min-width 0
+
+CHANGE 6 — UNIT column
+  text-align: center on <th> and <td>
+  .unit-pill:
+    width: 100%, min-width: 0
+    display: inline-flex, justify-content: center
+    background: #f5f5f5, border: 1px solid #e0e0e0
+    border-radius: 6px, font-size: 12px, font-weight: 600
+    color: #555, padding: 5px 0
+
+CHANGE 7 — DELETE button (always visible)
+
+  .del-btn:
+    width: 24px, height: 24px, border-radius: 50%
+    background: #fee2e2                ← always light red, NOT transparent
+    border: 1px solid #fecaca
+    color: #f87171
+    cursor: pointer, margin: 0 auto
+    display: flex, align-items: center, justify-conte

@@ -2194,8 +2194,8 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Photo",      cls: "w-[40px] text-center" },
-            { label: "Size",       cls: "w-[48px] text-center" },
+            { label: "Photo",      cls: "w-[32px] text-center" },
+            { label: "Size",       cls: "w-[44px] text-center" },
             { label: "Material Name" },
             { label: "Qty / Unit", cls: "w-[114px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
@@ -2217,14 +2217,14 @@ export function NewReportTab({
                     {imgUrl ? (
                       <>
                         <img src={imgUrl} alt=""
-                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
+                          style={{ width: 26, height: 26, borderRadius: 5, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
                           onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.15)"; }}
                           onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
                           onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
-                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={32} /></div>
+                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={26} /></div>
                       </>
                     ) : (
-                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={32} /></div>
+                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={26} /></div>
                     )}
                   </td>
                   {/* SIZE column */}
@@ -2236,32 +2236,33 @@ export function NewReportTab({
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                      borderRadius: 5, padding: "3px 7px",
+                      borderRadius: 4, padding: "2px 5px",
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}>{size || "—"}</span>
                   </td>
-                  {/* Material Name — search input + Inv tag */}
-                  <td className="py-1.5 px-2" style={{ overflow: "visible" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                          onChange={(p) => {
-                            let patch: Partial<MaterialRow> = { ...p };
-                            if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                              const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                              if (matched) patch.scopeItemId = matched.id;
-                              flashRow(i);
-                            }
-                            setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                          }} />
-                      </div>
+                  {/* Material Name — search input; Inv badge stacked below */}
+                  <td className="py-1 px-2" style={{ overflow: "visible" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                        onChange={(p) => {
+                          let patch: Partial<MaterialRow> = { ...p };
+                          if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                            const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                            if (matched) patch.scopeItemId = matched.id;
+                            flashRow(i);
+                          }
+                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                        }} />
                       {row.inventoryItemId && (
-                        <span style={{
-                          flexShrink: 0, fontSize: 10, fontWeight: 600,
-                          color: "#2e7d32", background: "#e8f5e9",
-                          border: "1px solid #a5d6a7", borderRadius: 4,
-                          padding: "1px 5px", whiteSpace: "nowrap",
-                        }}>Inv</span>
+                        <div style={{ marginTop: 2 }}>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center",
+                            fontSize: 9, fontWeight: 700, letterSpacing: "0.04em",
+                            color: "#2e7d32", background: "#e8f5e9",
+                            border: "1px solid #a5d6a7", borderRadius: 3,
+                            padding: "0px 4px", whiteSpace: "nowrap",
+                          }}>INV</span>
+                        </div>
                       )}
                     </div>
                   </td>

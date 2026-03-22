@@ -1,0 +1,85 @@
+Update ONLY the Materials section inside Daily Report mode.
+
+This is a layout cleanup task.
+The current Materials table looks visually unbalanced:
+- Photo and Size are taking too much attention
+- Material Name is too narrow and gets cut off
+- Qty / Unit does not feel like one clean group
+- the green "Inv" badge interrupts the material name too much
+
+Do NOT change:
+- page width
+- outer card width
+- section width
+- row height
+- dropdown behavior
+- Add Material button placement
+- other sections
+- Admin Mode pages
+- overall page styling
+
+Keep the current floating dropdown behavior working.
+
+Make these layout improvements:
+
+1. Rebalance column priority
+New visual priority must be:
+- Material Name = highest priority / widest
+- Qty / Unit = second priority
+- Size = compact
+- Photo = smallest / lowest priority
+
+2. Shrink Photo column
+- Reduce the Photo column width further
+- Keep thumbnail visible, but smaller and less dominant
+- Center-align the Photo header and thumbnail
+- Photo should feel secondary, not equal to Material Name
+
+3. Shrink Size column
+- Reduce Size column width slightly
+- Keep size pill/tag readable
+- Center-align the Size header and size value
+- Size should stay compact and not compete with the name column
+
+4. Expand Material Name column significantly
+- Use the width recovered from Photo and Size
+- Material Name must become clearly wider
+- Long names should be much less likely to get cut off
+- If truncation is still needed, it should happen later than now
+- Material Name must visually dominate the row
+
+5. Move the green "Inv" badge out of the main reading flow
+- Do NOT place the Inv badge in a way that interrupts the material name
+- Move it to a secondary position, such as:
+  - below the material name as a small helper badge
+  - or aligned near the left side of the qty/unit group
+- Keep it visible, but less disruptive
+- Material name text must read naturally first
+
+6. Clean up Qty / Unit grouping
+- Keep the header as: Qty / Unit
+- Qty remains the main editable boxed input
+- Unit should sit immediately next to Qty and look like a compact secondary value
+- Unit should not feel like a large separate field
+- Qty and Unit should visually read as one grouped control
+- Center-align Qty value
+- Make Unit font readable and close in size to Qty
+
+7. Improve overall row balance
+- The row should feel like:
+  [small photo] [small size] [large material name] [clean qty/unit group] [delete]
+- Do not create horizontal overflow
+- Do not create nested scrolling
+- Do not break the current dropdown overlay behavior
+
+8. Optional readability improvement
+- If supported without breaking layout, allow Material Name to use slightly more generous text area before truncation
+- Do NOT increase row height drastically
+
+SUCCESS CRITERIA:
+- Photo is smaller and less dominant
+- Size is compact
+- Material Name is noticeably wider and easier to read
+- Inv badge no longer breaks the reading flow
+- Qty / Unit feels like one clean grouped control
+- Materials section looks cleaner, more practical, and less awkward

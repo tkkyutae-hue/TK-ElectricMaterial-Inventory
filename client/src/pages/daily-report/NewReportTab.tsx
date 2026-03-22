@@ -604,8 +604,11 @@ function PersonCardCombobox({
 // ─── Size extractor (display-only, no data model changes) ────────────────────
 function extractSize(name: string): { size: string; rest: string } {
   if (!name) return { size: "", rest: "" };
-  // #N / #N/N / #NXXX  (e.g. #1, #10, #4/0, #1AWG)
-  let m = name.match(/^(#[\d]+(?:\/[\d]+)?(?:[A-Za-z]+)?)\s+(.*)/);
+  // #N or #N/N — separator can be space, hyphen+space, or none (e.g. paren follows directly)
+  // "#1(3C+G) Cable" → #1 / (3C+G) Cable
+  // "#10-Blue Single Wire" → #10 / Blue Single Wire
+  // "#4/0 Cable" → #4/0 / Cable
+  let m = name.match(/^(#[\d]+(?:\/[\d]+)?)(?:\s*-\s*|\s+|(?=\())(.+)/);
   if (m) return { size: m[1], rest: m[2] };
   // fraction + optional quote  (e.g. 3/4", 1/2", 1/4")
   m = name.match(/^(\d+\/\d+"?)\s+(.*)/);
@@ -613,7 +616,7 @@ function extractSize(name: string): { size: string; rest: string } {
   // integer or decimal + "  (e.g. 2", 4", 1.5")
   m = name.match(/^(\d+(?:\.\d+)?")\s+(.*)/);
   if (m) return { size: m[1], rest: m[2] };
-  // kVA  (e.g. "112.5 kVA", "100kVA")
+  // kVA  (e.g. "112.5 kVA", "112.5kVA")
   m = name.match(/^(\d+(?:\.\d+)?\s*kVA)\s+(.*)/i);
   if (m) return { size: m[1].replace(/\s+/, ""), rest: m[2] };
   // Amps / milliamps  (e.g. "100A", "200A", "50mA")
@@ -2185,13 +2188,13 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Photo",     cls: "w-[48px] text-center" },
-            { label: "Size",      cls: "w-[56px] text-center" },
+            { label: "Photo",     cls: "w-[44px] text-center" },
+            { label: "Size",      cls: "w-[64px] text-center" },
             { label: "Material Name" },
-            { label: "Qty Used",  cls: "w-[72px] text-center" },
-            { label: "Unit",      cls: "w-[60px] text-center" },
+            { label: "Qty Used",  cls: "w-[68px] text-center" },
+            { label: "Unit",      cls: "w-[56px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
-            { label: "",          cls: "w-[36px]" },
+            { label: "",          cls: "w-[32px]" },
           ]} />
           <tbody>
             {materials.length === 0 && (
@@ -2221,13 +2224,15 @@ export function NewReportTab({
                   {/* SIZE column */}
                   <td className="py-1.5 px-1 text-center">
                     <span style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: size ? 600 : 400,
+                      display: "inline-block",
+                      fontSize: 10, fontWeight: size ? 600 : 400,
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                      borderRadius: 5, padding: "2px 7px",
-                      minWidth: 36, whiteSpace: "nowrap",
+                      borderRadius: 5, padding: "2px 5px",
+                      maxWidth: "100%", overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      verticalAlign: "middle",
                     }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — search input + Inv tag */}

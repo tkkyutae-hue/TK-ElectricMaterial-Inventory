@@ -2187,22 +2187,14 @@ export function NewReportTab({
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
-          <colgroup>
-            <col className="col-photo" />
-            <col className="col-size" />
-            <col className="col-name" />
-            <col className="col-qty" />
-            <col className="col-unit" />
-            {scopeItems.length > 0 && <col style={{ width: 130 }} />}
-            <col className="col-del" />
-          </colgroup>
           <TH cols={[
-            { label: "Photo",     cls: "col-photo text-center" },
-            { label: "Size",      cls: "col-size text-center" },
-            { label: "Material Name", cls: "col-name" },
-            { label: "Qty Used",  cls: "col-qty text-center" },
-            { label: "Unit",      cls: "col-unit text-center" },
+            { label: "Photo",     cls: "w-[44px] text-center" },
+            { label: "Size",      cls: "w-[96px] text-center" },
+            { label: "Material Name" },
+            { label: "Qty Used",  cls: "w-[68px] text-center" },
+            { label: "Unit",      cls: "w-[56px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
+            { label: "",          cls: "w-[32px]" },
           ]} />
           <tbody>
             {materials.length === 0 && (
@@ -2215,7 +2207,7 @@ export function NewReportTab({
               return (
                 <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
                   {/* PHOTO column */}
-                  <td className="col-photo py-1.5 px-1 text-center">
+                  <td className="py-1.5 px-1 text-center">
                     {imgUrl ? (
                       <>
                         <img src={imgUrl} alt=""
@@ -2230,22 +2222,27 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* SIZE column */}
-                  <td className="col-size py-1.5 px-1 text-center">
-                    <span className="size-badge" style={{
+                  <td className="py-1.5 px-1 text-center">
+                    <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       fontSize: 11, fontWeight: size ? 600 : 400,
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
                       borderRadius: 5, padding: "3px 8px",
+                      maxWidth: "100%", overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — static display (linked) or search input (unlinked) */}
-                  <td className="col-name py-1.5 px-2.5" style={{ overflow: row.inventoryItemId ? "hidden" : "visible" }}>
+                  <td className="py-1.5 px-2.5" style={{ overflow: row.inventoryItemId ? "hidden" : "visible" }}>
                     {row.inventoryItemId ? (
-                      <div className="name-cell">
-                        <span className="item-name" style={{ fontSize: 13, color: "#1a1a1a" }}
-                          data-testid={`text-mat-name-${i}`}>{rest || row.description}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", minWidth: 0 }}>
+                        <span style={{
+                          fontSize: 13, color: "#1a1a1a",
+                          whiteSpace: "nowrap", overflow: "hidden",
+                          textOverflow: "ellipsis", flexShrink: 1, minWidth: 0,
+                        }} data-testid={`text-mat-name-${i}`}>{rest || row.description}</span>
                         <span style={{
                           flexShrink: 0, fontSize: 10, fontWeight: 600,
                           color: "#2e7d32", background: "#e8f5e9",
@@ -2270,15 +2267,16 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* Qty Used */}
-                  <td className="col-qty py-1.5 px-2 text-center">
+                  <td className="py-1.5 px-2 text-center">
                     <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
                       className="h-8 text-xs text-center tabular-nums w-full" />
                   </td>
                   {/* Unit pill */}
-                  <td className="col-unit py-1.5 px-1 text-center">
-                    <span className="unit-pill" data-testid={`text-mat-unit-${i}`} style={{
+                  <td className="py-1.5 px-1 text-center">
+                    <span data-testid={`text-mat-unit-${i}`} style={{
                       display: "inline-flex", justifyContent: "center", alignItems: "center",
+                      width: "100%", minWidth: 0,
                       background: "#f5f5f5", border: "1px solid #e0e0e0",
                       borderRadius: 6, fontSize: 12, fontWeight: 600,
                       color: "#555", padding: "5px 0",
@@ -2310,7 +2308,7 @@ export function NewReportTab({
                     </td>
                   )}
                   {/* Delete */}
-                  <td className="col-del py-1.5 px-1">
+                  <td className="py-1.5 px-1">
                     <button type="button" data-testid={`btn-remove-mat-${i}`}
                       onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
                       style={{ width: 24, height: 24, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", margin: "0 auto", transition: "all 0.12s" }}

@@ -604,24 +604,21 @@ function PersonCardCombobox({
 // ─── Size extractor (display-only, no data model changes) ────────────────────
 function extractSize(name: string): { size: string; rest: string } {
   if (!name) return { size: "", rest: "" };
-  const strip = (s: string) => s.replace(/^[\s\/\-]+/, "").trim();
-  // Rule 1: #N or #N/N  (e.g. #1, #10, #4/0)
-  // "#1(4C+G) Cable" → "#1" / "(4C+G) Cable"
-  // "#10-Blue Single Wire" → "#10" / "Blue Single Wire"
-  let m = name.match(/^(#[\d]+(?:\/[\d]+)?)([\s\S]*)/);
-  if (m) { const r = strip(m[2]); return { size: m[1], rest: r || name }; }
-  // Rule 2: kVA  (e.g. "112.5 kVA", "150 kVA")  — preserve space in badge
-  m = name.match(/^([\d.]+\s*kVA)([\s\S]*)/i);
-  if (m) { const r = strip(m[2]); return { size: m[1].trim(), rest: r || name }; }
-  // Rule 3: integer Amps  (e.g. "100A 240V...")
-  m = name.match(/^([\d]+A)\s([\s\S]*)/i);
-  if (m) { const r = strip(m[2]); return { size: m[1], rest: r || name }; }
-  // Rule 4: fraction + quote  (e.g. 3/4", 1/2")
-  m = name.match(/^([\d]+\/[\d]+")([\s\S]*)/);
-  if (m) { const r = strip(m[2]); return { size: m[1], rest: r || name }; }
-  // Rule 5: integer + quote  (e.g. 1", 2")
-  m = name.match(/^([\d]+")([\s\S]*)/);
-  if (m) { const r = strip(m[2]); return { size: m[1], rest: r || name }; }
+  // #N / #N/N / #NXXX  (e.g. #1, #10, #4/0, #1AWG)
+  let m = name.match(/^(#[\d]+(?:\/[\d]+)?(?:[A-Za-z]+)?)\s+(.*)/);
+  if (m) return { size: m[1], rest: m[2] };
+  // fraction + optional quote  (e.g. 3/4", 1/2", 1/4")
+  m = name.match(/^(\d+\/\d+"?)\s+(.*)/);
+  if (m) return { size: m[1], rest: m[2] };
+  // integer or decimal + "  (e.g. 2", 4", 1.5")
+  m = name.match(/^(\d+(?:\.\d+)?")\s+(.*)/);
+  if (m) return { size: m[1], rest: m[2] };
+  // kVA  (e.g. "112.5 kVA", "100kVA")
+  m = name.match(/^(\d+(?:\.\d+)?\s*kVA)\s+(.*)/i);
+  if (m) return { size: m[1].replace(/\s+/, ""), rest: m[2] };
+  // Amps / milliamps  (e.g. "100A", "200A", "50mA")
+  m = name.match(/^(\d+(?:\.\d+)?m?A)\s+(.*)/i);
+  if (m) return { size: m[1], rest: m[2] };
   return { size: "", rest: name };
 }
 
@@ -2188,20 +2185,20 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <TH cols={[
-            { label: "Photo",     cls: "w-[44px] text-center" },
-            { label: "Size",      cls: "w-[96px] text-center" },
+            { label: "Photo",     cls: "w-[48px] text-center" },
+            { label: "Size",      cls: "w-[56px] text-center" },
             { label: "Material Name" },
-            { label: "Qty Used",  cls: "w-[68px] text-center" },
-            { label: "Unit",      cls: "w-[56px] text-center" },
+            { label: "Qty Used",  cls: "w-[72px] text-center" },
+            { label: "Unit",      cls: "w-[60px] text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
-            { label: "",          cls: "w-[32px]" },
+            { label: "",          cls: "w-[36px]" },
           ]} />
           <tbody>
             {materials.length === 0 && (
               <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => {
-              const { size, rest } = extractSize(row.description);
+              const { size } = extractSize(row.description);
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
               const imgUrl: string = linkedItem?.imageUrl ?? "";
               return (
@@ -2229,42 +2226,33 @@ export function NewReportTab({
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                      borderRadius: 5, padding: "3px 8px",
-                      maxWidth: "100%", overflow: "hidden",
-                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      borderRadius: 5, padding: "2px 7px",
+                      minWidth: 36, whiteSpace: "nowrap",
                     }}>{size || "—"}</span>
                   </td>
-                  {/* Material Name — static display (linked) or search input (unlinked) */}
-                  <td className="py-1.5 px-2.5" style={{ overflow: row.inventoryItemId ? "hidden" : "visible" }}>
-                    {row.inventoryItemId ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", minWidth: 0 }}>
-                        <span style={{
-                          fontSize: 13, color: "#1a1a1a",
-                          whiteSpace: "nowrap", overflow: "hidden",
-                          textOverflow: "ellipsis", flexShrink: 1, minWidth: 0,
-                        }} data-testid={`text-mat-name-${i}`}>{rest || row.description}</span>
+                  {/* Material Name — search input + Inv tag */}
+                  <td className="py-1.5 px-2.5" style={{ overflow: "visible" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                          onChange={(p) => {
+                            let patch: Partial<MaterialRow> = { ...p };
+                            if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                              const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                              if (matched) patch.scopeItemId = matched.id;
+                            }
+                            setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                          }} />
+                      </div>
+                      {row.inventoryItemId && (
                         <span style={{
                           flexShrink: 0, fontSize: 10, fontWeight: 600,
                           color: "#2e7d32", background: "#e8f5e9",
                           border: "1px solid #a5d6a7", borderRadius: 4,
                           padding: "1px 5px", whiteSpace: "nowrap",
                         }}>Inv</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                            onChange={(p) => {
-                              let patch: Partial<MaterialRow> = { ...p };
-                              if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                                const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                                if (matched) patch.scopeItemId = matched.id;
-                              }
-                              setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                            }} />
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                   {/* Qty Used */}
                   <td className="py-1.5 px-2 text-center">
@@ -2272,15 +2260,13 @@ export function NewReportTab({
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
                       className="h-8 text-xs text-center tabular-nums w-full" />
                   </td>
-                  {/* Unit pill */}
-                  <td className="py-1.5 px-1 text-center">
-                    <span data-testid={`text-mat-unit-${i}`} style={{
-                      display: "inline-flex", justifyContent: "center", alignItems: "center",
-                      width: "100%", minWidth: 0,
-                      background: "#f5f5f5", border: "1px solid #e0e0e0",
-                      borderRadius: 6, fontSize: 12, fontWeight: 600,
-                      color: "#555", padding: "5px 0",
-                    }}>{row.unit || "EA"}</span>
+                  {/* Unit */}
+                  <td className="py-1.5 px-2">
+                    <Input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                      readOnly={!!row.inventoryItemId}
+                      className={`h-8 text-xs text-center font-mono w-full ${row.inventoryItemId ? "bg-slate-50 border-slate-200 text-slate-600 cursor-default" : ""}`}
+                      placeholder="EA" />
                   </td>
                   {/* Scope Link */}
                   {scopeItems.length > 0 && (

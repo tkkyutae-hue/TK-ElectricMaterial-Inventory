@@ -494,6 +494,7 @@ export const equipment = pgTable("equipment", {
   id: serial("id").primaryKey(),
   equipNo: text("equip_no").notNull(),
   name: text("name").notNull(),
+  equipType: text("equip_type"),
   serialNumber: text("serial_number"),
   sizeSpec: text("size_spec"),
   brand: text("brand"),

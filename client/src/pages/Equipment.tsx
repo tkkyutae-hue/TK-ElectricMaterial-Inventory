@@ -95,6 +95,7 @@ function AddEquipmentRow({
   const createMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/equipment", {
       equipNo: equipNo.trim(), name: name.trim() || equipType,
+      equipType: equipType || null,
       serialNumber: serialNumber.trim() || null,
       sizeSpec: sizeSpec.trim() || null, brand: brand.trim() || null,
       location: location.trim() || null,
@@ -364,10 +365,7 @@ export default function Equipment() {
     return equipList.filter((e) => {
       if (q && !`${e.equipNo} ${e.name} ${e.sizeSpec ?? ""} ${e.brand ?? ""}`.toLowerCase().includes(q)) return false;
       if (filterStatus && e.status !== filterStatus) return false;
-      if (filterType) {
-        const nameMatch = EQUIP_TYPES.find((t) => e.name?.toLowerCase().includes(t.toLowerCase()));
-        if (!nameMatch || nameMatch !== filterType) return false;
-      }
+      if (filterType && e.equipType !== filterType) return false;
       if (filterProjectId && String(e.assignedProjectId ?? "") !== filterProjectId) return false;
       return true;
     });

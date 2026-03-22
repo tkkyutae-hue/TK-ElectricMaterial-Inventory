@@ -1332,12 +1332,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/equipment", isAuthenticated, requireManager, async (req, res) => {
     try {
       // Only master data fields accepted from admin forms; live fields (status, assignedProjectId) are future auto-populated
-      const { equipNo, name, serialNumber, sizeSpec, brand, location, equipType } = req.body;
+      const { equipNo, name, equipType, serialNumber, sizeSpec, brand, location } = req.body;
       if (!String(equipNo ?? "").trim()) return res.status(400).json({ message: "Equipment number is required" });
       if (!String(name ?? "").trim()) return res.status(400).json({ message: "Name is required" });
       const created = await storage.createEquipment({
         equipNo: String(equipNo).trim(),
         name: String(name).trim(),
+        equipType: equipType ? String(equipType).trim() : null,
         serialNumber: serialNumber ? String(serialNumber).trim() : null,
         sizeSpec: sizeSpec ? String(sizeSpec).trim() : null,
         brand: brand ? String(brand).trim() : null,
@@ -1356,15 +1357,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid equipment ID" });
+      // Verify record exists first
+      const existing = await storage.getEquipmentItem(id);
+      if (!existing) return res.status(404).json({ message: "Equipment not found" });
       // Only update master data fields
-      const { equipNo, name, serialNumber, sizeSpec, brand, location } = req.body;
+      const { equipNo, name, equipType, serialNumber, sizeSpec, brand, location } = req.body;
       const patch: Record<string, any> = {};
-      if (equipNo  !== undefined) patch.equipNo      = String(equipNo).trim();
-      if (name     !== undefined) patch.name         = String(name).trim();
+      if (equipNo      !== undefined) patch.equipNo      = String(equipNo).trim();
+      if (name         !== undefined) patch.name         = String(name).trim();
+      if (equipType    !== undefined) patch.equipType    = equipType ? String(equipType).trim() : null;
       if (serialNumber !== undefined) patch.serialNumber = serialNumber ? String(serialNumber).trim() : null;
-      if (sizeSpec !== undefined) patch.sizeSpec     = sizeSpec ? String(sizeSpec).trim() : null;
-      if (brand    !== undefined) patch.brand        = brand ? String(brand).trim() : null;
-      if (location !== undefined) patch.location     = location ? String(location).trim() : null;
+      if (sizeSpec     !== undefined) patch.sizeSpec     = sizeSpec ? String(sizeSpec).trim() : null;
+      if (brand        !== undefined) patch.brand        = brand ? String(brand).trim() : null;
+      if (location     !== undefined) patch.location     = location ? String(location).trim() : null;
       const updated = await storage.updateEquipment(id, patch);
       res.json(updated);
     } catch (err: any) {

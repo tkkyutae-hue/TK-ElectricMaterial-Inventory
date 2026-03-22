@@ -659,7 +659,7 @@ function MaterialSearch({
   }, [row.description, row.inventoryItemId]);
 
   return (
-    <div className="search-wrap">
+    <div className="relative">
       <Input data-testid={testId} value={query}
         placeholder="Search inventory or enter manually…"
         className={cellInputCls}
@@ -671,7 +671,7 @@ function MaterialSearch({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
-        <div className="dd-panel">
+        <div style={{ position: "absolute", zIndex: 9999, top: "calc(100% + 4px)", left: 0, minWidth: 400, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.10)", overflowY: "auto", maxHeight: 280 }}>
           {filtered.map((item) => {
             const { size, rest } = extractSize(item.name);
             return (
@@ -2191,15 +2191,17 @@ export function NewReportTab({
             <col className="col-photo" />
             <col className="col-size" />
             <col className="col-name" />
-            <col className="col-qty-unit" />
+            <col className="col-qty" />
+            <col className="col-unit" />
             {scopeItems.length > 0 && <col style={{ width: 130 }} />}
             <col className="col-del" />
           </colgroup>
           <TH cols={[
-            { label: "Photo",         cls: "col-photo text-center" },
-            { label: "Size",          cls: "col-size text-center" },
+            { label: "Photo",     cls: "col-photo text-center" },
+            { label: "Size",      cls: "col-size text-center" },
             { label: "Material Name", cls: "col-name" },
-            { label: "Qty / Unit",    cls: "col-qty-unit text-center" },
+            { label: "Qty Used",  cls: "col-qty text-center" },
+            { label: "Unit",      cls: "col-unit text-center" },
             ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
           ]} />
           <tbody>
@@ -2228,14 +2230,22 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* SIZE column */}
-                  <td className="col-size py-1.5 px-1 text-center" style={{ verticalAlign: "middle" }}>
-                    <span className={`size-badge${size ? "" : " none"}`}>{size || "—"}</span>
+                  <td className="col-size py-1.5 px-1 text-center">
+                    <span className="size-badge" style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: size ? 600 : 400,
+                      color: size ? "#555" : "#ccc",
+                      background: size ? "#f0f0f0" : "#fafafa",
+                      border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
+                      borderRadius: 5, padding: "3px 8px",
+                    }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — static display (linked) or search input (unlinked) */}
-                  <td className="col-name py-1.5 px-2.5" style={{ overflow: row.inventoryItemId ? "hidden" : "visible", position: "relative" }}>
+                  <td className="col-name py-1.5 px-2.5" style={{ overflow: row.inventoryItemId ? "hidden" : "visible" }}>
                     {row.inventoryItemId ? (
                       <div className="name-cell">
-                        <span className="item-name" data-testid={`text-mat-name-${i}`}>{rest || row.description}</span>
+                        <span className="item-name" style={{ fontSize: 13, color: "#1a1a1a" }}
+                          data-testid={`text-mat-name-${i}`}>{rest || row.description}</span>
                         <span style={{
                           flexShrink: 0, fontSize: 10, fontWeight: 600,
                           color: "#2e7d32", background: "#e8f5e9",
@@ -2244,31 +2254,35 @@ export function NewReportTab({
                         }}>Inv</span>
                       </div>
                     ) : (
-                      <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                        onChange={(p) => {
-                          let patch: Partial<MaterialRow> = { ...p };
-                          if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                            const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                            if (matched) patch.scopeItemId = matched.id;
-                          }
-                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                        }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                            onChange={(p) => {
+                              let patch: Partial<MaterialRow> = { ...p };
+                              if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                                const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                                if (matched) patch.scopeItemId = matched.id;
+                              }
+                              setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                            }} />
+                        </div>
+                      </div>
                     )}
                   </td>
-                  {/* QTY / UNIT — merged cell */}
-                  <td className="col-qty-unit py-1.5 px-1">
-                    <div className="qty-unit-cell">
-                      <input
-                        className={`qty-input${!row.inventoryItemId && !row.description ? " empty" : ""}`}
-                        data-testid={`input-mat-qty-${i}`}
-                        type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))} />
-                      <span
-                        className={`unit-text${!row.unit ? " empty" : ""}`}
-                        data-testid={`text-mat-unit-${i}`}>
-                        {row.unit || "—"}
-                      </span>
-                    </div>
+                  {/* Qty Used */}
+                  <td className="col-qty py-1.5 px-2 text-center">
+                    <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                      className="h-8 text-xs text-center tabular-nums w-full" />
+                  </td>
+                  {/* Unit pill */}
+                  <td className="col-unit py-1.5 px-1 text-center">
+                    <span className="unit-pill" data-testid={`text-mat-unit-${i}`} style={{
+                      display: "inline-flex", justifyContent: "center", alignItems: "center",
+                      background: "#f5f5f5", border: "1px solid #e0e0e0",
+                      borderRadius: 6, fontSize: 12, fontWeight: 600,
+                      color: "#555", padding: "5px 0",
+                    }}>{row.unit || "EA"}</span>
                   </td>
                   {/* Scope Link */}
                   {scopeItems.length > 0 && (

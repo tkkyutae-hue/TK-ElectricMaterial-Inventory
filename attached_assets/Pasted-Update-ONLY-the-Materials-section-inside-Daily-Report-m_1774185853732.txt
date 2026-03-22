@@ -1,0 +1,80 @@
+Update ONLY the Materials section inside Daily Report mode.
+
+Do NOT change:
+- page width
+- outer card width
+- section width
+- row height
+- other sections
+- Admin Mode pages
+- overall page layout and styling
+
+Keep the current floating dropdown behavior for Material Name search.
+Do NOT break the dropdown again.
+
+Make these layout adjustments:
+
+1. Narrow Photo and Size columns slightly
+- Reduce the width of the Photo column a little
+- Reduce the width of the Size column a little
+- Do NOT make them too small to read
+- Center-align both Photo and Size column headers
+- Center-align Photo thumbnails and Size values in each row
+
+2. Give more width to Material Name
+- Use the space recovered from Photo and Size to widen the Material Name column
+- Material Name must become clearly wider than now
+- The dropdown should also visually benefit from this wider anchor field
+- Reduce text truncation in Material Name as much as possible without changing page width
+
+3. Merge Qty Used and Unit into one header concept
+- Replace the current separate headers:
+  - Qty Used
+  - Unit
+- Use this header structure instead:
+  - Material Name
+  - Qty / Unit
+
+Implementation rule:
+- Keep TWO separate input/display cells in the row:
+  - Qty field
+  - Unit display
+- But the header should read as one grouped label:
+  - Qty / Unit
+
+4. Keep Qty as the main editable card field
+- Qty remains an editable input with the current card/input style
+- Keep the current bordered input/card appearance for Qty
+- Center-align the Qty value
+- Qty column must stay easy to edit
+
+5. Simplify Unit visual style
+- Move Unit visually closer to Qty
+- Remove the heavy card/border style from Unit
+- Unit should no longer look like a separate large boxed input
+- Unit should display more lightly, like compact inline text or a minimal pill/chip
+- Unit must still remain clearly readable
+- If inventory-linked, Unit remains locked/read-only
+
+6. Rebalance row layout
+Target visual priority:
+- Material Name = widest
+- Qty = medium editable field
+- Unit = compact lightweight display beside Qty
+- Photo / Size = slightly narrower than now
+
+7. Alignment cleanup
+- Keep row alignment clean and even
+- Do not create horizontal overflow
+- Do not create nested scrolling
+- Do not shift the Add Material button
+- Keep existing rows stable while editing/searching
+
+SUCCESS CRITERIA:
+- Photo and Size columns are slightly narrower
+- Photo and Size are center-aligned
+- Material Name column is wider and text is less truncated
+- Header reads "Qty / Unit"
+- Qty stays as a centered editable card/input
+- Unit loses the heavy bordered card look and sits visually closer to Qty
+- Materials table looks cleaner and more balanced without breaking the current dropdown behavior

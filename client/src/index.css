@@ -115,3 +115,13 @@ input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
 }
+
+@keyframes selectFlash {
+  0%   { background-color: #dcfce7; }
+  60%  { background-color: #dcfce7; }
+  100% { background-color: transparent; }
+}
+
+.mat-row-flash {
+  animation: selectFlash 0.8s ease forwards;
+}

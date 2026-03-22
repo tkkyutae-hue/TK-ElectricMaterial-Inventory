@@ -1,0 +1,100 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Target file: [MaterialsSection component path]
+==================================================
+
+IMPROVEMENT 1 — SIZE badge: fit-content width
+
+  Current problem: SIZE badge always fills the full column width,
+  making short values like "#10" or "100A" look padded/stretched.
+
+  Fix:
+    .size-badge {
+      width: fit-content        ← NOT 100%
+      max-width: 100%           ← still constrained to column
+      display: inline-flex
+      align-items: center
+      justify-content: center
+      background: #f0f0f0
+      border: 1px solid #e0e0e0
+      border-radius: 5px
+      padding: 3px 7px
+      font-size: 10px
+      font-weight: 600
+      color: #555
+      white-space: nowrap
+      overflow: hidden
+      text-overflow: ellipsis
+    }
+
+  Result:
+    "#10"       → narrow badge (fits ~32px)
+    "100A"      → medium badge (fits ~40px)
+    "112.5 kVA" → wide badge (fits ~72px)
+    All stay within the 82px column — none overflow.
+
+IMPROVEMENT 2 — QTY input: remove stepper + enforce min 0
+
+  Current problem:
+    - Browser shows up/down arrows (spinner) on number input
+    - Negative values can be entered freely
+
+  Fix:
+    input[type="number"].qty-input {
+      -moz-appearance: textfield
+    }
+    input[type="number"].qty-input::-webkit-outer-spin-button,
+    input[type="number"].qty-input::-webkit-inner-spin-button {
+      -webkit-appearance: none
+      margin: 0
+    }
+
+  Add to each QTY <input>:
+    type="number"
+    min="0"
+    step="1"
+
+  Add JS handler on input event:
+    if (value < 0) value = 0
+
+  Optional: if value is invalid (non-numeric or negative),
+  apply border-color: #fca5a5 as visual feedback.
+
+IMPROVEMENT 3 — Item selection: green flash feedback
+
+  Current problem:
+    When user selects an item from the dropdown, the row
+    fills in silently — no visual confirmation.
+
+  Fix: after item is selected and row is populated,
+  briefly flash the row background to signal success.
+
+  CSS keyframe:
+    @keyframes selectFlash {
+      0%   { background: #dcfce7 }
+      60%  { background: #dcfce7 }
+      100% { background: transparent }
+    }
+
+  Apply on selection:
+    1. Add class "row-selected" to the <tr>
+    2. class "row-selected" has:
+         animation: selectFlash 0.8s ease forwards
+    3. Remove "row-selected" class after 900ms
+       (setTimeout 900ms → classList.remove)
+
+  Important: trigger a reflow between remove and re-add
+  if re-selecting the same row:
+    row.classList.remove('row-selected')
+    void row.offsetWidth   ← forces reflow
+    row.classList.add('row-selected')
+
+  Do NOT keep the green background permanently.
+  Animation duration: 0.8s total, fade to transparent by end.
+
+CONSTRAINTS:
+  - Only apply these 3 improvements
+  - Do NOT change column widths, row heights, or other sections
+  - Do NOT change dropdown behavior or other input fields
+  - Must work in light and dark mode
+==================================================

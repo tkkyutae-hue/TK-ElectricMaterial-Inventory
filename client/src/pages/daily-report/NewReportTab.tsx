@@ -807,6 +807,15 @@ export function NewReportTab({
   const drawingInputRef    = useRef<HTMLInputElement>(null);
   const photoInputRef      = useRef<HTMLInputElement>(null);
   const [photoTaskId,      setPhotoTaskId]      = useState<number | null>(null);
+  const matRowRefs         = useRef<(HTMLTableRowElement | null)[]>([]);
+  function flashRow(i: number) {
+    const el = matRowRefs.current[i];
+    if (!el) return;
+    el.classList.remove("mat-row-flash");
+    void el.offsetWidth;
+    el.classList.add("mat-row-flash");
+    setTimeout(() => { el.classList.remove("mat-row-flash"); }, 900);
+  }
 
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
@@ -2201,7 +2210,8 @@ export function NewReportTab({
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
               const imgUrl: string = linkedItem?.imageUrl ?? "";
               return (
-                <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
+                <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
+                  className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
                   {/* PHOTO column */}
                   <td className="py-1.5 px-0.5 text-center">
                     {imgUrl ? (
@@ -2221,12 +2231,13 @@ export function NewReportTab({
                   <td className="py-1.5 px-0.5 text-center">
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: "fit-content", maxWidth: "100%",
                       fontSize: 10, fontWeight: size ? 600 : 400,
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                      borderRadius: 4, padding: "2px 5px",
-                      maxWidth: 44, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      borderRadius: 5, padding: "3px 7px",
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — search input + Inv tag */}
@@ -2239,6 +2250,7 @@ export function NewReportTab({
                             if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
                               const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
                               if (matched) patch.scopeItemId = matched.id;
+                              flashRow(i);
                             }
                             setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                           }} />
@@ -2257,7 +2269,8 @@ export function NewReportTab({
                   <td className="py-1.5 px-1.5">
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                       <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
                         className="h-8 text-xs text-center tabular-nums"
                         style={{ width: 56, flexShrink: 0 }} />
                       {row.inventoryItemId ? (

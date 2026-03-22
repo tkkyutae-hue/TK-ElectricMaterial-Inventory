@@ -1,0 +1,273 @@
+==================================================
+SCOPE: Equipment page — Admin Mode ONLY.
+Target file: [Equipment Admin page component / route]
+Do NOT change other pages, other sections, or global styles.
+==================================================
+
+PAGE STRUCTURE
+──────────────
+Layout: fixed left sidebar (200px) + main content area
+
+Sidebar sections (top to bottom):
+  MAIN:        Dashboard
+  MATERIALS:   Inventory, Transactions, Reorder, Suppliers
+  OPERATIONS:  Projects, Manpower, Equipment  ← active page
+  REPORTING:   Reports
+  ADMIN TOOLS: User Approvals, Export Backup
+  Footer:      User avatar + name + email, Back to Home, Sign Out
+
+Topbar (sticky, 50px):
+  Left:   "ADMIN MODE" badge (orange, #f97316)
+  Center: current date
+  Right:  Mode Select button, Language toggle, Notification bell
+
+Page header (no action buttons here):
+  Title:    "Equipment"  (24px, bold)
+  Subtitle: "Master registry — Status & assignments updated from Daily Reports"
+            (13px, #888)
+
+
+SUMMARY CARDS (5 cards, equal width grid)
+──────────────────────────────────────────
+Card 1: Total Equipment    — value: integer    — sub: "Registered in system"
+Card 2: Operational        — value: green      — sub: "Active per latest reports"
+Card 3: Standby            — value: blue       — sub: "Not currently assigned"
+Card 4: Partial Issue      — value: amber      — sub: "Flagged in daily reports"
+                             border: #fde68a
+Card 5: Broken Down        — value: red        — sub: "Out of service, latest report"
+                             border: #fecaca
+
+Each card:
+  background: #fff, border: 1px solid #eaecef, border-radius: 12px
+  padding: 16px, hover: box-shadow 0 4px 16px rgba(0,0,0,0.08)
+  icon (32×32px rounded), label (10px uppercase), value (24px bold), sub (11px #9ca3af)
+
+
+FILTER BAR (above table, full width card)
+──────────────────────────────────────────
+  Search input:  placeholder "Search by equipment no., name, size, or brand..."
+  Dropdown 1:    "All Status" / Operational / Standby / Partial Issue / Broken Down
+  Dropdown 2:    "All Types" / Scissor Lift / Boom Lift / Excavator / Forklift / Trench
+  Dropdown 3:    "All Projects" / [project names] / Unassigned
+  Active filter tags: removable chips (green border, #f0f7f0 bg)
+  Result count:  "Showing X of Y" — right aligned
+
+
+EQUIPMENT REGISTRY TABLE CARD
+───────────────────────────────
+
+Card header:
+  Left:  "Equipment Registry" title + unit count pill (#f3f4f6 bg)
+  Right: Export button (secondary style) + Add Equipment button (green #1a472a)
+  No action buttons anywhere else on the page — these are the only ones.
+
+Column group labels (row above thead, tab-shaped):
+  Master Data tab (gray #f8f9fa, border #e5e7eb):
+    gray dot + "MASTER DATA — MANAGED BY ADMIN"
+    width: exactly 534px (sum of master columns below)
+  Live tab (blue #eff6ff, border #bfdbfe):
+    pulsing blue dot (CSS animation) + "LIVE — UPDATED FROM DAILY REPORTS"
+    width: flex:1 (remaining space)
+
+COLUMN ORDER AND WIDTHS (table-layout: fixed, NO checkbox column):
+  EQ NO.           82px   master-th   ← first column, always
+  EQUIPMENT NAME  164px   master-th
+  SIZE / SPEC      90px   master-th   center-aligned
+  BRAND            90px   master-th
+  LOCATION        108px   master-th
+  ASSIGNED PROJECT 172px  live-th
+  STATUS           130px  live-th
+  LAST UPDATED     110px  live-th     sortable
+  [actions]         60px  master-th   (edit + delete, hover-reveal)
+
+  Master total: 82+164+90+90+108 = 534px  ← must match group label width exactly
+  thead master-th: background #f8f9fa, color #6b7280, border-bottom 2px solid #e5e7eb
+  thead live-th:   background #f0f6ff, color #3b82f6, border-bottom 2px solid #bfdbfe
+
+
+CELL CONTENT SPECS
+───────────────────
+
+EQ NO.:
+  <span class="eq-no">
+  font: 'SF Mono' monospace, 11px, bold, #374151
+  background: #f3f4f6, border: 1px solid #e5e7eb, border-radius: 5px
+  padding: 3px 7px
+
+EQUIPMENT NAME:
+  Line 1: name — 13px, font-weight 600, #111
+  Line 2: serial number — 10px, #c0c4cc, monospace
+           prefixed with "S/N" label (9px, #d1d5db, uppercase, letter-spacing 0.06em)
+  Example:
+    Scissor Lift
+    S/N  SL-JLG-40-0471
+
+SIZE / SPEC:
+  <span class="size-badge">
+  background: #f0f0f0, border: 1px solid #e0e0e0, border-radius: 5px
+  padding: 3px 8px, font-size: 11px, font-weight: 600, color: #555
+  min-width: 44px, width: fit-content, text-align: center
+
+BRAND:
+  plain text, 12px, #555, font-weight 500
+
+LOCATION:
+  pin icon (svg, #9ca3af) + location name
+  12px, #555, font-weight 500
+  This is admin-managed master data, not from Daily Reports.
+
+ASSIGNED PROJECT (live):
+  If assigned:
+    <a class="proj-link">
+      flex-direction: column, align-items: flex-start, gap: 2px
+      background: #f5f3ff, border: 1.5px solid #c4b5fd, border-radius: 7px
+      padding: 5px 10px, cursor: pointer
+      hover: background #ede9fe, border-color #8b5cf6
+
+      Line 1: house icon + project name
+              font-size: 12px, font-weight: 600, color: #4c1d95
+      Line 2: PO Number
+              font-size: 10px, font-weight: 500, color: rgba(124,58,237,0.7)
+              font-family: 'SF Mono' monospace, letter-spacing: 0.03em
+    Example:
+      🏠 Air Compressor Demo.
+         TKM10KB3001_R1
+
+  If unassigned:
+    <span class="proj-unassigned">
+      minus-circle icon + "Unassigned"
+      background: #f9fafb, border: 1.5px dashed #d1d5db, border-radius: 7px
+      padding: 5px 10px, font-size: 11px, font-weight: 600, color: #9ca3af
+      hover: border-color #6366f1, color #6366f1, background #f5f3ff
+
+STATUS (live):
+  <span class="st {variant}">
+    dot (6px circle) + label text
+    border-radius: 20px, padding: 4px 10px, font-size: 11px, font-weight: 600
+
+  Variants:
+    Operational:   bg #f0fdf4, border #6ee7b7,  color #065f46, dot #10b981
+    Standby:       bg #f0f9ff, border #7dd3fc,  color #0369a1, dot #0ea5e9
+    Partial Issue: bg #fffbeb, border #fcd34d,  color #92400e, dot #f59e0b
+    Broken Down:   bg #fff1f2, border #fca5a5,  color #9f1239, dot #f43f5e
+
+  Row emphasis based on status (live columns only):
+    Partial Issue rows:  td.l background #fffef5
+    Broken Down rows:    td.l background #fff5f5
+                         first live td: border-left 3px solid #fca5a5
+    Operational/Standby: no row tint
+
+LAST UPDATED (live):
+  Two lines, lighter visual weight than Status/Project:
+    Line 1: relative time — "2h ago" / "1d ago" etc.
+            font-size: 12px, color: #6b7280
+    Line 2: source badge
+            inline-flex, align-items center, gap 3px
+            font-size: 10px, color: #93c5fd
+            file icon + "via Daily Report"
+
+ROW ACTIONS (hover-reveal):
+  opacity: 0 default → opacity: 1 on tr:hover
+  Edit button:   26×26px, border-radius 6px, #f3f4f6 bg, #6b7280 color
+  Delete button: same, hover → bg #fee2e2, border #fecaca, color #ef4444
+
+
+INLINE ADD ROW (on "Add Equipment" click)
+──────────────────────────────────────────
+Appends a new <tr class="row-new"> to tbody.
+Row background: #f8fdf9 (master cells), #f0fbf5 (live cells)
+Border-bottom: 1px solid #d1fae5
+Scroll into view smoothly.
+
+Cell inputs in order:
+
+  EQ NO. cell:
+    <input> — free text, typeable
+    font: 'SF Mono' monospace, 11px bold, uppercase
+    placeholder: auto-generated fallback (e.g. "EQ-007")
+    User types rental company's actual equipment number here.
+    On save: use typed value, fallback to placeholder if empty.
+
+  EQUIPMENT NAME cell:
+    Row 1: <select> for equipment type
+      Options: Scissor Lift, Boom Lift, One Man Lift,
+               Reach Forklift, Forklift, Trench, Excavator
+      onChange: auto-populate Size and Brand dropdowns
+    Row 2: <input> for S/N — smaller font (10px), monospace placeholder
+
+  SIZE / SPEC cell:
+    <select> — options populated based on equipment type selection:
+      Scissor Lift:   19 ft, 26 ft, 32 ft, 40 ft
+      Boom Lift:      45 ft, 60 ft, 80 ft
+      One Man Lift:   12 ft, 20 ft, 26 ft
+      Reach Forklift: 3,000 lbs, 5,000 lbs, 8,000 lbs
+      Forklift:       3,000 lbs, 5,000 lbs, 8,000 lbs, 15,000 lbs
+      Trench:         4 ft, 6 ft, 8 ft, 10 ft
+      Excavator:      2 ton, 5 ton, 8 ton, 20 ton
+    Before type selected: shows "— Size" placeholder (muted)
+
+  BRAND cell:
+    <select> — options populated based on equipment type selection:
+      Scissor Lift / Boom Lift / One Man Lift: JLG, Genie, Skyjack, (Hy-Brid/Manitowoc)
+      Reach Forklift / Forklift:               Toyota, Caterpillar, Hyster, Crown/Komatsu
+      Trench:                                  Vermeer, Ditch Witch, Case
+      Excavator:                               Caterpillar, Komatsu, Volvo, Hyundai
+    Before type selected: shows "— Brand" placeholder (muted)
+
+  LOCATION cell:
+    <input> free text, placeholder "Location"
+
+  ASSIGNED PROJECT cell (live):
+    Static "—" text, muted (#c0c4cc) — not editable in add row
+
+  STATUS cell (live):
+    Static "—" text, muted — not editable in add row
+
+  LAST UPDATED cell (live):
+    Static "Not yet reported" text, muted — not editable in add row
+
+  Actions cell:
+    Save button: green #1a472a, white text, 11px bold
+    Cancel button: 26×26px gray, hover → red
+
+On Save:
+  1. Read EQ NO. input (or use placeholder as fallback), uppercase
+  2. Build static row with all entered values
+  3. Unassigned project chip + "Not reported" status + "Awaiting report" updated
+  4. Flash row green (#dcfce7) for 800ms then fade to normal
+  5. Row stays in table as a normal registry row
+
+On Cancel:
+  Remove the new row from DOM.
+
+
+DATA FIELD CLASSIFICATION SUMMARY
+───────────────────────────────────
+Master Data (admin-managed, white bg td.m):
+  EQ NO. | EQUIPMENT NAME | SIZE / SPEC | BRAND | LOCATION
+
+Live Data (from Daily Reports, faint blue bg td.l, #fafbff):
+  ASSIGNED PROJECT | STATUS | LAST UPDATED
+
+No checkbox column anywhere in the table.
+
+
+PAGINATION
+───────────
+Bottom of table card:
+  Left:  "Showing 1–X of Y equipment"  (12px, #888)
+  Right: ‹ 1 2 3 4 › page buttons
+         active page: #1a472a bg, white text
+         others: white bg, border #e5e7eb
+
+
+CONSTRAINTS
+───────────
+  - No modal or popup for adding equipment — inline row only
+  - No checkbox selection column
+  - Export and Add Equipment buttons ONLY in the table card header — not on page level
+  - Status and Assigned Project values come from Daily Reports — read-only in admin view
+  - Location is admin-managed master data, NOT a live field
+  - S/N under equipment name is secondary — do NOT confuse with EQ NO. (primary)
+  - Do NOT change other pages or global styles
+==================================================

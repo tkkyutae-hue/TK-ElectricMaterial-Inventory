@@ -1,0 +1,159 @@
+==================================================
+SCOPE: Materials section ONLY — Daily Report mode.
+Target file: [MaterialsSection component path]
+==================================================
+
+CHANGE 1 — Column structure (table-layout: fixed)
+
+  5 columns total — remove separate QTY and UNIT columns,
+  merge into one:
+
+  <colgroup>
+    <col style="width: 44px">    ← PHOTO
+    <col style="width: 96px">    ← SIZE
+    <col>                        ← MATERIAL NAME (auto)
+    <col style="width: 110px">   ← QTY / UNIT (merged)
+    <col style="width: 32px">    ← DELETE
+  </colgroup>
+
+  Headers:
+    PHOTO     | SIZE | MATERIAL NAME | QTY / UNIT | [empty]
+
+CHANGE 2 — SIZE column: center align
+
+  th for SIZE: text-align center
+  td for SIZE: text-align center, vertical-align middle
+
+  .size-badge:
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: #f0f0f0
+    border: 1px solid #e0e0e0
+    border-radius: 5px
+    padding: 3px 8px
+    font-size: 11px
+    font-weight: 600
+    color: #555
+    white-space: nowrap
+    max-width: 100%
+    overflow: hidden
+    text-overflow: ellipsis
+
+  .size-badge.none:
+    color: #ccc, background: #fafafa
+    border-color: #eee, font-weight: 400
+
+CHANGE 3 — QTY / UNIT: merged single cell
+
+  Replace the two separate <td> cells (QTY USED + UNIT)
+  with one <td> containing both inline:
+
+  <td>
+    <div class="qty-unit-cell">
+      <input class="qty-input" value="{qty}" />
+      <span class="unit-text">{unit}</span>
+    </div>
+  </td>
+
+  .qty-unit-cell:
+    display: flex
+    align-items: center
+    justify-content: center
+    gap: 4px
+
+  .qty-input:
+    border: 1px solid #e0e0e0
+    border-radius: 6px
+    padding: 5px 0
+    font-size: 13px
+    text-align: center
+    width: 56px
+    min-width: 0
+    flex-shrink: 0
+    background: #fff
+    outline: none
+    focus: border-color #f97316,
+           box-shadow 0 0 0 2px rgba(249,115,22,0.1)
+
+  .unit-text:
+    font-size: 12px
+    font-weight: 600
+    color: #888
+    white-space: nowrap
+    flex-shrink: 0
+    min-width: 24px
+    background: transparent
+    border: none    ← NO border, NO background box
+
+  Empty row (no item selected):
+    qty-input: color #ccc, border-color #eee
+    unit-text: color #ddd, content "—"
+
+CHANGE 4 — PHOTO column: center align
+
+  td.photo-td:
+    text-align: center
+    vertical-align: middle
+
+  .thumb, .thumb-empty:
+    margin: 0 auto
+    display: block (thumb) / flex (thumb-empty)
+
+CHANGE 5 — Material Name column
+
+  .name-cell:
+    display: flex, align-items: center, gap: 6px
+    overflow: hidden, min-width: 0
+
+  .item-name:
+    font-size: 13px, color: #1a1a1a
+    white-space: nowrap, overflow: hidden
+    text-overflow: ellipsis
+    flex-shrink: 1, min-width: 0
+
+CHANGE 6 — Delete button: always visible
+
+  .del-btn:
+    background: #fee2e2
+    border: 1px solid #fecaca
+    color: #f87171
+    opacity: 1, visibility: visible always
+    width: 24px, height: 24px, border-radius: 50%
+    margin: 0 auto
+
+  hover: background #fca5a5, color #dc2626
+
+CHANGE 7 — Search dropdown: overflow fix
+
+  td containing search input:
+    overflow: visible !important
+    position: relative
+
+  .search-wrap:
+    position: relative
+    overflow: visible !important
+
+  .dd-panel:
+    position: absolute
+    z-index: 9999
+    top: calc(100% + 6px)
+    left: 0
+    min-width: 460px
+    background: #fff
+    border: 1px solid #e0e0e0
+    border-radius: 10px
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12)
+    max-height: 280px
+    overflow-y: auto
+
+  Show on input focus. Show all items when input is empty.
+  Filter on input change.
+
+  Each dd-item: thumbnail + size badge + name + category + unit
+
+CONSTRAINTS:
+  - Remove old separate QTY USED and UNIT <col>, <th>, <td>
+  - Do NOT change other sections or global styles
+  - Must work in light and dark mode
+==================================================

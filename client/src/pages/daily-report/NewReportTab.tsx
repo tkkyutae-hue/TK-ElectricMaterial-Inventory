@@ -2209,7 +2209,7 @@ export function NewReportTab({
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               {(["Photo","Size","Material Name"] as const).map((lbl, ci) => (
-                <th key={lbl} className={`py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci < 2 ? "text-center" : "text-left"}`}>{lbl}</th>
+                <th key={lbl} className={`py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? "px-2 text-center" : ci === 1 ? "pl-2 pr-1 text-right" : "px-2 text-left"}`}>{lbl}</th>
               ))}
               <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">Qty / Unit</th>
               {scopeItems.length > 0 && <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left">Scope Link</th>}
@@ -2243,7 +2243,7 @@ export function NewReportTab({
                     )}
                   </td>
                   {/* SIZE column */}
-                  <td className="py-1.5 px-1 text-center">
+                  <td className="py-1.5 pl-1 pr-1 text-right">
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       width: "fit-content", minWidth: 40, maxWidth: "100%",

@@ -604,21 +604,25 @@ function PersonCardCombobox({
 // ─── Size extractor (display-only, no data model changes) ────────────────────
 function extractSize(name: string): { size: string; rest: string } {
   if (!name) return { size: "", rest: "" };
+  function cleanRest(s: string) { return s.replace(/^[\s\/\-]+/, "").trim(); }
   // #N / #N/N / #NXXX  (e.g. #1, #10, #4/0, #1AWG)
   let m = name.match(/^(#[\d]+(?:\/[\d]+)?(?:[A-Za-z]+)?)\s+(.*)/);
-  if (m) return { size: m[1], rest: m[2] };
+  if (m) return { size: m[1], rest: cleanRest(m[2]) };
   // fraction + optional quote  (e.g. 3/4", 1/2", 1/4")
   m = name.match(/^(\d+\/\d+"?)\s+(.*)/);
-  if (m) return { size: m[1], rest: m[2] };
+  if (m) return { size: m[1], rest: cleanRest(m[2]) };
   // integer or decimal + "  (e.g. 2", 4", 1.5")
   m = name.match(/^(\d+(?:\.\d+)?")\s+(.*)/);
-  if (m) return { size: m[1], rest: m[2] };
-  // kVA  (e.g. "112.5 kVA", "100kVA")
-  m = name.match(/^(\d+(?:\.\d+)?\s*kVA)\s+(.*)/i);
-  if (m) return { size: m[1].replace(/\s+/, ""), rest: m[2] };
+  if (m) return { size: m[1], rest: cleanRest(m[2]) };
+  // kVA  (e.g. "112.5 kVA", "100kVA") → normalize to "NNN.N kVA" with space
+  m = name.match(/^([\d.]+\s*kVA)\s+(.*)/i);
+  if (m) {
+    const size = m[1].trim().replace(/(\d)(kVA)/i, "$1 kVA");
+    return { size, rest: cleanRest(m[2]) };
+  }
   // Amps / milliamps  (e.g. "100A", "200A", "50mA")
   m = name.match(/^(\d+(?:\.\d+)?m?A)\s+(.*)/i);
-  if (m) return { size: m[1], rest: m[2] };
+  if (m) return { size: m[1], rest: cleanRest(m[2]) };
   return { size: "", rest: name };
 }
 
@@ -2193,17 +2197,28 @@ export function NewReportTab({
       <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
-          <TH cols={[
-            { label: "Photo",      cls: "w-[40px] text-center" },
-            { label: "Size",       cls: "w-[48px] text-center" },
-            { label: "Material Name" },
-            { label: "Qty / Unit", cls: "w-[114px] text-center" },
-            ...(scopeItems.length > 0 ? [{ label: "Scope Link", cls: "w-[130px]" }] : []),
-            { label: "",           cls: "w-[36px]" },
-          ]} />
+          <colgroup>
+            <col style={{ width: 36 }} />
+            <col style={{ width: 80 }} />
+            <col />
+            <col style={{ width: 64 }} />
+            <col style={{ width: 44 }} />
+            {scopeItems.length > 0 && <col style={{ width: 130 }} />}
+            <col style={{ width: 32 }} />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              {(["Photo","Size","Material Name"] as const).map((lbl, ci) => (
+                <th key={lbl} className={`py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci < 2 ? "text-center" : "text-left"}`}>{lbl}</th>
+              ))}
+              <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">Qty / Unit</th>
+              {scopeItems.length > 0 && <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left">Scope Link</th>}
+              <th className="py-2 px-1" />
+            </tr>
+          </thead>
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 6 : 5} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
             )}
             {materials.map((row, i) => {
               const { size } = extractSize(row.description);
@@ -2217,22 +2232,22 @@ export function NewReportTab({
                     {imgUrl ? (
                       <>
                         <img src={imgUrl} alt=""
-                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
+                          style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
                           onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.15)"; }}
                           onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
                           onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
-                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={32} /></div>
+                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={28} /></div>
                       </>
                     ) : (
-                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={32} /></div>
+                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={28} /></div>
                     )}
                   </td>
                   {/* SIZE column */}
-                  <td className="py-1.5 px-0.5 text-center">
+                  <td className="py-1.5 px-1 text-center">
                     <span style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: "fit-content", maxWidth: "100%",
-                      fontSize: 10, fontWeight: size ? 600 : 400,
+                      width: "fit-content", minWidth: 40, maxWidth: "100%",
+                      fontSize: 10, fontWeight: 600,
                       color: size ? "#555" : "#ccc",
                       background: size ? "#f0f0f0" : "#fafafa",
                       border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
@@ -2265,33 +2280,31 @@ export function NewReportTab({
                       )}
                     </div>
                   </td>
-                  {/* Qty + Unit — merged cell */}
-                  <td className="py-1.5 px-1.5">
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
-                        className="h-8 text-xs text-center tabular-nums"
-                        style={{ width: 56, flexShrink: 0 }} />
-                      {row.inventoryItemId ? (
-                        <span data-testid={`input-mat-unit-${i}`} style={{
-                          fontSize: 10, fontWeight: 600, fontFamily: "monospace",
-                          color: "#64748b", background: "#f1f5f9",
-                          borderRadius: 4, padding: "2px 5px",
-                          whiteSpace: "nowrap", letterSpacing: "0.01em",
-                          flexShrink: 0,
-                        }}>{row.unit || "EA"}</span>
-                      ) : (
-                        <input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                          onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                          placeholder="EA"
-                          style={{
-                            width: 38, fontSize: 11, textAlign: "center", fontFamily: "monospace",
-                            border: "1px solid #e2e8f0", borderRadius: 5, padding: "3px 4px",
-                            color: "#475569", background: "#fff", outline: "none", flexShrink: 0,
-                          }} />
-                      )}
-                    </div>
+                  {/* QTY cell */}
+                  <td className="py-1.5 px-1">
+                    <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                      onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                      className="h-8 text-xs text-center tabular-nums w-full" />
+                  </td>
+                  {/* UNIT cell */}
+                  <td className="py-1.5 px-0.5 text-center">
+                    {row.inventoryItemId ? (
+                      <span data-testid={`input-mat-unit-${i}`} style={{
+                        fontSize: 13, fontWeight: 600, color: "#666",
+                        background: "transparent", whiteSpace: "nowrap",
+                        display: "inline-block",
+                      }}>{row.unit || "EA"}</span>
+                    ) : (
+                      <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                        placeholder="EA"
+                        style={{
+                          width: "100%", fontSize: 13, fontWeight: 600, textAlign: "center",
+                          border: "none", background: "transparent",
+                          color: "#666", outline: "none",
+                        }} />
+                    )}
                   </td>
                   {/* Scope Link */}
                   {scopeItems.length > 0 && (

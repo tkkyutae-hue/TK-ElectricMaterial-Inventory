@@ -251,26 +251,17 @@ function AddEquipmentRow({
           )}
         </div>
       </td>
-      {/* NAME (Type dropdown + name text) */}
+      {/* NAME — single creatable dropdown */}
       <td className="px-3 py-2" style={{ minWidth: 160 }}>
-        <div className="flex flex-col gap-1">
-          <CreatableDropdown
-            data-testid="select-equip-type"
-            options={typeOptions}
-            value={equipType}
-            onChange={(v) => { setEquipType(v); if (v) setName(v); }}
-            onOptionsChange={setTypeOptions}
-            placeholder="Type…"
-            className="w-full"
-          />
-          <Input
-            data-testid="input-equip-name"
-            placeholder="Equipment name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={`${inputCls} w-full`}
-          />
-        </div>
+        <CreatableDropdown
+          data-testid="select-equip-name"
+          options={typeOptions}
+          value={equipType}
+          onChange={(v) => { setEquipType(v); setName(v); }}
+          onOptionsChange={setTypeOptions}
+          placeholder="Select equipment..."
+          className="w-full"
+        />
       </td>
       {/* SIZE */}
       <td className="px-3 py-2" style={{ minWidth: 96 }}>

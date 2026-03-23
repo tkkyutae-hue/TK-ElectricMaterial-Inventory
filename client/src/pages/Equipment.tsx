@@ -138,8 +138,7 @@ function autoGenEqNo(type: string, size: string, brand: string): string {
 
 const PAGE_SIZE = 15;
 
-// ─── Common location datalist id ─────────────────────────────────────────────
-const LOC_LIST_ID = "equip-location-list";
+// ─── Default location options seed ───────────────────────────────────────────
 const COMMON_LOCATIONS = ["KDC / KISS", "Site A", "Site B", "Site C", "Warehouse", "Yard", "Storage", "Office"];
 
 // ─── Draft type for global edit mode ─────────────────────────────────────────
@@ -190,10 +189,13 @@ function useEquipRowState(initType = "", initSize = "", initBrand = "") {
 // ─── Inline Add Row ────────────────────────────────────────────────────────────
 function AddEquipmentRow({
   onSaved, onCancel, autoFocus = false,
+  locationOptions, setLocationOptions,
 }: {
   onSaved: (id: number) => void;
   onCancel: () => void;
   autoFocus?: boolean;
+  locationOptions: string[];
+  setLocationOptions: (opts: string[]) => void;
 }) {
   const { toast } = useToast();
   const [ownership, setOwnership] = useState<string>("Rental");
@@ -305,13 +307,14 @@ function AddEquipmentRow({
       </td>
       {/* LOCATION */}
       <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #e2e8f0" }}>
-        <Input
-          data-testid="input-equip-location"
-          placeholder="Location"
+        <CreatableDropdown
+          data-testid="select-equip-location"
+          options={locationOptions}
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          list={LOC_LIST_ID}
-          className={`${inputCls} w-full`}
+          onChange={setLocation}
+          onOptionsChange={setLocationOptions}
+          placeholder="Location…"
+          className="w-full"
         />
       </td>
       {/* PROJECT — read-only */}
@@ -351,6 +354,7 @@ function AddEquipmentRow({
 function GlobalEditRow({
   item, draft, onDraftChange,
   onDeleteClick, isConfirmingDelete, isDeleting, onConfirmDelete, onCancelDelete,
+  locationOptions, setLocationOptions,
 }: {
   item: EquipmentWithProject;
   draft: EquipDraft;
@@ -360,6 +364,8 @@ function GlobalEditRow({
   isDeleting: boolean;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
+  locationOptions: string[];
+  setLocationOptions: (opts: string[]) => void;
 }) {
   const [ownership, setOwnershipRaw] = useState(draft.ownership);
   const [equipNo, setEquipNoRaw]     = useState(draft.equipNo);
@@ -476,13 +482,14 @@ function GlobalEditRow({
       </td>
       {/* LOCATION */}
       <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #fde68a" }}>
-        <Input
-          data-testid={`input-gedit-location-${item.id}`}
-          placeholder="Location"
+        <CreatableDropdown
+          data-testid={`select-gedit-location-${item.id}`}
+          options={locationOptions}
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          list={LOC_LIST_ID}
-          className={`${inputCls} w-full`}
+          onChange={(v) => setLocation(v)}
+          onOptionsChange={setLocationOptions}
+          placeholder="Location…"
+          className="w-full"
         />
       </td>
       {/* PROJECT — read-only */}
@@ -570,10 +577,24 @@ export default function Equipment() {
   const [filterOwnership, setFilterOwnership] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
   const [page, setPage]                   = useState(1);
+  const [locationOptions, setLocationOptions] = useState<string[]>(COMMON_LOCATIONS);
 
   const { data: equipList = [], isLoading } = useQuery<EquipmentWithProject[]>({
     queryKey: ["/api/equipment"],
   });
+
+  // Seed locationOptions with any DB locations not already in the list
+  useEffect(() => {
+    if (equipList.length === 0) return;
+    const dbLocs = equipList
+      .map((e) => e.location)
+      .filter((l): l is string => Boolean(l));
+    setLocationOptions((prev) => {
+      const merged = [...prev];
+      dbLocs.forEach((l) => { if (!merged.includes(l)) merged.push(l); });
+      return merged;
+    });
+  }, [equipList]);
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -699,10 +720,6 @@ export default function Equipment() {
 
   return (
     <div className="space-y-6">
-      <datalist id={LOC_LIST_ID}>
-        {COMMON_LOCATIONS.map((l) => <option key={l} value={l} />)}
-      </datalist>
-
       {/* ── Page header ── */}
       <div>
         <h1 className="text-3xl font-display font-bold text-slate-900">Equipment Registry</h1>
@@ -938,6 +955,8 @@ export default function Equipment() {
                         autoFocus={idx === draftKeys.length - 1}
                         onSaved={(id) => { removeDraft(key); flashRow(id); }}
                         onCancel={() => removeDraft(key)}
+                        locationOptions={locationOptions}
+                        setLocationOptions={setLocationOptions}
                       />
                     ))}
 
@@ -991,6 +1010,8 @@ export default function Equipment() {
                             isDeleting={isDeleting}
                             onConfirmDelete={() => deleteMutation.mutate(equip.id)}
                             onCancelDelete={() => setConfirmDeleteId(null)}
+                            locationOptions={locationOptions}
+                            setLocationOptions={setLocationOptions}
                           />
                         );
                       }

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Check, Plus, X } from "lucide-react";
 
 interface CreatableDropdownProps {
@@ -25,25 +26,52 @@ export function CreatableDropdown({
   const [open, setOpen] = useState(false);
   const [addText, setAddText] = useState("");
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number }>({
+    top: 0, left: 0, width: 180,
+  });
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const addInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPanelStyle({
+      top: r.bottom + 4,
+      left: r.left,
+      width: Math.max(r.width, 180),
+    });
+  }, []);
+
   useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    setTimeout(() => addInputRef.current?.focus(), 50);
+
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        !document.getElementById("creatable-portal")?.contains(target)
+      ) {
         setOpen(false);
       }
     }
-    if (open) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }
-  }, [open]);
 
-  useEffect(() => {
-    if (open) setTimeout(() => addInputRef.current?.focus(), 50);
-  }, [open]);
+    function handleScroll() { updatePosition(); }
+    function handleResize() { updatePosition(); }
+
+    document.addEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [open, updatePosition]);
 
   function handleAdd() {
     const trimmed = addText.trim();
@@ -78,14 +106,133 @@ export function CreatableDropdown({
   const displayValue = value || placeholder;
   const hasValue = Boolean(value);
 
+  const panel = open ? createPortal(
+    <div
+      id="creatable-portal"
+      style={{
+        position: "fixed",
+        top: panelStyle.top,
+        left: panelStyle.left,
+        minWidth: panelStyle.width,
+        width: "max-content",
+        maxWidth: 260,
+        zIndex: 9999,
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: 9,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+      }}
+      role="listbox"
+    >
+      {/* Add row at top */}
+      <div className="flex items-center gap-1.5 px-2 pt-2 pb-1.5 border-b border-slate-100">
+        <input
+          ref={addInputRef}
+          type="text"
+          value={addText}
+          onChange={(e) => setAddText(e.target.value)}
+          onKeyDown={handleAddKeyDown}
+          placeholder="Type to add new…"
+          className="flex-1 text-xs h-6 px-2 border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 bg-slate-50"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!addText.trim()}
+          title="Add option"
+          style={{
+            width: 24, height: 24, borderRadius: 5,
+            background: addText.trim() ? "#1a472a" : "#e2e8f0",
+            border: "none", cursor: addText.trim() ? "pointer" : "default",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "background 0.15s",
+            flexShrink: 0,
+          }}
+        >
+          <Plus style={{ width: 13, height: 13, color: addText.trim() ? "#fff" : "#94a3b8", strokeWidth: 2.5 }} />
+        </button>
+      </div>
+
+      {/* Options list */}
+      <div ref={listRef} style={{ maxHeight: 200, overflowY: "auto" }}>
+        {options.length === 0 ? (
+          <p className="px-3 py-3 text-xs text-slate-400 italic text-center">
+            No options — type above to add
+          </p>
+        ) : (
+          options.map((opt, idx) => {
+            const selected = opt === value;
+            const hovered = hoverIdx === idx;
+            return (
+              <div
+                key={opt}
+                role="option"
+                aria-selected={selected}
+                onMouseEnter={() => setHoverIdx(idx)}
+                onMouseLeave={() => setHoverIdx(null)}
+                onClick={() => handleSelect(opt)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  background: selected ? "#f0fdf4" : hovered ? "#f8fafc" : "transparent",
+                  userSelect: "none",
+                }}
+              >
+                <span style={{ width: 14, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                  {selected && (
+                    <Check style={{ width: 12, height: 12, color: "#16a34a", strokeWidth: 2.5 }} />
+                  )}
+                </span>
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    color: selected ? "#15803d" : "#374151",
+                    fontWeight: selected ? 600 : 400,
+                  }}
+                >
+                  {opt}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(opt, e)}
+                  title="Remove option"
+                  style={{
+                    width: 18, height: 18, borderRadius: 4,
+                    background: hovered ? "#fee2e2" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: hovered ? 1 : 0,
+                    transition: "opacity 0.1s, background 0.1s",
+                    flexShrink: 0,
+                  }}
+                >
+                  <X style={{ width: 10, height: 10, color: "#f87171", strokeWidth: 2.5 }} />
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div
       ref={containerRef}
       className={`relative inline-block ${className}`}
       data-testid={testId}
     >
-      {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
@@ -108,125 +255,7 @@ export function CreatableDropdown({
         </svg>
       </button>
 
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            minWidth: "180px",
-            width: "max-content",
-            maxWidth: "260px",
-            zIndex: 9999,
-            background: "#fff",
-            border: "1px solid #e2e8f0",
-            borderRadius: 9,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)",
-            overflow: "hidden",
-          }}
-          role="listbox"
-        >
-          {/* Add row at top */}
-          <div className="flex items-center gap-1.5 px-2 pt-2 pb-1.5 border-b border-slate-100">
-            <input
-              ref={addInputRef}
-              type="text"
-              value={addText}
-              onChange={(e) => setAddText(e.target.value)}
-              onKeyDown={handleAddKeyDown}
-              placeholder="Type to add new…"
-              className="flex-1 text-xs h-6 px-2 border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 bg-slate-50"
-            />
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={!addText.trim()}
-              title="Add option"
-              style={{
-                width: 24, height: 24, borderRadius: 5,
-                background: addText.trim() ? "#1a472a" : "#e2e8f0",
-                border: "none", cursor: addText.trim() ? "pointer" : "default",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "background 0.15s",
-                flexShrink: 0,
-              }}
-            >
-              <Plus style={{ width: 13, height: 13, color: addText.trim() ? "#fff" : "#94a3b8", strokeWidth: 2.5 }} />
-            </button>
-          </div>
-
-          {/* Options list */}
-          <div ref={listRef} style={{ maxHeight: 200, overflowY: "auto" }}>
-            {options.length === 0 ? (
-              <p className="px-3 py-3 text-xs text-slate-400 italic text-center">
-                No options — type above to add
-              </p>
-            ) : (
-              options.map((opt, idx) => {
-                const selected = opt === value;
-                const hovered = hoverIdx === idx;
-                return (
-                  <div
-                    key={opt}
-                    role="option"
-                    aria-selected={selected}
-                    onMouseEnter={() => setHoverIdx(idx)}
-                    onMouseLeave={() => setHoverIdx(null)}
-                    onClick={() => handleSelect(opt)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      background: selected ? "#f0fdf4" : hovered ? "#f8fafc" : "transparent",
-                      userSelect: "none",
-                    }}
-                  >
-                    {/* Checkmark placeholder */}
-                    <span style={{ width: 14, flexShrink: 0, display: "flex", alignItems: "center" }}>
-                      {selected && (
-                        <Check style={{ width: 12, height: 12, color: "#16a34a", strokeWidth: 2.5 }} />
-                      )}
-                    </span>
-                    <span
-                      style={{
-                        flex: 1,
-                        fontSize: 12,
-                        color: selected ? "#15803d" : "#374151",
-                        fontWeight: selected ? 600 : 400,
-                      }}
-                    >
-                      {opt}
-                    </span>
-                    {/* Delete button — visible on hover */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleDelete(opt, e)}
-                      title="Remove option"
-                      style={{
-                        width: 18, height: 18, borderRadius: 4,
-                        background: hovered ? "#fee2e2" : "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        opacity: hovered ? 1 : 0,
-                        transition: "opacity 0.1s, background 0.1s",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <X style={{ width: 10, height: 10, color: "#f87171", strokeWidth: 2.5 }} />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
+      {panel}
     </div>
   );
 }

@@ -716,7 +716,7 @@ export default function Equipment() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-0">
+        <CardContent className="p-0" style={{ overflow: "visible" }}>
           {isLoading ? (
             <div className="flex items-center justify-center py-16 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
@@ -724,7 +724,7 @@ export default function Equipment() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div style={{ overflowX: "auto", overflowY: "visible" }}>
                 <table style={{ width: "100%", minWidth: 1344, tableLayout: "auto", borderCollapse: "collapse" }}>
 
                   {/* ── Two-tier header ── */}

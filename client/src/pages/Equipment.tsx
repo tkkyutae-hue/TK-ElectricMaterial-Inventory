@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Wrench, PlusCircle, Loader2, CheckCircle2, AlertTriangle,
@@ -65,11 +65,10 @@ function OwnershipBadge({ type }: { type: string | null }) {
 }
 
 function OwnershipSelect({
-  value, onChange, borderCls,
+  value, onChange,
 }: {
   value: string;
   onChange: (v: string) => void;
-  borderCls?: string;
 }) {
   const t = value as OwnType;
   const cfg = OWN_CFG[t] ?? OWN_CFG["Rental"];
@@ -124,8 +123,8 @@ const TYPE_ABBR: Record<string, string> = {
 };
 
 function autoGenEqNo(type: string, size: string, brand: string): string {
-  const typeAbbr  = type  ? (TYPE_ABBR[type] ?? type.slice(0, 2).toUpperCase()) : "";
-  const sizeShort = size  ? size.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5) : "";
+  const typeAbbr   = type  ? (TYPE_ABBR[type] ?? type.slice(0, 2).toUpperCase()) : "";
+  const sizeShort  = size  ? size.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5) : "";
   const brandShort = brand ? brand.slice(0, 3).toUpperCase() : "";
   const parts = [typeAbbr, sizeShort, brandShort].filter(Boolean);
   return parts.length > 0 ? parts.join("-") : "";
@@ -136,6 +135,17 @@ const PAGE_SIZE = 15;
 // ─── Common location datalist id ─────────────────────────────────────────────
 const LOC_LIST_ID = "equip-location-list";
 const COMMON_LOCATIONS = ["KDC / KISS", "Site A", "Site B", "Site C", "Warehouse", "Yard", "Storage", "Office"];
+
+// ─── Draft type for global edit mode ─────────────────────────────────────────
+type EquipDraft = {
+  ownership: string;
+  equipNo: string;
+  name: string;
+  equipType: string;
+  sizeSpec: string;
+  brand: string;
+  location: string;
+};
 
 // ─── Shared row hook ──────────────────────────────────────────────────────────
 function useEquipRowState(initType = "", initSize = "", initBrand = "") {
@@ -331,51 +341,61 @@ function AddEquipmentRow({
   );
 }
 
-// ─── Inline Edit Row ───────────────────────────────────────────────────────────
-function EditEquipmentRow({
-  item, onSaved, onCancel,
+// ─── Global Edit Row (no per-row Save/Cancel) ─────────────────────────────────
+function GlobalEditRow({
+  item, draft, onDraftChange,
 }: {
   item: EquipmentWithProject;
-  onSaved: () => void;
-  onCancel: () => void;
+  draft: EquipDraft;
+  onDraftChange: (id: number, d: EquipDraft) => void;
 }) {
-  const { toast } = useToast();
-  const [ownership, setOwnership] = useState<string>(item.ownershipType ?? "Rental");
-  const [equipNo, setEquipNo]     = useState(item.equipNo);
-  const [name, setName]           = useState(item.name);
-  const [location, setLocation]   = useState(item.location ?? "");
+  const [ownership, setOwnershipRaw] = useState(draft.ownership);
+  const [equipNo, setEquipNoRaw]     = useState(draft.equipNo);
+  const [name, setNameRaw]           = useState(draft.name);
+  const [location, setLocationRaw]   = useState(draft.location);
 
   const {
-    equipType, setEquipType, typeOptions, setTypeOptions,
-    sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
-    brand, setBrand, brandOptions, setBrandOptions,
-  } = useEquipRowState(
-    item.equipType ?? "",
-    item.sizeSpec ?? "",
-    item.brand ?? ""
-  );
+    equipType, setEquipType: setEquipTypeBase, typeOptions, setTypeOptions,
+    sizeSpec, setSizeSpec: setSizeSpecBase, sizeOptions, setSizeOptions,
+    brand, setBrand: setBrandBase, brandOptions, setBrandOptions,
+  } = useEquipRowState(draft.equipType, draft.sizeSpec, draft.brand);
+
+  // Helpers: update local state + propagate to parent draft
+  function notify(patch: Partial<EquipDraft>, currentVals?: Partial<EquipDraft>) {
+    const full: EquipDraft = {
+      ownership,
+      equipNo,
+      name,
+      equipType,
+      sizeSpec,
+      brand,
+      location,
+      ...currentVals,
+      ...patch,
+    };
+    onDraftChange(item.id, full);
+  }
+
+  function setOwnership(v: string) { setOwnershipRaw(v); notify({ ownership: v }); }
+  function setEquipNo(v: string)   { setEquipNoRaw(v);   notify({ equipNo: v }); }
+  function setName(v: string)      { setNameRaw(v);       notify({ name: v }); }
+  function setLocation(v: string)  { setLocationRaw(v);  notify({ location: v }); }
+
+  function setEquipType(v: string) {
+    setEquipTypeBase(v);
+    const cat = EQUIP_TYPE_CATALOGUE[v];
+    // setEquipTypeBase clears sizeSpec and brand in local state, mirror that in parent
+    notify({ equipType: v, sizeSpec: cat ? "" : sizeSpec, brand: cat ? "" : brand });
+  }
+  function setSizeSpec(v: string) { setSizeSpecBase(v); notify({ sizeSpec: v }); }
+  function setBrand(v: string)    { setBrandBase(v);    notify({ brand: v }); }
 
   const autoEq = autoGenEqNo(equipType, sizeSpec, brand);
   const showAutoPreview = !equipNo.trim() && autoEq;
-
-  const updateMutation = useMutation({
-    mutationFn: () => apiRequest("PATCH", `/api/equipment/${item.id}`, {
-      equipNo: equipNo.trim() || autoEq || undefined,
-      name: name.trim(),
-      equipType: equipType || null,
-      sizeSpec: sizeSpec.trim() || null,
-      brand: brand.trim() || null,
-      location: location.trim() || null,
-      ownershipType: ownership,
-    }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/equipment"] }); onSaved(); },
-    onError: (err: any) => toast({ title: "Failed to update equipment", description: err.message, variant: "destructive" }),
-  });
-
   const inputCls = "h-7 text-xs bg-white border-amber-200";
 
   return (
-    <tr className="bg-amber-50/50 border-b border-amber-100">
+    <tr style={{ borderBottom: "1px solid #fde68a", background: "#fffbeb" }}>
       {/* OWN. */}
       <td className="px-3 py-2" style={{ minWidth: 110 }}>
         <OwnershipSelect value={ownership} onChange={setOwnership} />
@@ -384,7 +404,7 @@ function EditEquipmentRow({
       <td className="px-3 py-2" style={{ minWidth: 120 }}>
         <div>
           <Input
-            data-testid="input-edit-equip-no"
+            data-testid={`input-gedit-equip-no-${item.id}`}
             value={equipNo}
             onChange={(e) => setEquipNo(e.target.value)}
             className={`${inputCls} w-24`}
@@ -401,7 +421,7 @@ function EditEquipmentRow({
       <td className="px-3 py-2" style={{ minWidth: 160 }}>
         <div className="flex flex-col gap-1">
           <CreatableDropdown
-            data-testid="select-equip-type"
+            data-testid={`select-gedit-type-${item.id}`}
             options={typeOptions}
             value={equipType}
             onChange={(v) => { setEquipType(v); if (v) setName(v); }}
@@ -410,7 +430,7 @@ function EditEquipmentRow({
             className="w-full"
           />
           <Input
-            data-testid="input-equip-name"
+            data-testid={`input-gedit-name-${item.id}`}
             placeholder="Equipment name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -421,7 +441,7 @@ function EditEquipmentRow({
       {/* SIZE */}
       <td className="px-3 py-2" style={{ minWidth: 96 }}>
         <CreatableDropdown
-          data-testid="select-equip-size"
+          data-testid={`select-gedit-size-${item.id}`}
           options={sizeOptions}
           value={sizeSpec}
           onChange={setSizeSpec}
@@ -433,7 +453,7 @@ function EditEquipmentRow({
       {/* BRAND */}
       <td className="px-3 py-2" style={{ minWidth: 130 }}>
         <CreatableDropdown
-          data-testid="select-equip-brand"
+          data-testid={`select-gedit-brand-${item.id}`}
           options={brandOptions}
           value={brand}
           onChange={setBrand}
@@ -443,9 +463,9 @@ function EditEquipmentRow({
         />
       </td>
       {/* LOCATION */}
-      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #e2e8f0" }}>
+      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #fde68a" }}>
         <Input
-          data-testid="input-equip-location"
+          data-testid={`input-gedit-location-${item.id}`}
           placeholder="Location"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
@@ -454,13 +474,19 @@ function EditEquipmentRow({
         />
       </td>
       {/* PROJECT — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 192 }}>
-        <span className="text-xs text-slate-400 italic">{item.project?.name ?? "—"}</span>
+      <td className="px-3 py-2" style={{ minWidth: 192, background: "#fafcff" }}>
+        {item.project ? (
+          <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 500, background: "#f5f3ff", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: 12, whiteSpace: "nowrap" }}>
+            {item.project.name}
+          </span>
+        ) : (
+          <span style={{ fontSize: 11, color: "#d1d5db", border: "1px dashed #e2e8f0", padding: "2px 8px", borderRadius: 12 }}>Unassigned</span>
+        )}
       </td>
       {/* TEAM — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+      <td className="px-3 py-2" style={{ minWidth: 110, background: "#fafcff" }}>
         {(item as any).teamName ? (
-          <span style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 12, whiteSpace: "nowrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: 12, whiteSpace: "nowrap" }}>
             {(item as any).teamName}
           </span>
         ) : (
@@ -468,26 +494,13 @@ function EditEquipmentRow({
         )}
       </td>
       {/* STATUS — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 132 }}>
+      <td className="px-3 py-2" style={{ minWidth: 132, background: "#fafcff" }}>
         <StatusBadge status={item.status} />
       </td>
-      {/* LAST UPDATED */}
-      <td className="px-3 py-2" style={{ minWidth: 120 }} />
-      {/* Actions */}
-      <td className="px-3 py-2" style={{ minWidth: 64 }}>
-        <div className="flex items-center gap-1">
-          <Button data-testid="btn-equip-update" size="sm" className="gap-1 h-7 text-xs px-2.5"
-            onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-            Save
-          </Button>
-          <Button data-testid="btn-equip-edit-cancel" variant="ghost" size="sm"
-            className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
-            onClick={onCancel} disabled={updateMutation.isPending}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </td>
+      {/* LAST UPDATED — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 120, background: "#fafcff" }} />
+      {/* Actions — empty in global edit mode (delete still via parent) */}
+      <td className="px-3 py-2" style={{ minWidth: 64 }} />
     </tr>
   );
 }
@@ -496,12 +509,15 @@ function EditEquipmentRow({
 export default function Equipment() {
   const { toast } = useToast();
 
-  const [draftKeys, setDraftKeys]         = useState<number[]>([]);
-  const [flashIds, setFlashIds]           = useState<Set<number>>(new Set());
-  const [editingId, setEditingId]         = useState<number | null>(null);
+  const [draftKeys, setDraftKeys]             = useState<number[]>([]);
+  const [flashIds, setFlashIds]               = useState<Set<number>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [hoverRowId, setHoverRowId]       = useState<number | null>(null);
+  const [hoverRowId, setHoverRowId]           = useState<number | null>(null);
   const nextKey = useRef(0);
+
+  // ── Global edit mode ──
+  const [isGlobalEditMode, setIsGlobalEditMode] = useState(false);
+  const [editDrafts, setEditDrafts]             = useState<Record<number, EquipDraft>>({});
 
   const [search, setSearch]               = useState("");
   const [filterStatus, setFilterStatus]   = useState("");
@@ -530,6 +546,58 @@ export default function Equipment() {
       setConfirmDeleteId(null);
     },
   });
+
+  // ── Save All mutation ──
+  const saveAllMutation = useMutation({
+    mutationFn: async () => {
+      const patches = Object.entries(editDrafts).map(([id, d]) =>
+        apiRequest("PATCH", `/api/equipment/${id}`, {
+          equipNo: d.equipNo.trim() || autoGenEqNo(d.equipType, d.sizeSpec, d.brand) || undefined,
+          name: d.name.trim() || d.equipType || "Equipment",
+          equipType: d.equipType || null,
+          sizeSpec: d.sizeSpec.trim() || null,
+          brand: d.brand.trim() || null,
+          location: d.location.trim() || null,
+          ownershipType: d.ownership,
+        })
+      );
+      await Promise.all(patches);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      setIsGlobalEditMode(false);
+      setEditDrafts({});
+      toast({ title: "All changes saved." });
+    },
+    onError: (err: any) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
+  });
+
+  // ── Enter / exit global edit mode ──
+  function enterEditMode() {
+    const initial: Record<number, EquipDraft> = {};
+    equipList.forEach((item) => {
+      initial[item.id] = {
+        ownership: item.ownershipType ?? "Rental",
+        equipNo:   item.equipNo ?? "",
+        name:      item.name ?? "",
+        equipType: item.equipType ?? "",
+        sizeSpec:  item.sizeSpec ?? "",
+        brand:     item.brand ?? "",
+        location:  item.location ?? "",
+      };
+    });
+    setEditDrafts(initial);
+    setIsGlobalEditMode(true);
+  }
+
+  function cancelEditMode() {
+    setEditDrafts({});
+    setIsGlobalEditMode(false);
+  }
+
+  const handleDraftChange = useCallback((id: number, d: EquipDraft) => {
+    setEditDrafts((prev) => ({ ...prev, [id]: d }));
+  }, []);
 
   const statusCounts = {
     total:         equipList.length,
@@ -621,7 +689,7 @@ export default function Equipment() {
         ))}
       </div>
 
-      {/* ── Filter bar ── */}
+      {/* ── Filter bar + action buttons ── */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -684,7 +752,46 @@ export default function Equipment() {
           </div>
         )}
 
-        <div className="ml-auto">
+        {/* ── Action buttons (right side) ── */}
+        <div className="ml-auto flex items-center gap-2">
+          {isGlobalEditMode ? (
+            <>
+              <Button
+                data-testid="btn-global-edit-cancel"
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs h-9"
+                onClick={cancelEditMode}
+                disabled={saveAllMutation.isPending}
+              >
+                <X className="w-3.5 h-3.5" />
+                Cancel
+              </Button>
+              <Button
+                data-testid="btn-global-edit-save"
+                size="sm"
+                className="gap-1.5 text-xs h-9 bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={() => saveAllMutation.mutate()}
+                disabled={saveAllMutation.isPending}
+              >
+                {saveAllMutation.isPending
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Check className="w-3.5 h-3.5" />}
+                Save All
+              </Button>
+            </>
+          ) : (
+            <Button
+              data-testid="btn-enter-edit-mode"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs h-9"
+              onClick={enterEditMode}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
+          )}
           <Button
             data-testid="btn-register-equipment"
             size="sm"
@@ -696,6 +803,16 @@ export default function Equipment() {
           </Button>
         </div>
       </div>
+
+      {/* ── Global edit mode banner ── */}
+      {isGlobalEditMode && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, fontSize: 12, color: "#854d0e" }}>
+          <Pencil style={{ width: 13, height: 13, flexShrink: 0 }} />
+          <span>
+            <strong>Edit Mode</strong> — All rows are editable. Make your changes, then click <strong>Save All</strong>.
+          </span>
+        </div>
+      )}
 
       {/* ── Equipment Registry table ── */}
       <Card>
@@ -720,12 +837,8 @@ export default function Equipment() {
 
                   {/* ── Two-tier header ── */}
                   <thead>
-                    {/* Tier 1: section labels */}
                     <tr style={{ background: "#f8f9fa", borderBottom: "1px solid #e5e7eb" }}>
-                      <th
-                        colSpan={6}
-                        style={{ padding: "6px 12px", textAlign: "left", borderRight: "1px solid #e5e7eb" }}
-                      >
+                      <th colSpan={6} style={{ padding: "6px 12px", textAlign: "left", borderRight: "1px solid #e5e7eb" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#9ca3af", display: "inline-block" }} />
                           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b7280" }}>
@@ -733,10 +846,7 @@ export default function Equipment() {
                           </span>
                         </span>
                       </th>
-                      <th
-                        colSpan={4}
-                        style={{ padding: "6px 12px", textAlign: "left", background: "#eff6ff", borderBottom: "1px solid #bfdbfe" }}
-                      >
+                      <th colSpan={4} style={{ padding: "6px 12px", textAlign: "left", background: "#eff6ff", borderBottom: "1px solid #bfdbfe" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3b82f6" }}>
                             Live — Updated from Daily Reports
@@ -746,15 +856,13 @@ export default function Equipment() {
                       </th>
                       <th style={{ padding: "6px 12px" }} />
                     </tr>
-                    {/* Tier 2: column labels */}
                     <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                      {/* Master columns */}
                       {[
-                        { label: "OWN.",         w: 110 },
-                        { label: "EQ #",         w: 120 },
-                        { label: "NAME",         w: 160 },
-                        { label: "SIZE",         w: 96  },
-                        { label: "BRAND",        w: 130 },
+                        { label: "OWN.",  w: 110 },
+                        { label: "EQ #",  w: 120 },
+                        { label: "NAME",  w: 160 },
+                        { label: "SIZE",  w: 96  },
+                        { label: "BRAND", w: 130 },
                       ].map(({ label, w }) => (
                         <th key={label} style={{ minWidth: w, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb" }}>
                           {label}
@@ -763,7 +871,6 @@ export default function Equipment() {
                       <th style={{ minWidth: 110, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb", borderRight: "1px solid #cbd5e1" }}>
                         LOCATION
                       </th>
-                      {/* Live columns */}
                       {[
                         { label: "PROJECT",      w: 192 },
                         { label: "TEAM",         w: 110 },
@@ -812,25 +919,35 @@ export default function Equipment() {
                     )}
 
                     {pageItems.map((equip) => {
-                      const isEditing    = editingId === equip.id;
                       const isConfirming = confirmDeleteId === equip.id;
                       const isDeleting   = deleteMutation.isPending && confirmDeleteId === equip.id;
-                      const isHovered    = hoverRowId === equip.id;
                       const isFlashing   = flashIds.has(equip.id);
+                      const isHovered    = hoverRowId === equip.id;
                       const statusCfg    = getStatusCfg(equip.status);
                       const updatedFmt   = formatDate(equip.lastReportedAt);
 
-                      if (isEditing) {
+                      // ── Global edit mode: editable row ──
+                      if (isGlobalEditMode) {
+                        const draft = editDrafts[equip.id] ?? {
+                          ownership: equip.ownershipType ?? "Rental",
+                          equipNo:   equip.equipNo ?? "",
+                          name:      equip.name ?? "",
+                          equipType: equip.equipType ?? "",
+                          sizeSpec:  equip.sizeSpec ?? "",
+                          brand:     equip.brand ?? "",
+                          location:  equip.location ?? "",
+                        };
                         return (
-                          <EditEquipmentRow
+                          <GlobalEditRow
                             key={equip.id}
                             item={equip}
-                            onSaved={() => { setEditingId(null); flashRow(equip.id); }}
-                            onCancel={() => setEditingId(null)}
+                            draft={draft}
+                            onDraftChange={handleDraftChange}
                           />
                         );
                       }
 
+                      // ── View mode: read-only row ──
                       const rowBg = isFlashing ? undefined : isConfirming ? "#fef2f2" : isHovered ? "#f8fafc" : undefined;
 
                       return (
@@ -857,7 +974,7 @@ export default function Equipment() {
                             </span>
                           </td>
 
-                          {/* NAME — single line */}
+                          {/* NAME */}
                           <td style={{ padding: "12px", minWidth: 160, overflowWrap: "break-word" }}>
                             <p data-testid={`text-equip-name-${equip.id}`} style={{ fontWeight: 500, color: "#1e293b", fontSize: 13 }}>
                               {equip.name}
@@ -943,11 +1060,9 @@ export default function Equipment() {
                             )}
                           </td>
 
-                          {/* Hover-reveal actions */}
+                          {/* Hover-reveal delete action */}
                           <td style={{ padding: "12px", minWidth: 64 }}>
-                            <div
-                              style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2, transition: "opacity 0.15s", opacity: (isHovered || isConfirming) ? 1 : 0 }}
-                            >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2, transition: "opacity 0.15s", opacity: (isHovered || isConfirming) ? 1 : 0 }}>
                               {isConfirming ? (
                                 <>
                                   <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 500, marginRight: 4, whiteSpace: "nowrap" }}>Remove?</span>
@@ -972,24 +1087,14 @@ export default function Equipment() {
                                   </Button>
                                 </>
                               ) : (
-                                <>
-                                  <Button
-                                    data-testid={`btn-edit-equipment-${equip.id}`}
-                                    variant="ghost" size="sm"
-                                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700"
-                                    onClick={() => { setEditingId(equip.id); setConfirmDeleteId(null); }}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    data-testid={`btn-delete-equipment-${equip.id}`}
-                                    variant="ghost" size="sm"
-                                    className="h-7 w-7 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
-                                    onClick={() => setConfirmDeleteId(equip.id)}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </>
+                                <Button
+                                  data-testid={`btn-delete-equipment-${equip.id}`}
+                                  variant="ghost" size="sm"
+                                  className="h-7 w-7 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                                  onClick={() => setConfirmDeleteId(equip.id)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
                               )}
                             </div>
                           </td>
@@ -1000,26 +1105,44 @@ export default function Equipment() {
                 </table>
               </div>
 
-              {/* ── Pagination bar ── */}
+              {/* ── Pagination ── */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50">
-                  <p className="text-xs text-slate-500">
-                    Showing {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button data-testid="btn-page-prev" variant="outline" size="sm" className="h-7 w-7 p-0"
-                      disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f1f5f9" }}>
+                  <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Page {page} of {totalPages} · {filtered.length} items
+                  </span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <Button
+                      data-testid="btn-equip-prev"
+                      variant="outline" size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                    >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <Button key={p} data-testid={`btn-page-${p}`}
-                        variant={p === page ? "default" : "outline"} size="sm"
-                        className="h-7 w-7 p-0 text-xs" onClick={() => setPage(p)}>
-                        {p}
-                      </Button>
-                    ))}
-                    <Button data-testid="btn-page-next" variant="outline" size="sm" className="h-7 w-7 p-0"
-                      disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i;
+                      return (
+                        <Button
+                          key={p}
+                          data-testid={`btn-equip-page-${p}`}
+                          variant={p === page ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 w-7 p-0 text-xs"
+                          onClick={() => setPage(p)}
+                        >
+                          {p}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      data-testid="btn-equip-next"
+                      variant="outline" size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                    >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>

@@ -344,10 +344,16 @@ function AddEquipmentRow({
 // ─── Global Edit Row (no per-row Save/Cancel) ─────────────────────────────────
 function GlobalEditRow({
   item, draft, onDraftChange,
+  onDeleteClick, isConfirmingDelete, isDeleting, onConfirmDelete, onCancelDelete,
 }: {
   item: EquipmentWithProject;
   draft: EquipDraft;
   onDraftChange: (id: number, d: EquipDraft) => void;
+  onDeleteClick: () => void;
+  isConfirmingDelete: boolean;
+  isDeleting: boolean;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
 }) {
   const [ownership, setOwnershipRaw] = useState(draft.ownership);
   const [equipNo, setEquipNoRaw]     = useState(draft.equipNo);
@@ -499,8 +505,42 @@ function GlobalEditRow({
       </td>
       {/* LAST UPDATED — read-only */}
       <td className="px-3 py-2" style={{ minWidth: 120, background: "#fafcff" }} />
-      {/* Actions — empty in global edit mode (delete still via parent) */}
-      <td className="px-3 py-2" style={{ minWidth: 64 }} />
+      {/* Actions — delete button visible in edit mode */}
+      <td className="px-3 py-2" style={{ minWidth: 48 }}>
+        {isConfirmingDelete ? (
+          <div className="flex items-center gap-1" style={{ whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 500 }}>Remove?</span>
+            <Button
+              data-testid={`btn-delete-confirm-${item.id}`}
+              size="sm" variant="destructive"
+              className="h-6 px-1.5 text-xs gap-0.5"
+              onClick={onConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              Yes
+            </Button>
+            <Button
+              data-testid={`btn-delete-cancel-${item.id}`}
+              size="sm" variant="outline"
+              className="h-6 w-6 p-0"
+              onClick={onCancelDelete}
+              disabled={isDeleting}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            data-testid={`btn-delete-equipment-${item.id}`}
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
+            onClick={onDeleteClick}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        )}
+      </td>
     </tr>
   );
 }
@@ -512,7 +552,6 @@ export default function Equipment() {
   const [draftKeys, setDraftKeys]             = useState<number[]>([]);
   const [flashIds, setFlashIds]               = useState<Set<number>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [hoverRowId, setHoverRowId]           = useState<number | null>(null);
   const nextKey = useRef(0);
 
   // ── Global edit mode ──
@@ -922,8 +961,6 @@ export default function Equipment() {
                       const isConfirming = confirmDeleteId === equip.id;
                       const isDeleting   = deleteMutation.isPending && confirmDeleteId === equip.id;
                       const isFlashing   = flashIds.has(equip.id);
-                      const isHovered    = hoverRowId === equip.id;
-                      const statusCfg    = getStatusCfg(equip.status);
                       const updatedFmt   = formatDate(equip.lastReportedAt);
 
                       // ── Global edit mode: editable row ──
@@ -943,21 +980,22 @@ export default function Equipment() {
                             item={equip}
                             draft={draft}
                             onDraftChange={handleDraftChange}
+                            onDeleteClick={() => setConfirmDeleteId(equip.id)}
+                            isConfirmingDelete={isConfirming}
+                            isDeleting={isDeleting}
+                            onConfirmDelete={() => deleteMutation.mutate(equip.id)}
+                            onCancelDelete={() => setConfirmDeleteId(null)}
                           />
                         );
                       }
 
-                      // ── View mode: read-only row ──
-                      const rowBg = isFlashing ? undefined : isConfirming ? "#fef2f2" : isHovered ? "#f8fafc" : undefined;
-
+                      // ── View mode: read-only row (no actions) ──
                       return (
                         <tr
                           key={equip.id}
                           data-testid={`row-equipment-${equip.id}`}
                           className={isFlashing ? "mat-row-flash" : ""}
-                          style={{ borderBottom: "1px solid #f1f5f9", background: rowBg, transition: "background 0.15s" }}
-                          onMouseEnter={() => setHoverRowId(equip.id)}
-                          onMouseLeave={() => setHoverRowId(null)}
+                          style={{ borderBottom: "1px solid #f1f5f9" }}
                         >
                           {/* OWN. badge */}
                           <td style={{ padding: "12px", minWidth: 110, overflowWrap: "break-word" }}>
@@ -1060,44 +1098,8 @@ export default function Equipment() {
                             )}
                           </td>
 
-                          {/* Hover-reveal delete action */}
-                          <td style={{ padding: "12px", minWidth: 64 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2, transition: "opacity 0.15s", opacity: (isHovered || isConfirming) ? 1 : 0 }}>
-                              {isConfirming ? (
-                                <>
-                                  <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 500, marginRight: 4, whiteSpace: "nowrap" }}>Remove?</span>
-                                  <Button
-                                    data-testid={`btn-delete-confirm-${equip.id}`}
-                                    size="sm" variant="destructive"
-                                    className="h-7 px-2 text-xs gap-1"
-                                    onClick={() => deleteMutation.mutate(equip.id)}
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                    Yes
-                                  </Button>
-                                  <Button
-                                    data-testid={`btn-delete-cancel-${equip.id}`}
-                                    size="sm" variant="outline"
-                                    className="h-7 w-7 p-0"
-                                    onClick={() => setConfirmDeleteId(null)}
-                                    disabled={isDeleting}
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </Button>
-                                </>
-                              ) : (
-                                <Button
-                                  data-testid={`btn-delete-equipment-${equip.id}`}
-                                  variant="ghost" size="sm"
-                                  className="h-7 w-7 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
-                                  onClick={() => setConfirmDeleteId(equip.id)}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                            </div>
-                          </td>
+                          {/* Actions — hidden in view mode */}
+                          <td style={{ padding: "12px", minWidth: 48 }} />
                         </tr>
                       );
                     })}

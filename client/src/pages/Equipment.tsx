@@ -329,10 +329,8 @@ function AddEquipmentRow({
       <td className="px-2 py-2" style={{ minWidth: 104 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
-      {/* LAST UPDATED */}
-      <td className="px-2 py-2" style={{ minWidth: 88 }} />
-      {/* Actions */}
-      <td className="px-2 py-2" style={{ minWidth: 36 }}>
+      {/* LAST UPDATED — doubles as action cell for Add row */}
+      <td className="px-2 py-2" style={{ minWidth: 88 }}>
         <div className="flex items-center gap-1">
           <Button data-testid="btn-equip-save" size="sm" className="gap-1 h-7 text-xs px-2.5"
             onClick={handleSave} disabled={createMutation.isPending}>
@@ -516,10 +514,8 @@ function GlobalEditRow({
       <td className="px-2 py-2" style={{ minWidth: 104, background: "#fafcff" }}>
         <StatusBadge status={item.status} />
       </td>
-      {/* LAST UPDATED — read-only */}
-      <td className="px-2 py-2" style={{ minWidth: 88, background: "#fafcff" }} />
-      {/* Actions — delete button visible in edit mode */}
-      <td className="px-2 py-2" style={{ minWidth: 36 }}>
+      {/* LAST UPDATED — doubles as delete action cell in edit mode */}
+      <td className="px-2 py-2" style={{ minWidth: 88, background: "#fafcff" }}>
         {isConfirmingDelete ? (
           <div className="flex items-center gap-1" style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 500 }}>Remove?</span>
@@ -916,7 +912,6 @@ export default function Equipment() {
                           <PulseDot />
                         </span>
                       </th>
-                      <th style={{ padding: "6px 12px" }} />
                     </tr>
                     <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                       {[
@@ -943,7 +938,6 @@ export default function Equipment() {
                           {label}
                         </th>
                       ))}
-                      <th style={{ minWidth: 36, padding: "8px 10px", background: "#fff", borderBottom: "2px solid #e5e7eb" }} />
                     </tr>
                   </thead>
 
@@ -1125,8 +1119,6 @@ export default function Equipment() {
                             )}
                           </td>
 
-                          {/* Actions — hidden in view mode */}
-                          <td style={{ padding: "8px", minWidth: 36 }} />
                         </tr>
                       );
                     })}

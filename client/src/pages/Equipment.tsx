@@ -42,17 +42,23 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 // ─── Ownership config ─────────────────────────────────────────────────────────
-const OWN_OPTS = ["Rental", "Company-owned"] as const;
+const OWN_OPTS = ["Rental", "Owned"] as const;
 type OwnType = typeof OWN_OPTS[number];
 
+/** Maps legacy "Company-owned" DB value → canonical "Owned" for display */
+function normalizeOwnership(v: string | null | undefined): OwnType {
+  if (!v || v === "Rental") return "Rental";
+  return "Owned"; // covers "Company-owned" and "Owned"
+}
+
 const OWN_CFG: Record<OwnType, { bg: string; border: string; color: string }> = {
-  "Rental":        { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
-  "Company-owned": { bg: "#f0fdf4", border: "#86efac", color: "#166534" },
+  "Rental": { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
+  "Owned":  { bg: "#f0fdf4", border: "#86efac", color: "#166534" },
 };
 
 function OwnershipBadge({ type }: { type: string | null }) {
-  const t = (type ?? "Rental") as OwnType;
-  const cfg = OWN_CFG[t] ?? OWN_CFG["Rental"];
+  const t = normalizeOwnership(type);
+  const cfg = OWN_CFG[t];
   return (
     <span style={{
       background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
@@ -70,11 +76,11 @@ function OwnershipSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const t = value as OwnType;
-  const cfg = OWN_CFG[t] ?? OWN_CFG["Rental"];
+  const t = normalizeOwnership(value);
+  const cfg = OWN_CFG[t];
   return (
     <select
-      value={value}
+      value={t}
       onChange={(e) => onChange(e.target.value)}
       data-testid="select-equip-ownership"
       style={{
@@ -652,7 +658,7 @@ export default function Equipment() {
       if (q && !`${e.equipNo} ${e.name} ${e.sizeSpec ?? ""} ${e.brand ?? ""}`.toLowerCase().includes(q)) return false;
       if (filterStatus && e.status !== filterStatus) return false;
       if (filterType && e.equipType !== filterType) return false;
-      if (filterOwnership && (e.ownershipType ?? "Rental") !== filterOwnership) return false;
+      if (filterOwnership && normalizeOwnership(e.ownershipType) !== filterOwnership) return false;
       if (filterProjectId && String(e.assignedProjectId ?? "") !== filterProjectId) return false;
       return true;
     });

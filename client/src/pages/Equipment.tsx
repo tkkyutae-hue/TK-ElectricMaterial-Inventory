@@ -246,11 +246,11 @@ function AddEquipmentRow({
   return (
     <tr className="bg-blue-50/70 border-b border-blue-200">
       {/* OWN. */}
-      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+      <td className="px-2 py-2" style={{ minWidth: 80 }}>
         <OwnershipSelect value={ownership} onChange={setOwnership} />
       </td>
       {/* EQ # — optional */}
-      <td className="px-3 py-2" style={{ minWidth: 120 }}>
+      <td className="px-2 py-2" style={{ minWidth: 90 }}>
         <div>
           <Input
             ref={equipRef}
@@ -259,7 +259,7 @@ function AddEquipmentRow({
             value={equipNo}
             onChange={(e) => setEquipNo(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
-            className={`${inputCls} w-24`}
+            className={`${inputCls} w-20`}
           />
           {showAutoPreview && (
             <p style={{ fontSize: 9, color: "#16a34a", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>
@@ -270,7 +270,7 @@ function AddEquipmentRow({
         </div>
       </td>
       {/* NAME — single creatable dropdown */}
-      <td className="px-3 py-2" style={{ minWidth: 160 }}>
+      <td className="px-2 py-2" style={{ minWidth: 140 }}>
         <CreatableDropdown
           data-testid="select-equip-name"
           options={typeOptions}
@@ -282,7 +282,7 @@ function AddEquipmentRow({
         />
       </td>
       {/* SIZE */}
-      <td className="px-3 py-2" style={{ minWidth: 96 }}>
+      <td className="px-2 py-2" style={{ minWidth: 68 }}>
         <CreatableDropdown
           data-testid="select-equip-size"
           options={sizeOptions}
@@ -294,7 +294,7 @@ function AddEquipmentRow({
         />
       </td>
       {/* BRAND */}
-      <td className="px-3 py-2" style={{ minWidth: 130 }}>
+      <td className="px-2 py-2" style={{ minWidth: 90 }}>
         <CreatableDropdown
           data-testid="select-equip-brand"
           options={brandOptions}
@@ -306,7 +306,7 @@ function AddEquipmentRow({
         />
       </td>
       {/* LOCATION */}
-      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #e2e8f0" }}>
+      <td className="px-2 py-2" style={{ minWidth: 96, borderRight: "1px solid #e2e8f0" }}>
         <CreatableDropdown
           data-testid="select-equip-location"
           options={locationOptions}
@@ -318,21 +318,21 @@ function AddEquipmentRow({
         />
       </td>
       {/* PROJECT — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 192 }}>
+      <td className="px-2 py-2" style={{ minWidth: 148 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
       {/* TEAM — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+      <td className="px-2 py-2" style={{ minWidth: 80 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
       {/* STATUS — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 132 }}>
+      <td className="px-2 py-2" style={{ minWidth: 104 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
       {/* LAST UPDATED */}
-      <td className="px-3 py-2" style={{ minWidth: 120 }} />
+      <td className="px-2 py-2" style={{ minWidth: 88 }} />
       {/* Actions */}
-      <td className="px-3 py-2" style={{ minWidth: 64 }}>
+      <td className="px-2 py-2" style={{ minWidth: 36 }}>
         <div className="flex items-center gap-1">
           <Button data-testid="btn-equip-save" size="sm" className="gap-1 h-7 text-xs px-2.5"
             onClick={handleSave} disabled={createMutation.isPending}>
@@ -415,17 +415,17 @@ function GlobalEditRow({
   return (
     <tr style={{ borderBottom: "1px solid #fde68a", background: "#fffbeb" }}>
       {/* OWN. */}
-      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+      <td className="px-2 py-2" style={{ minWidth: 80 }}>
         <OwnershipSelect value={ownership} onChange={setOwnership} />
       </td>
       {/* EQ # */}
-      <td className="px-3 py-2" style={{ minWidth: 120 }}>
+      <td className="px-2 py-2" style={{ minWidth: 90 }}>
         <div>
           <Input
             data-testid={`input-gedit-equip-no-${item.id}`}
             value={equipNo}
             onChange={(e) => setEquipNo(e.target.value)}
-            className={`${inputCls} w-24`}
+            className={`${inputCls} w-20`}
           />
           {showAutoPreview && (
             <p style={{ fontSize: 9, color: "#16a34a", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>
@@ -436,7 +436,7 @@ function GlobalEditRow({
         </div>
       </td>
       {/* NAME */}
-      <td className="px-3 py-2" style={{ minWidth: 160 }}>
+      <td className="px-2 py-2" style={{ minWidth: 140 }}>
         <div className="flex flex-col gap-1">
           <CreatableDropdown
             data-testid={`select-gedit-type-${item.id}`}
@@ -457,7 +457,7 @@ function GlobalEditRow({
         </div>
       </td>
       {/* SIZE */}
-      <td className="px-3 py-2" style={{ minWidth: 96 }}>
+      <td className="px-2 py-2" style={{ minWidth: 68 }}>
         <CreatableDropdown
           data-testid={`select-gedit-size-${item.id}`}
           options={sizeOptions}
@@ -469,7 +469,7 @@ function GlobalEditRow({
         />
       </td>
       {/* BRAND */}
-      <td className="px-3 py-2" style={{ minWidth: 130 }}>
+      <td className="px-2 py-2" style={{ minWidth: 90 }}>
         <CreatableDropdown
           data-testid={`select-gedit-brand-${item.id}`}
           options={brandOptions}
@@ -481,7 +481,7 @@ function GlobalEditRow({
         />
       </td>
       {/* LOCATION */}
-      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #fde68a" }}>
+      <td className="px-2 py-2" style={{ minWidth: 96, borderRight: "1px solid #fde68a" }}>
         <CreatableDropdown
           data-testid={`select-gedit-location-${item.id}`}
           options={locationOptions}
@@ -493,7 +493,7 @@ function GlobalEditRow({
         />
       </td>
       {/* PROJECT — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 192, background: "#fafcff" }}>
+      <td className="px-2 py-2" style={{ minWidth: 148, background: "#fafcff" }}>
         {item.project ? (
           <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 500, background: "#f5f3ff", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: 12, whiteSpace: "nowrap" }}>
             {item.project.name}
@@ -503,7 +503,7 @@ function GlobalEditRow({
         )}
       </td>
       {/* TEAM — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 110, background: "#fafcff" }}>
+      <td className="px-2 py-2" style={{ minWidth: 80, background: "#fafcff" }}>
         {(item as any).teamName ? (
           <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: 12, whiteSpace: "nowrap" }}>
             {(item as any).teamName}
@@ -513,13 +513,13 @@ function GlobalEditRow({
         )}
       </td>
       {/* STATUS — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 132, background: "#fafcff" }}>
+      <td className="px-2 py-2" style={{ minWidth: 104, background: "#fafcff" }}>
         <StatusBadge status={item.status} />
       </td>
       {/* LAST UPDATED — read-only */}
-      <td className="px-3 py-2" style={{ minWidth: 120, background: "#fafcff" }} />
+      <td className="px-2 py-2" style={{ minWidth: 88, background: "#fafcff" }} />
       {/* Actions — delete button visible in edit mode */}
-      <td className="px-3 py-2" style={{ minWidth: 48 }}>
+      <td className="px-2 py-2" style={{ minWidth: 36 }}>
         {isConfirmingDelete ? (
           <div className="flex items-center gap-1" style={{ whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 500 }}>Remove?</span>
@@ -895,7 +895,7 @@ export default function Equipment() {
           ) : (
             <>
               <div style={{ overflowX: "auto", overflowY: "visible" }}>
-                <table style={{ width: "100%", minWidth: 1344, tableLayout: "auto", borderCollapse: "collapse" }}>
+                <table style={{ width: "100%", minWidth: 960, tableLayout: "auto", borderCollapse: "collapse" }}>
 
                   {/* ── Two-tier header ── */}
                   <thead>
@@ -920,30 +920,30 @@ export default function Equipment() {
                     </tr>
                     <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                       {[
-                        { label: "OWN.",  w: 110 },
-                        { label: "EQ #",  w: 120 },
-                        { label: "NAME",  w: 160 },
-                        { label: "SIZE",  w: 96  },
-                        { label: "BRAND", w: 130 },
+                        { label: "OWN.",  w: 80  },
+                        { label: "EQ #",  w: 90  },
+                        { label: "NAME",  w: 140 },
+                        { label: "SIZE",  w: 68  },
+                        { label: "BRAND", w: 90  },
                       ].map(({ label, w }) => (
-                        <th key={label} style={{ minWidth: w, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb" }}>
+                        <th key={label} style={{ minWidth: w, padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb" }}>
                           {label}
                         </th>
                       ))}
-                      <th style={{ minWidth: 110, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb", borderRight: "1px solid #cbd5e1" }}>
+                      <th style={{ minWidth: 96, padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb", borderRight: "1px solid #cbd5e1" }}>
                         LOCATION
                       </th>
                       {[
-                        { label: "PROJECT",      w: 192 },
-                        { label: "TEAM",         w: 110 },
-                        { label: "STATUS",       w: 132 },
-                        { label: "LAST UPDATED", w: 120 },
+                        { label: "PROJECT",      w: 148 },
+                        { label: "TEAM",         w: 80  },
+                        { label: "STATUS",       w: 104 },
+                        { label: "LAST UPDATED", w: 88  },
                       ].map(({ label, w }) => (
-                        <th key={label} style={{ minWidth: w, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", background: "#f0f6ff", borderBottom: "2px solid #bfdbfe" }}>
+                        <th key={label} style={{ minWidth: w, padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", background: "#f0f6ff", borderBottom: "2px solid #bfdbfe" }}>
                           {label}
                         </th>
                       ))}
-                      <th style={{ minWidth: 64, padding: "10px 12px", background: "#fff", borderBottom: "2px solid #e5e7eb" }} />
+                      <th style={{ minWidth: 36, padding: "8px 10px", background: "#fff", borderBottom: "2px solid #e5e7eb" }} />
                     </tr>
                   </thead>
 
@@ -1025,12 +1025,12 @@ export default function Equipment() {
                           style={{ borderBottom: "1px solid #f1f5f9" }}
                         >
                           {/* OWN. badge */}
-                          <td style={{ padding: "12px", minWidth: 110, overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 80, overflowWrap: "break-word" }}>
                             <OwnershipBadge type={equip.ownershipType ?? "Rental"} />
                           </td>
 
                           {/* EQ # monospace badge */}
-                          <td style={{ padding: "12px", minWidth: 120, overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 90, overflowWrap: "break-word" }}>
                             <span
                               data-testid={`text-equip-no-${equip.id}`}
                               style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 600, color: "#374151", background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, border: "1px solid #e2e8f0", whiteSpace: "nowrap" }}
@@ -1040,18 +1040,18 @@ export default function Equipment() {
                           </td>
 
                           {/* NAME */}
-                          <td style={{ padding: "12px", minWidth: 160, overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 140, overflowWrap: "break-word" }}>
                             <p data-testid={`text-equip-name-${equip.id}`} style={{ fontWeight: 500, color: "#1e293b", fontSize: 13 }}>
                               {equip.name}
                             </p>
                           </td>
 
                           {/* SIZE badge */}
-                          <td style={{ padding: "12px", minWidth: 96, overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 68, overflowWrap: "break-word" }}>
                             {equip.sizeSpec ? (
                               <span
                                 data-testid={`text-equip-size-${equip.id}`}
-                                style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 4, whiteSpace: "nowrap" }}
+                                style={{ display: "inline-flex", alignItems: "center", padding: "2px 6px", fontSize: 11, fontWeight: 600, background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 4, whiteSpace: "nowrap" }}
                               >
                                 {equip.sizeSpec}
                               </span>
@@ -1061,14 +1061,14 @@ export default function Equipment() {
                           </td>
 
                           {/* BRAND */}
-                          <td style={{ padding: "12px", minWidth: 130, overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 90, overflowWrap: "break-word" }}>
                             <span data-testid={`text-equip-brand-${equip.id}`} style={{ color: "#475569", fontSize: 12 }}>
                               {equip.brand ?? "—"}
                             </span>
                           </td>
 
                           {/* LOCATION */}
-                          <td style={{ padding: "12px", minWidth: 110, borderRight: "1px solid #e2e8f0", overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 96, borderRight: "1px solid #e2e8f0", overflowWrap: "break-word" }}>
                             {equip.location ? (
                               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                 <MapPin style={{ width: 12, height: 12, color: "#94a3b8", flexShrink: 0 }} />
@@ -1082,7 +1082,7 @@ export default function Equipment() {
                           </td>
 
                           {/* PROJECT chip (live) */}
-                          <td style={{ padding: "12px", minWidth: 192, background: "#fafcff", overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 148, background: "#fafcff", overflowWrap: "break-word" }}>
                             {equip.project ? (
                               <span
                                 data-testid={`text-equip-project-${equip.id}`}
@@ -1098,7 +1098,7 @@ export default function Equipment() {
                           </td>
 
                           {/* TEAM chip (live) */}
-                          <td style={{ padding: "12px", minWidth: 110, background: "#fafcff", overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 80, background: "#fafcff", overflowWrap: "break-word" }}>
                             {(equip as any).teamName ? (
                               <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: 12, whiteSpace: "nowrap" }}>
                                 {(equip as any).teamName}
@@ -1109,12 +1109,12 @@ export default function Equipment() {
                           </td>
 
                           {/* STATUS dot + label (live) */}
-                          <td style={{ padding: "12px", minWidth: 132, background: "#fafcff", overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 104, background: "#fafcff", overflowWrap: "break-word" }}>
                             <StatusBadge status={equip.status} />
                           </td>
 
                           {/* LAST UPDATED (live) */}
-                          <td style={{ padding: "12px", minWidth: 120, background: "#fafcff", overflowWrap: "break-word" }}>
+                          <td style={{ padding: "8px", minWidth: 88, background: "#fafcff", overflowWrap: "break-word" }}>
                             {updatedFmt ? (
                               <div>
                                 <p style={{ fontSize: 11, fontWeight: 500, color: "#475569", lineHeight: 1 }}>{updatedFmt.date}</p>
@@ -1126,7 +1126,7 @@ export default function Equipment() {
                           </td>
 
                           {/* Actions — hidden in view mode */}
-                          <td style={{ padding: "12px", minWidth: 48 }} />
+                          <td style={{ padding: "8px", minWidth: 36 }} />
                         </tr>
                       );
                     })}

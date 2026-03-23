@@ -1332,11 +1332,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/equipment", isAuthenticated, requireManager, async (req, res) => {
     try {
       // Only master data fields accepted from admin forms; live fields (status, assignedProjectId) are future auto-populated
-      const { equipNo, name, equipType, serialNumber, sizeSpec, brand, location } = req.body;
-      if (!String(equipNo ?? "").trim()) return res.status(400).json({ message: "Equipment number is required" });
+      const { equipNo: equipNoRaw, name, equipType, serialNumber, sizeSpec, brand, location } = req.body;
       if (!String(name ?? "").trim()) return res.status(400).json({ message: "Name is required" });
+      // Auto-assign EQ# if blank — finds next available EQ-NNN
+      let equipNo = String(equipNoRaw ?? "").trim();
+      if (!equipNo) {
+        const all = await storage.getEquipment();
+        const nums = all
+          .map((e) => { const m = e.equipNo.match(/^EQ-(\d+)$/i); return m ? parseInt(m[1], 10) : 0; })
+          .filter(Boolean);
+        const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+        equipNo = `EQ-${String(next).padStart(3, "0")}`;
+      }
       const created = await storage.createEquipment({
-        equipNo: String(equipNo).trim(),
+        equipNo,
         name: String(name).trim(),
         equipType: equipType ? String(equipType).trim() : null,
         serialNumber: serialNumber ? String(serialNumber).trim() : null,

@@ -1,0 +1,140 @@
+==================================================
+SCOPE: Equipment Registry page — Admin Mode only.
+Apply these fixes to the existing implementation.
+Do NOT change other pages or global styles.
+==================================================
+
+FIX 1 — EQ # is optional, not required
+
+  Current: saving without an EQ # is blocked or
+           produces an error.
+  Fix:     EQ # is optional at save time.
+
+  - If admin leaves EQ # blank, auto-assign a
+    sequential fallback (e.g. EQ-001, EQ-002…)
+    and display it in the saved row.
+  - Admin can overwrite the fallback later via edit.
+  - Do NOT block save when EQ # is empty.
+
+
+FIX 2 — Edit mode must use the same dropdowns as Add mode
+
+  Current: clicking ✏ on a saved row switches the
+           cells to plain <input> text fields.
+           Name / Size / Brand lose their dropdowns.
+
+  Fix:     edit mode must render the same creatable
+           dropdown components as the add-row, not
+           plain inputs.
+
+  Behavior in edit mode:
+  - NAME cell  → creatable dropdown (type selector),
+                 pre-selected to current value
+  - SIZE cell  → creatable dropdown, options based
+                 on current type, pre-selected
+  - BRAND cell → creatable dropdown, options based
+                 on current type, pre-selected
+  - EQ #       → editable text input (same as add row)
+  - LOCATION   → text input + datalist (same as add row)
+  - PROJECT / STATUS / LAST UPDATED → read-only,
+                 no change (live fields)
+  - Save / Cancel buttons appear in the actions cell
+
+  Edit mode must feel identical to add mode in terms
+  of input components. Only the row state differs
+  (editing existing vs creating new).
+
+
+FIX 3 — Creatable dropdowns for Type, Size, Brand
+
+  All three dropdown fields (TYPE, SIZE, BRAND) must
+  support adding and deleting options inline.
+  This applies to BOTH add mode and edit mode.
+
+  Panel layout when dropdown is open:
+  ┌──────────────────────────────────┐
+  │ [ Type to add new…       ] [ + ] │  ← add row at top
+  │ ──────────────────────────────── │
+  │  Air Compressor             [✕]  │
+  │  Generator                  [✕]  │
+  │  Forklift           ✓       [✕]  │  ← selected item
+  │  Scissor Lift               [✕]  │
+  │  …                               │
+  └──────────────────────────────────┘
+
+  ADD behavior:
+  - Admin types in the input and presses [ + ] or Enter
+  - New option appended to the bottom of the list
+  - Immediately selected after adding
+
+  DELETE behavior:
+  - Each list item shows [ ✕ ] on hover
+  - Clicking removes that option from the list
+  - If deleted item was selected, clear selection
+
+  TYPE → SIZE / BRAND linkage:
+  - Selecting a type still auto-populates size and
+    brand dropdowns with their default options
+  - Custom-added options in size/brand are preserved
+    for the current session
+
+  Empty state:
+  - If all options deleted, show:
+    "No options — type above to add"
+
+  Panel style:
+  - Positioned below trigger, z-index clears table rows
+  - max-height ~200px with scroll
+  - border-radius 8–9px, subtle box-shadow
+  - [ + ] button: small, square, green (#1a472a)
+  - [ ✕ ] button: 18×18px, red tint (#fee2e2 / #f87171),
+    visible on hover only
+  - Selected item: ✓ checkmark left of label,
+    light green row highlight
+
+  Default type options:
+    Air Compressor, Generator, Forklift, Scissor Lift,
+    Boom Lift, Conduit Bender, Wire Puller, Drill,
+    Grinder, Vacuum, Power Distribution, Cable Puller,
+    Other
+
+  Default size options per type:
+    Air Compressor:     20 gal, 30 gal, 60 gal, 80 gal
+    Generator:          3,500W, 5,500W, 7,500W, 10,000W
+    Forklift:           3,000 lbs, 5,000 lbs, 8,000 lbs, 15,000 lbs
+    Scissor Lift:       19 ft, 26 ft, 32 ft, 40 ft
+    Boom Lift:          45 ft, 60 ft, 80 ft
+    Conduit Bender:     1/2", 3/4", 1", 1-1/4", 2"
+    Wire Puller:        1,000 lbs, 2,500 lbs, 5,000 lbs
+    Drill:              1/2", 3/4", SDS, Hammer
+    Grinder:            4.5", 5", 7", 9"
+    Vacuum:             5 gal, 10 gal, 16 gal, 55 gal
+    Power Distribution: 100A, 200A, 400A, 600A
+    Cable Puller:       1,000 lbs, 2,500 lbs, 5,000 lbs
+
+  Default brand options per type:
+    Air Compressor:     DeWalt, Ingersoll Rand, Makita, Sullair
+    Generator:          Honda, Generac, Kohler, Caterpillar
+    Forklift:           Toyota, Caterpillar, Hyster, Crown
+    Scissor Lift:       JLG, Genie, Skyjack
+    Boom Lift:          JLG, Genie, Skyjack
+    Conduit Bender:     Greenlee, Klein Tools, Ideal, Southwire
+    Wire Puller:        Greenlee, Maxis, Southwire
+    Drill:              DeWalt, Milwaukee, Makita, Hilti
+    Grinder:            DeWalt, Milwaukee, Makita, Bosch
+    Vacuum:             DeWalt, Milwaukee, Ridgid, Bosch
+    Power Distribution: Siemens, Square D, Eaton, ABB
+    Cable Puller:       Greenlee, Maxis, Southwire
+
+
+CONSTRAINTS
+───────────
+  - These 3 fixes apply only to the Equipment Registry
+    table — add row and edit row
+  - Do NOT change PROJECT, STATUS, LAST UPDATED
+    (live fields, always read-only)
+  - Do NOT change the column structure or group labels
+  - Do NOT use modals or separate settings pages
+  - Location stays as text input + datalist, unchanged
+  - Do NOT affect the filter bar or summary cards
+==================================================

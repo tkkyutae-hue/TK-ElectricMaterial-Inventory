@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { CreatableDropdown } from "@/components/ui/CreatableDropdown";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type EquipmentWithProject, type Project } from "@shared/schema";
@@ -67,6 +68,130 @@ function PulseDot() {
 
 const PAGE_SIZE = 15;
 
+// ─── Shared row hook: manages creatable options state ─────────────────────────
+function useEquipRowState(initType = "", initSize = "", initBrand = "") {
+  const [equipType, setEquipTypeRaw] = useState(initType);
+  const [typeOptions, setTypeOptions] = useState<string[]>([...EQUIP_TYPES]);
+  const [sizeSpec, setSizeSpec]       = useState(initSize);
+  const [sizeOptions, setSizeOptions] = useState<string[]>(
+    initType ? [...(EQUIP_TYPE_CATALOGUE[initType]?.sizes ?? [])] : []
+  );
+  const [brand, setBrand]             = useState(initBrand);
+  const [brandOptions, setBrandOptions] = useState<string[]>(
+    initType ? [...(EQUIP_TYPE_CATALOGUE[initType]?.brands ?? [])] : []
+  );
+
+  function setEquipType(t: string) {
+    setEquipTypeRaw(t);
+    const cat = EQUIP_TYPE_CATALOGUE[t];
+    if (cat) {
+      setSizeOptions([...cat.sizes]);
+      setBrandOptions([...cat.brands]);
+      setSizeSpec("");
+      setBrand("");
+    }
+  }
+
+  return {
+    equipType, setEquipType, typeOptions, setTypeOptions,
+    sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
+    brand, setBrand, brandOptions, setBrandOptions,
+  };
+}
+
+// ─── Shared row cells: Type/Name/S/N, Size, Brand — used in both add & edit ──
+function EquipRowCells({
+  equipType, setEquipType, typeOptions, setTypeOptions,
+  name, setName, serialNumber, setSerialNumber,
+  sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
+  brand, setBrand, brandOptions, setBrandOptions,
+  location, setLocation,
+  inputBorderCls,
+}: {
+  equipType: string; setEquipType: (v: string) => void;
+  typeOptions: string[]; setTypeOptions: (o: string[]) => void;
+  name: string; setName: (v: string) => void;
+  serialNumber: string; setSerialNumber: (v: string) => void;
+  sizeSpec: string; setSizeSpec: (v: string) => void;
+  sizeOptions: string[]; setSizeOptions: (o: string[]) => void;
+  brand: string; setBrand: (v: string) => void;
+  brandOptions: string[]; setBrandOptions: (o: string[]) => void;
+  location: string; setLocation: (v: string) => void;
+  inputBorderCls: string;
+}) {
+  const inputCls = `h-7 text-xs bg-white ${inputBorderCls}`;
+
+  return (
+    <>
+      {/* Name/S/N — type creatable + name text + serial */}
+      <td className="px-3 py-2">
+        <div className="flex flex-col gap-1">
+          <CreatableDropdown
+            data-testid="select-equip-type"
+            options={typeOptions}
+            value={equipType}
+            onChange={(v) => { setEquipType(v); if (v) setName(v); }}
+            onOptionsChange={setTypeOptions}
+            placeholder="Type…"
+            className="w-40"
+          />
+          <Input
+            data-testid="input-equip-name"
+            placeholder="Equipment name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputCls} w-40`}
+          />
+          <Input
+            data-testid="input-equip-serial"
+            placeholder="S/N (optional)"
+            value={serialNumber}
+            onChange={(e) => setSerialNumber(e.target.value)}
+            className={`${inputCls} w-40 text-slate-400`}
+          />
+        </div>
+      </td>
+
+      {/* Size */}
+      <td className="px-3 py-2">
+        <CreatableDropdown
+          data-testid="select-equip-size"
+          options={sizeOptions}
+          value={sizeSpec}
+          onChange={setSizeSpec}
+          onOptionsChange={setSizeOptions}
+          placeholder="Size…"
+          className="w-28"
+        />
+      </td>
+
+      {/* Brand */}
+      <td className="px-3 py-2">
+        <CreatableDropdown
+          data-testid="select-equip-brand"
+          options={brandOptions}
+          value={brand}
+          onChange={setBrand}
+          onOptionsChange={setBrandOptions}
+          placeholder="Brand…"
+          className="w-32"
+        />
+      </td>
+
+      {/* Location — text input, unchanged */}
+      <td className="px-3 py-2">
+        <Input
+          data-testid="input-equip-location"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className={`${inputCls} w-28`}
+        />
+      </td>
+    </>
+  );
+}
+
 // ─── Inline Add Row ────────────────────────────────────────────────────────────
 function AddEquipmentRow({
   onSaved,
@@ -78,26 +203,28 @@ function AddEquipmentRow({
   autoFocus?: boolean;
 }) {
   const { toast } = useToast();
-  const [equipNo, setEquipNo]   = useState("");
-  const [equipType, setEquipType] = useState("");
-  const [name, setName]         = useState("");
+  const [equipNo, setEquipNo]           = useState("");
+  const [name, setName]                 = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [sizeSpec, setSizeSpec] = useState("");
-  const [brand, setBrand]       = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation]         = useState("");
   const equipRef = useRef<HTMLInputElement>(null);
+
+  const {
+    equipType, setEquipType, typeOptions, setTypeOptions,
+    sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
+    brand, setBrand, brandOptions, setBrandOptions,
+  } = useEquipRowState();
 
   useEffect(() => { if (autoFocus) equipRef.current?.focus(); }, [autoFocus]);
 
-  // Cascade size/brand from type
-  const typeCat = EQUIP_TYPE_CATALOGUE[equipType] ?? { sizes: [], brands: [] };
-
   const createMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/equipment", {
-      equipNo: equipNo.trim(), name: name.trim() || equipType,
+      equipNo: equipNo.trim() || null,
+      name: name.trim() || equipType || "Equipment",
       equipType: equipType || null,
       serialNumber: serialNumber.trim() || null,
-      sizeSpec: sizeSpec.trim() || null, brand: brand.trim() || null,
+      sizeSpec: sizeSpec.trim() || null,
+      brand: brand.trim() || null,
       location: location.trim() || null,
     }),
     onSuccess: async (res: any) => {
@@ -109,96 +236,41 @@ function AddEquipmentRow({
   });
 
   function handleSave() {
-    if (!equipNo.trim()) { equipRef.current?.focus(); return; }
     if (!name.trim() && !equipType) return;
     createMutation.mutate();
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") handleSave();
-    if (e.key === "Escape") onCancel();
   }
 
   const inputCls = "h-7 text-xs bg-white border-slate-200";
 
   return (
     <tr className="bg-blue-50/70 border-b border-blue-200">
-      {/* EQ # */}
+      {/* EQ # — optional; blank = auto-assigned by server */}
       <td className="px-3 py-2">
-        <Input ref={equipRef} data-testid="input-equip-no" placeholder="EQ-001" value={equipNo}
-          onChange={(e) => setEquipNo(e.target.value)} onKeyDown={handleKeyDown}
-          className={`${inputCls} w-20`} />
+        <Input
+          ref={equipRef}
+          data-testid="input-equip-no"
+          placeholder="Auto"
+          value={equipNo}
+          onChange={(e) => setEquipNo(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
+          className={`${inputCls} w-20`}
+        />
       </td>
-      {/* Type → Name (cascading) */}
-      <td className="px-3 py-2">
-        <div className="flex flex-col gap-1">
-          <Select value={equipType} onValueChange={(v) => {
-            setEquipType(v === "__none__" ? "" : v);
-            if (v !== "__none__" && v !== "Other") {
-              setName(v);
-              // Reset size/brand when type changes
-              setSizeSpec(""); setBrand("");
-            }
-          }}>
-            <SelectTrigger data-testid="select-equip-type" className={`${inputCls} w-40`}>
-              <SelectValue placeholder="Type…" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">— Select type —</SelectItem>
-              {EQUIP_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input data-testid="input-equip-name" placeholder="Equipment name" value={name}
-            onChange={(e) => setName(e.target.value)} onKeyDown={handleKeyDown}
-            className={`${inputCls} w-40`} />
-          <Input data-testid="input-equip-serial" placeholder="S/N (optional)" value={serialNumber}
-            onChange={(e) => setSerialNumber(e.target.value)} onKeyDown={handleKeyDown}
-            className={`${inputCls} w-40 text-slate-400`} />
-        </div>
-      </td>
-      {/* Size (cascade from type) */}
-      <td className="px-3 py-2">
-        {typeCat.sizes.length > 0 ? (
-          <Select value={sizeSpec || "__none__"} onValueChange={(v) => setSizeSpec(v === "__none__" ? "" : v)}>
-            <SelectTrigger data-testid="select-equip-size" className={`${inputCls} w-28`}>
-              <SelectValue placeholder="Size…" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Custom…</SelectItem>
-              {typeCat.sizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input data-testid="input-equip-size" placeholder="Size/Spec" value={sizeSpec}
-            onChange={(e) => setSizeSpec(e.target.value)} onKeyDown={handleKeyDown}
-            className={`${inputCls} w-28`} />
-        )}
-      </td>
-      {/* Brand (cascade from type) */}
-      <td className="px-3 py-2">
-        {typeCat.brands.length > 0 ? (
-          <Select value={brand || "__none__"} onValueChange={(v) => setBrand(v === "__none__" ? "" : v)}>
-            <SelectTrigger data-testid="select-equip-brand" className={`${inputCls} w-32`}>
-              <SelectValue placeholder="Brand…" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Other…</SelectItem>
-              {typeCat.brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input data-testid="input-equip-brand" placeholder="Brand" value={brand}
-            onChange={(e) => setBrand(e.target.value)} onKeyDown={handleKeyDown}
-            className={`${inputCls} w-32`} />
-        )}
-      </td>
-      {/* Location */}
-      <td className="px-3 py-2">
-        <Input data-testid="input-equip-location" placeholder="Location" value={location}
-          onChange={(e) => setLocation(e.target.value)} onKeyDown={handleKeyDown}
-          className={`${inputCls} w-28`} />
-      </td>
-      {/* Project — read-only in admin add form */}
+
+      <EquipRowCells
+        equipType={equipType} setEquipType={setEquipType}
+        typeOptions={typeOptions} setTypeOptions={setTypeOptions}
+        name={name} setName={setName}
+        serialNumber={serialNumber} setSerialNumber={setSerialNumber}
+        sizeSpec={sizeSpec} setSizeSpec={setSizeSpec}
+        sizeOptions={sizeOptions} setSizeOptions={setSizeOptions}
+        brand={brand} setBrand={setBrand}
+        brandOptions={brandOptions} setBrandOptions={setBrandOptions}
+        location={location} setLocation={setLocation}
+        inputBorderCls="border-slate-200"
+      />
+
+      {/* Project — read-only */}
       <td className="px-3 py-2">
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
@@ -241,15 +313,26 @@ function EditEquipmentRow({
   const [equipNo, setEquipNo]           = useState(item.equipNo);
   const [name, setName]                 = useState(item.name);
   const [serialNumber, setSerialNumber] = useState(item.serialNumber ?? "");
-  const [sizeSpec, setSizeSpec]         = useState(item.sizeSpec ?? "");
-  const [brand, setBrand]               = useState(item.brand ?? "");
   const [location, setLocation]         = useState(item.location ?? "");
+
+  const {
+    equipType, setEquipType, typeOptions, setTypeOptions,
+    sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
+    brand, setBrand, brandOptions, setBrandOptions,
+  } = useEquipRowState(
+    item.equipType ?? "",
+    item.sizeSpec ?? "",
+    item.brand ?? ""
+  );
 
   const updateMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", `/api/equipment/${item.id}`, {
-      equipNo: equipNo.trim(), name: name.trim(),
+      equipNo: equipNo.trim(),
+      name: name.trim(),
+      equipType: equipType || null,
       serialNumber: serialNumber.trim() || null,
-      sizeSpec: sizeSpec.trim() || null, brand: brand.trim() || null,
+      sizeSpec: sizeSpec.trim() || null,
+      brand: brand.trim() || null,
       location: location.trim() || null,
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/equipment"] }); onSaved(); },
@@ -260,37 +343,40 @@ function EditEquipmentRow({
 
   return (
     <tr className="bg-amber-50/50 border-b border-amber-100">
+      {/* EQ # */}
       <td className="px-3 py-2">
-        <Input data-testid="input-edit-equip-no" value={equipNo} onChange={(e) => setEquipNo(e.target.value)}
-          className={`${inputCls} w-20`} />
+        <Input
+          data-testid="input-edit-equip-no"
+          value={equipNo}
+          onChange={(e) => setEquipNo(e.target.value)}
+          className={`${inputCls} w-20`}
+        />
       </td>
-      <td className="px-3 py-2">
-        <div className="flex flex-col gap-1">
-          <Input data-testid="input-edit-equip-name" value={name} onChange={(e) => setName(e.target.value)}
-            className={`${inputCls} w-40`} />
-          <Input data-testid="input-edit-equip-serial" value={serialNumber} placeholder="S/N"
-            onChange={(e) => setSerialNumber(e.target.value)} className={`${inputCls} w-40 text-slate-400`} />
-        </div>
-      </td>
-      <td className="px-3 py-2">
-        <Input data-testid="input-edit-equip-size" value={sizeSpec} onChange={(e) => setSizeSpec(e.target.value)}
-          className={`${inputCls} w-28`} />
-      </td>
-      <td className="px-3 py-2">
-        <Input data-testid="input-edit-equip-brand" value={brand} onChange={(e) => setBrand(e.target.value)}
-          className={`${inputCls} w-32`} />
-      </td>
-      <td className="px-3 py-2">
-        <Input data-testid="input-edit-equip-location" value={location} onChange={(e) => setLocation(e.target.value)}
-          className={`${inputCls} w-28`} />
-      </td>
+
+      <EquipRowCells
+        equipType={equipType} setEquipType={setEquipType}
+        typeOptions={typeOptions} setTypeOptions={setTypeOptions}
+        name={name} setName={setName}
+        serialNumber={serialNumber} setSerialNumber={setSerialNumber}
+        sizeSpec={sizeSpec} setSizeSpec={setSizeSpec}
+        sizeOptions={sizeOptions} setSizeOptions={setSizeOptions}
+        brand={brand} setBrand={setBrand}
+        brandOptions={brandOptions} setBrandOptions={setBrandOptions}
+        location={location} setLocation={setLocation}
+        inputBorderCls="border-amber-200"
+      />
+
+      {/* Project — read-only (live field) */}
       <td className="px-3 py-2">
         <span className="text-xs text-slate-400 italic">{item.project?.name ?? "—"}</span>
       </td>
+      {/* Status — read-only (live field) */}
       <td className="px-3 py-2">
         <StatusBadge status={item.status} />
       </td>
+      {/* Last Updated */}
       <td className="px-3 py-2" />
+      {/* Actions */}
       <td className="px-3 py-2">
         <div className="flex items-center gap-1">
           <Button data-testid="btn-equip-update" size="sm" className="gap-1 h-7 text-xs px-2.5"

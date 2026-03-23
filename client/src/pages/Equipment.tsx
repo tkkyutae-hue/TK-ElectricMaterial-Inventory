@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Wrench, PlusCircle, Loader2, CheckCircle2, AlertTriangle,
-  PauseCircle, Check, X, Trash2, Pencil, Search, MapPin,
+  PauseCircle, Check, X, Trash2, Pencil, Search, MapPin, CheckCircle,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,10 +20,10 @@ import { EQUIP_TYPE_CATALOGUE, EQUIP_TYPES } from "@/lib/equipmentCatalogue";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CFG = [
-  { value: "operational",    label: "Operational",    dot: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", row: "bg-emerald-50/30" },
-  { value: "standby",        label: "Standby",        dot: "#60a5fa", badge: "bg-blue-50 text-blue-700 border-blue-200",          row: "" },
-  { value: "partial_issue",  label: "Partial Issue",  dot: "#f59e0b", badge: "bg-amber-50 text-amber-700 border-amber-200",       row: "bg-amber-50/30" },
-  { value: "broken_down",    label: "Broken Down",    dot: "#ef4444", badge: "bg-red-50 text-red-700 border-red-200",             row: "bg-red-50/20" },
+  { value: "operational",   label: "Operational",   dot: "#10b981", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", row: "bg-emerald-50/30" },
+  { value: "standby",       label: "Standby",       dot: "#60a5fa", badge: "bg-blue-50 text-blue-700 border-blue-200",          row: "" },
+  { value: "partial_issue", label: "Partial Issue", dot: "#f59e0b", badge: "bg-amber-50 text-amber-700 border-amber-200",       row: "bg-amber-50/30" },
+  { value: "broken_down",   label: "Broken Down",   dot: "#ef4444", badge: "bg-red-50 text-red-700 border-red-200",             row: "bg-red-50/20" },
 ] as const;
 type StatusValue = typeof STATUS_CFG[number]["value"];
 
@@ -38,6 +38,55 @@ function StatusBadge({ status }: { status: string | null }) {
       <span style={{ width: 7, height: 7, borderRadius: "50%", background: cfg.dot, flexShrink: 0, display: "inline-block" }} />
       <Badge variant="outline" className={`text-xs font-semibold ${cfg.badge}`}>{cfg.label}</Badge>
     </div>
+  );
+}
+
+// ─── Ownership config ─────────────────────────────────────────────────────────
+const OWN_OPTS = ["Rental", "Company-owned"] as const;
+type OwnType = typeof OWN_OPTS[number];
+
+const OWN_CFG: Record<OwnType, { bg: string; border: string; color: string }> = {
+  "Rental":        { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c" },
+  "Company-owned": { bg: "#f0fdf4", border: "#86efac", color: "#166534" },
+};
+
+function OwnershipBadge({ type }: { type: string | null }) {
+  const t = (type ?? "Rental") as OwnType;
+  const cfg = OWN_CFG[t] ?? OWN_CFG["Rental"];
+  return (
+    <span style={{
+      background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+      fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+      padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap", display: "inline-block",
+    }}>
+      {t}
+    </span>
+  );
+}
+
+function OwnershipSelect({
+  value, onChange, borderCls,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  borderCls?: string;
+}) {
+  const t = value as OwnType;
+  const cfg = OWN_CFG[t] ?? OWN_CFG["Rental"];
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      data-testid="select-equip-ownership"
+      style={{
+        height: 28, fontSize: 11, fontWeight: 600, letterSpacing: "0.03em",
+        background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+        borderRadius: 6, padding: "0 8px", cursor: "pointer", outline: "none",
+        width: "100%",
+      }}
+    >
+      {OWN_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+    </select>
   );
 }
 
@@ -66,9 +115,29 @@ function PulseDot() {
   );
 }
 
+// ─── EQ# auto-generator ───────────────────────────────────────────────────────
+const TYPE_ABBR: Record<string, string> = {
+  "Air Compressor": "AC", "Generator": "GEN", "Forklift": "FK",
+  "Scissor Lift": "SL", "Boom Lift": "BL", "Conduit Bender": "CB",
+  "Wire Puller": "WP", "Drill": "DR", "Grinder": "GR",
+  "Vacuum": "VAC", "Power Distribution": "PD", "Cable Puller": "CP", "Other": "EQ",
+};
+
+function autoGenEqNo(type: string, size: string, brand: string): string {
+  const typeAbbr  = type  ? (TYPE_ABBR[type] ?? type.slice(0, 2).toUpperCase()) : "";
+  const sizeShort = size  ? size.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5) : "";
+  const brandShort = brand ? brand.slice(0, 3).toUpperCase() : "";
+  const parts = [typeAbbr, sizeShort, brandShort].filter(Boolean);
+  return parts.length > 0 ? parts.join("-") : "";
+}
+
 const PAGE_SIZE = 15;
 
-// ─── Shared row hook: manages creatable options state ─────────────────────────
+// ─── Common location datalist id ─────────────────────────────────────────────
+const LOC_LIST_ID = "equip-location-list";
+const COMMON_LOCATIONS = ["KDC / KISS", "Site A", "Site B", "Site C", "Warehouse", "Yard", "Storage", "Office"];
+
+// ─── Shared row hook ──────────────────────────────────────────────────────────
 function useEquipRowState(initType = "", initSize = "", initBrand = "") {
   const [equipType, setEquipTypeRaw] = useState(initType);
   const [typeOptions, setTypeOptions] = useState<string[]>([...EQUIP_TYPES]);
@@ -89,6 +158,9 @@ function useEquipRowState(initType = "", initSize = "", initBrand = "") {
       setBrandOptions([...cat.brands]);
       setSizeSpec("");
       setBrand("");
+    } else {
+      setSizeOptions([]);
+      setBrandOptions([]);
     }
   }
 
@@ -99,114 +171,19 @@ function useEquipRowState(initType = "", initSize = "", initBrand = "") {
   };
 }
 
-// ─── Shared row cells: Type/Name/S/N, Size, Brand — used in both add & edit ──
-function EquipRowCells({
-  equipType, setEquipType, typeOptions, setTypeOptions,
-  name, setName, serialNumber, setSerialNumber,
-  sizeSpec, setSizeSpec, sizeOptions, setSizeOptions,
-  brand, setBrand, brandOptions, setBrandOptions,
-  location, setLocation,
-  inputBorderCls,
-}: {
-  equipType: string; setEquipType: (v: string) => void;
-  typeOptions: string[]; setTypeOptions: (o: string[]) => void;
-  name: string; setName: (v: string) => void;
-  serialNumber: string; setSerialNumber: (v: string) => void;
-  sizeSpec: string; setSizeSpec: (v: string) => void;
-  sizeOptions: string[]; setSizeOptions: (o: string[]) => void;
-  brand: string; setBrand: (v: string) => void;
-  brandOptions: string[]; setBrandOptions: (o: string[]) => void;
-  location: string; setLocation: (v: string) => void;
-  inputBorderCls: string;
-}) {
-  const inputCls = `h-7 text-xs bg-white ${inputBorderCls}`;
-
-  return (
-    <>
-      {/* Name/S/N — type creatable + name text + serial */}
-      <td className="px-3 py-2">
-        <div className="flex flex-col gap-1">
-          <CreatableDropdown
-            data-testid="select-equip-type"
-            options={typeOptions}
-            value={equipType}
-            onChange={(v) => { setEquipType(v); if (v) setName(v); }}
-            onOptionsChange={setTypeOptions}
-            placeholder="Type…"
-            className="w-40"
-          />
-          <Input
-            data-testid="input-equip-name"
-            placeholder="Equipment name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={`${inputCls} w-40`}
-          />
-          <Input
-            data-testid="input-equip-serial"
-            placeholder="S/N (optional)"
-            value={serialNumber}
-            onChange={(e) => setSerialNumber(e.target.value)}
-            className={`${inputCls} w-40 text-slate-400`}
-          />
-        </div>
-      </td>
-
-      {/* Size */}
-      <td className="px-3 py-2">
-        <CreatableDropdown
-          data-testid="select-equip-size"
-          options={sizeOptions}
-          value={sizeSpec}
-          onChange={setSizeSpec}
-          onOptionsChange={setSizeOptions}
-          placeholder="Size…"
-          className="w-28"
-        />
-      </td>
-
-      {/* Brand */}
-      <td className="px-3 py-2">
-        <CreatableDropdown
-          data-testid="select-equip-brand"
-          options={brandOptions}
-          value={brand}
-          onChange={setBrand}
-          onOptionsChange={setBrandOptions}
-          placeholder="Brand…"
-          className="w-32"
-        />
-      </td>
-
-      {/* Location — text input, unchanged */}
-      <td className="px-3 py-2">
-        <Input
-          data-testid="input-equip-location"
-          placeholder="Location"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          className={`${inputCls} w-28`}
-        />
-      </td>
-    </>
-  );
-}
-
 // ─── Inline Add Row ────────────────────────────────────────────────────────────
 function AddEquipmentRow({
-  onSaved,
-  onCancel,
-  autoFocus = false,
+  onSaved, onCancel, autoFocus = false,
 }: {
   onSaved: (id: number) => void;
   onCancel: () => void;
   autoFocus?: boolean;
 }) {
   const { toast } = useToast();
-  const [equipNo, setEquipNo]           = useState("");
-  const [name, setName]                 = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
-  const [location, setLocation]         = useState("");
+  const [ownership, setOwnership] = useState<string>("Rental");
+  const [equipNo, setEquipNo]     = useState("");
+  const [name, setName]           = useState("");
+  const [location, setLocation]   = useState("");
   const equipRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -217,16 +194,22 @@ function AddEquipmentRow({
 
   useEffect(() => { if (autoFocus) equipRef.current?.focus(); }, [autoFocus]);
 
+  const autoEq = autoGenEqNo(equipType, sizeSpec, brand);
+  const showAutoPreview = !equipNo.trim() && autoEq;
+
   const createMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/equipment", {
-      equipNo: equipNo.trim() || null,
-      name: name.trim() || equipType || "Equipment",
-      equipType: equipType || null,
-      serialNumber: serialNumber.trim() || null,
-      sizeSpec: sizeSpec.trim() || null,
-      brand: brand.trim() || null,
-      location: location.trim() || null,
-    }),
+    mutationFn: () => {
+      const resolvedEqNo = equipNo.trim() || autoEq || null;
+      return apiRequest("POST", "/api/equipment", {
+        equipNo: resolvedEqNo,
+        name: name.trim() || equipType || "Equipment",
+        equipType: equipType || null,
+        sizeSpec: sizeSpec.trim() || null,
+        brand: brand.trim() || null,
+        location: location.trim() || null,
+        ownershipType: ownership,
+      });
+    },
     onSuccess: async (res: any) => {
       const json = await res.json?.() ?? res;
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
@@ -244,44 +227,102 @@ function AddEquipmentRow({
 
   return (
     <tr className="bg-blue-50/70 border-b border-blue-200">
-      {/* EQ # — optional; blank = auto-assigned by server */}
-      <td className="px-3 py-2">
-        <Input
-          ref={equipRef}
-          data-testid="input-equip-no"
-          placeholder="Auto"
-          value={equipNo}
-          onChange={(e) => setEquipNo(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
-          className={`${inputCls} w-20`}
+      {/* OWN. */}
+      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+        <OwnershipSelect value={ownership} onChange={setOwnership} />
+      </td>
+      {/* EQ # — optional */}
+      <td className="px-3 py-2" style={{ minWidth: 120 }}>
+        <div>
+          <Input
+            ref={equipRef}
+            data-testid="input-equip-no"
+            placeholder="Auto"
+            value={equipNo}
+            onChange={(e) => setEquipNo(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
+            className={`${inputCls} w-24`}
+          />
+          {showAutoPreview && (
+            <p style={{ fontSize: 9, color: "#16a34a", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>
+              <CheckCircle style={{ width: 9, height: 9 }} />
+              Auto: {autoEq}
+            </p>
+          )}
+        </div>
+      </td>
+      {/* NAME (Type dropdown + name text) */}
+      <td className="px-3 py-2" style={{ minWidth: 160 }}>
+        <div className="flex flex-col gap-1">
+          <CreatableDropdown
+            data-testid="select-equip-type"
+            options={typeOptions}
+            value={equipType}
+            onChange={(v) => { setEquipType(v); if (v) setName(v); }}
+            onOptionsChange={setTypeOptions}
+            placeholder="Type…"
+            className="w-full"
+          />
+          <Input
+            data-testid="input-equip-name"
+            placeholder="Equipment name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputCls} w-full`}
+          />
+        </div>
+      </td>
+      {/* SIZE */}
+      <td className="px-3 py-2" style={{ minWidth: 96 }}>
+        <CreatableDropdown
+          data-testid="select-equip-size"
+          options={sizeOptions}
+          value={sizeSpec}
+          onChange={setSizeSpec}
+          onOptionsChange={setSizeOptions}
+          placeholder="Size…"
+          className="w-full"
         />
       </td>
-
-      <EquipRowCells
-        equipType={equipType} setEquipType={setEquipType}
-        typeOptions={typeOptions} setTypeOptions={setTypeOptions}
-        name={name} setName={setName}
-        serialNumber={serialNumber} setSerialNumber={setSerialNumber}
-        sizeSpec={sizeSpec} setSizeSpec={setSizeSpec}
-        sizeOptions={sizeOptions} setSizeOptions={setSizeOptions}
-        brand={brand} setBrand={setBrand}
-        brandOptions={brandOptions} setBrandOptions={setBrandOptions}
-        location={location} setLocation={setLocation}
-        inputBorderCls="border-slate-200"
-      />
-
-      {/* Project — read-only */}
-      <td className="px-3 py-2">
+      {/* BRAND */}
+      <td className="px-3 py-2" style={{ minWidth: 130 }}>
+        <CreatableDropdown
+          data-testid="select-equip-brand"
+          options={brandOptions}
+          value={brand}
+          onChange={setBrand}
+          onOptionsChange={setBrandOptions}
+          placeholder="Brand…"
+          className="w-full"
+        />
+      </td>
+      {/* LOCATION */}
+      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #e2e8f0" }}>
+        <Input
+          data-testid="input-equip-location"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          list={LOC_LIST_ID}
+          className={`${inputCls} w-full`}
+        />
+      </td>
+      {/* PROJECT — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 192 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
-      {/* Status — read-only */}
-      <td className="px-3 py-2">
+      {/* TEAM — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 110 }}>
         <span className="text-xs text-slate-400 italic">Auto</span>
       </td>
-      {/* Last Updated */}
-      <td className="px-3 py-2" />
+      {/* STATUS — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 132 }}>
+        <span className="text-xs text-slate-400 italic">Auto</span>
+      </td>
+      {/* LAST UPDATED */}
+      <td className="px-3 py-2" style={{ minWidth: 120 }} />
       {/* Actions */}
-      <td className="px-3 py-2">
+      <td className="px-3 py-2" style={{ minWidth: 64 }}>
         <div className="flex items-center gap-1">
           <Button data-testid="btn-equip-save" size="sm" className="gap-1 h-7 text-xs px-2.5"
             onClick={handleSave} disabled={createMutation.isPending}>
@@ -301,19 +342,17 @@ function AddEquipmentRow({
 
 // ─── Inline Edit Row ───────────────────────────────────────────────────────────
 function EditEquipmentRow({
-  item,
-  onSaved,
-  onCancel,
+  item, onSaved, onCancel,
 }: {
   item: EquipmentWithProject;
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const { toast } = useToast();
-  const [equipNo, setEquipNo]           = useState(item.equipNo);
-  const [name, setName]                 = useState(item.name);
-  const [serialNumber, setSerialNumber] = useState(item.serialNumber ?? "");
-  const [location, setLocation]         = useState(item.location ?? "");
+  const [ownership, setOwnership] = useState<string>(item.ownershipType ?? "Rental");
+  const [equipNo, setEquipNo]     = useState(item.equipNo);
+  const [name, setName]           = useState(item.name);
+  const [location, setLocation]   = useState(item.location ?? "");
 
   const {
     equipType, setEquipType, typeOptions, setTypeOptions,
@@ -325,15 +364,18 @@ function EditEquipmentRow({
     item.brand ?? ""
   );
 
+  const autoEq = autoGenEqNo(equipType, sizeSpec, brand);
+  const showAutoPreview = !equipNo.trim() && autoEq;
+
   const updateMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", `/api/equipment/${item.id}`, {
-      equipNo: equipNo.trim(),
+      equipNo: equipNo.trim() || autoEq || undefined,
       name: name.trim(),
       equipType: equipType || null,
-      serialNumber: serialNumber.trim() || null,
       sizeSpec: sizeSpec.trim() || null,
       brand: brand.trim() || null,
       location: location.trim() || null,
+      ownershipType: ownership,
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/equipment"] }); onSaved(); },
     onError: (err: any) => toast({ title: "Failed to update equipment", description: err.message, variant: "destructive" }),
@@ -343,41 +385,105 @@ function EditEquipmentRow({
 
   return (
     <tr className="bg-amber-50/50 border-b border-amber-100">
+      {/* OWN. */}
+      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+        <OwnershipSelect value={ownership} onChange={setOwnership} />
+      </td>
       {/* EQ # */}
-      <td className="px-3 py-2">
-        <Input
-          data-testid="input-edit-equip-no"
-          value={equipNo}
-          onChange={(e) => setEquipNo(e.target.value)}
-          className={`${inputCls} w-20`}
+      <td className="px-3 py-2" style={{ minWidth: 120 }}>
+        <div>
+          <Input
+            data-testid="input-edit-equip-no"
+            value={equipNo}
+            onChange={(e) => setEquipNo(e.target.value)}
+            className={`${inputCls} w-24`}
+          />
+          {showAutoPreview && (
+            <p style={{ fontSize: 9, color: "#16a34a", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>
+              <CheckCircle style={{ width: 9, height: 9 }} />
+              Auto: {autoEq}
+            </p>
+          )}
+        </div>
+      </td>
+      {/* NAME */}
+      <td className="px-3 py-2" style={{ minWidth: 160 }}>
+        <div className="flex flex-col gap-1">
+          <CreatableDropdown
+            data-testid="select-equip-type"
+            options={typeOptions}
+            value={equipType}
+            onChange={(v) => { setEquipType(v); if (v) setName(v); }}
+            onOptionsChange={setTypeOptions}
+            placeholder="Type…"
+            className="w-full"
+          />
+          <Input
+            data-testid="input-equip-name"
+            placeholder="Equipment name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputCls} w-full`}
+          />
+        </div>
+      </td>
+      {/* SIZE */}
+      <td className="px-3 py-2" style={{ minWidth: 96 }}>
+        <CreatableDropdown
+          data-testid="select-equip-size"
+          options={sizeOptions}
+          value={sizeSpec}
+          onChange={setSizeSpec}
+          onOptionsChange={setSizeOptions}
+          placeholder="Size…"
+          className="w-full"
         />
       </td>
-
-      <EquipRowCells
-        equipType={equipType} setEquipType={setEquipType}
-        typeOptions={typeOptions} setTypeOptions={setTypeOptions}
-        name={name} setName={setName}
-        serialNumber={serialNumber} setSerialNumber={setSerialNumber}
-        sizeSpec={sizeSpec} setSizeSpec={setSizeSpec}
-        sizeOptions={sizeOptions} setSizeOptions={setSizeOptions}
-        brand={brand} setBrand={setBrand}
-        brandOptions={brandOptions} setBrandOptions={setBrandOptions}
-        location={location} setLocation={setLocation}
-        inputBorderCls="border-amber-200"
-      />
-
-      {/* Project — read-only (live field) */}
-      <td className="px-3 py-2">
+      {/* BRAND */}
+      <td className="px-3 py-2" style={{ minWidth: 130 }}>
+        <CreatableDropdown
+          data-testid="select-equip-brand"
+          options={brandOptions}
+          value={brand}
+          onChange={setBrand}
+          onOptionsChange={setBrandOptions}
+          placeholder="Brand…"
+          className="w-full"
+        />
+      </td>
+      {/* LOCATION */}
+      <td className="px-3 py-2" style={{ minWidth: 110, borderRight: "1px solid #e2e8f0" }}>
+        <Input
+          data-testid="input-equip-location"
+          placeholder="Location"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          list={LOC_LIST_ID}
+          className={`${inputCls} w-full`}
+        />
+      </td>
+      {/* PROJECT — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 192 }}>
         <span className="text-xs text-slate-400 italic">{item.project?.name ?? "—"}</span>
       </td>
-      {/* Status — read-only (live field) */}
-      <td className="px-3 py-2">
+      {/* TEAM — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 110 }}>
+        {(item as any).teamName ? (
+          <span style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 12, whiteSpace: "nowrap" }}>
+            {(item as any).teamName}
+          </span>
+        ) : (
+          <span className="text-xs" style={{ color: "#d1d5db" }}>—</span>
+        )}
+      </td>
+      {/* STATUS — read-only */}
+      <td className="px-3 py-2" style={{ minWidth: 132 }}>
         <StatusBadge status={item.status} />
       </td>
-      {/* Last Updated */}
-      <td className="px-3 py-2" />
+      {/* LAST UPDATED */}
+      <td className="px-3 py-2" style={{ minWidth: 120 }} />
       {/* Actions */}
-      <td className="px-3 py-2">
+      <td className="px-3 py-2" style={{ minWidth: 64 }}>
         <div className="flex items-center gap-1">
           <Button data-testid="btn-equip-update" size="sm" className="gap-1 h-7 text-xs px-2.5"
             onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
@@ -399,20 +505,19 @@ function EditEquipmentRow({
 export default function Equipment() {
   const { toast } = useToast();
 
-  // ── State ──
-  const [draftKeys, setDraftKeys]     = useState<number[]>([]);
-  const [flashIds, setFlashIds]       = useState<Set<number>>(new Set());
-  const [editingId, setEditingId]     = useState<number | null>(null);
+  const [draftKeys, setDraftKeys]         = useState<number[]>([]);
+  const [flashIds, setFlashIds]           = useState<Set<number>>(new Set());
+  const [editingId, setEditingId]         = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [hoverRowId, setHoverRowId]   = useState<number | null>(null);
+  const [hoverRowId, setHoverRowId]       = useState<number | null>(null);
   const nextKey = useRef(0);
 
-  // ── Filters ──
-  const [search, setSearch]           = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterType, setFilterType]   = useState("");
+  const [search, setSearch]               = useState("");
+  const [filterStatus, setFilterStatus]   = useState("");
+  const [filterType, setFilterType]       = useState("");
+  const [filterOwnership, setFilterOwnership] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
-  const [page, setPage]               = useState(1);
+  const [page, setPage]                   = useState(1);
 
   const { data: equipList = [], isLoading } = useQuery<EquipmentWithProject[]>({
     queryKey: ["/api/equipment"],
@@ -422,7 +527,6 @@ export default function Equipment() {
     queryKey: ["/api/projects"],
   });
 
-  // ── Delete ──
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/equipment/${id}`),
     onSuccess: () => {
@@ -436,7 +540,6 @@ export default function Equipment() {
     },
   });
 
-  // ── Summary counts ──
   const statusCounts = {
     total:         equipList.length,
     operational:   equipList.filter((e) => e.status === "operational").length,
@@ -445,29 +548,28 @@ export default function Equipment() {
     broken_down:   equipList.filter((e) => e.status === "broken_down").length,
   };
 
-  // ── Filter logic ──
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return equipList.filter((e) => {
       if (q && !`${e.equipNo} ${e.name} ${e.sizeSpec ?? ""} ${e.brand ?? ""}`.toLowerCase().includes(q)) return false;
       if (filterStatus && e.status !== filterStatus) return false;
       if (filterType && e.equipType !== filterType) return false;
+      if (filterOwnership && (e.ownershipType ?? "Rental") !== filterOwnership) return false;
       if (filterProjectId && String(e.assignedProjectId ?? "") !== filterProjectId) return false;
       return true;
     });
-  }, [equipList, search, filterStatus, filterType, filterProjectId]);
+  }, [equipList, search, filterStatus, filterType, filterOwnership, filterProjectId]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Reset page on filter change
-  useEffect(() => setPage(1), [search, filterStatus, filterType, filterProjectId]);
+  useEffect(() => setPage(1), [search, filterStatus, filterType, filterOwnership, filterProjectId]);
 
-  // ── Active filter chips ──
   const chips: { label: string; clear: () => void }[] = [];
-  if (search)        chips.push({ label: `"${search}"`,                                        clear: () => setSearch("") });
-  if (filterStatus)  chips.push({ label: getStatusCfg(filterStatus).label,                     clear: () => setFilterStatus("") });
-  if (filterType)    chips.push({ label: filterType,                                            clear: () => setFilterType("") });
+  if (search)         chips.push({ label: `"${search}"`,                                    clear: () => setSearch("") });
+  if (filterStatus)   chips.push({ label: getStatusCfg(filterStatus).label,                 clear: () => setFilterStatus("") });
+  if (filterType)     chips.push({ label: filterType,                                        clear: () => setFilterType("") });
+  if (filterOwnership) chips.push({ label: filterOwnership,                                  clear: () => setFilterOwnership("") });
   if (filterProjectId) {
     const pName = projects.find((p) => String(p.id) === filterProjectId)?.name ?? filterProjectId;
     chips.push({ label: pName, clear: () => setFilterProjectId("") });
@@ -478,41 +580,41 @@ export default function Equipment() {
     setTimeout(() => setFlashIds((prev) => { const s = new Set(prev); s.delete(id); return s; }), 1200);
   }
 
-  function removeDraft(key: number) {
-    setDraftKeys((prev) => prev.filter((k) => k !== key));
-  }
-
-  function handleAddClick() {
-    const key = nextKey.current++;
-    setDraftKeys((prev) => [...prev, key]);
-  }
+  function removeDraft(key: number) { setDraftKeys((prev) => prev.filter((k) => k !== key)); }
+  function handleAddClick() { const key = nextKey.current++; setDraftKeys((prev) => [...prev, key]); }
 
   function formatDate(d: Date | string | null | undefined) {
     if (!d) return null;
     const dt = new Date(d);
     if (isNaN(dt.getTime())) return null;
-    return { date: dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }), time: dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) };
+    return {
+      date: dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      time: dt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    };
   }
 
   return (
     <div className="space-y-6">
+      <datalist id={LOC_LIST_ID}>
+        {COMMON_LOCATIONS.map((l) => <option key={l} value={l} />)}
+      </datalist>
 
       {/* ── Page header ── */}
       <div>
         <h1 className="text-3xl font-display font-bold text-slate-900">Equipment Registry</h1>
         <p className="text-slate-500 mt-1">
-          Master registry for all company equipment. Live fields (status, project) are updated from Daily Reports.
+          Master registry for all company equipment. Live fields (status, project, team) are updated from Daily Reports.
         </p>
       </div>
 
       {/* ── 5 Summary cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: "Total",         value: statusCounts.total,         icon: Wrench,        iconCls: "text-slate-600",   bg: "bg-slate-100"   },
-          { label: "Operational",   value: statusCounts.operational,   icon: CheckCircle2,  iconCls: "text-emerald-600", bg: "bg-emerald-50"  },
-          { label: "Standby",       value: statusCounts.standby,       icon: PauseCircle,   iconCls: "text-blue-500",    bg: "bg-blue-50"     },
-          { label: "Partial Issue", value: statusCounts.partial_issue, icon: AlertTriangle, iconCls: "text-amber-600",   bg: "bg-amber-50"    },
-          { label: "Broken Down",   value: statusCounts.broken_down,   icon: Wrench,        iconCls: "text-red-600",     bg: "bg-red-50"      },
+          { label: "Total",         value: statusCounts.total,         icon: Wrench,        iconCls: "text-slate-600",   bg: "bg-slate-100"  },
+          { label: "Operational",   value: statusCounts.operational,   icon: CheckCircle2,  iconCls: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Standby",       value: statusCounts.standby,       icon: PauseCircle,   iconCls: "text-blue-500",    bg: "bg-blue-50"    },
+          { label: "Partial Issue", value: statusCounts.partial_issue, icon: AlertTriangle, iconCls: "text-amber-600",   bg: "bg-amber-50"   },
+          { label: "Broken Down",   value: statusCounts.broken_down,   icon: Wrench,        iconCls: "text-red-600",     bg: "bg-red-50"     },
         ].map(({ label, value, icon: Icon, iconCls, bg }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-3 pt-4 pb-4 px-4">
@@ -558,6 +660,16 @@ export default function Equipment() {
           <SelectContent>
             <SelectItem value="__all__">All types</SelectItem>
             {EQUIP_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterOwnership || "__all__"} onValueChange={(v) => setFilterOwnership(v === "__all__" ? "" : v)}>
+          <SelectTrigger data-testid="select-filter-ownership" className="h-9 text-sm w-36">
+            <SelectValue placeholder="All ownership" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All ownership</SelectItem>
+            {OWN_OPTS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
           </SelectContent>
         </Select>
 
@@ -613,53 +725,69 @@ export default function Equipment() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <colgroup>
-                    <col style={{ width: 72 }} />   {/* EQ # */}
-                    <col />                          {/* Name + S/N */}
-                    <col style={{ width: 96 }} />   {/* Size */}
-                    <col style={{ width: 112 }} />  {/* Brand */}
-                    <col style={{ width: 112 }} />  {/* Location */}
-                    <col style={{ width: 128 }} />  {/* Project (live) */}
-                    <col style={{ width: 120 }} />  {/* Status (live) */}
-                    <col style={{ width: 96 }} />   {/* Last Updated (live) */}
-                    <col style={{ width: 60 }} />   {/* Actions */}
-                  </colgroup>
+                <table style={{ width: "100%", minWidth: 1344, tableLayout: "auto", borderCollapse: "collapse" }}>
 
                   {/* ── Two-tier header ── */}
                   <thead>
                     {/* Tier 1: section labels */}
-                    <tr className="bg-slate-50 border-b border-slate-200">
+                    <tr style={{ background: "#f8f9fa", borderBottom: "1px solid #e5e7eb" }}>
                       <th
-                        colSpan={5}
-                        className="px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-500"
-                        style={{ borderRight: "1px solid #cbd5e1" }}
+                        colSpan={6}
+                        style={{ padding: "6px 12px", textAlign: "left", borderRight: "1px solid #e5e7eb" }}
                       >
-                        Master Data
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#9ca3af", display: "inline-block" }} />
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b7280" }}>
+                            Master Data — Managed by Admin
+                          </span>
+                        </span>
                       </th>
                       <th
-                        colSpan={3}
-                        className="px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-widest text-blue-500"
+                        colSpan={4}
+                        style={{ padding: "6px 12px", textAlign: "left", background: "#eff6ff", borderBottom: "1px solid #bfdbfe" }}
                       >
-                        Live <PulseDot />
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3b82f6" }}>
+                            Live — Updated from Daily Reports
+                          </span>
+                          <PulseDot />
+                        </span>
                       </th>
-                      <th className="px-3 py-1.5" />
+                      <th style={{ padding: "6px 12px" }} />
                     </tr>
                     {/* Tier 2: column labels */}
-                    <tr className="border-b border-slate-100 bg-white">
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">EQ #</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name / S/N</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Size</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Brand</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide" style={{ borderRight: "1px solid #cbd5e1" }}>Location</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-blue-400 uppercase tracking-wide">Project</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-blue-400 uppercase tracking-wide">Status</th>
-                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-blue-400 uppercase tracking-wide">Last Updated</th>
-                      <th className="px-3 py-2.5" />
+                    <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                      {/* Master columns */}
+                      {[
+                        { label: "OWN.",         w: 110 },
+                        { label: "EQ #",         w: 120 },
+                        { label: "NAME",         w: 160 },
+                        { label: "SIZE",         w: 96  },
+                        { label: "BRAND",        w: 130 },
+                      ].map(({ label, w }) => (
+                        <th key={label} style={{ minWidth: w, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb" }}>
+                          {label}
+                        </th>
+                      ))}
+                      <th style={{ minWidth: 110, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#6b7280", letterSpacing: "0.05em", background: "#fff", borderBottom: "2px solid #e5e7eb", borderRight: "1px solid #cbd5e1" }}>
+                        LOCATION
+                      </th>
+                      {/* Live columns */}
+                      {[
+                        { label: "PROJECT",      w: 192 },
+                        { label: "TEAM",         w: 110 },
+                        { label: "STATUS",       w: 132 },
+                        { label: "LAST UPDATED", w: 120 },
+                      ].map(({ label, w }) => (
+                        <th key={label} style={{ minWidth: w, padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#3b82f6", letterSpacing: "0.05em", background: "#f0f6ff", borderBottom: "2px solid #bfdbfe" }}>
+                          {label}
+                        </th>
+                      ))}
+                      <th style={{ minWidth: 64, padding: "10px 12px", background: "#fff", borderBottom: "2px solid #e5e7eb" }} />
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody>
                     {/* Draft add rows */}
                     {draftKeys.map((key, idx) => (
                       <AddEquipmentRow
@@ -672,20 +800,20 @@ export default function Equipment() {
 
                     {pageItems.length === 0 && draftKeys.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-3">
-                            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100">
-                              <Wrench className="w-6 h-6 text-slate-400" />
+                        <td colSpan={11} style={{ padding: "64px 12px", textAlign: "center" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48, borderRadius: 16, background: "#f1f5f9" }}>
+                              <Wrench style={{ width: 24, height: 24, color: "#94a3b8" }} />
                             </div>
-                            <p className="text-sm font-medium text-slate-600">
+                            <p style={{ fontSize: 14, fontWeight: 500, color: "#475569" }}>
                               {filtered.length === 0 && equipList.length > 0
                                 ? "No equipment matches the current filters"
                                 : "No equipment registered yet"}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p style={{ fontSize: 12, color: "#94a3b8" }}>
                               {filtered.length === 0 && equipList.length > 0
                                 ? "Clear filters to see all equipment"
-                                : "Click \"Add Equipment\" to register your first piece of equipment"}
+                                : 'Click "Add Equipment" to register your first piece of equipment'}
                             </p>
                           </div>
                         </td>
@@ -706,124 +834,132 @@ export default function Equipment() {
                           <EditEquipmentRow
                             key={equip.id}
                             item={equip}
-                            onSaved={() => setEditingId(null)}
+                            onSaved={() => { setEditingId(null); flashRow(equip.id); }}
                             onCancel={() => setEditingId(null)}
                           />
                         );
                       }
 
+                      const rowBg = isFlashing ? undefined : isConfirming ? "#fef2f2" : isHovered ? "#f8fafc" : undefined;
+
                       return (
                         <tr
                           key={equip.id}
                           data-testid={`row-equipment-${equip.id}`}
-                          className={`transition-colors ${
-                            isFlashing ? "mat-row-flash" :
-                            isConfirming ? "bg-red-50" :
-                            isHovered ? "bg-slate-50" :
-                            statusCfg.row
-                          }`}
+                          className={isFlashing ? "mat-row-flash" : ""}
+                          style={{ borderBottom: "1px solid #f1f5f9", background: rowBg, transition: "background 0.15s" }}
                           onMouseEnter={() => setHoverRowId(equip.id)}
                           onMouseLeave={() => setHoverRowId(null)}
                         >
-                          {/* EQ # — monospace badge */}
-                          <td className="px-3 py-3">
+                          {/* OWN. badge */}
+                          <td style={{ padding: "12px", minWidth: 110, overflowWrap: "break-word" }}>
+                            <OwnershipBadge type={equip.ownershipType ?? "Rental"} />
+                          </td>
+
+                          {/* EQ # monospace badge */}
+                          <td style={{ padding: "12px", minWidth: 120, overflowWrap: "break-word" }}>
                             <span
                               data-testid={`text-equip-no-${equip.id}`}
-                              className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200"
+                              style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 600, color: "#374151", background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, border: "1px solid #e2e8f0", whiteSpace: "nowrap" }}
                             >
                               {equip.equipNo}
                             </span>
                           </td>
 
-                          {/* Name + S/N — two-line */}
-                          <td className="px-3 py-3">
-                            <div>
-                              <p data-testid={`text-equip-name-${equip.id}`} className="font-medium text-slate-800 leading-tight">
-                                {equip.name}
-                              </p>
-                              {equip.serialNumber && (
-                                <p className="text-[10px] text-slate-400 mt-0.5 leading-none">S/N {equip.serialNumber}</p>
-                              )}
-                            </div>
+                          {/* NAME — single line */}
+                          <td style={{ padding: "12px", minWidth: 160, overflowWrap: "break-word" }}>
+                            <p data-testid={`text-equip-name-${equip.id}`} style={{ fontWeight: 500, color: "#1e293b", fontSize: 13 }}>
+                              {equip.name}
+                            </p>
                           </td>
 
-                          {/* Size badge */}
-                          <td className="px-3 py-3">
+                          {/* SIZE badge */}
+                          <td style={{ padding: "12px", minWidth: 96, overflowWrap: "break-word" }}>
                             {equip.sizeSpec ? (
                               <span
                                 data-testid={`text-equip-size-${equip.id}`}
-                                className="inline-flex items-center px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 rounded"
+                                style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 4, whiteSpace: "nowrap" }}
                               >
                                 {equip.sizeSpec}
                               </span>
                             ) : (
-                              <span className="text-slate-300 text-xs">—</span>
+                              <span style={{ color: "#d1d5db", fontSize: 12 }}>—</span>
                             )}
                           </td>
 
-                          {/* Brand */}
-                          <td className="px-3 py-3">
-                            <span data-testid={`text-equip-brand-${equip.id}`} className="text-slate-600 text-xs">
+                          {/* BRAND */}
+                          <td style={{ padding: "12px", minWidth: 130, overflowWrap: "break-word" }}>
+                            <span data-testid={`text-equip-brand-${equip.id}`} style={{ color: "#475569", fontSize: 12 }}>
                               {equip.brand ?? "—"}
                             </span>
                           </td>
 
-                          {/* Location + pin icon — master data */}
-                          <td className="px-3 py-3" style={{ borderRight: "1px solid #e2e8f0" }}>
+                          {/* LOCATION */}
+                          <td style={{ padding: "12px", minWidth: 110, borderRight: "1px solid #e2e8f0", overflowWrap: "break-word" }}>
                             {equip.location ? (
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                                <span data-testid={`text-equip-location-${equip.id}`} className="text-slate-600 text-xs">
+                              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                <MapPin style={{ width: 12, height: 12, color: "#94a3b8", flexShrink: 0 }} />
+                                <span data-testid={`text-equip-location-${equip.id}`} style={{ color: "#475569", fontSize: 12 }}>
                                   {equip.location}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-slate-300 text-xs">—</span>
+                              <span style={{ color: "#d1d5db", fontSize: 12 }}>—</span>
                             )}
                           </td>
 
-                          {/* Project chip (live) */}
-                          <td className="px-3 py-3">
+                          {/* PROJECT chip (live) */}
+                          <td style={{ padding: "12px", minWidth: 192, background: "#fafcff", overflowWrap: "break-word" }}>
                             {equip.project ? (
                               <span
                                 data-testid={`text-equip-project-${equip.id}`}
-                                className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium bg-violet-50 text-violet-700 border border-violet-200 rounded-full"
+                                style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 500, background: "#f5f3ff", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: 12, whiteSpace: "nowrap" }}
                               >
                                 {equip.project.name}
                               </span>
                             ) : (
-                              <span className="text-[11px] text-slate-300 border border-dashed border-slate-200 px-2 py-0.5 rounded-full">
+                              <span style={{ fontSize: 11, color: "#d1d5db", border: "1px dashed #e2e8f0", padding: "2px 8px", borderRadius: 12 }}>
                                 Unassigned
                               </span>
                             )}
                           </td>
 
-                          {/* Status dot + label (live) */}
-                          <td className="px-3 py-3">
+                          {/* TEAM chip (live) */}
+                          <td style={{ padding: "12px", minWidth: 110, background: "#fafcff", overflowWrap: "break-word" }}>
+                            {(equip as any).teamName ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", fontSize: 11, fontWeight: 600, background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: 12, whiteSpace: "nowrap" }}>
+                                {(equip as any).teamName}
+                              </span>
+                            ) : (
+                              <span style={{ color: "#d1d5db", fontSize: 12 }}>—</span>
+                            )}
+                          </td>
+
+                          {/* STATUS dot + label (live) */}
+                          <td style={{ padding: "12px", minWidth: 132, background: "#fafcff", overflowWrap: "break-word" }}>
                             <StatusBadge status={equip.status} />
                           </td>
 
-                          {/* Last Updated two-line (live) */}
-                          <td className="px-3 py-3">
+                          {/* LAST UPDATED (live) */}
+                          <td style={{ padding: "12px", minWidth: 120, background: "#fafcff", overflowWrap: "break-word" }}>
                             {updatedFmt ? (
                               <div>
-                                <p className="text-[11px] font-medium text-slate-600 leading-none">{updatedFmt.date}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 leading-none">{updatedFmt.time}</p>
+                                <p style={{ fontSize: 11, fontWeight: 500, color: "#475569", lineHeight: 1 }}>{updatedFmt.date}</p>
+                                <p style={{ fontSize: 10, color: "#94a3b8", marginTop: 3, lineHeight: 1 }}>{updatedFmt.time}</p>
                               </div>
                             ) : (
-                              <span className="text-slate-300 text-xs">—</span>
+                              <span style={{ color: "#d1d5db", fontSize: 12 }}>—</span>
                             )}
                           </td>
 
                           {/* Hover-reveal actions */}
-                          <td className="px-3 py-3">
+                          <td style={{ padding: "12px", minWidth: 64 }}>
                             <div
-                              className="flex items-center justify-end gap-0.5 transition-opacity"
-                              style={{ opacity: (isHovered || isConfirming) ? 1 : 0 }}
+                              style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2, transition: "opacity 0.15s", opacity: (isHovered || isConfirming) ? 1 : 0 }}
                             >
                               {isConfirming ? (
                                 <>
-                                  <span className="text-xs text-red-600 font-medium mr-1 whitespace-nowrap">Remove?</span>
+                                  <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 500, marginRight: 4, whiteSpace: "nowrap" }}>Remove?</span>
                                   <Button
                                     data-testid={`btn-delete-confirm-${equip.id}`}
                                     size="sm" variant="destructive"
@@ -880,34 +1016,19 @@ export default function Equipment() {
                     Showing {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button
-                      data-testid="btn-page-prev"
-                      variant="outline" size="sm"
-                      className="h-7 w-7 p-0"
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
+                    <Button data-testid="btn-page-prev" variant="outline" size="sm" className="h-7 w-7 p-0"
+                      disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </Button>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <Button
-                        key={p}
-                        data-testid={`btn-page-${p}`}
-                        variant={p === page ? "default" : "outline"}
-                        size="sm"
-                        className="h-7 w-7 p-0 text-xs"
-                        onClick={() => setPage(p)}
-                      >
+                      <Button key={p} data-testid={`btn-page-${p}`}
+                        variant={p === page ? "default" : "outline"} size="sm"
+                        className="h-7 w-7 p-0 text-xs" onClick={() => setPage(p)}>
                         {p}
                       </Button>
                     ))}
-                    <Button
-                      data-testid="btn-page-next"
-                      variant="outline" size="sm"
-                      className="h-7 w-7 p-0"
-                      disabled={page === totalPages}
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    >
+                    <Button data-testid="btn-page-next" variant="outline" size="sm" className="h-7 w-7 p-0"
+                      disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Button>
                   </div>

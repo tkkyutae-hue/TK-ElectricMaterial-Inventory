@@ -1,0 +1,302 @@
+==================================================
+SCOPE: Equipment Registry page — Admin Mode only.
+Apply all changes listed below to the existing
+Equipment Registry implementation.
+Do NOT change other pages or global styles.
+==================================================
+
+OVERVIEW OF CHANGES
+────────────────────
+1. Add OWN. column (ownership type)
+2. Auto-generate EQ # from type + size + brand
+3. Add TEAM column in the live section
+4. Remove Serial Number (S/N) field everywhere
+5. Creatable dropdowns for Type, Size, Brand
+   — in both Add row and Edit row
+6. Edit row must use same dropdowns as Add row
+7. EQ # is optional — never block save
+8. All column widths must be generous enough
+   that no text is clipped or truncated
+9. Table uses horizontal scroll when needed
+
+
+COLUMN ORDER & WIDTHS
+──────────────────────
+Table layout: auto (NOT fixed)
+Table minimum width: 1344px
+Horizontal scroll wrapper when content exceeds viewport
+
+Columns in order:
+  OWN.          min-width: 110px   master
+  EQ #          min-width: 120px   master
+  NAME          min-width: 160px   master
+  SIZE          min-width:  96px   master
+  BRAND         min-width: 130px   master
+  LOCATION      min-width: 110px   master
+  PROJECT       min-width: 192px   live
+  TEAM          min-width: 110px   live  ← NEW
+  STATUS        min-width: 132px   live
+  LAST UPDATED  min-width: 120px   live
+  [actions]     min-width:  64px   master
+
+Master group label width = 726px
+  (sum: 110+120+160+96+130+110)
+Live group label = flex:1 (remaining)
+
+No text clipping anywhere. Cells use
+overflow-wrap: break-word, not hidden overflow.
+
+
+CHANGE 1 — OWN. column (ownership type)
+─────────────────────────────────────────
+Position: first column, under Master Data group.
+
+Saved row display:
+  - Show a small badge, 9px bold uppercase
+  - Rental:        background #fff7ed, border #fed7aa, color #c2410c
+  - Company-owned: background #f0fdf4, border #86efac, color #166534
+
+Add / Edit row input:
+  - <select> dropdown with two options:
+      Rental
+      Company-owned
+  - Dropdown color changes on selection:
+      Rental selected:        bg #fff7ed, border #fed7aa, color #c2410c
+      Company-owned selected: bg #f0fdf4, border #86efac, color #166534
+  - Default: Rental
+
+Filter bar:
+  Add a 4th filter dropdown: "All ownership"
+  Options: All ownership / Rental / Company-owned
+
+
+CHANGE 2 — EQ # auto-generation
+──────────────────────────────────
+EQ # is always optional. Never block save if empty.
+
+If admin leaves EQ # blank:
+  Auto-generate from: TYPE + SIZE + BRAND
+  Format: {TYPE_ABBR}-{SIZE_SHORT}-{BRAND_SHORT}
+
+  Type abbreviations:
+    Air Compressor   → AC
+    Generator        → GEN
+    Forklift         → FK
+    Scissor Lift     → SL
+    Boom Lift        → BL
+    Conduit Bender   → CB
+    Wire Puller      → WP
+    Drill            → DR
+    Grinder          → GR
+    Vacuum           → VAC
+    Power Distribution → PD
+    Cable Puller     → CP
+    Other            → EQ
+
+  Size: strip spaces, keep alphanumeric, uppercase, max 5 chars
+    e.g. "5,000 lbs" → "5000L", "32 ft" → "32FT"
+
+  Brand: first 3 chars uppercase
+    e.g. "Genie" → "GEN", "Honda" → "HON"
+
+  Example results:
+    Scissor Lift + 32 ft + Genie   → SL-32FT-GEN
+    Generator + 5,500W + Honda     → GEN-5500W-HON
+    Boom Lift + 45 ft + JLG        → BL-45FT-JLG
+    Forklift + 5,000 lbs + Toyota  → FK-5000L-TOY
+
+  Show auto-preview below the EQ # input in real time:
+    Small green text, 9px
+    Checkmark icon + "Auto: {generated_value}"
+    Only visible when EQ # input is empty AND
+    at least one of type/size/brand is selected
+
+  On save with blank EQ #: use the auto-generated value.
+  If all three fields empty: fall back to sequential
+    EQ-001, EQ-002, etc.
+
+
+CHANGE 3 — TEAM column (live data)
+────────────────────────────────────
+Position: between PROJECT and STATUS columns.
+Data source: Daily Reports (read-only, same as Status).
+
+Saved row display:
+  If team assigned:
+    Green chip badge
+    background #f0fdf4, border #86efac
+    color #166534, font-size 11px, font-weight 600
+    Show team/crew name (e.g. "Crew A", "Team 1")
+  If no team:
+    Show "—" in muted gray (#d1d5db)
+
+Add / Edit row:
+  Show "Auto" in muted text — this field is read-only,
+  populated only from Daily Reports.
+
+Column header: "TEAM" under live-th styling
+  (background #f0f6ff, color #3b82f6,
+   border-bottom 2px solid #bfdbfe)
+
+
+CHANGE 4 — Remove S/N field
+─────────────────────────────
+Remove the S/N (serial number) sub-field from:
+  - Saved rows (no second line under NAME)
+  - Add row (no S/N input)
+  - Edit row (no S/N input)
+
+NAME column shows only the equipment name,
+single line.
+
+
+CHANGE 5 — Creatable dropdowns for Type, Size, Brand
+──────────────────────────────────────────────────────
+Replace the native <select> elements for
+TYPE, SIZE, and BRAND with custom creatable
+dropdown components.
+
+This applies to BOTH Add row and Edit row.
+
+Panel layout when open:
+  ┌─────────────────────────────────┐
+  │ [ Type to add new…      ] [ + ] │  ← add input + button
+  │ ─────────────────────────────── │
+  │   Air Compressor           [✕]  │
+  │   Generator                [✕]  │
+  │   Forklift         ✓       [✕]  │  ← selected
+  │   …                             │
+  └─────────────────────────────────┘
+
+ADD behavior:
+  - Type in input, press [ + ] or Enter
+  - New option added to bottom of list
+  - Immediately selected
+
+DELETE behavior:
+  - [✕] appears on each item on hover
+  - 18×18px, background #fee2e2, color #f87171
+  - Removes option from list
+  - If selected item deleted, clears selection
+
+Selected item styling:
+  - Checkmark ✓ left of label
+  - Light green row highlight (#f0f7f0)
+
+Panel style:
+  - Positioned below trigger button
+  - z-index: 9999 (clears table rows)
+  - max-height: 180px with scroll
+  - border-radius: 9px
+  - box-shadow: 0 6px 20px rgba(0,0,0,0.13)
+
+TYPE → SIZE / BRAND linkage:
+  Selecting a type auto-populates size and brand
+  dropdowns with their default options.
+  Custom-added options persist for the session.
+
+Empty state message:
+  "No options — type above to add"
+
+Default TYPE options:
+  Air Compressor, Generator, Forklift, Scissor Lift,
+  Boom Lift, Conduit Bender, Wire Puller, Drill,
+  Grinder, Vacuum, Power Distribution, Cable Puller,
+  Other
+
+Default SIZE options per type:
+  Air Compressor:     20 gal, 30 gal, 60 gal, 80 gal
+  Generator:          3,500W, 5,500W, 7,500W, 10,000W
+  Forklift:           3,000 lbs, 5,000 lbs, 8,000 lbs, 15,000 lbs
+  Scissor Lift:       19 ft, 26 ft, 32 ft, 40 ft
+  Boom Lift:          45 ft, 60 ft, 80 ft
+  Conduit Bender:     1/2", 3/4", 1", 1-1/4", 2"
+  Wire Puller:        1,000 lbs, 2,500 lbs, 5,000 lbs
+  Drill:              1/2", 3/4", SDS, Hammer
+  Grinder:            4.5", 5", 7", 9"
+  Vacuum:             5 gal, 10 gal, 16 gal, 55 gal
+  Power Distribution: 100A, 200A, 400A, 600A
+  Cable Puller:       1,000 lbs, 2,500 lbs, 5,000 lbs
+
+Default BRAND options per type:
+  Air Compressor:     DeWalt, Ingersoll Rand, Makita, Sullair
+  Generator:          Honda, Generac, Kohler, Caterpillar
+  Forklift:           Toyota, Caterpillar, Hyster, Crown
+  Scissor Lift:       JLG, Genie, Skyjack
+  Boom Lift:          JLG, Genie, Skyjack
+  Conduit Bender:     Greenlee, Klein Tools, Ideal, Southwire
+  Wire Puller:        Greenlee, Maxis, Southwire
+  Drill:              DeWalt, Milwaukee, Makita, Hilti
+  Grinder:            DeWalt, Milwaukee, Makita, Bosch
+  Vacuum:             DeWalt, Milwaukee, Ridgid, Bosch
+  Power Distribution: Siemens, Square D, Eaton, ABB
+  Cable Puller:       Greenlee, Maxis, Southwire
+
+
+CHANGE 6 — Edit row uses same dropdowns as Add row
+────────────────────────────────────────────────────
+Current: clicking ✏ opens plain text inputs.
+Fix: edit row must render the exact same creatable
+dropdown components as the add row.
+
+On edit open:
+  - TYPE dropdown pre-selected to current value
+  - SIZE dropdown options loaded for current type,
+    pre-selected to current value
+  - BRAND dropdown options loaded for current type,
+    pre-selected to current value
+  - EQ # shows current value as editable text input
+  - LOCATION shows current value in text+datalist input
+  - OWN. shows current ownership in the color dropdown
+  - PROJECT / TEAM / STATUS / LAST UPDATED stay
+    read-only (live fields, no edit)
+
+Cancel in edit:
+  Restores the original saved row, no changes.
+
+Save in edit:
+  Saves updated values, same flash animation
+  (green background 800ms then fade).
+
+
+CHANGE 7 — EQ # optional
+──────────────────────────
+Never block save when EQ # is empty.
+Use auto-generated value as fallback (see Change 2).
+If auto-generation also fails, use sequential
+EQ-001, EQ-002, etc.
+
+
+LOCATION field
+──────────────
+Text input + datalist dropdown (unchanged).
+All rows editable.
+Common options: KDC / KISS, Site A, Site B, Site C,
+Warehouse, Yard, Storage, Office
+
+
+MASTER DATA / LIVE group labels
+─────────────────────────────────
+Keep existing two-section header row:
+  Left tab:  "MASTER DATA — MANAGED BY ADMIN"
+             gray bg #f8f9fa, border #e5e7eb
+             gray dot
+  Right tab: "LIVE — UPDATED FROM DAILY REPORTS"
+             blue bg #eff6ff, border #bfdbfe
+             pulsing blue dot (CSS animation)
+
+Master columns: OWN. / EQ # / NAME / SIZE / BRAND / LOCATION
+Live columns:   PROJECT / TEAM / STATUS / LAST UPDATED
+
+
+CONSTRAINTS
+────────────
+  - No text clipping in any column at any row
+  - table-layout: auto (not fixed)
+  - Horizontal scroll if table exceeds viewport
+  - No modals or popups for add/edit
+  - Do NOT change filter bar search placeholder
+  - Do NOT change summary cards
+  - Do NOT change sidebar or topbar
+  - Do NOT affect other pages
+==================================================

@@ -499,8 +499,10 @@ export const equipment = pgTable("equipment", {
   sizeSpec: text("size_spec"),
   brand: text("brand"),
   location: text("location"),
+  ownershipType: text("ownership_type").default("Rental"),
   // Live snapshot fields — updated when daily reports reference this equipment
   status: text("status").default("standby"), // operational | standby | partial_issue | broken_down
+  teamName: text("team_name"),
   assignedProjectId: integer("assigned_project_id").references(() => projects.id, { onDelete: "set null" }),
   lastReportedAt: timestamp("last_reported_at"),
   isActive: boolean("is_active").default(true),

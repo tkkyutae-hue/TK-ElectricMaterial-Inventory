@@ -193,7 +193,9 @@ const en = {
 
   // ── Admin sidebar nav ────────────────────────────────────────────────────
   navMain:            "Main",
+  navMaterials:       "Materials",
   navOperations:      "Operations",
+  navReporting:       "Reporting",
   navInsights:        "Insights",
   navAdminTools:      "Admin Tools",
 
@@ -386,7 +388,9 @@ const ko: Translations = {
   selected:           "선택됨",
 
   navMain:            "메인",
+  navMaterials:       "자재",
   navOperations:      "운영",
+  navReporting:       "보고",
   navInsights:        "인사이트",
   navAdminTools:      "관리 도구",
 
@@ -579,7 +583,9 @@ const es: Translations = {
   selected:           "seleccionados",
 
   navMain:            "Principal",
+  navMaterials:       "Materiales",
   navOperations:      "Operaciones",
+  navReporting:       "Informes",
   navInsights:        "Perspectivas",
   navAdminTools:      "Herramientas admin",
 

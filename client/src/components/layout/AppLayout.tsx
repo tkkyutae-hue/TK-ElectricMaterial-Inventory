@@ -38,22 +38,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       label: t.navMain,
       items: [
         { href: "/", label: t.navDashboard, icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: t.navMaterials,
+      items: [
         { href: "/inventory", label: t.navInventory, icon: PackageSearch },
         { href: "/transactions", label: t.navTransactions, icon: ArrowRightLeft },
+        { href: "/reorder", label: t.navReorder, icon: ShoppingCart },
+        { href: "/suppliers", label: t.navSuppliers, icon: Truck },
       ],
     },
     {
       label: t.navOperations,
       items: [
-        { href: "/suppliers", label: t.navSuppliers, icon: Truck },
         { href: "/projects", label: t.navProjects, icon: Briefcase },
         { href: "/manpower", label: t.navManpower, icon: HardHat },
         { href: "/equipment", label: t.navEquipment, icon: Wrench },
-        { href: "/reorder", label: t.navReorder, icon: ShoppingCart },
       ],
     },
     {
-      label: t.navInsights,
+      label: t.navReporting,
       items: [
         { href: "/reports", label: t.navReports, icon: BarChart3 },
       ],

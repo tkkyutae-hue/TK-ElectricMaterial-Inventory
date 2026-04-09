@@ -104,8 +104,6 @@ export default function Inventory() {
   const { toast } = useToast();
 
   async function handleExportXlsx() {
-    const date = new Date().toISOString().slice(0, 10);
-    const filename = `TK_Electric_Inventory_${date}.xlsx`;
     setExporting(true);
     toast({
       title: "Preparing Excel file…",
@@ -125,21 +123,26 @@ export default function Inventory() {
         throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
       }
 
+      // Read filename from server Content-Disposition header
+      const disposition = resp.headers.get("content-disposition") ?? "";
+      const fnMatch = disposition.match(/filename="([^"]+)"/);
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const filename = fnMatch?.[1] ?? `GA WAREHOUSE MATERIAL STATUS-${ym}(1).xlsx`;
+
       const blob = await resp.blob();
       if (blob.size < 1024) {
         throw new Error("Export returned an empty or invalid file.");
       }
 
       // Step 2: Trigger download via blob URL.
-      // If this page is embedded in a same-origin iframe (Replit preview),
-      // attach the anchor to the top-level document so the browser's
-      // native download mechanism fires correctly.  Fall back to the
-      // current document when window.top is cross-origin (production).
+      // If embedded in a same-origin iframe (Replit preview), use the top-level
+      // document so the browser's download mechanism fires correctly.
+      // Falls back to the current document when cross-origin (production).
       const blobUrl = URL.createObjectURL(blob);
 
       let targetDoc: Document;
       try {
-        // Throws SecurityError when cross-origin
         targetDoc = (window.top ?? window).document;
       } catch {
         targetDoc = document;
@@ -152,7 +155,6 @@ export default function Inventory() {
       targetDoc.body.appendChild(a);
       a.click();
 
-      // Defer cleanup — 2 s gives the browser time to queue the save
       setTimeout(() => {
         targetDoc.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);

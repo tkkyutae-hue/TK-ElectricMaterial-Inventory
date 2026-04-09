@@ -903,10 +903,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const ExcelJS = (await import("exceljs")).default;
 
-      // 1. Fetch all active categories in sort order
+      // 1. Fetch all active categories (sorted)
       const allCategories = await storage.getCategories();
 
-      // 2. Fetch ALL items (no filters) with relations
+      // 2. Fetch ALL active items with relations
       const allItems = await storage.getItems();
 
       // 3. Group items by categoryId
@@ -922,138 +922,188 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       wb.creator = "VoltStock – TK Electric";
       wb.created = new Date();
 
-      // Helper: sanitize Excel worksheet name
-      // Rules: replace "/" with "&", strip other illegal chars (* ? : \ [ ]),
-      // trim whitespace, fallback to "Sheet", cap at 31 chars, dedupe with suffix.
+      // ── Helper: export filename (sequence is extensible for future deduplication) ──
+      const buildExportFilename = (seq: number = 1): string => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        return `GA WAREHOUSE MATERIAL STATUS-${year}-${month}(${seq}).xlsx`;
+      };
+
+      // ── Helper: sanitize Excel worksheet name ─────────────────────────────────────
       const usedSheetNames = new Set<string>();
       const toSheetName = (name: string): string => {
         let s = name
-          .replace(/\//g, "&")                // "/" → "&"  (core fix)
-          .replace(/[*?:\\\[\]]/g, "")        // strip remaining illegal chars
-          .trim()
-          || "Sheet";                          // fallback if empty after sanitize
-        s = s.slice(0, 31);                   // Excel 31-char limit
-        if (!usedSheetNames.has(s)) {
-          usedSheetNames.add(s);
-          return s;
-        }
-        // Deduplicate: append (2), (3), … keeping total ≤ 31 chars
+          .replace(/\//g, "&")
+          .replace(/[*?:\\\[\]]/g, "")
+          .trim() || "Sheet";
+        s = s.slice(0, 31);
+        if (!usedSheetNames.has(s)) { usedSheetNames.add(s); return s; }
         for (let i = 2; ; i++) {
           const suffix = ` (${i})`;
           const candidate = s.slice(0, 31 - suffix.length) + suffix;
-          if (!usedSheetNames.has(candidate)) {
-            usedSheetNames.add(candidate);
-            return candidate;
-          }
+          if (!usedSheetNames.has(candidate)) { usedSheetNames.add(candidate); return candidate; }
         }
       };
 
-      // Determine item status label
+      // ── Helper: compute item status ───────────────────────────────────────────────
       const itemStatus = (item: any): string => {
         if (item.statusOverride) return item.statusOverride;
         const qty = item.quantityOnHand ?? 0;
         const min = item.minimumStock ?? 0;
         const reorder = item.reorderPoint ?? 0;
         if (qty === 0) return "Out of Stock";
-        if (qty <= reorder) return "Low Stock";
-        if (qty <= min) return "Low Stock";
+        if (qty <= reorder || qty <= min) return "Low Stock";
         return "In Stock";
       };
 
-      // Column definitions (key → header label, width)
-      const COLUMNS = [
-        { key: "category",     header: "Category",      width: 22 },
-        { key: "name",         header: "Material Name", width: 36 },
-        { key: "sizeLabel",    header: "Size",          width: 14 },
-        { key: "sku",          header: "SKU",           width: 18 },
-        { key: "subcategory",  header: "Family",        width: 20 },
-        { key: "detailType",   header: "Type",          width: 18 },
-        { key: "location",     header: "Location",      width: 20 },
-        { key: "qty",          header: "Quantity",      width: 12 },
-        { key: "unit",         header: "Unit",          width: 10 },
-        { key: "minStock",     header: "Min Stock",     width: 12 },
-        { key: "reorderPoint", header: "Reorder At",    width: 12 },
-        { key: "unitCost",     header: "Unit Cost",     width: 12 },
-        { key: "supplier",     header: "Supplier",      width: 22 },
-        { key: "status",       header: "Status",        width: 14 },
-        { key: "notes",        header: "Notes",         width: 30 },
-        { key: "updatedAt",    header: "Last Updated",  width: 18 },
-      ];
+      // ── Colour palette ────────────────────────────────────────────────────────────
+      const C = {
+        headerBg:  "FF1A2E44",  // dark navy  – header row
+        l1Bg:      "FF2D3748",  // dark slate – level-1 group (대분류)
+        l2Bg:      "FFF0E6D3",  // light beige – level-2 group (중분류)
+        white:     "FFFFFFFF",
+        darkText:  "FF1A1A1A",
+        greenText: "FF1D6B3B",  greenBg: "FFD6F5E3",  // In Stock
+        redText:   "FF9B1C1C",  redBg:   "FFFDE8E8",  // Out of Stock
+        orangeText:"FF92400E",  orangeBg:"FFFEF3C7",  // Low Stock
+      } as const;
 
-      // Build sheets per category (in sortOrder)
+      // ── 8 export columns ──────────────────────────────────────────────────────────
+      const COLS = [
+        { key: "matName",   header: "Material Name", width: 36 },
+        { key: "size",      header: "Size",          width: 14 },
+        { key: "family",    header: "Family",        width: 22 },
+        { key: "type",      header: "Type",          width: 20 },
+        { key: "qty",       header: "Quantity",      width: 12 },
+        { key: "unit",      header: "Unit",          width: 10 },
+        { key: "status",    header: "Status",        width: 16 },
+        { key: "updatedAt", header: "Last Updated",  width: 16 },
+      ];
+      const NUM_COLS = COLS.length;
+      const lastColLetter = String.fromCharCode(64 + NUM_COLS); // "H"
+
+      // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
         const catItems = byCategoryId.get(cat.id);
-        if (!catItems || catItems.length === 0) continue; // skip empty categories
+        if (!catItems || catItems.length === 0) continue;
 
         const ws = wb.addWorksheet(toSheetName(cat.name));
-        ws.columns = COLUMNS.map(c => ({ header: c.header, key: c.key, width: c.width }));
+        ws.columns = COLS.map(c => ({ key: c.key, width: c.width }));
 
-        // Style header row
-        const headerRow = ws.getRow(1);
-        headerRow.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
-        headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
-        headerRow.alignment = { vertical: "middle", horizontal: "left" };
-        headerRow.height = 20;
+        // ── Header row ────────────────────────────────────────────────────────────
+        const headerRow = ws.addRow(COLS.map(c => c.header));
+        headerRow.height = 22;
+        headerRow.eachCell({ includeEmpty: true }, cell => {
+          cell.font      = { bold: true, size: 11, color: { argb: C.white } };
+          cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: C.headerBg } };
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.border    = { bottom: { style: "thin", color: { argb: C.white } } };
+        });
 
-        // Sort items by name then size
+        // ── Sort: subcategory → detailType → baseItemName → sizeSortValue ─────────
         const sorted = [...catItems].sort((a, b) => {
-          const nameA = (a.baseItemName || a.name || "").toLowerCase();
-          const nameB = (b.baseItemName || b.name || "").toLowerCase();
-          if (nameA !== nameB) return nameA.localeCompare(nameB);
+          const fa = (a.subcategory  || "\uFFFF").toLowerCase();
+          const fb = (b.subcategory  || "\uFFFF").toLowerCase();
+          if (fa !== fb) return fa.localeCompare(fb);
+          const ta = (a.detailType   || "\uFFFF").toLowerCase();
+          const tb = (b.detailType   || "\uFFFF").toLowerCase();
+          if (ta !== tb) return ta.localeCompare(tb);
+          const na = (a.baseItemName || a.name || "").toLowerCase();
+          const nb = (b.baseItemName || b.name || "").toLowerCase();
+          if (na !== nb) return na.localeCompare(nb);
           return (a.sizeSortValue ?? 0) - (b.sizeSortValue ?? 0);
         });
 
-        // Add data rows
-        for (const item of sorted) {
-          const row = ws.addRow({
-            category:     cat.name,
-            name:         item.name ?? "",
-            sizeLabel:    item.sizeLabel ?? "",
-            sku:          item.sku ?? "",
-            subcategory:  item.subcategory ?? "",
-            detailType:   item.detailType ?? "",
-            location:     (item as any).location?.name ?? "",
-            qty:          item.quantityOnHand ?? 0,
-            unit:         item.unitOfMeasure ?? "",
-            minStock:     item.minimumStock ?? 0,
-            reorderPoint: item.reorderPoint ?? 0,
-            unitCost:     item.unitCost != null ? Number(item.unitCost) : "",
-            supplier:     (item as any).supplier?.name ?? "",
-            status:       itemStatus(item),
-            notes:        item.notes ?? "",
-            updatedAt:    item.updatedAt ? new Date(item.updatedAt).toISOString().slice(0, 10) : "",
+        // ── Group-row helper ──────────────────────────────────────────────────────
+        const addGroupRow = (label: string, level: 1 | 2) => {
+          const gRow = ws.addRow([label]);
+          gRow.height = level === 1 ? 20 : 18;
+          const isL1 = level === 1;
+          gRow.eachCell({ includeEmpty: true }, cell => {
+            cell.font      = { bold: true, size: isL1 ? 11 : 10, color: { argb: isL1 ? C.white : C.darkText } };
+            cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: isL1 ? C.l1Bg : C.l2Bg } };
+            cell.alignment = { vertical: "middle", indent: isL1 ? 1 : 2 };
           });
+          ws.mergeCells(gRow.number, 1, gRow.number, NUM_COLS);
+        };
 
-          // Qty column as number
-          const qtyCell = row.getCell("qty");
-          qtyCell.numFmt = "#,##0";
+        // ── Add grouped data rows ─────────────────────────────────────────────────
+        const SENTINEL = "\x00__sentinel__";
+        let lastFamily: string = SENTINEL;
+        let lastType:   string = SENTINEL;
 
-          // Unit cost as currency
-          const costCell = row.getCell("unitCost");
-          if (costCell.value !== "") costCell.numFmt = '"$"#,##0.00';
+        for (const item of sorted) {
+          const family  = item.subcategory ?? null;
+          const type    = item.detailType  ?? null;
+          const status  = itemStatus(item);
+          const qty     = item.quantityOnHand ?? 0;
 
-          // Alternate row shading for readability
-          if (row.number % 2 === 0) {
-            row.eachCell({ includeEmpty: true }, cell => {
-              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F7FA" } };
-            });
+          const familyKey = family ?? "";
+          const typeKey   = type   ?? "";
+
+          if (familyKey !== lastFamily) {
+            lastFamily = familyKey;
+            lastType   = SENTINEL;
+            addGroupRow(family || "(No Family)", 1);
+          }
+          if (typeKey !== lastType) {
+            lastType = typeKey;
+            if (type) addGroupRow(type, 2);
           }
 
-          row.alignment = { vertical: "middle" };
-          row.height = 16;
+          const updatedAt = item.updatedAt
+            ? new Date(item.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+            : "";
+
+          const dataRow = ws.addRow({
+            matName:   item.baseItemName || item.name || "",
+            size:      item.sizeLabel   ?? "",
+            family:    family           ?? "",
+            type:      type             ?? "",
+            qty,
+            unit:      item.unitOfMeasure ?? "",
+            status,
+            updatedAt,
+          });
+
+          dataRow.height = 16;
+          dataRow.getCell("matName").alignment = { vertical: "middle", indent: 3 };
+
+          // Quantity: number format + red if 0
+          const qtyCell = dataRow.getCell("qty");
+          qtyCell.numFmt = "#,##0";
+          qtyCell.alignment = { vertical: "middle", horizontal: "center" };
+          if (qty === 0) {
+            qtyCell.font = { bold: true, color: { argb: C.redText } };
+            qtyCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.redBg } };
+          }
+
+          // Status: colour-coded
+          const stCell = dataRow.getCell("status");
+          stCell.alignment = { vertical: "middle", horizontal: "center" };
+          if (status === "In Stock") {
+            stCell.font = { color: { argb: C.greenText  } };
+            stCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.greenBg  } };
+          } else if (status === "Out of Stock") {
+            stCell.font = { color: { argb: C.redText    } };
+            stCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.redBg    } };
+          } else {
+            stCell.font = { color: { argb: C.orangeText } };
+            stCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.orangeBg } };
+          }
         }
 
-        // Freeze header row
+        // ── Freeze pane at A2 ────────────────────────────────────────────────────
         ws.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
-        // Auto-filter on header
-        ws.autoFilter = { from: "A1", to: `${String.fromCharCode(64 + COLUMNS.length)}1` };
+        // ── Auto-filter on header row ────────────────────────────────────────────
+        ws.autoFilter = { from: "A1", to: `${lastColLetter}1` };
       }
 
-      // 5. Write workbook to buffer, then send as a complete response
-      const date = new Date().toISOString().slice(0, 10);
-      const filename = `TK_Electric_Inventory_${date}.xlsx`;
-      const buffer = await wb.xlsx.writeBuffer();
+      // 5. Stream buffer to client
+      const filename = buildExportFilename(1);
+      const buffer   = await wb.xlsx.writeBuffer();
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.setHeader("Content-Length", buffer.byteLength);

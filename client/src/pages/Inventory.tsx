@@ -104,7 +104,13 @@ export default function Inventory() {
   const { toast } = useToast();
 
   async function handleExportXlsx() {
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `TK_Electric_Inventory_${date}.xlsx`;
     setExporting(true);
+    toast({
+      title: "Preparing Excel file…",
+      description: "Your browser will save it to your default Downloads folder.",
+    });
     try {
       const resp = await fetch("/api/admin/export/inventory-xlsx", { credentials: "include" });
       if (!resp.ok) {
@@ -115,13 +121,15 @@ export default function Inventory() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const date = new Date().toISOString().slice(0, 10);
-      a.download = `TK_Electric_Inventory_${date}.xlsx`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Export complete", description: "Inventory Excel file downloaded." });
+      toast({
+        title: "Export complete",
+        description: `${filename} saved to your Downloads folder.`,
+      });
     } catch (err: any) {
       toast({ title: "Export failed", description: err.message, variant: "destructive" });
     } finally {

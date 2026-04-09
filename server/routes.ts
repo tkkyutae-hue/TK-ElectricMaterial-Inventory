@@ -1050,13 +1050,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ws.autoFilter = { from: "A1", to: `${String.fromCharCode(64 + COLUMNS.length)}1` };
       }
 
-      // 5. Stream back to client
+      // 5. Write workbook to buffer, then send as a complete response
       const date = new Date().toISOString().slice(0, 10);
       const filename = `TK_Electric_Inventory_${date}.xlsx`;
+      const buffer = await wb.xlsx.writeBuffer();
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      await wb.xlsx.write(res);
-      res.end();
+      res.setHeader("Content-Length", buffer.byteLength);
+      res.end(buffer);
     } catch (err: any) {
       console.error("[inventory-xlsx]", err);
       res.status(500).json({ message: err.message });

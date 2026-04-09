@@ -113,19 +113,41 @@ export default function Inventory() {
     });
     try {
       const resp = await fetch("/api/admin/export/inventory-xlsx", { credentials: "include" });
+
+      // Check HTTP status first
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ message: "Export failed" }));
+        const err = await resp.json().catch(() => ({ message: `Server error ${resp.status}` }));
         throw new Error(err.message);
       }
+
+      // Validate that the response is actually an xlsx/binary file, not an error page
+      const contentType = resp.headers.get("content-type") ?? "";
+      if (!contentType.includes("spreadsheetml") && !contentType.includes("octet-stream")) {
+        throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
+      }
+
       const blob = await resp.blob();
+
+      // Guard against suspiciously small blobs (empty or error body)
+      if (blob.size < 1024) {
+        throw new Error("Export returned an empty or invalid file.");
+      }
+
+      // Trigger download — defer cleanup so the browser can initiate the save
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      // Revoke only after the browser has had time to queue the download
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 500);
+
       toast({
         title: "Export complete",
         description: `${filename} saved to your Downloads folder.`,

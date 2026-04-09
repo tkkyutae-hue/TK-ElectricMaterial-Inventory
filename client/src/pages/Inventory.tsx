@@ -3,11 +3,13 @@ import { useItems } from "@/hooks/use-items";
 import { useQuery } from "@tanstack/react-query";
 import { useCategories, useLocations } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
-import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 type CategorySummary = {
   id: number;
@@ -96,6 +98,36 @@ export default function Inventory() {
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [exporting, setExporting] = useState(false);
+
+  const { isAdminRole } = useAuth();
+  const { toast } = useToast();
+
+  async function handleExportXlsx() {
+    setExporting(true);
+    try {
+      const resp = await fetch("/api/admin/export/inventory-xlsx", { credentials: "include" });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ message: "Export failed" }));
+        throw new Error(err.message);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `TK_Electric_Inventory_${date}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Export complete", description: "Inventory Excel file downloaded." });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const { data: items, isLoading } = useItems({
     search: search || undefined,
@@ -139,6 +171,18 @@ export default function Inventory() {
           <h1 className="text-3xl font-display font-bold text-slate-900">Inventory</h1>
           <p className="text-slate-500 mt-1">Browse by category or search for specific materials and equipment.</p>
         </div>
+        {isAdminRole && (
+          <Button
+            onClick={handleExportXlsx}
+            disabled={exporting}
+            variant="outline"
+            className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 shrink-0"
+            data-testid="btn-export-inventory-xlsx"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? "Generating…" : "Export to Excel"}
+          </Button>
+        )}
       </div>
 
       {/* Alert banner for stock issues */}

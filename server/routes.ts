@@ -898,6 +898,148 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin Export: Full Inventory → Excel (.xlsx) ────────────────────────────
+  app.get("/api/admin/export/inventory-xlsx", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+
+      // 1. Fetch all active categories in sort order
+      const allCategories = await storage.getCategories();
+
+      // 2. Fetch ALL items (no filters) with relations
+      const allItems = await storage.getItems();
+
+      // 3. Group items by categoryId
+      const byCategoryId = new Map<number, typeof allItems>();
+      for (const item of allItems) {
+        const catId = item.categoryId ?? -1;
+        if (!byCategoryId.has(catId)) byCategoryId.set(catId, []);
+        byCategoryId.get(catId)!.push(item);
+      }
+
+      // 4. Build workbook
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "VoltStock – TK Electric";
+      wb.created = new Date();
+
+      // Helper: truncate sheet name to 31 chars (Excel limit)
+      const sheetName = (name: string) => name.slice(0, 31);
+
+      // Determine item status label
+      const itemStatus = (item: any): string => {
+        if (item.statusOverride) return item.statusOverride;
+        const qty = item.quantityOnHand ?? 0;
+        const min = item.minimumStock ?? 0;
+        const reorder = item.reorderPoint ?? 0;
+        if (qty === 0) return "Out of Stock";
+        if (qty <= reorder) return "Low Stock";
+        if (qty <= min) return "Low Stock";
+        return "In Stock";
+      };
+
+      // Column definitions (key → header label, width)
+      const COLUMNS = [
+        { key: "category",     header: "Category",      width: 22 },
+        { key: "name",         header: "Material Name", width: 36 },
+        { key: "sizeLabel",    header: "Size",          width: 14 },
+        { key: "sku",          header: "SKU",           width: 18 },
+        { key: "subcategory",  header: "Family",        width: 20 },
+        { key: "detailType",   header: "Type",          width: 18 },
+        { key: "location",     header: "Location",      width: 20 },
+        { key: "qty",          header: "Quantity",      width: 12 },
+        { key: "unit",         header: "Unit",          width: 10 },
+        { key: "minStock",     header: "Min Stock",     width: 12 },
+        { key: "reorderPoint", header: "Reorder At",    width: 12 },
+        { key: "unitCost",     header: "Unit Cost",     width: 12 },
+        { key: "supplier",     header: "Supplier",      width: 22 },
+        { key: "status",       header: "Status",        width: 14 },
+        { key: "notes",        header: "Notes",         width: 30 },
+        { key: "updatedAt",    header: "Last Updated",  width: 18 },
+      ];
+
+      // Build sheets per category (in sortOrder)
+      for (const cat of allCategories) {
+        const catItems = byCategoryId.get(cat.id);
+        if (!catItems || catItems.length === 0) continue; // skip empty categories
+
+        const ws = wb.addWorksheet(sheetName(cat.name));
+        ws.columns = COLUMNS.map(c => ({ header: c.header, key: c.key, width: c.width }));
+
+        // Style header row
+        const headerRow = ws.getRow(1);
+        headerRow.font = { bold: true, size: 11, color: { argb: "FFFFFFFF" } };
+        headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+        headerRow.alignment = { vertical: "middle", horizontal: "left" };
+        headerRow.height = 20;
+
+        // Sort items by name then size
+        const sorted = [...catItems].sort((a, b) => {
+          const nameA = (a.baseItemName || a.name || "").toLowerCase();
+          const nameB = (b.baseItemName || b.name || "").toLowerCase();
+          if (nameA !== nameB) return nameA.localeCompare(nameB);
+          return (a.sizeSortValue ?? 0) - (b.sizeSortValue ?? 0);
+        });
+
+        // Add data rows
+        for (const item of sorted) {
+          const row = ws.addRow({
+            category:     cat.name,
+            name:         item.name ?? "",
+            sizeLabel:    item.sizeLabel ?? "",
+            sku:          item.sku ?? "",
+            subcategory:  item.subcategory ?? "",
+            detailType:   item.detailType ?? "",
+            location:     (item as any).location?.name ?? "",
+            qty:          item.quantityOnHand ?? 0,
+            unit:         item.unitOfMeasure ?? "",
+            minStock:     item.minimumStock ?? 0,
+            reorderPoint: item.reorderPoint ?? 0,
+            unitCost:     item.unitCost != null ? Number(item.unitCost) : "",
+            supplier:     (item as any).supplier?.name ?? "",
+            status:       itemStatus(item),
+            notes:        item.notes ?? "",
+            updatedAt:    item.updatedAt ? new Date(item.updatedAt).toISOString().slice(0, 10) : "",
+          });
+
+          // Qty column as number
+          const qtyCell = row.getCell("qty");
+          qtyCell.numFmt = "#,##0";
+
+          // Unit cost as currency
+          const costCell = row.getCell("unitCost");
+          if (costCell.value !== "") costCell.numFmt = '"$"#,##0.00';
+
+          // Alternate row shading for readability
+          if (row.number % 2 === 0) {
+            row.eachCell({ includeEmpty: true }, cell => {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F7FA" } };
+            });
+          }
+
+          row.alignment = { vertical: "middle" };
+          row.height = 16;
+        }
+
+        // Freeze header row
+        ws.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+
+        // Auto-filter on header
+        ws.autoFilter = { from: "A1", to: `${String.fromCharCode(64 + COLUMNS.length)}1` };
+      }
+
+      // 5. Stream back to client
+      const date = new Date().toISOString().slice(0, 10);
+      const filename = `TK_Electric_Inventory_${date}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      await wb.xlsx.write(res);
+      res.end();
+    } catch (err: any) {
+      console.error("[inventory-xlsx]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
   app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
     const ALLOWED = ["categories", "locations", "suppliers", "projects", "items", "inventory_movements", "inventory_location_balances", "item_groups", "users"];

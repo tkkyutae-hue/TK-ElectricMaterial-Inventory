@@ -112,41 +112,51 @@ export default function Inventory() {
       description: "Your browser will save it to your default Downloads folder.",
     });
     try {
+      // Step 1: Validate the endpoint returns a real xlsx (preflight fetch)
       const resp = await fetch("/api/admin/export/inventory-xlsx", { credentials: "include" });
 
-      // Check HTTP status first
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ message: `Server error ${resp.status}` }));
         throw new Error(err.message);
       }
 
-      // Validate that the response is actually an xlsx/binary file, not an error page
       const contentType = resp.headers.get("content-type") ?? "";
       if (!contentType.includes("spreadsheetml") && !contentType.includes("octet-stream")) {
         throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
       }
 
       const blob = await resp.blob();
-
-      // Guard against suspiciously small blobs (empty or error body)
       if (blob.size < 1024) {
         throw new Error("Export returned an empty or invalid file.");
       }
 
-      // Trigger download — defer cleanup so the browser can initiate the save
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      // Step 2: Trigger download via blob URL.
+      // If this page is embedded in a same-origin iframe (Replit preview),
+      // attach the anchor to the top-level document so the browser's
+      // native download mechanism fires correctly.  Fall back to the
+      // current document when window.top is cross-origin (production).
+      const blobUrl = URL.createObjectURL(blob);
+
+      let targetDoc: Document;
+      try {
+        // Throws SecurityError when cross-origin
+        targetDoc = (window.top ?? window).document;
+      } catch {
+        targetDoc = document;
+      }
+
+      const a = targetDoc.createElement("a");
       a.style.display = "none";
-      a.href = url;
+      a.href = blobUrl;
       a.download = filename;
-      document.body.appendChild(a);
+      targetDoc.body.appendChild(a);
       a.click();
 
-      // Revoke only after the browser has had time to queue the download
+      // Defer cleanup — 2 s gives the browser time to queue the save
       setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 500);
+        targetDoc.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 2000);
 
       toast({
         title: "Export complete",

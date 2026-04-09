@@ -922,8 +922,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       wb.creator = "VoltStock – TK Electric";
       wb.created = new Date();
 
-      // Helper: truncate sheet name to 31 chars (Excel limit)
-      const sheetName = (name: string) => name.slice(0, 31);
+      // Helper: sanitize Excel worksheet name
+      // Rules: replace "/" with "&", strip other illegal chars (* ? : \ [ ]),
+      // trim whitespace, fallback to "Sheet", cap at 31 chars, dedupe with suffix.
+      const usedSheetNames = new Set<string>();
+      const toSheetName = (name: string): string => {
+        let s = name
+          .replace(/\//g, "&")                // "/" → "&"  (core fix)
+          .replace(/[*?:\\\[\]]/g, "")        // strip remaining illegal chars
+          .trim()
+          || "Sheet";                          // fallback if empty after sanitize
+        s = s.slice(0, 31);                   // Excel 31-char limit
+        if (!usedSheetNames.has(s)) {
+          usedSheetNames.add(s);
+          return s;
+        }
+        // Deduplicate: append (2), (3), … keeping total ≤ 31 chars
+        for (let i = 2; ; i++) {
+          const suffix = ` (${i})`;
+          const candidate = s.slice(0, 31 - suffix.length) + suffix;
+          if (!usedSheetNames.has(candidate)) {
+            usedSheetNames.add(candidate);
+            return candidate;
+          }
+        }
+      };
 
       // Determine item status label
       const itemStatus = (item: any): string => {
@@ -962,7 +985,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const catItems = byCategoryId.get(cat.id);
         if (!catItems || catItems.length === 0) continue; // skip empty categories
 
-        const ws = wb.addWorksheet(sheetName(cat.name));
+        const ws = wb.addWorksheet(toSheetName(cat.name));
         ws.columns = COLUMNS.map(c => ({ header: c.header, key: c.key, width: c.width }));
 
         // Style header row

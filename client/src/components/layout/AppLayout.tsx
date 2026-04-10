@@ -12,6 +12,7 @@ import {
   Menu,
   Home,
   Shield,
+  ShieldAlert,
   Users,
   Download,
   ArrowLeft,
@@ -69,6 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       items: [
         { href: "/admin/users", label: t.navUserApprovals, icon: Users },
         { href: "/admin/export", label: t.navExportBackup, icon: Download },
+        { href: "/admin/reel-audit", label: t.navReelAudit, icon: ShieldAlert },
       ],
     }] : []),
   ];

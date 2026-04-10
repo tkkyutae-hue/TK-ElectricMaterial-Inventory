@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
+import { isReelEligible, getReelIneligibilityReason } from "../shared/reelEligibility";
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
@@ -1244,6 +1245,77 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin Reel Audit ────────────────────────────────────────────────────────
+  // Read-only: items that have legacy reel records but are no longer eligible
+  app.get("/api/admin/reel-audit", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql: drizzleSql, eq: drizzleEq, asc: drizzleAsc } = await import("drizzle-orm");
+      const { items: itemsTable, wireReels: wireReelsTable, categories: categoriesTable } = await import("../shared/schema");
+
+      // Fetch all items that have at least one wire_reel row (active or deleted)
+      const rows = await db
+        .select({
+          id:           itemsTable.id,
+          name:         itemsTable.name,
+          sku:          itemsTable.sku,
+          subcategory:  itemsTable.subcategory,
+          detailType:   itemsTable.detailType,
+          baseItemName: itemsTable.baseItemName,
+          unitOfMeasure:itemsTable.unitOfMeasure,
+          quantityOnHand: itemsTable.quantityOnHand,
+          categoryId:   itemsTable.categoryId,
+          categoryName: categoriesTable.name,
+          categoryCode: categoriesTable.code,
+          reelCount:    drizzleSql<number>`cast(count(${wireReelsTable.id}) as int)`,
+        })
+        .from(wireReelsTable)
+        .innerJoin(itemsTable, drizzleEq(wireReelsTable.itemId, itemsTable.id))
+        .leftJoin(categoriesTable, drizzleEq(itemsTable.categoryId, categoriesTable.id))
+        .groupBy(
+          itemsTable.id, itemsTable.name, itemsTable.sku,
+          itemsTable.subcategory, itemsTable.detailType, itemsTable.baseItemName,
+          itemsTable.unitOfMeasure, itemsTable.quantityOnHand, itemsTable.categoryId,
+          categoriesTable.name, categoriesTable.code,
+        )
+        .orderBy(drizzleAsc(itemsTable.name));
+
+      // Filter to only non-eligible items and annotate with reason
+      const auditRows = rows
+        .filter(row => !isReelEligible({
+          name: row.name,
+          sku: row.sku,
+          subcategory: row.subcategory,
+          detailType: row.detailType,
+          baseItemName: row.baseItemName,
+          category: { name: row.categoryName, code: row.categoryCode },
+        }))
+        .map(row => ({
+          id:            row.id,
+          name:          row.name,
+          sku:           row.sku,
+          category:      row.categoryName ?? "—",
+          subcategory:   row.subcategory ?? "—",
+          unitOfMeasure: row.unitOfMeasure,
+          quantityOnHand:row.quantityOnHand,
+          reelCount:     row.reelCount,
+          reelEligible:  false,
+          reason:        getReelIneligibilityReason({
+            name: row.name,
+            sku: row.sku,
+            subcategory: row.subcategory,
+            detailType: row.detailType,
+            baseItemName: row.baseItemName,
+            category: { name: row.categoryName, code: row.categoryCode },
+          }) ?? "Non-eligible item",
+        }));
+
+      res.json({ rows: auditRows, total: auditRows.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Wire Reels ─────────────────────────────────────────────────────────────
 
   app.get("/api/wire-reels/brands", isAuthenticated, async (req, res) => {
@@ -1289,6 +1361,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/wire-reels/bulk", isAuthenticated, async (req, res) => {
     try {
       const { reels } = z.object({ reels: z.array(reelSchema).min(1) }).parse(req.body);
+
+      // Validate reel eligibility for every unique itemId in this batch
+      const uniqueItemIds = [...new Set(reels.map(r => r.itemId))];
+      for (const itemId of uniqueItemIds) {
+        const item = await storage.getItem(itemId);
+        if (!item) {
+          return res.status(400).json({
+            message: "Item not found",
+            errors: [{ field: "itemId", message: `Item ${itemId} does not exist` }],
+          });
+        }
+        if (!isReelEligible(item)) {
+          return res.status(400).json({
+            message: "Reel operations are not allowed for this item type",
+            errors: [{ field: "itemId", message: "This item is not reel-eligible" }],
+          });
+        }
+      }
+
       const created = [];
       for (const reel of reels) {
         const r = await storage.createWireReel(reel);
@@ -1303,6 +1394,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/wire-reels", isAuthenticated, async (req, res) => {
     try {
       const data = reelSchema.parse(req.body);
+
+      // Validate reel eligibility before creating
+      const item = await storage.getItem(data.itemId);
+      if (!item) {
+        return res.status(400).json({
+          message: "Item not found",
+          errors: [{ field: "itemId", message: "Item does not exist" }],
+        });
+      }
+      if (!isReelEligible(item)) {
+        return res.status(400).json({
+          message: "Reel operations are not allowed for this item type",
+          errors: [{ field: "itemId", message: "This item is not reel-eligible" }],
+        });
+      }
+
       const reel = await storage.createWireReel(data);
       res.status(201).json(reel);
     } catch (err: any) {

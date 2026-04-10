@@ -1,0 +1,75 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records in stored data.
+3. Preserve compatibility with current app behavior and stored data.
+4. Focus ONLY on:
+   client/src/pages/CategoryDetail.tsx
+
+TASK GOAL
+Refactor CategoryDetail.tsx into clearer browsing-focused sections and improve admin inventory scanability without changing business logic or historical data.
+
+IMPORTANT
+- Reuse shared components already created in the repo
+- Do NOT rebuild the page from scratch
+- Do NOT change data-fetching behavior
+- Do NOT introduce a shared InventoryTable in this task
+
+────────────────
+PART 1 — DECOMPOSE BY RESPONSIBILITY
+────────────────
+Refactor the page into focused sections or subcomponents where appropriate, for example:
+- CategoryHeader
+- CategoryFilterBar
+- InventoryItemGrid or InventoryItemList section
+- InventoryItemCard or row summary renderer
+- CategoryEmptyState
+
+Requirements:
+- Reduce the size and complexity of CategoryDetail.tsx
+- Preserve current behavior
+- Avoid replacing one giant block with another giant extracted file
+
+────────────────
+PART 2 — IMPROVE ADMIN SCANABILITY
+────────────────
+Visually prioritize:
+1. item name
+2. size
+3. quantity on hand
+4. location
+5. SKU
+6. status
+
+Use shared components where appropriate:
+- PageHeader
+- SectionCard
+- FilterBar
+- EmptyState
+- shared badges
+
+Requirements:
+- Keep admin mode information-dense
+- Improve spacing and readability
+- Avoid noisy UI clutter
+
+────────────────
+PART 3 — FILTER BAR CLEANUP
+────────────────
+If the page has existing filters/search controls, clean up their structure and consistency only.
+Do not change the filtering logic itself unless a tiny UI-only fix is needed.
+
+────────────────
+CONSTRAINTS
+────────────────
+- Do NOT change API contracts
+- Do NOT change server routes
+- Do NOT modify historical data
+- Do NOT touch ProjectDetail or MovementForm in this task
+
+OUTPUT
+1. Summary of CategoryDetail refactor
+2. Files created
+3. Files modified
+4. Notes on what was intentionally untouched

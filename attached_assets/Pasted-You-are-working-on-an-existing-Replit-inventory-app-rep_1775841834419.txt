@@ -1,0 +1,132 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, or reinterpret historical movement records.
+3. Do NOT bulk-update existing item records or reel data.
+4. Preserve compatibility with existing stored data and current app behavior as much as possible.
+5. This task is about UI/business-rule alignment only: reel tracking eligibility must be enforced consistently across both Field Mode and Admin Mode.
+
+TASK GOAL
+Make reel-based management available ONLY for:
+- Cable / Wire items
+- Flexible Conduit items
+
+And make reel-based UI/features unavailable for:
+- EMT
+- Rigid
+- PVC Conduit
+- Cable Tray
+
+This must apply consistently in both Field Mode and Admin Mode.
+
+FILES TO FOCUS ON
+Inspect the repo and update only the relevant files for:
+- shared inventory/item utility logic
+- Field inventory/item/detail views
+- Admin inventory/item/detail views
+- Movement form or item form areas where reel-specific UI appears
+- any reel badge / reel count / reel action display logic
+
+IMPORTANT
+- Reuse existing shared utilities/components where possible
+- Do NOT invent a second conflicting reel rule in multiple places
+- Create one shared source of truth and consume it everywhere relevant
+
+────────────────
+PART 1 — CREATE A SHARED REEL ELIGIBILITY HELPER
+────────────────
+
+Create a small shared helper, for example:
+- client/src/lib/reelEligibility.ts
+and/or a tiny matching shared server/helper file only if truly needed
+
+Export helper(s) such as:
+- isReelEligibleCategory(...)
+- isReelEligibleItem(item)
+
+RULES
+Eligible:
+- Cable / Wire
+- Flexible Conduit
+
+Not eligible:
+- EMT
+- Rigid
+- PVC Conduit
+- Cable Tray
+
+Implementation guidance:
+- Base eligibility on the item’s actual category / type / family / subtype fields that already exist in the repo
+- Be careful not to classify all conduit as flexible conduit
+- Only true flexible conduit variants should be eligible
+- Do NOT rely only on an old reel flag if that flag currently causes incorrect UI for EMT/rigid/PVC/cable tray
+
+────────────────
+PART 2 — APPLY THE SHARED RULE EVERYWHERE REEL UI APPEARS
+────────────────
+
+Wherever the app currently shows reel-specific behavior, gate it through the new shared eligibility helper.
+
+Examples of reel-specific behavior that must be hidden/disabled for non-eligible items:
+- reel badge
+- reel count
+- reel summary panel
+- reel actions
+- reel-specific detail sections
+- reel-specific labels
+- reel management buttons
+- reel-specific form controls
+- reel-only inventory presentation
+
+For non-eligible items (EMT, Rigid, PVC, Cable Tray):
+- show normal quantity/unit behavior only
+- do not show reel-specific UI
+- do not show reel-specific actions
+
+For eligible items (Cable / Flexible Conduit):
+- keep reel behavior working
+
+────────────────
+PART 3 — ADMIN + FIELD MODE BOTH
+────────────────
+
+Apply the same shared reel eligibility rule consistently in:
+- Field inventory/item views
+- Admin inventory/item views
+- Category/item detail surfaces
+- Quick drawer / detail panels if applicable
+- Movement or item forms if reel-specific options are present
+
+Do not allow Field and Admin to diverge on reel eligibility rules.
+
+────────────────
+PART 4 — FORWARD-ONLY SAFETY
+────────────────
+
+If forms allow enabling or interacting with reel-specific behavior:
+- disable or hide reel options for non-eligible item categories going forward
+- do not delete historical data
+- do not migrate old rows
+- do not bulk-fix legacy records in this task
+
+If a non-eligible item has legacy reel-related data in storage:
+- do not delete it
+- simply stop surfacing reel-specific UI for that item category where the rule says it is not eligible
+
+────────────────
+CONSTRAINTS
+────────────────
+
+- Do NOT change server routes unless absolutely necessary for a tiny compatibility-safe helper usage
+- Do NOT rebuild the inventory engine
+- Do NOT change quantity calculations
+- Do NOT change historical records
+- Keep the work incremental and scoped
+
+OUTPUT
+1. Summary of reel eligibility rule changes
+2. Files created
+3. Files modified
+4. Notes on where reel UI was gated in Field/Admin
+5. Notes on how legacy data was intentionally left untouched

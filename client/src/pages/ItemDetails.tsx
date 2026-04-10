@@ -1,5 +1,6 @@
 import { useRoute } from "wouter";
 import { BRAND_ABBREV, abbreviateWord, generateReelId } from "@/lib/reel-utils";
+import { isReelEligibleItem } from "@/lib/reelEligibility";
 import { useItem, useDeleteItem, useUpdateItem } from "@/hooks/use-items";
 import { useCategories, useLocations, useSuppliers } from "@/hooks/use-reference-data";
 import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge";
@@ -1258,7 +1259,7 @@ export default function ItemDetails() {
                     {item.quantityOnHand.toLocaleString()}
                   </span>
                   <span className="text-base text-slate-400 ml-1.5 font-medium">{item.unitOfMeasure}</span>
-                  {item.unitOfMeasure === "FT" && (
+                  {isReelEligibleItem(item) && (
                     <span className="block text-xs text-slate-400 mt-0.5" data-testid="item-reel-count">
                       {wireReels.length} reel{wireReels.length !== 1 ? "s" : ""}
                     </span>
@@ -1294,8 +1295,8 @@ export default function ItemDetails() {
 
             <div className="h-px bg-slate-100" />
 
-            {/* Reel Inventory — inline for wire/cable items */}
-            {item.unitOfMeasure === "FT" && (
+            {/* Reel Inventory — inline for wire/cable and flexible conduit items */}
+            {isReelEligibleItem(item) && (
               <>
                 <WireReelInline ref={wireReelRef} item={item} editModeActive={inlineEdit} />
                 <div className="h-px bg-slate-100" />

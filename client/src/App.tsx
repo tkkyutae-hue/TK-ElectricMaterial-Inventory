@@ -32,7 +32,6 @@ import DailyReport from "@/pages/DailyReport";
 import DailyReportWorkspace from "@/pages/DailyReportWorkspace";
 import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
-import ReelAudit from "@/pages/admin/ReelAudit";
 
 import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
@@ -175,7 +174,6 @@ function AdminRouter() {
           <Route path="/reports" component={Reports} />
           <Route path="/admin/users" component={() => <AdminToolsGuard><UserApprovals /></AdminToolsGuard>} />
           <Route path="/admin/export" component={() => <AdminToolsGuard><Export /></AdminToolsGuard>} />
-          <Route path="/admin/reel-audit" component={() => <AdminToolsGuard><ReelAudit /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

@@ -232,6 +232,7 @@ function ReelRow({ reel }: { reel: FieldWireReel }) {
 
 function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () => void }) {
   const { t } = useLanguage();
+  const [, navigate] = useLocation();
   const isReelItem = item.unitOfMeasure === "FT" || item.unitOfMeasure === "LF";
   const [imgEnlarged, setImgEnlarged] = useState(false);
 
@@ -374,13 +375,15 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
             )}
           </div>
 
-          {/* ── 2×2 stat grid ── */}
+          {/* ── Stat grid ── */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {[
               { label: t.colSize,     value: item.sizeLabel        || "—", mono: false },
               { label: t.colLocation, value: item.location?.name   || "—", mono: false },
               { label: "SKU",         value: item.sku,                     mono: true  },
               { label: t.colCategory, value: item.category?.name   || "—", mono: false },
+              { label: "Supplier",    value: item.supplier?.name   || "—", mono: false },
+              { label: "Min Stock",   value: item.reorderPoint ? `${item.reorderPoint} ${item.unitOfMeasure}` : "—", mono: false },
             ].map(({ label, value, mono }) => (
               <div key={label} style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
                 <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
@@ -429,6 +432,36 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               )}
             </div>
           )}
+        </div>
+
+        {/* ── Action Footer ── */}
+        <div style={{
+          position: "sticky", bottom: 0, background: "#0d1410",
+          borderTop: "1px solid #1e2e21", padding: "12px 16px",
+          display: "flex", gap: 10, zIndex: 2,
+        }}>
+          <button
+            data-testid="btn-log-movement"
+            onClick={() => navigate(`/field/movement?itemId=${item.id}`)}
+            style={{
+              flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
+              background: "#2ddb6f", color: "#0d1410", border: "none", cursor: "pointer",
+              fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+            }}
+          >
+            Log Movement
+          </button>
+          <button
+            data-testid="btn-full-detail"
+            onClick={() => navigate(`/inventory/${item.id}`)}
+            style={{
+              flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
+              background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+              fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+            }}
+          >
+            Full Detail
+          </button>
         </div>
       </div>
 
@@ -800,6 +833,32 @@ export default function FieldInventory() {
           allLabel={t.allFilter}
         />
       )}
+
+      {/* ── Quick Preset Filters ── */}
+      <div className="flex items-center gap-2">
+        {[
+          { label: "⚠ Low Stock",    value: "low_stock"    },
+          { label: "✗ Out of Stock", value: "out_of_stock" },
+        ].map(preset => {
+          const isActive = selectedStatus === preset.value;
+          return (
+            <button
+              key={preset.value}
+              data-testid={`btn-preset-${preset.value}`}
+              onClick={() => { setSelectedStatus(isActive ? "all" : preset.value); setPage(1); }}
+              style={{
+                fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "5px 13px",
+                border: `1px solid ${isActive ? "#2ddb6f" : "#2a4030"}`,
+                background: isActive ? "#2ddb6f" : "#1c2b1f",
+                color: isActive ? "#0d1410" : "#7aab82",
+                cursor: "pointer", whiteSpace: "nowrap" as const,
+              }}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-2 items-center">

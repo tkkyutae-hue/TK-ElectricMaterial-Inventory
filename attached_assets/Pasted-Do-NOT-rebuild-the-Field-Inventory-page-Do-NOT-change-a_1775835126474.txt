@@ -1,0 +1,68 @@
+Do NOT rebuild the Field Inventory page.
+Do NOT change any API calls, routing, business logic, or pagination behavior.
+Make only the following targeted UI/UX additions to:
+  client/src/pages/field/FieldInventory.tsx
+
+IMPORTANT
+- Prompt 1 (shared constants / FilterChip extraction) has already been applied.
+- Reuse any existing shared components and utilities if they already exist.
+- Keep changes scoped and non-destructive.
+
+────────────────
+CHANGE 1: Add Quick Preset filter buttons
+────────────────
+In the main FieldInventory component, directly above the existing filter row, add a compact row of quick-filter buttons.
+
+Add two buttons:
+- "⚠ Low Stock" → sets selectedStatus to "low_stock" and resets page to 1
+- "✗ Out of Stock" → sets selectedStatus to "out_of_stock" and resets page to 1
+
+Behavior:
+- If the matching quick filter is already active, clicking it again should deactivate it and set selectedStatus back to "all"
+- Keep all other filters unchanged
+- Reset page to 1 whenever a quick filter changes
+
+Visual style:
+- Active: use the green accent already used in Field mode (#2ddb6f background, dark text)
+- Inactive: use the muted pill style already used in Field mode (#1c2b1f background, #7aab82 text, border #2a4030)
+
+────────────────
+CHANGE 2: Add Supplier and Min Stock to the FieldItemDetailPanel stat grid
+────────────────
+In FieldItemDetailPanel, expand the existing stat grid to include:
+- Supplier: item.supplier?.name ?? "—"
+- Min Stock: item.reorderPoint + unitOfMeasure, e.g. "10 EA"
+
+Keep all existing styles consistent.
+Do not remove existing stat cells.
+
+────────────────
+CHANGE 3: Add bottom action bar to FieldItemDetailPanel
+────────────────
+At the bottom of the FieldItemDetailPanel, add a sticky footer bar with two buttons:
+
+Button 1: "Log Movement"
+- Navigate to /field/movement?itemId=<item.id>
+
+Button 2: "Full Detail"
+- Navigate to /inventory/<item.id>
+
+Requirements:
+- Use the existing field-mode visual language
+- Sticky footer bar pinned to the bottom of the panel
+- Keep current panel content unchanged otherwise
+- Use the existing navigate approach already used in the repo
+
+────────────────
+CONSTRAINTS
+────────────────
+- Do NOT add mobile card layout in this task
+- Do NOT extract a shared InventoryTable in this task
+- Do NOT touch Admin pages
+- Do NOT change filtering logic beyond adding the two quick preset buttons
+- Do NOT change data-fetching logic
+
+OUTPUT
+1. Summary of changes
+2. Files modified
+3. Notes on what was intentionally not changed

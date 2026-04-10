@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfDay, endOfDay, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { EditTransactionDrawer, EditSuccessToast } from "@/components/EditTransactionDrawer";
+import { F } from "@/lib/fieldTokens";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,11 +28,11 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 
   const placeholder = (
     <div style={{
-      width: 36, height: 36, borderRadius: 6, background: "#162019",
-      border: "1px solid #2a4030", display: "flex", alignItems: "center",
+      width: 36, height: 36, borderRadius: 6, background: F.surface2,
+      border: `1px solid ${F.borderStrong}`, display: "flex", alignItems: "center",
       justifyContent: "center", flexShrink: 0, margin: "0 auto",
     }}>
-      <ImageOff style={{ width: 15, height: 15, color: "#4a7052" }} />
+      <ImageOff style={{ width: 15, height: 15, color: F.textDim }} />
     </div>
   );
 
@@ -41,7 +42,7 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
     <img
       src={imageUrl}
       alt={name}
-      style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid #2a4030", display: "block", margin: "0 auto" }}
+      style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: `1px solid ${F.borderStrong}`, display: "block", margin: "0 auto" }}
       onError={() => setBroken(true)}
     />
   );
@@ -50,21 +51,21 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 // ─── Qty colour helper ────────────────────────────────────────────────────────
 
 function qtyColor(type: string): string {
-  if (type === "issue")    return "#ff5050";
-  if (type === "transfer") return "#5b9cf6";
-  if (type === "adjust")   return "#f5a623";
-  return "#2ddb6f";
+  if (type === "issue")    return F.danger;
+  if (type === "transfer") return F.info;
+  if (type === "adjust")   return F.warning;
+  return F.accent;
 }
 
 // ─── Shared input / label styles ──────────────────────────────────────────────
 
 const INPUT_STYLE: React.CSSProperties = {
-  background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7,
-  padding: "8px 10px", color: "#e2f0e5", fontSize: 12, width: "100%", outline: "none",
+  background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7,
+  padding: "8px 10px", color: F.text, fontSize: 12, width: "100%", outline: "none",
 };
 
 const LABEL_STYLE: React.CSSProperties = {
-  display: "block", fontSize: 9, fontWeight: 700, color: "#4a7052",
+  display: "block", fontSize: 9, fontWeight: 700, color: F.textDim,
   textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 5,
 };
 
@@ -125,12 +126,12 @@ function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { icon?
       <input
         style={{ ...INPUT_STYLE, paddingLeft: icon ? 28 : undefined, ...style }}
         onFocus={e => {
-          e.currentTarget.style.borderColor = "#2ddb6f";
-          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(45,219,111,0.12)";
+          e.currentTarget.style.borderColor = F.accent;
+          e.currentTarget.style.boxShadow = `0 0 0 3px ${F.accentBg}`;
           onFocus?.(e);
         }}
         onBlur={e => {
-          e.currentTarget.style.borderColor = "#2a4030";
+          e.currentTarget.style.borderColor = F.borderStrong;
           e.currentTarget.style.boxShadow = "none";
           onBlur?.(e);
         }}
@@ -143,9 +144,9 @@ function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { icon?
 // ─── TH style ─────────────────────────────────────────────────────────────────
 
 const TH: React.CSSProperties = {
-  fontSize: 9, fontWeight: 700, color: "#7aab82",
+  fontSize: 9, fontWeight: 700, color: F.textMuted,
   textTransform: "uppercase", letterSpacing: "1px",
-  padding: "10px 8px", whiteSpace: "nowrap", background: "#162019",
+  padding: "10px 8px", whiteSpace: "nowrap", background: F.surface2,
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -324,24 +325,24 @@ export default function FieldTransactions() {
       {/* ── Header ── */}
       <div>
         <div className="flex items-center gap-2 mb-0.5">
-          <ClipboardList style={{ width: 20, height: 20, color: "#2ddb6f" }} />
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.04em" }}>
+          <ClipboardList style={{ width: 20, height: 20, color: F.accent }} />
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: F.text, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: "0.04em" }}>
             {t.transactions}
           </h1>
         </div>
-        <p style={{ fontSize: 13, color: "#7aab82" }}>
+        <p style={{ fontSize: 13, color: F.textMuted }}>
           {selCount > 0 ? `${selCount} ${t.selected}` : t.viewHistory}
         </p>
       </div>
 
       {/* ── Tab Switcher + Export CSV ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", gap: 2, background: "#0d1410", border: "1px solid #2a4030", borderRadius: 10, padding: 3, width: "fit-content" }}>
+        <div style={{ display: "flex", gap: 2, background: F.bg, border: `1px solid ${F.borderStrong}`, borderRadius: 10, padding: 3, width: "fit-content" }}>
           <button
             type="button"
             onClick={() => setActiveTab("history")}
             data-testid="tab-history"
-            style={{ background: activeTab === "history" ? "#1c2b1f" : "transparent", border: activeTab === "history" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? "#e2f0e5" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
+            style={{ background: activeTab === "history" ? F.surface : "transparent", border: activeTab === "history" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? F.text : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
           >
             {t.txHistoryTab}
           </button>
@@ -349,7 +350,7 @@ export default function FieldTransactions() {
             type="button"
             onClick={() => setActiveTab("drafts")}
             data-testid="tab-drafts"
-            style={{ background: activeTab === "drafts" ? "#1c2b1f" : "transparent", border: activeTab === "drafts" ? "1px solid #2a4030" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? "#f5a623" : "#4a7052", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+            style={{ background: activeTab === "drafts" ? F.surface : "transparent", border: activeTab === "drafts" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? F.warning : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
           >
             <FileText style={{ width: 12, height: 12 }} />
             {t.txDraftsTab}
@@ -360,7 +361,7 @@ export default function FieldTransactions() {
           <button
             onClick={exportCsv}
             data-testid="btn-export-csv"
-            style={{ fontSize: 11, color: "#7aab82", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "5px 13px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}
+            style={{ fontSize: 11, color: F.textMuted, background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7, padding: "5px 13px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600 }}
           >
             {t.exportCsv} ↓
           </button>
@@ -374,7 +375,7 @@ export default function FieldTransactions() {
       {activeTab === "history" && (
         <>
           {/* ── Filter Panel ── */}
-          <div style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 
             {/* Row 1: Type quick-filter pills */}
             <div>
@@ -393,7 +394,7 @@ export default function FieldTransactions() {
                   value={search}
                   onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                   data-testid="field-tx-search"
-                  icon={<Search style={{ width: 13, height: 13, color: "#4a7052" }} />}
+                  icon={<Search style={{ width: 13, height: 13, color: F.textDim }} />}
                   style={{ fontFamily: "'Barlow', sans-serif" }}
                 />
               </div>
@@ -402,7 +403,7 @@ export default function FieldTransactions() {
               <div>
                 <label style={LABEL_STYLE}>{t.txFrom}</label>
                 <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }} data-testid="field-tx-from-filter">
+                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
                     <SelectValue placeholder={t.allFilter} />
                   </SelectTrigger>
                   <SelectContent>
@@ -416,7 +417,7 @@ export default function FieldTransactions() {
               <div>
                 <label style={LABEL_STYLE}>{t.txTo}</label>
                 <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }} data-testid="field-tx-to-filter">
+                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
                     <SelectValue placeholder={t.allFilter} />
                   </SelectTrigger>
                   <SelectContent>
@@ -430,7 +431,7 @@ export default function FieldTransactions() {
               <div>
                 <label style={LABEL_STYLE}>{t.txProject}</label>
                 <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: "#1c2b1f", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 7 }} data-testid="field-tx-project-filter">
+                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
                     <SelectValue placeholder={t.allFilter} />
                   </SelectTrigger>
                   <SelectContent>
@@ -451,7 +452,7 @@ export default function FieldTransactions() {
                   onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
                   data-testid="field-tx-date-from"
                   style={{ colorScheme: "dark" }}
-                  icon={<CalendarDays style={{ width: 12, height: 12, color: "#4a7052" }} />}
+                  icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
                 />
               </div>
               <div>
@@ -462,7 +463,7 @@ export default function FieldTransactions() {
                   onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
                   data-testid="field-tx-date-to"
                   style={{ colorScheme: "dark" }}
-                  icon={<CalendarDays style={{ width: 12, height: 12, color: "#4a7052" }} />}
+                  icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
                 />
               </div>
               <div style={{ display: "flex", alignItems: "flex-end" }}>
@@ -473,7 +474,7 @@ export default function FieldTransactions() {
                       setProj("all"); setDateFrom(""); setDateTo(""); setCurrentPage(1);
                     }}
                     data-testid="field-tx-date-clear"
-                    style={{ fontSize: 11, color: "#7aab82", background: "none", border: "1px solid #2a4030", borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
+                    style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
                   >
                     <X style={{ width: 11, height: 11 }} /> Clear all
                   </button>
@@ -483,7 +484,7 @@ export default function FieldTransactions() {
           </div>
 
           {/* ── Table ── */}
-          <div style={{ border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ border: `1px solid ${F.borderStrong}`, borderRadius: 12, overflow: "hidden" }}>
             <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
               <colgroup>
                 {/* #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note, Select */}
@@ -500,7 +501,7 @@ export default function FieldTransactions() {
                 <col style={{ width: 68 }} />
               </colgroup>
               <thead>
-                <tr style={{ borderBottom: "1px solid #2a4030" }}>
+                <tr style={{ borderBottom: `1px solid ${F.borderStrong}` }}>
                   <th style={{ ...TH, textAlign: "center" }}>#</th>
                   <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
                   <th style={TH}>{t.colPhoto}</th>
@@ -511,7 +512,7 @@ export default function FieldTransactions() {
                   <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
                   <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
                   <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
-                  <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: "1px solid #2a4030", background: selectionMode ? "#1a2e1e" : "#162019" }}>
+                  <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: selectionMode ? F.surface : F.surface2 }}>
                     {selectionMode ? (
                       <div
                         role="checkbox"
@@ -519,18 +520,18 @@ export default function FieldTransactions() {
                         onClick={toggleAll}
                         data-testid="field-checkbox-select-all-right"
                         title="Select all"
-                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? "#2ddb6f" : "#4a7052"}`, background: allSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
                       >
-                        {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
                         data-testid="btn-selection-mode-toggle"
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.16)"; el.style.borderColor = "rgba(45,219,111,0.55)"; el.style.color = "#2ddb6f"; }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.07)"; el.style.borderColor = "rgba(45,219,111,0.25)"; el.style.color = "#7aab82"; }}
-                        style={{ display: "block", width: "100%", padding: "6px 0", background: "rgba(45,219,111,0.07)", border: "1px solid rgba(45,219,111,0.25)", borderRadius: 6, color: "#7aab82", fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1, textAlign: "center" }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.16)"; el.style.borderColor = "rgba(45,219,111,0.55)"; el.style.color = F.accent; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = F.accentBg; el.style.borderColor = F.accentBorder; el.style.color = F.textMuted; }}
+                        style={{ display: "block", width: "100%", padding: "6px 0", background: F.accentBg, border: `1px solid ${F.accentBorder}`, borderRadius: 6, color: F.textMuted, fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1, textAlign: "center" }}
                       >
                         {t.selectBtn}
                       </button>
@@ -542,11 +543,11 @@ export default function FieldTransactions() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>{t.loading}</td>
+                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.loading}</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: "#7aab82" }}>{t.noTransactions}</td>
+                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.noTransactions}</td>
                   </tr>
                 ) : paginated.map((m, idx) => {
                   const mx        = m as any;
@@ -567,16 +568,16 @@ export default function FieldTransactions() {
                       key={m.id}
                       data-testid={`field-tx-row-${m.id}`}
                       style={{
-                        background: isSelected ? "rgba(45,219,111,0.07)" : "#162019",
-                        borderBottom: "1px solid #1e2e21",
-                        borderLeft: isSelected ? "3px solid #2ddb6f" : "3px solid transparent",
+                        background: isSelected ? F.accentBg : F.surface2,
+                        borderBottom: `1px solid ${F.border}`,
+                        borderLeft: isSelected ? `3px solid ${F.accent}` : "3px solid transparent",
                         transition: "background 0.1s",
                       }}
-                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#1c2b1f"; }}
-                      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#162019"; }}
+                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface; }}
+                      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface2; }}
                     >
                       {/* # */}
-                      <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: "#7aab82", textAlign: "center" }}>
+                      <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: F.textMuted, textAlign: "center" }}>
                         {(safePage - 1) * pageSize + idx + 1}
                       </td>
 
@@ -592,19 +593,19 @@ export default function FieldTransactions() {
 
                       {/* Item name + subcategory (highest priority) */}
                       <td style={{ padding: "12px 8px" }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: "#e2f0e5", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: F.text, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {item?.name ?? `#${m.itemId}`}
                         </p>
                         {item?.extractedSubcategory && (
-                          <p style={{ fontSize: 10, color: "#7aab82", lineHeight: 1.3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <p style={{ fontSize: 10, color: F.textMuted, lineHeight: 1.3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {item.extractedSubcategory}
                           </p>
                         )}
                       </td>
 
                       {/* Size */}
-                      <td style={{ padding: "12px 6px", fontSize: 11, color: "#c8deca", whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
-                        {item?.sizeLabel || <span style={{ color: "#2a4030" }}>—</span>}
+                      <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
+                        {item?.sizeLabel || <span style={{ color: F.borderStrong }}>—</span>}
                       </td>
 
                       {/* Qty + Unit (large, high-contrast) */}
@@ -613,7 +614,7 @@ export default function FieldTransactions() {
                           {m.quantity}
                         </span>
                         {item?.unitOfMeasure && (
-                          <span style={{ marginLeft: 4, fontSize: 9, color: "#7aab82", textTransform: "uppercase", display: "block", marginTop: 1 }}>
+                          <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase", display: "block", marginTop: 1 }}>
                             {item.unitOfMeasure}
                           </span>
                         )}
@@ -622,11 +623,11 @@ export default function FieldTransactions() {
                       {/* From → To (location) */}
                       <td style={{ padding: "12px 8px", textAlign: "center" }}>
                         <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <span style={{ color: "#c8deca", fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                            {fromLoc?.name ?? <span style={{ color: "#2a4030" }}>—</span>}
+                          <span style={{ color: F.textSub, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                            {fromLoc?.name ?? <span style={{ color: F.borderStrong }}>—</span>}
                           </span>
-                          <span style={{ color: "#4a7052", fontSize: 9 }}>↓</span>
-                          <span style={{ color: "#ffffff", fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                          <span style={{ color: F.textDim, fontSize: 9 }}>↓</span>
+                          <span style={{ color: F.text, fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                             {toLoc?.name ?? "—"}
                           </span>
                         </div>
@@ -637,25 +638,25 @@ export default function FieldTransactions() {
                         {project?.name || project?.poNumber ? (
                           <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
                             {project?.name && (
-                              <span style={{ fontSize: 11, fontWeight: 600, color: "#e2f0e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
                                 {project.name}
                               </span>
                             )}
                             {project?.poNumber && (
-                              <span style={{ fontSize: 9, color: "#7aab82" }}>{project.poNumber}</span>
+                              <span style={{ fontSize: 9, color: F.textMuted }}>{project.poNumber}</span>
                             )}
                           </div>
-                        ) : <span style={{ color: "#2a4030", fontSize: 12 }}>—</span>}
+                        ) : <span style={{ color: F.borderStrong, fontSize: 12 }}>—</span>}
                       </td>
 
                       {/* Date (secondary — moved after primary info) */}
                       <td style={{ padding: "12px 8px", textAlign: "center" }}>
                         {m.createdAt ? (
                           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 500, color: "#e2f0e5" }}>
+                            <span style={{ fontSize: 11, fontWeight: 500, color: F.text }}>
                               {format(new Date(m.createdAt), "MMM d, yyyy")}
                             </span>
-                            <span style={{ fontSize: 10, color: "#7aab82" }}>
+                            <span style={{ fontSize: 10, color: F.textMuted }}>
                               {format(new Date(m.createdAt), "HH:mm")}
                             </span>
                             {isEdited && (
@@ -668,17 +669,17 @@ export default function FieldTransactions() {
                               </span>
                             )}
                           </div>
-                        ) : <span style={{ color: "#2a4030" }}>—</span>}
+                        ) : <span style={{ color: F.borderStrong }}>—</span>}
                       </td>
 
                       {/* Note */}
-                      <td style={{ padding: "12px 8px", fontSize: 11, color: "#7aab82", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.note || <span style={{ color: "#2a4030" }}>—</span>}
+                      <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.note || <span style={{ color: F.borderStrong }}>—</span>}
                       </td>
 
                       {/* Select */}
                       <td
-                        style={{ padding: "12px 6px", textAlign: "center", borderLeft: "1px solid #2a4030", background: isSelected ? "rgba(45,219,111,0.07)" : selectionMode ? "#1a2e1e" : "#162019" }}
+                        style={{ padding: "12px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: isSelected ? F.accentBg : selectionMode ? F.surface : F.surface2 }}
                         onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}
                       >
                         {selectionMode ? (
@@ -686,12 +687,12 @@ export default function FieldTransactions() {
                             role="checkbox"
                             aria-checked={isSelected}
                             data-testid={`field-checkbox-sel-${m.id}`}
-                            style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? "#2ddb6f" : "#4a7052"}`, background: isSelected ? "#2ddb6f" : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                            style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
                           >
-                            {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#0d1410" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                         ) : (
-                          <span style={{ color: "#2a4030", fontSize: 10 }}>·</span>
+                          <span style={{ color: F.borderStrong, fontSize: 10 }}>·</span>
                         )}
                       </td>
                     </tr>
@@ -701,14 +702,14 @@ export default function FieldTransactions() {
             </table>
 
             {/* ── Persistent action bar (bottom of table) ── */}
-            <div style={{ borderTop: "1px solid #2a4030", background: "#0f1a11", padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
               {/* Left: showing count */}
-              <span style={{ fontSize: 11, color: "#7aab82", flex: 1 }}>
+              <span style={{ fontSize: 11, color: F.textMuted, flex: 1 }}>
                 Showing{" "}
-                <strong style={{ color: "#e2f0e5" }}>
+                <strong style={{ color: F.text }}>
                   {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
                 </strong>
-                {" "}of <strong style={{ color: "#e2f0e5" }}>{filtered.length}</strong>
+                {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
               </span>
 
               {/* Center: page-size + pagination */}
@@ -718,21 +719,21 @@ export default function FieldTransactions() {
                     type="button"
                     onClick={() => setPageSizeOpen(o => !o)}
                     data-testid="btn-page-size-toggle"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: pageSizeOpen ? "rgba(45,219,111,0.09)" : "#162019", border: `1px solid ${pageSizeOpen ? "rgba(45,219,111,0.28)" : "#2a4030"}`, color: pageSizeOpen ? "#2ddb6f" : "#7aab82", fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em", cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: pageSizeOpen ? F.accentBg : F.surface2, border: `1px solid ${pageSizeOpen ? F.accentBorder : F.borderStrong}`, color: pageSizeOpen ? F.accent : F.textMuted, fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em", cursor: "pointer" }}
                   >
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}><rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>
                     {pageSize}
                     <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.6 }}><path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                   {pageSizeOpen && (
-                    <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", background: "#162019", border: "1px solid #2a4030", borderRadius: 9, padding: 4, zIndex: 50, display: "flex", flexDirection: "column", gap: 2, minWidth: 72, boxShadow: "0 4px 16px rgba(0,0,0,0.45)" }}>
+                    <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 9, padding: 4, zIndex: 50, display: "flex", flexDirection: "column", gap: 2, minWidth: 72, boxShadow: "0 4px 16px rgba(0,0,0,0.45)" }}>
                       {[10, 15, 25, 35, 45].map(n => (
                         <button
                           key={n}
                           type="button"
                           onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
                           data-testid={`btn-page-size-${n}`}
-                          style={{ padding: "6px 10px", borderRadius: 6, textAlign: "center", background: pageSize === n ? "rgba(45,219,111,0.12)" : "transparent", border: `1px solid ${pageSize === n ? "rgba(45,219,111,0.28)" : "transparent"}`, color: pageSize === n ? "#2ddb6f" : "#7aab82", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em" }}
+                          style={{ padding: "6px 10px", borderRadius: 6, textAlign: "center", background: pageSize === n ? F.accentBg : "transparent", border: `1px solid ${pageSize === n ? F.accentBorder : "transparent"}`, color: pageSize === n ? F.accent : F.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em" }}
                         >
                           {n}
                         </button>
@@ -741,21 +742,21 @@ export default function FieldTransactions() {
                   )}
                 </div>
 
-                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} data-testid="btn-page-prev" style={{ padding: "5px 10px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: safePage <= 1 ? "#2a4030" : "#7aab82", fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}>‹</button>
-                <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "monospace", minWidth: 52, textAlign: "center" }}>{safePage} / {totalPages}</span>
-                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: safePage >= totalPages ? "#2a4030" : "#7aab82", fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
+                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} data-testid="btn-page-prev" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage <= 1 ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}>‹</button>
+                <span style={{ fontSize: 11, color: F.textMuted, fontFamily: "monospace", minWidth: 52, textAlign: "center" }}>{safePage} / {totalPages}</span>
+                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
               </div>
 
               {/* Right: selection actions */}
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
                 {selectionMode ? (
                   <>
-                    {selCount > 0 && <span style={{ fontSize: 11, color: "#4a7052", marginRight: 2 }}>{selCount} {t.selected}</span>}
-                    <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "#162019", border: "1px solid #2a4030", color: "#7aab82", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>}
+                    <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                       <X style={{ width: 10, height: 10 }} /> {t.cancel}
                     </button>
                     {canEdit && hasDeletePerm && (
-                      <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : "#162019", border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : "#2a4030"}`, color: selCount === 1 ? "#5b9cf6" : "#3a5040", fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <Pencil style={{ width: 10, height: 10 }} /> Edit
                       </button>
                     )}
@@ -798,19 +799,19 @@ export default function FieldTransactions() {
 
       {/* ── Confirm delete dialog ── */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent style={{ background: "#0d1410", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 400 }} className="max-w-[400px]">
+        <DialogContent style={{ background: F.bg, border: `1px solid ${F.borderStrong}`, borderRadius: 14, maxWidth: 400 }} className="max-w-[400px]">
           <DialogHeader>
-            <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+            <DialogTitle style={{ color: F.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
               <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
               Delete {selectedIds.size} Transaction{selectedIds.size !== 1 ? "s" : ""}?
             </DialogTitle>
           </DialogHeader>
           <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
-            <p style={{ fontSize: 13, color: "#7aab82", lineHeight: 1.55 }}>
+            <p style={{ fontSize: 13, color: F.textMuted, lineHeight: 1.55 }}>
               Inventory counts will be reversed for all selected transactions. You can undo this within 8 seconds after deletion.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button type="button" onClick={() => setConfirmOpen(false)} style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <button type="button" onClick={() => setConfirmOpen(false)} style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: F.textMuted, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}>
                 {t.cancel}
               </button>
               <button type="button" onClick={handleDelete} disabled={bulkDelete.isPending} data-testid="button-confirm-delete" style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.35)", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: bulkDelete.isPending ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: bulkDelete.isPending ? 0.7 : 1, display: "inline-flex", alignItems: "center", gap: 6 }}>

@@ -93,6 +93,23 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // Field Mode token palette — mirrors CSS vars in index.css and fieldTokens.ts
+        field: {
+          bg:            "var(--field-bg)",
+          surface:       "var(--field-surface)",
+          "surface-2":   "var(--field-surface-2)",
+          border:        "var(--field-border)",
+          "border-strong":"var(--field-border-strong)",
+          text:          "var(--field-text)",
+          "text-muted":  "var(--field-text-muted)",
+          "text-dim":    "var(--field-text-dim)",
+          accent:        "var(--field-accent)",
+          "accent-text": "var(--field-accent-text)",
+          danger:        "var(--field-danger)",
+          warning:       "var(--field-warning)",
+          info:          "var(--field-info)",
+          ordered:       "var(--field-ordered)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

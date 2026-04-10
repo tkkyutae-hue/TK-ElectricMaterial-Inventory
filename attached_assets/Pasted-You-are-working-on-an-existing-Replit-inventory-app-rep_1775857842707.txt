@@ -1,0 +1,152 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT rebuild Field Mode pages from scratch.
+2. Do NOT change business logic, routing, API calls, or data behavior.
+3. Do NOT redesign the whole app visually.
+4. Preserve the existing Field Mode identity and visual tone.
+5. This task is ONLY about creating a reusable Field design token foundation and applying it incrementally.
+
+TASK GOAL
+Create a lightweight Field Mode design token system so Field UI stops depending on scattered inline color values, while preserving the current dark industrial/onsite equipment look.
+
+IMPORTANT CONTEXT
+Field Mode already has a strong visual identity.
+Do NOT flatten it into generic Tailwind gray styling.
+Keep the current feel:
+- dark industrial surfaces
+- green accent
+- bold quantity emphasis
+- equipment/terminal-like clarity
+- high contrast operational UI
+
+SCOPE
+Focus only on:
+- shared Field color tokens
+- shared Field surface/border/text tokens
+- shared status color helpers if appropriate
+- incremental replacement of repeated inline color values in the most important Field files
+
+TARGET FILES
+Inspect the repo first and focus on:
+- tailwind.config.* if this repo uses Tailwind theme extension
+- global CSS/theme file(s) if needed
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- any small shared field-facing components already used repeatedly
+
+Do NOT touch unrelated Admin styling in this task.
+
+==================================================
+PART 1 — DEFINE FIELD DESIGN TOKENS
+==================================================
+
+Create a small Field token system using the most appropriate approach for this repo:
+- Tailwind theme extension
+- CSS variables
+- or a small shared token file if needed
+
+Preferred token names (or very close equivalents):
+- field-bg
+- field-surface
+- field-surface-2
+- field-border
+- field-border-strong
+- field-text
+- field-text-muted
+- field-accent
+- field-accent-soft
+- field-danger
+- field-warning
+- field-success
+
+If status-specific tokens help, add only a few, not too many.
+
+Requirements:
+1. Base token values on the existing Field UI colors already in use.
+2. Do NOT invent a totally new palette.
+3. Keep the current look recognizable.
+4. Avoid overengineering.
+
+==================================================
+PART 2 — REPLACE ONLY HIGH-VALUE REPEATED INLINE COLORS
+==================================================
+
+Do NOT attempt a repo-wide conversion.
+Instead, replace the most repeated and high-impact inline color values in key Field files.
+
+Focus on repeated patterns such as:
+- page background
+- card/panel background
+- border colors
+- muted text colors
+- accent button colors
+- quick filter pill colors
+- sticky footer bar colors
+- field-specific badges if applicable
+
+Requirements:
+1. Convert obvious repeated inline color literals to the new shared tokens.
+2. Keep layout and behavior unchanged.
+3. Do NOT convert every single inline style if it is low value or one-off.
+4. Prioritize maintainability and consistency over completeness.
+
+==================================================
+PART 3 — KEEP FIELD BRAND IDENTITY
+==================================================
+
+Do NOT make Field Mode look like Admin Mode.
+
+Requirements:
+- Preserve existing dark theme identity
+- Preserve the strong green action color
+- Preserve strong quantity emphasis
+- Preserve the “onsite device / terminal / equipment UI” tone
+- Keep contrast readable in real field conditions
+
+==================================================
+PART 4 — OPTIONAL SMALL SHARED HELPERS
+==================================================
+
+If helpful, create tiny shared field styling helpers/components only where there is clear duplication.
+
+Examples:
+- field panel wrapper
+- field pill/button variant
+- field muted label class helper
+
+But:
+- do NOT create a huge abstraction layer
+- do NOT wrap everything in new components unnecessarily
+
+==================================================
+PART 5 — DO NOT OVERREFACTOR
+==================================================
+
+Important:
+- This is NOT a full Tailwind migration
+- This is NOT a full component rewrite
+- This is NOT a visual redesign
+- This is a token foundation + selective cleanup pass
+
+Prefer:
+- token definition
+- repeated literal cleanup
+- a few highly reused style patterns standardized
+
+Avoid:
+- broad risky rewrites
+- touching Admin theme
+- changing spacing/typography everywhere in this task
+
+==================================================
+PART 6 — OUTPUT
+==================================================
+
+Provide:
+1. Summary of the Field token system added
+2. Files created
+3. Files modified
+4. Which repeated inline styles were replaced
+5. What was intentionally left unchanged for safety
+6. Suggested next step for gradual Field style cleanup

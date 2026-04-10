@@ -64,6 +64,25 @@
     --ring: 131 91% 36%;
   }
 
+  /* ── Field Mode design tokens ──────────────────────────────────────────── */
+  /* These mirror client/src/lib/fieldTokens.ts for CSS/Tailwind usage.     */
+  :root {
+    --field-bg:            #0d1410;
+    --field-surface:       #1c2b1f;
+    --field-surface-2:     #162019;
+    --field-border:        #1e2e21;
+    --field-border-strong: #2a4030;
+    --field-text:          #e2f0e5;
+    --field-text-muted:    #7aab82;
+    --field-text-dim:      #4a7052;
+    --field-accent:        #2ddb6f;
+    --field-accent-text:   #0d1410;
+    --field-danger:        #ff5050;
+    --field-warning:       #f5a623;
+    --field-info:          #5b9cf6;
+    --field-ordered:       #38bdf8;
+  }
+
   * {
     @apply border-border;
   }

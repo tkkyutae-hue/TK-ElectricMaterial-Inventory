@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { useLocations, useCreateLocation, useSuppliers } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
+import { ItemStatusBadge } from "@/components/StatusBadge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CategoryGroupedItem = {
@@ -248,12 +249,6 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
 };
 
 const UOM_OPTIONS = ["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"];
-
-function StatusBadge({ status }: { status: string }) {
-  if (status === "out_of_stock") return <Badge className="bg-red-50 text-red-700 border-red-200 border font-medium whitespace-nowrap">Out of Stock</Badge>;
-  if (status === "low_stock") return <Badge className="bg-amber-50 text-amber-700 border-amber-200 border font-medium whitespace-nowrap">Low Stock</Badge>;
-  return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 border font-medium whitespace-nowrap">In Stock</Badge>;
-}
 
 // ── LocationCombobox ──────────────────────────────────────────────────────────
 function LocationCombobox({ value, onChange, locations }: {
@@ -1352,6 +1347,7 @@ export default function CategoryDetail() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [familyFilter, setFamilyFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
   const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
@@ -1394,13 +1390,15 @@ export default function CategoryDetail() {
         items: g.items.filter(item => {
           const matchesStatus = statusFilter === "all" || item.status === statusFilter;
           if (!matchesStatus) return false;
+          const matchesLocation = locationFilter === "all" || (item.location?.name ?? "") === locationFilter;
+          if (!matchesLocation) return false;
           if (tokens.length === 0) return true;
           const haystack = [item.sku, item.name, item.sizeLabel || "", g.baseItemName, item.location?.name || ""].join(" ").toLowerCase();
           return tokens.every(t => haystack.includes(t));
         }),
       }))
       .filter(g => g.items.length > 0 || inlineEditFamily === g.baseItemName);
-  }, [data, search, statusFilter, familyFilter, inlineEditFamily]);
+  }, [data, search, statusFilter, familyFilter, locationFilter, inlineEditFamily]);
 
   const displayGroups = useMemo(() => {
     if (!draftFamily?.confirmed) return filteredGroups;
@@ -1616,8 +1614,12 @@ export default function CategoryDetail() {
 
   const { category, skuCount, totalQuantity, lowStockCount, outOfStockCount, groups } = data;
   const gradientClass = CATEGORY_FALLBACK_COLORS[category.code || ""] || "from-slate-600 to-slate-800";
-  const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || familyFilter !== "all";
+  const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || familyFilter !== "all" || locationFilter !== "all";
   const existingFamilies = groups.map(g => g.baseItemName).filter(Boolean) as string[];
+
+  const uniqueLocationNames = Array.from(
+    new Set(groups.flatMap(g => g.items.map(i => i.location?.name).filter((n): n is string => !!n)))
+  ).sort();
 
   return (
     <div className="space-y-6">
@@ -1695,8 +1697,17 @@ export default function CategoryDetail() {
             {groups.map(g => <SelectItem key={g.baseItemName} value={g.baseItemName}>{g.baseItemName}</SelectItem>)}
           </SelectContent>
         </Select>
+        {uniqueLocationNames.length > 0 && (
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-[180px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-location-filter"><SelectValue placeholder="Location" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {uniqueLocationNames.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         {hasActiveFilters && (
-          <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); }} className="text-xs text-slate-500 hover:text-brand-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">
+          <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); setLocationFilter("all"); }} className="text-xs text-slate-500 hover:text-brand-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">
             Clear filters
           </button>
         )}
@@ -1974,7 +1985,7 @@ export default function CategoryDetail() {
                               <span className="text-slate-400 font-normal text-xs ml-1">{item.unitOfMeasure}</span>
                             </TableCell>
                             <TableCell className="h-10 px-3 overflow-hidden">
-                              <div className="flex items-center justify-center"><StatusBadge status={item.status} /></div>
+                              <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
                             </TableCell>
                           </TableRow>
                         ))}

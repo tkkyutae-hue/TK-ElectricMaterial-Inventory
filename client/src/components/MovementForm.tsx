@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { generateReelId } from "@/lib/reel-utils";
 import { useForm } from "react-hook-form";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, X, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, ImageOff } from "lucide-react";
+import { Search, X, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2, ImageOff, ArrowDownToLine, ArrowUpFromLine, CornerDownLeft, Shuffle } from "lucide-react";
 import { api } from "@shared/routes";
 
 const FM_CSS = `
@@ -119,6 +119,88 @@ function getMovementTypes(t: Record<string, string>) {
 
 function makeRow(): ItemRow {
   return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {}, reelSelections: {}, reelSnapshots: {} };
+}
+
+// ── Admin-mode visual movement type pill selector ───────────────────────────
+const MOVE_PILL_CONFIG: Record<string, {
+  icon: ReactNode;
+  activeBg: string;
+  activeText: string;
+  activeBorder: string;
+  restBg: string;
+  restText: string;
+  restBorder: string;
+}> = {
+  receive:  {
+    icon: <ArrowDownToLine style={{ width: 15, height: 15 }} />,
+    activeBg: "#059669", activeText: "#fff", activeBorder: "#059669",
+    restBg: "#f0fdf4",  restText: "#047857", restBorder: "#a7f3d0",
+  },
+  issue: {
+    icon: <ArrowUpFromLine style={{ width: 15, height: 15 }} />,
+    activeBg: "#7c3aed", activeText: "#fff", activeBorder: "#7c3aed",
+    restBg: "#faf5ff",  restText: "#6d28d9", restBorder: "#ddd6fe",
+  },
+  return: {
+    icon: <CornerDownLeft style={{ width: 15, height: 15 }} />,
+    activeBg: "#0284c7", activeText: "#fff", activeBorder: "#0284c7",
+    restBg: "#f0f9ff",  restText: "#0369a1", restBorder: "#bae6fd",
+  },
+  transfer: {
+    icon: <Shuffle style={{ width: 15, height: 15 }} />,
+    activeBg: "#475569", activeText: "#fff", activeBorder: "#475569",
+    restBg: "#f8fafc",  restText: "#334155", restBorder: "#cbd5e1",
+  },
+};
+
+function MovementTypePillSelector({
+  value,
+  onChange,
+  movementTypes,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  movementTypes: { value: string; label: string; desc: string }[];
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${movementTypes.length}, 1fr)`, gap: 8 }}>
+      {movementTypes.map(mt => {
+        const cfg = MOVE_PILL_CONFIG[mt.value] ?? {
+          icon: null,
+          activeBg: "#1e40af", activeText: "#fff", activeBorder: "#1e40af",
+          restBg: "#eff6ff", restText: "#1e40af", restBorder: "#bfdbfe",
+        };
+        const isActive = value === mt.value;
+        return (
+          <button
+            key={mt.value}
+            type="button"
+            onClick={() => onChange(mt.value)}
+            data-testid={`pill-movement-type-${mt.value}`}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 3,
+              borderRadius: 12,
+              border: `2px solid ${isActive ? cfg.activeBorder : cfg.restBorder}`,
+              background: isActive ? cfg.activeBg : cfg.restBg,
+              color: isActive ? cfg.activeText : cfg.restText,
+              padding: "10px 12px",
+              cursor: "pointer",
+              transition: "all 0.15s",
+              textAlign: "left",
+              outline: "none",
+            }}
+          >
+            <span style={{ opacity: isActive ? 1 : 0.7 }}>{cfg.icon}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>{mt.label}</span>
+            <span style={{ fontSize: 10, opacity: isActive ? 0.85 : 0.55, lineHeight: 1.3 }}>{mt.desc}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // ── Searchable Item Select ──────────────────────────────────────────────────
@@ -1474,6 +1556,14 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
       if (!r.quantity || r.quantity < 1) { errors.quantity = "Must be ≥ 1"; valid = false; }
       return { ...r, errors };
     }));
+    if (movType === "transfer") {
+      const shared = form.getValues();
+      if (shared.sourceLocationId && shared.destinationLocationId &&
+          Number(shared.sourceLocationId) === Number(shared.destinationLocationId)) {
+        form.setError("destinationLocationId", { message: "Source and destination must be different locations" });
+        valid = false;
+      }
+    }
     return valid;
   }
 
@@ -1715,21 +1805,31 @@ export function MovementForm({ defaultType = "receive", defaultItemId, onSuccess
           <FormField control={form.control} name="movementType" render={({ field }) => (
             <FormItem>
               <FormLabel>{t.movementType}</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              {fieldMode ? (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-movement-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="fm-dark-select-content">
+                    {movementTypes.filter(mt => !allowedTypes || allowedTypes.includes(mt.value)).map(mt => (
+                      <SelectItem key={mt.value} value={mt.value}>
+                        <span className="font-medium">{mt.label}</span>
+                        <span style={{ color: "#527856", fontSize: 11, marginLeft: 6 }}>— {mt.desc}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
                 <FormControl>
-                  <SelectTrigger data-testid="select-movement-type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
+                  <MovementTypePillSelector
+                    value={field.value}
+                    onChange={field.onChange}
+                    movementTypes={movementTypes.filter(mt => !allowedTypes || allowedTypes.includes(mt.value))}
+                  />
                 </FormControl>
-                <SelectContent className={fieldMode ? "fm-dark-select-content" : undefined}>
-                  {movementTypes.filter(mt => !allowedTypes || allowedTypes.includes(mt.value)).map(mt => (
-                    <SelectItem key={mt.value} value={mt.value}>
-                      <span className="font-medium">{mt.label}</span>
-                      <span className={fieldMode ? undefined : "text-slate-400 text-xs ml-2"} style={fieldMode ? { color: "#527856", fontSize: 11, marginLeft: 6 } : undefined}>— {mt.desc}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              )}
               <FormMessage />
             </FormItem>
           )} />

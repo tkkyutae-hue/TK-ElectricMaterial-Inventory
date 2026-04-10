@@ -1,0 +1,244 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records in stored data.
+3. Do NOT run any bulk correction or migration job.
+4. Preserve compatibility with existing stored data, route contracts, and current app behavior.
+5. This task is ADMIN MODE focused only.
+6. This is a non-destructive refactor and usability improvement task, not an inventory-engine rewrite.
+
+TASK GOAL
+Refactor and improve the Admin Mode experience for maintainability, inventory browsing, project visibility, and safer NEW movement input, without altering historical inventory data.
+
+PRIMARY TARGET FILES
+Focus on:
+- client/src/components/MovementForm.tsx
+- client/src/pages/CategoryDetail.tsx
+- client/src/pages/ProjectDetail.tsx
+
+You may update directly related components if needed, but keep scope controlled and avoid broad risky edits.
+
+DO NOT TOUCH
+- historical inventory movement rows
+- existing quantityOnHand values
+- existing stored balances
+- existing reel history
+- existing project historical records
+- DB schema semantics
+- field mode pages unless shared components are reused safely
+
+IMPORTANT IMPLEMENTATION LESSONS
+1. Reuse the shared foundation that already exists.
+2. Replace existing inline movement badge usage with shared badge components wherever safely possible.
+3. Prefer extracting focused subcomponents with clear responsibilities.
+4. Do NOT simply move one giant JSX block into another single giant file.
+5. Keep admin mode denser than field mode, but preserve scanability and visual hierarchy.
+
+==================================================
+PART 1 — REFACTOR MovementForm.tsx
+==================================================
+
+GOAL
+Improve maintainability, validation wiring, and visual consistency for NEW movement input, while preserving existing submit behavior and payload compatibility as much as possible.
+
+Refactor into focused components where appropriate, for example:
+- MovementTypeSelector
+- ItemSelector
+- QuantityInputSection
+- LocationSelectorSection
+- ProjectSelectorSection
+- MovementNotesSection
+- MovementSummaryPanel
+- MovementSubmitBar
+
+REQUIREMENTS
+1. Preserve current submit API behavior.
+2. Preserve payload compatibility unless a tiny compatibility-safe change is absolutely required.
+3. Wire in forward-only validation for NEW submissions only.
+4. Use the shared movement validation helpers if already created.
+5. Use shared badge/components where appropriate.
+6. Reduce giant inline JSX blocks and tangled local state where possible.
+7. Improve error display clarity:
+   - field-level errors where possible
+   - global errors where needed
+8. Do not alter the meaning of legacy movement types or stored records.
+
+VALIDATION BEHAVIOR
+Use existing validation helpers for NEW submissions only.
+Validation should clearly handle:
+- quantity <= 0
+- missing itemId
+- missing movementType
+- invalid transfer source/destination
+- malformed numeric input
+- project-required cases when applicable
+
+IMPORTANT
+Do not retroactively validate or alter historical records.
+
+==================================================
+PART 2 — REFACTOR CategoryDetail.tsx
+==================================================
+
+GOAL
+Improve admin inventory browsing, item scanability, and layout consistency.
+
+Refactor into focused subcomponents where appropriate, for example:
+- CategoryHeader
+- CategoryFilterBar
+- InventoryItemGrid
+- InventoryItemCard
+- InventoryItemMeta
+- InventoryItemStatusBadge
+- CategoryEmptyState
+
+VISUAL PRIORITY ORDER
+1. item name
+2. size
+3. quantity on hand
+4. location
+5. SKU
+6. status
+
+REQUIREMENTS
+1. Improve scanability for admins managing many items.
+2. Reuse shared visual primitives where appropriate:
+   - SectionCard
+   - PageHeader
+   - EmptyState
+   - FilterBar
+   - StatCard
+   - StatusBadge / MovementTypeBadge
+3. Avoid inconsistent one-off styling.
+4. Keep compatibility with current data structure.
+5. Improve grid/list consistency and spacing.
+6. Keep the page information-dense, but not cluttered.
+
+FILTER / SORT IMPROVEMENTS
+Add or improve support where appropriate:
+- category
+- location
+- low stock
+- no image
+- recently updated
+- status
+- keyword / SKU search
+
+==================================================
+PART 3 — REFACTOR ProjectDetail.tsx
+==================================================
+
+GOAL
+Break the page into focused admin sections without changing historical project data.
+
+Refactor into focused sections where appropriate, for example:
+- ProjectOverviewPanel
+- ProjectStatsPanel
+- ProjectScopeSection
+- ProjectProgressSection
+- ProjectDailyReportsSection
+- ProjectMaterialActivitySection
+- ProjectTeamSection
+
+REQUIREMENTS
+1. Keep all existing data queries compatible.
+2. Preserve current project features and behavior.
+3. Significantly reduce file complexity.
+4. Improve section spacing and visual hierarchy.
+5. Reuse shared UI primitives where appropriate.
+6. Where movement/activity badges appear, use the shared movement badge components wherever safely possible.
+7. Do not alter historical project records or project-linked inventory history.
+
+IMPORTANT
+Prefer true responsibility-based decomposition.
+Do not create a new single giant extracted file that simply relocates complexity.
+
+==================================================
+PART 4 — ADMIN FILTER / SORT IMPROVEMENTS
+==================================================
+
+GOAL
+Make admin browsing and management easier without overloading the screen.
+
+Where appropriate, add or improve support for:
+- category
+- location
+- low stock
+- no image
+- recently updated
+- status
+- movement type
+- project
+- item keyword / SKU keyword
+
+REQUIREMENTS
+1. Admin mode may be denser than field mode.
+2. Controls must still be clearly organized and easy to scan.
+3. Prefer grouped controls and consistent spacing.
+4. Avoid noisy UI clutter.
+
+==================================================
+PART 5 — USE SHARED FOUNDATION
+==================================================
+
+Reuse shared helpers/components from the completed foundation step wherever available:
+- StatusBadge
+- MovementTypeBadge
+- FieldMovementBadge only if actually appropriate (generally admin should prefer the admin/light variant)
+- SectionCard
+- PageHeader
+- FilterBar
+- StatCard
+- EmptyState
+- movement display helper
+- movement validation helpers
+
+IMPORTANT
+Do not duplicate movement badge styles inline if the shared components can be used safely.
+
+==================================================
+PART 6 — SAFE BACKEND LIMITS
+==================================================
+
+If backend changes are required for validation wiring:
+1. keep them minimal
+2. add helper/service usage only
+3. do not rebuild storage.ts
+4. do not change historical data
+5. do not alter legacy route behavior beyond safe forward-only validation for NEW submissions
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do not rebuild the inventory engine in this task.
+2. Do not migrate historical records.
+3. Do not change stored movement meanings.
+4. Focus on maintainability, browsing, visual consistency, and safe NEW input.
+5. Work incrementally and keep changes scoped.
+6. Prefer small safe refactors over broad architectural replacement.
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+Provide:
+1. Summary of admin-mode improvements
+2. Files created
+3. Files modified
+4. Notes on what was intentionally left untouched to preserve historical inventory data
+5. Suggested Phase 2 follow-ups
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+The work is successful if:
+- existing inventory quantities remain untouched
+- historical movement history remains untouched
+- admin pages become easier to scan and maintain
+- giant files are meaningfully decomposed
+- shared components are actually reused
+- new movement submissions are safer and clearer
+- visual consistency improves without reducing admin information density

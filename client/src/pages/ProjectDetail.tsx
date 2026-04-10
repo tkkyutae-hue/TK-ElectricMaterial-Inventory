@@ -31,6 +31,7 @@ import { QuickEntryInput } from "@/components/QuickEntryInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ProjectScopeItem } from "@shared/schema";
+import { MovementTypeBadge } from "@/components/StatusBadge";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active:    { label: "Active",    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -2993,7 +2994,6 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {pageMovements.map((m: any) => {
-                  const isIssue = m.movementType === "issue";
                   const dateStr = m.transactionDate ?? m.createdAt;
                   return (
                     <tr key={m.id} className="hover:bg-slate-50/40 transition-colors">
@@ -3004,15 +3004,7 @@ function OverviewTab({ project, projectId }: { project: any; projectId: number }
                         {m.item?.name ?? m.itemName ?? `Item #${m.itemId}`}
                       </td>
                       <td className="px-4 py-2">
-                        {isIssue ? (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-brand-50 text-brand-700 border border-brand-100">
-                            ↑ Issue
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            ↓ Return
-                          </span>
-                        )}
+                        <MovementTypeBadge type={m.movementType} past={true} />
                       </td>
                       <td className="px-4 py-2 text-right font-mono font-semibold text-slate-700">
                         {Number(m.quantity ?? 0).toLocaleString()}

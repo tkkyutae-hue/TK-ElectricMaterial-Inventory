@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/hooks/use-language";
 import { getCategoryGradient } from "@/lib/categoryUtils";
-import { isReelEligibleItem } from "@/lib/reelEligibility";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -236,7 +235,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const { t } = useLanguage();
   const [, navigate] = useLocation();
   const { isManagerOrAbove } = useAuth();
-  const isReelItem = isReelEligibleItem(item);
+  const isReelItem = item.unitOfMeasure === "FT" || item.unitOfMeasure === "LF";
   const [imgEnlarged, setImgEnlarged] = useState(false);
 
   const { data: reels, isLoading: reelsLoading } = useQuery<FieldWireReel[]>({

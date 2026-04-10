@@ -1,0 +1,181 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical movement records.
+3. Do NOT bulk-update existing item records or reel data.
+4. Do NOT delete legacy reel records.
+5. Preserve compatibility with existing stored data and current app behavior.
+6. This task is ONLY to improve reel eligibility classification logic and apply it consistently across Admin and Field mode.
+
+TASK GOAL
+Strengthen the shared reel eligibility logic so the app correctly decides which items should be reel-managed.
+
+BUSINESS RULE
+Reel-based management should be available ONLY for true length-managed products:
+- actual cable / wire products
+- actual MC cable products
+- actual single conductor / multi conductor / grounding wire products
+- actual flexible conduit products
+
+Reel-based management must NOT be available for accessories, fittings, hardware, or non-flex conduit / tray products.
+
+VERY IMPORTANT EDGE CASES TO HANDLE
+1. A true cable item must still be reel-eligible even if its subcategory does NOT literally contain the word "cable".
+2. Items inside the "Cable / Wire" category are NOT automatically reel-eligible.
+3. Accessory items inside Cable / Wire must be excluded, for example:
+   - MC cable connector
+   - anti-short bushing
+   - connector
+   - coupling
+   - strap
+   - clamp
+   - locknut
+   - fitting
+   - hardware
+   - accessory
+4. EMT, Rigid, IMC, RMC, PVC conduit, and Cable Tray must never be reel-eligible.
+5. Flexible conduit should be reel-eligible ONLY when it is the actual conduit body, not its connectors or fittings.
+
+FILES TO FOCUS ON
+- client/src/lib/reelEligibility.ts
+- all directly related files already consuming the reel eligibility helper
+- update only where needed so Admin and Field mode both stay in sync
+
+PART 1 — STRENGTHEN THE SHARED HELPER
+
+Refactor the shared reel eligibility helper so it does NOT depend on exact string equality in just one field.
+
+Use normalized classification based on multiple available item fields, such as:
+- category.name
+- subcategory
+- family
+- type
+- item name / material name
+- base item name if present
+- SKU only as a weak fallback if truly needed
+
+Create small reusable helpers if needed, such as:
+- normalizeText(value)
+- textIncludesAny(value, keywords)
+- collectItemClassificationText(item)
+
+Normalization should handle:
+- lowercase conversion
+- trimming
+- repeated whitespace cleanup
+- slash / dash / punctuation normalization where helpful
+
+PART 2 — APPLY DECISION ORDER EXACTLY LIKE THIS
+
+STEP A — HARD EXCLUSION FIRST
+If the item appears to be an accessory, fitting, or hardware item, reel eligibility must be FALSE even if the category is Cable / Wire.
+
+Use exclusion-first logic across normalized category/subcategory/family/type/item-name text.
+
+Exclude when text contains terms such as:
+- connector
+- coupling
+- bushing
+- anti short
+- antishort
+- strap
+- clamp
+- locknut
+- fitting
+- hardware
+- accessory
+- end cap
+- adapter
+- reducer
+- nipple
+- elbow
+- tee
+- body
+- head
+- gland
+
+This exclusion should catch examples like:
+- MC cable connector
+- anti-short bushing
+- cable connector
+- flex connector
+- liquidtight connector
+
+STEP B — POSITIVE ELIGIBILITY FOR TRUE LENGTH-MANAGED ITEMS
+Return TRUE only for true length-managed products such as:
+- actual cable products
+- actual wire products
+- MC cable
+- THHN / THWN / XHHW and similar conductors
+- grounding wire
+- multi-conductor cable
+- control cable
+- SOOW cable
+- metal flexible conduit body
+- liquidtight flexible conduit body
+
+Important:
+- A true cable item should still qualify even if subcategory does not literally contain "cable"
+- Do NOT require exact subcategory text match just to allow a true cable/wire item
+- Use broader multi-field classification
+
+STEP C — NEGATIVE CATEGORY GUARDRAILS
+Always return FALSE for:
+- EMT
+- Rigid
+- RMC
+- IMC
+- PVC conduit
+- Cable Tray
+and their obvious accessories
+
+Even if unit of measure is FT, these are still NOT reel-managed.
+
+STEP D — DEFAULT SAFE FALLBACK
+If still ambiguous, default to FALSE.
+
+PART 3 — ADMIN + FIELD MODE BOTH
+
+Apply the improved shared helper consistently everywhere reel-specific UI or behavior appears.
+
+Re-check all current reel-gated usage, including:
+- reel summary panels
+- reel totals
+- reel counts
+- reel badges
+- reel action areas
+- reel-specific detail sections
+- reel-specific labels
+- reel management buttons
+- reel-specific receive / issue UI
+- reel inline sections in item detail pages
+- any quick drawer / detail panel surfaces
+- any item or movement form areas with reel-specific options
+
+Do not allow Admin and Field mode to diverge on reel eligibility.
+
+PART 4 — LEGACY DATA SAFETY
+
+Do NOT delete or migrate legacy reel records.
+If a non-eligible item has legacy reel-related data in storage:
+- leave the data untouched
+- do not surface reel-specific UI for that item when the new rule says it is not eligible
+
+PART 5 — IMPLEMENTATION NOTES
+
+Use the shared helper as the single source of truth.
+Do not duplicate separate reel rules in multiple pages/components.
+Do not rely on exact category/subcategory equality alone.
+Do not use unit of measure as the main signal.
+
+PART 6 — OUTPUT
+
+Provide:
+1. Summary of the reel eligibility improvements
+2. Files modified
+3. The exact inclusion / exclusion logic used
+4. Notes on how true cable items without explicit "cable" subcategory are now handled
+5. Notes on how accessory items inside Cable / Wire are now excluded
+6. Notes on where Admin and Field mode were updated
+7. Notes on what was intentionally left untouched

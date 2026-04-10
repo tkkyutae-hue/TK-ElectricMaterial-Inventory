@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { generateReelId } from "@/lib/reel-utils";
+import { isReelEligible } from "@/lib/reelEligibility";
 import { ChevronLeft, ChevronRight, ChevronDown, Trash2, Plus, X, Search } from "lucide-react";
 import { SearchableItemSelect } from "./SearchableItemSelect";
 import type { ItemRow, NewReel } from "./types";
@@ -415,7 +416,7 @@ export function ItemRowField({
   const reels = reelsRaw as any[];
   const hasReels = reels.length > 0;
 
-  const isReelItem = selectedItem?.unitOfMeasure === "FT" || hasReels;
+  const isReelItem = isReelEligible(selectedItem) || hasReels;
   const isReceive = movementType === "receive";
   const showReceiveReelUI = isReceive && !!row.itemId && isReelItem;
   const showIssueReelUI = !isReceive && hasReels;

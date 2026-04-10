@@ -23,12 +23,12 @@ function DraftStatusBadge({ label }: { label: string }) {
       display: "inline-flex", alignItems: "center", gap: 5,
       background: "rgba(245,166,35,0.10)", border: "1px solid rgba(245,166,35,0.25)",
       borderRadius: 5, fontSize: 9, fontWeight: 800, textTransform: "uppercase",
-      letterSpacing: "0.06em", padding: "2px 7px", color: "#f5a623",
+      letterSpacing: "0.06em", padding: "2px 7px", color: "var(--field-warning)",
       fontFamily: "'Barlow Condensed', sans-serif",
     }}>
       <span
         className="draft-pulse-dot"
-        style={{ width: 5, height: 5, borderRadius: "50%", background: "#f5a623", flexShrink: 0, display: "inline-block" }}
+        style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--field-warning)", flexShrink: 0, display: "inline-block" }}
       />
       {label}
     </span>
@@ -40,12 +40,12 @@ function DraftStatusBadge({ label }: { label: string }) {
 function ItemPill({ name, qty, unit }: { name: string; qty: number; unit?: string }) {
   return (
     <span style={{
-      fontSize: 10, background: "#1c2b1f", border: "1px solid #2a4030",
+      fontSize: 10, background: "var(--field-surface-2)", border: "1px solid var(--field-border)",
       borderRadius: 5, padding: "3px 8px", color: "#c8deca",
       fontFamily: "'Barlow Condensed', sans-serif",
     }}>
       {name} ·{" "}
-      <strong style={{ color: "#2ddb6f" }}>{qty}</strong>
+      <strong style={{ color: "var(--field-accent)" }}>{qty}</strong>
       {unit ? ` ${unit}` : ""}
     </span>
   );
@@ -61,9 +61,9 @@ interface FieldBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 function FieldBtn({ variant = "default", icon, label, ...rest }: FieldBtnProps) {
   const styles: Record<string, React.CSSProperties> = {
-    default: { background: "#1c2b1f", border: "1px solid #2a4030", color: "#7aab82" },
-    green:   { background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.25)", color: "#2ddb6f" },
-    red:     { background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.18)", color: "#ff5050" },
+    default: { background: "var(--field-surface-2)", border: "1px solid var(--field-border)", color: "var(--field-text-muted)" },
+    green:   { background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.25)", color: "var(--field-accent)" },
+    red:     { background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.18)", color: "var(--field-danger)" },
   };
   return (
     <button
@@ -105,26 +105,26 @@ function DraftCard({ draft, onResume, onConfirm, onDelete, t }: DraftCardProps) 
   return (
     <div
       data-testid={`draft-card-${draft.id}`}
-      style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 12, overflow: "hidden" }}
+      style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", borderRadius: 12, overflow: "hidden" }}
     >
-      <div style={{ height: 2, background: "linear-gradient(90deg, #f5a623, rgba(245,166,35,0.3))" }} />
+      <div style={{ height: 2, background: "linear-gradient(90deg, var(--field-warning), rgba(245,166,35,0.3))" }} />
 
       <div style={{ padding: "14px 16px" }}>
         {/* Row 1: type + DRAFT badge */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
           <FieldMovementBadge type={draft.movementType} />
           <DraftStatusBadge label={t.txDraftsTab} />
-          <span style={{ fontSize: 10, color: "#4a7052", marginLeft: "auto", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
+          <span style={{ fontSize: 10, color: "var(--field-text-faint)", marginLeft: "auto", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
             {t.inventoryNotAffected}
           </span>
         </div>
 
         {/* Row 2: Route */}
         {(fromName || toName) && (
-          <div style={{ fontSize: 12, color: "#e2f0e5", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span style={{ color: "#7aab82" }}>{fromName || "—"}</span>
-            <span style={{ color: "#4a7052" }}>→</span>
-            <span style={{ color: "#e2f0e5" }}>{toName || "—"}</span>
+          <div style={{ fontSize: 12, color: "var(--field-text)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span style={{ color: "var(--field-text-muted)" }}>{fromName || "—"}</span>
+            <span style={{ color: "var(--field-text-faint)" }}>→</span>
+            <span style={{ color: "var(--field-text)" }}>{toName || "—"}</span>
             {projectName && (
               <span style={{ marginLeft: 4, fontSize: 10, color: "#5b9cf6", background: "rgba(91,156,246,0.08)", border: "1px solid rgba(91,156,246,0.18)", borderRadius: 4, padding: "1px 6px" }}>
                 {projectName}
@@ -139,19 +139,19 @@ function DraftCard({ draft, onResume, onConfirm, onDelete, t }: DraftCardProps) 
             <ItemPill key={idx} name={di.itemName || `Item #${di.itemId}`} qty={di.qty} unit={di.unit} />
           ))}
           {extraCount > 0 && (
-            <span style={{ fontSize: 10, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 5, padding: "3px 8px", color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <span style={{ fontSize: 10, background: "var(--field-surface-2)", border: "1px solid var(--field-border)", borderRadius: 5, padding: "3px 8px", color: "var(--field-text-muted)", fontFamily: "'Barlow Condensed', sans-serif" }}>
               +{extraCount} more
             </span>
           )}
           {draftItems.length === 0 && (
-            <span style={{ fontSize: 10, color: "#4a7052" }}>{t.noItems}</span>
+            <span style={{ fontSize: 10, color: "var(--field-text-faint)" }}>{t.noItems}</span>
           )}
         </div>
 
         {/* Row 4: Saved by + time */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-          <Clock style={{ width: 11, height: 11, color: "#4a7052" }} />
-          <span style={{ fontSize: 10, color: "#4a7052" }}>
+          <Clock style={{ width: 11, height: 11, color: "var(--field-text-faint)" }} />
+          <span style={{ fontSize: 10, color: "var(--field-text-faint)" }}>
             {draft.savedByName ? `${draft.savedByName} · ` : ""}
             {draft.savedAt ? format(new Date(draft.savedAt), "MMM d, yyyy HH:mm") : "—"}
           </span>
@@ -201,17 +201,17 @@ function ConfirmDraftModal({ draft, onClose, onConfirm, loading, t }: {
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent style={{ background: "#0f1612", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 480 }} className="max-w-[480px]">
+      <DialogContent style={{ background: "#0f1612", border: "1px solid var(--field-border)", borderRadius: 14, maxWidth: 480 }} className="max-w-[480px]">
         <DialogHeader>
-          <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700 }}>
+          <DialogTitle style={{ color: "var(--field-text)", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700 }}>
             {t.confirmDraftTitle}
           </DialogTitle>
         </DialogHeader>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 4 }}>
-          <div style={{ background: "#162019", border: "1px solid #2a4030", borderRadius: 9, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", borderRadius: 9, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <FieldMovementBadge type={draft.movementType} />
-              <span style={{ fontSize: 12, color: "#7aab82" }}>
+              <span style={{ fontSize: 12, color: "var(--field-text-muted)" }}>
                 {draft.sourceLocation?.name && draft.destinationLocation?.name
                   ? `${draft.sourceLocation.name} → ${draft.destinationLocation.name}`
                   : draft.sourceLocation?.name || draft.destinationLocation?.name || ""}
@@ -221,34 +221,34 @@ function ConfirmDraftModal({ draft, onClose, onConfirm, loading, t }: {
               <span style={{ fontSize: 11, color: "#5b9cf6" }}>Project: {draft.project.name}</span>
             )}
             {draft.note && (
-              <span style={{ fontSize: 11, color: "#7aab82" }}>Note: {draft.note}</span>
+              <span style={{ fontSize: 11, color: "var(--field-text-muted)" }}>Note: {draft.note}</span>
             )}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
             {draftItems.map((di: any, idx: number) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, padding: "8px 12px" }}>
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--field-surface-2)", border: "1px solid var(--field-border)", borderRadius: 7, padding: "8px 12px" }}>
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#e2f0e5" }}>{di.itemName || `Item #${di.itemId}`}</span>
-                  {di.sku && <span style={{ fontSize: 10, color: "#4a7052", marginLeft: 6 }}>{di.sku}</span>}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--field-text)" }}>{di.itemName || `Item #${di.itemId}`}</span>
+                  {di.sku && <span style={{ fontSize: 10, color: "var(--field-text-faint)", marginLeft: 6 }}>{di.sku}</span>}
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#2ddb6f", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {di.qty} <span style={{ fontSize: 10, color: "#7aab82" }}>{di.unit}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--field-accent)", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                  {di.qty} <span style={{ fontSize: 10, color: "var(--field-text-muted)" }}>{di.unit}</span>
                 </span>
               </div>
             ))}
           </div>
 
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "rgba(255,80,80,0.07)", border: "1px solid rgba(255,80,80,0.18)", borderRadius: 8, padding: "10px 12px" }}>
-            <AlertTriangle style={{ width: 14, height: 14, color: "#ff5050", flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 11, color: "#ff5050", lineHeight: 1.5 }}>{t.confirmDraftWarning}</p>
+            <AlertTriangle style={{ width: 14, height: 14, color: "var(--field-danger)", flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 11, color: "var(--field-danger)", lineHeight: 1.5 }}>{t.confirmDraftWarning}</p>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button
               type="button"
               onClick={onClose}
-              style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
+              style={{ background: "var(--field-surface-2)", border: "1px solid var(--field-border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "var(--field-text-muted)", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
             >
               {t.cancel}
             </button>
@@ -257,7 +257,7 @@ function ConfirmDraftModal({ draft, onClose, onConfirm, loading, t }: {
               onClick={onConfirm}
               disabled={loading}
               data-testid="button-execute-confirm-draft"
-              style={{ background: "#2ddb6f", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#07090a", cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: loading ? 0.7 : 1 }}
+              style={{ background: "var(--field-accent)", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#07090a", cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: loading ? 0.7 : 1 }}
             >
               {loading ? t.applying : t.confirmDraftTitle}
             </button>
@@ -278,20 +278,20 @@ function DeleteDraftModal({ onClose, onDelete, loading, t }: {
 }) {
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent style={{ background: "#0f1612", border: "1px solid #2a4030", borderRadius: 14, maxWidth: 380 }} className="max-w-[380px]">
+      <DialogContent style={{ background: "#0f1612", border: "1px solid var(--field-border)", borderRadius: 14, maxWidth: 380 }} className="max-w-[380px]">
         <DialogHeader>
-          <DialogTitle style={{ color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
-            <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
+          <DialogTitle style={{ color: "var(--field-text)", fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
+            <AlertTriangle style={{ width: 18, height: 18, color: "var(--field-danger)" }} />
             {t.deleteDraftTitle}
           </DialogTitle>
         </DialogHeader>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
-          <p style={{ fontSize: 13, color: "#7aab82", lineHeight: 1.5 }}>{t.deleteDraftWarning}</p>
+          <p style={{ fontSize: 13, color: "var(--field-text-muted)", lineHeight: 1.5 }}>{t.deleteDraftWarning}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button
               type="button"
               onClick={onClose}
-              style={{ background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#7aab82", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
+              style={{ background: "var(--field-surface-2)", border: "1px solid var(--field-border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "var(--field-text-muted)", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}
             >
               {t.cancel}
             </button>
@@ -300,7 +300,7 @@ function DeleteDraftModal({ onClose, onDelete, loading, t }: {
               onClick={onDelete}
               disabled={loading}
               data-testid="button-execute-delete-draft"
-              style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: loading ? 0.7 : 1 }}
+              style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, color: "var(--field-danger)", cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: loading ? 0.7 : 1 }}
             >
               {loading ? t.deleting : t.deleteDraftTitle}
             </button>
@@ -362,15 +362,15 @@ export default function DraftMovementsList() {
   }
 
   if (isLoading) {
-    return <div style={{ textAlign: "center", padding: "60px 0", fontSize: 13, color: "#7aab82" }}>{t.loadingDrafts}</div>;
+    return <div style={{ textAlign: "center", padding: "60px 0", fontSize: 13, color: "var(--field-text-muted)" }}>{t.loadingDrafts}</div>;
   }
 
   if (drafts.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "60px 0" }}>
-        <FileText style={{ width: 36, height: 36, color: "#2a4030", margin: "0 auto 12px" }} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: "#4a7052" }}>{t.noDraftMovements}</p>
-        <p style={{ fontSize: 12, color: "#2a4030", marginTop: 4 }}>{t.savedDraftsHere}</p>
+        <FileText style={{ width: 36, height: 36, color: "var(--field-border)", margin: "0 auto 12px" }} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--field-text-faint)" }}>{t.noDraftMovements}</p>
+        <p style={{ fontSize: 12, color: "var(--field-border)", marginTop: 4 }}>{t.savedDraftsHere}</p>
       </div>
     );
   }

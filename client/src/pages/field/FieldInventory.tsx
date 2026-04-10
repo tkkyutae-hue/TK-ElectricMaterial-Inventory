@@ -87,12 +87,12 @@ function useDebounce<T>(value: T, delay: number): T {
 function FieldStatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
   const config: Record<string, { label: string; bg: string; color: string; border: string }> = {
-    in_stock:     { label: t.inStock,     bg: "rgba(45,219,111,0.10)",  color: "#2ddb6f", border: "1px solid rgba(45,219,111,0.25)" },
-    low_stock:    { label: t.lowStock,    bg: "rgba(245,166,35,0.10)",  color: "#f5a623", border: "1px solid rgba(245,166,35,0.25)" },
-    out_of_stock: { label: t.outOfStock,  bg: "rgba(255,80,80,0.10)",   color: "#ff5050", border: "1px solid rgba(255,80,80,0.25)" },
+    in_stock:     { label: t.inStock,     bg: "rgba(45,219,111,0.10)",  color: "var(--field-accent)", border: "1px solid rgba(45,219,111,0.25)" },
+    low_stock:    { label: t.lowStock,    bg: "rgba(245,166,35,0.10)",  color: "var(--field-warning)", border: "1px solid rgba(245,166,35,0.25)" },
+    out_of_stock: { label: t.outOfStock,  bg: "rgba(255,80,80,0.10)",   color: "var(--field-danger)", border: "1px solid rgba(255,80,80,0.25)" },
     ordered:      { label: t.ordered,     bg: "rgba(56,189,248,0.10)",  color: "#38bdf8", border: "1px solid rgba(56,189,248,0.25)" },
   };
-  const { label, bg, color, border } = config[status] || { label: status, bg: "rgba(100,116,139,0.10)", color: "#7aab82", border: "1px solid rgba(100,116,139,0.25)" };
+  const { label, bg, color, border } = config[status] || { label: status, bg: "rgba(100,116,139,0.10)", color: "var(--field-text-muted)", border: "1px solid rgba(100,116,139,0.25)" };
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
@@ -129,17 +129,17 @@ function PillBar({
 
   return (
     <div>
-      <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>{label}</p>
+      <p style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8 }}>{label}</p>
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => onSelect("all")}
           data-testid={`${testIdPrefix}-all`}
           style={selected === "all" ? {
             padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-            background: "#2ddb6f", color: "#0d1410", border: "1px solid #2ddb6f", cursor: "pointer",
+            background: "var(--field-accent)", color: "var(--field-bg)", border: "1px solid var(--field-accent)", cursor: "pointer",
           } : {
             padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-            background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+            background: "var(--field-surface-2)", color: "var(--field-text-muted)", border: "1px solid var(--field-border)", cursor: "pointer",
           }}
         >
           {allLabel}
@@ -151,10 +151,10 @@ function PillBar({
             data-testid={`${testIdPrefix}-${f.name}`}
             style={selected === f.name ? {
               padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-              background: "#2ddb6f", color: "#0d1410", border: "1px solid #2ddb6f", cursor: "pointer",
+              background: "var(--field-accent)", color: "var(--field-bg)", border: "1px solid var(--field-accent)", cursor: "pointer",
             } : {
               padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-              background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+              background: "var(--field-surface-2)", color: "var(--field-text-muted)", border: "1px solid var(--field-border)", cursor: "pointer",
             }}
           >
             {getLabel(f.name)}
@@ -171,13 +171,13 @@ function PillBar({
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   if (!imageUrl) {
     return (
-      <div style={{ width: 36, height: 36, borderRadius: 8, background: "#162019", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <ImageOff style={{ width: 16, height: 16, color: "#4a7052" }} />
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--field-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ImageOff style={{ width: 16, height: 16, color: "var(--field-text-faint)" }} />
       </div>
     );
   }
   return (
-    <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", border: "1px solid #2a4030", background: "#162019", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", border: "1px solid var(--field-border)", background: "var(--field-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <img
         src={imageUrl}
         alt={name}
@@ -185,7 +185,7 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
         onError={(e) => {
           const p = e.currentTarget.parentElement;
           if (p) {
-            p.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;color:#4a7052" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+            p.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center"><svg style="width:16px;height:16px;color:var(--field-text-faint)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
           }
         }}
       />
@@ -196,33 +196,33 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 // ─── Reel Row ────────────────────────────────────────────────────────────────
 
 const REEL_STATUS_DOT: Record<string, { color: string }> = {
-  new:      { color: "#2ddb6f" },
-  used:     { color: "#f5a623" },
-  depleted: { color: "#ff5050" },
+  new:      { color: "var(--field-accent)" },
+  used:     { color: "var(--field-warning)" },
+  depleted: { color: "var(--field-danger)" },
 };
 
 function ReelRow({ reel }: { reel: FieldWireReel }) {
-  const dot = REEL_STATUS_DOT[reel.status || ""] || { color: "#7aab82" };
+  const dot = REEL_STATUS_DOT[reel.status || ""] || { color: "var(--field-text-muted)" };
   return (
     <div style={{
-      background: "#162019", border: "1px solid #1e2e21", borderRadius: 9,
+      background: "var(--field-surface)", border: "1px solid var(--field-border-soft)", borderRadius: 9,
       padding: "9px 12px", display: "flex", alignItems: "center", gap: 10,
     }}>
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: dot.color, flexShrink: 0, boxShadow: `0 0 5px ${dot.color}80` }} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, flex: "0 0 auto", minWidth: 64 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--field-text)", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, flex: "0 0 auto", minWidth: 64 }}>
         {reel.reelId}
       </span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: "#2ddb6f", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>
+      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--field-accent)", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>
         {reel.lengthFt.toLocaleString()} FT
       </span>
       <div style={{ flex: 1 }} />
       {reel.location && (
-        <span style={{ fontSize: 11, color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif", maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+        <span style={{ fontSize: 11, color: "var(--field-text-muted)", fontFamily: "'Barlow Condensed', sans-serif", maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
           {reel.location.name}
         </span>
       )}
       {reel.brand && (
-        <span style={{ fontSize: 10, color: "#4a7052", fontFamily: "'Barlow Condensed', sans-serif", flexShrink: 0 }}>
+        <span style={{ fontSize: 10, color: "var(--field-text-faint)", fontFamily: "'Barlow Condensed', sans-serif", flexShrink: 0 }}>
           {reel.brand}
         </span>
       )}
@@ -275,8 +275,8 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         style={{
           position: "absolute", right: 0, top: 0, bottom: 0,
           width: "min(420px, 100vw)",
-          background: "#0d1410",
-          borderLeft: "1px solid #2a4030",
+          background: "var(--field-bg)",
+          borderLeft: "1px solid var(--field-border)",
           display: "flex", flexDirection: "column",
           boxShadow: "-8px 0 48px rgba(0,0,0,0.65)",
           overflowY: "auto",
@@ -286,16 +286,16 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         <div style={{
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
           padding: "15px 16px 12px",
-          borderBottom: "1px solid #1e2e21",
-          position: "sticky", top: 0, background: "#0d1410", zIndex: 2,
+          borderBottom: "1px solid var(--field-border-soft)",
+          position: "sticky", top: 0, background: "var(--field-bg)", zIndex: 2,
           gap: 10,
         }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: 8, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.8px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+            <p style={{ fontSize: 8, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase" as const, letterSpacing: "1.8px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
               {isReelItem ? t.cableWireDetail : t.materialDetail}
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1.1, margin: 0, wordBreak: "break-word" as const }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--field-text)", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1.1, margin: 0, wordBreak: "break-word" as const }}>
                 {item.name}
               </h2>
               <FieldStatusBadge status={item.status} />
@@ -305,9 +305,9 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
             onClick={onClose}
             data-testid="btn-close-detail"
             style={{
-              background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 8,
+              background: "var(--field-surface-2)", border: "1px solid var(--field-border)", borderRadius: 8,
               width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", color: "#7aab82", flexShrink: 0,
+              cursor: "pointer", color: "var(--field-text-muted)", flexShrink: 0,
             }}
           >
             <X style={{ width: 16, height: 16 }} />
@@ -323,8 +323,8 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               onClick={() => setImgEnlarged(true)}
               data-testid="img-item-photo"
               style={{
-                borderRadius: 12, overflow: "hidden", border: "1px solid #2a4030",
-                background: "#162019", cursor: "zoom-in", position: "relative",
+                borderRadius: 12, overflow: "hidden", border: "1px solid var(--field-border)",
+                background: "var(--field-surface)", cursor: "zoom-in", position: "relative",
                 height: 172, display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
@@ -344,23 +344,23 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
             </div>
           ) : (
             <div style={{
-              borderRadius: 12, border: "1px dashed #2a4030", background: "#162019",
+              borderRadius: 12, border: "1px dashed var(--field-border)", background: "var(--field-surface)",
               height: 80, display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <ImageOff style={{ width: 22, height: 22, color: "#2a4030" }} />
+              <ImageOff style={{ width: 22, height: 22, color: "var(--field-border)" }} />
             </div>
           )}
 
           {/* ── Hero qty / total FT ── */}
           <div style={{
-            background: "#162019", border: "1px solid #1e2e21", borderRadius: 12,
+            background: "var(--field-surface)", border: "1px solid var(--field-border-soft)", borderRadius: 12,
             padding: "14px 16px", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
           }}>
             <div>
-              <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
                 {isReelItem ? t.totalFt : t.colQtyOnHand}
               </p>
-              <p style={{ fontSize: 32, fontWeight: 700, color: "#e2f0e5", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
+              <p style={{ fontSize: 32, fontWeight: 700, color: "var(--field-text)", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
                 {isReelItem
                   ? `${totalFt.toLocaleString()} FT`
                   : `${item.quantityOnHand.toLocaleString()} ${item.unitOfMeasure}`}
@@ -368,10 +368,10 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
             </div>
             {isReelItem && reels && (
               <div style={{ textAlign: "right" }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
                   {t.reelCount}
                 </p>
-                <p style={{ fontSize: 32, fontWeight: 700, color: "#7aab82", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
+                <p style={{ fontSize: 32, fontWeight: 700, color: "var(--field-text-muted)", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1, lineHeight: 1, margin: 0 }}>
                   {reels.filter(r => r.status !== "depleted").length}
                 </p>
               </div>
@@ -386,12 +386,12 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               { label: "SKU",         value: item.sku,                     mono: true  },
               { label: t.colCategory, value: item.category?.name   || "—", mono: false },
             ].map(({ label, value, mono }) => (
-              <div key={label} style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 10, padding: "10px 12px" }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <div key={label} style={{ background: "var(--field-surface)", border: "1px solid var(--field-border-soft)", borderRadius: 10, padding: "10px 12px" }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
                   {label}
                 </p>
                 <p style={{
-                  fontSize: 13, fontWeight: 600, color: "#e2f0e5",
+                  fontSize: 13, fontWeight: 600, color: "var(--field-text)",
                   fontFamily: mono ? "monospace" : "'Barlow Condensed', sans-serif",
                   letterSpacing: mono ? 0.3 : 0,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const,
@@ -407,22 +407,22 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
           {isReelItem && (
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, marginTop: 4 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: "#4a7052", textTransform: "uppercase" as const, letterSpacing: "1.5px", fontFamily: "'Barlow Condensed', sans-serif", whiteSpace: "nowrap" as const }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-faint)", textTransform: "uppercase" as const, letterSpacing: "1.5px", fontFamily: "'Barlow Condensed', sans-serif", whiteSpace: "nowrap" as const }}>
                   {t.reelInventory}
                 </p>
-                <div style={{ flex: 1, height: 1, background: "#1e2e21" }} />
+                <div style={{ flex: 1, height: 1, background: "var(--field-border-soft)" }} />
               </div>
               {reelsLoading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {[1,2,3].map(i => (
-                    <div key={i} style={{ height: 42, borderRadius: 8, background: "#162019", opacity: 0.6 }} />
+                    <div key={i} style={{ height: 42, borderRadius: 8, background: "var(--field-surface)", opacity: 0.6 }} />
                   ))}
                 </div>
               ) : !reels || reels.length === 0 ? (
                 <div style={{
-                  background: "#162019", border: "1px dashed #2a4030", borderRadius: 10,
+                  background: "var(--field-surface)", border: "1px dashed var(--field-border)", borderRadius: 10,
                   padding: "20px 16px", textAlign: "center",
-                  color: "#4a7052", fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif",
+                  color: "var(--field-text-faint)", fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif",
                 }}>
                   {t.noReelsRecorded}
                 </div>
@@ -438,8 +438,8 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         {/* ── Action Footer — manager/admin only ── */}
         {isManagerOrAbove && (
           <div style={{
-            position: "sticky", bottom: 0, background: "#0d1410",
-            borderTop: "1px solid #1e2e21", padding: "12px 16px",
+            position: "sticky", bottom: 0, background: "var(--field-bg)",
+            borderTop: "1px solid var(--field-border-soft)", padding: "12px 16px",
             display: "flex", gap: 10, zIndex: 2,
           }}>
             <button
@@ -447,7 +447,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               onClick={() => navigate(`/field/movement?itemId=${item.id}`)}
               style={{
                 flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
-                background: "#2ddb6f", color: "#0d1410", border: "none", cursor: "pointer",
+                background: "var(--field-accent)", color: "var(--field-bg)", border: "none", cursor: "pointer",
                 fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
               }}
             >
@@ -458,7 +458,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               onClick={() => navigate(`/inventory/${item.id}`)}
               style={{
                 flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
-                background: "#1c2b1f", color: "#7aab82", border: "1px solid #2a4030", cursor: "pointer",
+                background: "var(--field-surface-2)", color: "var(--field-text-muted)", border: "1px solid var(--field-border)", cursor: "pointer",
                 fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
               }}
             >
@@ -494,9 +494,9 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
 // ─── Qty color helper ────────────────────────────────────────────────────────
 
 function qtyColor(status: string): string {
-  if (status === "out_of_stock") return "#ff5050";
-  if (status === "low_stock") return "#f5a623";
-  return "#2ddb6f";
+  if (status === "out_of_stock") return "var(--field-danger)";
+  if (status === "low_stock") return "var(--field-warning)";
+  return "var(--field-accent)";
 }
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
@@ -721,21 +721,21 @@ export default function FieldInventory() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
-            <Package className="w-5 h-5" style={{ color: "#2ddb6f" }} />
-            <h1 className="text-2xl font-display font-bold" style={{ color: "#e2f0e5" }}>{t.inventory}</h1>
+            <Package className="w-5 h-5" style={{ color: "var(--field-accent)" }} />
+            <h1 className="text-2xl font-display font-bold" style={{ color: "var(--field-text)" }}>{t.inventory}</h1>
           </div>
-          <p className="text-sm" style={{ color: "#7aab82" }}>{t.inventorySubtitle}</p>
+          <p className="text-sm" style={{ color: "var(--field-text-muted)" }}>{t.inventorySubtitle}</p>
         </div>
       </div>
 
       {/* ── Category Cards ── */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
+          <h2 style={{ fontSize: 11, fontWeight: 700, color: "var(--field-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
           {selectedCatId !== null && (
             <button
               onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }}
-              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--field-text-muted)", background: "none", border: "none", cursor: "pointer" }}
               data-testid="btn-clear-category"
             >
               <X style={{ width: 12, height: 12 }} /> {t.clear}
@@ -744,7 +744,7 @@ export default function FieldInventory() {
         </div>
         {!categorySummary ? (
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/10", background: "#162019" }} />)}
+            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/10", background: "var(--field-surface)" }} />)}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -760,7 +760,7 @@ export default function FieldInventory() {
                   style={{
                     aspectRatio: "16/8",
                     background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
-                    border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
+                    border: isActive ? "2px solid var(--field-accent)" : "2px solid var(--field-border-soft)",
                     borderRadius: 10,
                   }}
                 >
@@ -777,12 +777,12 @@ export default function FieldInventory() {
                     )}
                     <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                     <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
-                      <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
+                      <p style={{ color: "var(--field-text)", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
                         {cat.name}
                       </p>
                     </div>
                     {isActive && (
-                      <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
+                      <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "var(--field-accent)", border: "2px solid var(--field-bg)" }} />
                     )}
                   </div>
                 </button>
@@ -795,7 +795,7 @@ export default function FieldInventory() {
       {/* ── Selected category heading ── */}
       {selectedCat && (
         <div className="flex items-center gap-2 px-1">
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: "0.1em" }}>{selectedCat.name}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--field-accent)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{selectedCat.name}</span>
           <div style={{ flex: 1, height: 1, background: "rgba(45,219,111,0.3)" }} />
         </div>
       )}
@@ -851,9 +851,9 @@ export default function FieldInventory() {
               onClick={() => { setSelectedStatus(isActive ? "all" : preset.value); setPage(1); }}
               style={{
                 fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "5px 13px",
-                border: `1px solid ${isActive ? "#2ddb6f" : "#2a4030"}`,
-                background: isActive ? "#2ddb6f" : "#1c2b1f",
-                color: isActive ? "#0d1410" : "#7aab82",
+                border: `1px solid ${isActive ? "var(--field-accent)" : "var(--field-border)"}`,
+                background: isActive ? "var(--field-accent)" : "var(--field-surface-2)",
+                color: isActive ? "var(--field-bg)" : "var(--field-text-muted)",
                 cursor: "pointer", whiteSpace: "nowrap" as const,
               }}
             >
@@ -866,17 +866,17 @@ export default function FieldInventory() {
       {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "#4a7052" }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--field-text-faint)" }} />
           <Input
             placeholder={t.searchPlaceholder}
             value={searchInput}
             onChange={e => handleSearch(e.target.value)}
             className="pl-8 h-9 text-sm"
-            style={{ background: "#162019", border: "1px solid #2a4030", color: "#e2f0e5", borderRadius: 9 }}
+            style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", color: "var(--field-text)", borderRadius: 9 }}
             data-testid="field-inv-search"
           />
           {searchInput && (
-            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: "#4a7052", background: "none", border: "none", cursor: "pointer" }}>
+            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--field-text-faint)", background: "none", border: "none", cursor: "pointer" }}>
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -884,7 +884,7 @@ export default function FieldInventory() {
 
         {selectedCatId !== null && sizes.length > 0 && (
           <Select value={selectedSize} onValueChange={handleSizeChange}>
-            <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-size-filter">
+            <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", color: "var(--field-text-muted)" }} data-testid="field-inv-size-filter">
               <SelectValue placeholder={t.allSizes} />
             </SelectTrigger>
             <SelectContent className="max-h-[264px] overflow-y-auto">
@@ -897,7 +897,7 @@ export default function FieldInventory() {
         )}
 
         <Select value={selectedStatus} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-status-filter">
+          <SelectTrigger className="w-32 h-9 text-sm" style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", color: "var(--field-text-muted)" }} data-testid="field-inv-status-filter">
             <SelectValue placeholder={t.allStatus} />
           </SelectTrigger>
           <SelectContent>
@@ -908,7 +908,7 @@ export default function FieldInventory() {
         </Select>
 
         <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-          <SelectTrigger className="w-24 h-9 text-sm" style={{ background: "#162019", border: "1px solid #2a4030", color: "#7aab82" }} data-testid="field-inv-page-size">
+          <SelectTrigger className="w-24 h-9 text-sm" style={{ background: "var(--field-surface)", border: "1px solid var(--field-border)", color: "var(--field-text-muted)" }} data-testid="field-inv-page-size">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -943,10 +943,10 @@ export default function FieldInventory() {
           {searchInput && (
             <FilterChip label={`"${searchInput}"`} onRemove={() => { setSearchInput(""); setPage(1); }} />
           )}
-          <span style={{ fontSize: 12, color: "#4a7052" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 12, color: "var(--field-text-faint)" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
           <button
             onClick={clearAll}
-            style={{ marginLeft: 4, fontSize: 12, color: "#2ddb6f", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
+            style={{ marginLeft: 4, fontSize: 12, color: "var(--field-accent)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
             data-testid="btn-clear-all-filters"
           >
             {t.clearAll}
@@ -955,7 +955,7 @@ export default function FieldInventory() {
       )}
 
       {/* ── Item Table ── */}
-      <div style={{ background: "#162019", border: "1px solid #1e2e21", borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--field-surface)", border: "1px solid var(--field-border-soft)", borderRadius: 12, overflow: "hidden" }}>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
             <colgroup>
@@ -969,12 +969,12 @@ export default function FieldInventory() {
               <col style={{ width: "110px" }} />
             </colgroup>
             <thead>
-              <tr style={{ background: "#162019", borderBottom: "1px solid #1e2e21" }}>
+              <tr style={{ background: "var(--field-surface)", borderBottom: "1px solid var(--field-border-soft)" }}>
                 {TABLE_COLS.map(col => (
                   <th
                     key={col.label}
                     className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${(col as any).cls || ""}`}
-                    style={{ fontSize: 9, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "1px" }}
+                    style={{ fontSize: 9, fontWeight: 700, color: "var(--field-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}
                   >
                     {col.label}
                   </th>
@@ -984,32 +984,32 @@ export default function FieldInventory() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: pageSize }).map((_, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #1e2e21" }}>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--field-border-soft)" }}>
                     {[1,2,3,4,5,6,7,8].map(j => (
                       <td key={j} className="px-3 py-3 align-middle">
-                        <div className="h-4 rounded animate-pulse" style={{ background: "#1c2b1f" }} />
+                        <div className="h-4 rounded animate-pulse" style={{ background: "var(--field-surface-2)" }} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-14 text-sm" style={{ color: "#7aab82" }}>
+                  <td colSpan={8} className="text-center py-14 text-sm" style={{ color: "var(--field-text-muted)" }}>
                     {hasFilters ? t.noItemsMatch : t.noItemsFound}
                   </td>
                 </tr>
               ) : pageItems.map((item: FieldItem) => (
                 <tr
                   key={item.id}
-                  style={{ borderBottom: "1px solid #1e2e21", cursor: "pointer" }}
+                  style={{ borderBottom: "1px solid var(--field-border-soft)", cursor: "pointer" }}
                   className="transition-colors last:border-0"
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#1c2b1f"}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--field-surface-2)"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
                 >
                   <td className="px-3 py-3 align-middle whitespace-nowrap">
-                    <span style={{ fontFamily: "monospace", fontSize: 10, color: "#7aab82" }}>{item.sku}</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 10, color: "var(--field-text-muted)" }}>{item.sku}</span>
                   </td>
                   <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
@@ -1017,25 +1017,25 @@ export default function FieldInventory() {
                     </div>
                   </td>
                   <td className="px-3 py-3 align-middle">
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "#7aab82", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--field-text-muted)", whiteSpace: "nowrap" }}>
                       {item.sizeLabel ?? "—"}
                     </span>
                   </td>
                   <td className="px-3 py-3 align-middle">
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#e2f0e5", lineHeight: 1.3 }}>{item.name}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--field-text)", lineHeight: 1.3 }}>{item.name}</p>
                     {item.extractedSubcategory && (
-                      <p style={{ fontSize: 10, color: "#4a7052", lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
+                      <p style={{ fontSize: 10, color: "var(--field-text-faint)", lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
                     )}
                   </td>
                   <td className="px-3 py-3 align-middle hidden sm:table-cell">
-                    <span style={{ fontSize: 11, color: "#7aab82", lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
+                    <span style={{ fontSize: 11, color: "var(--field-text-muted)", lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
                   </td>
                   <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
                     <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
-                    <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: "#7aab82" }}>{item.unitOfMeasure}</span>
+                    <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: "var(--field-text-muted)" }}>{item.unitOfMeasure}</span>
                   </td>
                   <td className="px-3 py-3 align-middle hidden md:table-cell">
-                    <span style={{ fontSize: 12, color: "#7aab82" }}>{item.location?.name ?? "—"}</span>
+                    <span style={{ fontSize: 12, color: "var(--field-text-muted)" }}>{item.location?.name ?? "—"}</span>
                   </td>
                   <td className="px-3 py-3 align-middle">
                     <div className="flex items-center justify-center">
@@ -1050,8 +1050,8 @@ export default function FieldInventory() {
 
         {/* Pagination */}
         {totalItems > 0 && (
-          <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: "1px solid #1e2e21" }}>
-            <span style={{ fontSize: 12, color: "#4a7052" }}>
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: "1px solid var(--field-border-soft)" }}>
+            <span style={{ fontSize: 12, color: "var(--field-text-faint)" }}>
               {`${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)}`} of {totalItems.toLocaleString()}
             </span>
             <div className="flex items-center gap-1">
@@ -1059,21 +1059,21 @@ export default function FieldInventory() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                style={{ color: "#4a7052" }}
+                style={{ color: "var(--field-text-faint)" }}
                 disabled={page <= 1}
                 onClick={() => setPage(p => p - 1)}
                 data-testid="btn-prev-page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span style={{ padding: "0 8px", fontSize: 12, color: "#7aab82", fontWeight: 500, minWidth: 80, textAlign: "center" }}>
+              <span style={{ padding: "0 8px", fontSize: 12, color: "var(--field-text-muted)", fontWeight: 500, minWidth: 80, textAlign: "center" }}>
                 {page} / {totalPages}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                style={{ color: "#4a7052" }}
+                style={{ color: "var(--field-text-faint)" }}
                 disabled={page >= totalPages}
                 onClick={() => setPage(p => p + 1)}
                 data-testid="btn-next-page"

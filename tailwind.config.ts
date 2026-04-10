@@ -93,6 +93,20 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // Field Mode palette — maps to CSS vars defined in index.css
+        field: {
+          bg:          "var(--field-bg)",
+          surface:     "var(--field-surface)",
+          "surface-2": "var(--field-surface-2)",
+          border:      "var(--field-border)",
+          "border-soft":"var(--field-border-soft)",
+          accent:      "var(--field-accent)",
+          text:        "var(--field-text)",
+          "text-muted":"var(--field-text-muted)",
+          "text-faint":"var(--field-text-faint)",
+          danger:      "var(--field-danger)",
+          warning:     "var(--field-warning)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

@@ -40,6 +40,22 @@
     --brand-700: 136 83% 23%;
     --brand-800: 136 83% 18%;
     --brand-900: 136 83% 13%;
+
+    /* ── Field Mode design tokens ───────────────────────────────────────────
+       Dark industrial palette used exclusively by Field Mode pages.
+       These are fixed hex values — not theme-switchable.
+    ── */
+    --field-bg:          #0d1410;  /* page background               (14 uses) */
+    --field-surface:     #162019;  /* card / panel surface          (31 uses) */
+    --field-surface-2:   #1c2b1f;  /* elevated surface / inputs     (16 uses) */
+    --field-border:      #2a4030;  /* default border                (15 uses) */
+    --field-border-soft: #1e2e21;  /* subtle divider                          */
+    --field-accent:      #2ddb6f;  /* primary green action          (29 uses) */
+    --field-text:        #e2f0e5;  /* primary text                  (20 uses) */
+    --field-text-muted:  #7aab82;  /* secondary / label text        (51 uses) */
+    --field-text-faint:  #4a7052;  /* hint / placeholder text       (28 uses) */
+    --field-danger:      #ff5050;  /* out of stock / error           (8 uses) */
+    --field-warning:     #f5a623;  /* low stock / caution            (6 uses) */
   }
 
   .dark {

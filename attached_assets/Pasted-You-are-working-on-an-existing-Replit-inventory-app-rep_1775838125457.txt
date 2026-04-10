@@ -1,0 +1,72 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records in stored data.
+3. Preserve compatibility with current project data and current app behavior.
+4. Focus ONLY on:
+   client/src/pages/ProjectDetail.tsx
+
+TASK GOAL
+Refactor ProjectDetail.tsx into true responsibility-based sections for maintainability and admin readability, without changing historical project records or project-linked inventory history.
+
+IMPORTANT
+- Reuse shared components already created in the repo
+- Do NOT rebuild the page from scratch
+- Do NOT change data queries or route behavior unless absolutely necessary for a tiny compatibility-safe fix
+- Do NOT create one new giant extracted file that merely relocates the complexity
+
+────────────────
+PART 1 — RESPONSIBILITY-BASED SECTIONING
+────────────────
+Refactor into focused sections where appropriate, for example:
+- ProjectOverviewPanel
+- ProjectStatsPanel
+- ProjectScopeSection
+- ProjectProgressSection
+- ProjectDailyReportsSection
+- ProjectMaterialActivitySection
+- ProjectTeamSection
+
+Requirements:
+- Significantly reduce file complexity
+- Preserve existing behavior
+- Keep current data queries compatible
+
+────────────────
+PART 2 — USE SHARED UI
+────────────────
+Reuse shared components where appropriate:
+- PageHeader
+- SectionCard
+- StatCard
+- EmptyState
+- shared badges
+
+Where movement/activity badges appear, reuse the shared movement badge components wherever safely possible.
+
+────────────────
+PART 3 — READABILITY IMPROVEMENTS
+────────────────
+Improve:
+- section spacing
+- heading hierarchy
+- repeated card patterns
+- readability of dense admin sections
+
+Do NOT change the underlying business logic of project data.
+
+────────────────
+CONSTRAINTS
+────────────────
+- Do NOT touch MovementForm or CategoryDetail in this task
+- Do NOT change historical project records
+- Do NOT change linked inventory history
+- Do NOT modify server-side API behavior unless absolutely required for a tiny compatibility-safe fix
+
+OUTPUT
+1. Summary of ProjectDetail refactor
+2. Files created
+3. Files modified
+4. Notes on what was intentionally untouched
+5. Any follow-up recommendations

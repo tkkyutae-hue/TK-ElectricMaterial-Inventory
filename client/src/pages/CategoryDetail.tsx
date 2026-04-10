@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocations, useCreateLocation, useSuppliers } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { getCategoryGradient } from "@/lib/categoryUtils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CategoryGroupedItem = {
@@ -236,17 +237,6 @@ function generateAutoSku(
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
-  "CT": "from-sky-600 to-sky-800",
-  "CF": "from-slate-600 to-slate-800",
-  "CS": "from-zinc-600 to-zinc-800",
-  "CW": "from-orange-600 to-orange-800",
-  "DV": "from-violet-600 to-violet-800",
-  "FH": "from-stone-600 to-stone-800",
-  "BC": "from-brand-600 to-brand-800",
-  "DP": "from-indigo-600 to-indigo-800",
-  "GT": "from-teal-600 to-teal-800",
-};
 
 const UOM_OPTIONS = ["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"];
 
@@ -1613,7 +1603,7 @@ export default function CategoryDetail() {
   }
 
   const { category, skuCount, totalQuantity, lowStockCount, outOfStockCount, groups } = data;
-  const gradientClass = CATEGORY_FALLBACK_COLORS[category.code || ""] || "from-slate-600 to-slate-800";
+  const gradientClass = getCategoryGradient(category.code);
   const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || familyFilter !== "all" || locationFilter !== "all";
   const existingFamilies = groups.map(g => g.baseItemName).filter(Boolean) as string[];
 

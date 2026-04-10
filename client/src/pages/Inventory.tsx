@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { getCategoryGradient } from "@/lib/categoryUtils";
 
 type CategorySummary = {
   id: number;
@@ -23,21 +24,8 @@ type CategorySummary = {
   outOfStockCount: number;
 };
 
-const CATEGORY_GRADIENTS: Record<string, string> = {
-  "CT": "from-sky-700 to-sky-900",
-  "CF": "from-slate-600 to-slate-800",
-  "CS": "from-zinc-600 to-zinc-800",
-  "CW": "from-orange-600 to-orange-900",
-  "DV": "from-violet-600 to-violet-900",
-  "FH": "from-stone-600 to-stone-800",
-  "BC": "from-brand-600 to-brand-900",
-  "DP": "from-indigo-700 to-indigo-900",
-  "GT": "from-teal-600 to-teal-900",
-  "TM": "from-amber-600 to-amber-900",
-};
-
 function CategoryCard({ cat }: { cat: CategorySummary }) {
-  const gradient = CATEGORY_GRADIENTS[cat.code || ""] || "from-slate-600 to-slate-800";
+  const gradient = getCategoryGradient(cat.code);
 
   return (
     <Link href={`/inventory/category/${cat.id}`}>

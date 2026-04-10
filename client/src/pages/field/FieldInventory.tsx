@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/hooks/use-language";
+import { getCategoryGradient } from "@/lib/categoryUtils";
+import { FilterChip } from "@/components/shared/FilterChip";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -60,19 +62,6 @@ type FieldWireReel = {
 };
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-
-const CATEGORY_GRADIENTS: Record<string, string> = {
-  "CT": "from-sky-700 to-sky-900",
-  "CF": "from-slate-600 to-slate-800",
-  "CS": "from-zinc-600 to-zinc-800",
-  "CW": "from-orange-600 to-orange-900",
-  "DV": "from-violet-600 to-violet-900",
-  "FH": "from-stone-600 to-stone-800",
-  "BC": "from-brand-600 to-brand-900",
-  "DP": "from-indigo-700 to-indigo-900",
-  "GT": "from-teal-600 to-teal-900",
-  "TM": "from-amber-600 to-amber-900",
-};
 
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 25];
 
@@ -724,7 +713,7 @@ export default function FieldInventory() {
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {categorySummary.map(cat => {
-              const gradient = CATEGORY_GRADIENTS[cat.code || ""] || "from-slate-600 to-slate-800";
+              const gradient = getCategoryGradient(cat.code);
               const isActive = selectedCatId === cat.id;
               return (
                 <button
@@ -872,60 +861,25 @@ export default function FieldInventory() {
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-1.5">
           {selectedCat && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {selectedCat.name}
-              <button onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={selectedCat.name} onRemove={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedFamily !== "all" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {getFamilyDisplay(selectedFamily)}
-              <button onClick={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={getFamilyDisplay(selectedFamily)} onRemove={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedType !== "all" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {selectedType}
-              <button onClick={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={selectedType} onRemove={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedSubcategory !== "all" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {selectedSubcategory}
-              <button onClick={() => { setSelectedSubcategory("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={selectedSubcategory} onRemove={() => { setSelectedSubcategory("all"); setPage(1); }} />
           )}
           {selectedSize !== "all" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {selectedSize}
-              <button onClick={() => { setSelectedSize("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={selectedSize} onRemove={() => { setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedStatus !== "all" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              {STATUS_OPTIONS.find(o => o.value === selectedStatus)?.label}
-              <button onClick={() => { setSelectedStatus("all"); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={STATUS_OPTIONS.find(o => o.value === selectedStatus)?.label ?? selectedStatus} onRemove={() => { setSelectedStatus("all"); setPage(1); }} />
           )}
           {searchInput && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.3)", color: "#2ddb6f", borderRadius: 20, fontSize: 12, padding: "3px 8px 3px 10px" }}>
-              "{searchInput}"
-              <button onClick={() => { setSearchInput(""); setPage(1); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#2ddb6f", padding: 0, marginLeft: 2, display: "flex", alignItems: "center" }}>
-                <X style={{ width: 12, height: 12 }} />
-              </button>
-            </span>
+            <FilterChip label={`"${searchInput}"`} onRemove={() => { setSearchInput(""); setPage(1); }} />
           )}
           <span style={{ fontSize: 12, color: "#4a7052" }}>{totalItems.toLocaleString()} item{totalItems !== 1 ? "s" : ""}</span>
           <button

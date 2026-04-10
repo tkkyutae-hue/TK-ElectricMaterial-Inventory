@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
+import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
 import { isAuthenticated } from "./replit_integrations/auth/replitAuth";
@@ -432,6 +433,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const body = req.body;
       const movementType = body.movementType as string;
 
+      // ── Validate new movement input ──────────────────────────────────────────
+      const vr = validateNewMovement({
+        itemId:               body.itemId        ? Number(body.itemId)               : null,
+        movementType:         body.movementType  ?? null,
+        quantity:             body.quantity      != null ? Number(body.quantity)     : null,
+        sourceLocationId:     body.sourceLocationId      ? Number(body.sourceLocationId)     : null,
+        destinationLocationId: body.destinationLocationId ? Number(body.destinationLocationId) : null,
+      });
+      if (!vr.valid) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: Object.entries(vr.errors).map(([field, message]) => ({ field, message })),
+        });
+      }
+
       if (!movementType) return res.status(400).json({ message: "movementType is required" });
 
       const item = await storage.getItem(Number(body.itemId));
@@ -487,6 +503,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     app.post(`/api/movements/${type}`, isAuthenticated, async (req, res) => {
       try {
         req.body.movementType = type;
+
+        // ── Validate new movement input ────────────────────────────────────────
+        const vr = validateNewMovement({
+          itemId:               req.body.itemId        ? Number(req.body.itemId)               : null,
+          movementType:         type,
+          quantity:             req.body.quantity      != null ? Number(req.body.quantity)     : null,
+          sourceLocationId:     req.body.sourceLocationId      ? Number(req.body.sourceLocationId)     : null,
+          destinationLocationId: req.body.destinationLocationId ? Number(req.body.destinationLocationId) : null,
+        });
+        if (!vr.valid) {
+          return res.status(400).json({
+            message: "Validation failed",
+            errors: Object.entries(vr.errors).map(([field, message]) => ({ field, message })),
+          });
+        }
+
         const item = await storage.getItem(Number(req.body.itemId));
         if (!item) return res.status(404).json({ message: "Item not found" });
 
@@ -533,6 +565,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Legacy alias
   app.post("/api/items/movements", isAuthenticated, async (req, res) => {
     try {
+      // ── Validate new movement input ──────────────────────────────────────────
+      const vr = validateNewMovement({
+        itemId:               req.body.itemId        ? Number(req.body.itemId)               : null,
+        movementType:         req.body.movementType  ?? null,
+        quantity:             req.body.quantity      != null ? Number(req.body.quantity)     : null,
+        sourceLocationId:     req.body.sourceLocationId      ? Number(req.body.sourceLocationId)     : null,
+        destinationLocationId: req.body.destinationLocationId ? Number(req.body.destinationLocationId) : null,
+      });
+      if (!vr.valid) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: Object.entries(vr.errors).map(([field, message]) => ({ field, message })),
+        });
+      }
+
       const item = await storage.getItem(Number(req.body.itemId));
       if (!item) return res.status(404).json({ message: "Item not found" });
 
@@ -772,7 +819,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/drafts/:id/confirm", isAuthenticated, async (req, res) => {
     try {
-      await storage.confirmDraft(Number(req.params.id), getUserId(req));
+      const draftId = Number(req.params.id);
+      const draft = await storage.getDraft(draftId);
+      if (!draft) return res.status(404).json({ message: "Draft not found" });
+
+      // ── Validate each item in the draft before confirming ───────────────────
+      let draftItems: any[] = [];
+      try { draftItems = JSON.parse((draft as any).itemsJson || "[]"); } catch (_) {}
+
+      const confirmErrors: { field: string; message: string; item?: string }[] = [];
+      for (const di of draftItems) {
+        const vr = validateDraftForConfirmation({
+          itemId:               di.itemId              ?? null,
+          movementType:         (draft as any).movementType         ?? null,
+          quantity:             di.qty                 ?? null,
+          sourceLocationId:     (draft as any).sourceLocationId     ?? null,
+          destinationLocationId: (draft as any).destinationLocationId ?? null,
+        });
+        if (!vr.valid) {
+          const label = di.itemName ? `"${di.itemName}"` : `item #${di.itemId}`;
+          for (const [field, message] of Object.entries(vr.errors)) {
+            confirmErrors.push({ field, message, item: label });
+          }
+        }
+      }
+      if (confirmErrors.length > 0) {
+        return res.status(400).json({ message: "Validation failed", errors: confirmErrors });
+      }
+
+      await storage.confirmDraft(draftId, getUserId(req));
       res.json({ ok: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });

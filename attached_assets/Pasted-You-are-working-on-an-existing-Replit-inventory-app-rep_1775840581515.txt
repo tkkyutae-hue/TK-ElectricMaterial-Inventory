@@ -1,0 +1,129 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records.
+3. Do NOT change legacy stored movement meanings.
+4. Preserve compatibility with current app behavior as much as possible.
+5. This task is focused ONLY on wiring existing validation helpers into NEW movement creation / NEW draft confirmation flows.
+
+TASK GOAL
+Take the existing shared inventory validation helpers already present in the repo and wire them into the actual create/confirm flows so NEW submissions are validated consistently, without affecting historical data.
+
+FILES TO FOCUS ON
+- server/services/inventory/movement-validation.ts
+- server/routes.ts
+- client/src/components/MovementForm.tsx
+- any tiny directly related movement submit handler files only if truly needed
+
+IMPORTANT
+- Shared validation helpers already exist in the repo
+- Reuse them instead of creating duplicate validation logic
+- Do NOT rebuild the movement engine
+- Do NOT modify historical records
+- Keep changes scoped
+
+==================================================
+PART 1 — IDENTIFY REAL CREATE / CONFIRM ENTRY POINTS
+==================================================
+
+Inspect the repo and find the actual routes / handlers used for:
+- creating a new movement
+- creating an item movement
+- confirming a draft movement, if draft confirmation exists
+- any admin movement submission path currently used by MovementForm
+
+Use the existing flow as-is.
+Do not invent a new route structure.
+
+==================================================
+PART 2 — WIRE SERVER-SIDE VALIDATION
+==================================================
+
+Use the existing helper(s) from:
+- server/services/inventory/movement-validation.ts
+
+Apply validation ONLY to NEW requests:
+- new movement creation
+- new draft confirmation
+
+Do NOT retroactively validate historical records.
+
+Validation should consistently handle at least:
+- quantity <= 0
+- missing itemId
+- missing movementType
+- malformed numeric input
+- invalid transfer source/destination
+- project-required cases when applicable
+
+Requirements:
+1. Validation must happen server-side before persistence logic runs.
+2. Return clear 400-level error responses for invalid new input.
+3. Keep the error shape consistent and easy for the frontend to display.
+4. Do not alter persistence logic beyond inserting validation before it.
+
+Preferred error response shape:
+{
+  message: "Validation failed",
+  errors: [
+    { field: "quantity", message: "Quantity must be greater than 0" }
+  ]
+}
+
+If the helper already returns a similar structure, reuse it rather than inventing another format.
+
+==================================================
+PART 3 — CONNECT FRONTEND ERROR DISPLAY
+==================================================
+
+File:
+- client/src/components/MovementForm.tsx
+
+Use the server validation response so NEW submission errors are shown clearly in the form.
+
+Requirements:
+1. Reuse the existing form structure as much as possible.
+2. Show field-level errors where reasonable.
+3. Show a global error area for non-field or summary errors if needed.
+4. Do NOT redesign the form.
+5. Do NOT duplicate all validation rules client-side unless the repo already has light pre-submit checks.
+6. If light client-side checks already exist, keep them minimal and aligned with the server helper behavior.
+
+Goal:
+- A user should understand why a NEW movement submit failed
+- Rules should not be split inconsistently across multiple places
+
+==================================================
+PART 4 — DRAFT CONFIRMATION FLOW
+==================================================
+
+If the repo has a draft confirmation flow, wire the existing draft confirmation validation helper into that path as well.
+
+Requirements:
+1. Validate before confirming the draft
+2. Return clear errors if confirmation is blocked
+3. Do NOT change historical draft data already stored
+4. Do NOT rewrite draft logic beyond adding validation at the right point
+
+==================================================
+PART 5 — CONSTRAINTS
+==================================================
+
+1. Do NOT change movement history
+2. Do NOT modify stored inventory quantities
+3. Do NOT rebuild storage.ts
+4. Do NOT change unrelated routes
+5. Do NOT create duplicate validation systems
+6. Keep the work incremental and compatibility-safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of validation wiring changes
+2. Files modified
+3. Notes on routes/flows where validation was connected
+4. Notes on what was intentionally untouched to preserve historical data
+5. Any follow-up recommendations

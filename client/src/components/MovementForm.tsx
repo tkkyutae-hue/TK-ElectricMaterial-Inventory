@@ -405,8 +405,11 @@ export function MovementForm({
             }),
           }).then(async res => {
             if (!res.ok) {
-              const err = await res.json();
-              throw new Error(err.message || `Failed for item #${row.itemId}`);
+              const body = await res.json().catch(() => ({ message: `Failed for item #${row.itemId}` }));
+              const e: any = new Error(body.message || `Failed for item #${row.itemId}`);
+              e.validationErrors = body.errors;
+              e.rowId = row.rowId;
+              throw e;
             }
             return res.json();
           })
@@ -523,7 +526,23 @@ export function MovementForm({
       form.reset({ movementType: shared.movementType });
       onSuccess?.();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      // ── Surface server validation errors ──────────────────────────────────────
+      if (err.validationErrors && Array.isArray(err.validationErrors)) {
+        const rowErrors: ItemRowError = {};
+        const nonFieldMsgs: string[] = [];
+        for (const ve of err.validationErrors as { field: string; message: string }[]) {
+          if (ve.field === "itemId")   rowErrors.itemId   = ve.message;
+          else if (ve.field === "quantity") rowErrors.quantity = ve.message;
+          else nonFieldMsgs.push(ve.message);
+        }
+        if (Object.keys(rowErrors).length > 0 && err.rowId) {
+          setItemRows(prev => prev.map(r => r.rowId === err.rowId ? { ...r, errors: rowErrors } : r));
+        }
+        const summary = nonFieldMsgs.join("; ") || (Object.keys(rowErrors).length === 0 ? err.message : null);
+        if (summary) setGlobalError(summary);
+      } else {
+        toast({ title: "Error", description: err.message, variant: "destructive" });
+      }
     } finally {
       setSubmitting(false);
     }

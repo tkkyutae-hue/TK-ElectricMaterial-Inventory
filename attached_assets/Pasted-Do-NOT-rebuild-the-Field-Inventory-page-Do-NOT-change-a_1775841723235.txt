@@ -1,0 +1,71 @@
+Do NOT rebuild the Field Inventory page.
+Do NOT change any API calls, routing behavior, inventory quantities, or historical movement data.
+Make only the following targeted changes to the Field Inventory experience.
+
+FILES TO FOCUS ON
+- client/src/pages/field/FieldInventory.tsx
+- any tiny directly related field detail subcomponent file only if needed
+
+TASK GOAL
+Clean up the worker-facing Field Inventory detail panel so it shows only useful operational information, and restrict action buttons to manager-and-above users only.
+
+IMPORTANT
+- Keep this non-destructive
+- Preserve existing data and route behavior
+- Reuse the repo’s existing auth/user role pattern instead of inventing a new system
+- Do NOT touch Admin pages in this task
+
+────────────────
+CHANGE 1 — Remove worker-irrelevant stats from FieldItemDetailPanel
+────────────────
+
+In the Field item detail panel, remove or hide the following fields from the worker-facing stat grid:
+- Supplier
+- Min Stock
+
+Do not remove useful operational fields such as:
+- size
+- location
+- SKU
+- category
+- quantity
+
+Keep the layout clean and consistent after removing those two fields.
+
+────────────────
+CHANGE 2 — Show “Log Movement” and “Full Detail” only for manager-and-above
+────────────────
+
+At the bottom action bar of the Field item detail panel, the following buttons should only be visible to users with role:
+- manager
+- admin
+
+Hide these buttons entirely for:
+- viewer
+- staff
+
+Use the repo’s existing user role source and existing auth pattern.
+Do not hardcode fake role state.
+
+Behavior:
+- If role is manager/admin: show both buttons as currently implemented
+- If role is viewer/staff: hide the action bar entirely, or hide both buttons cleanly
+
+Do not change the underlying destination routes.
+Only change role-based visibility.
+
+────────────────
+CONSTRAINTS
+────────────────
+
+- Do NOT change inventory logic
+- Do NOT change movement history
+- Do NOT change server routes
+- Do NOT add new permissions logic beyond safe UI gating using existing role data
+- Keep the work scoped and minimal
+
+OUTPUT
+1. Summary of field inventory cleanup
+2. Files modified
+3. Notes on how manager/admin visibility was implemented
+4. Notes on what was intentionally untouched

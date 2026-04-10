@@ -1,0 +1,175 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records.
+3. Do NOT change business logic unrelated to the Admin Inventory list.
+4. Preserve compatibility with existing filters and current app behavior as much as possible.
+5. This task is focused ONLY on Admin Inventory list performance and sorting.
+
+TASK GOAL
+Convert the Admin Inventory page from client-side slicing to server-side pagination and server-side sorting for the /api/items list endpoint.
+
+FILES TO FOCUS ON
+- client/src/hooks/use-items.ts
+- client/src/pages/Inventory.tsx
+- server/routes.ts
+
+IMPORTANT
+- Do NOT rebuild the Inventory page
+- Do NOT touch FieldInventory
+- Do NOT change item detail pages
+- Do NOT introduce broad refactors
+- Keep the work scoped and compatibility-safe
+
+==================================================
+PART 1 — UPDATE useItems HOOK
+==================================================
+
+File:
+- client/src/hooks/use-items.ts
+
+Current problem:
+- useItems() fetches all matching items
+- Inventory.tsx slices the array client-side
+
+Required change:
+- Extend useItems() to accept these additional optional params:
+  - page: number = 1
+  - perPage: number = 25
+  - sort: "name" | "sku" | "quantityOnHand" | "status" = "name"
+  - dir: "asc" | "desc" = "asc"
+
+Behavior:
+- Pass page, perPage, sort, and dir as query params to the existing /api/items request
+- Keep all existing filter params working exactly as before:
+  - search
+  - status
+  - categoryId
+  - locationId
+
+Return shape:
+- Change the hook to return paginated data in this shape:
+  {
+    items: Item[],
+    total: number
+  }
+
+Important:
+- Update only the Admin Inventory usage accordingly
+- Keep the hook readable and compatible with existing patterns
+
+==================================================
+PART 2 — UPDATE /api/items ROUTE
+==================================================
+
+File:
+- server/routes.ts
+
+Find the GET /api/items route used for the Admin Inventory list.
+
+Add support for query params:
+- page
+- perPage
+- sort
+- dir
+
+Requirements:
+1. Preserve existing filters exactly as they currently work.
+2. Apply LIMIT and OFFSET for pagination.
+3. Return:
+   {
+     items: [...],
+     total: <total count of matching rows before pagination>
+   }
+4. Apply ORDER BY based on sort and dir.
+5. Default sort should remain:
+   - name ASC
+
+Sorting rules:
+- sort=name => order by item name
+- sort=sku => order by SKU
+- sort=quantityOnHand => order by quantity
+- sort=status => order by status
+
+Security / safety:
+- Whitelist valid sort keys
+- Whitelist valid dir values
+- Fall back safely to name ASC on invalid input
+
+Important:
+- Do NOT change any inventory quantities
+- Do NOT change response shape for unrelated endpoints
+- Keep route changes scoped to this list endpoint only
+
+==================================================
+PART 3 — UPDATE Inventory.tsx
+==================================================
+
+File:
+- client/src/pages/Inventory.tsx
+
+Required changes:
+1. Use the new paginated useItems() hook result:
+   - { items, total }
+2. Pass these state values into the hook:
+   - page
+   - pageSize
+   - sortKey
+   - sortDir
+3. Remove client-side slice logic
+4. Keep the existing pagination UI structure as much as possible
+5. Base total pages on `total`, not items.length
+
+Add sorting state:
+- sortKey: "name" | "sku" | "quantityOnHand" | "status" = "name"
+- sortDir: "asc" | "desc" = "asc"
+
+Add a small SortableHeader component inside Inventory.tsx if appropriate.
+
+Sortable columns:
+- SKU
+- Item name
+- Qty/Unit
+- Status
+
+Non-sortable columns remain unchanged:
+- Photo
+- Size
+- Category
+- Location
+
+SortableHeader behavior:
+- Clicking the active column toggles asc/desc
+- Clicking a new column sets it active with asc
+- Show:
+  - ↑ when active asc
+  - ↓ when active desc
+  - ↕ when inactive
+
+Requirements:
+- Preserve current visual style as much as possible
+- Do NOT rebuild the page
+- Keep current filters and quick drawer behavior working
+- Keep row click and item-name link behavior intact
+
+==================================================
+PART 4 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch FieldInventory
+2. Do NOT touch movement history
+3. Do NOT modify stored inventory quantities
+4. Do NOT refactor unrelated hooks or routes
+5. Keep changes incremental and scoped
+6. Preserve current admin filters and current drawer behavior
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of pagination/sort changes
+2. Files modified
+3. Notes on backward-compatibility considerations
+4. Anything intentionally left unchanged

@@ -281,7 +281,41 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
     const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;
     const status = req.query.status as string;
-    res.json(await storage.getItems({ search, categoryId, locationId, status }));
+
+    const pageParam = req.query.page !== undefined ? Number(req.query.page) : undefined;
+    const perPage   = req.query.perPage ? Math.max(1, Number(req.query.perPage)) : 25;
+
+    const VALID_SORTS = ["name", "sku", "quantityOnHand", "status"] as const;
+    const VALID_DIRS  = ["asc", "desc"] as const;
+    type SortKey = typeof VALID_SORTS[number];
+    type Dir     = typeof VALID_DIRS[number];
+    const rawSort = req.query.sort as string;
+    const rawDir  = req.query.dir  as string;
+    const sort: SortKey = VALID_SORTS.includes(rawSort as SortKey) ? (rawSort as SortKey) : "name";
+    const dir:  Dir     = VALID_DIRS.includes(rawDir   as Dir)     ? (rawDir   as Dir)     : "asc";
+
+    const allItems = await storage.getItems({ search, categoryId, locationId, status });
+
+    if (pageParam === undefined) {
+      return res.json(allItems);
+    }
+
+    const sorted = [...allItems].sort((a: any, b: any) => {
+      let av: any, bv: any;
+      switch (sort) {
+        case "sku":             av = a.sku            ?? ""; bv = b.sku            ?? ""; break;
+        case "quantityOnHand":  av = a.quantityOnHand ?? 0;  bv = b.quantityOnHand ?? 0;  break;
+        case "status":          av = a.status         ?? ""; bv = b.status         ?? ""; break;
+        default:                av = a.name           ?? ""; bv = b.name           ?? "";
+      }
+      if (typeof av === "number") return dir === "asc" ? av - bv : bv - av;
+      return dir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+
+    const total = sorted.length;
+    const page  = Math.max(1, pageParam);
+    const start = (page - 1) * perPage;
+    res.json({ items: sorted.slice(start, start + perPage), total });
   });
 
   app.get("/api/items/:id", isAuthenticated, async (req, res) => {

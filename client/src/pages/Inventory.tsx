@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useItems } from "@/hooks/use-items";
 import { useQuery } from "@tanstack/react-query";
 import { useCategories, useLocations } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
-import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -80,6 +80,41 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
+type SortKey = "name" | "sku" | "quantityOnHand" | "status";
+type SortDir = "asc" | "desc";
+
+function SortableHeader({
+  label,
+  sortKey,
+  active,
+  dir,
+  align = "left",
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: boolean;
+  dir: SortDir;
+  align?: "left" | "right" | "center";
+  onSort: (key: SortKey) => void;
+}) {
+  const Icon = active ? (dir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
+  return (
+    <th
+      className={`px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap ${align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left"}`}
+    >
+      <button
+        className={`inline-flex items-center gap-0.5 hover:text-slate-700 transition-colors ${active ? "text-slate-700" : ""}`}
+        onClick={() => onSort(sortKey)}
+        data-testid={`sort-${sortKey}`}
+      >
+        {label}
+        <Icon className="w-3 h-3 flex-shrink-0" />
+      </button>
+    </th>
+  );
+}
+
 export default function Inventory() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -87,6 +122,8 @@ export default function Inventory() {
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [exporting, setExporting] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
 
@@ -162,12 +199,19 @@ export default function Inventory() {
     }
   }
 
-  const { data: items, isLoading } = useItems({
+  const { data: pagedData, isLoading } = useItems({
     search: search || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
     categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
     locationId: locationFilter !== "all" ? locationFilter : undefined,
+    page,
+    perPage: pageSize,
+    sort: sortKey,
+    dir: sortDir,
   });
+
+  const pageItems: any[] = (pagedData as any)?.items ?? [];
+  const totalItems: number = (pagedData as any)?.total ?? 0;
 
   const { data: categories } = useCategories();
   const { data: locations } = useLocations();
@@ -179,18 +223,21 @@ export default function Inventory() {
   const totalLowStock = categorySummary?.reduce((s, c) => s + c.lowStockCount, 0) ?? 0;
   const totalOutOfStock = categorySummary?.reduce((s, c) => s + c.outOfStockCount, 0) ?? 0;
 
-  const totalItems = items?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(page, totalPages);
 
-  const pageItems = useMemo(() => {
-    if (!items) return [];
-    const start = (safePage - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, safePage, pageSize]);
-
   function handleFilterChange(setter: (v: string) => void) {
     return (v: string) => { setter(v); setPage(1); };
+  }
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
   }
 
   const startItem = totalItems === 0 ? 0 : (safePage - 1) * pageSize + 1;
@@ -336,23 +383,14 @@ export default function Inventory() {
             </colgroup>
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
-                {[
-                  { label: "SKU",       align: "left"   },
-                  { label: "Photo",     align: "left"   },
-                  { label: "Size",      align: "left"   },
-                  { label: "Item",      align: "left"   },
-                  { label: "Category",  align: "left"   },
-                  { label: "Qty / Unit",align: "right"  },
-                  { label: "Location",  align: "left"   },
-                  { label: "Status",    align: "center" },
-                ].map(col => (
-                  <th
-                    key={col.label}
-                    className={`px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"}`}
-                  >
-                    {col.label}
-                  </th>
-                ))}
+                <SortableHeader label="SKU"      sortKey="sku"            active={sortKey === "sku"}           dir={sortDir} onSort={handleSort} />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Photo</th>
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Size</th>
+                <SortableHeader label="Item"     sortKey="name"           active={sortKey === "name"}          dir={sortDir} onSort={handleSort} />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Category</th>
+                <SortableHeader label="Qty / Unit" sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Location</th>
+                <SortableHeader label="Status"   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
               </tr>
             </thead>
             <tbody>
@@ -366,7 +404,7 @@ export default function Inventory() {
                     ))}
                   </tr>
                 ))
-              ) : items?.length === 0 ? (
+              ) : pageItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />

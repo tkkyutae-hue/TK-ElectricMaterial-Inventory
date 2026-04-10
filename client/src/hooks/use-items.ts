@@ -7,12 +7,25 @@ async function fetchJson(url: string) {
   return res.json();
 }
 
-export function useItems(filters?: { categoryId?: string; locationId?: string; status?: string; search?: string }) {
+export function useItems(filters?: {
+  categoryId?: string;
+  locationId?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  perPage?: number;
+  sort?: "name" | "sku" | "quantityOnHand" | "status";
+  dir?: "asc" | "desc";
+}) {
   const params = new URLSearchParams();
   if (filters?.categoryId) params.append("categoryId", filters.categoryId);
   if (filters?.locationId) params.append("locationId", filters.locationId);
   if (filters?.status) params.append("status", filters.status);
   if (filters?.search) params.append("search", filters.search);
+  if (filters?.page != null) params.append("page", String(filters.page));
+  if (filters?.perPage != null) params.append("perPage", String(filters.perPage));
+  if (filters?.sort) params.append("sort", filters.sort);
+  if (filters?.dir) params.append("dir", filters.dir);
   const url = `${api.items.list.path}${params.toString() ? `?${params.toString()}` : ''}`;
   return useQuery({ queryKey: [api.items.list.path, filters], queryFn: () => fetchJson(url) });
 }

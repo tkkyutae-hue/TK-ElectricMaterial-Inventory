@@ -1,0 +1,90 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify inventory quantities.
+2. Do NOT edit or delete historical movement or reel records.
+3. Do NOT block existing reel operations yet.
+4. This task is audit-first only. No hard server enforcement in this step.
+
+TASK GOAL
+Fix and verify reel eligibility classification safely before re-enabling any server-side blocking.
+
+CURRENT PROBLEM
+A previous server-side enforcement attempt incorrectly marked true flexible conduit items such as Metal Flexible Conduit as not reel-eligible.
+That enforcement has been rolled back.
+Now we need to make classification accurate first, without breaking workflows.
+
+FILES TO FOCUS ON
+- shared reel eligibility helper(s)
+- any server-side reel classification helper used for validation
+- admin audit/report surface if appropriate
+
+PART 1 — EXPLICITLY ALLOW TRUE FLEXIBLE CONDUIT
+Make sure the reel classification logic explicitly treats these as reel-eligible when they are the actual conduit body:
+- Metal Flexible Conduit
+- Liquidtight Flexible Conduit
+
+Important:
+- Do NOT classify all conduit as eligible
+- Do NOT classify all conduit as ineligible
+- Only true flexible conduit body products should be eligible
+- Flexible conduit connectors/fittings/accessories must remain not eligible
+
+PART 2 — KEEP EXCLUSION-FIRST LOGIC
+Accessory/fitting/hardware items must still be excluded even if they appear under Cable/Wire or Flexible Conduit related groupings.
+
+Examples to exclude:
+- connector
+- coupling
+- bushing
+- anti short / antishort
+- strap
+- clamp
+- locknut
+- fitting
+- accessory
+- adapter
+- reducer
+- nipple
+- elbow
+- tee
+
+PART 3 — MULTI-FIELD CLASSIFICATION
+Do NOT rely on a single exact string match.
+Use normalized multi-field classification using available item fields such as:
+- category.name
+- subcategory
+- family
+- type
+- item name
+- base item name if available
+
+Important:
+- A true cable item should still be eligible even if subcategory does not literally contain "cable"
+- A true flexible conduit item should still be eligible even if the exact subcategory text differs from earlier assumptions
+
+PART 4 — AUDIT / DRY-RUN MODE ONLY
+Do NOT re-enable hard server blocking yet.
+
+Instead, add a safe admin-visible audit or dry-run report that shows:
+- Item Name
+- SKU
+- Category
+- Subcategory
+- Reel Eligible (current rule)
+- Reason / matched rule
+
+The goal is to verify classification results before any future hard enforcement.
+
+PART 5 — OPTIONAL SAFE VALIDATION RESPONSE
+If server-side validation is present, keep it in non-blocking mode for now:
+- do not reject the operation
+- optionally log or return a warning/debug reason for non-eligible classification in development/admin contexts only
+
+PART 6 — OUTPUT
+Provide:
+1. Summary of reel classification fixes
+2. Files modified
+3. Exact logic for Metal Flexible Conduit / Liquidtight Flexible Conduit eligibility
+4. Notes on how accessory items remain excluded
+5. Notes on what was intentionally NOT blocked yet

@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
+import { classifyReel } from "../shared/reelEligibility";
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
@@ -992,6 +993,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (user.status !== "rejected") return res.status(400).json({ message: "Only rejected users can be deleted" });
       await authStorage.deleteUser(req.params.id);
       res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Admin Audit: Reel Eligibility Dry-Run ───────────────────────────────────
+  // Read-only, non-blocking. Shows how every item is classified so admins can
+  // verify accuracy before any future server-side enforcement is enabled.
+  app.get("/api/admin/audit/reel-eligibility", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { items: allItems } = await storage.getItems({ perPage: 999999, sort: "name", dir: "asc" });
+      const report = allItems.map(item => {
+        const clf = classifyReel({
+          name:         item.name,
+          sku:          item.sku,
+          baseItemName: (item as any).baseItemName ?? null,
+          subcategory:  (item as any).subcategory  ?? null,
+          detailType:   (item as any).detailType   ?? null,
+          unitOfMeasure: item.unitOfMeasure,
+          category:     item.category ? { name: item.category.name, code: (item.category as any).code ?? null } : null,
+        });
+        return {
+          id:           item.id,
+          sku:          item.sku,
+          name:         item.name,
+          category:     item.category?.name ?? null,
+          subcategory:  (item as any).subcategory  ?? null,
+          detailType:   (item as any).detailType   ?? null,
+          unitOfMeasure: item.unitOfMeasure,
+          reelEligible: clf.eligible,
+          rule:         clf.rule,
+          matchedTerm:  clf.matchedTerm,
+        };
+      });
+      res.json({
+        generatedAt: new Date().toISOString(),
+        totalItems:  report.length,
+        eligible:    report.filter(r => r.reelEligible).length,
+        ineligible:  report.filter(r => !r.reelEligible).length,
+        items:       report,
+      });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

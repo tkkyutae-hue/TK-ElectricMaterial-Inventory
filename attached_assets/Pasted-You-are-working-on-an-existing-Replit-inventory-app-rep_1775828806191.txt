@@ -1,0 +1,111 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, or rename historical inventory movement records.
+3. Do NOT run any bulk correction job.
+4. Do NOT rebuild the inventory engine in this task.
+5. Preserve compatibility with existing stored data and existing routes.
+6. This task is for SHARED FOUNDATION only, used by both Admin Mode and Field Mode.
+
+TASK GOAL
+Create a shared compatibility-safe foundation layer for movement display, validation, and reusable visual primitives, without changing historical data.
+
+SCOPE
+Focus only on shared logic and shared UI building blocks that can be used in both Admin Mode and Field Mode.
+
+DO NOT TOUCH
+- Existing inventory counts
+- Existing movement rows
+- Existing DB semantics
+- Historical project or location balances
+- Legacy stored movement type values
+
+PART 1 — SHARED INVENTORY HELPERS
+
+Create lightweight shared helper files if appropriate, such as:
+- server/services/inventory/movement-validation.ts
+- server/services/inventory/movement-display.ts
+- server/services/inventory/movement-formatters.ts
+- server/services/inventory/stock-rules.ts
+- client/src/features/inventory/utils/movementDisplay.ts
+- client/src/features/inventory/utils/movementLabels.ts
+
+Requirements:
+1. Add a compatibility-safe movement interpretation helper for UI display.
+2. It must support legacy movement types without modifying DB values.
+3. It must gracefully handle unknown movement types.
+4. It should return display-oriented metadata, such as:
+   - label
+   - direction: in | out | neutral
+   - affectsStock
+   - colorVariant
+   - iconName
+
+Example intent:
+- receive => positive / inbound
+- issue => negative / outbound
+- return => positive / inbound
+- transfer => neutral
+- adjust => warning / neutral or stock-affecting depending on current app rules
+- unknown => muted fallback
+
+PART 2 — FORWARD-ONLY VALIDATION
+
+Add validation helpers ONLY for NEW movement creation and NEW draft confirmation.
+Do NOT retroactively validate old records.
+
+Validation should safely check things like:
+- quantity > 0
+- movementType required
+- itemId required
+- same source/destination location not allowed for transfer
+- malformed numeric input rejected cleanly
+- project-linked movement requires projectId when appropriate
+- missing required fields return clear messages
+
+Important:
+- Use existing storage logic underneath
+- Do not recalculate any historical quantity
+- Do not rewrite old data
+- Keep validation forward-only
+
+PART 3 — SHARED UI PRIMITIVES
+
+Create lightweight shared UI primitives if appropriate:
+- StatusBadge
+- MovementTypeBadge
+- SectionCard
+- PageHeader
+- EmptyState
+- FilterBar
+- StatCard
+
+Requirements:
+1. Keep a clean industrial/professional inventory-app style.
+2. Centralize badge variants instead of duplicating one-off styles.
+3. Ensure movement color rules are consistent across the app.
+4. Prioritize readability over decoration.
+
+Suggested visual rules:
+- receive = green-style
+- issue = red-style
+- return = green-style
+- transfer = blue-style
+- adjust = amber-style
+- unknown = muted gray-style
+
+PART 4 — IMPLEMENTATION CONSTRAINTS
+
+1. Inspect the repo first and reuse existing patterns where reasonable.
+2. Avoid broad risky edits.
+3. Do not refactor giant pages yet unless strictly needed for shared component extraction.
+4. Keep route contracts compatible.
+5. Preserve current app behavior.
+
+OUTPUT FORMAT
+Provide:
+1. Summary of shared foundation changes
+2. Files created
+3. Files modified
+4. Notes on what was intentionally left untouched to preserve existing inventory history

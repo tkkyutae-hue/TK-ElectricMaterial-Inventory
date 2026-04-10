@@ -1,0 +1,114 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, or rename historical inventory movement records.
+3. Do NOT run any bulk correction job.
+4. Preserve compatibility with existing stored data and existing routes.
+5. This task is FIELD MODE focused only.
+
+TASK GOAL
+Refactor and improve the Field Mode inventory and transaction experience to be faster, cleaner, and easier to use in real-world field operations, without changing historical inventory data.
+
+PRIMARY TARGET
+Refactor:
+- client/src/pages/field/FieldTransactions.tsx
+
+Also refactor any directly related field-mode components if needed, but keep scope controlled.
+
+DO NOT TOUCH
+- Historical movement rows
+- Existing quantityOnHand values
+- Existing balances
+- Existing DB semantics
+- Admin-heavy pages unless required by shared component reuse
+
+FIELD MODE PRIORITIES
+1. Fast scanning
+2. Fast input
+3. Clear movement type visibility
+4. Clear quantity visibility
+5. Minimal click flow
+6. Mobile/touch friendliness where applicable
+
+PART 1 — BREAK DOWN FieldTransactions.tsx
+
+Refactor the file into smaller reusable components if appropriate, such as:
+- TransactionSearchBar
+- TransactionFilterBar
+- TransactionList
+- TransactionCard
+- TransactionRow
+- TransactionTypeBadge
+- EmptyTransactionState
+
+Requirements:
+1. Preserve current behavior and existing data compatibility.
+2. Improve readability and reduce giant JSX blocks.
+3. Make transaction scanning easier.
+
+PART 2 — IMPROVE VISUAL HIERARCHY
+
+For each transaction/item display, prioritize the information in this order:
+1. item name
+2. size
+3. quantity
+4. location
+5. movement type
+6. timestamp
+7. notes or secondary metadata
+
+Requirements:
+- Quantity must stand out clearly.
+- Movement type should be instantly scannable.
+- Location should be easy to spot.
+- Avoid overcrowding the card layout.
+
+PART 3 — FILTERS / SEARCH
+
+Improve field-friendly filtering and search without overloading the UI.
+
+Add or improve support where appropriate:
+- keyword search by item name or SKU
+- movement type filter
+- location filter
+- date filter or recent-only view
+- newest/oldest sorting
+
+Requirements:
+1. Keep filters easy to scan.
+2. Avoid dense admin-style control overload.
+3. Prefer quick-access filters.
+
+PART 4 — IMAGE FALLBACK CLEANUP
+
+Replace any direct DOM manipulation such as innerHTML-based image fallback behavior with React state-based rendering.
+
+Requirements:
+- No direct DOM injection patterns
+- Clean React fallback rendering
+- Preserve current visual intent
+
+PART 5 — USE SHARED FOUNDATION
+
+Reuse the shared helpers/components created in the foundation step if available:
+- MovementTypeBadge
+- StatusBadge
+- SectionCard
+- EmptyState
+- movement display helper
+- movement validation helpers where relevant
+
+PART 6 — CONSTRAINTS
+
+1. Do not change the meaning of historical records.
+2. Do not rebuild backend movement logic in this task.
+3. Keep the field experience simple and fast.
+4. Avoid admin-style dense layouts in field mode.
+
+OUTPUT FORMAT
+Provide:
+1. Summary of field-mode improvements
+2. Files created
+3. Files modified
+4. Notes on what was intentionally left untouched to preserve inventory history

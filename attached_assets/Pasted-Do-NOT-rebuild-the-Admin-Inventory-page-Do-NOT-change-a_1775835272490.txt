@@ -1,0 +1,71 @@
+Do NOT rebuild the Admin Inventory page.
+Do NOT change any API calls, routing behavior, pagination logic, filtering logic, or data-fetching logic.
+Add only a right-side quick view drawer feature to the Admin Inventory page.
+
+Files to modify:
+- client/src/pages/Inventory.tsx
+- If needed, a very small related reusable subcomponent may be created, but keep scope minimal.
+
+IMPORTANT
+- Do NOT require a shared InventoryTable extraction for this task.
+- Work with the current Inventory page structure as it exists now.
+- Keep this feature non-destructive and self-contained.
+
+────────────────
+TASK: Admin Item Quick View Drawer
+────────────────
+
+Add a right-side drawer panel to the Admin Inventory page that shows a quick summary of an item without navigating away.
+
+TRIGGER BEHAVIOR
+- Clicking anywhere on an inventory table row opens the quick drawer for that item
+- Clicking specifically on the item name link should still navigate to /inventory/:id as before
+- Prevent row click from also opening the drawer when clicking the name link (use stopPropagation)
+
+STATE
+- Add a previewItem state variable using the existing item type
+- Default value: null
+- Opening the drawer sets previewItem
+- Closing the drawer sets previewItem back to null
+
+DRAWER CONTENT
+Use the Admin light theme and existing shared components if available.
+
+Show:
+- Header:
+  - item name
+  - SKU
+  - close button
+- Existing status badge component
+- A 2×3 stat grid with:
+  - Quantity on Hand
+  - Unit of Measure
+  - Size
+  - Category
+  - Location
+  - Supplier
+- A section for:
+  - Reorder Point
+  - Minimum Stock
+- Footer buttons:
+  1. "Edit Item" → navigate to /inventory/<item.id>
+  2. "Log Movement" → navigate to the most appropriate existing admin movement entry path in this repo
+
+DRAWER IMPLEMENTATION
+- Use the existing shadcn Sheet component already in the project if available
+- Use SheetContent with side="right"
+- Match existing admin light styling
+
+CONSTRAINTS
+- Do NOT change table columns
+- Do NOT change sorting
+- Do NOT change pagination
+- Do NOT change item fetching
+- Do NOT extract a shared InventoryTable in this task
+- Keep changes minimal and compatibility-safe
+
+OUTPUT
+1. Summary of quick drawer feature
+2. Files modified
+3. Any tiny helper files created
+4. Notes on what was intentionally untouched

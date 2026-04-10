@@ -7,7 +7,8 @@ import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRi
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link } from "wouter";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryGradient } from "@/lib/categoryUtils";
@@ -87,9 +88,11 @@ export default function Inventory() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [exporting, setExporting] = useState(false);
+  const [previewItem, setPreviewItem] = useState<any>(null);
 
   const { isAdminRole } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   async function handleExportXlsx() {
     setExporting(true);
@@ -375,8 +378,9 @@ export default function Inventory() {
                 pageItems.map((item) => (
                   <tr
                     key={item.id}
-                    className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                    className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors cursor-pointer ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                     data-testid={`row-item-${item.id}`}
+                    onClick={() => setPreviewItem(item)}
                   >
                     {/* SKU */}
                     <td className="px-3 py-3 align-middle">
@@ -397,7 +401,7 @@ export default function Inventory() {
                       <span className="text-xs font-medium text-slate-700 whitespace-nowrap">{(item as any).sizeLabel || "—"}</span>
                     </td>
                     {/* Item */}
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
                       <Link
                         href={`/inventory/${item.id}`}
                         className="text-sm font-semibold text-slate-900 hover:text-brand-600 hover:underline transition-colors leading-snug"
@@ -492,6 +496,94 @@ export default function Inventory() {
           )}
         </div>
       </div>
+
+      {/* ── Quick View Drawer ── */}
+      <Sheet open={!!previewItem} onOpenChange={open => { if (!open) setPreviewItem(null); }}>
+        <SheetContent
+          side="right"
+          className="w-[400px] sm:w-[440px] p-0 flex flex-col gap-0 overflow-y-auto"
+          data-testid="inventory-quick-drawer"
+        >
+          {previewItem && (
+            <>
+              {/* Header */}
+              <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <div className="min-w-0 flex-1 pr-3">
+                  <h2 className="text-base font-bold text-slate-900 leading-snug truncate" data-testid="drawer-item-name">
+                    {previewItem.name}
+                  </h2>
+                  <p className="text-[11px] font-mono text-slate-400 mt-0.5" data-testid="drawer-item-sku">
+                    {previewItem.sku}
+                  </p>
+                </div>
+                <div className="flex-shrink-0 pr-8">
+                  <ItemStatusBadge status={previewItem.status} />
+                </div>
+              </div>
+
+              {/* Photo */}
+              {previewItem.imageUrl && (
+                <div className="mx-5 mt-4 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 h-36 flex items-center justify-center">
+                  <img
+                    src={previewItem.imageUrl}
+                    alt={previewItem.name}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                </div>
+              )}
+
+              {/* 2×3 stat grid */}
+              <div className="px-5 mt-4 grid grid-cols-2 gap-2.5">
+                {[
+                  { label: "Qty on Hand",     value: previewItem.quantityOnHand?.toLocaleString() ?? "—", testid: "drawer-qty" },
+                  { label: "Unit of Measure", value: previewItem.unitOfMeasure || "—",                    testid: "drawer-uom" },
+                  { label: "Size",            value: previewItem.sizeLabel || "—",                        testid: "drawer-size" },
+                  { label: "Category",        value: previewItem.category?.name || "—",                   testid: "drawer-category" },
+                  { label: "Location",        value: previewItem.location?.name || "—",                   testid: "drawer-location" },
+                  { label: "Supplier",        value: previewItem.supplier?.name || "—",                   testid: "drawer-supplier" },
+                ].map(({ label, value, testid }) => (
+                  <div key={label} className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                    <p className="text-sm font-semibold text-slate-800 truncate" data-testid={testid}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reorder section */}
+              <div className="px-5 mt-3 grid grid-cols-2 gap-2.5">
+                {[
+                  { label: "Reorder Point", value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-reorder" },
+                  { label: "Min Stock",     value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-minstock" },
+                ].map(({ label, value, testid }) => (
+                  <div key={label} className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+                    <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-1">{label}</p>
+                    <p className="text-sm font-semibold text-amber-800 truncate" data-testid={testid}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer actions */}
+              <div className="mt-auto px-5 py-4 border-t border-slate-100 flex gap-3 sticky bottom-0 bg-white">
+                <Button
+                  className="flex-1 bg-brand-700 hover:bg-brand-800 text-white"
+                  onClick={() => navigate(`/inventory/${previewItem.id}`)}
+                  data-testid="drawer-btn-edit-item"
+                >
+                  Edit Item
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50"
+                  onClick={() => navigate(`/transactions`)}
+                  data-testid="drawer-btn-log-movement"
+                >
+                  Log Movement
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

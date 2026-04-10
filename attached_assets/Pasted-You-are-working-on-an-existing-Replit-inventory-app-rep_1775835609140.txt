@@ -1,0 +1,86 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records in stored data.
+3. Do NOT run any bulk correction or migration job.
+4. Preserve compatibility with existing stored data, route contracts, and current app behavior.
+5. This task is focused ONLY on:
+   client/src/components/MovementForm.tsx
+
+TASK GOAL
+Refactor MovementForm.tsx into smaller responsibility-based sections and wire in forward-only validation for NEW submissions, without changing historical inventory data.
+
+IMPORTANT
+- Shared movement display / validation helpers already exist in the repo
+- Reuse them instead of creating duplicates
+- Do NOT rebuild the inventory engine
+- Do NOT change legacy movement meanings
+
+────────────────
+PART 1 — RESPONSIBILITY-BASED DECOMPOSITION
+────────────────
+Break MovementForm.tsx into focused sections or subcomponents where appropriate, such as:
+- MovementTypeSelector
+- ItemSelector
+- QuantityInputSection
+- LocationSelectorSection
+- ProjectSelectorSection
+- MovementNotesSection
+- MovementSummaryPanel
+- MovementSubmitBar
+
+Requirements:
+- Prefer extracting focused subcomponents with clear responsibilities
+- Do NOT simply move one giant JSX block into another giant file
+- Reduce file complexity meaningfully
+- Preserve current submit behavior and payload compatibility as much as possible
+
+────────────────
+PART 2 — WIRE IN EXISTING FORWARD-ONLY VALIDATION
+────────────────
+Use the existing shared validation helper(s) already created in the repo for NEW submissions only.
+
+Validation should clearly handle:
+- quantity <= 0
+- missing itemId
+- missing movementType
+- malformed numeric input
+- invalid transfer source/destination
+- project-required cases when applicable
+
+Requirements:
+- Show field-level errors where reasonable
+- Show global error messages when needed
+- Do NOT retroactively validate old records
+- Do NOT alter historical data
+
+────────────────
+PART 3 — VISUAL CONSISTENCY
+────────────────
+Reuse shared components where appropriate:
+- SectionCard
+- PageHeader
+- shared badge components
+- shared empty/error presentation patterns if available
+
+Requirements:
+- Keep admin density reasonably high
+- Improve scanability
+- Avoid inconsistent one-off styling
+- Do NOT redesign the whole page from scratch
+
+────────────────
+CONSTRAINTS
+────────────────
+- Do NOT modify server routes in this task unless absolutely necessary for existing validation helper wiring
+- If a tiny backend change is necessary, keep it minimal and compatibility-safe
+- Do NOT touch CategoryDetail or ProjectDetail in this task
+- Keep changes scoped to MovementForm and tiny directly related helper wiring only
+
+OUTPUT
+1. Summary of MovementForm refactor
+2. Files created
+3. Files modified
+4. Notes on what was intentionally untouched
+5. Any remaining follow-up recommendations

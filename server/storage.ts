@@ -46,7 +46,16 @@ export interface IStorage {
   updateProject(id: number, project: UpdateProjectRequest): Promise<Project>;
   deleteProject(id: number): Promise<void>;
 
-  getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]>;
+  getItems(filters?: {
+    search?: string;
+    categoryId?: number;
+    locationId?: number;
+    status?: string;
+    sort?: "name" | "sku" | "quantityOnHand" | "status";
+    dir?: "asc" | "desc";
+    page?: number;
+    perPage?: number;
+  }): Promise<{ items: ItemWithRelations[]; total: number }>;
   getItem(id: number): Promise<ItemWithRelations | undefined>;
   createItem(item: CreateItemRequest): Promise<Item>;
   createItemImage(itemId: number, imageUrl: string): Promise<void>;
@@ -326,7 +335,33 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getItems(filters?: { search?: string; categoryId?: number; locationId?: number; status?: string }): Promise<ItemWithRelations[]> {
+  async getItems(filters?: {
+    search?: string;
+    categoryId?: number;
+    locationId?: number;
+    status?: string;
+    sort?: "name" | "sku" | "quantityOnHand" | "status";
+    dir?: "asc" | "desc";
+    page?: number;
+    perPage?: number;
+  }): Promise<{ items: ItemWithRelations[]; total: number }> {
+    const sort    = filters?.sort    ?? "name";
+    const dir     = filters?.dir     ?? "asc";
+    const page    = filters?.page    ?? 1;
+    const perPage = filters?.perPage ?? 25;
+
+    // ── SQL-level WHERE conditions ─────────────────────────────────────────
+    const conditions: any[] = [eq(items.isActive, true)];
+    if (filters?.categoryId) conditions.push(eq(items.categoryId, filters.categoryId));
+    if (filters?.locationId) conditions.push(eq(items.primaryLocationId, filters.locationId));
+
+    // ── SQL-level ORDER BY (for DB columns; status sort handled in memory) ──
+    const sortCol =
+      sort === "sku"           ? items.sku            :
+      sort === "quantityOnHand"? items.quantityOnHand :
+      items.name;
+    const sqlOrder = dir === "desc" ? desc(sortCol) : asc(sortCol);
+
     const results = await db.select({
       item: items,
       category: categories,
@@ -337,11 +372,11 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(categories, eq(items.categoryId, categories.id))
     .leftJoin(locations, eq(items.primaryLocationId, locations.id))
     .leftJoin(suppliers, eq(items.supplierId, suppliers.id))
-    .where(eq(items.isActive, true))
-    .orderBy(asc(items.name));
+    .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+    .orderBy(sqlOrder);
 
     const itemIds = results.map(r => r.item.id);
-    const allImages = itemIds.length > 0 
+    const allImages = itemIds.length > 0
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
@@ -356,10 +391,20 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    // Override quantityOnHand with live reel sum for reel-tracked items
+    // ── Reel qty override ─────────────────────────────────────────────────
     const reelMap = await this.liveReelQtyMap(itemIds);
     mapped = this.applyReelQty(mapped, reelMap) as typeof mapped;
 
+    // ── Compute status on every row ───────────────────────────────────────
+    mapped = mapped.map(i => {
+      let status = "in_stock";
+      if ((i as any).statusOverride === "ORDERED") status = "ordered";
+      else if (i.quantityOnHand === 0) status = "out_of_stock";
+      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
+      return { ...i, status };
+    });
+
+    // ── In-memory search filter (with relevance scoring) ──────────────────
     if (filters?.search) {
       const tokens = filters.search.toLowerCase().split(/\s+/).filter(t => t.length > 0);
       mapped = mapped.filter(i => {
@@ -376,11 +421,11 @@ export class DatabaseStorage implements IStorage {
       });
 
       const nameScore = (i: any) => {
-        const nameLower = (i.name || '').toLowerCase();
-        const sizeLabel = ((i as any).sizeLabel || '').toLowerCase();
-        const fullName = `${nameLower} ${sizeLabel}`.trim();
-        const skuLower = (i.sku || '').toLowerCase();
-        const baseLower = ((i as any).baseItemName || '').toLowerCase();
+        const nameLower  = (i.name || '').toLowerCase();
+        const sizeLabel  = (i.sizeLabel || '').toLowerCase();
+        const fullName   = `${nameLower} ${sizeLabel}`.trim();
+        const skuLower   = (i.sku || '').toLowerCase();
+        const baseLower  = (i.baseItemName || '').toLowerCase();
         let score = 0;
         for (const token of tokens) {
           if (fullName.includes(token)) score += 4;
@@ -396,31 +441,39 @@ export class DatabaseStorage implements IStorage {
         return (a.name || '').localeCompare(b.name || '');
       });
     }
-    if (filters?.categoryId) {
-      mapped = mapped.filter(i => i.categoryId === filters.categoryId);
-    }
-    if (filters?.locationId) {
-      mapped = mapped.filter(i => i.primaryLocationId === filters.locationId);
-    }
+
+    // ── Status filter (applied after status is computed) ──────────────────
     if (filters?.status) {
       if (filters.status === 'low_stock') {
-        mapped = mapped.filter(i => i.quantityOnHand > 0 && i.quantityOnHand <= i.minimumStock);
+        mapped = mapped.filter(i => i.status === 'low_stock');
       } else if (filters.status === 'out_of_stock') {
-        mapped = mapped.filter(i => i.quantityOnHand === 0);
+        mapped = mapped.filter(i => i.status === 'out_of_stock');
       } else if (filters.status === 'in_stock') {
-        mapped = mapped.filter(i => i.quantityOnHand > i.minimumStock);
+        mapped = mapped.filter(i => i.status === 'in_stock');
       } else if (filters.status === 'ordered') {
-        mapped = mapped.filter(i => i.statusOverride === 'ORDERED');
+        mapped = mapped.filter(i => i.status === 'ordered');
       }
     }
 
-    return mapped.map(i => {
-      let status = "in_stock";
-      if (i.statusOverride === "ORDERED") status = "ordered";
-      else if (i.quantityOnHand === 0) status = "out_of_stock";
-      else if (i.quantityOnHand <= i.minimumStock) status = "low_stock";
-      return { ...i, status };
-    });
+    // ── In-memory sort for status column (computed field) ─────────────────
+    if (sort === "status" && !filters?.search) {
+      const ORDER = { out_of_stock: 0, low_stock: 1, ordered: 2, in_stock: 3 };
+      mapped = mapped.sort((a, b) => {
+        const av = ORDER[(a as any).status as keyof typeof ORDER] ?? 99;
+        const bv = ORDER[(b as any).status as keyof typeof ORDER] ?? 99;
+        return dir === "asc" ? av - bv : bv - av;
+      });
+    }
+
+    // ── Total count (after all in-memory filters) ──────────────────────────
+    const total = mapped.length;
+
+    // ── SQL-level LIMIT / OFFSET — applied via in-memory slice ────────────
+    // (Pagination must come after in-memory search/status filters)
+    const start     = (page - 1) * perPage;
+    const pageItems = mapped.slice(start, start + perPage);
+
+    return { items: pageItems, total };
   }
 
   async getItem(id: number): Promise<ItemWithRelations | undefined> {

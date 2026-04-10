@@ -71,7 +71,21 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         {/* Stock status strip */}
         <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-100">
           <span className="text-[11px] text-slate-500">{cat.skuCount} SKUs</span>
-          <span className="text-[11px] text-slate-500">{cat.totalQuantity.toLocaleString()} units</span>
+          <div className="flex items-center gap-1">
+            {cat.outOfStockCount > 0 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 leading-none">
+                {cat.outOfStockCount} OUT
+              </span>
+            )}
+            {cat.lowStockCount > 0 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 leading-none">
+                {cat.lowStockCount} LOW
+              </span>
+            )}
+            {cat.outOfStockCount === 0 && cat.lowStockCount === 0 && (
+              <span className="text-[11px] text-slate-500">{cat.totalQuantity.toLocaleString()} units</span>
+            )}
+          </div>
         </div>
       </div>
     </Link>
@@ -591,7 +605,7 @@ export default function Inventory() {
               <div className="px-5 mt-3 grid grid-cols-2 gap-2.5">
                 {[
                   { label: "Reorder Point", value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-reorder" },
-                  { label: "Min Stock",     value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-minstock" },
+                  { label: "Min Stock",     value: previewItem.minimumStock != null ? `${previewItem.minimumStock} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-minstock" },
                 ].map(({ label, value, testid }) => (
                   <div key={label} className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
                     <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-1">{label}</p>
@@ -612,7 +626,7 @@ export default function Inventory() {
                 <Button
                   variant="outline"
                   className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50"
-                  onClick={() => navigate(`/transactions`)}
+                  onClick={() => navigate(`/inventory/${previewItem.id}`)}
                   data-testid="drawer-btn-log-movement"
                 >
                   Log Movement

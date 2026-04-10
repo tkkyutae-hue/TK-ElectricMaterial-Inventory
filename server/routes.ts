@@ -278,12 +278,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Items ──────────────────────────────────────────────────────────────────
   app.get("/api/items", isAuthenticated, async (req, res) => {
-    const search = req.query.search as string;
+    const search     = req.query.search as string | undefined;
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
     const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;
-    const status = req.query.status as string;
+    const status     = req.query.status as string | undefined;
 
-    const pageParam = req.query.page !== undefined ? Number(req.query.page) : undefined;
+    const pageParam = req.query.page !== undefined ? Math.max(1, Number(req.query.page)) : undefined;
     const perPage   = req.query.perPage ? Math.max(1, Number(req.query.perPage)) : 25;
 
     const VALID_SORTS = ["name", "sku", "quantityOnHand", "status"] as const;
@@ -295,28 +295,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const sort: SortKey = VALID_SORTS.includes(rawSort as SortKey) ? (rawSort as SortKey) : "name";
     const dir:  Dir     = VALID_DIRS.includes(rawDir   as Dir)     ? (rawDir   as Dir)     : "asc";
 
-    const allItems = await storage.getItems({ search, categoryId, locationId, status });
-
-    if (pageParam === undefined) {
-      return res.json(allItems);
-    }
-
-    const sorted = [...allItems].sort((a: any, b: any) => {
-      let av: any, bv: any;
-      switch (sort) {
-        case "sku":             av = a.sku            ?? ""; bv = b.sku            ?? ""; break;
-        case "quantityOnHand":  av = a.quantityOnHand ?? 0;  bv = b.quantityOnHand ?? 0;  break;
-        case "status":          av = a.status         ?? ""; bv = b.status         ?? ""; break;
-        default:                av = a.name           ?? ""; bv = b.name           ?? "";
-      }
-      if (typeof av === "number") return dir === "asc" ? av - bv : bv - av;
-      return dir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    const result = await storage.getItems({
+      search, categoryId, locationId, status,
+      sort, dir,
+      page: pageParam ?? 1,
+      perPage,
     });
 
-    const total = sorted.length;
-    const page  = Math.max(1, pageParam);
-    const start = (page - 1) * perPage;
-    res.json({ items: sorted.slice(start, start + perPage), total });
+    if (pageParam === undefined) {
+      return res.json(result.items);
+    }
+
+    res.json({ items: result.items, total: result.total });
   });
 
   app.get("/api/items/:id", isAuthenticated, async (req, res) => {
@@ -1015,8 +1005,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // 1. Fetch all active categories (sorted)
       const allCategories = await storage.getCategories();
 
-      // 2. Fetch ALL active items with relations
-      const allItems = await storage.getItems();
+      // 2. Fetch ALL active items with relations (no pagination for export)
+      const { items: allItems } = await storage.getItems({ perPage: 999999 });
 
       // 3. Group items by categoryId
       const byCategoryId = new Map<number, typeof allItems>();

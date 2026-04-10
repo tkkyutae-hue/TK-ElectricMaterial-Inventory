@@ -1,0 +1,142 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical inventory movement records.
+3. Do NOT change unrelated business logic.
+4. Preserve compatibility with current app behavior as much as possible.
+5. Keep changes scoped to Admin Inventory behavior and performance.
+
+TASK GOAL
+Fix the remaining Admin Inventory issues:
+- Quick Drawer Min Stock bug
+- Quick Drawer Log Movement route
+- CategoryCard stock alert badges
+- true SQL-level sorting and pagination for /api/items
+
+FILES TO FOCUS ON
+- client/src/pages/Inventory.tsx
+- client/src/hooks/use-items.ts
+- server/routes.ts
+- server/storage.ts
+- any tiny directly related helper file only if truly necessary
+
+IMPORTANT
+- Do NOT rebuild the Inventory page
+- Do NOT touch FieldInventory in this task
+- Do NOT introduce broad refactors
+- Keep the existing Admin Quick Drawer feature intact
+
+==================================================
+PART 1 — FIX QUICK DRAWER BUGS
+==================================================
+
+File:
+- client/src/pages/Inventory.tsx
+
+Fix these issues in the Admin Quick View Drawer:
+
+1. "Min Stock" is currently showing the reorderPoint value.
+   - Change it to use the actual minimumStock field from the item data if that field already exists in the repo / DB shape.
+   - If the drawer currently maps the wrong field, correct the mapping only.
+   - Do not invent a new DB field if one already exists.
+
+2. "Log Movement" button currently routes to /transactions.
+   - Change it to navigate to /inventory/<item.id>
+   - Preserve the existing button layout and drawer behavior.
+
+==================================================
+PART 2 — CATEGORY CARD STOCK ALERT BADGES
+==================================================
+
+File:
+- client/src/pages/Inventory.tsx
+
+In the CategoryCard bottom strip:
+- Keep SKU count on the left
+- Replace the right-side display so it behaves as follows:
+
+Rules:
+- If outOfStockCount > 0, show a small red badge: "{N} OUT"
+- If lowStockCount > 0, show a small amber badge: "{N} LOW"
+- If both outOfStockCount and lowStockCount are > 0, show both badges
+- If both are 0, keep the existing "{totalQuantity} units" display
+
+Requirements:
+- Reuse existing color language already used in the page if possible
+- Keep layout compact and readable
+- Do not redesign the whole card
+
+==================================================
+PART 3 — TRUE SQL-LEVEL SORTING + PAGINATION
+==================================================
+
+Current problem:
+The Admin Inventory page now accepts pagination/sort params, but sorting/pagination is still happening too late in the flow (Node/memory side after fetching too much data).
+Move sorting and pagination down to the DB query level.
+
+Files:
+- client/src/hooks/use-items.ts
+- server/routes.ts
+- server/storage.ts
+- client/src/pages/Inventory.tsx
+
+Requirements:
+
+A. useItems hook
+- Keep the current page, perPage, sort, dir params
+- Keep existing filter params working:
+  - search
+  - status
+  - categoryId
+  - locationId
+- Keep returning:
+  {
+    items: Item[],
+    total: number
+  }
+
+B. /api/items route
+- Keep current query params and response shape
+- Pass pagination and sorting params into storage cleanly
+- Do not sort/slice large arrays in the route layer if avoidable
+
+C. storage layer
+- Update the relevant getItems / admin list query so ORDER BY, LIMIT, and OFFSET happen in SQL
+- Compute total count using the same filters but without LIMIT/OFFSET
+- Whitelist allowed sort keys:
+  - name
+  - sku
+  - quantityOnHand
+  - status
+- Whitelist dir:
+  - asc
+  - desc
+- Fallback safely to name ASC on invalid input
+
+D. Inventory page
+- Keep the current UI behavior
+- Keep current SortableHeader behavior
+- Keep current drawer behavior
+- Remove any remaining client-side slice/sort logic that is now redundant
+
+==================================================
+PART 4 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch Field Mode
+2. Do NOT touch movement history
+3. Do NOT modify stored inventory quantities
+4. Do NOT change unrelated endpoints
+5. Keep changes incremental and compatibility-safe
+6. Preserve current Admin filters and Quick Drawer behavior
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of fixes and performance improvements
+2. Files modified
+3. Notes on how SQL-level sorting/pagination was implemented
+4. Notes on what was intentionally left unchanged

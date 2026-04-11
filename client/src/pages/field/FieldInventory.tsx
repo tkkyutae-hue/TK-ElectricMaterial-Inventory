@@ -764,12 +764,23 @@ export default function FieldInventory() {
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat)}
                   data-testid={`card-category-${cat.id}`}
-                  className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410]"
+                  className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
                   style={{
                     aspectRatio: "16/8",
                     background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
                     border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
                     borderRadius: 10,
+                    transition: "filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLButtonElement;
+                    el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.55), 0 0 14px rgba(45,219,111,0.13)";
+                    if (!isActive) el.style.borderColor = "#2a4030";
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLButtonElement;
+                    el.style.boxShadow = "none";
+                    if (!isActive) el.style.borderColor = "#1e2e21";
                   }}
                 >
                   <div className="absolute inset-0">

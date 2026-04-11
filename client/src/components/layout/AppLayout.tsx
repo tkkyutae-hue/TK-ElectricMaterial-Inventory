@@ -78,7 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-border w-64">
-      <Link href="/" className="px-5 py-4 flex items-center gap-3 border-b border-border hover:bg-brand-50 transition-colors">
+      <Link href="/" className="px-5 py-4 flex items-center gap-3 border-b border-brand-100 hover:bg-brand-50 transition-colors">
         <img
           src={tkLogo}
           alt="TK Electric"
@@ -92,6 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </span>
         </div>
       </Link>
+      <div className="h-px bg-gradient-to-r from-brand-500/50 via-brand-300/25 to-transparent" />
 
       <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (

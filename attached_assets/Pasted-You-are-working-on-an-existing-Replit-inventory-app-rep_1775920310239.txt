@@ -1,0 +1,126 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change business logic, routing, permissions, API behavior, or data behavior.
+2. Do NOT redesign pages from scratch.
+3. Keep this task focused only on Phase C visual refinement items.
+4. Preserve current Admin and Field identities.
+5. Make small, high-confidence visual polish improvements only.
+
+TASK GOAL
+Implement the agreed Phase C visual refinement improvements:
+
+1. Strengthen Admin KPI number visual weight
+2. Add subtle TK Electric brand accents to the Admin sidebar
+3. Add meaningful hover feedback to Field category cards
+4. Add “all clear” visual feedback to Dashboard KPI cards when certain counts are zero
+
+FILES TO FOCUS ON
+Inspect the repo first and then modify only the files actually relevant to these items, likely including:
+- client/src/pages/Dashboard.tsx
+- client/src/pages/Inventory.tsx
+- admin sidebar/navigation file(s)
+- Field category card rendering file(s), likely FieldInventory.tsx or extracted card component(s)
+
+IMPORTANT
+- Do NOT broaden scope into Phase D items
+- Keep current layout and interactions intact
+- Do NOT turn this into a redesign pass
+
+==================================================
+PART 1 — ADMIN KPI NUMBER VISUAL WEIGHT
+==================================================
+
+Find the main Admin KPI/stat card displays (Dashboard and any obvious Admin stat surfaces touched in this phase).
+
+Improve the visual emphasis of the key numbers.
+
+Requirements:
+1. Increase numeric visual weight in a tasteful way
+2. Prefer techniques such as:
+   - tabular-nums
+   - larger display size where appropriate
+   - stronger font weight
+3. Keep labels and supporting text readable
+4. Do NOT make the cards noisy or oversized
+5. Preserve current KPI meaning and layout
+
+==================================================
+PART 2 — ADMIN SIDEBAR BRAND ACCENTS
+==================================================
+
+Find the Admin sidebar/navigation shell.
+
+Add subtle TK Electric brand accents such as:
+- a thin green accent line
+- a subtle divider/accent under the logo/title area
+- another similarly restrained brand touch
+
+Requirements:
+1. Keep it subtle and professional
+2. Do NOT make Admin look like Field Mode
+3. Preserve the light Admin identity
+4. Use the existing brand accent language already present elsewhere in the app where appropriate
+
+==================================================
+PART 3 — FIELD CATEGORY CARD HOVER FEEDBACK
+==================================================
+
+Find the Field category card UI.
+
+Improve hover/interaction feedback so the hover transition has actual visible effect.
+
+Suggested direction:
+- slight brightness increase
+- slight scale change
+- subtle shadow/glow refinement
+
+Requirements:
+1. Keep the current Field dark industrial style
+2. Keep feedback subtle and fast
+3. Do NOT use dramatic animation
+4. Preserve click/tap behavior
+5. Ensure touch/mobile behavior remains unaffected
+
+==================================================
+PART 4 — DASHBOARD KPI ALL-CLEAR FEEDBACK
+==================================================
+
+Find dashboard KPI cards for status values such as out-of-stock / shortage / similar critical counts.
+
+When a critical KPI is zero, provide subtle “all clear” visual feedback.
+
+Examples:
+- green-accent border
+- green number/text emphasis
+- small positive status treatment
+
+Requirements:
+1. Keep it tasteful and restrained
+2. Do NOT change KPI meaning
+3. Do NOT make all zero values look identical if that would be misleading
+4. Preserve overall dashboard layout and density
+
+==================================================
+PART 5 — CONSTRAINTS
+==================================================
+
+1. Do NOT change chart behavior
+2. Do NOT change card click/navigation behavior
+3. Do NOT change inventory logic
+4. Do NOT touch server routes
+5. Keep all changes small and visual
+6. Avoid broad styling sweeps
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of Phase C visual refinements
+2. Files modified
+3. Notes on how KPI number emphasis was improved
+4. Notes on sidebar branding accents added
+5. Notes on Field hover feedback changes
+6. Notes on all-clear KPI treatment
+7. Notes on what was intentionally left unchanged

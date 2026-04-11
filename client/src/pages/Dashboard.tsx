@@ -141,12 +141,16 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href,
   colorClass: string; bgClass: string; subtext?: string; href?: string;
   emphasis?: "danger" | "warning" | "neutral";
 }) {
+  const isAllClear = (emphasis === "danger" || emphasis === "warning") && Number(value) === 0;
+
   const borderClass =
+    isAllClear             ? "border-emerald-200 hover:border-emerald-300" :
     emphasis === "danger"  ? "border-red-200 hover:border-red-300" :
     emphasis === "warning" ? "border-amber-200 hover:border-amber-300" :
     "border-slate-200 hover:border-slate-300";
 
   const valueCls =
+    isAllClear             ? "text-emerald-700" :
     emphasis === "danger"  ? "text-red-700" :
     emphasis === "warning" ? "text-amber-700" :
     "text-slate-900";
@@ -157,14 +161,14 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href,
       data-testid={`kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 rounded-lg ${bgClass}`}>
-          <Icon className={`w-5 h-5 ${colorClass}`} />
+        <div className={`p-2.5 rounded-lg ${isAllClear ? "bg-emerald-50" : bgClass}`}>
+          <Icon className={`w-5 h-5 ${isAllClear ? "text-emerald-600" : colorClass}`} />
         </div>
         {href && <ChevronRight className="w-4 h-4 text-slate-300 mt-1" />}
       </div>
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{title}</p>
-      <p className={`text-2xl font-display font-bold ${valueCls}`}>{value}</p>
-      {subtext && <p className="text-xs text-slate-400 mt-1">{subtext}</p>}
+      <p className={`text-3xl font-display font-bold tabular-nums ${valueCls}`}>{value}</p>
+      {subtext && <p className="text-xs text-slate-400 mt-1">{isAllClear ? "All clear" : subtext}</p>}
     </div>
   );
   if (href) return <Link href={href}><div className="cursor-pointer">{inner}</div></Link>;

@@ -1,0 +1,126 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify historical inventory quantities, movement history, or completed requests.
+2. Do NOT create transactions at request submission time.
+3. Do NOT redesign the whole request system from scratch.
+4. Keep this task focused on closing the request workflow properly and improving request visibility.
+
+TASK GOAL
+Make the request workflow operationally clear and complete by doing all of the following:
+
+1. clarify who can change request statuses
+2. allow warehouse/admin/manager-side preparation flow
+3. create the real issue/transfer transaction only when pickup/completion happens
+4. improve the Requests list/cards so each request clearly shows:
+   - who requested it
+   - which project it is for
+   - from/to context
+   - request type
+   - enough operational context beyond just REQ-0001
+
+BUSINESS RULE TO IMPLEMENT
+The request lifecycle should be:
+
+1. requested
+- created from Field cart
+- NO real inventory transaction yet
+
+2. preparing
+- warehouse/admin/manager side has started preparing materials
+- still NO real inventory transaction yet
+
+3. ready
+- materials are prepared and ready for pickup
+- still NO real inventory transaction yet
+
+4. completed
+- pickup/fulfillment is complete
+- ONLY now create the actual issue/transfer transaction
+- request should link to the created transaction if safely supported
+
+5. cancelled
+- request cancelled
+- no transaction created
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- request routes/handlers
+- request status update flow
+- request list/detail UI
+- any request card component
+- any storage/service layer used by request completion
+- any tiny helper needed for request-to-transaction linkage
+
+PART 1 — ROLE-BASED STATUS CONTROL
+Use the repo’s existing role system and make status changes clear and controlled.
+
+Requirements:
+1. Submitting a request creates `requested`
+2. Only intended higher-permission roles (warehouse/admin/manager according to current repo conventions) can move requests into:
+   - preparing
+   - ready
+   - completed
+   - cancelled
+3. Lower-permission field users should not be able to push warehouse-side statuses if that is not intended
+4. Enforce this on the server, not only in the UI
+
+PART 2 — COMPLETED MUST CREATE THE REAL TRANSACTION
+When a request is completed/picked up:
+- create the correct real inventory transaction based on request type
+- issue requests should create issue movement
+- transfer requests should create transfer movement
+- link the created transaction to the request if the current schema safely supports a request reference
+
+Requirements:
+1. Do NOT create the transaction when Submit Request is clicked
+2. Do NOT create the transaction when status becomes preparing or ready
+3. Create it only on completion/pickup
+4. Prevent duplicate transaction creation if completion is triggered twice
+5. Keep inventory logic compatible and incremental
+
+PART 3 — REQUESTS LIST / CARD METADATA
+Improve each request card/list row so it clearly shows:
+- requester name
+- project name
+- request type (issue / transfer)
+- from location
+- to location
+- created date/time
+- item count
+- current status
+- request number
+
+Requirements:
+1. Request number should remain visible, but must not be the only identifying information
+2. The card should be scannable on mobile
+3. Keep the current Field visual style
+4. Show enough context so users know who requested what, for which project, and where it is going
+
+PART 4 — OPERATIONAL CLARITY IN UI
+Make the UI clear about what stage the request is in.
+
+Examples:
+- requested: waiting for warehouse/admin review
+- preparing: materials are being prepared
+- ready: ready for pickup
+- completed: real inventory transaction recorded
+- cancelled: request closed without fulfillment
+
+If completed and a transaction was created:
+- show completion confirmation or transaction reference if available
+
+PART 5 — SAFETY
+- Do NOT change historical movements
+- Do NOT migrate old requests
+- Do NOT redesign the whole page
+- Keep the implementation scoped and compatibility-safe
+
+OUTPUT
+1. Summary of request workflow completion changes
+2. Files modified
+3. Which roles can change which statuses
+4. When the real transaction is created
+5. How duplicate completion/transaction creation is prevented
+6. Which request metadata fields are now shown
+7. Notes on what was intentionally left unchanged

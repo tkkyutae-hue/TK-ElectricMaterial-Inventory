@@ -526,6 +526,7 @@ export const materialRequests = pgTable("material_requests", {
   id: serial("id").primaryKey(),
   requestNumber: text("request_number").notNull(),
   status: text("status").notNull().default("requested"),
+  requestType: text("request_type").notNull().default("issue"),
   itemsJson: text("items_json").notNull().default("[]"),
   submittedBy: text("submitted_by").references(() => users.id),
   submittedByName: text("submitted_by_name"),
@@ -534,6 +535,7 @@ export const materialRequests = pgTable("material_requests", {
   projectId: integer("project_id").references(() => projects.id),
   requesterName: text("requester_name"),
   requesterRole: text("requester_role"),
+  fulfilledMovementId: integer("fulfilled_movement_id"),
 });
 
 export const insertMaterialRequestSchema = createInsertSchema(materialRequests).omit({

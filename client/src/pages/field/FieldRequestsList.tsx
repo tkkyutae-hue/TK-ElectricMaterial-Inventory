@@ -3,14 +3,17 @@
  *
  * Requests tab — shows submitted material requests from /api/field/requests.
  * Managers/admins see all requests. Staff/viewers see their own.
- * No create/edit actions here — requests originate from the Cart tab.
+ * Admins/managers can advance request status; completion creates a real transaction.
  */
-import { useQuery } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, PackageOpen } from "lucide-react";
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { F } from "@/lib/fieldTokens";
-import type { MaterialRequest } from "@shared/schema";
+import type { MaterialRequest, Project } from "@shared/schema";
 import type { CartItem } from "@/lib/fieldCart";
 
 const FONT_COND  = "'Barlow Condensed', sans-serif";
@@ -48,21 +51,143 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function TypeBadge({ type }: { type: string }) {
+  const { t } = useLanguage();
+  const isTransfer = type === "transfer";
+  const label = isTransfer ? t.reqType_transfer : t.reqType_issue;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      padding: "2px 7px", borderRadius: 5,
+      background: isTransfer ? F.warningBg : "rgba(45,219,111,0.08)",
+      border: `1px solid ${isTransfer ? F.warningBorder : F.accentBorder}`,
+      fontSize: 9, fontWeight: 800, color: isTransfer ? F.warning : F.accent,
+      fontFamily: FONT_COND, letterSpacing: "0.07em", whiteSpace: "nowrap",
+    }}>
+      {label.toUpperCase()}
+    </span>
+  );
+}
+
+// ── Status action buttons (admin/manager only) ────────────────────────────────
+
+const STATUS_NEXT: Record<string, Array<{ status: string; label: (t: any) => string; accent?: boolean; danger?: boolean; completing?: boolean }>> = {
+  requested: [
+    { status: "preparing",  label: t => t.reqStatus_preparing, accent: false },
+    { status: "cancelled",  label: t => t.reqStatus_cancelled,  danger: true  },
+  ],
+  preparing: [
+    { status: "ready",      label: t => t.reqStatus_ready,     accent: true  },
+    { status: "cancelled",  label: t => t.reqStatus_cancelled,  danger: true  },
+  ],
+  ready: [
+    { status: "completed",  label: t => t.reqCompleting,       accent: true, completing: true },
+    { status: "cancelled",  label: t => t.reqStatus_cancelled,  danger: true  },
+  ],
+};
+
+function StatusActions({
+  req,
+  onStatusChanged,
+}: {
+  req: MaterialRequest;
+  onStatusChanged: () => void;
+}) {
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [changing, setChanging] = useState<string | null>(null);
+
+  const actions = STATUS_NEXT[req.status] ?? [];
+  if (!actions.length) return null;
+
+  async function changeStatus(newStatus: string) {
+    setChanging(newStatus);
+    try {
+      await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: newStatus });
+      toast({ title: t.reqStatusUpdated });
+      onStatusChanged();
+    } catch (err: any) {
+      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+    } finally {
+      setChanging(null);
+    }
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 10, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND, letterSpacing: "0.07em", marginBottom: 8 }}>
+        {t.reqChangeStatus.toUpperCase()}
+      </p>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {actions.map(action => {
+          const isChanging = changing === action.status;
+          return (
+            <button
+              key={action.status}
+              type="button"
+              onClick={() => changeStatus(action.status)}
+              disabled={!!changing}
+              data-testid={`btn-status-${action.status}-${req.id}`}
+              style={{
+                padding: "7px 14px", borderRadius: 8,
+                background: action.danger ? F.dangerBg : action.accent ? F.accent : F.surface,
+                border: `1px solid ${action.danger ? F.dangerBorder : action.accent ? F.accent : F.borderStrong}`,
+                color: action.danger ? F.danger : action.accent ? F.accentText : F.textMuted,
+                fontSize: 11, fontWeight: 800, fontFamily: FONT_BEBAS, letterSpacing: "0.07em",
+                cursor: changing ? "default" : "pointer",
+                opacity: changing && !isChanging ? 0.5 : 1,
+                display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s",
+              }}
+            >
+              {isChanging
+                ? <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                : null
+              }
+              {action.label(t)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Request card ──────────────────────────────────────────────────────────────
 
-function RequestCard({ req }: { req: MaterialRequest }) {
+function RequestCard({
+  req,
+  projects,
+  canManage,
+  onStatusChanged,
+}: {
+  req: MaterialRequest;
+  projects: Project[];
+  canManage: boolean;
+  onStatusChanged: () => void;
+}) {
   const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
+
   let items: CartItem[] = [];
   try { items = JSON.parse(req.itemsJson || "[]"); } catch { items = []; }
 
+  const project = req.projectId ? projects.find(p => p.id === req.projectId) : null;
+  const requesterDisplay = req.requesterName || req.submittedByName || null;
+
+  // Unique source locations from items
+  const sourceLocations = Array.from(
+    new Set(items.map(i => i.locationName).filter(Boolean) as string[])
+  );
+
   const submittedAt = req.submittedAt ? new Date(req.submittedAt) : null;
   const dateStr = submittedAt
-    ? submittedAt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    ? submittedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })
     : "—";
   const timeStr = submittedAt
     ? submittedAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
     : "";
+
+  const isFinal = req.status === "completed" || req.status === "cancelled";
 
   return (
     <div
@@ -75,70 +200,101 @@ function RequestCard({ req }: { req: MaterialRequest }) {
         marginBottom: 10,
       }}
     >
-      {/* Card header */}
+      {/* ── Card header (always visible) ── */}
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
         data-testid={`btn-request-expand-${req.id}`}
         style={{
-          width: "100%", padding: "12px 14px",
+          width: "100%", padding: "11px 14px",
           background: "transparent", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+          display: "flex", flexDirection: "column", gap: 6, textAlign: "left",
         }}
       >
-        {/* Request number */}
-        <span style={{
-          fontSize: 13, fontWeight: 800, color: F.accent,
-          fontFamily: FONT_MONO, letterSpacing: "0.05em", flexShrink: 0,
-        }}>
-          {req.requestNumber}
-        </span>
+        {/* Row 1: REQ# + badges + count + date */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{
+            fontSize: 13, fontWeight: 800, color: F.accent,
+            fontFamily: FONT_MONO, letterSpacing: "0.05em", flexShrink: 0,
+          }}>
+            {req.requestNumber}
+          </span>
 
-        {/* Status */}
-        <StatusBadge status={req.status} />
+          <StatusBadge status={req.status} />
+          <TypeBadge type={req.requestType ?? "issue"} />
 
-        <div style={{ flex: 1, minWidth: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }} />
 
-        {/* Item count + date */}
-        <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND, flexShrink: 0 }}>
-          {items.length} {t.reqItems}
-        </span>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
-          <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{dateStr}</span>
-          <span style={{ fontSize: 9, color: F.textMuted, fontFamily: FONT_COND }}>{timeStr}</span>
+          <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND, flexShrink: 0 }}>
+            {items.length} {t.reqItems}
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
+            <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{dateStr}</span>
+            <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND }}>{timeStr}</span>
+          </div>
+          {expanded
+            ? <ChevronUp  style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
+            : <ChevronDown style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
+          }
         </div>
-        {expanded
-          ? <ChevronUp  style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
-          : <ChevronDown style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
-        }
-      </button>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div style={{ borderTop: `1px solid ${F.border}` }}>
-
-          {/* Requester row (manpower-derived) */}
-          {(req.requesterName || req.submittedByName) && (
-            <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{t.requestedBy}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
-                {req.requesterName || req.submittedByName}
-              </span>
+        {/* Row 2: Requester + Project */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {requesterDisplay && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
+              {requesterDisplay}
               {req.requesterRole && (
                 <span style={{
-                  fontSize: 9, fontWeight: 800, color: F.textMuted, fontFamily: FONT_COND,
-                  background: F.surface2, border: `1px solid ${F.borderStrong}`,
-                  borderRadius: 4, padding: "1px 5px", letterSpacing: "0.05em",
+                  marginLeft: 5, fontSize: 9, fontWeight: 800, color: F.textMuted,
+                  fontFamily: FONT_COND, background: F.surface,
+                  border: `1px solid ${F.borderStrong}`, borderRadius: 4, padding: "1px 5px",
+                  letterSpacing: "0.04em",
                 }}>
                   {req.requesterRole}
                 </span>
               )}
-              {req.submittedByName && req.requesterName && req.submittedByName !== req.requesterName && (
-                <>
-                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>· {t.reqSubmittedByLabel}</span>
-                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
-                </>
-              )}
+            </span>
+          )}
+          {project && (
+            <>
+              {requesterDisplay && <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>·</span>}
+              <span style={{ fontSize: 11, color: F.textMuted, fontFamily: FONT_COND }}>
+                {project.name}
+                {project.poNumber ? ` / ${project.poNumber}` : ""}
+              </span>
+            </>
+          )}
+          {!requesterDisplay && !project && (
+            <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>—</span>
+          )}
+        </div>
+      </button>
+
+      {/* ── Expanded detail ── */}
+      {expanded && (
+        <div style={{ borderTop: `1px solid ${F.border}` }}>
+
+          {/* Source locations */}
+          {sourceLocations.length > 0 && (
+            <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{t.reqLocations}:</span>
+              {sourceLocations.map(loc => (
+                <span key={loc} style={{
+                  fontSize: 10, color: F.textMuted, fontFamily: FONT_COND,
+                  background: F.surface, border: `1px solid ${F.borderStrong}`,
+                  borderRadius: 5, padding: "1px 7px",
+                }}>
+                  {loc}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Submitted by (if different from requester) */}
+          {req.submittedByName && req.requesterName && req.submittedByName !== req.requesterName && (
+            <div style={{ padding: "6px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", gap: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{t.reqSubmittedByLabel}:</span>
+              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
             </div>
           )}
 
@@ -171,10 +327,11 @@ function RequestCard({ req }: { req: MaterialRequest }) {
                     }}>
                       {item.itemName}
                     </p>
-                    {(item.sizeLabel || item.sku) && (
-                      <div style={{ display: "flex", gap: 5, marginTop: 1 }}>
+                    {(item.sizeLabel || item.sku || item.locationName) && (
+                      <div style={{ display: "flex", gap: 5, marginTop: 1, flexWrap: "wrap" }}>
                         {item.sizeLabel && <span style={{ fontSize: 9, color: F.textMuted, fontFamily: FONT_COND }}>{item.sizeLabel}</span>}
                         <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND }}>{item.sku}</span>
+                        {item.locationName && <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND }}>@ {item.locationName}</span>}
                       </div>
                     )}
                   </div>
@@ -193,6 +350,27 @@ function RequestCard({ req }: { req: MaterialRequest }) {
           ) : (
             <p style={{ padding: "12px 14px", fontSize: 11, color: F.textDim, fontFamily: FONT_COND }}>{t.noItemsRecorded}</p>
           )}
+
+          {/* Fulfillment reference (completed only) */}
+          {req.status === "completed" && req.fulfilledMovementId != null && (
+            <div style={{
+              padding: "10px 14px", borderTop: `1px solid ${F.border}`,
+              display: "flex", alignItems: "center", gap: 8,
+              background: "rgba(45,219,111,0.04)",
+            }}>
+              <CheckCircle2 style={{ width: 14, height: 14, color: F.accent, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: F.accent, fontFamily: FONT_COND, fontWeight: 700 }}>
+                {t.reqFulfilled} #{req.fulfilledMovementId}
+              </span>
+            </div>
+          )}
+
+          {/* Status controls (admin/manager only, non-final states) */}
+          {canManage && !isFinal && (
+            <div style={{ padding: "12px 14px", borderTop: `1px solid ${F.border}`, background: F.surface }}>
+              <StatusActions req={req} onStatusChanged={onStatusChanged} />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -203,12 +381,24 @@ function RequestCard({ req }: { req: MaterialRequest }) {
 
 export default function FieldRequestsList() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: requests = [], isLoading } = useQuery<MaterialRequest[]>({
+  const canManage = user?.role === "admin" || user?.role === "manager";
+
+  const { data: requests = [], isLoading: reqLoading } = useQuery<MaterialRequest[]>({
     queryKey: ["/api/field/requests"],
   });
 
-  if (isLoading) {
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  function handleStatusChanged() {
+    queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
+  }
+
+  if (reqLoading) {
     return (
       <div style={{ padding: "32px 16px", textAlign: "center" }}>
         <p style={{ fontSize: 12, color: F.textDim, fontFamily: FONT_COND }}>{t.loading}</p>
@@ -236,7 +426,13 @@ export default function FieldRequestsList() {
   return (
     <div style={{ padding: "14px 16px" }}>
       {requests.map(req => (
-        <RequestCard key={req.id} req={req} />
+        <RequestCard
+          key={req.id}
+          req={req}
+          projects={projects}
+          canManage={canManage}
+          onStatusChanged={handleStatusChanged}
+        />
       ))}
     </div>
   );

@@ -1777,7 +1777,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/field/requests", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      const { itemsJson, notes, projectId, requesterName, requesterRole } = req.body;
+      const { itemsJson, notes, projectId, requesterName, requesterRole, requestType } = req.body;
       if (!itemsJson) return res.status(400).json({ message: "itemsJson is required" });
 
       const count = await storage.getMaterialRequests();
@@ -1786,6 +1786,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const created = await storage.createMaterialRequest({
         requestNumber: reqNumber,
         itemsJson,
+        requestType: requestType === "transfer" ? "transfer" : "issue",
         submittedBy: user?.id,
         submittedByName: user?.name || user?.username || "Unknown",
         notes: notes ?? null,
@@ -1801,11 +1802,73 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/field/requests/:id/status", isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user;
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid request ID" });
       const { status } = req.body;
       const valid = ["requested", "preparing", "ready", "completed", "cancelled"];
       if (!valid.includes(status)) return res.status(400).json({ message: "Invalid status" });
+
+      // Role enforcement: only admin/manager can move to warehouse-side statuses
+      const warehouseStatuses = ["preparing", "ready", "completed", "cancelled"];
+      if (warehouseStatuses.includes(status) && user?.role !== "admin" && user?.role !== "manager") {
+        return res.status(403).json({ message: "Only managers and admins can update this status" });
+      }
+
+      // Completion path: create real inventory transactions
+      if (status === "completed") {
+        const request = await storage.getMaterialRequest(id);
+        if (!request) return res.status(404).json({ message: "Request not found" });
+
+        // Prevent duplicate fulfillment
+        if (request.fulfilledMovementId) {
+          return res.status(409).json({ message: "Request already fulfilled — transaction already recorded" });
+        }
+
+        // Parse cart items from the request
+        let cartItems: Array<{ itemId: number; requestedQty: number; itemName?: string }> = [];
+        try { cartItems = JSON.parse(request.itemsJson || "[]"); } catch { cartItems = []; }
+
+        const movementType = request.requestType === "transfer" ? "transfer" : "issue";
+        let firstMovementId: number | null = null;
+
+        for (const cartItem of cartItems) {
+          try {
+            const dbItem = await storage.getItem(cartItem.itemId);
+            if (!dbItem) continue;
+
+            const qty = Number(cartItem.requestedQty);
+            if (!qty || qty <= 0) continue;
+
+            // For issue: deduct from on-hand; for transfer: quantity unchanged
+            const newQty = movementType === "issue"
+              ? dbItem.quantityOnHand - qty
+              : dbItem.quantityOnHand;
+
+            const movement = await storage.createInventoryMovement({
+              itemId: dbItem.id,
+              movementType,
+              quantity: qty,
+              previousQuantity: dbItem.quantityOnHand,
+              newQuantity: newQty,
+              projectId: request.projectId ?? null,
+              referenceType: "material_request",
+              referenceId: String(id),
+              note: `Fulfilled from ${request.requestNumber}${request.requesterName ? ` — ${request.requesterName}` : ""}`,
+              createdBy: user?.id ?? null,
+            });
+
+            if (!firstMovementId) firstMovementId = movement.id;
+          } catch (itemErr: any) {
+            // Log but continue — don't fail the whole request for one item
+            console.warn(`[fulfillRequest] Skipped item ${cartItem.itemId}:`, itemErr?.message);
+          }
+        }
+
+        const fulfilled = await storage.fulfillMaterialRequest(id, firstMovementId ?? 0);
+        return res.json(fulfilled);
+      }
+
       const updated = await storage.updateMaterialRequestStatus(id, status);
       res.json(updated);
     } catch (err: any) {

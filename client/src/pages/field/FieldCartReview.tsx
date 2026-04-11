@@ -387,10 +387,11 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   const queryClient    = useQueryClient();
   const { user }       = useAuth();
 
-  const [notes,      setNotes]      = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [projectId,  setProjectId]  = useState<number | null>(null);
-  const [requester,  setRequester]  = useState<{ name: string; role?: string } | null>(null);
+  const [notes,       setNotes]       = useState("");
+  const [submitting,  setSubmitting]  = useState(false);
+  const [projectId,   setProjectId]   = useState<number | null>(null);
+  const [requester,   setRequester]   = useState<{ name: string; role?: string } | null>(null);
+  const [requestType, setRequestType] = useState<"issue" | "transfer">("issue");
 
   // ── Data fetches ──
   const { data: workers = [] } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
@@ -412,11 +413,13 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         projectId: projectId ?? undefined,
         requesterName: requester?.name ?? null,
         requesterRole: requester?.role ?? null,
+        requestType,
       });
       clearCart();
       setNotes("");
       setProjectId(null);
       setRequester(null);
+      setRequestType("issue");
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
       toast({ title: t.requestSubmitted, description: t.requestSubmittedHint });
       setTimeout(() => onClose?.(), 400);
@@ -550,6 +553,33 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
 
       {/* ── Request details form ── */}
       <div style={{ padding: "14px 16px", borderTop: `1px solid ${F.borderStrong}`, display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* Request Type toggle */}
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND, letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>
+            {t.reqType.toUpperCase()}
+          </label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["issue", "transfer"] as const).map(rt => (
+              <button
+                key={rt}
+                type="button"
+                onClick={() => setRequestType(rt)}
+                data-testid={`btn-reqtype-${rt}`}
+                style={{
+                  flex: 1, padding: "8px 10px", borderRadius: 8,
+                  background: requestType === rt ? F.accent : F.surface2,
+                  border: `1px solid ${requestType === rt ? F.accent : F.borderStrong}`,
+                  color: requestType === rt ? F.accentText : F.textMuted,
+                  fontSize: 12, fontWeight: 800, fontFamily: FONT_BEBAS, letterSpacing: "0.08em",
+                  cursor: "pointer", transition: "all 0.15s",
+                }}
+              >
+                {rt === "issue" ? t.reqType_issue : t.reqType_transfer}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Project (optional) */}
         <div>

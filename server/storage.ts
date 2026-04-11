@@ -160,8 +160,10 @@ export interface IStorage {
   deleteEquipment(id: number): Promise<void>;
 
   getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]>;
-  createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest>;
+  getMaterialRequest(id: number): Promise<MaterialRequest | undefined>;
+  createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest>;
   updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
+  fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2155,7 +2157,12 @@ export class DatabaseStorage implements IStorage {
     return q.orderBy(desc(materialRequests.submittedAt));
   }
 
-  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest> {
+  async getMaterialRequest(id: number): Promise<MaterialRequest | undefined> {
+    const [row] = await db.select().from(materialRequests).where(eq(materialRequests.id, id));
+    return row;
+  }
+
+  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest> {
     const [created] = await db.insert(materialRequests).values(data).returning();
     return created;
   }
@@ -2163,6 +2170,14 @@ export class DatabaseStorage implements IStorage {
   async updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest> {
     const [updated] = await db.update(materialRequests)
       .set({ status })
+      .where(eq(materialRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest> {
+    const [updated] = await db.update(materialRequests)
+      .set({ status: "completed", fulfilledMovementId: movementId })
       .where(eq(materialRequests.id, id))
       .returning();
     return updated;

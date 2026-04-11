@@ -230,6 +230,8 @@ const en = {
   backToInventory:            "Back to Inventory",
   reqNeedItems:               "At least one item with quantity > 0 is required",
   reqCancelConfirm:           "Cancel this request?",
+  reqCancelBody:              "This request will be cancelled and will no longer proceed.",
+  reqKeepRequest:             "Keep Request",
   reqQtyLabel:                "Qty",
 
   // ── MovementForm labels (field mode) ─────────────────────────────────────
@@ -496,6 +498,8 @@ const ko: Translations = {
   backToInventory:            "재고로 돌아가기",
   reqNeedItems:               "수량이 1 이상인 품목이 하나 이상 필요합니다",
   reqCancelConfirm:           "이 요청을 취소하시겠습니까?",
+  reqCancelBody:              "이 요청은 취소되며 더 이상 진행되지 않습니다.",
+  reqKeepRequest:             "요청 유지",
   reqQtyLabel:                "수량",
 
   movementType:       "이동 유형",
@@ -760,6 +764,8 @@ const es: Translations = {
   backToInventory:            "Volver al inventario",
   reqNeedItems:               "Se requiere al menos un artículo con cantidad > 0",
   reqCancelConfirm:           "¿Cancelar esta solicitud?",
+  reqCancelBody:              "Esta solicitud será cancelada y ya no continuará.",
+  reqKeepRequest:             "Mantener solicitud",
   reqQtyLabel:                "Cant.",
 
   movementType:       "Tipo de movimiento",

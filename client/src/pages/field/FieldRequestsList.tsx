@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -497,6 +497,7 @@ function RequestCard({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   let items: CartItem[] = [];
   try { items = JSON.parse(req.itemsJson || "[]"); } catch { items = []; }
@@ -525,7 +526,6 @@ function RequestCard({
   const canSelfCancel = isOwn && req.status === "requested" && userRole !== "viewer";
 
   async function handleSelfCancel() {
-    if (!window.confirm(t.reqCancelConfirm)) return;
     setCancelling(true);
     try {
       await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: "cancelled" });
@@ -547,6 +547,104 @@ function RequestCard({
           onSaved={() => queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] })}
           onClose={() => setEditing(false)}
         />
+      )}
+
+      {/* ── Cancel confirmation dialog ── */}
+      {showCancelConfirm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1300,
+            background: "rgba(0,0,0,0.70)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowCancelConfirm(false); }}
+        >
+          <div style={{
+            width: "100%", maxWidth: 340,
+            background: F.bg,
+            borderRadius: 14,
+            border: `1px solid ${F.dangerBorder}`,
+            padding: "22px 20px 18px",
+            display: "flex", flexDirection: "column", gap: 14,
+          }}>
+            {/* Request number tag */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <XCircle style={{ width: 15, height: 15, color: F.danger, flexShrink: 0 }} />
+              <span style={{
+                fontSize: 11, fontWeight: 800, color: F.textDim,
+                fontFamily: FONT_MONO, letterSpacing: "0.07em",
+              }}>
+                {req.requestNumber}
+              </span>
+            </div>
+
+            {/* Heading */}
+            <p style={{
+              fontSize: 20, fontWeight: 800, color: F.text,
+              fontFamily: FONT_BEBAS, letterSpacing: "0.06em",
+              margin: 0, lineHeight: 1.1,
+            }}>
+              {t.reqCancelConfirm}
+            </p>
+
+            {/* Body */}
+            <p style={{
+              fontSize: 12, color: F.textMuted,
+              fontFamily: FONT_COND, margin: 0, lineHeight: 1.55,
+            }}>
+              {t.reqCancelBody}
+            </p>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 2 }}>
+              <button
+                type="button"
+                data-testid={`btn-confirm-cancel-${req.id}`}
+                disabled={cancelling}
+                onClick={async () => {
+                  setShowCancelConfirm(false);
+                  await handleSelfCancel();
+                }}
+                style={{
+                  width: "100%", padding: "11px",
+                  borderRadius: 9,
+                  background: F.dangerBg,
+                  border: `1px solid ${F.dangerBorder}`,
+                  color: F.danger,
+                  fontSize: 13, fontWeight: 800,
+                  fontFamily: FONT_BEBAS, letterSpacing: "0.08em",
+                  cursor: cancelling ? "default" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {cancelling
+                  ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />
+                  : <X style={{ width: 13, height: 13 }} />
+                }
+                {t.reqSelfCancel.toUpperCase()}
+              </button>
+              <button
+                type="button"
+                data-testid={`btn-keep-request-${req.id}`}
+                disabled={cancelling}
+                onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  width: "100%", padding: "11px",
+                  borderRadius: 9,
+                  background: "transparent",
+                  border: `1px solid ${F.borderStrong}`,
+                  color: F.textMuted,
+                  fontSize: 13, fontWeight: 700,
+                  fontFamily: FONT_COND, letterSpacing: "0.04em",
+                  cursor: "pointer",
+                }}
+              >
+                {t.reqKeepRequest}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div
@@ -776,7 +874,7 @@ function RequestCard({
                 {canSelfCancel && (
                   <button
                     type="button"
-                    onClick={handleSelfCancel}
+                    onClick={() => setShowCancelConfirm(true)}
                     disabled={cancelling}
                     data-testid={`btn-req-cancel-${req.id}`}
                     style={{

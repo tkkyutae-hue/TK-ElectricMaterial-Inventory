@@ -1,0 +1,74 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request permissions, or request business logic.
+2. Do NOT redesign the whole requests page.
+3. Keep this task focused only on replacing the browser-native cancel confirmation UX.
+4. Preserve the current Field visual identity.
+
+TASK GOAL
+Replace the current browser-native confirm dialog used when cancelling a request with an in-app confirmation dialog/modal that matches the app.
+
+CURRENT PROBLEM
+Cancelling a request currently triggers the browser/site default confirm dialog.
+That feels inconsistent, low-quality, and breaks the app experience.
+
+REQUIRED UX
+When the user chooses to cancel a request:
+- show an in-app confirmation dialog/modal instead of browser `window.confirm`
+- keep the confirmation clear and safe
+- preserve the existing cancel logic after confirmation
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field request list/card component(s)
+- any request action handler using browser confirm
+- any shared dialog/modal component area if needed
+- any tiny i18n/label file only if truly needed
+
+PART 1 — REMOVE BROWSER-NATIVE CONFIRM
+Find the current request cancel flow and remove usage of:
+- window.confirm
+- browser-native confirm dialog
+- any embedded-page default confirm behavior
+
+Replace it with an in-app confirmation dialog/modal.
+
+Requirements:
+1. The dialog must match the current Field dark style
+2. Keep the interaction clear and deliberate
+3. Preserve current cancel request behavior after confirmation
+
+PART 2 — DIALOG CONTENT
+The dialog should clearly show:
+- request number
+- a short confirmation message that this request will be cancelled
+- if helpful, a small line explaining that the request will no longer proceed
+
+Recommended buttons:
+- secondary: Keep Request
+- destructive/primary: Cancel Request
+
+Requirements:
+1. Keep wording concise
+2. Reuse existing translation/i18n patterns
+3. Do NOT change the actual cancel business meaning
+
+PART 3 — KEEP CURRENT PERMISSION / STATUS RULES
+Requirements:
+- do NOT change who is allowed to cancel
+- do NOT change request status lifecycle
+- do NOT change server-side cancel behavior
+- only replace the confirmation UX layer
+
+PART 4 — SAFETY
+- Do NOT redesign the whole request card
+- Do NOT broaden scope into edit/prepare/ready/completed workflow
+- Keep the implementation small and compatibility-safe
+
+OUTPUT
+1. Summary of the cancel confirmation UX change
+2. Files modified
+3. Notes on how the in-app dialog works
+4. Confirmation that browser-native confirm was removed
+5. Notes on what was intentionally left unchanged

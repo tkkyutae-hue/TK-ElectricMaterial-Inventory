@@ -4,6 +4,59 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import type { CategoryGroupedItem, EditDraft, NewRowDraft, ClassifyPreview } from "./types";
 import { UOM_OPTIONS, generateAutoSku } from "./types";
 import { LocationCombobox } from "./LocationCombobox";
+import { isReelEligible } from "@/lib/reelEligibility";
+
+// ── Tracking Mode Pills ───────────────────────────────────────────────────────
+type TrackingModeValue = "standard" | "reel" | null;
+
+function TrackingModePills({
+  value,
+  reelAllowed,
+  error,
+  onChange,
+}: {
+  value: TrackingModeValue;
+  reelAllowed: boolean;
+  error?: string;
+  onChange: (mode: TrackingModeValue, err: string) => void;
+}) {
+  const options: { mode: TrackingModeValue; label: string }[] = [
+    { mode: null,       label: "Auto"  },
+    { mode: "standard", label: "Std"   },
+    { mode: "reel",     label: "Reel"  },
+  ];
+  return (
+    <div className="mt-1.5">
+      <div className="flex items-center gap-1">
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mr-0.5">Mode</span>
+        {options.map(({ mode, label }) => {
+          const isActive = (value ?? null) === mode;
+          const isInvalid = mode === "reel" && !reelAllowed;
+          return (
+            <button
+              key={String(mode)}
+              type="button"
+              onClick={() => {
+                const err = mode === "reel" && !reelAllowed
+                  ? "This item type is not eligible for reel tracking"
+                  : "";
+                onChange(mode, err);
+              }}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-all
+                ${isActive && isInvalid ? "bg-red-500 text-white" :
+                  isActive ? "bg-brand-600 text-white" :
+                  "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+              data-testid={`tracking-mode-${String(mode)}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="text-[10px] text-red-500 mt-0.5 leading-tight">{error}</p>}
+    </div>
+  );
+}
 
 // ── InlineEditRow ─────────────────────────────────────────────────────────────
 interface InlineEditRowProps {
@@ -47,6 +100,12 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
       </TableCell>
       <TableCell className="py-2">
         <input value={draft.name} onChange={e => onChange({ name: e.target.value })} className={`${inputCls} min-w-[140px]`} data-testid={`input-edit-name-${item.id}`} />
+        <TrackingModePills
+          value={(draft.trackingMode ?? null) as TrackingModeValue}
+          reelAllowed={isReelEligible({ name: draft.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: draft.unitOfMeasure })}
+          error={draft.trackingModeError}
+          onChange={(mode, err) => onChange({ trackingMode: mode, trackingModeError: err })}
+        />
       </TableCell>
       <TableCell className="py-2 text-center">
         <input type="number" min="0" value={draft.quantityOnHand} onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
@@ -161,6 +220,14 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
   }
   const { label: stLabel, cls: stCls } = statusLabel(draft.quantityOnHand);
 
+  const reelAllowedForNew = isReelEligible({
+    name: draft.name,
+    subcategory: draft.subcategoryOverride || preview?.subcategory || null,
+    detailType: draft.detailTypeOverride || preview?.detailType || null,
+    baseItemName: familyName,
+    unitOfMeasure: draft.unitOfMeasure,
+  });
+
   return (
     <TableRow className="bg-brand-50/40 border-b border-brand-100" data-testid={`row-new-item-${draft.tmpId}`}>
       <TableCell className="pl-5 py-2 align-top">
@@ -253,6 +320,12 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
             )}
           </div>
         )}
+        <TrackingModePills
+          value={(draft.trackingMode ?? null) as TrackingModeValue}
+          reelAllowed={reelAllowedForNew}
+          error={draft.trackingModeError}
+          onChange={(mode, err) => onChange({ trackingMode: mode, trackingModeError: err })}
+        />
       </TableCell>
       <TableCell className="py-2 align-top text-center">
         <input type="number" min="0" value={draft.quantityOnHand}

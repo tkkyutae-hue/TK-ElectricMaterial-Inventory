@@ -95,6 +95,7 @@ export const items = pgTable("items", {
   sizeSortValue: integer("size_sort_value").default(0),
   binLocation: text("bin_location"),
   statusOverride: text("status_override"),
+  trackingMode: text("tracking_mode"),  // "standard" | "reel" | null (null = legacy inferred)
   isActive: boolean("is_active").default(true),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),

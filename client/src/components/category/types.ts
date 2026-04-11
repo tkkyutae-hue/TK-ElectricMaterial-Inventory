@@ -17,6 +17,7 @@ export type CategoryGroupedItem = {
   location?: { id?: number; name: string } | null;
   primaryLocationId?: number | null;
   supplier?: { name: string } | null;
+  trackingMode?: "standard" | "reel" | null;
 };
 
 export type ItemClassDraft = {
@@ -56,6 +57,8 @@ export type EditDraft = {
   primaryLocationId: number | null;
   imageUrl: string | null;
   _deleted?: boolean;
+  trackingMode?: "standard" | "reel" | null;
+  trackingModeError?: string;
 };
 
 export type NewRowDraft = {
@@ -72,6 +75,8 @@ export type NewRowDraft = {
   skuManuallyEdited: boolean;
   subcategoryOverride: string | null;
   detailTypeOverride: string | null;
+  trackingMode?: "standard" | "reel" | null;
+  trackingModeError?: string;
 };
 
 export type ClassifyPreview = {

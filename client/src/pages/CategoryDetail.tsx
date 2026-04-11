@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocations } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 import { getCategoryGradient } from "@/lib/categoryUtils";
+import { isReelEligible } from "@/lib/reelEligibility";
 
 import type {
   CategoryGroupedDetail, CategoryGroupedItem, CategoryItemGroup,
@@ -124,6 +125,8 @@ export default function CategoryDetail() {
         unitOfMeasure: item.unitOfMeasure,
         primaryLocationId: locId,
         imageUrl: item.imageUrl ?? null,
+        trackingMode: item.trackingMode ?? null,
+        trackingModeError: "",
       };
     });
     setEditDrafts(drafts);
@@ -152,6 +155,7 @@ export default function CategoryDetail() {
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
       skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
       subcategoryOverride: null, detailTypeOverride: null,
+      trackingMode: null, trackingModeError: "",
     }]);
   }, []);
 
@@ -172,6 +176,10 @@ export default function CategoryDetail() {
       if (!d) continue;
       if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${item.sku}`, variant: "destructive" }); return; }
       if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Qty must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.trackingModeError) { toast({ title: "Tracking mode error", description: `${item.sku}: ${d.trackingModeError}`, variant: "destructive" }); return; }
+      if (d.trackingMode === "reel" && !isReelEligible({ name: d.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: d.unitOfMeasure })) {
+        toast({ title: "Tracking mode error", description: `${item.sku}: This item type is not eligible for reel tracking`, variant: "destructive" }); return;
+      }
     }
 
     const newSkusSeen = new Set<string>();
@@ -181,6 +189,10 @@ export default function CategoryDetail() {
       if (!row.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${sku}`, variant: "destructive" }); return; }
       if (!row.sizeLabel.trim()) { toast({ title: "Validation error", description: `Size required for ${sku}`, variant: "destructive" }); return; }
       if (allCurrentSkus.has(sku) || newSkusSeen.has(sku)) { toast({ title: "Duplicate SKU", description: `${sku} already exists`, variant: "destructive" }); return; }
+      if (row.trackingModeError) { toast({ title: "Tracking mode error", description: `${sku}: ${row.trackingModeError}`, variant: "destructive" }); return; }
+      if (row.trackingMode === "reel" && !isReelEligible({ name: row.name, subcategory: row.subcategoryOverride || null, detailType: row.detailTypeOverride || null, unitOfMeasure: row.unitOfMeasure })) {
+        toast({ title: "Tracking mode error", description: `${sku}: This item type is not eligible for reel tracking`, variant: "destructive" }); return;
+      }
       newSkusSeen.add(sku);
     }
 
@@ -197,11 +209,12 @@ export default function CategoryDetail() {
         }
         const changed = d.name !== item.name || d.sizeLabel !== (item.sizeLabel ?? "") ||
           d.quantityOnHand !== item.quantityOnHand || d.unitOfMeasure !== item.unitOfMeasure ||
-          d.primaryLocationId !== ((item as any).primaryLocationId ?? null);
+          d.primaryLocationId !== ((item as any).primaryLocationId ?? null) ||
+          (d.trackingMode ?? null) !== (item.trackingMode ?? null);
         if (changed) {
           promises.push(fetch(`/api/items/${item.id}`, {
             method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
-            body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null }),
+            body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null, trackingMode: d.trackingMode ?? null }),
           }));
         }
         if (d.imageUrl !== (item.imageUrl ?? null)) {
@@ -226,6 +239,7 @@ export default function CategoryDetail() {
             primaryLocationId: row.primaryLocationId || null,
             subcategory: row.subcategoryOverride || null,
             detailType: row.detailTypeOverride || null,
+            trackingMode: row.trackingMode ?? null,
             reorderPoint: 0, reorderQuantity: 0, minimumStock: 0, unitCost: "0.00",
           }),
         }));

@@ -5,4 +5,4 @@
  * All classification logic now lives in shared/reelEligibility.ts.
  */
 export type { ReelEligibilityInput, ReelClassification } from "@shared/reelEligibility";
-export { classifyReel, isReelEligible } from "@shared/reelEligibility";
+export { classifyReel, isReelEligible, resolveReelMode } from "@shared/reelEligibility";

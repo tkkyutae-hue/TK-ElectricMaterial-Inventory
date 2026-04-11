@@ -1,0 +1,112 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, or reinterpret historical item records, movement records, or reel records.
+3. Do NOT bulk-update existing items.
+4. Preserve compatibility with current stored data and current app behavior.
+5. This task is ONLY to introduce a forward-looking explicit tracking mode for NEW or newly edited items.
+
+TASK GOAL
+Introduce an explicit `trackingMode` concept so future items can clearly declare whether they are managed as:
+- standard
+- reel
+
+This should reduce long-term dependence on inferred classification only.
+
+IMPORTANT
+- Existing reel eligibility helper logic already exists in the repo
+- That helper should remain as a compatibility fallback for legacy items
+- Do NOT replace the old logic outright in one step
+- This must be forward-compatible and non-destructive
+
+FILES TO FOCUS ON
+Inspect the repo first and modify only the files actually relevant to:
+- item schema/type definitions
+- item create/edit form(s)
+- item save/update routes
+- shared item/reel eligibility logic
+- any tiny helper file needed for compatibility
+
+PART 1 — ADD TRACKING MODE TO ITEM DATA MODEL
+Introduce an explicit item tracking mode field with values:
+- "standard"
+- "reel"
+
+Requirements:
+1. Add the field in the appropriate schema/type/model layer used by the repo.
+2. Choose a compatibility-safe default for legacy items when the field is missing:
+   - treat missing trackingMode as legacy/undefined
+   - do NOT backfill all existing rows in this task
+3. For newly created items, trackingMode should be explicitly saved.
+
+Important:
+- Do NOT mass-migrate old rows
+- Do NOT break existing item reads
+
+PART 2 — ITEM FORM SUPPORT
+In the relevant item create/edit UI:
+- add a clear tracking mode control for manager/admin item management flows
+- allow selecting:
+  - Standard
+  - Reel
+
+Requirements:
+1. Keep the UI simple and admin-facing
+2. Do NOT expose this unnecessarily in worker-facing Field flows
+3. Preserve existing item form behavior otherwise
+4. If reel is selected for a clearly non-eligible category, handle that safely (see Part 4)
+
+PART 3 — USE TRACKING MODE AS PRIMARY SIGNAL FOR NEW ITEMS
+Update shared reel-related logic so that:
+
+For items with explicit trackingMode:
+- trackingMode = "reel" => treat as reel-managed
+- trackingMode = "standard" => treat as standard-managed
+
+For legacy items without trackingMode:
+- fall back to the existing reel eligibility helper / inferred classification logic
+
+This keeps backward compatibility while making new data more explicit.
+
+PART 4 — SAFETY GUARDRAILS
+Do NOT allow obviously invalid combinations to quietly slip through.
+
+If an admin attempts to save:
+- trackingMode = "reel"
+for an item that is clearly non-eligible under the current business rules
+(for example EMT, Rigid, PVC, Cable Tray, accessories/fittings/hardware),
+handle it safely.
+
+Preferred behavior:
+- block the invalid save with a clear validation message
+OR
+- automatically normalize back to standard only if that is already a repo-consistent pattern
+
+Prefer explicit validation with a clear error.
+
+Important:
+- Reuse the existing reel eligibility business rules
+- Do NOT create a second conflicting rule system
+
+PART 5 — BACKWARD COMPATIBILITY
+Requirements:
+1. Existing items without trackingMode must continue to work
+2. Existing UI should continue to display legacy items correctly
+3. Existing reel data must remain untouched
+4. Legacy items should still use inferred classification until explicitly updated or recreated
+
+PART 6 — CONSTRAINTS
+1. Do NOT do a bulk migration in this task
+2. Do NOT modify historical movement or reel records
+3. Do NOT rebuild the item management system
+4. Keep the work incremental and compatibility-safe
+5. Prefer minimal schema + form + helper updates over broad refactors
+
+OUTPUT
+1. Summary of trackingMode support added
+2. Files modified
+3. Files created
+4. How legacy items without trackingMode are handled
+5. How invalid reel selections are blocked
+6. Notes on what was intentionally left unchanged

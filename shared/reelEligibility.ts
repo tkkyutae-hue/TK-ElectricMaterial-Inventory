@@ -217,3 +217,23 @@ export function isReelEligible(
 ): boolean {
   return classifyReel(item).eligible;
 }
+
+/**
+ * resolveReelMode
+ *
+ * Primary signal resolver for reel vs. standard tracking.
+ * - If the item has an explicit trackingMode, that wins.
+ * - Otherwise falls back to the inferred classifyReel logic for legacy items.
+ *
+ * Use this instead of isReelEligible for any new UI/logic that needs
+ * to respect the forward-looking explicit trackingMode field.
+ */
+export function resolveReelMode(
+  item: (ReelEligibilityInput & { trackingMode?: string | null }) | null | undefined,
+): boolean {
+  if (!item) return false;
+  if (item.trackingMode === "reel") return true;
+  if (item.trackingMode === "standard") return false;
+  // Legacy / null trackingMode: fall back to inferred classifier
+  return isReelEligible(item);
+}

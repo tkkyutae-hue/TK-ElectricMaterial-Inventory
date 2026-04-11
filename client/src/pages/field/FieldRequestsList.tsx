@@ -99,17 +99,68 @@ function StatusActions({
 }) {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [changing, setChanging] = useState<string | null>(null);
 
   const actions = STATUS_NEXT[req.status] ?? [];
   if (!actions.length) return null;
 
+  const undoBtnStyle: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 5,
+    padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+    fontSize: 11, fontWeight: 700,
+    fontFamily: "'Barlow Condensed', sans-serif",
+    letterSpacing: "0.05em",
+    background: "rgba(71,130,82,0.18)",
+    border: "1px solid rgba(71,130,82,0.4)",
+    color: "#7de898",
+  };
+
   async function changeStatus(newStatus: string) {
+    const prevStatus = req.status;
+    const isCompleting = newStatus === "completed";
+    const isCancelling = newStatus === "cancelled";
     setChanging(newStatus);
     try {
       await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: newStatus });
-      toast({ title: t.reqStatusUpdated });
       onStatusChanged();
+
+      // No undo for cancel (ambiguous business reversal)
+      if (isCancelling) {
+        toast({ title: t.reqStatusUpdated });
+        return;
+      }
+
+      const { dismiss } = toast({
+        title: isCompleting ? t.reqCompleted : t.reqStatusUpdated,
+        description: (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              data-testid={`toast-undo-status-${req.id}`}
+              onClick={async () => {
+                dismiss();
+                try {
+                  if (isCompleting) {
+                    await apiRequest("POST", `/api/field/requests/${req.id}/undo-complete`);
+                    toast({ title: t.reqCompletionUndone });
+                  } else {
+                    await apiRequest("PATCH", `/api/field/requests/${req.id}/status`, { status: prevStatus });
+                    toast({ title: t.reqStatusUndone });
+                  }
+                  qc.invalidateQueries({ queryKey: ["/api/field/requests"] });
+                } catch (err: any) {
+                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                }
+              }}
+              style={undoBtnStyle}
+            >
+              <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+              {t.undoRequest}
+            </button>
+          </div>
+        ),
+      });
     } catch (err: any) {
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {

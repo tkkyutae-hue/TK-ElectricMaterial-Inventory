@@ -1886,6 +1886,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/field/requests/:id/undo-complete", isAuthenticated, loadCurrentUser, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid request ID" });
+
+      const isManagerPlus = user?.role === "admin" || user?.role === "manager";
+      if (!isManagerPlus) return res.status(403).json({ message: "Only managers and admins can undo completion" });
+
+      const request = await storage.getMaterialRequest(id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+
+      if (request.status !== "completed") {
+        return res.status(409).json({ message: "Undo is no longer available — request is not in completed state" });
+      }
+      if (!request.fulfilledMovementId) {
+        return res.status(409).json({ message: "Undo is not available — no fulfillment movement recorded" });
+      }
+
+      // Find all movements created by this fulfillment
+      const movements = await storage.getMovementsByReference("material_request", String(id));
+      if (movements.length === 0) {
+        return res.status(409).json({ message: "Undo is no longer available — fulfillment movements not found" });
+      }
+
+      // Reverse all movements (restores inventory quantities)
+      const errors: string[] = [];
+      for (const m of movements) {
+        try {
+          await storage.deleteMovement(m.id);
+        } catch (err: any) {
+          errors.push(`Item ${m.itemId}: ${err.message}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(409).json({ message: `Undo blocked — ${errors.join("; ")}` });
+      }
+
+      // Reset request to "ready" and clear the fulfilled marker
+      const restored = await storage.undoMaterialRequestCompletion(id);
+      res.json(restored);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/field/requests/:id/status", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;

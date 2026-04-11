@@ -1,0 +1,179 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT redesign the whole app or request system.
+2. Do NOT change permissions or routing structure unless needed for the requested undo behavior.
+3. Keep this task focused on adding a consistent Undo action framework to appropriate toasts.
+4. Undo must be safe, scoped, and compatibility-safe.
+5. Do NOT add unsafe undo for actions that cannot be reliably reversed.
+
+TASK GOAL
+Add Undo actions to the app’s important success toasts wherever the action can be safely reversed, including request completion where a real inventory transaction is created.
+
+BUSINESS INTENT
+Undo should be available for "just performed" actions when the action can be safely rolled back.
+This includes:
+- cart item removal
+- cart clear
+- request submit
+- request update
+- request cancel
+- request status changes where safe
+- request completion, even when a real movement/transaction was created, as long as the rollback is still safe
+
+IMPORTANT SAFETY RULE
+Do NOT make Undo universal without limits.
+Undo must be allowed only when:
+- the action just happened
+- the action came from the current user/session flow
+- the rollback is well-defined
+- no conflicting downstream action has already happened
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- toast/action helpers
+- Field cart flow
+- request submit/update/cancel flow
+- request status update flow
+- request completion flow
+- movement rollback/delete/undo logic if already present and safe to reuse
+- any tiny helper needed for recent-action snapshots only if truly needed
+
+==================================================
+PART 1 — ADD A SMALL UNDO FRAMEWORK FOR RECENT ACTIONS
+==================================================
+
+Implement a lightweight recent-action undo pattern for toast actions.
+
+Requirements:
+1. Each undoable action should capture a minimal rollback snapshot
+2. Undo should be available only for the most recent action from that flow
+3. Undo should be time-limited if that is already easy/safe to support
+4. Do NOT build a huge generic event-sourcing system
+5. Keep it simple and practical
+
+Typical recent undo state can track:
+- action type
+- target id
+- previous snapshot
+- created request id / movement id if applicable
+- whether undo is still allowed
+
+==================================================
+PART 2 — ADD UNDO TO SAFE TOASTS
+==================================================
+
+Add Undo to the most relevant safe toast flows:
+
+A. Cart item remove
+- undo restores the removed cart line
+
+B. Cart clear
+- undo restores the previous cart snapshot
+
+C. Request submit
+- undo only while request is still `requested`
+- undo safely cancels/removes that just-submitted request according to the repo’s safe model
+- restore the cart contents, requester, project, notes if feasible
+
+D. Request update
+- undo restores the immediately previous request snapshot
+- only while the request is still editable under current rules
+
+E. Request cancel
+- undo restores the request to its immediately previous state only if current lifecycle rules allow it safely
+
+F. Safe status changes without movement
+- requested -> preparing
+- preparing -> ready
+These may support undo if no downstream conflicting update has happened.
+
+==================================================
+PART 3 — ADD UNDO FOR COMPLETED REQUESTS WITH REAL TRANSACTION
+==================================================
+
+This is the most important part.
+
+When a request is completed and the app creates the real issue/transfer movement:
+- show a success toast with Undo
+
+Undo rules for completion:
+1. Undo is allowed only for the just-completed request from the current action flow
+2. Undo is allowed only if the completion created exactly the expected movement for this request
+3. Undo is allowed only if no conflicting downstream action has occurred after completion
+4. If safe, Undo should:
+   - reverse/remove/rollback the created movement using the repo’s safest existing movement undo/delete pattern
+   - restore the request status from `completed` back to `ready`
+   - clear/reset fulfilledMovementId or equivalent fulfilled marker if appropriate
+   - restore inventory state consistently
+5. If undo is no longer safe, show a clear message and block it instead of forcing a dangerous rollback
+
+Preferred state restoration:
+- previous status before completion = `ready`
+- after undo, request returns to `ready`
+
+Important:
+- Do NOT create a second compensating transaction unless that is the repo’s existing safe pattern
+- Prefer the repo’s current safe movement rollback/delete mechanism if one already exists
+- Prevent duplicate undo
+
+==================================================
+PART 4 — SAFETY CHECKS FOR COMPLETE UNDO
+==================================================
+
+Before allowing completion undo, check things like:
+- request is still in completed state
+- request has the linked fulfilled movement id/reference
+- no second fulfillment already happened
+- no later conflicting request state change already happened
+- no other obvious dependent operation makes rollback unsafe
+
+If any safety check fails:
+- do NOT undo
+- show a clear message like:
+  - "Undo is no longer available for this completed request"
+
+==================================================
+PART 5 — TOAST UX
+==================================================
+
+Requirements:
+1. Keep existing dark Field toast styling
+2. Add Undo as a clear action where supported
+3. For actions where navigation is also useful, support both if the current toast system allows it safely
+4. Keep toasts compact and mobile-friendly
+5. Do NOT make every toast noisy
+
+==================================================
+PART 6 — DO NOT ADD UNDO TO UNSAFE CASES
+==================================================
+
+Do NOT add Undo to actions that are not reliably reversible.
+If a flow is unsafe or ambiguous, leave it without Undo and keep a simpler confirmation or navigation action.
+
+Examples that may need caution:
+- actions with downstream side effects already triggered by other users
+- already-finalized history where safe rollback is unclear
+
+==================================================
+PART 7 — KEEP CURRENT ROLE RULES
+==================================================
+
+Requirements:
+- do NOT broaden permissions
+- undo must respect the current role and ownership rules
+- requester undo/edit rights remain limited by current request lifecycle rules
+- manager/admin controls remain intact
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of which toasts now support Undo
+2. Files modified
+3. How recent-action snapshots are tracked
+4. How completion undo works
+5. Which safety checks block completion undo
+6. Which flows intentionally do NOT support Undo
+7. Notes on what was intentionally left unchanged

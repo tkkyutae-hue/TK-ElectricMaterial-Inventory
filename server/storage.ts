@@ -166,6 +166,8 @@ export interface IStorage {
   updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
   fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest>;
   deleteMaterialRequest(id: number): Promise<void>;
+  getMovementsByReference(referenceType: string, referenceId: string): Promise<InventoryMovement[]>;
+  undoMaterialRequestCompletion(id: number): Promise<MaterialRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2195,6 +2197,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMaterialRequest(id: number): Promise<void> {
     await db.delete(materialRequests).where(eq(materialRequests.id, id));
+  }
+
+  async getMovementsByReference(referenceType: string, referenceId: string): Promise<InventoryMovement[]> {
+    return db.select().from(inventoryMovements)
+      .where(and(eq(inventoryMovements.referenceType, referenceType), eq(inventoryMovements.referenceId, referenceId)));
+  }
+
+  async undoMaterialRequestCompletion(id: number): Promise<MaterialRequest> {
+    const [updated] = await db.update(materialRequests)
+      .set({ status: "ready", fulfilledMovementId: null })
+      .where(eq(materialRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 

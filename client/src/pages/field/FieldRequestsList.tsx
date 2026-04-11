@@ -8,7 +8,8 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package } from "lucide-react";
+import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -168,6 +169,7 @@ function EditRequestPanel({
 }) {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [saving, setSaving] = useState(false);
 
   let initialItems: CartItem[] = [];
@@ -206,9 +208,33 @@ function EditRequestPanel({
         requesterRole: requesterRole || null,
         notes: notes || null,
       });
-      toast({ title: t.reqSaved });
       onSaved();
       onClose();
+      const { dismiss } = toast({
+        title: t.reqSaved,
+        description: (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              data-testid="toast-back-to-inventory"
+              onClick={() => { dismiss(); navigate("/field/inventory"); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+                fontSize: 11, fontWeight: 700,
+                fontFamily: "'Barlow Condensed', sans-serif",
+                letterSpacing: "0.05em",
+                background: "rgba(71,130,82,0.18)",
+                border: "1px solid rgba(71,130,82,0.4)",
+                color: "#7de898",
+              }}
+            >
+              <Package style={{ width: 11, height: 11, flexShrink: 0 }} />
+              {t.backToInventory}
+            </button>
+          </div>
+        ),
+      });
     } catch (err: any) {
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {

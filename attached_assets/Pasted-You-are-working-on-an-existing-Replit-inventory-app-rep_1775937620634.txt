@@ -1,0 +1,60 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request permissions, or core request logic.
+2. Do NOT redesign the whole requests page.
+3. Keep this task focused only on improving the post-edit UX for requests.
+4. Preserve the current Field Mode visual identity.
+
+TASK GOAL
+After a requester edits a request successfully, provide a clear option to return to Inventory.
+
+CURRENT PROBLEM
+A user can edit a request, but there is no clear "go back to Inventory" path in the post-edit experience.
+
+REQUIRED UX
+After request edit/save succeeds:
+- provide a clear "Back to Inventory" option
+- do NOT force navigation automatically
+- keep the user in control
+
+PART 1 — ADD BACK TO INVENTORY ACTION AFTER SUCCESSFUL EDIT
+When a request edit succeeds, provide one of these safe UX patterns:
+
+Preferred:
+- success toast with action: "Back to Inventory"
+
+Acceptable:
+- success state / footer action in the edit modal/panel with "Back to Inventory"
+
+Requirements:
+1. Keep the existing save behavior intact
+2. Do NOT automatically close and redirect without user choice
+3. The action should return the user to the Field Inventory page
+4. Keep the current Field visual style
+5. Keep it mobile-friendly
+
+PART 2 — KEEP CURRENT REQUESTS FLOW INTACT
+Requirements:
+- user should still be able to remain on the Requests page after editing if they do nothing
+- this task is only to add an optional return path
+- do NOT change request status rules
+- do NOT change edit permissions
+
+PART 3 — OPTIONAL CLOSE BEHAVIOR
+If the current request edit uses a modal/panel:
+- keep current close behavior intact
+- the new "Back to Inventory" action may also close the modal before navigating if appropriate
+
+PART 4 — SAFETY
+- Do NOT redesign the edit form
+- Do NOT change request edit logic
+- Do NOT change request routing structure beyond safe navigation to Inventory
+- Keep the work minimal and scoped
+
+OUTPUT
+1. Summary of the post-edit Inventory return improvement
+2. Files modified
+3. Where the "Back to Inventory" option appears
+4. How navigation works
+5. Notes on what was intentionally left unchanged

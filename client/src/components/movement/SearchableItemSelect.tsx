@@ -3,12 +3,14 @@ import { createPortal } from "react-dom";
 import { Search, X, ChevronDown, ImageOff } from "lucide-react";
 
 export function SearchableItemSelect({
-  value, onChange, items, dark = false,
+  value, onChange, items, dark = false, isLoading = false, errorMessage = null,
 }: {
   value?: number | null;
   onChange: (id: number) => void;
   items: any[];
   dark?: boolean;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -156,7 +158,15 @@ export function SearchableItemSelect({
           className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
         >
           <div className="overflow-y-auto h-full" style={{ maxHeight: `${6 * 44}px` }}>
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-11">
+                <p style={D ? { fontSize: 12, color: "#527856" } : undefined} className={D ? undefined : "text-sm text-slate-400"}>Loading items…</p>
+              </div>
+            ) : errorMessage ? (
+              <div className="flex items-center justify-center h-11">
+                <p style={D ? { fontSize: 12, color: "#ff5050" } : undefined} className={D ? undefined : "text-sm text-red-500"}>{errorMessage}</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="flex items-center justify-center h-11">
                 <p style={D ? { fontSize: 12, color: "#527856" } : undefined} className={D ? undefined : "text-sm text-slate-400"}>No items found</p>
               </div>

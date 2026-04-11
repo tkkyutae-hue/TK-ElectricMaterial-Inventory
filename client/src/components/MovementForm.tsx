@@ -115,7 +115,7 @@ function makeRow(): ItemRow {
 
 // ── Admin item row (light mode) ───────────────────────────────────────────────
 function AdminItemRow({
-  row, idx, itemCount, items, onUpdate, onRemove,
+  row, idx, itemCount, items, onUpdate, onRemove, isLoading = false, errorMessage = null,
 }: {
   row: ItemRow;
   idx: number;
@@ -123,6 +123,8 @@ function AdminItemRow({
   items: any[];
   onUpdate: (rowId: string, patch: Partial<ItemRow>) => void;
   onRemove: (rowId: string) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
   return (
@@ -137,6 +139,8 @@ function AdminItemRow({
           onChange={(id) => onUpdate(row.rowId, { itemId: id })}
           items={items || []}
           dark={false}
+          isLoading={isLoading}
+          errorMessage={errorMessage}
         />
         {row.errors.itemId && (
           <p className="text-[10px] text-red-500 mt-1 ml-1" data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
@@ -195,7 +199,14 @@ export function MovementForm({
   const movementTypes = getMovementTypes(t as unknown as Record<string, string>);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
-  const { data: items } = useItems();
+  const { data: itemsRaw, isLoading: itemsLoading, isError: itemsIsError } = useItems();
+  // Normalize: /api/items may return Item[] OR { items: Item[], total: number }
+  const items: any[] = Array.isArray(itemsRaw)
+    ? itemsRaw
+    : Array.isArray((itemsRaw as any)?.items)
+      ? (itemsRaw as any).items
+      : [];
+  const itemsErrorMessage = itemsIsError ? "Failed to load items" : null;
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
   const [submitting, setSubmitting] = useState(false);
@@ -219,7 +230,7 @@ export function MovementForm({
   });
 
   useEffect(() => {
-    if (!draftData || !items) return;
+    if (!draftData || itemsLoading) return;
     form.setValue("movementType", draftData.movementType);
     if (draftData.sourceLocationId) form.setValue("sourceLocationId", draftData.sourceLocationId);
     if (draftData.destinationLocationId) form.setValue("destinationLocationId", draftData.destinationLocationId);
@@ -323,7 +334,7 @@ export function MovementForm({
     setDraftSaving(true);
     try {
       const itemsList = validRows.map(row => {
-        const item = items?.find(i => i.id === row.itemId);
+        const item = items.find(i => i.id === row.itemId);
         return {
           itemId: row.itemId,
           itemName: item?.name ?? "",
@@ -584,7 +595,7 @@ export function MovementForm({
           {/* ── Section B: Items ── */}
           {fieldMode ? (
             <div style={{ borderTop: "1px solid #203023", paddingTop: 16 }}>
-              <ItemsSection form={form} itemRows={itemRows} items={items} locations={locations} addRow={addRow} updateRow={updateRow} removeRow={removeRow} fieldMode={true} movType={movType} t={t} />
+              <ItemsSection form={form} itemRows={itemRows} items={items} locations={locations} addRow={addRow} updateRow={updateRow} removeRow={removeRow} fieldMode={true} movType={movType} t={t} isLoading={itemsLoading} errorMessage={itemsErrorMessage} />
             </div>
           ) : (
             <SectionCard
@@ -602,7 +613,7 @@ export function MovementForm({
                 </button>
               }
             >
-              <AdminItemsSection itemRows={itemRows} items={items} updateRow={updateRow} removeRow={removeRow} />
+              <AdminItemsSection itemRows={itemRows} items={items} updateRow={updateRow} removeRow={removeRow} isLoading={itemsLoading} errorMessage={itemsErrorMessage} />
             </SectionCard>
           )}
 
@@ -900,6 +911,7 @@ function LocationProjectSection({
 
 function ItemsSection({
   form, itemRows, items, locations, addRow, updateRow, removeRow, fieldMode, movType, t,
+  isLoading = false, errorMessage = null,
 }: {
   form: any;
   itemRows: ItemRow[];
@@ -911,6 +923,8 @@ function ItemsSection({
   fieldMode: boolean;
   movType: string;
   t: any;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   return (
     <>
@@ -943,6 +957,8 @@ function ItemsSection({
             onUpdate={updateRow}
             onRemove={removeRow}
             movementType={movType}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
           />
         ))}
       </div>
@@ -951,12 +967,14 @@ function ItemsSection({
 }
 
 function AdminItemsSection({
-  itemRows, items, updateRow, removeRow,
+  itemRows, items, updateRow, removeRow, isLoading = false, errorMessage = null,
 }: {
   itemRows: ItemRow[];
   items: any[] | undefined;
   updateRow: (rowId: string, patch: Partial<ItemRow>) => void;
   removeRow: (rowId: string) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   return (
     <div className="space-y-2">
@@ -969,6 +987,8 @@ function AdminItemsSection({
           items={items || []}
           onUpdate={updateRow}
           onRemove={removeRow}
+          isLoading={isLoading}
+          errorMessage={errorMessage}
         />
       ))}
     </div>

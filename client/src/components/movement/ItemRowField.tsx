@@ -397,6 +397,7 @@ function BulkReelEntry({
 // ── Item Row (field mode) ─────────────────────────────────────────────────────
 export function ItemRowField({
   row, idx, itemCount, items, locations, onUpdate, onRemove, movementType,
+  isLoading = false, errorMessage = null,
 }: {
   row: ItemRow;
   idx: number;
@@ -406,6 +407,8 @@ export function ItemRowField({
   onUpdate: (rowId: string, patch: Partial<ItemRow>) => void;
   onRemove: (rowId: string) => void;
   movementType?: string;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) {
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
 
@@ -500,6 +503,8 @@ export function ItemRowField({
             }}
             items={items || []}
             dark={true}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
           />
           {row.errors.itemId && (
             <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>

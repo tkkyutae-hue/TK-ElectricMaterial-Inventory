@@ -1,0 +1,79 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, or business logic.
+2. Do NOT redesign the MovementForm UI.
+3. Do NOT change permissions or routing behavior.
+4. Keep this task focused only on fixing the Field/Admin movement item picker regression where users see "No items found".
+
+TASK GOAL
+Fix the item picker in MovementForm so it reliably shows inventory items for all authenticated users and does not incorrectly show "No items found" while data is still loading or when the API response shape varies.
+
+FILES TO FOCUS ON
+- client/src/components/MovementForm.tsx
+- any tiny directly related hook/helper file only if truly needed
+- do NOT do broad refactors
+
+CURRENT PROBLEM
+The searchable item picker currently shows "No items found" too easily.
+We need to distinguish:
+- loading
+- actual empty result
+- error
+And we need to normalize the items response safely.
+
+PART 1 — NORMALIZE useItems RESPONSE IN MovementForm
+In MovementForm.tsx, do NOT assume the items query data is always a plain array.
+
+Create a safe normalized items variable, for example:
+- if the query returns an array, use it directly
+- if the query returns an object with an `items` array, use that
+- otherwise fall back to []
+
+Use that normalized array everywhere the form passes items into SearchableItemSelect and related item lookups.
+
+This should make the component resilient whether /api/items returns:
+- Item[]
+or
+- { items: Item[], total: number }
+
+PART 2 — ADD PROPER LOADING / EMPTY / ERROR STATES TO SearchableItemSelect
+Update the embedded SearchableItemSelect component inside MovementForm.tsx so it can distinguish:
+- loading
+- empty
+- error
+
+Add optional props such as:
+- isLoading?: boolean
+- errorMessage?: string | null
+
+Behavior:
+- while loading and dropdown is open: show "Loading items..."
+- if there is an error: show a clear message like "Failed to load items"
+- only show "No items found" when loading is finished and the filtered result is actually empty
+
+Do not redesign the component.
+Keep the current look and behavior as much as possible.
+
+PART 3 — PASS QUERY STATE INTO THE PICKER
+From MovementForm, pass:
+- items normalized array
+- items query loading state
+- items query error state/message if available
+
+Apply this to both:
+- field-mode item rows
+- admin-mode item rows
+
+PART 4 — SAFETY
+- Do NOT change movement submission behavior
+- Do NOT change form validation rules
+- Do NOT change API routes
+- Do NOT change inventory logic
+- Keep the fix minimal and compatibility-safe
+
+OUTPUT
+1. Summary of the item picker fix
+2. Files modified
+3. Notes on how response-shape compatibility was handled
+4. Notes on how loading/empty/error states were separated

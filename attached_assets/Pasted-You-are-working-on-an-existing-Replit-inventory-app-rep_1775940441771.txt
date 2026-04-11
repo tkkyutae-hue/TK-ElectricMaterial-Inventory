@@ -1,0 +1,97 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request permissions, routing, or request business logic.
+2. Do NOT redesign the whole Field Inventory / Cart / Request flow.
+3. Keep this task focused only on:
+   - fixing toast layering/visibility after request submit
+   - improving cart quantity input UX
+4. Preserve the current Field Mode dark visual identity.
+
+TASK GOAL
+Fix two UX problems in the Field Inventory cart/request flow:
+
+1. After clicking Submit Request, the success toast currently appears behind the cart sidebar/panel.
+   It must appear clearly above the sidebar/overlay and be fully readable/clickable.
+2. In the cart review panel, quantity must support both:
+   - plus/minus button changes
+   - direct numeric typing
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field Inventory cart review panel/sidebar/sheet
+- toast configuration / toast portal / toaster component
+- cart quantity row component(s)
+- any small shared numeric input helper only if truly needed
+
+PART 1 — FIX TOAST LAYERING AFTER SUBMIT REQUEST
+
+CURRENT PROBLEM
+After a request is submitted, the success toast appears visually behind the cart sidebar/panel/overlay.
+
+REQUIRED RESULT
+The success toast must always render above the cart panel and overlay so the user can clearly see and click:
+- Go to Requests
+- Undo
+or any current toast actions
+
+IMPLEMENTATION REQUIREMENTS
+1. Inspect how the current toast portal/toaster is rendered.
+2. Ensure the toast renders at a top-level layer above the cart sidebar/sheet/overlay.
+3. Fix z-index / portal stacking properly instead of using a hacky one-off patch.
+4. If the current flow keeps the cart panel open after submit, the toast must still appear above it.
+5. If the safest UX is to close the cart panel immediately after successful submit before showing the toast, that is acceptable only if:
+   - cart/request flow still feels smooth
+   - toast actions still work
+   - no useful context is lost
+
+Preferred outcome:
+- toast uses a top-level portal and higher z-index than sheet/sidebar overlays
+- toast is fully visible and clickable on mobile and desktop
+
+PART 2 — CART QUANTITY INPUT SHOULD SUPPORT TYPING
+
+CURRENT PROBLEM
+In the cart review panel, quantity can only be changed with left/right or plus/minus controls.
+Users also need to type the quantity directly.
+
+REQUIRED RESULT
+Each cart item quantity control should support BOTH:
+- clicking minus/plus
+- directly typing a number into an input field
+
+IMPLEMENTATION REQUIREMENTS
+1. Keep the current +/- controls
+2. Add a numeric input field showing the current quantity
+3. Users must be able to click into the quantity and type
+4. Keep the control compact and mobile-friendly
+5. Preserve the current Field visual style
+
+VALIDATION RULES
+1. Quantity must remain numeric
+2. Quantity must be greater than 0
+3. Prevent empty/invalid values from breaking the cart
+4. On blur or confirm, normalize invalid input safely
+5. Do NOT allow negative quantity
+6. If the current cart logic already has min/max or stock-related constraints, preserve them
+
+UX DETAILS
+1. Selecting the field should make editing easy
+2. Typing should immediately or on blur update the cart in a safe way
+3. Do NOT make the row jump or resize awkwardly
+4. Keep the existing item image/name/metadata layout intact
+
+PART 3 — SAFETY
+- Do NOT change request submit logic
+- Do NOT change undo business rules
+- Do NOT change inventory deduction logic
+- Do NOT redesign the cart panel
+- Keep the work scoped and compatibility-safe
+
+OUTPUT
+1. Summary of the toast layering fix
+2. Summary of the quantity input improvement
+3. Files modified
+4. How toast stacking was fixed
+5. How numeric typing was added and validated
+6. Notes on what was intentionally left unchanged

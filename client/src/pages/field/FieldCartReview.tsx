@@ -5,7 +5,7 @@
  * "Submit Request" POSTs to /api/field/requests and clears the cart.
  * No inventory quantities change here.
  */
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
   User, ChevronDown, X as XIcon, Check, ImageOff, Undo2, ClipboardList,
@@ -98,6 +98,47 @@ function QtyButton({
     >
       {children}
     </button>
+  );
+}
+
+// ── QtyInput — editable quantity field with +/- integration ──────────────────
+
+function QtyInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [raw, setRaw] = useState(String(value));
+
+  useEffect(() => {
+    setRaw(String(value));
+  }, [value]);
+
+  const commit = useCallback((str: string) => {
+    const n = parseInt(str, 10);
+    const safe = isNaN(n) || n < 1 ? 1 : n;
+    onChange(safe);
+    setRaw(String(safe));
+  }, [onChange]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={raw}
+      onChange={e => setRaw(e.target.value.replace(/[^0-9]/g, ""))}
+      onBlur={e => commit(e.target.value)}
+      onKeyDown={e => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }}
+      onFocus={e => e.currentTarget.select()}
+      data-testid="qty-input-cart"
+      style={{
+        width: 44, height: 28, textAlign: "center",
+        fontSize: 14, fontWeight: 700, color: F.accent,
+        fontFamily: "monospace",
+        background: F.surface,
+        border: `1px solid ${F.borderStrong}`,
+        borderRadius: 6, outline: "none",
+        padding: 0,
+        WebkitAppearance: "none",
+        MozAppearance: "textfield",
+      } as React.CSSProperties}
+    />
   );
 }
 
@@ -607,13 +648,10 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
               >
                 <Minus style={{ width: 11, height: 11 }} />
               </QtyButton>
-              <span style={{
-                width: 32, textAlign: "center",
-                fontSize: 14, fontWeight: 700, color: F.accent,
-                fontFamily: "monospace",
-              }}>
-                {item.requestedQty}
-              </span>
+              <QtyInput
+                value={item.requestedQty}
+                onChange={q => updateQty(item.itemId, q)}
+              />
               <QtyButton onClick={() => updateQty(item.itemId, item.requestedQty + 1)}>
                 <Plus style={{ width: 11, height: 11 }} />
               </QtyButton>

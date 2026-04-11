@@ -66,9 +66,12 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       {/* ── Top header ── */}
       <header style={{
         position: "relative", zIndex: 50, flexShrink: 0,
-        height: 52,
+        minHeight: 52,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 20px",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingLeft: 20,
+        paddingRight: 20,
+        paddingBottom: 0,
         background: F.bg,
         borderBottom: `1px solid ${F.borderStrong}`,
       }}>
@@ -182,7 +185,13 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         className="relative"
         style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: F.bg }}
       >
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", width: "100%", paddingLeft: 24, paddingRight: 24 }}>
+        <div
+          className="px-4 sm:px-6"
+          style={{
+            flex: 1, display: "flex", flexDirection: "column", width: "100%",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
           {children}
         </div>
       </main>

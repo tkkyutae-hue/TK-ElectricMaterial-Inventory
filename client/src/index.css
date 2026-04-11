@@ -148,6 +148,15 @@ input[type="number"] {
   to   { transform: translateX(0); }
 }
 
+@keyframes fieldPanelSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (max-width: 767px) {
+  .hidden-mobile { display: none !important; }
+}
+
 /* Field filter pill-bar entry animation */
 @keyframes filterFadeDown {
   from { opacity: 0; transform: translateY(-5px); }

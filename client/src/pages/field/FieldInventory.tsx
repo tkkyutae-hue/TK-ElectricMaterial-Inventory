@@ -242,6 +242,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const [, navigate] = useLocation();
   const { isManagerOrAbove, canDoMovements } = useAuth();
   const isReelItem = resolveReelMode(item);
+  const isMobile = useIsMobile();
   const [imgEnlarged, setImgEnlarged] = useState(false);
 
   const { getCartItem, addToCart, removeFromCart } = useFieldCart();
@@ -299,24 +300,42 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         onClick={onClose}
       />
 
-      {/* Panel — right-side drawer */}
+      {/* Panel — bottom sheet on mobile, right-side drawer on desktop */}
       <div
         data-testid="field-item-detail-panel"
         style={{
-          position: "absolute", right: 0, top: 0, bottom: 0,
-          width: "min(420px, 100vw)",
+          position: "absolute",
           background: F.bg,
-          borderLeft: `1px solid ${F.borderStrong}`,
           display: "flex", flexDirection: "column",
-          boxShadow: "-8px 0 48px rgba(0,0,0,0.65)",
           overflowY: "auto",
-          animation: "fieldPanelSlideIn 200ms ease-out both",
+          ...(isMobile ? {
+            bottom: 0, left: 0, right: 0,
+            maxHeight: "92vh",
+            borderRadius: "18px 18px 0 0",
+            borderTop: `1px solid ${F.borderStrong}`,
+            boxShadow: "0 -8px 48px rgba(0,0,0,0.7)",
+            animation: "fieldPanelSlideUp 260ms cubic-bezier(0.32,0.72,0,1) both",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          } : {
+            right: 0, top: 0, bottom: 0,
+            width: "min(420px, 100vw)",
+            borderLeft: `1px solid ${F.borderStrong}`,
+            boxShadow: "-8px 0 48px rgba(0,0,0,0.65)",
+            animation: "fieldPanelSlideIn 200ms ease-out both",
+          }),
         }}
       >
+        {/* Drag handle — mobile only */}
+        {isMobile && (
+          <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px", flexShrink: 0 }}>
+            <div style={{ width: 36, height: 3, borderRadius: 2, background: F.borderStrong }} />
+          </div>
+        )}
+
         {/* ── Header ── */}
         <div style={{
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-          padding: "15px 16px 12px",
+          padding: isMobile ? "10px 16px 12px" : "15px 16px 12px",
           borderBottom: `1px solid ${F.border}`,
           position: "sticky", top: 0, background: F.bg, zIndex: 2,
           gap: 10,
@@ -641,7 +660,8 @@ function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 8500,
         background: "#0d2016",
         borderTop: `1px solid ${F.accentBorder}`,
-        padding: "10px 20px",
+        paddingTop: 10, paddingLeft: 20, paddingRight: 20,
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         boxShadow: "0 -4px 24px rgba(0,0,0,0.55)",
       }}
@@ -996,7 +1016,7 @@ export default function FieldInventory() {
   ], [t]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4 py-4 sm:py-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
@@ -1024,11 +1044,11 @@ export default function FieldInventory() {
           )}
         </div>
         {!categorySummary ? (
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/10", background: "#162019" }} />)}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "4/3", background: "#162019" }} />)}
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {categorySummary.map(cat => {
               const gradient = getCategoryGradient(cat.code);
               const isActive = selectedCatId === cat.id;
@@ -1039,7 +1059,7 @@ export default function FieldInventory() {
                   data-testid={`card-category-${cat.id}`}
                   className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
                   style={{
-                    aspectRatio: "16/8",
+                    aspectRatio: isMobile ? "4/3" : "16/8",
                     background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
                     border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
                     borderRadius: 10,
@@ -1162,60 +1182,106 @@ export default function FieldInventory() {
       </div>
 
       {/* ── Filter Row ── */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
-          <Input
-            placeholder={t.searchPlaceholder}
-            value={searchInput}
-            onChange={e => handleSearch(e.target.value)}
-            className="pl-8 h-9 text-sm"
-            style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
-            data-testid="field-inv-search"
-          />
-          {searchInput && (
-            <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
-              <X className="w-3.5 h-3.5" />
-            </button>
+      {isMobile ? (
+        /* Mobile: stacked layout — search full-width, then selects in a 2-col grid */
+        <div className="flex flex-col gap-2">
+          {/* Search — full width */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
+            <Input
+              placeholder={t.searchPlaceholder}
+              value={searchInput}
+              onChange={e => handleSearch(e.target.value)}
+              className="pl-8 h-10 text-sm w-full"
+              style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
+              data-testid="field-inv-search"
+            />
+            {searchInput && (
+              <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {/* Size filter — full width, only when visible */}
+          {selectedCatId !== null && sizes.length > 0 && (
+            <Select value={selectedSize} onValueChange={handleSizeChange}>
+              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
+                <SelectValue placeholder={t.allSizes} />
+              </SelectTrigger>
+              <SelectContent className="max-h-[264px] overflow-y-auto">
+                <SelectItem value="all">{t.allSizes}</SelectItem>
+                {sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
           )}
+          {/* Status + Page size — 2 columns */}
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={selectedStatus} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
+                <SelectValue placeholder={t.allStatus} />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
+              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-
-        {selectedCatId !== null && sizes.length > 0 && (
-          <Select value={selectedSize} onValueChange={handleSizeChange}>
-            <SelectTrigger className="w-32 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
-              <SelectValue placeholder={t.allSizes} />
+      ) : (
+        /* Desktop: horizontal flex row */
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
+            <Input
+              placeholder={t.searchPlaceholder}
+              value={searchInput}
+              onChange={e => handleSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+              style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
+              data-testid="field-inv-search"
+            />
+            {searchInput && (
+              <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {selectedCatId !== null && sizes.length > 0 && (
+            <Select value={selectedSize} onValueChange={handleSizeChange}>
+              <SelectTrigger className="w-32 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
+                <SelectValue placeholder={t.allSizes} />
+              </SelectTrigger>
+              <SelectContent className="max-h-[264px] overflow-y-auto">
+                <SelectItem value="all">{t.allSizes}</SelectItem>
+                {sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={selectedStatus} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-32 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
+              <SelectValue placeholder={t.allStatus} />
             </SelectTrigger>
-            <SelectContent className="max-h-[264px] overflow-y-auto">
-              <SelectItem value="all">{t.allSizes}</SelectItem>
-              {sizes.map(s => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
+            <SelectContent>
+              {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-        )}
-
-        <Select value={selectedStatus} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-32 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
-            <SelectValue placeholder={t.allStatus} />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map(o => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-          <SelectTrigger className="w-24 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZE_OPTIONS.map(n => (
-              <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
+            <SelectTrigger className="w-24 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* ── Active Filter Chips ── */}
       {hasFilters && (
@@ -1288,31 +1354,46 @@ export default function FieldInventory() {
                   className="w-full text-left last:border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2ddb6f]"
                   style={{
                     display: "flex", alignItems: "center", gap: 12,
-                    padding: "12px 14px",
+                    padding: "13px 16px",
                     borderBottom: `1px solid ${F.border}`,
                     background: "transparent", cursor: "pointer",
                     transition: "background 0.12s",
-                    minHeight: 56,
+                    minHeight: 64,
                   }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = F.surface}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                 >
-                  <PhotoCell imageUrl={item.imageUrl} name={item.name} />
+                  {/* Photo — larger on mobile for easier scanning */}
+                  <div style={{ flexShrink: 0 }}>
+                    {item.imageUrl ? (
+                      <div style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img src={item.imageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 44, height: 44, borderRadius: 10, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <ImageOff style={{ width: 18, height: 18, color: F.textDim }} />
+                      </div>
+                    )}
+                  </div>
+                  {/* Text info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.name}
                     </p>
-                    {item.sizeLabel && (
-                      <p style={{ fontSize: 11, color: F.textMuted, margin: 0, lineHeight: 1.3 }}>{item.sizeLabel}</p>
-                    )}
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <p style={{ fontSize: 16, fontWeight: 700, color: qtyColor(item.status), fontFamily: "'Barlow Condensed', sans-serif", margin: 0, lineHeight: 1 }}>
-                      {item.quantityOnHand.toLocaleString()}
+                    <p style={{ fontSize: 11, color: F.textMuted, margin: "1px 0 0", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {[item.sizeLabel, item.location?.name].filter(Boolean).join("  ·  ") || item.category?.name || ""}
                     </p>
-                    <p style={{ fontSize: 9, color: F.textMuted, margin: 0 }}>{item.unitOfMeasure}</p>
                   </div>
-                  <FieldStatusBadge status={item.status} />
+                  {/* Qty + status */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: qtyColor(item.status), fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
+                        {item.quantityOnHand.toLocaleString()}
+                      </span>
+                      <span style={{ fontSize: 9, color: F.textMuted, marginLeft: 3 }}>{item.unitOfMeasure}</span>
+                    </div>
+                    <FieldStatusBadge status={item.status} />
+                  </div>
                 </button>
               ))
             )}

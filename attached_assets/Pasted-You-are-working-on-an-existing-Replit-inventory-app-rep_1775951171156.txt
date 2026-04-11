@@ -1,0 +1,114 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or business logic.
+2. Do NOT redesign the whole app from scratch.
+3. Keep this task focused only on mobile optimization for Field Mode layout and proportions.
+4. Preserve the current Field dark industrial visual identity.
+
+TASK GOAL
+Optimize Field Mode for mobile so it no longer feels like a squeezed desktop layout.
+
+PRIMARY PROBLEMS TO SOLVE
+1. The top area/header spacing feels cramped on mobile
+2. Category cards feel proportionally distorted on smaller screens
+3. Filter/search controls feel too horizontally packed
+4. The right-side detail panel is not ideal for mobile proportions
+5. Table/list density feels too compressed on mobile
+6. Spacing and typography scale do not feel tuned for small screens
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/layouts/FieldLayout.tsx
+- any extracted field detail panel component
+- any field card/list component
+- field token/style files only if needed for safe responsive tuning
+
+PART 1 — MOBILE HEADER / TOP SPACING
+Improve top spacing on mobile:
+- account for safe area inset
+- add clearer breathing room below the header
+- prevent the first section from feeling crowded against the top
+
+Requirements:
+1. Keep desktop layout unchanged
+2. Only adjust mobile/small-screen spacing
+3. Preserve current header content and branding
+
+PART 2 — CATEGORY CARD PROPORTIONS
+Tune category card proportions for mobile:
+- avoid overly wide, squeezed banner-like cards on phones
+- use a more balanced aspect ratio for small screens
+- keep labels readable without overcrowding the image
+
+Requirements:
+1. Preserve current card style and click behavior
+2. Keep desktop card proportions intact
+3. Improve mobile readability and visual balance
+
+PART 3 — MOBILE FILTER LAYOUT
+Reorganize Field Inventory filters for mobile:
+- search full width
+- quick filter chips on their own row
+- status/page-size controls in a cleaner stacked or 2-column structure
+
+Requirements:
+1. Keep existing filter logic unchanged
+2. Improve mobile scanability
+3. Avoid horizontal compression
+
+PART 4 — MOBILE DETAIL PANEL PATTERN
+For mobile, replace the desktop-style right-side detail panel behavior with a more appropriate mobile pattern:
+- bottom sheet
+OR
+- full-screen detail overlay
+
+Requirements:
+1. Desktop keeps the current right-side panel
+2. Mobile uses a vertically appropriate detail presentation
+3. Preserve current detail content and actions
+4. Keep sticky actions usable on mobile
+
+PART 5 — MOBILE LIST/CARD PRESENTATION
+On mobile, avoid dense multi-column table presentation where it harms readability.
+
+Use a compact card/list style that prioritizes:
+- image
+- item name
+- size
+- quantity/unit
+- status
+- essential location/context only
+
+Requirements:
+1. Preserve current data and click behavior
+2. Do NOT change desktop table behavior
+3. Keep the mobile version compact but readable
+
+PART 6 — RESPONSIVE TYPOGRAPHY AND SPACING
+Tune typography and spacing for mobile so the screen feels less cramped.
+
+Requirements:
+1. Keep the current visual identity
+2. Use mobile-safe spacing rhythm for:
+   - section gaps
+   - card padding
+   - row spacing
+   - button height
+3. Keep quantity emphasis strong
+4. Do NOT make the UI feel oversized
+
+PART 7 — SAFETY
+- Do NOT change inventory logic
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin mode
+- Keep this as a responsive layout optimization pass only
+
+OUTPUT
+1. Summary of mobile Field Mode optimizations
+2. Files modified
+3. Which areas were optimized for proportion/spacing
+4. How mobile detail presentation differs from desktop
+5. Notes on what was intentionally left unchanged

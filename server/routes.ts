@@ -1863,6 +1863,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.delete("/api/field/requests/:id", isAuthenticated, loadCurrentUser, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid request ID" });
+
+      const isManagerPlus = user?.role === "admin" || user?.role === "manager";
+      if (!isManagerPlus) return res.status(403).json({ message: "Only managers and admins can delete requests" });
+
+      const request = await storage.getMaterialRequest(id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+
+      if (request.fulfilledMovementId != null) {
+        return res.status(409).json({ message: "Cannot delete a fulfilled request — it has a linked movement" });
+      }
+
+      await storage.deleteMaterialRequest(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/field/requests/:id/status", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;

@@ -1,0 +1,174 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, or request business logic beyond the safe delete permission requested here.
+2. Do NOT redesign the whole Requests tab from scratch.
+3. Keep this task focused on:
+   - improving request card information hierarchy
+   - adding a manager/admin-only Delete action
+4. Preserve the current Field Mode dark visual identity.
+
+TASK GOAL
+Improve the Field Requests card layout so users can understand each request at a glance, and add a Delete button that is available only to manager/admin-level users.
+
+The request card must make these things immediately clear:
+- current status
+- request type (issue / transfer)
+- requester
+- project
+- from / to context
+- request number
+- date/time
+- item count
+
+Also:
+- manager/admin users should see a Delete action
+- lower roles should not see Delete
+- Delete must be enforced server-side, not just hidden in the UI
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- FieldRequestsList.tsx
+- any request card / request row component
+- request routes/handlers for delete
+- any tiny shared helper/component only if truly needed
+- any in-app confirmation dialog/modal helper if needed
+
+PART 1 — IMPROVE CARD INFORMATION HIERARCHY
+
+Reorganize the request card content so the scan order becomes:
+
+1. status + request number + request type
+2. requester + requester role
+3. project name
+4. from → to context
+5. item summary / first item line
+6. date/time + item count
+
+Requirements:
+1. Status must remain very easy to scan
+2. Request number should remain visible, but not dominate the card more than operational context
+3. Requester and project should become more prominent
+4. from → to context should be easy to understand, especially for transfer requests
+5. Keep the layout compact and mobile-friendly
+
+PART 2 — FROM / TO CONTEXT MUST BE CLEARER
+
+For transfer requests:
+- clearly show from → to in one readable line
+- avoid weak/faded text that is hard to read
+
+For issue requests:
+- show source location and destination/use context in the clearest way available from current request data
+
+Requirements:
+1. Do NOT change the actual data or logic
+2. Do NOT invent fake destination fields
+3. Use only the context already available in the request data model
+4. Improve presentation only
+
+PART 3 — REQUESTER / PROJECT VISIBILITY
+
+Make requester and project more visually useful.
+
+Requirements:
+1. Show requester name clearly
+2. Show requester role as secondary text/chip only if available
+3. Show project name clearly when present
+4. If no project exists, keep current fallback behavior but make it visually quieter than real project data
+5. Keep this readable in both collapsed and expanded request card states if both exist
+
+PART 4 — MANAGER/ADMIN-ONLY DELETE BUTTON
+
+Add a Delete button to request cards/details for:
+- manager
+- admin
+
+Do NOT show Delete for:
+- viewer
+- staff
+- ordinary requester users unless they are manager/admin
+
+Requirements:
+1. Use the repo’s existing role/auth pattern
+2. Enforce permission on the server too
+3. Keep the button visually secondary to core status actions, but clearly available to manager/admin
+4. Use a destructive style appropriate to the current Field UI
+
+PART 5 — DELETE SAFETY RULES
+
+Delete must be safe.
+
+Preferred rules:
+1. Manager/admin can delete requests that are not yet fulfilled by a real movement
+2. If a request already has a linked completed movement / fulfilledMovementId / equivalent transaction reference:
+   - do NOT hard-delete it
+   - block deletion with a clear message
+   - preserve historical operational trace
+3. Keep the repo’s current safe model for completed/fulfilled history
+
+If the current request model already supports soft-delete better than hard-delete, use the safest compatible approach.
+But the UI should still present this as a manager/admin-only Delete action.
+
+PART 6 — IN-APP DELETE CONFIRMATION
+
+Do NOT use browser-native confirm.
+
+When manager/admin clicks Delete:
+- show an in-app confirmation dialog/modal
+- include request number
+- include a short warning that the request will be removed/cancelled according to the safe model
+- buttons:
+  - Keep Request
+  - Delete Request
+
+Requirements:
+1. Match current Field dark style
+2. Preserve current translation/i18n patterns
+3. Keep wording concise and operationally clear
+
+PART 7 — COLLAPSED VS EXPANDED CARD RULES
+
+Collapsed/default request card:
+- should show the most important operational metadata only
+- avoid long walls of text
+- keep status, requester, project, from→to, request number, and item count readable
+
+Expanded card:
+- may show fuller details like notes, item rows, submittedBy, and manager/admin actions including Delete
+- keep the expanded layout structured and not cluttered
+
+Requirements:
+1. Preserve current expand/collapse behavior
+2. Do NOT overload the collapsed card
+3. Keep expanded detail readable
+
+PART 8 — TYPOGRAPHY / CONTRAST POLISH
+
+Without redesigning the card:
+- slightly increase emphasis on important operational data
+- keep secondary metadata readable but less dominant
+- maintain the Field dark industrial style
+
+Use a clean hierarchy such as:
+- primary: status, requester, project, destination, item name
+- secondary: request number, requester role, date/time, source
+- tertiary: notes/submittedBy/smaller helper text
+
+Do NOT make everything equally bright.
+
+PART 9 — SAFETY
+
+- Do NOT change request status logic except where safe delete permission enforcement is required
+- Do NOT change transaction creation/completion logic
+- Do NOT change translation content
+- Keep the work visual/layout-focused plus the requested manager/admin-only delete capability
+
+OUTPUT
+1. Summary of request card layout improvements
+2. Files modified
+3. What was changed in the information hierarchy
+4. How requester/project/from→to visibility improved
+5. How manager/admin-only Delete was implemented
+6. What delete safety rules were applied
+7. Notes on what was intentionally left unchanged

@@ -165,6 +165,7 @@ export interface IStorage {
   updateMaterialRequest(id: number, data: Partial<{ itemsJson: string; notes: string | null; projectId: number | null; requesterName: string | null; requesterRole: string | null; requestType: string }>): Promise<MaterialRequest | undefined>;
   updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
   fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest>;
+  deleteMaterialRequest(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2190,6 +2191,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(materialRequests.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteMaterialRequest(id: number): Promise<void> {
+    await db.delete(materialRequests).where(eq(materialRequests.id, id));
   }
 }
 

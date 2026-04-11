@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle, Undo2, Briefcase, User } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle, Undo2, Briefcase, User, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -544,6 +544,8 @@ function RequestCard({
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   let items: CartItem[] = [];
   try { items = JSON.parse(req.itemsJson || "[]"); } catch { items = []; }
@@ -581,6 +583,20 @@ function RequestCard({
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await apiRequest("DELETE", `/api/field/requests/${req.id}`);
+      toast({ title: t.reqDeleted });
+      queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
+    } catch (err: any) {
+      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -675,6 +691,95 @@ function RequestCard({
                 data-testid={`btn-keep-request-${req.id}`}
                 disabled={cancelling}
                 onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  width: "100%", padding: "11px",
+                  borderRadius: 9,
+                  background: "transparent",
+                  border: `1px solid ${F.borderStrong}`,
+                  color: F.textMuted,
+                  fontSize: 13, fontWeight: 700,
+                  fontFamily: FONT_COND, letterSpacing: "0.04em",
+                  cursor: "pointer",
+                }}
+              >
+                {t.reqKeepRequest}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirmation dialog ── */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1300,
+            background: "rgba(0,0,0,0.70)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "0 20px",
+          }}
+          onClick={() => !deleting && setShowDeleteConfirm(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: F.surface2,
+              border: `1.5px solid ${F.dangerBorder}`,
+              borderRadius: 14,
+              padding: "22px 20px 20px",
+              maxWidth: 340, width: "100%",
+              display: "flex", flexDirection: "column", gap: 14,
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Trash2 style={{ width: 16, height: 16, color: F.danger, flexShrink: 0 }} />
+              <p style={{
+                fontSize: 15, fontWeight: 800, color: F.danger,
+                fontFamily: FONT_BEBAS, letterSpacing: "0.07em", margin: 0,
+              }}>
+                {t.reqDeleteTitle} · {req.requestNumber}
+              </p>
+            </div>
+
+            {/* Body */}
+            <p style={{
+              fontSize: 12, color: F.textMuted,
+              fontFamily: FONT_COND, margin: 0, lineHeight: 1.55,
+            }}>
+              {t.reqDeleteBody}
+            </p>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 2 }}>
+              <button
+                type="button"
+                data-testid={`btn-confirm-delete-${req.id}`}
+                disabled={deleting}
+                onClick={handleDelete}
+                style={{
+                  width: "100%", padding: "11px",
+                  borderRadius: 9,
+                  background: F.dangerBg,
+                  border: `1px solid ${F.dangerBorder}`,
+                  color: F.danger,
+                  fontSize: 13, fontWeight: 800,
+                  fontFamily: FONT_BEBAS, letterSpacing: "0.08em",
+                  cursor: deleting ? "default" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {deleting
+                  ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} />
+                  : <Trash2 style={{ width: 13, height: 13 }} />
+                }
+                {t.reqDeleteBtn.toUpperCase()}
+              </button>
+              <button
+                type="button"
+                data-testid={`btn-keep-from-delete-${req.id}`}
+                disabled={deleting}
+                onClick={() => setShowDeleteConfirm(false)}
                 style={{
                   width: "100%", padding: "11px",
                   borderRadius: 9,
@@ -962,6 +1067,37 @@ function RequestCard({
             {canManage && !isFinal && (
               <div style={{ padding: "12px 14px", borderTop: `1px solid ${F.border}`, background: F.surface }}>
                 <StatusActions req={req} onStatusChanged={onStatusChanged} />
+              </div>
+            )}
+
+            {/* Delete — manager/admin only, not available for fulfilled requests */}
+            {canManage && req.fulfilledMovementId == null && (
+              <div style={{
+                padding: "10px 14px",
+                borderTop: `1px solid ${F.border}`,
+                background: F.surface,
+                display: "flex", justifyContent: "flex-end",
+              }}>
+                <button
+                  type="button"
+                  data-testid={`btn-delete-request-${req.id}`}
+                  disabled={deleting}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px",
+                    borderRadius: 8,
+                    background: F.dangerBg,
+                    border: `1px solid ${F.dangerBorder}`,
+                    color: F.danger,
+                    fontSize: 12, fontWeight: 700,
+                    fontFamily: FONT_COND, letterSpacing: "0.04em",
+                    cursor: deleting ? "default" : "pointer",
+                  }}
+                >
+                  <Trash2 style={{ width: 12, height: 12 }} />
+                  {t.reqDeleteTitle}
+                </button>
               </div>
             )}
           </div>

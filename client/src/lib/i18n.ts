@@ -234,6 +234,11 @@ const en = {
   reqCancelConfirm:           "Cancel this request?",
   reqCancelBody:              "This request will be cancelled and will no longer proceed.",
   reqKeepRequest:             "Keep Request",
+  reqDeleteTitle:             "Delete Request",
+  reqDeleteBody:              "This request will be permanently removed. This cannot be undone.",
+  reqDeleteBtn:               "Delete Request",
+  reqDeleted:                 "Request deleted",
+  reqDeleteBlocked:           "Cannot delete a fulfilled request — it has a linked movement.",
   reqQtyLabel:                "Qty",
 
   // ── MovementForm labels (field mode) ─────────────────────────────────────
@@ -504,6 +509,11 @@ const ko: Translations = {
   reqCancelConfirm:           "이 요청을 취소하시겠습니까?",
   reqCancelBody:              "이 요청은 취소되며 더 이상 진행되지 않습니다.",
   reqKeepRequest:             "요청 유지",
+  reqDeleteTitle:             "요청 삭제",
+  reqDeleteBody:              "이 요청은 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+  reqDeleteBtn:               "요청 삭제",
+  reqDeleted:                 "요청이 삭제되었습니다",
+  reqDeleteBlocked:           "이행된 요청은 삭제할 수 없습니다 — 연결된 이동 기록이 있습니다.",
   reqQtyLabel:                "수량",
 
   movementType:       "이동 유형",
@@ -772,6 +782,11 @@ const es: Translations = {
   reqCancelConfirm:           "¿Cancelar esta solicitud?",
   reqCancelBody:              "Esta solicitud será cancelada y ya no continuará.",
   reqKeepRequest:             "Mantener solicitud",
+  reqDeleteTitle:             "Eliminar solicitud",
+  reqDeleteBody:              "Esta solicitud se eliminará permanentemente. Esta acción no se puede deshacer.",
+  reqDeleteBtn:               "Eliminar solicitud",
+  reqDeleted:                 "Solicitud eliminada",
+  reqDeleteBlocked:           "No se puede eliminar una solicitud cumplida — tiene un movimiento vinculado.",
   reqQtyLabel:                "Cant.",
 
   movementType:       "Tipo de movimiento",

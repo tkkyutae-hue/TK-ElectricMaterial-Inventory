@@ -380,7 +380,7 @@ function RequesterPicker({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function FieldCartReview() {
+export default function FieldCartReview({ onClose }: { onClose?: () => void } = {}) {
   const { cartItems, updateQty, removeFromCart, clearCart, totalItems } = useFieldCart();
   const { t }          = useLanguage();
   const { toast }      = useToast();
@@ -419,6 +419,7 @@ export default function FieldCartReview() {
       setRequester(null);
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
       toast({ title: t.requestSubmitted, description: t.requestSubmittedHint });
+      setTimeout(() => onClose?.(), 400);
     } catch (err: any) {
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {
@@ -619,8 +620,8 @@ export default function FieldCartReview() {
         </div>
       </div>
 
-      {/* ── Submit button ── */}
-      <div style={{ padding: "4px 16px 16px" }}>
+      {/* ── Submit / Cancel buttons ── */}
+      <div style={{ padding: "4px 16px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
         <button
           type="button"
           onClick={handleSubmit}
@@ -640,6 +641,25 @@ export default function FieldCartReview() {
           <Send style={{ width: 15, height: 15 }} />
           {submitting ? t.submitting : t.submitRequest}
         </button>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            data-testid="btn-cart-cancel"
+            style={{
+              width: "100%", padding: "11px 20px",
+              background: "transparent",
+              border: `1px solid ${F.borderStrong}`,
+              borderRadius: 10, cursor: submitting ? "default" : "pointer",
+              color: F.textMuted,
+              fontSize: 13, fontWeight: 700, fontFamily: FONT_BEBAS, letterSpacing: "0.08em",
+              transition: "all 0.15s",
+            }}
+          >
+            {t.cancel}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,18 +1,16 @@
 import { useState, useMemo } from "react";
-import { useSearch, useLocation } from "wouter";
+import { useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { FieldMovementBadge } from "@/components/StatusBadge";
 import DraftMovementsList from "./DraftMovementsList";
-import FieldCartReview from "./FieldCartReview";
 import FieldRequestsList from "./FieldRequestsList";
-import { useFieldCart } from "@/lib/fieldCart";
 import {
   Search, ClipboardList, ImageOff, CalendarDays,
   Trash2, X, AlertTriangle, FileText, Pencil,
-  ShoppingCart, ClipboardCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -164,13 +162,11 @@ export default function FieldTransactions() {
   const urlSearch = useSearch();
   const urlSearchParams = new URLSearchParams(urlSearch);
   const rawTab = urlSearchParams.get("tab");
-  const [activeTab, setActiveTab] = useState<"history" | "drafts" | "cart" | "requests">(
+  const [activeTab, setActiveTab] = useState<"history" | "drafts" | "requests">(
     rawTab === "drafts" ? "drafts"
-      : rawTab === "cart" ? "cart"
       : rawTab === "requests" ? "requests"
       : "history"
   );
-  const { totalItems: cartItemCount } = useFieldCart();
 
   // ── Filters ──
   const [search,        setSearch]        = useState("");
@@ -356,21 +352,6 @@ export default function FieldTransactions() {
           >
             {t.txHistoryTab}
           </button>
-          {/* Cart */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("cart")}
-            data-testid="tab-cart"
-            style={{ background: activeTab === "cart" ? F.surface : "transparent", border: activeTab === "cart" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: activeTab === "cart" ? F.accent : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
-          >
-            <ShoppingCart style={{ width: 12, height: 12 }} />
-            {t.txCartTab}
-            {cartItemCount > 0 && (
-              <span style={{ background: F.accent, color: F.accentText, borderRadius: 9, padding: "1px 5px", fontSize: 9, fontWeight: 800, lineHeight: 1.3, minWidth: 15, textAlign: "center" }}>
-                {cartItemCount}
-              </span>
-            )}
-          </button>
           {/* Requests */}
           <button
             type="button"
@@ -403,9 +384,6 @@ export default function FieldTransactions() {
           </button>
         )}
       </div>
-
-      {/* ── Cart Tab ── */}
-      {activeTab === "cart" && <FieldCartReview />}
 
       {/* ── Requests Tab ── */}
       {activeTab === "requests" && <FieldRequestsList />}

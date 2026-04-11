@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle, Undo2 } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle, Undo2, Briefcase, User } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
@@ -717,95 +717,100 @@ function RequestCard({
         >
           {/* First-item thumbnail */}
           {items.length > 0 && (
-            <div style={{ paddingTop: 1, flexShrink: 0 }}>
+            <div style={{ paddingTop: 2, flexShrink: 0 }}>
               <CartPhoto imageUrl={items[0].imageUrl} name={items[0].itemName} />
             </div>
           )}
-          {/* Text rows */}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-          {/* Row 1: REQ# + badges + count + date */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{
-              fontSize: 13, fontWeight: 800, color: F.accent,
-              fontFamily: FONT_MONO, letterSpacing: "0.05em", flexShrink: 0,
-            }}>
-              {req.requestNumber}
-            </span>
 
-            <StatusBadge status={req.status} />
-            <TypeBadge type={req.requestType ?? "issue"} />
+          {/* Text rows — improved hierarchy */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
 
-            <div style={{ flex: 1, minWidth: 0 }} />
-
-            <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND, flexShrink: 0 }}>
-              {items.length} {t.reqItems}
-            </span>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{dateStr}</span>
-              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND }}>{timeStr}</span>
+            {/* Row 1: Status + Type (primary left) | REQ# · count · date (secondary right) + chevron */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <StatusBadge status={req.status} />
+              <TypeBadge type={req.requestType ?? "issue"} />
+              <div style={{ flex: 1, minWidth: 0 }} />
+              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_MONO, flexShrink: 0, letterSpacing: "0.04em" }}>
+                {req.requestNumber}
+              </span>
+              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>·</span>
+              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>
+                {items.length} {t.reqItems}
+              </span>
+              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>·</span>
+              <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>{dateStr}</span>
+              {expanded
+                ? <ChevronUp  style={{ width: 13, height: 13, color: F.textDim, flexShrink: 0 }} />
+                : <ChevronDown style={{ width: 13, height: 13, color: F.textDim, flexShrink: 0 }} />
+              }
             </div>
-            {expanded
-              ? <ChevronUp  style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
-              : <ChevronDown style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
-            }
-          </div>
 
-          {/* Row 2: Requester + Project */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {requesterDisplay && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
-                {requesterDisplay}
-                {req.requesterRole && (
+            {/* Row 2: Requester (primary) + role chip */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+              <User style={{ width: 10, height: 10, color: F.textMuted, flexShrink: 0 }} />
+              {requesterDisplay ? (
+                <>
                   <span style={{
-                    marginLeft: 5, fontSize: 9, fontWeight: 800, color: F.textMuted,
-                    fontFamily: FONT_COND, background: F.surface,
-                    border: `1px solid ${F.borderStrong}`, borderRadius: 4, padding: "1px 5px",
-                    letterSpacing: "0.04em",
+                    fontSize: 13, fontWeight: 800, color: F.text,
+                    fontFamily: FONT_COND, lineHeight: 1.2,
                   }}>
-                    {req.requesterRole}
-                  </span>
-                )}
-              </span>
-            )}
-            {project && (
-              <>
-                {requesterDisplay && <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>·</span>}
-                <span style={{ fontSize: 11, color: F.textMuted, fontFamily: FONT_COND }}>
-                  {project.name}
-                  {project.poNumber ? ` / ${project.poNumber}` : ""}
-                </span>
-              </>
-            )}
-            {!requesterDisplay && !project && (
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>—</span>
-            )}
-          </div>
-
-          {/* Row 3: From → To context (always visible, compact) */}
-          {sourceLocations.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-              <MapPin style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>
-                {sourceLocations.join(" · ")}
-              </span>
-              {req.requestType === "issue" && project && (
-                <>
-                  <ArrowRight style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>
-                    {project.name}
-                  </span>
-                </>
-              )}
-              {req.requestType === "issue" && !project && requesterDisplay && (
-                <>
-                  <ArrowRight style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND, fontStyle: "italic" }}>
                     {requesterDisplay}
                   </span>
+                  {req.requesterRole && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: F.textMuted,
+                      fontFamily: FONT_COND, background: F.surface,
+                      border: `1px solid ${F.borderStrong}`, borderRadius: 4,
+                      padding: "1px 6px", letterSpacing: "0.05em",
+                    }}>
+                      {req.requesterRole.toUpperCase()}
+                    </span>
+                  )}
                 </>
+              ) : (
+                <span style={{ fontSize: 11, color: F.textDim, fontFamily: FONT_COND, fontStyle: "italic" }}>—</span>
               )}
             </div>
-          )}
+
+            {/* Row 3: Project (own row, readable) */}
+            {project && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Briefcase style={{ width: 10, height: 10, color: F.textSub, flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 12, fontWeight: 700, color: F.textSub,
+                  fontFamily: FONT_COND, letterSpacing: "0.02em",
+                }}>
+                  {project.name}{project.poNumber ? ` / ${project.poNumber}` : ""}
+                </span>
+              </div>
+            )}
+
+            {/* Row 4: From → To context (visible, readable) */}
+            {sourceLocations.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                <MapPin style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
+                <span style={{ fontSize: 10, color: F.textSub, fontFamily: FONT_COND }}>
+                  {sourceLocations.join(" · ")}
+                </span>
+                {req.requestType === "issue" && project && (
+                  <>
+                    <ArrowRight style={{ width: 9, height: 9, color: F.accent, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: F.textSub, fontFamily: FONT_COND }}>
+                      {project.name}
+                    </span>
+                  </>
+                )}
+                {req.requestType === "issue" && !project && requesterDisplay && (
+                  <>
+                    <ArrowRight style={{ width: 9, height: 9, color: F.accent, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>
+                      {requesterDisplay}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
           </div>{/* end text rows */}
         </button>
 

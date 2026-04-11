@@ -1,0 +1,119 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request permissions, routing, or request business logic.
+2. Do NOT redesign the whole Requests tab from scratch.
+3. Keep this task focused only on improving request card information hierarchy, scanability, and layout polish.
+4. Preserve the current Field Mode dark visual identity.
+
+TASK GOAL
+Improve the Field Requests card layout so users can understand each request at a glance.
+
+The request card must make these things immediately clear:
+- current status
+- request type (issue / transfer)
+- requester
+- project
+- from / to context
+- request number
+- date/time
+- item count
+
+CURRENT PROBLEM
+The request cards now contain more useful data than before, but the information hierarchy is still weak.
+Important context such as requester / project / from→to / request type is not visually organized strongly enough for quick scanning.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- FieldRequestsList.tsx
+- any request card / request row component
+- any tiny shared helper/component only if truly needed
+
+PART 1 — IMPROVE CARD INFORMATION HIERARCHY
+
+Reorganize the request card content so the scan order becomes:
+
+1. status + request number + request type
+2. requester + requester role
+3. project name
+4. from → to context
+5. item summary / first item line
+6. date/time + item count
+
+Requirements:
+1. Status must remain very easy to scan
+2. Request number should remain visible, but not dominate the card more than operational context
+3. Requester and project should become more prominent
+4. from → to context should be easy to understand, especially for transfer requests
+5. Keep the layout compact and mobile-friendly
+
+PART 2 — FROM / TO CONTEXT MUST BE CLEARER
+
+For transfer requests:
+- clearly show from → to in one readable line
+- avoid weak/faded text that is hard to read
+
+For issue requests:
+- show source location and the destination/use context in the clearest way available from current request data
+
+Requirements:
+1. Do NOT change the actual data or logic
+2. Do NOT invent fake destination fields
+3. Use only the context already available in the request data model
+4. Improve presentation only
+
+PART 3 — REQUESTER / PROJECT VISIBILITY
+
+Make requester and project more visually useful.
+
+Requirements:
+1. Show requester name clearly
+2. Show requester role as secondary text/chip only if available
+3. Show project name clearly when present
+4. If no project exists, keep current fallback behavior but make it visually quieter than real project data
+5. Keep this readable in both collapsed and expanded request card states if both exist
+
+PART 4 — COLLAPSED VS EXPANDED CARD RULES
+
+Collapsed/default request card:
+- should show the most important operational metadata only
+- avoid long walls of text
+- keep status, requester, project, from→to, request number, and item count readable
+
+Expanded card:
+- may show fuller details like notes, item rows, submittedBy, and other secondary metadata
+- keep the expanded layout structured and not cluttered
+
+Requirements:
+1. Preserve current expand/collapse behavior
+2. Do NOT overload the collapsed card
+3. Keep expanded detail readable
+
+PART 5 — TYPOGRAPHY / CONTRAST POLISH
+
+Without redesigning the card:
+- slightly increase emphasis on important operational data
+- keep secondary metadata readable but less dominant
+- maintain the Field dark industrial style
+
+Use a clean hierarchy such as:
+- primary: status, requester, project, destination, item name
+- secondary: request number, requester role, date/time, source
+- tertiary: notes/submittedBy/smaller helper text
+
+Do NOT make everything equally bright.
+
+PART 6 — SAFETY
+
+- Do NOT change request status logic
+- Do NOT change permissions
+- Do NOT change transaction creation/completion logic
+- Do NOT change translation content
+- Keep the work visual/layout-only and compatibility-safe
+
+OUTPUT
+1. Summary of request card layout improvements
+2. Files modified
+3. What was changed in the information hierarchy
+4. How requester/project/from→to visibility improved
+5. Notes on what was intentionally left unchanged

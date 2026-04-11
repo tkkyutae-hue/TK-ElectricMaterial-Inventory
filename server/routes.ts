@@ -889,6 +889,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   }
 
+  // Populates req.user from session without restricting by role.
+  // Used on routes that need the current user's identity/role but don't have a
+  // minimum-role requirement (e.g. field request list/create/status).
+  async function loadCurrentUser(req: any, _res: any, next: any) {
+    try {
+      const userId = req.session?.userId;
+      if (userId) {
+        const { authStorage } = await import("./replit_integrations/auth/storage");
+        const user = await authStorage.getUser(userId);
+        if (user && user.status === "active") {
+          req.user = user;
+        }
+      }
+    } catch {
+      // Non-fatal — route can still run; role checks will simply treat user as unauthenticated
+    }
+    next();
+  }
+
   // Admin Tools only (User Approvals, Export)
   const requireAdmin   = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
   // Normal admin operations (inventory CRUD, suppliers, projects, reports, etc.)
@@ -1761,7 +1780,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Material Requests ────────────────────────────────────────────────────
   // Field-submitted material requests (no inventory change until pickup).
 
-  app.get("/api/field/requests", isAuthenticated, async (req: any, res) => {
+  app.get("/api/field/requests", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;
       const isManagerPlus = user?.role === "manager" || user?.role === "admin";
@@ -1774,7 +1793,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/field/requests", isAuthenticated, async (req: any, res) => {
+  app.post("/api/field/requests", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;
       const { itemsJson, notes, projectId, requesterName, requesterRole, requestType } = req.body;
@@ -1800,7 +1819,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/field/requests/:id/status", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/field/requests/:id/status", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;
       const id = Number(req.params.id);

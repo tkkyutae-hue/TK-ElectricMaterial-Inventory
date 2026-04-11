@@ -1,0 +1,65 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, or business logic.
+2. Do NOT redesign the request UI.
+3. Keep this task focused only on fixing authenticated user/role resolution for request routes.
+4. Preserve current session/login behavior.
+
+TASK GOAL
+Fix the server-side authenticated user/role resolution so request-related routes can correctly recognize manager/admin permissions.
+
+CURRENT BUG
+Request status update routes currently reject even valid admin/manager users because the server is not reliably resolving the current authenticated user role before checking permissions.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- auth/session middleware
+- server/routes.ts
+- any auth helper / user-loading middleware
+- any tiny directly related auth utility only if truly needed
+
+REQUIRED RESULT
+After this fix:
+- admin users must be recognized as admin
+- manager users must be recognized as manager
+- request permission checks must use the real authenticated user role
+- the current 403 bug for valid admin/manager users must be fixed
+
+PART 1 — ENSURE req.user OR EQUIVALENT USER CONTEXT EXISTS
+Implement a safe shared way for authenticated request routes to access the current logged-in user record.
+
+Preferred approaches:
+- populate req.user from req.session.userId in a shared middleware
+OR
+- use a small shared helper to resolve the current user from session before permission checks
+
+Requirements:
+1. Do NOT create a second auth system
+2. Reuse the repo’s current session/auth pattern
+3. Keep this compatibility-safe
+4. Avoid duplicating user lookup logic in many routes if a small shared middleware/helper can solve it cleanly
+
+PART 2 — APPLY TO REQUEST ROUTES
+Make sure request-related routes use the real resolved user for permission checks, including routes such as:
+- request list routes
+- request status update routes
+- any request edit/update/delete/cancel routes if already present
+
+Requirements:
+1. Manager/admin detection must be reliable
+2. Staff/viewer should still remain constrained according to current intended rules
+3. Do NOT broaden permissions in this task beyond making role detection accurate
+
+PART 3 — SAFETY
+- Do NOT change request business logic yet
+- Do NOT change inventory logic
+- Do NOT change UI wording
+- Fix only the auth/role resolution bug for request routes
+
+OUTPUT
+1. Summary of the auth/role resolution fix
+2. Files modified
+3. How current user role is now resolved on the server
+4. Which request routes now use the corrected user context
+5. Notes on what was intentionally left unchanged

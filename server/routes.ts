@@ -1777,7 +1777,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/field/requests", isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
-      const { itemsJson, notes, projectId } = req.body;
+      const { itemsJson, notes, projectId, requesterName, requesterRole } = req.body;
       if (!itemsJson) return res.status(400).json({ message: "itemsJson is required" });
 
       const count = await storage.getMaterialRequests();
@@ -1789,7 +1789,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         submittedBy: user?.id,
         submittedByName: user?.name || user?.username || "Unknown",
         notes: notes ?? null,
-        projectId: projectId ?? null,
+        projectId: projectId ? Number(projectId) : null,
+        requesterName: requesterName ?? null,
+        requesterRole: requesterRole ?? null,
       });
       res.json(created);
     } catch (err: any) {

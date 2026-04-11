@@ -160,7 +160,7 @@ export interface IStorage {
   deleteEquipment(id: number): Promise<void>;
 
   getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]>;
-  createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null }): Promise<MaterialRequest>;
+  createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest>;
   updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
 }
 
@@ -2155,7 +2155,7 @@ export class DatabaseStorage implements IStorage {
     return q.orderBy(desc(materialRequests.submittedAt));
   }
 
-  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null }): Promise<MaterialRequest> {
+  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest> {
     const [created] = await db.insert(materialRequests).values(data).returning();
     return created;
   }

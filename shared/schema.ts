@@ -532,6 +532,8 @@ export const materialRequests = pgTable("material_requests", {
   submittedAt: timestamp("submitted_at").defaultNow(),
   notes: text("notes"),
   projectId: integer("project_id").references(() => projects.id),
+  requesterName: text("requester_name"),
+  requesterRole: text("requester_role"),
 });
 
 export const insertMaterialRequestSchema = createInsertSchema(materialRequests).omit({

@@ -1,0 +1,110 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, or permissions.
+2. Do NOT redesign the whole request/cart UI.
+3. Keep this task focused only on adding a manpower-based requester picker.
+4. Reuse existing manpower/project people data patterns already in the repo wherever possible.
+5. Do NOT invent a second separate people-management system.
+
+TASK GOAL
+Add a Requester picker to the request submit flow so the user can:
+- see about 5 recommended people from manpower data
+- type to search manpower names
+- select a requester cleanly instead of free-typing inconsistent names
+
+BUSINESS INTENT
+The requester should come from manpower-related data whenever possible.
+This should standardize request records and reduce inconsistent name entry.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field cart/request submit UI
+- request submit modal/panel/form
+- manpower/project people data source usage
+- any tiny shared searchable picker helper if truly needed
+
+PART 1 — ADD REQUESTER FIELD TO REQUEST SUBMIT FLOW
+
+In the request submit UI:
+- add a required field: Requester
+
+Behavior when opened/focused:
+- show about 5 recommended people immediately
+- these suggestions should come from manpower-related data already available in the repo
+- if a project is selected, prefer people from that project’s manpower data
+- if project-specific manpower is unavailable, fall back to recent/global manpower-derived names
+- if still unavailable, use the signed-in user as a default suggestion if appropriate
+
+Display format:
+- show the person name clearly
+- if role/title exists, show it as secondary text
+- example:
+  - Michael Kim · Foreman
+
+PART 2 — TYPEAHEAD SEARCH
+
+The Requester field must support typing to search.
+
+Requirements:
+1. Search should be case-insensitive
+2. Filter manpower-derived people by name
+3. Keep the UI fast and simple
+4. If there are no matches, show:
+   - "No matching manpower found"
+5. Do NOT require exact text match
+
+PART 3 — TOP 5 SUGGESTION RULE
+
+Choose about 5 suggested people using this priority:
+
+1. manpower entries associated with the currently selected project
+2. recently used manpower/requester names in this project if that data exists
+3. recent/global manpower names
+4. current signed-in user as fallback/default if appropriate
+
+If role information is available, prioritize likely request submitters such as:
+- foreman
+- superintendent
+- manager
+before showing less likely roles
+
+Do NOT hardcode fake people.
+
+PART 4 — SAVE STRUCTURED REQUESTER INFO
+
+When the requester is selected, store structured requester info on the request if the current request model safely supports it.
+
+Prefer storing:
+- requesterName
+- requesterRole if available
+- requesterUserId only if a real stable user/person identifier already exists in the repo
+
+If the current model only safely supports a name field:
+- populate that field from a controlled manpower selection
+- avoid broad schema redesign in this task unless a tiny compatibility-safe addition is clearly needed
+
+PART 5 — UX RULES
+
+Recommended UX:
+- prefill requester with current user if appropriate
+- still allow searching and changing to another manpower person
+- show top 5 suggestions immediately on open
+- make the control compact and mobile-friendly
+- keep selection clear after submit/review
+
+PART 6 — CONSTRAINTS
+
+1. Do NOT redesign the whole request system
+2. Do NOT add a broad new people architecture
+3. Do NOT change inventory logic
+4. Do NOT change permissions
+5. Keep the work incremental and compatible with the existing cart/request flow
+
+OUTPUT
+1. Summary of requester picker changes
+2. Files modified
+3. Which manpower source(s) were used
+4. How the top 5 suggestions are chosen
+5. How the typeahead search works
+6. Notes on what was intentionally left unchanged

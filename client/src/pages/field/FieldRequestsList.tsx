@@ -113,11 +113,28 @@ function RequestCard({ req }: { req: MaterialRequest }) {
       {expanded && (
         <div style={{ borderTop: `1px solid ${F.border}` }}>
 
-          {/* Submitter row */}
-          {req.submittedByName && (
-            <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}` }}>
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>Submitted by </span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
+          {/* Requester row (manpower-derived) */}
+          {(req.requesterName || req.submittedByName) && (
+            <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>Requested by</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
+                {req.requesterName || req.submittedByName}
+              </span>
+              {req.requesterRole && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, color: F.textMuted, fontFamily: FONT_COND,
+                  background: F.surface2, border: `1px solid ${F.borderStrong}`,
+                  borderRadius: 4, padding: "1px 5px", letterSpacing: "0.05em",
+                }}>
+                  {req.requesterRole}
+                </span>
+              )}
+              {req.submittedByName && req.requesterName && req.submittedByName !== req.requesterName && (
+                <>
+                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>· submitted by</span>
+                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
+                </>
+              )}
             </div>
           )}
 

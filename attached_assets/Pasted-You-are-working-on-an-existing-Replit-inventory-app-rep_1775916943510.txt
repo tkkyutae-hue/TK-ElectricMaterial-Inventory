@@ -1,0 +1,69 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, permissions, routing, or business logic.
+2. Do NOT redesign MovementForm or SearchableItemSelect.
+3. Keep this task extremely scoped.
+4. Fix only the regression where the movement item picker effectively searches only the first page of items.
+
+TASK GOAL
+Restore backward-compatible /api/items behavior for consumers like MovementForm that call useItems() without pagination params, so the item picker can search across the full item list instead of only the first 25 results.
+
+FILES TO FOCUS ON
+- server/routes.ts
+- server/storage.ts
+- client/src/hooks/use-items.ts only if absolutely needed
+- do NOT do broad refactors
+
+CURRENT BUG
+MovementForm/SearchableItemSelect currently performs local search over the fetched items array.
+But /api/items is currently calling storage.getItems({ page: 1, perPage: 25 }) even when no page param is provided, then returning only result.items.
+This makes the picker search only the first 25 items.
+
+REQUIRED FIX
+
+PART 1 — RESTORE NON-PAGINATED /api/items BEHAVIOR
+In server/routes.ts for GET /api/items:
+
+- If `page` query param is provided:
+  - keep current paginated response behavior:
+    { items: [...], total: number }
+
+- If `page` query param is NOT provided:
+  - treat the request as a legacy full-list request
+  - do NOT force page=1/perPage=25
+  - return the full matching item array (not just the first page)
+
+PART 2 — UPDATE STORAGE PAGINATION SAFELY
+In server/storage.ts getItems(...):
+
+- Support both cases:
+  1. paginated mode when page/perPage are explicitly provided
+  2. full-list mode when pagination is not explicitly requested
+
+Requirements:
+- Only apply slice/offset pagination when page/perPage pagination is truly intended
+- Preserve existing filters/search/status logic
+- Preserve sort behavior as much as possible
+- Do NOT change response meaning for paginated callers
+
+A safe approach is:
+- if page is undefined, return all mapped items with total = mapped.length
+- if page is defined, return paginated items
+
+PART 3 — KEEP ADMIN INVENTORY PAGINATION WORKING
+Make sure the Admin Inventory page still works with paginated requests exactly as it does now.
+Do NOT break:
+- page/perPage behavior
+- sort/dir behavior
+- current Inventory page expectations
+
+PART 4 — DO NOT CHANGE MOVEMENTFORM UI
+Do NOT change SearchableItemSelect UI in this task unless a tiny compatibility-safe change is absolutely needed.
+This bug should primarily be fixed by restoring correct item data loading for non-paginated consumers.
+
+OUTPUT
+1. Summary of the /api/items compatibility fix
+2. Files modified
+3. Notes on how paginated vs non-paginated behavior now differs
+4. Notes on what was intentionally left unchanged

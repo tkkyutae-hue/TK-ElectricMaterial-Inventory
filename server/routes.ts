@@ -299,8 +299,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const result = await storage.getItems({
       search, categoryId, locationId, status,
       sort, dir,
-      page: pageParam ?? 1,
-      perPage,
+      ...(pageParam !== undefined ? { page: pageParam, perPage } : {}),
     });
 
     if (pageParam === undefined) {

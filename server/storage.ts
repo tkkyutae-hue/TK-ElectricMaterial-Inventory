@@ -345,10 +345,8 @@ export class DatabaseStorage implements IStorage {
     page?: number;
     perPage?: number;
   }): Promise<{ items: ItemWithRelations[]; total: number }> {
-    const sort    = filters?.sort    ?? "name";
-    const dir     = filters?.dir     ?? "asc";
-    const page    = filters?.page    ?? 1;
-    const perPage = filters?.perPage ?? 25;
+    const sort = filters?.sort ?? "name";
+    const dir  = filters?.dir  ?? "asc";
 
     // ── SQL-level WHERE conditions ─────────────────────────────────────────
     const conditions: any[] = [eq(items.isActive, true)];
@@ -468,8 +466,12 @@ export class DatabaseStorage implements IStorage {
     // ── Total count (after all in-memory filters) ──────────────────────────
     const total = mapped.length;
 
-    // ── SQL-level LIMIT / OFFSET — applied via in-memory slice ────────────
-    // (Pagination must come after in-memory search/status filters)
+    // ── Pagination — only applied when page is explicitly requested ────────
+    if (filters?.page === undefined) {
+      return { items: mapped, total };
+    }
+    const page    = filters.page;
+    const perPage = filters.perPage ?? 25;
     const start     = (page - 1) * perPage;
     const pageItems = mapped.slice(start, start + perPage);
 

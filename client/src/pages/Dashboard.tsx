@@ -13,6 +13,7 @@ import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge"
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { getCategoryGradient } from "@/lib/categoryUtils";
 
 type CategorySummary = {
@@ -176,7 +177,7 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href,
 }
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useDashboardStats();
+  const { data: stats, isLoading, isError: statsError } = useDashboardStats();
 
   const { data: categories } = useQuery<CategorySummary[]>({
     queryKey: ["/api/inventory/categories/summary"],
@@ -203,6 +204,12 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[1,2,3,4,5].map(i => <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />)}
         </div>
+      ) : statsError ? (
+        <ErrorState
+          title="Could not load dashboard stats"
+          description="Stats could not be fetched. Check your connection."
+          onRetry={() => window.location.reload()}
+        />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard

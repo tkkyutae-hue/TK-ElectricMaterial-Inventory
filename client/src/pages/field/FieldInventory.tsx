@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useLanguage } from "@/hooks/use-language";
 import { getCategoryGradient } from "@/lib/categoryUtils";
 import { FilterChip } from "@/components/shared/FilterChip";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 import { isReelEligible } from "@/lib/reelEligibility";
 import { F } from "@/lib/fieldTokens";
@@ -390,7 +391,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               { label: t.colCategory, value: item.category?.name   || "—", mono: false },
               ...(isManagerOrAbove ? [
                 { label: "Supplier",  value: item.supplier?.name   || "—", mono: false },
-                { label: "Min Stock", value: String(item.reorderPoint ?? "—"),          mono: true  },
+                { label: "Min Stock", value: String(item.minimumStock ?? "—"),           mono: true  },
               ] : []),
             ].map(({ label, value, mono }) => (
               <div key={label} style={{ background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 10, padding: "10px 12px" }}>
@@ -624,7 +625,7 @@ export default function FieldInventory() {
     }
   }, [sizes, selectedSize]);
 
-  const { data: fieldData, isLoading } = useQuery<FieldItemsResponse>({
+  const { data: fieldData, isLoading, isError: itemsError } = useQuery<FieldItemsResponse>({
     queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
     queryFn: async () => {
       const p = new URLSearchParams();
@@ -982,7 +983,13 @@ export default function FieldInventory() {
       {/* ── Item List — mobile cards / desktop table ── */}
       <div style={{ background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 12, overflow: "hidden" }}>
 
-        {isMobile ? (
+        {itemsError ? (
+          <ErrorState
+            title="Failed to load inventory"
+            description="Check your connection and try again."
+            onRetry={() => window.location.reload()}
+          />
+        ) : isMobile ? (
           /* ── Mobile Card List ── */
           <div>
             {isLoading ? (

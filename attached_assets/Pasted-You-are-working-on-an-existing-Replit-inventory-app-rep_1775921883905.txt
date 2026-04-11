@@ -1,0 +1,154 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or business logic.
+2. Do NOT redesign any page.
+3. Do NOT broaden scope into new features.
+4. Keep this task focused only on four final cleanup/polish items.
+5. Make small, safe, compatibility-safe changes only.
+
+TASK GOAL
+Complete the remaining cleanup items from the recent design/system pass:
+
+1. Unify the Min Stock field used in Field detail views
+2. Remove duplicate font loading between index.html and index.css
+3. Apply the shared ErrorState component to a few high-value real failure states
+4. Wire the already-defined Phase D animation CSS into real UI surfaces
+
+FILES TO FOCUS ON
+Inspect the repo first and then modify only the files actually relevant to these items, likely including:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/Inventory.tsx if needed for field mapping comparison
+- client/index.html
+- client/src/index.css
+- client/src/components/shared/ErrorState.tsx
+- a few high-value data-fetching pages/components
+- any file where selectFlash / filterFadeDown / similar Phase D classes should be applied
+
+IMPORTANT
+- Reuse existing shared components/utilities already in the repo
+- Do NOT drift into other cleanup/refactor work
+- Keep changes incremental and minimal
+
+==================================================
+PART 1 — UNIFY MIN STOCK FIELD USAGE
+==================================================
+
+Current issue:
+The app is inconsistently using reorderPoint in some places and minimumStock in others for “Min Stock” display.
+
+Goal:
+Use the correct field consistently for “Min Stock” display.
+
+Requirements:
+1. Inspect the current item data shape and confirm the intended field for Min Stock.
+2. If `minimumStock` already exists and is the correct field, use it consistently for display wherever the UI label says “Min Stock”.
+3. Do NOT silently change reorder/business logic semantics.
+4. Only fix display/data mapping inconsistency.
+5. Preserve current role-based visibility:
+   - Supplier and Min Stock should still be visible only to manager-and-above in Field detail if that is already the intended behavior.
+
+Important:
+- Do NOT rename DB fields in this task
+- Do NOT change persistence logic
+- Only fix the UI mapping inconsistency
+
+==================================================
+PART 2 — REMOVE DUPLICATE FONT LOADING
+==================================================
+
+Current issue:
+Fonts were reduced in client/index.html, but some fonts are still being loaded again through client/src/index.css.
+
+Goal:
+Ensure fonts are loaded only once in the appropriate place.
+
+Requirements:
+1. Inspect actual current font usage in the repo before removing anything.
+2. Keep only the fonts that are truly used.
+3. Remove duplicate loading between:
+   - client/index.html
+   - client/src/index.css
+4. Preserve the current visual identity.
+5. Do NOT remove a font that is still genuinely referenced in the codebase/CSS.
+
+Important:
+- This is a cleanup task, not a typography redesign
+- Prefer one clear loading path, not duplicated imports
+
+==================================================
+PART 3 — APPLY ErrorState IN A FEW HIGH-VALUE PLACES
+==================================================
+
+Current issue:
+A shared ErrorState component exists, but it is barely used.
+
+Goal:
+Apply ErrorState to a few obvious high-value places where data fetch failure should show a better user-facing error state.
+
+Requirements:
+1. Reuse the existing shared ErrorState component.
+2. Apply it only in a few clear places where:
+   - data loading can fail
+   - the current failure UI is weak, missing, or inline
+3. Good candidate surfaces:
+   - one Admin data-fetching page
+   - one Field data-fetching page
+   - one Project/summary/detail surface if appropriate
+4. Preserve existing retry/query behavior if a retry mechanism already exists.
+5. Keep the rollout small and focused.
+
+Important:
+- Do NOT do a repo-wide error-state replacement sweep
+- Choose 2–3 high-value places only
+
+==================================================
+PART 4 — CONNECT PHASE D ANIMATIONS TO REAL UI
+==================================================
+
+Current issue:
+Animation keyframes such as `selectFlash` and `filterFadeDown` are defined, but not clearly wired into live UI.
+
+Goal:
+Connect the existing CSS animations to appropriate real surfaces in a subtle way.
+
+Requirements:
+
+A. selectFlash
+- Apply it to a truly relevant surface where a quantity/value/selection update benefits from brief visual confirmation
+- Keep it subtle and short
+- Do NOT apply it broadly or noisily
+
+B. filterFadeDown
+- Apply it to the Field filter/category section reveal flow or another clearly appropriate filter reveal area
+- Keep it quick and subtle
+- Preserve layout and behavior
+
+Important:
+- Reuse existing keyframes/classes if already defined
+- Do NOT invent a heavy animation system
+- Do NOT add animations just for the sake of animation
+
+==================================================
+PART 5 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch server routes in this task.
+2. Do NOT change business logic.
+3. Do NOT change permissions.
+4. Do NOT redesign layouts.
+5. Keep all changes small, readable, and safe.
+6. Prefer minimal diffs over broad rewrites.
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the four cleanup items completed
+2. Files modified
+3. Which field was standardized for Min Stock display
+4. Which font imports were removed and which were kept
+5. Where ErrorState was actually applied
+6. Where selectFlash / filterFadeDown were actually connected
+7. Notes on what was intentionally left unchanged

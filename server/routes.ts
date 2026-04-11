@@ -1796,6 +1796,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/field/requests", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;
+      if (!user || user.role === "viewer") {
+        return res.status(403).json({ message: "Viewers cannot create requests" });
+      }
       const { itemsJson, notes, projectId, requesterName, requesterRole, requestType } = req.body;
       if (!itemsJson) return res.status(400).json({ message: "itemsJson is required" });
 
@@ -1819,6 +1822,47 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/field/requests/:id", isAuthenticated, loadCurrentUser, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({ message: "Authentication required" });
+
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid request ID" });
+
+      const request = await storage.getMaterialRequest(id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+
+      const isManagerPlus = user.role === "admin" || user.role === "manager";
+      const isOwn = request.submittedBy === user.id;
+
+      if (!isManagerPlus) {
+        if (user.role === "viewer") return res.status(403).json({ message: "Viewers cannot edit requests" });
+        if (!isOwn) return res.status(403).json({ message: "You can only edit your own requests" });
+        if (request.status !== "requested") return res.status(403).json({ message: "Requests can only be edited while still in 'requested' status" });
+      }
+      if (isManagerPlus && request.status === "completed") {
+        return res.status(403).json({ message: "Completed requests cannot be edited" });
+      }
+
+      const { itemsJson, notes, projectId, requesterName, requesterRole, requestType } = req.body;
+      const updateData: Record<string, unknown> = {};
+      if (itemsJson   !== undefined) updateData.itemsJson      = itemsJson;
+      if (notes       !== undefined) updateData.notes          = notes ?? null;
+      if (projectId   !== undefined) updateData.projectId      = projectId ? Number(projectId) : null;
+      if (requesterName !== undefined) updateData.requesterName = requesterName ?? null;
+      if (requesterRole !== undefined) updateData.requesterRole = requesterRole ?? null;
+      if (requestType !== undefined) updateData.requestType    = requestType === "transfer" ? "transfer" : "issue";
+
+      if (Object.keys(updateData).length === 0) return res.status(400).json({ message: "Nothing to update" });
+
+      const updated = await storage.updateMaterialRequest(id, updateData as any);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/field/requests/:id/status", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1828,10 +1872,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const valid = ["requested", "preparing", "ready", "completed", "cancelled"];
       if (!valid.includes(status)) return res.status(400).json({ message: "Invalid status" });
 
-      // Role enforcement: only admin/manager can move to warehouse-side statuses
+      // Role enforcement for warehouse-side statuses
       const warehouseStatuses = ["preparing", "ready", "completed", "cancelled"];
-      if (warehouseStatuses.includes(status) && user?.role !== "admin" && user?.role !== "manager") {
-        return res.status(403).json({ message: "Only managers and admins can update this status" });
+      const isManagerPlus = user?.role === "admin" || user?.role === "manager";
+      if (warehouseStatuses.includes(status) && !isManagerPlus) {
+        // Exception: staff can cancel their OWN request while it is still "requested"
+        if (status === "cancelled" && user?.role !== "viewer") {
+          const reqForCancel = await storage.getMaterialRequest(id);
+          if (!reqForCancel) return res.status(404).json({ message: "Request not found" });
+          const isOwn = reqForCancel.submittedBy === user?.id;
+          if (!isOwn || reqForCancel.status !== "requested") {
+            return res.status(403).json({ message: "You can only cancel your own pending requests" });
+          }
+          // Allow fall-through to status update below
+        } else {
+          return res.status(403).json({ message: "Only managers and admins can update this status" });
+        }
       }
 
       // Completion path: create real inventory transactions

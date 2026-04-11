@@ -1,0 +1,112 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify inventory quantities, movement history, or completed historical requests.
+2. Do NOT redesign the request system from scratch.
+3. Keep this task focused only on request permissions, requester self-editing, and safe request lifecycle rules.
+4. Preserve current request/cart UI structure as much as possible.
+
+TASK GOAL
+Implement clear role-based request permissions with the following business rules:
+
+PERMISSION RULES
+- viewer: cannot create or modify requests
+- staff and above: can create requests
+- staff and above: can edit/cancel their OWN requests only while status is `requested`
+- manager/admin and above: can edit requests, move them to `preparing`, `ready`, `completed`, and cancel/delete according to current safe request design
+- manager/admin should be able to manage requests created by others
+
+IMPORTANT BUSINESS INTENT
+The requester should be able to fix or update their own request before warehouse/admin has started working on it.
+Once a request leaves `requested` and enters warehouse-side workflow, requester editing should stop.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- request routes/handlers
+- Field request list/detail UI
+- request edit UI / request submit UI reuse if appropriate
+- any tiny permission helper only if truly needed
+
+PART 1 — ROLE MATRIX
+Implement the following server-enforced permission rules:
+
+A. CREATE REQUEST
+- staff, manager, admin: allowed
+- viewer: not allowed
+
+B. REQUESTER SELF-EDIT
+- requester can edit their own request only when:
+  - status = requested
+  - role is staff or higher
+
+C. REQUESTER SELF-CANCEL
+- requester can cancel their own request only when:
+  - status = requested
+  - role is staff or higher
+
+D. MANAGER/ADMIN REQUEST CONTROL
+- manager/admin can:
+  - edit requests
+  - set status to preparing
+  - set status to ready
+  - set status to completed
+  - cancel/delete according to the repo’s safe request model
+
+Important:
+- Enforce these rules on the server, not just in the UI
+- Do NOT rely only on hidden buttons
+
+PART 2 — REQUESTER EDIT FLOW
+Add or complete a requester edit flow for requests in `requested` status.
+
+Requirements:
+1. If the current user is the requester and the request is still `requested`, show an edit action
+2. Reuse the existing cart/request edit form/panel if possible instead of building a second separate editor
+3. Allow updating at least:
+   - request items/qty
+   - project
+   - requester
+   - notes
+   - any other already-supported request fields
+4. Once the request enters `preparing` or later, requester edit must no longer be allowed
+
+PART 3 — CANCEL / DELETE BEHAVIOR
+Use the safest current model in the repo.
+
+Preferred behavior:
+- requester self-cancel = status changes to `cancelled`
+- manager/admin “delete” action should preferably be implemented as safe cancel/soft delete unless the repo already has a true request-delete flow that is known safe
+
+Requirements:
+1. Do NOT hard-delete completed requests
+2. Do NOT erase historical operational context
+3. Keep the UI wording aligned with current app expectations, but preserve data safety
+
+PART 4 — UI VISIBILITY
+Update the request UI so the right users see the right actions.
+
+Requested status:
+- requester (staff+) sees Edit / Cancel on own request
+- manager/admin sees management actions as appropriate
+
+Preparing / Ready / Completed:
+- requester should no longer see edit controls
+- manager/admin sees warehouse-side controls as appropriate
+
+Requirements:
+1. Use the repo’s existing role/auth pattern
+2. Keep the UI clear and concise
+3. Do NOT clutter the card with too many actions at once
+
+PART 5 — SAFETY
+- Do NOT create transactions in this task unless already tightly coupled to `completed` and already working
+- Do NOT change inventory logic in this task
+- Focus only on permission matrix + requester self-edit lifecycle
+
+OUTPUT
+1. Summary of request permission changes
+2. Files modified
+3. Which roles can create/edit/cancel/change status
+4. Exactly when requester self-edit is allowed
+5. How manager/admin override/management works
+6. Notes on what was intentionally left unchanged

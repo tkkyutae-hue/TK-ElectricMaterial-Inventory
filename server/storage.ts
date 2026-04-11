@@ -162,6 +162,7 @@ export interface IStorage {
   getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]>;
   getMaterialRequest(id: number): Promise<MaterialRequest | undefined>;
   createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest>;
+  updateMaterialRequest(id: number, data: Partial<{ itemsJson: string; notes: string | null; projectId: number | null; requesterName: string | null; requesterRole: string | null; requestType: string }>): Promise<MaterialRequest | undefined>;
   updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
   fulfillMaterialRequest(id: number, movementId: number): Promise<MaterialRequest>;
 }
@@ -2165,6 +2166,14 @@ export class DatabaseStorage implements IStorage {
   async createMaterialRequest(data: { requestNumber: string; itemsJson: string; requestType?: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null; requesterName?: string | null; requesterRole?: string | null }): Promise<MaterialRequest> {
     const [created] = await db.insert(materialRequests).values(data).returning();
     return created;
+  }
+
+  async updateMaterialRequest(id: number, data: Partial<{ itemsJson: string; notes: string | null; projectId: number | null; requesterName: string | null; requesterRole: string | null; requestType: string }>): Promise<MaterialRequest | undefined> {
+    const [updated] = await db.update(materialRequests)
+      .set(data)
+      .where(eq(materialRequests.id, id))
+      .returning();
+    return updated;
   }
 
   async updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest> {

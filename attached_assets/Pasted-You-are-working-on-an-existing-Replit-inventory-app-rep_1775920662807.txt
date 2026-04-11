@@ -1,0 +1,117 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change business logic, inventory calculations, routing, permissions, or API behavior.
+2. Do NOT redesign pages from scratch.
+3. Keep this task focused only on Phase D final polish items.
+4. Preserve current Admin and Field visual identity.
+5. Make only small, safe polish improvements.
+
+TASK GOAL
+Implement the agreed Phase D polish items:
+
+1. Quantity/value flash feedback after relevant inventory changes
+2. Dark-themed Field toast styling
+3. Admin table row affordance indicating clickability
+4. Subtle filter-section entry animation for Field category selection flows
+
+FILES TO FOCUS ON
+Inspect the repo first and then modify only the files actually relevant to these items, likely including:
+- global CSS / index.css
+- toast configuration/component files
+- Inventory/Admin table rendering files
+- Field filter/category selection UI files
+- any small shared helper/component only if truly needed
+
+IMPORTANT
+- Do NOT broaden scope beyond these four polish items
+- Keep interactions fast and subtle
+- Avoid heavy animation or distracting effects
+
+==================================================
+PART 1 — QUANTITY / VALUE FLASH FEEDBACK
+==================================================
+
+Find the most appropriate surfaces where inventory quantity/value visibly changes after relevant operations.
+
+If the repo already has a useful animation/keyframe such as selectFlash or a similar utility, reuse it.
+
+Add a subtle temporary flash/highlight to updated quantity/value cells or displays when appropriate.
+
+Requirements:
+1. Keep the effect brief and subtle
+2. Do NOT flash unrelated content
+3. Do NOT create a complex state system if a simple existing hook/class approach is enough
+4. Preserve current data behavior and rendering logic
+
+Important:
+- Only apply this where the signal is clearly valuable
+- Do NOT force it everywhere
+
+==================================================
+PART 2 — FIELD DARK TOAST STYLING
+==================================================
+
+Find the toast implementation used in Field Mode.
+
+If the current toast appearance is still using the default light treatment in Field contexts, add a Field-appropriate dark variant.
+
+Requirements:
+1. Keep contrast readable
+2. Match the Field dark industrial look
+3. Preserve toast behavior and semantics
+4. Do NOT redesign the global toast system unnecessarily
+5. If a context-aware variant is possible, keep it simple
+
+==================================================
+PART 3 — ADMIN TABLE ROW AFFORDANCE
+==================================================
+
+Find the main clickable Admin table rows (for example inventory rows that open details/drawers/pages).
+
+Add a subtle affordance that signals clickability, such as:
+- a right-side chevron that fades in on hover
+- or a similarly restrained interaction cue
+
+Requirements:
+1. Keep the affordance subtle
+2. Preserve current row click behavior
+3. Do NOT clutter dense tables
+4. Do NOT add affordance to non-clickable rows
+
+==================================================
+PART 4 — FIELD FILTER SECTION ENTRY ANIMATION
+==================================================
+
+Find the Field flow where category selection reveals or changes the filter section.
+
+Add a subtle entry animation such as a short fade/slide-down treatment.
+
+Requirements:
+1. Keep it quick and subtle (around 150–200ms feeling)
+2. Preserve layout and behavior
+3. Do NOT animate constantly or excessively
+4. Keep it aligned with the Field interaction style
+
+==================================================
+PART 5 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch server routes
+2. Do NOT change business logic
+3. Do NOT change permissions
+4. Do NOT turn this into a full animation pass
+5. Keep all changes minimal, tasteful, and safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of Phase D polish changes
+2. Files modified
+3. Notes on where quantity/value flash was applied
+4. Notes on Field toast styling changes
+5. Notes on table row affordance changes
+6. Notes on filter entry animation changes
+7. Notes on what was intentionally left unchanged

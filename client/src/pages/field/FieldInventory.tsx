@@ -821,39 +821,45 @@ export default function FieldInventory() {
 
       {/* ── Level 2: Family ── */}
       {selectedCatId !== null && families.length > 0 && (
-        <PillBar
-          label={t.family}
-          entries={families}
-          selected={selectedFamily}
-          onSelect={handleFamilyChange}
-          testIdPrefix="chip-family"
-          displayFn={getFamilyDisplay}
-          allLabel={t.allFilter}
-        />
+        <div className="filter-fade-in">
+          <PillBar
+            label={t.family}
+            entries={families}
+            selected={selectedFamily}
+            onSelect={handleFamilyChange}
+            testIdPrefix="chip-family"
+            displayFn={getFamilyDisplay}
+            allLabel={t.allFilter}
+          />
+        </div>
       )}
 
       {/* ── Level 3: Type ── */}
       {showTypePills && (
-        <PillBar
-          label={t.type}
-          entries={types}
-          selected={selectedType}
-          onSelect={handleTypeChange}
-          testIdPrefix="chip-type"
-          allLabel={t.allFilter}
-        />
+        <div className="filter-fade-in">
+          <PillBar
+            label={t.type}
+            entries={types}
+            selected={selectedType}
+            onSelect={handleTypeChange}
+            testIdPrefix="chip-type"
+            allLabel={t.allFilter}
+          />
+        </div>
       )}
 
       {/* ── Level 4: Subcategory ── */}
       {showSubcategoryPills && (
-        <PillBar
-          label={t.subcategory}
-          entries={subcategories}
-          selected={selectedSubcategory}
-          onSelect={handleSubcategoryChange}
-          testIdPrefix="chip-subcategory"
-          allLabel={t.allFilter}
-        />
+        <div className="filter-fade-in">
+          <PillBar
+            label={t.subcategory}
+            entries={subcategories}
+            selected={selectedSubcategory}
+            onSelect={handleSubcategoryChange}
+            testIdPrefix="chip-subcategory"
+            allLabel={t.allFilter}
+          />
+        </div>
       )}
 
       {/* ── Quick Preset Filters ── */}

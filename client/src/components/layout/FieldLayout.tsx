@@ -35,6 +35,11 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const isFieldHome = location === "/field";
   const now = useClock();
 
+  useEffect(() => {
+    document.body.dataset.fieldMode = "true";
+    return () => { delete document.body.dataset.fieldMode; };
+  }, []);
+
   const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 

@@ -390,6 +390,7 @@ export default function Inventory() {
               <col style={{ width: "110px" }} /> {/* Qty/Unit */}
               <col style={{ width: "130px" }} /> {/* Location */}
               <col style={{ width: "110px" }} /> {/* Status */}
+              <col style={{ width: "32px" }} />  {/* Row affordance */}
             </colgroup>
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
@@ -401,13 +402,14 @@ export default function Inventory() {
                 <SortableHeader label="Qty / Unit" sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Location</th>
                 <SortableHeader label="Status"   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
+                <th aria-hidden />
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 7 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
-                    {[1,2,3,4,5,6,7,8].map(j => (
+                    {[1,2,3,4,5,6,7,8,9].map(j => (
                       <td key={j} className="px-3 py-3 align-middle">
                         <div className="h-4 bg-slate-100 animate-pulse rounded" />
                       </td>
@@ -416,7 +418,7 @@ export default function Inventory() {
                 ))
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-slate-500">
+                  <td colSpan={9} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-900">No items found</p>
                     <p className="text-sm mt-1">Try adjusting your search or filters.</p>
@@ -425,8 +427,8 @@ export default function Inventory() {
               ) : (
                 pageItems.map((item) => (
                   <tr
-                    key={item.id}
-                    className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors cursor-pointer ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                    key={`${item.id}-${item.quantityOnHand}`}
+                    className={`group border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition-colors cursor-pointer ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                     data-testid={`row-item-${item.id}`}
                     onClick={() => setPreviewItem(item)}
                   >
@@ -463,7 +465,7 @@ export default function Inventory() {
                       <span className="text-xs text-slate-500 leading-snug">{item.category?.name || "—"}</span>
                     </td>
                     {/* Qty / Unit */}
-                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
+                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap mat-row-flash">
                       <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
                       <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                     </td>
@@ -476,6 +478,10 @@ export default function Inventory() {
                       <div className="flex items-center justify-center">
                         <ItemStatusBadge status={item.status} />
                       </div>
+                    </td>
+                    {/* Row affordance */}
+                    <td className="pr-2 align-middle" aria-hidden>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
                     </td>
                   </tr>
                 ))

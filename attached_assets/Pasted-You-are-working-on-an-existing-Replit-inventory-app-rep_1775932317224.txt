@@ -1,0 +1,92 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request logic, routing, or permissions.
+2. Do NOT redesign the whole Transactions/Requests page.
+3. Keep this task focused only on readability and contrast improvements in Field Mode transaction/request surfaces.
+4. Preserve the current Field dark industrial visual identity.
+
+TASK GOAL
+Improve the readability and contrast of Field Mode transaction/request UI so text is easier to read, especially on dark backgrounds.
+
+CURRENT PROBLEMS TO FIX
+1. Some text in the Field transactions/request UI is too dark and hard to read.
+2. The "from -> to" area was improved before, but similar low-contrast text still exists in filters, metadata rows, request cards, and transaction rows.
+3. The current dark palette should stay, but low-contrast text needs to be raised for real usability.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- any request row/card component
+- any field token/style file such as fieldTokens.ts
+- any small shared transaction/request styling helper if truly needed
+
+PART 1 — INCREASE CONTRAST OF LOW-VISIBILITY TEXT
+Find the text currently too dark in the Field transactions/request UI and increase contrast.
+
+High-priority targets:
+- filter labels
+- metadata labels
+- from/to location text
+- request subtext
+- table secondary text
+- status-adjacent small labels
+- any dark green-on-dark green text that is hard to read
+
+Requirements:
+1. Keep the dark theme
+2. Do NOT make everything pure white
+3. Use a clearer hierarchy such as:
+   - primary text = strong/high contrast
+   - secondary text = readable medium contrast
+   - tertiary text = muted but still visible
+4. Reuse existing Field tokens if available instead of inventing many new hardcoded colors
+
+PART 2 — STANDARDIZE FIELD TEXT HIERARCHY
+Improve consistency of text contrast across:
+- transaction table rows
+- request cards
+- filter panel
+- small metadata chips/rows
+
+Suggested hierarchy:
+- important values / item names / qty / destination = strongest contrast
+- labels / supporting metadata = medium contrast
+- decorative microcopy only = muted
+
+Requirements:
+1. Preserve current layout
+2. Keep the page compact
+3. Avoid broad visual redesign
+
+PART 3 — FROM / TO READABILITY
+Re-check all transaction and request surfaces where source/destination is shown.
+
+Requirements:
+1. "from" text must be readable
+2. arrow / separator should still feel secondary
+3. destination should remain clear
+4. if any request card shows from/to context, apply the same readability rule there too
+
+PART 4 — REQUEST CARD SCANABILITY
+Where request cards/lists already exist, make sure the most important operational text is visually stronger:
+- status
+- requester
+- project
+- from/to or destination context
+- item count
+
+This is still a contrast/readability pass only, not a layout rewrite.
+
+PART 5 — SAFETY
+- Do NOT change logic
+- Do NOT change translation keys/content
+- Do NOT redesign the entire page
+- Keep changes small and safe
+
+OUTPUT
+1. Summary of readability/contrast improvements
+2. Files modified
+3. Which text areas were rebalanced
+4. Notes on what was intentionally left unchanged

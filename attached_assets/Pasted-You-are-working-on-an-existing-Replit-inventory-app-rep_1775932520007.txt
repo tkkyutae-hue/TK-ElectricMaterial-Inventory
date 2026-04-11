@@ -1,0 +1,117 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, or permissions.
+2. Do NOT redesign the whole Field Inventory/Transactions experience from scratch.
+3. Keep this task focused on moving the cart review/request-submit UX into Field Inventory.
+4. Preserve the current cart/request data behavior as much as possible.
+
+TASK GOAL
+Move the cart review and request submission flow into Field Inventory so users can:
+- add items from Inventory detail
+- review cart items directly from Inventory
+- choose project
+- choose requester
+- send or cancel the request
+without needing a separate Cart tab inside Transactions.
+
+BUSINESS INTENT
+Field users should be able to build and submit a material request directly from Inventory flow.
+The cart should feel like a request-preparation drawer/panel, not a separate transaction-history tab.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- cart review component(s)
+- requester/project picker component(s)
+- sticky cart bar component/state
+- client/src/pages/field/FieldTransactions.tsx only to remove the Cart tab and keep the rest intact
+- any tiny shared helper/component only if truly needed
+
+PART 1 — INVENTORY-BASED REVIEW CART PANEL
+When the user clicks "Review Cart" from Field Inventory:
+- open a cart review panel directly from Inventory
+
+Responsive behavior:
+- mobile: open as a slide-up / full-height sheet or upward-expanding panel
+- larger screens: open as a right-side sidebar/panel
+
+This cart review panel should allow:
+- reviewing cart items
+- editing/removing items
+- selecting project
+- selecting requester
+- viewing summary info
+- sending the request
+- cancelling/closing the panel
+
+Requirements:
+1. Keep the current add-to-cart flow intact
+2. Preserve the current cart state/store
+3. Make the panel feel like part of Inventory workflow
+4. Keep it mobile-friendly
+5. Add a clear hide/close button if the panel expands in-place
+
+PART 2 — REMOVE CART TAB FROM TRANSACTIONS
+In FieldTransactions:
+- remove the separate Cart tab
+- keep:
+  - history
+  - requests
+  - drafts
+  or the current equivalent tabs that still make sense
+
+Requirements:
+1. Do NOT remove actual request/history features
+2. Do NOT break deep links unnecessarily unless tiny compatibility-safe redirect/cleanup is clearly needed
+3. The cart should now belong to Inventory flow, not Transactions flow
+
+PART 3 — SEND REQUEST / CANCEL ACTIONS
+In the Inventory cart review panel, provide clear final actions:
+- primary button: Send Request
+- secondary button: Cancel
+
+These actions may appear:
+- in a sticky bottom bar
+- or in the cart side panel footer
+- or both if needed responsively
+
+Requirements:
+1. Send Request should submit the request only
+2. Cancel should close the panel and/or clear pending submission intent, without creating any movement
+3. Do NOT create an inventory transaction at this step
+4. Keep button placement obvious and mobile-friendly
+
+PART 4 — PROJECT / REQUESTER INPUT LOCATION
+Project and Requester should be entered in the Inventory cart review panel itself, not hidden away in Transactions.
+
+Requirements:
+1. Reuse the existing requester picker and project selection work already added
+2. Keep those inputs close to the final Send Request action
+3. Make it obvious that the cart is being turned into a request
+4. Preserve translation/i18n behavior
+
+PART 5 — KEEP REQUESTS TAB
+Do NOT remove the Requests tab.
+Users still need a dedicated place to see:
+- submitted requests
+- statuses
+- warehouse/admin progress
+- completed/cancelled results
+
+Only move the cart review step out of Transactions and into Inventory.
+
+PART 6 — SAFETY
+- Do NOT change inventory deduction logic
+- Do NOT create movements on send request
+- Do NOT redesign the entire Field page
+- Keep the work scoped and compatibility-safe
+
+OUTPUT
+1. Summary of Inventory cart review changes
+2. Files modified
+3. Files created
+4. How Review Cart now opens
+5. Confirmation that Cart tab was removed from Transactions
+6. Where Send Request and Cancel were placed
+7. Notes on what was intentionally left unchanged

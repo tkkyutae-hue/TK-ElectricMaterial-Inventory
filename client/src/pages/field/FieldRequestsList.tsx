@@ -100,12 +100,12 @@ function RequestCard({ req }: { req: MaterialRequest }) {
         <div style={{ flex: 1, minWidth: 0 }} />
 
         {/* Item count + date */}
-        <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>
+        <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND, flexShrink: 0 }}>
           {items.length} {t.reqItems}
         </span>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
           <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{dateStr}</span>
-          <span style={{ fontSize: 9, color: F.textDim, fontFamily: FONT_COND }}>{timeStr}</span>
+          <span style={{ fontSize: 9, color: F.textMuted, fontFamily: FONT_COND }}>{timeStr}</span>
         </div>
         {expanded
           ? <ChevronUp  style={{ width: 14, height: 14, color: F.textDim, flexShrink: 0 }} />
@@ -120,7 +120,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
           {/* Requester row (manpower-derived) */}
           {(req.requesterName || req.submittedByName) && (
             <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>{t.requestedBy}</span>
+              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{t.requestedBy}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
                 {req.requesterName || req.submittedByName}
               </span>
@@ -135,7 +135,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
               )}
               {req.submittedByName && req.requesterName && req.submittedByName !== req.requesterName && (
                 <>
-                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>· {t.reqSubmittedByLabel}</span>
+                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>· {t.reqSubmittedByLabel}</span>
                   <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
                 </>
               )}
@@ -145,7 +145,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
           {/* Notes */}
           {req.notes && (
             <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}` }}>
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>{t.reqNoteLabel}: </span>
+              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{t.reqNoteLabel}: </span>
               <span style={{ fontSize: 12, color: F.text, fontFamily: FONT_COND, fontStyle: "italic" }}>{req.notes}</span>
             </div>
           )}

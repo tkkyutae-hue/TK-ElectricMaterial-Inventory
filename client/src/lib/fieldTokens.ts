@@ -21,6 +21,7 @@ export const F = {
   // ── Text ──────────────────────────────────────────────────────────────────
   text:         "#e2f0e5",  // primary: headers, item names, values
   textMuted:    "#7aab82",  // secondary: SKUs, categories, metadata
+  textSub:      "#9abda2",  // sub-primary: readable "from" location, size labels (between muted and primary)
   textDim:      "#4a7052",  // labels, placeholder icons, disabled / faint text
 
   // ── Accent (green) ────────────────────────────────────────────────────────

@@ -69,7 +69,7 @@ const INPUT_STYLE: React.CSSProperties = {
 };
 
 const LABEL_STYLE: React.CSSProperties = {
-  display: "block", fontSize: 9, fontWeight: 700, color: F.textDim,
+  display: "block", fontSize: 9, fontWeight: 700, color: F.textMuted,
   textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 5,
 };
 
@@ -647,7 +647,7 @@ export default function FieldTransactions() {
 
                       {/* Size */}
                       <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
-                        {item?.sizeLabel || <span style={{ color: F.borderStrong }}>—</span>}
+                        {item?.sizeLabel || <span style={{ color: F.textDim }}>—</span>}
                       </td>
 
                       {/* Qty + Unit (large, high-contrast) */}
@@ -666,9 +666,9 @@ export default function FieldTransactions() {
                       <td style={{ padding: "12px 8px", textAlign: "center" }}>
                         <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center" }}>
                           <span style={{ color: F.textSub, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                            {fromLoc?.name ?? <span style={{ color: F.borderStrong }}>—</span>}
+                            {fromLoc?.name ?? <span style={{ color: F.textDim }}>—</span>}
                           </span>
-                          <span style={{ color: F.textDim, fontSize: 9 }}>↓</span>
+                          <span style={{ color: F.textMuted, fontSize: 9 }}>↓</span>
                           <span style={{ color: F.text, fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                             {toLoc?.name ?? "—"}
                           </span>
@@ -688,7 +688,7 @@ export default function FieldTransactions() {
                               <span style={{ fontSize: 9, color: F.textMuted }}>{project.poNumber}</span>
                             )}
                           </div>
-                        ) : <span style={{ color: F.borderStrong, fontSize: 12 }}>—</span>}
+                        ) : <span style={{ color: F.textDim, fontSize: 12 }}>—</span>}
                       </td>
 
                       {/* Date (secondary — moved after primary info) */}
@@ -711,12 +711,12 @@ export default function FieldTransactions() {
                               </span>
                             )}
                           </div>
-                        ) : <span style={{ color: F.borderStrong }}>—</span>}
+                        ) : <span style={{ color: F.textDim }}>—</span>}
                       </td>
 
                       {/* Note */}
                       <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.note || <span style={{ color: F.borderStrong }}>—</span>}
+                        {m.note || <span style={{ color: F.textDim }}>—</span>}
                       </td>
 
                       {/* Select */}
@@ -734,7 +734,7 @@ export default function FieldTransactions() {
                             {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                         ) : (
-                          <span style={{ color: F.borderStrong, fontSize: 10 }}>·</span>
+                          <span style={{ color: F.textDim, fontSize: 10 }}>·</span>
                         )}
                       </td>
                     </tr>

@@ -15,7 +15,7 @@ import { getCategoryGradient } from "@/lib/categoryUtils";
 import { FilterChip } from "@/components/shared/FilterChip";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
-import { isReelEligible } from "@/lib/reelEligibility";
+import { resolveReelMode } from "@/lib/reelEligibility";
 import { F } from "@/lib/fieldTokens";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -239,7 +239,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const { t } = useLanguage();
   const [, navigate] = useLocation();
   const { isManagerOrAbove } = useAuth();
-  const isReelItem = isReelEligible(item);
+  const isReelItem = resolveReelMode(item);
   const [imgEnlarged, setImgEnlarged] = useState(false);
 
   const { data: reels, isLoading: reelsLoading } = useQuery<FieldWireReel[]>({

@@ -107,6 +107,7 @@ const ACCESSORY_EXCLUSION_TERMS = [
   " fitting ",
   "hardware",
   "accessory",
+  "accessories",
   "end cap",
   " adapter ",
   " reducer ",
@@ -115,6 +116,9 @@ const ACCESSORY_EXCLUSION_TERMS = [
   " tee ",
   "staple",
   "fastener",
+  " lug ",
+  "bonding jumper",
+  " jumper ",
 ] as const;
 
 // ── Step B: Non-reel conduit / structure guardrail ───────────────────────────
@@ -236,4 +240,25 @@ export function resolveReelMode(
   if (item.trackingMode === "standard") return false;
   // Legacy / null trackingMode: fall back to inferred classifier
   return isReelEligible(item);
+}
+
+/**
+ * shouldShowReelUI
+ *
+ * Gate for all reel-specific UI elements (reel count, total FT hero,
+ * reel inventory section, reel action buttons).
+ *
+ * Rules:
+ *  - Respects explicit trackingMode first (via resolveReelMode).
+ *  - Legacy items with no trackingMode fall back to the inferred classifier.
+ *  - Does NOT use legacy reel records (wireReels.length) as a signal —
+ *    old reel traces on piece-managed items must not surface reel UI.
+ *
+ * Piece-managed items (lugs, connectors, hardware, grounding accessories, etc.)
+ * return false here even if they have historical reel rows in the database.
+ */
+export function shouldShowReelUI(
+  item: (ReelEligibilityInput & { trackingMode?: string | null }) | null | undefined,
+): boolean {
+  return resolveReelMode(item);
 }

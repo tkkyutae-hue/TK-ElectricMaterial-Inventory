@@ -1,0 +1,123 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify inventory quantities, movement history, reel records, or existing stored data.
+2. Do NOT bulk-update legacy items.
+3. Do NOT redesign the UI from scratch.
+4. Keep this task focused only on correcting inventory tracking-rule display logic.
+
+TASK GOAL
+Fix the inventory tracking presentation rules so reel-specific UI is shown only for true reel-managed items, and is NOT shown for piece-managed items like lugs, connectors, hardware, grounding accessories, etc.
+
+CURRENT PROBLEM
+Some non-reel, piece-managed items are still showing reel-related UI such as:
+- total FT
+- reel count
+- reel inventory section
+
+Example:
+- Compression Lug should be a standard piece-managed item, not a reel-managed item.
+
+BUSINESS RULE TO APPLY
+
+There are now 3 important conceptual item types for display behavior:
+
+1. Standard piece-managed
+- examples: lugs, connectors, bushings, devices, hardware, grounding accessories
+- show normal quantity/unit only
+- DO NOT show FT totals
+- DO NOT show reel count
+- DO NOT show reel inventory panel
+- DO NOT show reel actions
+
+2. Standard length-managed
+- examples: EMT, Rigid, PVC, Cable Tray
+- may use FT as the quantity unit
+- but DO NOT show reel inventory UI
+- DO NOT show reel count
+- DO NOT treat them as reel-managed
+
+3. Reel-managed
+- actual cable/wire products
+- MC cable
+- single conductor
+- multi conductor
+- actual grounding wire
+- actual metal flexible conduit body
+- actual liquidtight flexible conduit body
+- these may show both total length and reel inventory UI
+
+FILES TO FOCUS ON
+Inspect the repo and update only the relevant files that currently decide whether to show:
+- reel count
+- total FT
+- reel summary
+- reel inventory section
+- reel action buttons
+- reel-specific detail blocks
+
+Likely files include:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/ItemDetails.tsx
+- client/src/components/ItemRowField.tsx
+- any quick drawer/detail component
+- shared reel/tracking helper files
+
+PART 1 — ADD A CLEAR DISPLAY RULE HELPER
+Create or extend a shared helper so display logic can distinguish:
+- piece-managed
+- length-managed but non-reel
+- reel-managed
+
+Examples of helper functions:
+- isPieceManagedItem(item)
+- isLengthManagedItem(item)
+- shouldShowReelUI(item)
+- shouldShowLengthTotals(item)
+
+Use:
+- trackingMode as the primary signal when present
+- legacy inferred classification as fallback only when trackingMode is missing
+- accessory exclusion logic must still apply
+
+PART 2 — REEL UI MUST BE STRICTER
+Only show reel-specific UI when all of the following are true:
+- item is reel-managed
+- item is a true reel-eligible product
+- item is not an accessory/fitting/hardware item
+
+Do NOT show reel-specific UI for:
+- compression lug
+- mechanical lug
+- bonding jumper
+- connector
+- bushing
+- clamp
+- strap
+- hardware
+- grounding accessories
+- any other piece-managed accessory item
+
+PART 3 — LENGTH TOTALS MUST ALSO BE CORRECT
+Do NOT show total FT for piece-managed items.
+Only show FT totals for true length-managed items.
+
+Examples:
+- Compression Lug => no FT totals
+- EMT / Rigid / PVC / Cable Tray => FT totals may be shown if current quantity model uses FT, but reel UI must still remain hidden
+- Cable / flexible conduit reel items => FT totals and reel UI may both be shown
+
+PART 4 — KEEP LEGACY DATA SAFE
+Do NOT delete or migrate old records.
+Do NOT change stored reel rows.
+Only fix the display and behavior rules so the UI stops surfacing reel-related sections for piece-managed items.
+
+PART 5 — OUTPUT
+Provide:
+1. Summary of the tracking display rule changes
+2. Files modified
+3. The exact conditions used for:
+   - showing reel UI
+   - showing FT totals
+   - suppressing reel UI for piece-managed items
+4. Notes on how legacy items were handled safely

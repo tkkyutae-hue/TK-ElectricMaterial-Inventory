@@ -104,6 +104,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                       isActive
                         ? "bg-brand-100 text-brand-700 font-semibold"
@@ -126,6 +127,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="p-3 border-t border-border space-y-1">
         <Link
           href="/home"
+          onClick={() => setMobileMenuOpen(false)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
           data-testid="nav-back-home"
         >

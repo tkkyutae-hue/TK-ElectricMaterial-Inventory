@@ -549,7 +549,7 @@ export default function Inventory() {
       <Sheet open={!!previewItem} onOpenChange={open => { if (!open) setPreviewItem(null); }}>
         <SheetContent
           side="right"
-          className="w-[400px] sm:w-[440px] p-0 flex flex-col gap-0 overflow-y-auto"
+          className="w-full sm:w-[400px] p-0 flex flex-col gap-0 overflow-y-auto"
           data-testid="inventory-quick-drawer"
         >
           {previewItem && (

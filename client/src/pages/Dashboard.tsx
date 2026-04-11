@@ -13,6 +13,7 @@ import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge"
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { getCategoryGradient } from "@/lib/categoryUtils";
 
 type CategorySummary = {
   id: number;
@@ -28,18 +29,6 @@ type CategorySummary = {
 type LowStockReport = {
   outOfStock: any[];
   lowStock: any[];
-};
-
-const CATEGORY_GRADIENTS: Record<string, string> = {
-  "CT": "from-sky-700 to-sky-900",
-  "CF": "from-slate-600 to-slate-800",
-  "CS": "from-zinc-600 to-zinc-800",
-  "CW": "from-orange-600 to-orange-900",
-  "DV": "from-violet-600 to-violet-900",
-  "FH": "from-stone-600 to-stone-800",
-  "BC": "from-brand-600 to-brand-900",
-  "DP": "from-indigo-700 to-indigo-900",
-  "GT": "from-teal-600 to-teal-900",
 };
 
 type TimeRange = "30D" | "90D" | "12M";
@@ -283,7 +272,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
             {categories.map(cat => {
-              const gradient = CATEGORY_GRADIENTS[cat.code || ""] || "from-slate-600 to-slate-800";
+              const gradient = getCategoryGradient(cat.code);
               const hasIssue = cat.outOfStockCount > 0 || cat.lowStockCount > 0;
               return (
                 <Link href={`/inventory/category/${cat.id}`} key={cat.id}>

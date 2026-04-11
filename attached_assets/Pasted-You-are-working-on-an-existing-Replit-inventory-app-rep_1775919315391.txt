@@ -1,0 +1,169 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change business logic, inventory quantities, movement history, routing, or permissions.
+2. Do NOT redesign pages from scratch.
+3. Keep this task focused only on Phase A UI/UX cleanup items.
+4. Preserve current Admin and Field visual identity.
+5. Make small, safe, high-confidence changes only.
+
+TASK GOAL
+Implement the agreed Phase A design/UX cleanup items:
+
+1. Admin mobile sidebar should auto-close after tapping a menu item
+2. Admin Quick Drawer should use mobile-safe width
+3. Dashboard.tsx should stop using a local CATEGORY_GRADIENTS constant and instead use the shared category utility
+4. Admin CategoryCard should show OUT / LOW stock badges
+5. Field detail panel should animate in with a slide-in transition
+6. Remove clearly unused font loading from index.html, keeping only fonts actually used in the repo
+
+FILES TO FOCUS ON
+Inspect the repo first and then modify only the files actually relevant to these items, likely including:
+- client/src/pages/Dashboard.tsx
+- client/src/pages/Inventory.tsx
+- client/src/components/ui or admin navigation/sidebar file(s)
+- field detail panel file(s), likely FieldInventory.tsx or its extracted detail panel component
+- index.html
+- client/src/lib/categoryUtils.ts only if needed for import verification
+
+IMPORTANT
+- Reuse existing shared components/utilities already in the repo
+- Do NOT broaden scope into Phase B/C/D items
+- Keep changes incremental and compatibility-safe
+
+==================================================
+PART 1 — ADMIN MOBILE SIDEBAR AUTO-CLOSE
+==================================================
+
+Find the Admin mobile sidebar / Sheet / drawer navigation implementation.
+
+Change behavior so that when a user taps a navigation item on mobile, the sidebar closes automatically.
+
+Requirements:
+1. Keep existing navigation behavior intact.
+2. Do NOT change desktop sidebar behavior.
+3. Do NOT redesign the sidebar.
+4. Only add the missing close-on-navigation behavior for the mobile sheet/sidebar.
+
+==================================================
+PART 2 — ADMIN QUICK DRAWER MOBILE WIDTH
+==================================================
+
+Find the Admin Inventory quick drawer / SheetContent.
+
+Change the width so it is mobile-safe:
+- full width on small screens
+- 400px width on larger screens
+
+Target behavior:
+- use something equivalent to: w-full sm:w-[400px]
+
+Requirements:
+1. Preserve current drawer layout and content.
+2. Do NOT redesign the drawer.
+3. Ensure it no longer overflows off-screen on narrow mobile widths.
+
+==================================================
+PART 3 — DASHBOARD CATEGORY_GRADIENTS CLEANUP
+==================================================
+
+File:
+- client/src/pages/Dashboard.tsx
+
+Current issue:
+Dashboard still uses a local duplicated CATEGORY_GRADIENTS-style constant even though shared category utilities exist.
+
+Change:
+1. Remove the local duplicate constant
+2. Import and use the shared helper/constant from:
+   - client/src/lib/categoryUtils.ts
+3. Preserve current visuals exactly as much as possible
+
+Do NOT change dashboard layout, chart behavior, or KPI meaning.
+
+==================================================
+PART 4 — ADMIN CATEGORY CARD STOCK BADGES
+==================================================
+
+File:
+- client/src/pages/Inventory.tsx
+
+In the CategoryCard bottom strip:
+- keep SKU count on the left
+- on the right:
+  - if outOfStockCount > 0, show a compact red badge: "{N} OUT"
+  - if lowStockCount > 0, show a compact amber badge: "{N} LOW"
+  - if both are present, show both
+  - if both are zero, keep the existing total quantity / units display
+
+Requirements:
+1. Keep the current card layout compact and readable.
+2. Reuse existing admin color language where possible.
+3. Do NOT redesign the whole card.
+
+==================================================
+PART 5 — FIELD DETAIL PANEL SLIDE-IN ANIMATION
+==================================================
+
+Find the Field item detail panel component / surface.
+
+Add a small slide-in animation so the panel feels more polished when it appears.
+
+Implementation intent:
+- translateX from the right side into place
+- about 200ms ease-out
+- keep it subtle and consistent with the current Field dark industrial style
+
+Requirements:
+1. Preserve existing panel content and layout.
+2. Do NOT add heavy animation libraries if not already used.
+3. Use a lightweight CSS/Tailwind/class-based solution appropriate for the repo.
+4. Keep motion subtle and fast.
+
+==================================================
+PART 6 — FONT LOADING CLEANUP
+==================================================
+
+File:
+- index.html
+
+Inspect actual font usage in the repo before changing anything.
+
+Keep only fonts that are actually used in the current codebase/CSS.
+Remove clearly unused font loading/imports/preconnects.
+
+Preserve fonts only if they are truly used, such as likely:
+- Inter
+- Plus Jakarta Sans
+- Barlow Condensed
+- Barlow
+- Bebas Neue
+
+Requirements:
+1. Do NOT guess blindly.
+2. Confirm actual usage before removing font imports.
+3. Do NOT change font-family styling in components unless necessary due to dead import cleanup.
+4. Keep the visual identity intact.
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do NOT implement Phase B/C/D in this task.
+2. Do NOT touch business logic.
+3. Do NOT touch server routes.
+4. Do NOT change permissions.
+5. Keep all changes small, readable, and safe.
+6. Prefer minimal diffs over broad rewrites.
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of Phase A changes
+2. Files modified
+3. Which font imports were removed and which were kept
+4. Notes on how Admin mobile sidebar auto-close was implemented
+5. Notes on how the Field panel animation was added
+6. Notes on what was intentionally left unchanged

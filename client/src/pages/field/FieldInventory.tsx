@@ -281,6 +281,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
           display: "flex", flexDirection: "column",
           boxShadow: "-8px 0 48px rgba(0,0,0,0.65)",
           overflowY: "auto",
+          animation: "fieldPanelSlideIn 200ms ease-out both",
         }}
       >
         {/* ── Header ── */}

@@ -144,3 +144,8 @@ input[type="number"] {
 .mat-row-flash {
   animation: selectFlash 0.8s ease forwards;
 }
+
+@keyframes fieldPanelSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}

@@ -1,0 +1,174 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical project records, scope records, or inventory movement records.
+3. Do NOT change business logic unless a tiny compatibility-safe fix is absolutely necessary.
+4. Preserve current route behavior, API behavior, and current user-visible features.
+5. This task is ONLY for a second-pass maintainability refactor of:
+   client/src/pages/project/tabs/ScopeItemsTab.tsx
+   and tiny directly related new files extracted from it.
+
+TASK GOAL
+Complete a second-pass refactor of ScopeItemsTab.tsx by extracting the biggest remaining mixed responsibilities, while preserving current behavior and current project/inventory data integrity.
+
+IMPORTANT CONTEXT
+A first-pass refactor has already happened.
+Files such as row/dialog/config/type helpers may already exist.
+Do NOT redo that work.
+Focus only on the largest responsibilities still left inside ScopeItemsTab.tsx.
+
+CURRENT KNOWN REMAINING PROBLEMS
+ScopeItemsTab.tsx is still carrying too much responsibility, especially:
+- InlineScopeRow still lives inside the parent file
+- category section/table-group rendering is still heavy in the parent
+- bulk/add action handling is still overly concentrated in the parent
+
+Do NOT fake-refactor by moving everything into one more giant file.
+Prefer real responsibility-based decomposition.
+
+==================================================
+PART 1 — EXTRACT InlineScopeRow
+==================================================
+
+Identify the current InlineScopeRow logic that is still embedded inside ScopeItemsTab.tsx.
+
+Extract it into a focused file, for example:
+- ScopePendingRow.tsx
+or
+- InlineScopeRow.tsx
+
+This extracted component should own row-level concerns such as:
+- inventory search / selection UI
+- editable row fields
+- linked inventory selection
+- unit/category/scope type editing
+- remarks input
+- row-local display logic
+
+Requirements:
+1. Preserve current add/edit row behavior.
+2. Keep parent state ownership only where necessary.
+3. Avoid prop explosion where possible.
+4. Keep the extracted component focused on row-level concerns only.
+
+==================================================
+PART 2 — EXTRACT CATEGORY SECTION RENDERING
+==================================================
+
+The parent file should no longer directly own the heavy grouped category rendering block.
+
+Extract the category/group section rendering into a focused component, for example:
+- ScopeCategorySection.tsx
+and optionally a tiny:
+- ScopeCategoryHeader.tsx
+
+This section component should handle:
+- category header row rendering
+- subgroup header rendering if present
+- grouped row mapping
+- ungrouped row mapping
+- rendering the already-extracted row component(s)
+
+Requirements:
+1. Preserve the current grouped table/list behavior.
+2. Keep current category ordering/label behavior unchanged.
+3. Keep current action buttons and current row interactions unchanged.
+4. Reduce JSX density in the parent significantly.
+
+==================================================
+PART 3 — REDUCE PARENT ACTION HANDLER COMPLEXITY
+==================================================
+
+The parent file still contains too many bulk/add-related handlers.
+
+Without changing business logic, extract only the most clearly grouped action logic into a small helper or hook, for example:
+- useScopeBulkActions.ts
+- useScopeAddRows.ts
+- scopeItemActions.ts
+
+Good candidates include grouped logic such as:
+- saveMultiple
+- saveBundle
+- duplicateItem
+- saveVariants
+- moveToCategory
+- deleteSelected
+- undo snackbar support only if it is tightly coupled
+
+Requirements:
+1. Do NOT rewrite the business logic.
+2. Do NOT move everything out just for the sake of it.
+3. Extract only the action clusters that clearly improve readability.
+4. Keep side effects and API calls behaving the same.
+
+==================================================
+PART 4 — KEEP THE PARENT LEAN
+==================================================
+
+After this refactor, ScopeItemsTab.tsx should primarily own:
+- top-level state coordination
+- data fetching integration
+- high-level composition of header / filters / stats / sections / dialogs
+- wiring of extracted components
+
+It should NOT still be doing:
+- heavy row editing UI inline
+- heavy category section rendering inline
+- dense action logic all in one place
+
+==================================================
+PART 5 — REUSE EXISTING SHARED/EXTRACTED FILES
+==================================================
+
+Reuse any first-pass extracted files already present in the repo, such as:
+- ScopeItemRow
+- ScopeItemDialog
+- ScopeDeleteDialog
+- BundleSelector
+- categoryConfig
+- types
+- shared UI primitives where appropriate
+
+Do NOT duplicate logic that already has a home.
+
+==================================================
+PART 6 — UX / BEHAVIOR SAFETY
+==================================================
+
+Preserve all existing behavior, including:
+- filters/search
+- grouped category display
+- add/edit/delete flows
+- bulk selection behavior
+- duplicate/move/variant flows
+- dialogs
+- loading/empty/error states
+- pagination if present
+
+Do NOT redesign the page.
+Do NOT change server routes.
+Do NOT change persistence behavior.
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch OverviewTab in this task.
+2. Do NOT touch MovementForm in this task.
+3. Do NOT change inventory calculations in this task.
+4. Do NOT introduce broad architectural replacement.
+5. Keep the work incremental and scoped.
+6. Prefer safe maintainability improvement over clever abstraction.
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the second-pass ScopeItemsTab refactor
+2. Files created
+3. Files modified
+4. Which remaining responsibilities were extracted
+5. Notes on what was intentionally left unchanged
+6. Whether ScopeItemsTab.tsx is now lean enough to move on to OverviewTab

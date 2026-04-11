@@ -800,7 +800,7 @@ export default function FieldInventory() {
   const [page, setPage] = useState(() => urlParams.get("page") ? Number(urlParams.get("page")) : 1);
   const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : 10);
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
-  const [cartPanelOpen, setCartPanelOpen] = useState(false);
+  const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
 
   const debouncedSearch = useDebounce(searchInput, 300);
 

@@ -1,0 +1,116 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request permissions, or request business logic.
+2. Do NOT redesign the whole Requests page.
+3. Keep this task focused only on fixing the request edit UX.
+4. Preserve the current Field Mode visual identity.
+
+TASK GOAL
+Fix the request edit experience so it works like this:
+
+1. When the user clicks Edit Request, the edit card/modal opens properly centered in the viewport
+2. "Back to Inventory" / "Move to Inventory" must be an explicit option inside the edit modal itself
+3. After saving an edited request, the user should stay on the Requests screen by default
+4. After saving an edited request, show an Undo action for the update
+5. Remove the current incorrect behavior where request update success immediately offers/acts like return-to-inventory from the success toast
+
+CURRENT PROBLEMS TO FIX
+- The request edit modal/card is not positioned the way the user wants; it should appear centered
+- The current "Back to Inventory" behavior happens after update, but the user wanted that option inside the edit modal
+- After request update, there is no Undo action
+- The current post-update UX is misleading
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- FieldRequestsList.tsx
+- request edit modal/panel component(s)
+- Field Inventory cart restore helper/state if needed
+- any tiny toast/action helper only if truly needed
+
+PART 1 — CENTER THE EDIT REQUEST MODAL
+When the user clicks Edit Request:
+- open the edit request modal/card centered in the viewport
+
+Requirements:
+1. Use a proper centered modal/dialog pattern
+2. Desktop: centered overlay
+3. Mobile: still centered or full-height safe modal, but visually intentional and not awkwardly offset
+4. Keep the current Field dark style
+5. If content grows tall, allow internal scrolling without the modal feeling misplaced
+
+Preferred behavior:
+- fixed overlay
+- modal container centered with items-center / justify-center style behavior
+- responsive max width
+- safe viewport padding
+
+PART 2 — MOVE "BACK TO INVENTORY" INTO THE EDIT MODAL
+The user wanted Inventory navigation as an option inside the edit modal itself, not as the main post-save toast action.
+
+Add a clear action inside the edit modal such as:
+- "Continue in Inventory"
+- or the repo’s preferred translated equivalent
+
+Behavior:
+- when clicked, restore the current edited request snapshot into the Field Inventory cart
+- preserve:
+  - items
+  - quantities
+  - project
+  - requester
+  - notes
+  - request type
+- navigate to Field Inventory
+- ideally open the Inventory cart review panel immediately after navigation
+
+Important:
+- this action must be available from inside the edit modal before the update is finalized
+- this should feel like "take this editable request back into Inventory/cart flow"
+
+PART 3 — CHANGE POST-UPDATE SUCCESS BEHAVIOR
+After the user clicks Update Request successfully:
+- keep the user on the Requests screen by default
+- do NOT push them toward Inventory automatically
+- remove the current post-update "Back to Inventory" success action if present
+
+Instead:
+- show a success toast/message like "Request updated"
+- include an Undo action for the update
+
+PART 4 — ADD UNDO FOR REQUEST UPDATE
+After a request is updated successfully, provide an Undo action.
+
+Undo rules:
+1. Undo should restore the immediately previous request snapshot
+2. Undo should only apply to the most recent edit action from this session/flow
+3. Undo should only be allowed while the request is still in an editable status under current rules (for example `requested`)
+4. Undo must NOT create or remove inventory transactions
+5. Undo must NOT bypass current permissions
+
+Implementation guidance:
+- capture the request state before edit save
+- after successful update, allow a lightweight rollback to the previous request payload
+- if the request is no longer editable or was changed by another action, block Undo safely
+
+PART 5 — KEEP CURRENT PERMISSION RULES
+Requirements:
+- do NOT broaden who can edit requests
+- do NOT change request status lifecycle
+- do NOT change inventory logic
+- only fix the edit UX flow
+
+PART 6 — SAFETY
+- Do NOT redesign the entire request system
+- Do NOT change request creation logic
+- Do NOT change completed/transaction logic
+- Keep this as a focused UX correction
+
+OUTPUT
+1. Summary of request edit UX fixes
+2. Files modified
+3. How the edit modal is now centered
+4. Where the Inventory navigation action now lives
+5. How the edited request is restored into Inventory cart
+6. How the post-update Undo works
+7. Notes on what was intentionally left unchanged

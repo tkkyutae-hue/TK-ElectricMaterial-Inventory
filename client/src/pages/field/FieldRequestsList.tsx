@@ -8,15 +8,16 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin, Package, XCircle, Undo2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useFieldCart } from "@/lib/fieldCart";
+import type { CartItem } from "@/lib/fieldCart";
 import { F } from "@/lib/fieldTokens";
 import type { MaterialRequest, Project } from "@shared/schema";
-import type { CartItem } from "@/lib/fieldCart";
 
 const FONT_COND  = "'Barlow Condensed', sans-serif";
 const FONT_BEBAS = "'Bebas Neue', sans-serif";
@@ -170,6 +171,7 @@ function EditRequestPanel({
   const { t } = useLanguage();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { restoreCart } = useFieldCart();
   const [saving, setSaving] = useState(false);
 
   let initialItems: CartItem[] = [];
@@ -198,6 +200,14 @@ function EditRequestPanel({
       toast({ title: t.errorTitle, description: t.reqNeedItems, variant: "destructive" });
       return;
     }
+    const originalPayload = {
+      itemsJson: req.itemsJson,
+      requestType: req.requestType,
+      projectId: req.projectId ?? null,
+      requesterName: req.requesterName ?? null,
+      requesterRole: req.requesterRole ?? null,
+      notes: req.notes ?? null,
+    };
     setSaving(true);
     try {
       await apiRequest("PATCH", `/api/field/requests/${req.id}`, {
@@ -210,27 +220,37 @@ function EditRequestPanel({
       });
       onSaved();
       onClose();
+      const toastBtnStyle: React.CSSProperties = {
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+        fontSize: 11, fontWeight: 700,
+        fontFamily: "'Barlow Condensed', sans-serif",
+        letterSpacing: "0.05em",
+        background: "rgba(71,130,82,0.18)",
+        border: "1px solid rgba(71,130,82,0.4)",
+        color: "#7de898",
+      };
       const { dismiss } = toast({
         title: t.reqSaved,
         description: (
           <div style={{ marginTop: 4 }}>
             <button
               type="button"
-              data-testid="toast-back-to-inventory"
-              onClick={() => { dismiss(); navigate("/field/inventory"); }}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                padding: "5px 10px", borderRadius: 6, cursor: "pointer",
-                fontSize: 11, fontWeight: 700,
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: "0.05em",
-                background: "rgba(71,130,82,0.18)",
-                border: "1px solid rgba(71,130,82,0.4)",
-                color: "#7de898",
+              data-testid="toast-undo-update"
+              onClick={async () => {
+                dismiss();
+                try {
+                  await apiRequest("PATCH", `/api/field/requests/${req.id}`, originalPayload);
+                  queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
+                  toast({ title: t.reqEditUndone });
+                } catch (err: any) {
+                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                }
               }}
+              style={toastBtnStyle}
             >
-              <Package style={{ width: 11, height: 11, flexShrink: 0 }} />
-              {t.backToInventory}
+              <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+              {t.undoRequest}
             </button>
           </div>
         ),
@@ -259,14 +279,15 @@ function EditRequestPanel({
       style={{
         position: "fixed", inset: 0, zIndex: 1200,
         background: "rgba(0,0,0,0.65)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px",
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
         width: "100%", maxWidth: 560,
-        background: F.bg, borderRadius: "16px 16px 0 0",
-        border: `1px solid ${F.borderStrong}`, borderBottom: "none",
+        background: F.bg, borderRadius: 14,
+        border: `1px solid ${F.borderStrong}`,
         maxHeight: "92vh", display: "flex", flexDirection: "column",
         overflow: "hidden",
       }}>
@@ -433,41 +454,65 @@ function EditRequestPanel({
         {/* Footer */}
         <div style={{
           padding: "12px 16px", borderTop: `1px solid ${F.border}`,
-          display: "flex", gap: 8, flexShrink: 0,
+          display: "flex", flexDirection: "column", gap: 8, flexShrink: 0,
         }}>
+          {/* Continue in Inventory */}
           <button
             type="button"
-            onClick={onClose}
-            disabled={saving}
-            data-testid="btn-edit-cancel"
+            data-testid="btn-edit-continue-inventory"
+            onClick={() => {
+              restoreCart(editItems);
+              onClose();
+              navigate("/field/inventory?cart=open");
+            }}
             style={{
-              flex: 1, padding: "10px 0", borderRadius: 8,
-              background: F.surface, border: `1px solid ${F.borderStrong}`,
-              color: F.textMuted, fontSize: 12, fontWeight: 700, fontFamily: FONT_COND, cursor: "pointer",
+              width: "100%", padding: "9px 0", borderRadius: 8,
+              background: "transparent",
+              border: `1px solid ${F.borderStrong}`,
+              color: F.textMuted, fontSize: 11, fontWeight: 700,
+              fontFamily: FONT_COND, letterSpacing: "0.05em",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            {t.cancel}
+            <Package style={{ width: 12, height: 12, flexShrink: 0 }} />
+            {t.continueInInventory}
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || editItems.length === 0}
-            data-testid="btn-edit-save"
-            style={{
-              flex: 2, padding: "10px 0", borderRadius: 8,
-              background: saving || editItems.length === 0 ? F.surface : F.accent,
-              border: `1px solid ${saving || editItems.length === 0 ? F.borderStrong : F.accent}`,
-              color: saving || editItems.length === 0 ? F.textDim : F.accentText,
-              fontSize: 12, fontWeight: 700, fontFamily: FONT_COND,
-              cursor: saving || editItems.length === 0 ? "default" : "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}
-          >
-            {saving
-              ? <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> {t.reqSaving}</>
-              : t.reqEditTitle
-            }
-          </button>
+          {/* Cancel + Save row */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              data-testid="btn-edit-cancel"
+              style={{
+                flex: 1, padding: "10px 0", borderRadius: 8,
+                background: F.surface, border: `1px solid ${F.borderStrong}`,
+                color: F.textMuted, fontSize: 12, fontWeight: 700, fontFamily: FONT_COND, cursor: "pointer",
+              }}
+            >
+              {t.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || editItems.length === 0}
+              data-testid="btn-edit-save"
+              style={{
+                flex: 2, padding: "10px 0", borderRadius: 8,
+                background: saving || editItems.length === 0 ? F.surface : F.accent,
+                border: `1px solid ${saving || editItems.length === 0 ? F.borderStrong : F.accent}`,
+                color: saving || editItems.length === 0 ? F.textDim : F.accentText,
+                fontSize: 12, fontWeight: 700, fontFamily: FONT_COND,
+                cursor: saving || editItems.length === 0 ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}
+            >
+              {saving
+                ? <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> {t.reqSaving}</>
+                : t.reqEditTitle
+              }
+            </button>
+          </div>
         </div>
       </div>
     </div>

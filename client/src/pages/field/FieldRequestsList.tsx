@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
+import { CartPhoto } from "@/pages/field/FieldCartReview";
 import { F } from "@/lib/fieldTokens";
 import type { MaterialRequest, Project } from "@shared/schema";
 
@@ -710,9 +711,18 @@ function RequestCard({
           style={{
             width: "100%", padding: "11px 14px",
             background: "transparent", border: "none", cursor: "pointer",
-            display: "flex", flexDirection: "column", gap: 6, textAlign: "left",
+            display: "flex", flexDirection: "row", gap: 10, textAlign: "left",
+            alignItems: "flex-start",
           }}
         >
+          {/* First-item thumbnail */}
+          {items.length > 0 && (
+            <div style={{ paddingTop: 1, flexShrink: 0 }}>
+              <CartPhoto imageUrl={items[0].imageUrl} name={items[0].itemName} />
+            </div>
+          )}
+          {/* Text rows */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           {/* Row 1: REQ# + badges + count + date */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{
@@ -796,6 +806,7 @@ function RequestCard({
               )}
             </div>
           )}
+          </div>{/* end text rows */}
         </button>
 
         {/* ── Expanded detail ── */}
@@ -847,6 +858,7 @@ function RequestCard({
                       background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
                     }}
                   >
+                    <CartPhoto imageUrl={item.imageUrl} name={item.itemName} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
                         fontSize: 12, fontWeight: 700, color: F.text,

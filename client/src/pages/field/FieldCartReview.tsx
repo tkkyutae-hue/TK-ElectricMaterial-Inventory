@@ -24,7 +24,7 @@ import type { Project } from "@shared/schema";
 
 // ── CartPhoto — compact 36×36 thumbnail with ImageOff fallback ───────────────
 
-function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+export function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   const base: React.CSSProperties = {
     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
     background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center",

@@ -118,6 +118,7 @@ interface RequesterPickerProps {
 function RequesterPicker({
   value, onChange, workers, projectName, currentUserName,
 }: RequesterPickerProps) {
+  const { t }                     = useLanguage();
   const [inputVal, setInputVal]   = useState(value?.name ?? "");
   const [open, setOpen]           = useState(false);
   const [committed, setCommitted] = useState<RequesterValue | null>(value);
@@ -215,7 +216,7 @@ function RequesterPicker({
           ref={inputRef}
           type="text"
           value={inputVal}
-          placeholder="Search manpower…"
+          placeholder={t.requesterSearchPlaceholder}
           data-testid="input-requester"
           readOnly={isSelected}
           onClick={() => {
@@ -299,12 +300,12 @@ function RequesterPicker({
         }}>
           {suggestions.length === 0 ? (
             <div style={{ padding: "14px 14px", fontSize: 12, color: F.textDim, fontFamily: FONT_COND, textAlign: "center" }}>
-              No matching manpower found
+              {t.requesterNoMatch}
             </div>
           ) : (
             <>
               <div style={{ padding: "6px 12px 4px", fontSize: 9, fontWeight: 800, color: F.textDim, fontFamily: FONT_COND, letterSpacing: "0.08em" }}>
-                {inputVal.trim() ? "SEARCH RESULTS" : "SUGGESTED"}
+                {(inputVal.trim() ? t.requesterSearchResults : t.requesterSuggested).toUpperCase()}
               </div>
               {suggestions.map(w => (
                 <button
@@ -339,7 +340,7 @@ function RequesterPicker({
                       background: F.infoBg, border: `1px solid ${F.infoBorder}`,
                       borderRadius: 4, padding: "2px 5px", flexShrink: 0, letterSpacing: "0.05em",
                     }}>
-                      THIS PROJECT
+                      {t.requesterThisProject.toUpperCase()}
                     </span>
                   )}
                 </button>
@@ -364,7 +365,7 @@ function RequesterPicker({
                   <User style={{ width: 11, height: 11, color: F.textDim, flexShrink: 0 }} />
                   <div>
                     <p style={{ fontSize: 12, fontWeight: 600, color: F.textMuted, fontFamily: FONT_COND, margin: 0, fontStyle: "italic" }}>
-                      {currentUserName} (me)
+                      {currentUserName} {t.requesterMeSuffix}
                     </p>
                   </div>
                 </button>
@@ -419,7 +420,7 @@ export default function FieldCartReview() {
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
       toast({ title: t.requestSubmitted, description: t.requestSubmittedHint });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -453,11 +454,11 @@ export default function FieldCartReview() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <span style={{ fontSize: 11, color: F.textMuted, fontFamily: FONT_COND, fontWeight: 700, letterSpacing: "0.06em" }}>
-          {totalItems} ITEM{totalItems !== 1 ? "S" : ""} IN CART
+          {totalItems} {(totalItems !== 1 ? t.cartItemsLabel : t.cartItemLabel).toUpperCase()}
         </span>
         <button
           type="button"
-          onClick={() => { if (window.confirm("Clear all items from cart?")) clearCart(); }}
+          onClick={() => { if (window.confirm(t.cartClearConfirm)) clearCart(); }}
           style={{
             fontSize: 10, fontWeight: 700, color: F.danger, fontFamily: FONT_COND,
             background: "transparent", border: "none", cursor: "pointer", letterSpacing: "0.05em",
@@ -465,7 +466,7 @@ export default function FieldCartReview() {
           }}
           data-testid="btn-cart-clear-all"
         >
-          CLEAR ALL
+          {t.cartClearAll.toUpperCase()}
         </button>
       </div>
 
@@ -552,7 +553,7 @@ export default function FieldCartReview() {
         {/* Project (optional) */}
         <div>
           <label style={{ fontSize: 10, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND, letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>
-            PROJECT (OPTIONAL)
+            {t.projectOptional.toUpperCase()}
           </label>
           <div style={{ position: "relative" }}>
             <select
@@ -570,7 +571,7 @@ export default function FieldCartReview() {
                 appearance: "none", outline: "none", cursor: "pointer",
               }}
             >
-              <option value="">— No project —</option>
+              <option value="">— {t.noProjectOption} —</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -586,7 +587,7 @@ export default function FieldCartReview() {
         {/* Requester */}
         <div>
           <label style={{ fontSize: 10, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND, letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>
-            REQUESTED BY
+            {t.requestedBy.toUpperCase()}
           </label>
           <RequesterPicker
             value={requester}
@@ -605,7 +606,7 @@ export default function FieldCartReview() {
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Add a note for warehouse staff…"
+            placeholder={t.addNoteWarehousePlaceholder}
             data-testid="cart-notes-input"
             rows={2}
             style={{

@@ -30,7 +30,10 @@ const STATUS_CONFIG: Record<ReqStatus, { color: string; bg: string; border: stri
 };
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   const cfg = STATUS_CONFIG[status as ReqStatus] ?? STATUS_CONFIG.requested;
+  const key = `reqStatus_${status}` as keyof typeof t;
+  const label = (t[key] as string | undefined) ?? status.replace(/_/g, " ");
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
@@ -40,7 +43,7 @@ function StatusBadge({ status }: { status: string }) {
       fontFamily: FONT_COND, letterSpacing: "0.07em", whiteSpace: "nowrap",
     }}>
       <span style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.dot, flexShrink: 0 }} />
-      {status.replace(/_/g, " ").toUpperCase()}
+      {label.toUpperCase()}
     </span>
   );
 }
@@ -48,6 +51,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Request card ──────────────────────────────────────────────────────────────
 
 function RequestCard({ req }: { req: MaterialRequest }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   let items: CartItem[] = [];
   try { items = JSON.parse(req.itemsJson || "[]"); } catch { items = []; }
@@ -97,7 +101,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
 
         {/* Item count + date */}
         <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND, flexShrink: 0 }}>
-          {items.length} item{items.length !== 1 ? "s" : ""}
+          {items.length} {t.reqItems}
         </span>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flexShrink: 0 }}>
           <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{dateStr}</span>
@@ -116,7 +120,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
           {/* Requester row (manpower-derived) */}
           {(req.requesterName || req.submittedByName) && (
             <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>Requested by</span>
+              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>{t.requestedBy}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: F.text, fontFamily: FONT_COND }}>
                 {req.requesterName || req.submittedByName}
               </span>
@@ -131,7 +135,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
               )}
               {req.submittedByName && req.requesterName && req.submittedByName !== req.requesterName && (
                 <>
-                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>· submitted by</span>
+                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>· {t.reqSubmittedByLabel}</span>
                   <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>{req.submittedByName}</span>
                 </>
               )}
@@ -141,7 +145,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
           {/* Notes */}
           {req.notes && (
             <div style={{ padding: "8px 14px", borderBottom: `1px solid ${F.border}` }}>
-              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>Note: </span>
+              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>{t.reqNoteLabel}: </span>
               <span style={{ fontSize: 12, color: F.text, fontFamily: FONT_COND, fontStyle: "italic" }}>{req.notes}</span>
             </div>
           )}
@@ -187,7 +191,7 @@ function RequestCard({ req }: { req: MaterialRequest }) {
               ))}
             </div>
           ) : (
-            <p style={{ padding: "12px 14px", fontSize: 11, color: F.textDim, fontFamily: FONT_COND }}>No items recorded.</p>
+            <p style={{ padding: "12px 14px", fontSize: 11, color: F.textDim, fontFamily: FONT_COND }}>{t.noItemsRecorded}</p>
           )}
         </div>
       )}

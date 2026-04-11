@@ -486,7 +486,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <CheckCircle2 style={{ width: 13, height: 13, color: F.accent }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: F.accent, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
-                      In cart: {existingCartItem.requestedQty} {item.unitOfMeasure}
+                      {t.inCartStatus} {existingCartItem.requestedQty} {item.unitOfMeasure}
                     </span>
                   </div>
                   <button
@@ -498,12 +498,12 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
                       fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3,
                     }}
                   >
-                    Remove
+                    {t.removeFromCart}
                   </button>
                 </div>
               ) : (
                 <p style={{ fontSize: 10, fontWeight: 600, color: F.textDim, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "1px", textTransform: "uppercase" }}>
-                  Request Qty
+                  {t.requestQtyLabel}
                 </p>
               )}
 
@@ -565,7 +565,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
                   }}
                 >
                   <ShoppingCart style={{ width: 13, height: 13 }} />
-                  {existingCartItem ? "Update Cart" : "Add to Cart"}
+                  {existingCartItem ? t.updateCart : t.addToCart}
                 </button>
               </div>
             </div>
@@ -627,6 +627,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
 // ─── Field Cart Bar ───────────────────────────────────────────────────────────
 
 function FieldCartBar() {
+  const { t } = useLanguage();
   const { canDoMovements } = useAuth();
   const { totalItems, totalQty } = useFieldCart();
   const [, navigate] = useLocation();
@@ -660,13 +661,13 @@ function FieldCartBar() {
             fontSize: 13, fontWeight: 700, color: F.text,
             fontFamily: "'Barlow Condensed', sans-serif", margin: 0, lineHeight: 1.1,
           }}>
-            {totalItems} {totalItems === 1 ? "item" : "items"} in cart
+            {totalItems} {totalItems === 1 ? t.cartItemLabel : t.cartItemsLabel}
           </p>
           <p style={{
             fontSize: 10, color: F.textDim,
             fontFamily: "'Barlow Condensed', sans-serif", margin: 0, letterSpacing: 0.3,
           }}>
-            {totalQty} total units requested
+            {totalQty} {t.totalUnitsRequested}
           </p>
         </div>
       </div>
@@ -684,7 +685,7 @@ function FieldCartBar() {
         }}
       >
         <ShoppingCart style={{ width: 13, height: 13 }} />
-        Review Cart
+        {t.reviewCart}
       </button>
     </div>,
     document.body

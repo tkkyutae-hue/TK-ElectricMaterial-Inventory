@@ -1,0 +1,90 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change business logic, routing, permissions, or data behavior.
+2. Do NOT change the actual wording/content intent of labels beyond making them translatable.
+3. Do NOT redesign pages.
+4. Keep this task focused only on finding and fixing untranslated UI labels in the newly added cart/request flow and closely related Field request surfaces.
+
+TASK GOAL
+Find UI text that does not respond to language switching in the cart/request/request-review/request-list flow and convert it to use the repo’s existing translation/i18n system.
+
+IMPORTANT
+- Keep the displayed meaning/content the same
+- Only fix translation wiring
+- Do NOT rewrite product copy
+- Do NOT change user-facing wording style unless needed to match existing translation keys/patterns
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field cart review UI
+- Field requests list/detail UI
+- requester picker / request submit modal/panel
+- any tiny translation file/key file needed
+- do NOT do a repo-wide i18n sweep
+
+KNOWN PROBLEMS TO FIX
+At minimum, fix labels like:
+- Project
+- Requested by
+
+Also inspect for any other newly added request/cart UI text that is still hardcoded and not switching language.
+
+REQUIREMENTS
+
+PART 1 — FIND HARDCODED TEXT IN REQUEST/CART FLOW
+Inspect the newly added request/cart related UI and identify labels/text that are not using the existing translation pattern.
+
+Examples to check:
+- section headings
+- field labels
+- status labels
+- button labels
+- empty state text
+- request metadata labels
+- small summary rows
+
+PART 2 — CONVERT TO EXISTING I18N SYSTEM
+Replace hardcoded strings with the repo’s existing translation mechanism.
+
+Requirements:
+1. Reuse the current translation pattern already used in the repo
+2. Add translation keys only where needed
+3. Do NOT rename unrelated translation architecture
+4. Preserve the same displayed meaning/content
+
+PART 3 — STATUS / METADATA TEXT
+Make sure request metadata labels and request status labels in the Field request flow also respond to language switching.
+
+Examples to inspect:
+- Requested
+- Preparing
+- Ready
+- Completed
+- Cancelled
+- Project
+- Requested by
+- Created
+- Items
+- Review Cart
+- Submit Request
+- Add to Cart
+- Update Cart
+- Remove from Cart
+
+Important:
+- Keep the actual wording/content unchanged
+- Just make them translatable
+
+PART 4 — SAFETY
+- Do NOT change request logic
+- Do NOT change role logic
+- Do NOT change inventory logic
+- Keep the work scoped to this flow only
+
+OUTPUT
+1. Summary of i18n fixes made
+2. Files modified
+3. Which labels were fixed
+4. Any new translation keys added
+5. Notes on what was intentionally left unchanged

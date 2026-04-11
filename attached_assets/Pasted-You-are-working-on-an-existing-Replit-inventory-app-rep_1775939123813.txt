@@ -1,0 +1,68 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, request status logic, routing, or permissions.
+2. Do NOT redesign the whole Requests tab.
+3. Keep this task focused only on restoring item thumbnails/photos in the Requests UI.
+4. Preserve current Field Mode visual identity.
+
+TASK GOAL
+Restore item thumbnail/photo display in the Field Requests tab so request items are easier to recognize visually.
+
+CURRENT PROBLEM
+In the Requests tab, item photos/thumbnails are missing next to item names.
+This makes request cards harder to scan, especially when multiple similar items exist.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- FieldRequestsList.tsx
+- any request card / request item row component
+- any tiny image helper/component only if truly needed
+
+REQUIRED UX
+
+PART 1 — COLLAPSED REQUEST CARD
+In the collapsed/default request card view:
+- show a small thumbnail for the first item in the request
+- place it near the main item summary area, typically to the left of the item name/summary
+- keep the card compact and mobile-friendly
+
+If a request has multiple items:
+- it is okay to show only the first item thumbnail in the collapsed view
+- do NOT clutter the card with many tiny images in collapsed mode
+
+PART 2 — EXPANDED REQUEST DETAILS
+When a request card is expanded:
+- show each item’s thumbnail/photo to the left of that item’s name
+- preserve current item name / qty / metadata layout as much as possible
+- keep the request item rows readable and compact
+
+PART 3 — IMAGE SOURCE / FALLBACK
+Use the same item photo source/pattern already used elsewhere in the repo if possible.
+
+Requirements:
+1. Reuse the existing image field/source already used in Inventory/Cart/Item details
+2. If an item has no image, use the existing fallback pattern already used elsewhere in the app
+3. Do NOT use browser-native broken-image behavior
+4. Keep the image styling consistent with current Field UI
+
+PART 4 — LAYOUT SAFETY
+Requirements:
+1. Do NOT let thumbnails make the request card too tall
+2. Keep thumbnails small but recognizable
+3. Preserve touch-friendly spacing
+4. Keep request metadata and status readable
+5. Do NOT redesign the whole request card
+
+PART 5 — SAFETY
+- Do NOT change request logic
+- Do NOT change request permissions
+- Do NOT change transaction creation/completion logic
+- Keep the work small and compatibility-safe
+
+OUTPUT
+1. Summary of request photo restoration
+2. Files modified
+3. How collapsed vs expanded request views show images
+4. Which image source/fallback pattern was reused
+5. Notes on what was intentionally left unchanged

@@ -1,0 +1,149 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or business logic.
+2. Do NOT redesign the whole movement/request system.
+3. Keep this task focused only on improving the person-name picker UX in movement and request flows.
+4. Reuse existing manpower/project/user data patterns already in the repo wherever possible.
+5. Do NOT invent a second separate people-management system.
+
+TASK GOAL
+Standardize the person-name input fields across these flows so they all work the same way:
+
+1. Receive / Return
+2. Issue / Transfer
+3. Request submit / request edit
+
+The person-name field should:
+- show about 5 recommended people when opened
+- allow scrolling through results
+- allow typeahead search
+- use manpower-related data as the primary source
+
+BUSINESS INTENT
+The app should stop relying on inconsistent free-typed names wherever possible.
+Instead, the user should choose from manpower-based suggestions and still be able to type-search quickly.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- MovementForm.tsx
+- any item row field / movement row person picker area
+- request submit / request edit UI
+- any existing requester picker component
+- manpower/project people source usage
+- any tiny shared searchable picker component/helper only if truly needed
+
+PART 1 — CREATE / REUSE ONE SHARED PERSON PICKER PATTERN
+
+Implement one reusable people picker pattern and use it consistently in:
+- receive / return person field
+- issue / transfer person field
+- request requester field
+
+The control should support:
+- click/focus to open suggestion list
+- top 5 suggestions shown immediately
+- typing to filter names
+- scrollable dropdown/list when more results exist
+- choosing a person instead of relying on raw free text
+
+Important:
+- Reuse an existing requester picker if one already exists and expand it, rather than creating multiple incompatible person pickers
+- Keep styling consistent with current app mode (Field/Admin where applicable)
+
+PART 2 — MANPOWER-BASED SUGGESTION SOURCE
+
+Use manpower-related data as the primary source.
+
+Preferred source priority:
+1. manpower associated with the currently selected project
+2. recent manpower names already used in that project
+3. recent/global manpower names
+4. current signed-in user as a fallback/default if appropriate
+
+If the repo currently has worker master data and manpower data:
+- prefer manpower-derived names first
+- use worker master only as fallback when manpower context is missing
+
+Do NOT hardcode fake people.
+
+PART 3 — TOP 5 DEFAULT SUGGESTIONS
+
+When the picker is opened:
+- show about 5 recommended people immediately
+- keep the list compact
+- if more matches exist, allow scrolling
+
+Requirements:
+1. The dropdown/list must be scrollable
+2. The top 5 should be chosen intelligently from manpower context
+3. If role/title exists, show it as secondary text
+4. Example display:
+   - Michael Kim · Foreman
+
+PART 4 — TYPEAHEAD SEARCH
+
+The picker must support typing to search.
+
+Requirements:
+1. Case-insensitive name search
+2. Filter results as the user types
+3. Keep the list scrollable
+4. If no match exists, show a clear empty state like:
+   - "No matching manpower found"
+5. Do NOT require exact match
+
+PART 5 — APPLY TO ALL RELEVANT PERSON FIELDS
+
+Use the same shared person-picker behavior in:
+
+A. Receive / Return
+- the person field used to record who handled or is associated with the movement
+
+B. Issue / Transfer
+- the person/requester/receiver-related field currently used in that flow
+
+C. Request submit / request edit
+- requester field
+- preserve existing request edit behavior
+
+Important:
+- Keep each flow’s current business meaning intact
+- only improve the input control and source consistency
+
+PART 6 — VALUE STORAGE
+
+When a person is selected, store structured data where safely supported, such as:
+- name
+- role/title if available
+- stable person/user id only if the repo already has a real one
+
+If a given flow currently only stores a name field:
+- populate it from the controlled manpower-based selection
+- do NOT do broad schema redesign unless a tiny compatibility-safe addition is clearly needed
+
+PART 7 — UX DETAILS
+
+Requirements:
+1. The input must still be usable by keyboard and touch
+2. The dropdown must not overflow awkwardly
+3. The list should feel fast and lightweight
+4. Preserve current translation/i18n patterns
+5. Keep the work incremental and compatible with the existing forms
+
+PART 8 — SAFETY
+
+- Do NOT change movement logic
+- Do NOT change request permissions
+- Do NOT change request status rules
+- Do NOT redesign the whole page
+- Keep the work scoped to people-picker UX and data sourcing only
+
+OUTPUT
+1. Summary of shared person-picker improvements
+2. Files modified
+3. Which manpower source(s) were used
+4. How the top 5 suggestions are chosen
+5. How scrolling + typeahead works
+6. Which flows now use the shared picker
+7. Notes on what was intentionally left unchanged

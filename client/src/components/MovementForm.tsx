@@ -17,12 +17,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Plus, ChevronLeft, ChevronRight, Trash2, AlertTriangle } from "lucide-react";
 import { api } from "@shared/routes";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { PersonPicker, type PersonValue } from "@/components/shared/PersonPicker";
 import { MovementTypePillSelector } from "./movement/MovementTypePillSelector";
 import { SearchableItemSelect } from "./movement/SearchableItemSelect";
 import { SearchableLocationSelect } from "./movement/SearchableLocationSelect";
 import { SearchableProjectSelect } from "./movement/SearchableProjectSelect";
 import { ItemRowField } from "./movement/ItemRowField";
 import type { ItemRow } from "./movement/types";
+import type { Worker } from "@shared/schema";
 
 // ── Field Mode dark CSS ────────────────────────────────────────────────────────
 const FM_CSS = `
@@ -209,6 +211,7 @@ export function MovementForm({
   const itemsErrorMessage = itemsIsError ? "Failed to load items" : null;
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
+  const { data: workers } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -253,7 +256,9 @@ export function MovementForm({
     } catch (_) {}
   }, [draftData, items]);
 
-  const movType = form.watch("movementType");
+  const movType    = form.watch("movementType");
+  const projectId  = form.watch("projectId");
+  const projectName = (projects ?? []).find((p: any) => p.id === projectId)?.name ?? null;
 
   const needsSource      = ["receive", "return", "transfer"].includes(movType);
   const needsDestination = ["issue", "transfer"].includes(movType);
@@ -583,12 +588,12 @@ export function MovementForm({
           {fieldMode ? (
             <div className="space-y-3 pb-3">
               <MovementTypeSection form={form} movementTypes={movementTypes} allowedTypes={allowedTypes} fieldMode={true} t={t} />
-              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={true} t={t} />
+              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={true} t={t} workers={workers} projectName={projectName} />
             </div>
           ) : (
             <SectionCard title="Movement Details" bodyClassName="space-y-4">
               <MovementTypeSection form={form} movementTypes={movementTypes} allowedTypes={allowedTypes} fieldMode={false} t={t} />
-              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={false} t={t} />
+              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={false} t={t} workers={workers} projectName={projectName} />
             </SectionCard>
           )}
 
@@ -744,7 +749,7 @@ function MovementTypeSection({
 
 function LocationProjectSection({
   form, locations, projects, movType, needsSource, needsDestination, needsProject,
-  sourceLabel, destLabel, fieldMode, t,
+  sourceLabel, destLabel, fieldMode, t, workers, projectName,
 }: {
   form: any;
   locations: any[] | undefined;
@@ -757,6 +762,8 @@ function LocationProjectSection({
   destLabel: string;
   fieldMode: boolean;
   t: any;
+  workers?: Worker[];
+  projectName?: string | null;
 }) {
   return (
     <div className="space-y-4">
@@ -859,11 +866,14 @@ function LocationProjectSection({
             <FormItem>
               <FormLabel>{t.receivedBy}</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
+                <PersonPicker
+                  value={field.value ? { name: field.value } : null}
+                  onChange={(v) => field.onChange(v?.name ?? "")}
+                  workers={workers ?? []}
+                  projectName={projectName}
                   placeholder={t.receiverNamePlaceholder}
-                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", borderRadius: 10, color: "#c8deca", fontSize: 13, height: 40 } : undefined}
-                  data-testid="input-person-name"
+                  dark={fieldMode}
+                  testId="input-person-name"
                 />
               </FormControl>
               <FormMessage />
@@ -893,11 +903,14 @@ function LocationProjectSection({
             <FormItem>
               <FormLabel>{t.requestedBy}</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
+                <PersonPicker
+                  value={field.value ? { name: field.value } : null}
+                  onChange={(v) => field.onChange(v?.name ?? "")}
+                  workers={workers ?? []}
+                  projectName={projectName}
                   placeholder={t.requesterNamePlaceholder}
-                  style={fieldMode ? { background: "#141e17", border: "1px solid #203023", borderRadius: 10, color: "#c8deca", fontSize: 13, height: 40 } : undefined}
-                  data-testid="input-person-name"
+                  dark={fieldMode}
+                  testId="input-person-name"
                 />
               </FormControl>
               <FormMessage />

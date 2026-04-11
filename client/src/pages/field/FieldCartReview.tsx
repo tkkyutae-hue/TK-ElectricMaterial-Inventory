@@ -5,11 +5,12 @@
  * "Submit Request" POSTs to /api/field/requests and clears the cart.
  * No inventory quantities change here.
  */
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
-  User, ChevronDown, X as XIcon, Check, ImageOff, Undo2, ClipboardList,
+  ChevronDown, Check, ImageOff, Undo2, ClipboardList,
 } from "lucide-react";
+import { PersonPicker } from "@/components/shared/PersonPicker";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
 import { useLanguage } from "@/hooks/use-language";
@@ -56,25 +57,6 @@ export function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: 
 
 const FONT_COND  = "'Barlow Condensed', sans-serif";
 const FONT_BEBAS = "'Bebas Neue', sans-serif";
-
-// Trades most likely to submit material requests — shown first in suggestions
-const PRIORITY_TRADES = [
-  "foreman",
-  "general foreman",
-  "superintendent",
-  "general superintendent",
-  "project manager",
-  "pm",
-  "supervisor",
-  "manager",
-  "electrician foreman",
-  "lead electrician",
-];
-
-function isPriorityTrade(trade?: string | null): boolean {
-  if (!trade) return false;
-  return PRIORITY_TRADES.includes(trade.toLowerCase().trim());
-}
 
 // ── QtyButton helper ──────────────────────────────────────────────────────────
 
@@ -139,285 +121,6 @@ function QtyInput({ value, onChange }: { value: number; onChange: (n: number) =>
         MozAppearance: "textfield",
       } as React.CSSProperties}
     />
-  );
-}
-
-// ── RequesterPicker ───────────────────────────────────────────────────────────
-// Typeahead search over active workers. Shows ~5 prioritised suggestions on open.
-
-interface RequesterValue {
-  name: string;
-  role?: string;
-}
-
-interface RequesterPickerProps {
-  value: RequesterValue | null;
-  onChange: (v: RequesterValue | null) => void;
-  workers: Worker[];
-  projectName?: string | null;
-  currentUserName?: string | null;
-}
-
-function RequesterPicker({
-  value, onChange, workers, projectName, currentUserName,
-}: RequesterPickerProps) {
-  const { t }                     = useLanguage();
-  const [inputVal, setInputVal]   = useState(value?.name ?? "");
-  const [open, setOpen]           = useState(false);
-  const [committed, setCommitted] = useState<RequesterValue | null>(value);
-  const containerRef              = useRef<HTMLDivElement>(null);
-  const inputRef                  = useRef<HTMLInputElement>(null);
-
-  // Sync if parent resets
-  useEffect(() => {
-    if (!value) {
-      setInputVal("");
-      setCommitted(null);
-    }
-  }, [value]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        // If nothing committed, revert input
-        if (!committed) setInputVal("");
-        else setInputVal(committed.name);
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, committed]);
-
-  // Build top-5 priority list (active workers only)
-  const suggestions = useMemo<Worker[]>(() => {
-    const active = workers.filter(w => w.isActive);
-    const q = inputVal.trim().toLowerCase();
-
-    // Apply typeahead filter if user has typed something (and NOT yet committed)
-    let pool = active;
-    if (q && !committed) {
-      pool = active.filter(w => w.fullName.toLowerCase().includes(q));
-    }
-
-    // Sort: project-match first, then priority trade, then alphabetical
-    pool.sort((a, b) => {
-      const aProject = projectName && a.project?.toLowerCase() === projectName.toLowerCase();
-      const bProject = projectName && b.project?.toLowerCase() === projectName.toLowerCase();
-      if (aProject && !bProject) return -1;
-      if (!aProject && bProject) return 1;
-
-      const aPriority = isPriorityTrade(a.trade);
-      const bPriority = isPriorityTrade(b.trade);
-      if (aPriority && !bPriority) return -1;
-      if (!aPriority && bPriority) return 1;
-
-      return a.fullName.localeCompare(b.fullName);
-    });
-
-    return pool.slice(0, 5);
-  }, [workers, inputVal, committed, projectName]);
-
-  function selectWorker(w: Worker) {
-    const val: RequesterValue = { name: w.fullName, role: w.trade ?? undefined };
-    setCommitted(val);
-    setInputVal(w.fullName);
-    setOpen(false);
-    onChange(val);
-  }
-
-  function clearSelection() {
-    setCommitted(null);
-    setInputVal("");
-    onChange(null);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }
-
-  const isSelected = !!committed;
-
-  return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      {/* Input row */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 0,
-        background: F.surface2,
-        border: `1px solid ${open ? F.accentBorder : F.borderStrong}`,
-        borderRadius: 8,
-        boxShadow: open ? `0 0 0 3px ${F.accentBg}` : "none",
-        transition: "border-color 0.12s, box-shadow 0.12s",
-        overflow: "hidden",
-      }}>
-        {/* Person icon */}
-        <div style={{ padding: "0 8px", display: "flex", alignItems: "center", flexShrink: 0 }}>
-          <User style={{ width: 13, height: 13, color: isSelected ? F.accent : F.textDim }} />
-        </div>
-
-        {/* Text input */}
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputVal}
-          placeholder={t.requesterSearchPlaceholder}
-          data-testid="input-requester"
-          readOnly={isSelected}
-          onClick={() => {
-            if (isSelected) return;
-            setOpen(true);
-          }}
-          onFocus={() => {
-            if (!isSelected) setOpen(true);
-          }}
-          onChange={e => {
-            setInputVal(e.target.value);
-            setCommitted(null);
-            setOpen(true);
-          }}
-          style={{
-            flex: 1,
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            color: isSelected ? F.text : F.text,
-            fontSize: 13,
-            fontFamily: FONT_COND,
-            fontWeight: isSelected ? 700 : 400,
-            padding: "9px 0",
-            cursor: isSelected ? "default" : "text",
-          }}
-        />
-
-        {/* Selected role badge */}
-        {isSelected && committed?.role && (
-          <span style={{
-            fontSize: 9, fontWeight: 800, color: F.textMuted,
-            fontFamily: FONT_COND, letterSpacing: "0.05em",
-            background: F.surface, border: `1px solid ${F.borderStrong}`,
-            borderRadius: 4, padding: "2px 6px", marginRight: 6, flexShrink: 0,
-            whiteSpace: "nowrap",
-          }}>
-            {committed.role}
-          </span>
-        )}
-
-        {/* Clear / chevron */}
-        {isSelected ? (
-          <button
-            type="button"
-            onClick={clearSelection}
-            data-testid="btn-requester-clear"
-            style={{
-              width: 28, height: 36, border: "none", background: "transparent",
-              color: F.textDim, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <XIcon style={{ width: 12, height: 12 }} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => { setOpen(o => !o); inputRef.current?.focus(); }}
-            style={{
-              width: 28, height: 36, border: "none", background: "transparent",
-              color: F.textDim, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <ChevronDown style={{ width: 13, height: 13, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-          </button>
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {open && !isSelected && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-          background: F.surface2,
-          border: `1px solid ${F.borderStrong}`,
-          borderRadius: 9,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
-          zIndex: 200,
-          overflow: "hidden",
-        }}>
-          {suggestions.length === 0 ? (
-            <div style={{ padding: "14px 14px", fontSize: 12, color: F.textDim, fontFamily: FONT_COND, textAlign: "center" }}>
-              {t.requesterNoMatch}
-            </div>
-          ) : (
-            <>
-              <div style={{ padding: "6px 12px 4px", fontSize: 9, fontWeight: 800, color: F.textDim, fontFamily: FONT_COND, letterSpacing: "0.08em" }}>
-                {(inputVal.trim() ? t.requesterSearchResults : t.requesterSuggested).toUpperCase()}
-              </div>
-              {suggestions.map(w => (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => selectWorker(w)}
-                  data-testid={`requester-option-${w.id}`}
-                  style={{
-                    width: "100%", padding: "9px 14px", textAlign: "left",
-                    background: "transparent", border: "none", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                    borderTop: "1px solid rgba(42,64,48,0.4)",
-                    transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = F.surface)}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: F.text, fontFamily: FONT_COND, margin: 0, letterSpacing: "0.03em" }}>
-                      {w.fullName}
-                    </p>
-                    {w.trade && (
-                      <p style={{ fontSize: 10, color: isPriorityTrade(w.trade) ? F.accent : F.textMuted, fontFamily: FONT_COND, margin: 0, marginTop: 1 }}>
-                        {w.trade}
-                      </p>
-                    )}
-                  </div>
-                  {/* Project tag if matching */}
-                  {projectName && w.project?.toLowerCase() === projectName.toLowerCase() && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, color: F.info, fontFamily: FONT_COND,
-                      background: F.infoBg, border: `1px solid ${F.infoBorder}`,
-                      borderRadius: 4, padding: "2px 5px", flexShrink: 0, letterSpacing: "0.05em",
-                    }}>
-                      {t.requesterThisProject.toUpperCase()}
-                    </span>
-                  )}
-                </button>
-              ))}
-
-              {/* Current user fallback */}
-              {currentUserName && !suggestions.some(w => w.fullName.toLowerCase() === currentUserName.toLowerCase()) && !inputVal.trim() && (
-                <button
-                  type="button"
-                  onClick={() => { onChange({ name: currentUserName }); setInputVal(currentUserName); setCommitted({ name: currentUserName }); setOpen(false); }}
-                  data-testid="requester-option-self"
-                  style={{
-                    width: "100%", padding: "9px 14px", textAlign: "left",
-                    background: "transparent", border: "none", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 8,
-                    borderTop: "1px solid rgba(42,64,48,0.4)",
-                    transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = F.surface)}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                >
-                  <User style={{ width: 11, height: 11, color: F.textDim, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: F.textMuted, fontFamily: FONT_COND, margin: 0, fontStyle: "italic" }}>
-                      {currentUserName} {t.requesterMeSuffix}
-                    </p>
-                  </div>
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -747,12 +450,14 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           <label style={{ fontSize: 10, fontWeight: 700, color: F.textMuted, fontFamily: FONT_COND, letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>
             {t.requestedBy.toUpperCase()}
           </label>
-          <RequesterPicker
+          <PersonPicker
             value={requester}
             onChange={setRequester}
             workers={activeWorkers}
             projectName={selectedProject?.name ?? null}
             currentUserName={currentUserName}
+            dark={true}
+            testId="input-requester"
           />
         </div>
 

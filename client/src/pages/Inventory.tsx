@@ -465,7 +465,7 @@ export default function Inventory() {
                       <span className="text-xs text-slate-500 leading-snug">{item.category?.name || "—"}</span>
                     </td>
                     {/* Qty / Unit */}
-                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap mat-row-flash">
+                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
                       <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
                       <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                     </td>

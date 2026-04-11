@@ -12,6 +12,7 @@ import {
 import { ItemStatusBadge, TransactionTypeBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 type CategorySummary = {
   id: number;
@@ -200,16 +201,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Inventory health and operational status.</p>
-        </div>
-        <div className="text-xs text-slate-400 font-medium">
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
-        </div>
-      </div>
+      <PageHeader size="lg" title="Dashboard" subtitle="Inventory health and operational status.">
+        <span className="text-xs text-slate-400 font-medium">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
+      </PageHeader>
 
       {/* KPI cards — problem-first order */}
       {isLoading ? (

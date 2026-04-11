@@ -2,6 +2,7 @@ import { useState, Fragment } from "react";
 import { format } from "date-fns";
 import { ChevronRight, Hash, CheckCircle2, TrendingUp, AlertCircle, ListTodo } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 function DrillDownRows({
   entries, unit, estQty,
@@ -107,12 +108,13 @@ export function ProgressTab({ projectId }: { projectId: number }) {
   return (
     <div className="space-y-5">
       {!hasScopes && (
-        <div className="premium-card bg-white p-12 text-center">
-          <TrendingUp className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">No scope items defined</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-            Add scope items in the <strong>Scope Items</strong> tab to enable progress tracking.
-          </p>
+        <div className="premium-card bg-white">
+          <EmptyState
+            icon={<TrendingUp className="w-10 h-10" />}
+            title="No scope items defined"
+            description="Add scope items in the Scope Items tab to enable progress tracking."
+            className="py-12"
+          />
         </div>
       )}
 

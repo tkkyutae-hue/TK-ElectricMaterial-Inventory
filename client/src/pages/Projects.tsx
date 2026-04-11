@@ -13,6 +13,7 @@ import { QuickEntryInput } from "@/components/QuickEntryInput";
 import { useForm } from "react-hook-form";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   active:    { label: "Active",    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -71,11 +72,7 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Projects</h1>
-          <p className="text-slate-500 mt-1">Active job sites and material tracking by project.</p>
-        </div>
+      <PageHeader size="lg" title="Projects" subtitle="Active job sites and material tracking by project." className="flex-col sm:flex-row sm:items-center">
         <div className="flex gap-3">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] bg-white"><SelectValue /></SelectTrigger>
@@ -191,7 +188,7 @@ export default function Projects() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Search bar */}
       <div className="relative">

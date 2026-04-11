@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 function ReportStatusBadge({ status }: { status: string }) {
   if (status === "submitted") return (
@@ -132,12 +133,13 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
       {isLoading ? (
         <div className="premium-card bg-white p-12 text-center text-slate-400 text-sm">Loading reports…</div>
       ) : filtered.length === 0 ? (
-        <div className="premium-card bg-white p-12 text-center">
-          <FileText className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">No reports found</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {filter === "all" ? "No daily reports yet for this project." : `No ${filter} reports.`}
-          </p>
+        <div className="premium-card bg-white">
+          <EmptyState
+            icon={<FileText className="w-10 h-10" />}
+            title="No reports found"
+            description={filter === "all" ? "No daily reports yet for this project." : `No ${filter} reports.`}
+            className="py-12"
+          />
         </div>
       ) : (
         <div className="premium-card bg-white overflow-hidden">

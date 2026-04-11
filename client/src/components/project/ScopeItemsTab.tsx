@@ -15,6 +15,7 @@ import { ScopeDeleteDialog, UndoSnackbar } from "./scope/ScopeDeleteDialog";
 import { InlineScopeRow } from "./scope/InlineScopeRow";
 import { ScopeCategorySection } from "./scope/ScopeCategorySection";
 import { useScopeActions } from "./scope/useScopeActions";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
@@ -251,16 +252,19 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           <div className="p-8 text-center text-slate-400">Loading…</div>
 
         ) : scopeItems.length === 0 && addMode === "none" ? (
-          <div className="p-12 text-center">
-            <LayoutList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">No scope items yet</p>
-            <p className="text-xs text-slate-400 mt-1">Add items to define the project's estimated work quantities.</p>
-            <Button size="sm" variant="outline" className="mt-4"
-              onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); }}
-              data-testid="button-add-scope-item-empty">
-              <Plus className="w-4 h-4 mr-1" /> Add First Item
-            </Button>
-          </div>
+          <EmptyState
+            icon={<LayoutList className="w-10 h-10" />}
+            title="No scope items yet"
+            description="Add items to define the project's estimated work quantities."
+            action={
+              <Button size="sm" variant="outline"
+                onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); }}
+                data-testid="button-add-scope-item-empty">
+                <Plus className="w-4 h-4 mr-1" /> Add First Item
+              </Button>
+            }
+            className="py-12"
+          />
 
         ) : grouped.length > 0 ? (
           <div className="overflow-x-auto">

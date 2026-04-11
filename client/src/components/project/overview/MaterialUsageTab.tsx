@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ArrowUpRight, ArrowDownRight, Package, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 function fmtValue(v: number) {
   return v > 0 ? `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
@@ -63,10 +64,13 @@ export function MaterialUsageTab({ projectId }: { projectId: number }) {
       {isLoading ? (
         <div className="premium-card bg-white p-10 text-center text-slate-400 text-sm">Loading material usage…</div>
       ) : grouped.length === 0 ? (
-        <div className="premium-card bg-white p-12 text-center">
-          <Package className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">No material movements</p>
-          <p className="text-xs text-slate-400 mt-1">No material movements logged for this project yet.</p>
+        <div className="premium-card bg-white">
+          <EmptyState
+            icon={<Package className="w-10 h-10" />}
+            title="No material movements"
+            description="No material movements logged for this project yet."
+            className="py-12"
+          />
         </div>
       ) : (
         <div className="premium-card bg-white overflow-hidden">

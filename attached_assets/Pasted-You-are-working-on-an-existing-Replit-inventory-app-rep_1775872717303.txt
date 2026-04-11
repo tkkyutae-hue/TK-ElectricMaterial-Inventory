@@ -1,0 +1,154 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT rebuild any page from scratch.
+2. Do NOT change business logic, routing, API calls, permissions, or data behavior.
+3. Do NOT redesign the app visually.
+4. Preserve the current Admin and Field identities.
+5. This task is ONLY for gradual shared style/system cleanup using existing shared UI and token foundations.
+
+TASK GOAL
+Perform a gradual style-system cleanup so Admin/Project surfaces feel more consistent and maintainable, while preserving the existing look and behavior.
+
+IMPORTANT CONTEXT
+- Shared UI primitives already exist in the repo (such as PageHeader, SectionCard, StatCard, EmptyState, FilterBar, badges, etc.)
+- Field design tokens were added in a prior step
+- Do NOT flatten Field Mode into generic Admin styling
+- Do NOT make Admin look like Field
+- The goal is shared structure and consistency, not visual homogenization
+
+SCOPE
+Focus on the most duplicated high-value presentation patterns across Admin and Project surfaces.
+
+LIKELY TARGET FILES
+Inspect the repo first and focus on the files with the most duplicated header/card/section/table-toolbar styling, such as:
+- client/src/pages/Inventory.tsx
+- client/src/pages/Dashboard.tsx
+- client/src/pages/project/tabs/OverviewTab.tsx
+- client/src/pages/project/tabs/ScopeItemsTab.tsx
+- extracted project overview/scope components
+- any small shared UI file if a tiny extension is needed
+
+Do NOT touch unrelated Field workflow logic in this task.
+Do NOT do a repo-wide sweep.
+
+==================================================
+PART 1 — IDENTIFY HIGH-VALUE STYLE DUPLICATION
+==================================================
+
+Before editing, inspect the current code and identify the most repeated UI patterns such as:
+- page headers with title/subtitle/action area
+- section wrapper cards
+- stat/KPI cards
+- empty states
+- filter/tool bars
+- repeated admin table section shells
+- repeated metadata rows / badge wrappers
+
+Focus only on the 3–6 highest-value duplicated patterns.
+Do NOT over-audit the entire repo.
+
+==================================================
+PART 2 — REUSE SHARED UI PRIMITIVES MORE CONSISTENTLY
+==================================================
+
+Where appropriate, replace repeated custom wrappers with existing shared components already present in the repo, such as:
+- PageHeader
+- SectionCard
+- StatCard
+- EmptyState
+- FilterBar
+- shared badge components
+
+Requirements:
+1. Reuse existing shared components where they clearly fit.
+2. Do NOT force them into places where they make the UI worse.
+3. Preserve current layout and behavior.
+4. Reduce duplicated wrapper/card/header markup.
+
+==================================================
+PART 3 — STANDARDIZE HIGH-VALUE SURFACE STYLES
+==================================================
+
+Without redesigning pages, improve consistency in these areas where possible:
+- page section spacing
+- card shell styling
+- header/title/subtitle hierarchy
+- stat card visual consistency
+- empty state presentation
+- toolbar/filter row structure
+- repeated muted labels / metadata rows
+
+Requirements:
+1. Keep Admin pages light and information-dense.
+2. Keep Project pages readable and consistent with Admin style.
+3. Keep Field identity separate; do not convert Admin into Field or vice versa.
+4. Prefer shared structure over one-off styling.
+
+==================================================
+PART 4 — USE EXISTING FIELD TOKENS ONLY WHERE RELEVANT
+==================================================
+
+If Field-facing shared components or repeated Field surfaces are touched:
+- reuse the existing Field token foundation instead of hardcoded repeated color values
+- do not do a full conversion
+- only replace the most repeated high-value inline styles where safe
+
+Important:
+- This task is NOT a full Field style migration
+- This task is NOT a full Admin theme rewrite
+- This is a selective consistency pass
+
+==================================================
+PART 5 — DO NOT OVERREFACTOR
+==================================================
+
+Important:
+- Do NOT create a huge abstraction layer
+- Do NOT create a new shared component for every tiny visual difference
+- Do NOT touch business logic just because JSX moves
+- Do NOT broaden scope into unrelated pages
+
+Prefer:
+- a few meaningful shared primitive usages
+- cleanup of repeated wrappers
+- consistent section/header/stat presentation
+
+Avoid:
+- giant stylistic rewrite
+- broad risky file churn
+- unnecessary prop-heavy abstractions
+
+==================================================
+PART 6 — KEEP UX AND DENSITY INTACT
+==================================================
+
+Requirements:
+1. Preserve Inventory page behavior, table behavior, drawer behavior, sorting, and pagination.
+2. Preserve Dashboard behavior and KPI meaning.
+3. Preserve Project tab behavior and workflows.
+4. Do NOT reduce Admin information density too much.
+5. Keep layouts familiar to current users.
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch server routes in this task.
+2. Do NOT touch inventory calculations in this task.
+3. Do NOT touch movement validation in this task.
+4. Do NOT change permissions in this task.
+5. Keep the work incremental and scoped.
+6. Prefer safe style-system improvement over clever abstraction.
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of shared style cleanup improvements
+2. Files modified
+3. Which duplicated UI patterns were standardized
+4. Which shared components were reused more broadly
+5. What was intentionally left unchanged for safety
+6. Suggested next step after this cleanup

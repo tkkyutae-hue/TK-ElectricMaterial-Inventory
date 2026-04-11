@@ -12,6 +12,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryGradient } from "@/lib/categoryUtils";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 type CategorySummary = {
   id: number;
@@ -259,12 +260,7 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Inventory</h1>
-          <p className="text-slate-500 mt-1">Browse by category or search for specific materials and equipment.</p>
-        </div>
+      <PageHeader size="lg" title="Inventory" subtitle="Browse by category or search for specific materials and equipment." className="flex-col sm:flex-row sm:items-center">
         {isAdminRole && (
           <Button
             onClick={handleExportXlsx}
@@ -277,7 +273,7 @@ export default function Inventory() {
             {exporting ? "Generating…" : "Export to Excel"}
           </Button>
         )}
-      </div>
+      </PageHeader>
 
       {/* Alert banner for stock issues */}
       {(totalOutOfStock > 0 || totalLowStock > 0) && (

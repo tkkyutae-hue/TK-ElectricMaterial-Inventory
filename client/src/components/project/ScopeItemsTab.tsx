@@ -1,46 +1,24 @@
-import { useState, useEffect, useMemo, useRef, Fragment } from "react";
-import { createPortal } from "react-dom";
+import { Fragment, useState, useMemo, useRef } from "react";
 import {
-  X, Trash2, Plus, Save, CheckCircle2, Pencil, Copy, FolderOpen,
-  Zap, Boxes, Layers, Package, LayoutList, Hash, ChevronDown,
-  AlertCircle, Square, CheckSquare,
+  X, Trash2, Plus, Save, CheckCircle2,
+  Boxes, LayoutList, Hash, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ProjectScopeItem } from "@shared/schema";
-import {
-  scopeItemSchema, type ScopeItemFormData,
-  type PendingRow, type BundleRow,
-  newPendingRow, newBundleRow,
-  COMMON_UNITS, flexMatch,
-} from "./types";
+import { type PendingRow, newPendingRow, COMMON_UNITS, flexMatch } from "./types";
 import {
   CATEGORY_ORDER, CATEGORY_CONFIG, CAT_ICONS,
   resolveDisplayCategory, resolveSubGroup,
 } from "./categoryConfig";
-import {
-  getEMTTemplate, getRigidTemplate, getFlexibleTemplate,
-  BUNDLE_DEFINITIONS, BUNDLE_SIZES,
-} from "./bundleTemplates";
-
-function ScopeTypeChip({ scopeType }: { scopeType: string | null | undefined }) {
-  if (!scopeType || scopeType === "primary") return null;
-  return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 border border-slate-200 whitespace-nowrap ml-1.5">
-      sup
-    </span>
-  );
-}
+import { BundleSelector } from "./scope/BundleSelector";
+import { ScopeItemDialog } from "./scope/ScopeItemDialog";
+import { ScopeItemRow } from "./scope/ScopeItemRow";
+import { ScopeDeleteDialog, UndoSnackbar } from "./scope/ScopeDeleteDialog";
+import type { BundleRow } from "./types";
 
 function InlineScopeRow({
   row, invItems, onChange, onRemove, rowIndex,
@@ -200,780 +178,6 @@ function InlineScopeRow({
   );
 }
 
-function BundleScopeRow({
-  row, invItems, onChange, onRemove, rowIndex, bundleType, bundleSize, isDuplicate,
-}: {
-  row: BundleRow;
-  invItems: any[];
-  onChange: (updated: BundleRow) => void;
-  onRemove: () => void;
-  rowIndex: number;
-  bundleType?: string;
-  bundleSize?: string;
-  isDuplicate?: boolean;
-}) {
-  const [invSearch, setInvSearch] = useState(
-    row.linkedInventoryItemId
-      ? (invItems.find(it => it.id === row.linkedInventoryItemId)?.name ?? row.itemName)
-      : row.itemName
-  );
-  const [invOpen, setInvOpen] = useState(false);
-  const [dropRect, setDropRect] = useState<DOMRect | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const prevLinkedId = useRef(row.linkedInventoryItemId);
-  const prevItemName = useRef(row.itemName);
-  useEffect(() => {
-    const idChanged = row.linkedInventoryItemId !== prevLinkedId.current;
-    const nameChanged = row.itemName !== prevItemName.current;
-    if (idChanged) {
-      if (row.linkedInventoryItemId) {
-        const item = invItems.find(it => it.id === row.linkedInventoryItemId);
-        if (item) setInvSearch(item.name);
-      } else {
-        setInvSearch(row.itemName);
-      }
-      prevLinkedId.current = row.linkedInventoryItemId;
-    } else if (nameChanged && !row.linkedInventoryItemId) {
-      setInvSearch(row.itemName);
-    }
-    prevItemName.current = row.itemName;
-  }, [row.itemName, row.linkedInventoryItemId, invItems]);
-
-  const filtered = useMemo(() => {
-    const query = invSearch.trim();
-    let pool = invItems;
-
-    if (!query && bundleType) {
-      const bt = bundleType.toLowerCase();
-      pool = invItems.filter(it => {
-        const n = it.name.toLowerCase();
-        if (bt.includes("emt conduit")) return n.includes("emt");
-        if (bt.includes("rigid conduit")) return n.includes("rigid") && !n.includes("flexible") && !n.includes("liquidtight");
-        if (bt.includes("flexible conduit")) return n.includes("flexible") || n.includes("liquidtight");
-        if (bt.includes("cable tray")) return n.includes("cable tray") || n.includes("tray");
-        if (bt.includes("box") || bt.includes("device")) {
-          return n.includes("box") || n.includes("receptacle") || n.includes("switch") || n.includes("plate") || n.includes("duplex") || n.includes("device");
-        }
-        if (bt.includes("grounding")) return n.includes("ground");
-        return true;
-      });
-    }
-
-    if (!query) return pool.slice(0, 10);
-    return pool.filter(it => flexMatch(query, it.name)).slice(0, 10);
-  }, [invSearch, invItems, bundleType]);
-
-  function openDrop() {
-    if (!row.checked) return;
-    if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
-    setInvOpen(true);
-  }
-
-  function selectInv(it: any) {
-    setInvSearch(it.name);
-    setInvOpen(false);
-    onChange({
-      ...row,
-      itemName: it.name,
-      unit: it.unitOfMeasure ?? row.unit,
-      linkedInventoryItemId: it.id,
-    });
-  }
-
-  const dropdownPortal = invOpen && row.checked && filtered.length > 0 && dropRect
-    ? createPortal(
-        <div style={{
-          position: "fixed",
-          top: dropRect.bottom + 2,
-          left: dropRect.left,
-          width: dropRect.width,
-          zIndex: 9999,
-        }} className="bg-white border border-slate-200 rounded-lg shadow-2xl max-h-44 overflow-y-auto">
-          {filtered.map(it => (
-            <button key={it.id} type="button"
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => selectInv(it)}
-              className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between gap-2 hover:bg-slate-50 ${row.linkedInventoryItemId === it.id ? "bg-emerald-50 text-emerald-800 font-semibold" : "text-slate-700"}`}>
-              <span className="truncate">{it.name}</span>
-              <span className="text-[10px] text-slate-400 shrink-0">{it.unitOfMeasure}</span>
-            </button>
-          ))}
-        </div>,
-        document.body
-      )
-    : null;
-
-  return (
-    <Fragment>
-      <tr className={`transition-colors border-t border-slate-100 ${!row.checked ? "opacity-40 bg-slate-50/50" : isDuplicate ? "bg-red-50 border-red-200" : "bg-white"}`}
-        data-testid={`bundle-row-${rowIndex}`}>
-        <td className="px-3 py-2">
-          <input type="checkbox" checked={row.checked}
-            onChange={e => onChange({ ...row, checked: e.target.checked })}
-            className="rounded" data-testid={`bundle-row-check-${rowIndex}`} />
-        </td>
-        <td className="px-2 py-2">
-          <div className="relative">
-            <Input
-              ref={inputRef}
-              value={invSearch}
-              placeholder="Search inventory…"
-              disabled={!row.checked}
-              onChange={e => {
-                const val = e.target.value;
-                setInvSearch(val);
-                if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
-                setInvOpen(true);
-                if (row.linkedInventoryItemId && val !== invItems.find(it => it.id === row.linkedInventoryItemId)?.name) {
-                  onChange({ ...row, itemName: val, linkedInventoryItemId: null });
-                } else {
-                  onChange({ ...row, itemName: val });
-                }
-              }}
-              onFocus={openDrop}
-              onBlur={() => setTimeout(() => setInvOpen(false), 200)}
-              className={`h-7 text-xs ${row.linkedInventoryItemId ? "border-emerald-300 bg-emerald-50/60" : ""}`}
-              data-testid={`bundle-row-name-${rowIndex}`}
-            />
-            {row.checked && row.linkedInventoryItemId && (
-              <button type="button"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                onClick={() => { setInvSearch(""); onChange({ ...row, itemName: "", linkedInventoryItemId: null }); }}>
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-          {row.checked && row.linkedInventoryItemId && (
-            <p className="text-[9px] text-emerald-600 mt-0.5 flex items-center gap-0.5">
-              <CheckCircle2 className="w-2 h-2" /> linked
-            </p>
-          )}
-        </td>
-        <td className="px-2 py-2 w-14">
-          <Input value={row.unit} disabled={!row.checked}
-            onChange={e => onChange({ ...row, unit: e.target.value })}
-            className="h-7 text-xs w-14" data-testid={`bundle-row-unit-${rowIndex}`} />
-        </td>
-        <td className="px-2 py-2 w-20">
-          <Input type="number" min="0" step="any" value={row.estimatedQty} placeholder="0"
-            disabled={!row.checked}
-            onChange={e => onChange({ ...row, estimatedQty: e.target.value })}
-            className="h-7 text-xs w-20" data-testid={`bundle-row-qty-${rowIndex}`} />
-        </td>
-        <td className="px-2 py-2 w-28">
-          <Input value={row.category} disabled={!row.checked}
-            onChange={e => onChange({ ...row, category: e.target.value })}
-            className="h-7 text-xs w-28"
-            list={`bundle-cat-list-${rowIndex}`}
-            data-testid={`bundle-row-cat-${rowIndex}`} />
-          <datalist id={`bundle-cat-list-${rowIndex}`}>
-            {CATEGORY_ORDER.map(c => <option key={c} value={c} />)}
-            <option value="EMT Support" />
-            <option value="Rigid Support" />
-          </datalist>
-        </td>
-        <td className="px-2 py-2 w-20">
-          <select value={row.scopeType} disabled={!row.checked}
-            onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
-            className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
-            data-testid={`bundle-row-type-${rowIndex}`}>
-            <option value="primary">Primary</option>
-            <option value="support">Support</option>
-          </select>
-        </td>
-        <td className="px-2 py-2 w-8">
-          <button type="button" onClick={onRemove}
-            className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-            data-testid={`bundle-row-delete-${rowIndex}`}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </td>
-      </tr>
-      {dropdownPortal}
-    </Fragment>
-  );
-}
-
-function ScopeItemDialog({
-  projectId, item, open, onClose,
-}: {
-  projectId: number;
-  item: ProjectScopeItem | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const isEdit = !!item;
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
-  const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
-  const [invSearch, setInvSearch] = useState("");
-  const [invOpen, setInvOpen] = useState(false);
-  const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
-
-  const filteredInvItems = allInventoryItems.filter(it => flexMatch(invSearch, it.name)).slice(0, 12);
-  const linkedInvName = allInventoryItems.find(it => it.id === linkedInvId)?.name ?? "";
-
-  const form = useForm<ScopeItemFormData>({
-    resolver: zodResolver(scopeItemSchema),
-    defaultValues: {
-      itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
-      isActive: true, linkedInventoryItemId: null,
-      scopeType: "primary", progressCountingMode: "exact",
-    },
-  });
-
-  useEffect(() => {
-    if (open) {
-      if (isEdit && item) {
-        const lid = (item as any)?.linkedInventoryItemId ?? null;
-        setLinkedInvId(lid);
-        setInvSearch(lid ? (allInventoryItems.find(it => it.id === lid)?.name ?? "") : "");
-        form.reset({
-          itemName: item.itemName ?? "",
-          unit: item.unit ?? "",
-          estimatedQty: item.estimatedQty ? String(item.estimatedQty) : "",
-          category: item.category ?? "",
-          remarks: item.remarks ?? "",
-          isActive: item.isActive ?? true,
-          linkedInventoryItemId: lid,
-          scopeType: ((item as any).scopeType as "primary" | "support") ?? "primary",
-          progressCountingMode: ((item as any).progressCountingMode as "exact" | "family" | "manual") ?? "exact",
-        });
-      } else {
-        setLinkedInvId(null);
-        setInvSearch("");
-        form.reset({
-          itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
-          isActive: true, linkedInventoryItemId: null,
-          scopeType: "primary", progressCountingMode: "exact",
-        });
-      }
-    }
-  }, [open, item?.id]);
-
-  const saveMutation = useMutation({
-    mutationFn: (data: any) =>
-      isEdit
-        ? apiRequest("PATCH", `/api/scope-items/${item!.id}`, data)
-        : apiRequest("POST", `/api/projects/${projectId}/scope-items`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
-      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
-      toast({ title: isEdit ? "Scope item updated" : "Scope item added" });
-      onClose();
-    },
-    onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),
-  });
-
-  function onSubmit(data: ScopeItemFormData) {
-    saveMutation.mutate({ ...data, estimatedQty: String(data.estimatedQty), linkedInventoryItemId: linkedInvId });
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Scope Item" : "Add Scope Item"}</DialogTitle>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <FormField control={form.control} name="itemName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Item Name *</FormLabel>
-                <FormControl><Input {...field} data-testid="input-scope-item-name" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="unit" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit *</FormLabel>
-                  <FormControl><Input {...field} list="dlg-units-list" data-testid="select-scope-unit" /></FormControl>
-                  <datalist id="dlg-units-list">{COMMON_UNITS.map(u => <option key={u} value={u} />)}</datalist>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="estimatedQty" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Est. Qty *</FormLabel>
-                  <FormControl><Input type="number" min="0" step="any" placeholder="0" {...field} data-testid="input-scope-qty" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="category" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                  <FormControl><Input placeholder="e.g. Conduit" {...field} list="dlg-cat-list" data-testid="input-scope-category" /></FormControl>
-                  <datalist id="dlg-cat-list">{CATEGORY_ORDER.map(c => <option key={c} value={c} />)}</datalist>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="scopeType" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Scope Type</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger data-testid="select-scope-type"><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="primary">Primary</SelectItem>
-                      <SelectItem value="support">Support</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-            <FormField control={form.control} name="progressCountingMode" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Progress Counting Mode</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger data-testid="select-scope-counting-mode"><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="exact">Exact Match Only</SelectItem>
-                    <SelectItem value="family">Family Match (same category)</SelectItem>
-                    <SelectItem value="manual">Manual Mapping</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">
-                Inventory Item Link <span className="text-slate-400 font-normal text-xs">(optional)</span>
-              </label>
-              <div className="relative">
-                <Input
-                  placeholder="Search inventory items to link…"
-                  value={invSearch}
-                  data-testid="input-scope-inv-link"
-                  onChange={(e) => { setInvSearch(e.target.value); setInvOpen(true); if (!e.target.value) setLinkedInvId(null); }}
-                  onFocus={() => setInvOpen(true)}
-                  onBlur={() => setTimeout(() => setInvOpen(false), 150)}
-                  className={linkedInvId ? "border-emerald-300 bg-emerald-50" : ""}
-                />
-                {linkedInvId && (
-                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    onClick={() => { setLinkedInvId(null); setInvSearch(""); }}>
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {invOpen && filteredInvItems.length > 0 && (
-                  <div className="absolute z-[200] top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                    {filteredInvItems.map(it => (
-                      <button key={it.id} type="button"
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => { setLinkedInvId(it.id); setInvSearch(it.name); setInvOpen(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between gap-2 ${linkedInvId === it.id ? "bg-emerald-50 text-emerald-800 font-medium" : "text-slate-700"}`}>
-                        <span className="truncate">{it.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono shrink-0">{it.unitOfMeasure ?? ""}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {linkedInvId && <p className="text-[11px] text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Linked: {linkedInvName}</p>}
-            </div>
-            <FormField control={form.control} name="remarks" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Remarks <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                <FormControl><Textarea rows={2} className="resize-none" placeholder="Any notes…" {...field} data-testid="input-scope-remarks" /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {isEdit && (
-              <FormField control={form.control} name="isActive" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
-                    <FormControl><SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={saveMutation.isPending}>Cancel</Button>
-              <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={saveMutation.isPending} data-testid="button-save-scope-item">
-                <Save className="w-4 h-4 mr-1" />
-                {saveMutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Add Item"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function VariantArea({
-  item, invItems, onSave, onClose,
-}: {
-  item: ProjectScopeItem;
-  invItems: any[];
-  onSave: (ids: number[]) => void;
-  onClose: () => void;
-}) {
-  const existing: number[] = (item as any).acceptedVariants ?? [];
-  const [selected, setSelected] = useState<number[]>(existing);
-  const [search, setSearch] = useState("");
-
-  const filtered = invItems.filter(it => flexMatch(search, it.name)).slice(0, 15);
-  const selectedItems = invItems.filter(it => selected.includes(it.id));
-
-  function toggle(id: number) {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  }
-
-  return (
-    <tr>
-      <td colSpan={6} className="px-5 pb-4 pt-0">
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-indigo-800">Accepted Variants — "{item.itemName}"</p>
-              <p className="text-[10px] text-indigo-500 mt-0.5">Inventory items accepted as substitutes for this scope item</p>
-            </div>
-            <button type="button" onClick={onClose} className="text-indigo-400 hover:text-indigo-600 p-1">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {selectedItems.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedItems.map(it => (
-                <span key={it.id} className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 border border-indigo-300 text-indigo-800 text-xs rounded-full">
-                  {it.name}
-                  <button type="button" onClick={() => toggle(it.id)} className="text-indigo-400 hover:text-indigo-700 ml-0.5">
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search inventory items to add as variants…"
-            className="h-8 text-xs"
-            data-testid={`variant-search-${item.id}`}
-          />
-          {search && (
-            <div className="bg-white border border-slate-200 rounded-lg max-h-40 overflow-y-auto">
-              {filtered.length === 0
-                ? <p className="text-xs text-slate-400 px-3 py-2 italic">No matches</p>
-                : filtered.map(it => (
-                  <button key={it.id} type="button" onClick={() => toggle(it.id)}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${selected.includes(it.id) ? "bg-indigo-50 text-indigo-800 font-medium" : "text-slate-700"}`}
-                    data-testid={`variant-item-${it.id}`}>
-                    <span className="truncate">{it.name}</span>
-                    {selected.includes(it.id) && <CheckCircle2 className="w-3 h-3 text-indigo-600 shrink-0" />}
-                  </button>
-                ))
-              }
-            </div>
-          )}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[10px] text-indigo-600">{selected.length} variant{selected.length !== 1 ? "s" : ""} selected</span>
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={onClose} className="h-7 text-xs">Cancel</Button>
-              <Button type="button" size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-                onClick={() => onSave(selected)} data-testid={`button-save-variants-${item.id}`}>
-                Save Variants
-              </Button>
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function BundleSelector({
-  onSave, onClose, invItems,
-}: {
-  onSave: (rows: Omit<BundleRow, "localId">[]) => void;
-  onClose: () => void;
-  invItems: any[];
-}) {
-  const [phase, setPhase] = useState<"select" | "configure">("select");
-  const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [flexibleType, setFlexibleType] = useState<string>("Metal Flexible");
-  const [bundleRows, setBundleRows] = useState<BundleRow[]>([]);
-
-  const availableSizes = selectedBundle ? (BUNDLE_SIZES[selectedBundle] ?? []) : [];
-
-  function normSize(s: string): string {
-    return s.replace(/(\d)-(\d)/g, "$1 $2");
-  }
-
-  function resolveInvMatch(searchWords: string[], sizeNorm: string) {
-    return sizeNorm
-      ? invItems.find(inv => {
-          const n = inv.name.toLowerCase();
-          const nNorm = normSize(n.replace(/['"#]/g, "").trim());
-          const normSz = normSize(sizeNorm);
-          const sizeMatch = nNorm.startsWith(normSz + " ") || nNorm === normSz;
-          return sizeMatch && searchWords.every(w => n.includes(w));
-        })
-      : invItems.find(inv => {
-          const n = inv.name.toLowerCase();
-          return searchWords.every(w => n.includes(w));
-        });
-  }
-
-  function buildRows(bundleName: string, size: string, flexType?: string): BundleRow[] {
-    let items;
-    if (bundleName === "EMT Conduit Bundle") {
-      items = getEMTTemplate(size);
-    } else if (bundleName === "Rigid Conduit Bundle") {
-      items = getRigidTemplate(size);
-    } else if (bundleName === "Flexible Conduit Bundle") {
-      items = getFlexibleTemplate(flexType ?? flexibleType);
-    } else {
-      items = BUNDLE_DEFINITIONS[bundleName] ?? [];
-    }
-    const sizeNorm = size ? size.toLowerCase().replace(/['"#]/g, "").trim() : "";
-    return items.map(it => {
-      const match = resolveInvMatch(it.searchWords, sizeNorm);
-      return {
-        localId: Math.random().toString(36).slice(2),
-        itemName: match ? match.name : it.itemName,
-        unit: match ? (match.unitOfMeasure || it.unit) : it.unit,
-        estimatedQty: "",
-        category: it.category,
-        scopeType: it.scopeType,
-        checked: true,
-        linkedInventoryItemId: match ? match.id : null,
-      };
-    });
-  }
-
-  function pickBundle(name: string) {
-    const defaultSize = BUNDLE_SIZES[name]?.[0] ?? "";
-    const defaultFlexType = "Metal Flexible";
-    setSelectedBundle(name);
-    setSelectedSize(defaultSize);
-    if (name === "Flexible Conduit Bundle") setFlexibleType(defaultFlexType);
-    setBundleRows(buildRows(name, defaultSize, defaultFlexType));
-    setPhase("configure");
-  }
-
-  function handleSizeChange(size: string) {
-    setSelectedSize(size);
-    if (!selectedBundle) return;
-    setBundleRows(buildRows(selectedBundle, size, flexibleType));
-  }
-
-  function handleFlexTypeChange(flexType: string) {
-    setFlexibleType(flexType);
-    if (selectedBundle !== "Flexible Conduit Bundle") return;
-    setBundleRows(buildRows("Flexible Conduit Bundle", selectedSize, flexType));
-  }
-
-  function addManualRow() {
-    setBundleRows(prev => [...prev, newBundleRow()]);
-  }
-
-  function updateRow(localId: string, updated: BundleRow) {
-    setBundleRows(prev => prev.map(r => r.localId === localId ? updated : r));
-  }
-
-  function removeRow(localId: string) {
-    setBundleRows(prev => prev.filter(r => r.localId !== localId));
-  }
-
-  const duplicateInvIds: Set<number> = useMemo(() => {
-    const checked = bundleRows.filter(r => r.checked && r.linkedInventoryItemId);
-    const idCounts = new Map<number, number>();
-    checked.forEach(r => {
-      const id = r.linkedInventoryItemId!;
-      idCounts.set(id, (idCounts.get(id) ?? 0) + 1);
-    });
-    const dups = new Set<number>();
-    idCounts.forEach((count, id) => { if (count > 1) dups.add(id); });
-    return dups;
-  }, [bundleRows]);
-
-  const hasDuplicates = duplicateInvIds.size > 0;
-
-  function handleSave() {
-    if (hasDuplicates) return;
-    const toSave = bundleRows
-      .filter(r => r.checked && r.itemName.trim())
-      .map(({ localId: _l, checked: _c, ...rest }) => rest);
-    onSave(toSave);
-  }
-
-  const checkedCount = bundleRows.filter(r => r.checked && r.itemName.trim()).length;
-
-  if (phase === "select") {
-    return (
-      <div className="premium-card bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
-          <div>
-            <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-brand-600" /> Add by Bundle
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Select a bundle template — then pick a size and confirm items</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">Cancel</Button>
-        </div>
-        <div className="p-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {[
-            { name: "EMT Conduit Bundle",      count: 7 },
-            { name: "Rigid Conduit Bundle",    count: 6 },
-            { name: "Flexible Conduit Bundle", count: 3 },
-            { name: "Cable Tray Bundle",        count: (BUNDLE_DEFINITIONS["Cable Tray Bundle"] ?? []).length },
-            { name: "Box / Device Bundle",     count: (BUNDLE_DEFINITIONS["Box / Device Bundle"] ?? []).length },
-            { name: "Grounding Bundle",        count: (BUNDLE_DEFINITIONS["Grounding Bundle"] ?? []).length },
-          ].map(({ name, count }) => (
-            <button
-              key={name} type="button"
-              onClick={() => pickBundle(name)}
-              className="text-left p-4 border border-slate-200 rounded-xl hover:border-brand-300 hover:bg-brand-50/30 transition-all group"
-              data-testid={`bundle-card-${name.replace(/\s+/g, "-")}`}
-            >
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-brand-50 border border-brand-100 rounded-lg group-hover:bg-brand-100 transition-colors shrink-0">
-                  <Layers className="w-3.5 h-3.5 text-brand-600" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-800 leading-snug">{name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{count} items · click to configure</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="premium-card bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
-        <div>
-          <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-            <Layers className="w-4 h-4 text-brand-600" /> {selectedBundle}
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">Check items to include · search inventory · fill quantities</p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setPhase("select")} className="text-xs">← Back</Button>
-          <Button size="sm" variant="outline" onClick={onClose} className="text-xs">Cancel</Button>
-        </div>
-      </div>
-
-      {selectedBundle === "Flexible Conduit Bundle" && (
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-600 shrink-0">Flexible Type</span>
-          <div className="flex gap-1.5">
-            {["Metal Flexible", "Liquidtight Flexible"].map(ft => (
-              <button
-                key={ft} type="button"
-                onClick={() => handleFlexTypeChange(ft)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  flexibleType === ft
-                    ? "bg-brand-700 text-white border-brand-700"
-                    : "border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50"
-                }`}
-                data-testid={`bundle-flex-type-${ft.replace(/\s+/g, "-").toLowerCase()}`}
-              >
-                {ft}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {availableSizes.length > 0 && (
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-600 shrink-0">Size</span>
-          <div className="flex flex-wrap gap-1.5">
-            {availableSizes.map(sz => (
-              <button
-                key={sz} type="button"
-                onClick={() => handleSizeChange(sz)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  selectedSize === sz
-                    ? "bg-brand-700 text-white border-brand-700"
-                    : "border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50"
-                }`}
-                data-testid={`bundle-size-${sz.replace(/[^a-z0-9]/gi, "-")}`}
-              >
-                {sz}
-              </button>
-            ))}
-          </div>
-          <span className="text-[10px] text-slate-400 ml-1">Applies to item names automatically</span>
-        </div>
-      )}
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50/80">
-            <tr>
-              <th className="px-3 py-2.5 w-8"></th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs">Item (search inventory)</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-14">Unit</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Est. Qty</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-28">Category</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Type</th>
-              <th className="w-8"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {bundleRows.map((row, i) => (
-              <BundleScopeRow
-                key={row.localId}
-                row={row}
-                invItems={invItems}
-                rowIndex={i}
-                onChange={updated => updateRow(row.localId, updated)}
-                onRemove={() => removeRow(row.localId)}
-                bundleType={selectedBundle ?? undefined}
-                bundleSize={selectedSize}
-                isDuplicate={!!(row.linkedInventoryItemId && duplicateInvIds.has(row.linkedInventoryItemId))}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {hasDuplicates && (
-        <div className="px-5 py-2.5 bg-red-50 border-t border-red-200">
-          <p className="text-xs text-red-700 font-medium flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-            Duplicate inventory items detected — highlighted rows share the same item. Remove duplicates before saving.
-          </p>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">{checkedCount} item{checkedCount !== 1 ? "s" : ""} will be added</span>
-          <Button size="sm" variant="outline" className="text-xs border-slate-200 text-slate-600 hover:bg-slate-50" onClick={addManualRow}
-            data-testid="button-bundle-add-row">
-            <Plus className="w-3 h-3 mr-1" /> Add Row
-          </Button>
-        </div>
-        <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={handleSave}
-          disabled={checkedCount === 0 || hasDuplicates} data-testid="button-save-bundle">
-          <Save className="w-4 h-4 mr-1.5" />
-          Add {checkedCount} Item{checkedCount !== 1 ? "s" : ""} to Scope
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -1076,7 +280,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     } finally { setIsSaving(false); }
   }
 
-  async function saveBundle(rows: Omit<BundleRow, "localId">[]) {
+  async function saveBundle(rows: Omit<BundleRow, "localId" | "checked">[]) {
     setIsSaving(true);
     try {
       await Promise.all(rows.map(row =>
@@ -1122,17 +326,11 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   }
 
   function toggleSelectItem(id: number) {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
 
   function selectAllVisible() {
-    const visibleIds = grouped.flatMap(g =>
-      collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id)
-    );
+    const visibleIds = grouped.flatMap(g => collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id));
     setSelectedIds(new Set(visibleIds));
   }
 
@@ -1183,6 +381,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
 
   return (
     <div className="space-y-5">
+      {/* ── KPI Stats Strip ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Total Scope Items", value: totalItems, icon: LayoutList, color: "text-brand-600", bg: "bg-brand-50" },
@@ -1200,6 +399,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
       </div>
 
       <div className="premium-card bg-white overflow-hidden">
+        {/* ── Toolbar header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
@@ -1233,6 +433,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
         </div>
 
+        {/* ── Bulk selection bar ── */}
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 border-b border-slate-200">
             <span className="text-xs font-semibold text-slate-700" data-testid="bulk-selected-count">{selectedIds.size} selected</span>
@@ -1256,6 +457,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
         )}
 
+        {/* ── Inline add-multiple area ── */}
         {isAdding && (
           <div className="border-b border-slate-100">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-brand-50/40">
@@ -1292,12 +494,14 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
         )}
 
+        {/* ── Bundle add area ── */}
         {addMode === "bundle" && (
           <div className="border-b border-slate-100">
             <BundleSelector onSave={async (rows) => { await saveBundle(rows); }} onClose={() => setAddMode("none")} invItems={allInvItems} />
           </div>
         )}
 
+        {/* ── Main table ── */}
         {isLoading ? (
           <div className="p-8 text-center text-slate-400">Loading…</div>
         ) : scopeItems.length === 0 && addMode === "none" ? (
@@ -1341,129 +545,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   .filter(sg => sg.items.length > 0);
                 const ungroupedItems = sgMap.get(null) ?? [];
 
-                const renderItemRow = (item: ProjectScopeItem) => {
-                  const invLinked = (item as any).linkedInventoryItemId
-                    ? allInvItems.find(it => it.id === (item as any).linkedInventoryItemId)
-                    : null;
-                  const variants = (item as any).acceptedVariants as number[] ?? [];
-                  const isSupport = (item as any).scopeType === "support";
-                  return (
-                    <Fragment key={item.id}>
-                      <tr
-                        style={{ borderLeft: `3px solid ${cfg.accent}55` }}
-                        className={`transition-colors border-t border-slate-100/80 ${!item.isActive ? "opacity-40" : ""}`}
-                        data-testid={`scope-row-${item.id}`}
-                        onMouseEnter={e => (e.currentTarget.style.background = `${cfg.accent}08`)}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
-                      >
-                        <td className="px-5 py-3">
-                          <div className="flex items-baseline gap-0 flex-wrap">
-                            <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
-                              {item.itemName}
-                            </p>
-                            {isSupport && <ScopeTypeChip scopeType="support" />}
-                          </div>
-                          {invLinked && (
-                            <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[240px]" title={invLinked.name}>
-                              <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
-                              <span className="truncate">{invLinked.name}</span>
-                            </span>
-                          )}
-                          {variants.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {variants.slice(0, 2).map((vid: number) => {
-                                const inv = allInvItems.find(it => it.id === vid);
-                                return inv ? (
-                                  <span key={vid} className="text-[9px] px-1.5 py-0.5 bg-violet-50 border border-violet-200 text-violet-600 rounded truncate max-w-[120px]" title={inv.name}>
-                                    {inv.name}
-                                  </span>
-                                ) : null;
-                              })}
-                              {variants.length > 2 && <span className="text-[9px] text-slate-400">+{variants.length - 2}</span>}
-                            </div>
-                          )}
-                          {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[240px]">{item.remarks}</p>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums text-sm">
-                          {parseFloat(String(item.estimatedQty)).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          {movingItem === item.id ? (
-                            <select
-                              className="text-xs border border-brand-300 rounded px-1.5 py-1 bg-white text-slate-700 w-36"
-                              value={resolveDisplayCategory(item.category, item.itemName)}
-                              onChange={e => moveToCategory(item, e.target.value)}
-                              onBlur={() => setMovingItem(null)}
-                              autoFocus
-                              data-testid={`scope-move-cat-${item.id}`}
-                            >
-                              {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          ) : (
-                            <span className="text-xs" style={{ color: cfg.accent }}>{resolveDisplayCategory(item.category, item.itemName)}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" variant="ghost"
-                              className="h-7 px-2 text-[10px] text-slate-400 hover:text-violet-600 hover:bg-violet-50 gap-1"
-                              onClick={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
-                              title="Add / Edit Variants" data-testid={`button-variant-scope-${item.id}`}>
-                              <Zap className="w-3 h-3" />
-                              <span className="hidden xl:inline">Variants</span>
-                            </Button>
-                            <Button size="sm" variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                              onClick={() => duplicateItem(item)} title="Duplicate"
-                              data-testid={`button-duplicate-scope-${item.id}`}>
-                              <Copy className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-                              onClick={() => setMovingItem(movingItem === item.id ? null : item.id)}
-                              title="Move to Category" data-testid={`button-move-scope-${item.id}`}>
-                              <FolderOpen className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-                              onClick={() => setDialogItem(item)} title="Edit"
-                              data-testid={`button-edit-scope-${item.id}`}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost"
-                              className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                              onClick={() => setDeleteTarget(item)} title="Delete"
-                              data-testid={`button-delete-scope-${item.id}`}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost"
-                              className={`h-7 w-7 p-0 transition-colors ${selectedIds.has(item.id) ? "text-brand-600 bg-brand-50 hover:bg-brand-100" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"}`}
-                              onClick={() => toggleSelectItem(item.id)}
-                              title={selectedIds.has(item.id) ? "Deselect" : "Select for bulk action"}
-                              data-testid={`button-select-scope-${item.id}`}>
-                              {selectedIds.has(item.id)
-                                ? <CheckSquare className="w-3.5 h-3.5" />
-                                : <Square className="w-3.5 h-3.5" />}
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {variantOpen === item.id && (
-                        <VariantArea
-                          item={item} invItems={allInvItems}
-                          onSave={(ids) => saveVariants(item, ids)}
-                          onClose={() => setVariantOpen(null)}
-                        />
-                      )}
-                    </Fragment>
-                  );
-                };
-
                 return (
                   <tbody key={cat}>
+                    {/* Category header row */}
                     <tr>
                       <td colSpan={5} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
                         <button
@@ -1473,66 +557,107 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
                           data-testid={`scope-cat-toggle-${cat.replace(/[\s/&]+/g, "-")}`}
                         >
-                          <div
-                            style={{ background: cfg.iconBg, width: 28, height: 28, color: cfg.accent }}
-                            className="rounded-md flex items-center justify-center shrink-0"
-                          >
+                          <div style={{ background: cfg.iconBg, width: 28, height: 28, color: cfg.accent }}
+                            className="rounded-md flex items-center justify-center shrink-0">
                             <CatIcon className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold leading-tight" style={{ color: cfg.accent }}>{cat}</p>
                             <p className="text-[9px] text-slate-400 leading-tight mt-0.5 truncate">{cfg.subtitle}</p>
                           </div>
-                          <span
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap"
-                            style={{ background: `${cfg.accent}1a`, color: cfg.accent }}
-                          >
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap"
+                            style={{ background: `${cfg.accent}1a`, color: cfg.accent }}>
                             {items.length} item{items.length !== 1 ? "s" : ""}
                           </span>
-                          <span
-                            className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right"
-                            style={{ color: cfg.accent }}
-                          >
+                          <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right" style={{ color: cfg.accent }}>
                             {catTotalQty.toLocaleString()}
                           </span>
-                          <ChevronDown
-                            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
-                            style={{ color: cfg.accent }}
-                          />
+                          <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                            style={{ color: cfg.accent }} />
                         </button>
                       </td>
                     </tr>
 
+                    {/* Item rows */}
                     {!isCollapsed && (
                       activeSgEntries.length > 0 ? (
                         <>
                           {activeSgEntries.map(sg => (
                             <Fragment key={sg.key}>
                               <tr style={{ background: `${cfg.accent}08`, borderLeft: `3px solid ${cfg.accent}33` }}>
-                                <td
-                                  colSpan={5}
-                                  style={{
-                                    paddingLeft: 22, paddingTop: 5, paddingBottom: 5,
-                                    borderBottom: `1px solid ${cfg.accent}1f`,
-                                  }}
-                                >
-                                  <span style={{
-                                    color: `${cfg.accent}b3`,
-                                    fontSize: 8,
-                                    letterSpacing: "1.2px",
-                                    fontWeight: 700,
-                                  }}>
+                                <td colSpan={5} style={{ paddingLeft: 22, paddingTop: 5, paddingBottom: 5, borderBottom: `1px solid ${cfg.accent}1f` }}>
+                                  <span style={{ color: `${cfg.accent}b3`, fontSize: 8, letterSpacing: "1.2px", fontWeight: 700 }}>
                                     └ {sg.label.toUpperCase()}
                                   </span>
                                 </td>
                               </tr>
-                              {sg.items.map(renderItemRow)}
+                              {sg.items.map(item => (
+                                <ScopeItemRow
+                                  key={item.id}
+                                  item={item}
+                                  allInvItems={allInvItems}
+                                  accentColor={cfg.accent}
+                                  isVariantOpen={variantOpen === item.id}
+                                  isMoving={movingItem === item.id}
+                                  isSelected={selectedIds.has(item.id)}
+                                  onVariantOpen={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
+                                  onVariantClose={() => setVariantOpen(null)}
+                                  onVariantSave={(ids) => saveVariants(item, ids)}
+                                  onMoveOpen={() => setMovingItem(item.id)}
+                                  onMoveClose={() => setMovingItem(null)}
+                                  onMoveCategory={(cat) => moveToCategory(item, cat)}
+                                  onEdit={() => setDialogItem(item)}
+                                  onDelete={() => setDeleteTarget(item)}
+                                  onDuplicate={() => duplicateItem(item)}
+                                  onSelect={() => toggleSelectItem(item.id)}
+                                />
+                              ))}
                             </Fragment>
                           ))}
-                          {ungroupedItems.map(renderItemRow)}
+                          {ungroupedItems.map(item => (
+                            <ScopeItemRow
+                              key={item.id}
+                              item={item}
+                              allInvItems={allInvItems}
+                              accentColor={cfg.accent}
+                              isVariantOpen={variantOpen === item.id}
+                              isMoving={movingItem === item.id}
+                              isSelected={selectedIds.has(item.id)}
+                              onVariantOpen={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
+                              onVariantClose={() => setVariantOpen(null)}
+                              onVariantSave={(ids) => saveVariants(item, ids)}
+                              onMoveOpen={() => setMovingItem(item.id)}
+                              onMoveClose={() => setMovingItem(null)}
+                              onMoveCategory={(cat) => moveToCategory(item, cat)}
+                              onEdit={() => setDialogItem(item)}
+                              onDelete={() => setDeleteTarget(item)}
+                              onDuplicate={() => duplicateItem(item)}
+                              onSelect={() => toggleSelectItem(item.id)}
+                            />
+                          ))}
                         </>
                       ) : (
-                        items.map(renderItemRow)
+                        items.map(item => (
+                          <ScopeItemRow
+                            key={item.id}
+                            item={item}
+                            allInvItems={allInvItems}
+                            accentColor={cfg.accent}
+                            isVariantOpen={variantOpen === item.id}
+                            isMoving={movingItem === item.id}
+                            isSelected={selectedIds.has(item.id)}
+                            onVariantOpen={() => setVariantOpen(variantOpen === item.id ? null : item.id)}
+                            onVariantClose={() => setVariantOpen(null)}
+                            onVariantSave={(ids) => saveVariants(item, ids)}
+                            onMoveOpen={() => setMovingItem(item.id)}
+                            onMoveClose={() => setMovingItem(null)}
+                            onMoveCategory={(cat) => moveToCategory(item, cat)}
+                            onEdit={() => setDialogItem(item)}
+                            onDelete={() => setDeleteTarget(item)}
+                            onDuplicate={() => duplicateItem(item)}
+                            onSelect={() => toggleSelectItem(item.id)}
+                          />
+                        ))
                       )
                     )}
 
@@ -1552,39 +677,19 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
         onClose={() => setDialogItem(null)}
       />
 
-      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader><DialogTitle>Delete Scope Item?</DialogTitle></DialogHeader>
-          <p className="text-sm text-slate-600 py-2">
-            Remove <span className="font-semibold">"{deleteTarget?.itemName}"</span> from this project's scope? This cannot be undone.
-          </p>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-              disabled={deleteMutation.isPending} data-testid="button-confirm-delete-scope">
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ScopeDeleteDialog
+        target={deleteTarget}
+        isPending={deleteMutation.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={(id) => deleteMutation.mutate(id)}
+      />
 
       {undoSnackbar && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-2xl"
-          data-testid="undo-snackbar">
-          <span className="font-medium">{undoSnackbar.message}</span>
-          <button
-            onClick={undoSnackbar.onUndo}
-            className="font-bold text-brand-400 hover:text-brand-300 transition-colors"
-            data-testid="button-undo-delete">
-            Undo
-          </button>
-          <button
-            onClick={() => { setUndoSnackbar(null); if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current); }}
-            className="text-slate-500 hover:text-white transition-colors ml-1"
-            data-testid="button-dismiss-snackbar">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <UndoSnackbar
+          message={undoSnackbar.message}
+          onUndo={undoSnackbar.onUndo}
+          onDismiss={() => { setUndoSnackbar(null); if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current); }}
+        />
       )}
     </div>
   );

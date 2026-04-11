@@ -1,0 +1,167 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify, recalculate, or backfill existing inventory quantities.
+2. Do NOT edit, delete, migrate, rename, or reinterpret historical project records, scope records, or inventory movement records.
+3. Do NOT change business logic unless a tiny compatibility-safe fix is absolutely necessary.
+4. Preserve current route behavior, current API behavior, and current user-visible features.
+5. This task is ONLY for refactoring and decomposing:
+   client/src/pages/project/tabs/ScopeItemsTab.tsx
+   (or the actual current ScopeItemsTab file path in this repo)
+
+TASK GOAL
+Refactor ScopeItemsTab.tsx into smaller responsibility-based components and helpers so it becomes easier to maintain, while preserving current behavior and project/inventory data integrity.
+
+IMPORTANT
+- Do NOT rebuild the page from scratch
+- Do NOT move one giant JSX block into one new giant file
+- Prefer true responsibility-based decomposition
+- Reuse existing shared UI components already in the repo wherever appropriate
+- Keep the existing visual style and behavior as much as possible
+
+==================================================
+PART 1 — INSPECT CURRENT RESPONSIBILITIES
+==================================================
+
+Before editing, inspect ScopeItemsTab.tsx and identify the main responsibilities currently mixed together.
+
+Typical responsibilities to separate may include:
+- page/tab header
+- search/filter controls
+- stats / summary strip
+- scope items table or list
+- row rendering
+- inline actions / action buttons
+- add/edit modal or drawer
+- delete/confirm dialog
+- item selection helpers
+- formatting / derived display helpers
+- pagination if present
+
+Do not rewrite logic unnecessarily.
+Only separate responsibilities that are currently mixed into the giant file.
+
+==================================================
+PART 2 — DECOMPOSE BY RESPONSIBILITY
+==================================================
+
+Refactor ScopeItemsTab.tsx into focused subcomponents and/or small helper files where appropriate.
+
+Examples of good targets:
+- ScopeItemsHeader
+- ScopeItemsToolbar or ScopeItemsFilters
+- ScopeItemsStats
+- ScopeItemsTable
+- ScopeItemRow
+- ScopeItemActions
+- ScopeItemEditDialog
+- ScopeItemDeleteDialog
+- small utils/formatters file if needed
+
+Requirements:
+1. Keep the current behavior intact.
+2. Reduce the size and complexity of ScopeItemsTab.tsx significantly.
+3. Prefer a few focused components rather than many tiny unnecessary files.
+4. Avoid prop explosion where possible.
+5. Keep shared state in the parent only when truly needed.
+6. Move local row/render-only logic down into child components when safe.
+
+==================================================
+PART 3 — REUSE SHARED UI WHERE APPROPRIATE
+==================================================
+
+Reuse existing shared components already present in the repo wherever appropriate, such as:
+- PageHeader
+- SectionCard
+- EmptyState
+- FilterBar
+- StatCard
+- shared badges
+
+Requirements:
+1. Do NOT force shared components where they clearly do not fit.
+2. Use them where they reduce repeated styling and improve consistency.
+3. Keep Admin density and readability balanced.
+
+==================================================
+PART 4 — KEEP BUSINESS LOGIC STABLE
+==================================================
+
+Very important:
+- Do NOT change scope item meaning
+- Do NOT change project quantity semantics
+- Do NOT change backend contracts
+- Do NOT change persistence behavior
+- Do NOT alter how project-linked materials are stored
+
+If the file currently includes derived calculations or formatting logic:
+- extract only small pure helpers where safe
+- preserve output exactly as much as possible
+
+==================================================
+PART 5 — CLEAN UP LOCAL COMPLEXITY
+==================================================
+
+Improve maintainability by doing small local cleanup where safe:
+- reduce giant inline JSX blocks
+- reduce repeated button/style fragments
+- extract repeated cell rendering
+- extract repeated dialogs
+- extract repeated formatter logic
+- simplify conditional rendering where possible
+
+But:
+- do NOT redesign the page
+- do NOT introduce a brand new architecture
+- do NOT broaden scope into other project tabs
+
+==================================================
+PART 6 — DO NOT SPREAD THE COMPLEXITY
+==================================================
+
+Important:
+Do NOT “fake refactor” by creating one new giant extracted file that is still 1000+ lines and holds most of the original complexity.
+
+Prefer:
+- one lean parent tab component
+- a few medium-sized focused components
+- tiny helper/util files only where useful
+
+The goal is real maintainability improvement.
+
+==================================================
+PART 7 — KEEP UX INTACT
+==================================================
+
+Requirements:
+1. Preserve existing filters/search behavior
+2. Preserve existing edit/delete/add flows
+3. Preserve current table/list behavior
+4. Preserve current action buttons and dialogs
+5. Preserve current empty/loading/error states
+6. Preserve existing pagination behavior if present
+
+If a tiny UI cleanup is needed for clarity, keep it minimal and consistent with the current Admin style.
+
+==================================================
+PART 8 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch OverviewTab in this task
+2. Do NOT touch MovementForm in this task
+3. Do NOT change server routes in this task
+4. Do NOT change inventory calculations in this task
+5. Keep the work incremental and scoped
+6. Prefer safe refactor over clever refactor
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the ScopeItemsTab refactor
+2. Files created
+3. Files modified
+4. Which responsibilities were extracted
+5. Notes on what was intentionally left unchanged for safety
+6. Any recommended next follow-up after ScopeItemsTab

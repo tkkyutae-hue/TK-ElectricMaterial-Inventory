@@ -1,0 +1,171 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or business logic.
+2. Do NOT redesign the app from scratch.
+3. Keep this task focused only on Phase B UX improvements.
+4. Preserve current Admin and Field visual identity.
+5. Make incremental, compatibility-safe improvements only.
+
+TASK GOAL
+Implement the agreed Phase B improvements:
+
+1. Field mobile card layout for Field Inventory
+2. Global focus-visible improvements for keyboard/accessibility feedback
+3. Shared ErrorState component for API/load failures
+4. Replace repeated hardcoded FieldLayout header hex colors with the existing Field token system
+5. Apply EmptyState more consistently where obvious duplicated empty shells exist
+6. In the Field detail stat grid, show Supplier and Min Stock only for manager-and-above users
+
+FILES TO FOCUS ON
+Inspect the repo first and then modify only the files actually relevant to these items, likely including:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/layouts/FieldLayout.tsx (or actual current Field layout file)
+- shared UI/component folders
+- any page/component with obvious repeated empty/error shells
+- any small shared utility file if truly needed
+
+IMPORTANT
+- Reuse existing shared components/utilities already in the repo
+- Reuse the existing Field token foundation
+- Do NOT broaden scope into Phase C/D items
+- Keep changes incremental and compatibility-safe
+
+==================================================
+PART 1 — FIELD MOBILE CARD LAYOUT
+==================================================
+
+Find the Field Inventory item list/table area.
+
+Add a mobile-specific layout so that on small screens the item list is shown as touch-friendly cards instead of a wide multi-column table.
+
+Requirements:
+1. Use the repo’s existing mobile detection approach if available (for example useIsMobile or similar).
+2. On mobile:
+   - render a vertical card list
+   - each card should clearly show:
+     - item photo/thumbnail
+     - item name
+     - size
+     - quantity + unit
+     - status
+   - tapping a card should preserve the current detail/open behavior
+3. On larger screens:
+   - keep the existing table/list behavior unchanged
+4. Do NOT change filtering, searching, or pagination logic
+5. Keep the current Field dark industrial visual style
+
+Important:
+- This is a layout adaptation, not a redesign
+- Keep touch targets comfortable on mobile
+
+==================================================
+PART 2 — GLOBAL FOCUS-VISIBLE IMPROVEMENTS
+==================================================
+
+Improve keyboard/accessibility focus treatment in a safe, incremental way.
+
+Requirements:
+1. Add visible focus styles using focus-visible where appropriate for high-interaction elements such as:
+   - buttons
+   - clickable cards
+   - navigation items
+   - table/list rows that act like buttons
+   - searchable input triggers
+2. Do NOT add heavy focus rings everywhere blindly
+3. Prefer a consistent pattern such as:
+   - focus-visible:ring-2
+   - focus-visible:ring-[field accent or admin accent]
+   - focus-visible:ring-offset where appropriate
+4. Remove or avoid patterns where interactive elements are effectively hiding focus without replacement
+
+Important:
+- Preserve existing hover/active behavior
+- Improve usability without visual clutter
+
+==================================================
+PART 3 — SHARED ERRORSTATE COMPONENT
+==================================================
+
+Create a small shared ErrorState component similar in spirit to the existing EmptyState component.
+
+Goal:
+Provide a reusable way to show:
+- API/load failure
+- a short explanatory message
+- optional retry button
+
+Requirements:
+1. Keep the component simple and reusable
+2. Match the current app style
+3. Accept props such as:
+   - title
+   - description
+   - retryLabel (optional)
+   - onRetry (optional)
+4. Reuse it only in the most obvious/high-value places during this pass
+5. Do NOT do a repo-wide replacement sweep
+
+==================================================
+PART 4 — FIELDLAYOUT HEADER TOKENIZATION
+==================================================
+
+Find the Field layout/header implementation.
+
+Replace repeated hardcoded header-related hex values with the existing Field token system wherever those values are clearly part of the repeated Field header shell.
+
+Requirements:
+1. Reuse the existing Field token foundation already added in the repo
+2. Replace only repeated high-value color literals
+3. Do NOT change layout or interactions
+4. Do NOT attempt a full repo-wide token conversion in this task
+
+==================================================
+PART 5 — EMPTYSTATE CONSISTENCY PASS
+==================================================
+
+Use the existing shared EmptyState component more consistently in the most obvious places where pages/components currently render their own very similar empty shells.
+
+Requirements:
+1. Only replace obviously duplicated empty state UI
+2. Do NOT force EmptyState into places where the existing custom UI is materially different
+3. Keep current copy/messages as much as possible
+4. Keep the work scoped and incremental
+
+==================================================
+PART 6 — FIELD DETAIL STAT GRID ROLE-BASED INFO
+==================================================
+
+In the Field item detail panel/stat grid:
+- show Supplier and Min Stock only for manager-and-above users
+- do NOT show these fields to worker/staff/viewer roles
+
+Requirements:
+1. Reuse the existing role/auth pattern already present in the repo
+2. Do NOT invent a new permission system
+3. Keep operationally useful fields visible to all users
+4. Keep the layout clean when those two fields are hidden for lower roles
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch server routes in this task.
+2. Do NOT change business logic.
+3. Do NOT change permissions logic beyond UI visibility using existing role data.
+4. Do NOT redesign Admin pages here.
+5. Keep all changes incremental and safe.
+6. Prefer minimal diffs over broad rewrites.
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of Phase B changes
+2. Files created
+3. Files modified
+4. Notes on where ErrorState was applied
+5. Notes on how focus-visible was standardized
+6. Notes on how manager-only Supplier/Min Stock visibility was implemented
+7. Notes on what was intentionally left unchanged

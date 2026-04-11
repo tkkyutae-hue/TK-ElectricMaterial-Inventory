@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
   ImageOff, ZoomIn,
@@ -387,6 +388,10 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
               { label: t.colLocation, value: item.location?.name   || "—", mono: false },
               { label: "SKU",         value: item.sku,                     mono: true  },
               { label: t.colCategory, value: item.category?.name   || "—", mono: false },
+              ...(isManagerOrAbove ? [
+                { label: "Supplier",  value: item.supplier?.name   || "—", mono: false },
+                { label: "Min Stock", value: String(item.reorderPoint ?? "—"),          mono: true  },
+              ] : []),
             ].map(({ label, value, mono }) => (
               <div key={label} style={{ background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 10, padding: "10px 12px" }}>
                 <p style={{ fontSize: 9, fontWeight: 700, color: F.textDim, textTransform: "uppercase" as const, letterSpacing: "1.2px", marginBottom: 4, fontFamily: "'Barlow Condensed', sans-serif" }}>
@@ -507,6 +512,7 @@ export default function FieldInventory() {
   const { t } = useLanguage();
   const rawSearch = useSearch();
   const [, navigate] = useLocation();
+  const isMobile = useIsMobile();
 
   const urlParams = useMemo(() => new URLSearchParams(rawSearch), [rawSearch]);
 
@@ -758,7 +764,7 @@ export default function FieldInventory() {
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat)}
                   data-testid={`card-category-${cat.id}`}
-                  className="relative overflow-hidden transition-all duration-200 focus:outline-none"
+                  className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410]"
                   style={{
                     aspectRatio: "16/8",
                     background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
@@ -956,99 +962,161 @@ export default function FieldInventory() {
         </div>
       )}
 
-      {/* ── Item Table ── */}
+      {/* ── Item List — mobile cards / desktop table ── */}
       <div style={{ background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 12, overflow: "hidden" }}>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "52px" }} />
-              <col style={{ width: "80px" }} />
-              <col />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "110px" }} />
-              <col style={{ width: "130px" }} />
-              <col style={{ width: "110px" }} />
-            </colgroup>
-            <thead>
-              <tr style={{ background: F.surface2, borderBottom: `1px solid ${F.border}` }}>
-                {TABLE_COLS.map(col => (
-                  <th
-                    key={col.label}
-                    className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${(col as any).cls || ""}`}
-                    style={{ fontSize: 9, fontWeight: 700, color: F.textMuted, textTransform: "uppercase", letterSpacing: "1px" }}
-                  >
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: pageSize }).map((_, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${F.border}` }}>
-                    {[1,2,3,4,5,6,7,8].map(j => (
-                      <td key={j} className="px-3 py-3 align-middle">
-                        <div className="h-4 rounded animate-pulse" style={{ background: F.surface }} />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : pageItems.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-14 text-sm" style={{ color: F.textMuted }}>
-                    {hasFilters ? t.noItemsMatch : t.noItemsFound}
-                  </td>
-                </tr>
-              ) : pageItems.map((item: FieldItem) => (
-                <tr
+
+        {isMobile ? (
+          /* ── Mobile Card List ── */
+          <div>
+            {isLoading ? (
+              Array.from({ length: pageSize }).map((_, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderBottom: `1px solid ${F.border}` }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: F.surface, flexShrink: 0 }} className="animate-pulse" />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div className="h-3.5 rounded animate-pulse" style={{ background: F.surface, width: "65%" }} />
+                    <div className="h-3 rounded animate-pulse" style={{ background: F.surface, width: "40%" }} />
+                  </div>
+                  <div style={{ width: 52, height: 20, borderRadius: 10, background: F.surface, flexShrink: 0 }} className="animate-pulse" />
+                </div>
+              ))
+            ) : pageItems.length === 0 ? (
+              <div style={{ padding: "48px 16px", textAlign: "center", color: F.textMuted, fontSize: 13, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                {hasFilters ? t.noItemsMatch : t.noItemsFound}
+              </div>
+            ) : (
+              pageItems.map((item: FieldItem) => (
+                <button
                   key={item.id}
-                  style={{ borderBottom: `1px solid ${F.border}`, cursor: "pointer" }}
-                  className="transition-colors last:border-0"
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = F.surface}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                   onClick={() => setSelectedItem(item)}
                   data-testid={`field-inv-row-${item.id}`}
+                  className="w-full text-left last:border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2ddb6f]"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px",
+                    borderBottom: `1px solid ${F.border}`,
+                    background: "transparent", cursor: "pointer",
+                    transition: "background 0.12s",
+                    minHeight: 56,
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = F.surface}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                 >
-                  <td className="px-3 py-3 align-middle whitespace-nowrap">
-                    <span style={{ fontFamily: "monospace", fontSize: 10, color: F.textMuted }}>{item.sku}</span>
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex items-center justify-center">
-                      <PhotoCell imageUrl={item.imageUrl} name={item.name} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <span style={{ fontSize: 11, fontWeight: 500, color: F.textMuted, whiteSpace: "nowrap" }}>
-                      {item.sizeLabel ?? "—"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>{item.name}</p>
-                    {item.extractedSubcategory && (
-                      <p style={{ fontSize: 10, color: F.textDim, lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
+                  <PhotoCell imageUrl={item.imageUrl} name={item.name} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.name}
+                    </p>
+                    {item.sizeLabel && (
+                      <p style={{ fontSize: 11, color: F.textMuted, margin: 0, lineHeight: 1.3 }}>{item.sizeLabel}</p>
                     )}
-                  </td>
-                  <td className="px-3 py-3 align-middle hidden sm:table-cell">
-                    <span style={{ fontSize: 11, color: F.textMuted, lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
-                  </td>
-                  <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
-                    <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
-                    <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: F.textMuted }}>{item.unitOfMeasure}</span>
-                  </td>
-                  <td className="px-3 py-3 align-middle hidden md:table-cell">
-                    <span style={{ fontSize: 12, color: F.textMuted }}>{item.location?.name ?? "—"}</span>
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex items-center justify-center">
-                      <FieldStatusBadge status={item.status} />
-                    </div>
-                  </td>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ fontSize: 16, fontWeight: 700, color: qtyColor(item.status), fontFamily: "'Barlow Condensed', sans-serif", margin: 0, lineHeight: 1 }}>
+                      {item.quantityOnHand.toLocaleString()}
+                    </p>
+                    <p style={{ fontSize: 9, color: F.textMuted, margin: 0 }}>{item.unitOfMeasure}</p>
+                  </div>
+                  <FieldStatusBadge status={item.status} />
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+          /* ── Desktop Table ── */
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "120px" }} />
+                <col style={{ width: "52px" }} />
+                <col style={{ width: "80px" }} />
+                <col />
+                <col style={{ width: "140px" }} />
+                <col style={{ width: "110px" }} />
+                <col style={{ width: "130px" }} />
+                <col style={{ width: "110px" }} />
+              </colgroup>
+              <thead>
+                <tr style={{ background: F.surface2, borderBottom: `1px solid ${F.border}` }}>
+                  {TABLE_COLS.map(col => (
+                    <th
+                      key={col.label}
+                      className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${(col as any).cls || ""}`}
+                      style={{ fontSize: 9, fontWeight: 700, color: F.textMuted, textTransform: "uppercase", letterSpacing: "1px" }}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  Array.from({ length: pageSize }).map((_, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${F.border}` }}>
+                      {[1,2,3,4,5,6,7,8].map(j => (
+                        <td key={j} className="px-3 py-3 align-middle">
+                          <div className="h-4 rounded animate-pulse" style={{ background: F.surface }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : pageItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-14 text-sm" style={{ color: F.textMuted }}>
+                      {hasFilters ? t.noItemsMatch : t.noItemsFound}
+                    </td>
+                  </tr>
+                ) : pageItems.map((item: FieldItem) => (
+                  <tr
+                    key={item.id}
+                    tabIndex={0}
+                    style={{ borderBottom: `1px solid ${F.border}`, cursor: "pointer" }}
+                    className="transition-colors last:border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2ddb6f]"
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = F.surface}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
+                    onClick={() => setSelectedItem(item)}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedItem(item); } }}
+                    data-testid={`field-inv-row-${item.id}`}
+                  >
+                    <td className="px-3 py-3 align-middle whitespace-nowrap">
+                      <span style={{ fontFamily: "monospace", fontSize: 10, color: F.textMuted }}>{item.sku}</span>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center">
+                        <PhotoCell imageUrl={item.imageUrl} name={item.name} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <span style={{ fontSize: 11, fontWeight: 500, color: F.textMuted, whiteSpace: "nowrap" }}>
+                        {item.sizeLabel ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>{item.name}</p>
+                      {item.extractedSubcategory && (
+                        <p style={{ fontSize: 10, color: F.textDim, lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 align-middle hidden sm:table-cell">
+                      <span style={{ fontSize: 11, color: F.textMuted, lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
+                    </td>
+                    <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
+                      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
+                      <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: F.textMuted }}>{item.unitOfMeasure}</span>
+                    </td>
+                    <td className="px-3 py-3 align-middle hidden md:table-cell">
+                      <span style={{ fontSize: 12, color: F.textMuted }}>{item.location?.name ?? "—"}</span>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center">
+                        <FieldStatusBadge status={item.status} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
         {totalItems > 0 && (

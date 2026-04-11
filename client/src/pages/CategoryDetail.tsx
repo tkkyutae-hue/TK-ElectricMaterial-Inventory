@@ -19,6 +19,7 @@ import type {
 } from "@/components/category/types";
 import { FamilyEditDialog } from "@/components/category/FamilyEditDialog";
 import { FamilyGroupCard } from "@/components/category/FamilyGroupCard";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CategoryDetail() {
@@ -41,7 +42,7 @@ export default function CategoryDetail() {
   const [editNewRows, setEditNewRows] = useState<NewRowDraft[]>([]);
   const [savingInline, setSavingInline] = useState(false);
 
-  const { data, isLoading, isError } = useQuery<CategoryGroupedDetail>({
+  const { data, isLoading, isError, refetch } = useQuery<CategoryGroupedDetail>({
     queryKey: ["/api/inventory/category", id, "grouped"],
     queryFn: () => fetch(`/api/inventory/category/${id}/grouped`).then(r => r.json()),
     enabled: !!id,
@@ -278,11 +279,12 @@ export default function CategoryDetail() {
 
   if (isError || !data) {
     return (
-      <div className="text-center py-20 text-slate-500">
-        <XCircle className="w-12 h-12 mx-auto mb-3 text-red-300" />
-        <p className="text-lg font-medium text-slate-900">Category not found</p>
-        <Link href="/inventory"><Button variant="outline" className="mt-4">← Back to Inventory</Button></Link>
-      </div>
+      <ErrorState
+        title="Category not found"
+        description="This category may have been removed or you may not have access to it."
+        retryLabel="Try again"
+        onRetry={() => refetch()}
+      />
     );
   }
 

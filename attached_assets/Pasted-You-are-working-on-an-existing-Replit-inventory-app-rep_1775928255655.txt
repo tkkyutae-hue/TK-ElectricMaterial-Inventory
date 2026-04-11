@@ -1,0 +1,107 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or current transaction logic.
+2. Do NOT redesign the whole Field Inventory page.
+3. Do NOT create actual issue/transfer transactions in this task.
+4. Keep this task focused only on adding a request-cart entry flow from the Field item detail sidebar.
+5. Preserve current Field Mode visual identity.
+
+TASK GOAL
+Add an "Add to Cart" flow to the Field Inventory item detail sidebar so users can collect multiple needed materials before submitting a request.
+
+BUSINESS RULE
+This cart is for request preparation only.
+Adding items to the cart must NOT create a transaction and must NOT change inventory.
+Actual transaction creation will happen later in a pickup/complete flow.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field Inventory item detail sidebar / panel
+- any field cart state/store/helper
+- any tiny shared request-cart helper/component only if truly needed
+
+PART 1 — ADD CART ACTION TO FIELD ITEM DETAIL PANEL
+
+In the Field item detail sidebar/panel:
+- add quantity input if not already present for this purpose
+- add a primary button such as:
+  - "Add to Cart"
+- if the item is already in the cart, allow:
+  - updating quantity
+  - or replacing quantity in a clear way
+
+Show useful contextual info:
+- current quantity on hand
+- unit
+- location if already shown
+- current quantity already in cart if applicable
+
+Requirements:
+1. Preserve the existing panel layout as much as possible.
+2. Keep the UI mobile-friendly and compact.
+3. Do NOT show reel-specific UI unless the current item rules already say it is appropriate.
+4. Do NOT show this action to roles that should not be able to create requests if the repo already has a role pattern for that.
+
+PART 2 — CART DATA MODEL (CLIENT-SIDE OR COMPATIBILITY-SAFE TEMP STATE)
+
+Create a lightweight cart item structure appropriate for request-building, for example:
+- itemId
+- itemName
+- sizeLabel
+- sku
+- requestedQty
+- unit
+- requestType
+- sourceLocationId if relevant
+- destinationLocationId if relevant
+- projectId if relevant
+- notes optional
+
+Requirements:
+1. Reuse existing item data where possible.
+2. Prevent duplicate rows for the same logical item when safe.
+3. If the same item is added again, either:
+   - merge/update quantity
+   - or clearly update the existing cart row
+4. Keep the implementation simple and compatible with current Field flow.
+
+PART 3 — STICKY CART SUMMARY BAR
+
+Add a compact sticky cart summary bar in Field Mode when the cart has items.
+
+Suggested behavior:
+- show item count
+- show total line count or total requested qty if appropriate
+- include a button such as:
+  - "Review Cart"
+  - or "Open Cart"
+
+Requirements:
+1. Keep it mobile-friendly
+2. Keep it visually aligned with current Field styling
+3. Do NOT make it noisy
+4. Hide it when the cart is empty
+
+PART 4 — DO NOT SUBMIT REQUESTS YET IN THIS TASK
+
+This task is only about:
+- collecting items into the cart
+- reviewing the existence of a cart entry point
+
+Do NOT yet build the full request submission workflow here unless a tiny stub entry point is needed for navigation.
+
+PART 5 — CONSTRAINTS
+
+1. Do NOT create transactions in this task
+2. Do NOT change inventory quantities
+3. Do NOT touch Admin request-management flows in this task
+4. Do NOT change server routes unless a tiny compatibility-safe cart endpoint already exists and is obviously intended
+5. Prefer local/session/state-based cart handling if that is the safest current approach
+
+OUTPUT
+1. Summary of Add to Cart changes
+2. Files modified
+3. Files created
+4. How duplicate cart entries are handled
+5. Notes on what was intentionally left unchanged

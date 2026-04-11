@@ -4,6 +4,7 @@ import { ArrowLeft, HardHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { F } from "@/lib/fieldTokens";
+import { FieldCartProvider } from "@/lib/fieldCart";
 
 const CSS = `
 @keyframes fl-pulse-dot {
@@ -44,6 +45,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
+    <FieldCartProvider>
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: F.bg, position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
       <style>{CSS}</style>
 
@@ -185,5 +187,6 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     </div>
+    </FieldCartProvider>
   );
 }

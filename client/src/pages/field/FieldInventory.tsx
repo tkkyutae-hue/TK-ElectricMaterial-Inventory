@@ -5,8 +5,9 @@ import { useSearch, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
-  ImageOff, ZoomIn,
+  ImageOff, ZoomIn, ShoppingCart, Minus, Plus, CheckCircle2,
 } from "lucide-react";
+import { useFieldCart } from "@/lib/fieldCart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -238,9 +239,33 @@ function ReelRow({ reel }: { reel: FieldWireReel }) {
 function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () => void }) {
   const { t } = useLanguage();
   const [, navigate] = useLocation();
-  const { isManagerOrAbove } = useAuth();
+  const { isManagerOrAbove, canDoMovements } = useAuth();
   const isReelItem = resolveReelMode(item);
   const [imgEnlarged, setImgEnlarged] = useState(false);
+
+  const { getCartItem, addToCart, removeFromCart } = useFieldCart();
+  const existingCartItem = getCartItem(item.id);
+  const [cartQty, setCartQty] = useState<number>(existingCartItem?.requestedQty ?? 1);
+
+  useEffect(() => {
+    setCartQty(getCartItem(item.id)?.requestedQty ?? 1);
+  }, [item.id]);
+
+  function handleAddToCart() {
+    addToCart({
+      itemId: item.id,
+      itemName: item.name,
+      sizeLabel: item.sizeLabel ?? null,
+      sku: item.sku,
+      unit: item.unitOfMeasure,
+      locationName: item.location?.name ?? null,
+    }, cartQty);
+  }
+
+  function handleRemoveFromCart() {
+    removeFromCart(item.id);
+    setCartQty(1);
+  }
 
   const { data: reels, isLoading: reelsLoading } = useQuery<FieldWireReel[]>({
     queryKey: ["/api/wire-reels", item.id],
@@ -443,35 +468,134 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
           )}
         </div>
 
-        {/* ── Action Footer — manager/admin only ── */}
-        {isManagerOrAbove && (
+        {/* ── Action Footer ── */}
+        {canDoMovements && (
           <div style={{
             position: "sticky", bottom: 0, background: F.bg,
             borderTop: `1px solid ${F.border}`, padding: "12px 16px",
-            display: "flex", gap: 10, zIndex: 2,
+            display: "flex", flexDirection: "column", gap: 8, zIndex: 2,
           }}>
-            <button
-              data-testid="btn-log-movement"
-              onClick={() => navigate(`/field/movement?itemId=${item.id}`)}
-              style={{
-                flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
-                background: F.accent, color: F.accentText, border: "none", cursor: "pointer",
-                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
-              }}
-            >
-              Log Movement
-            </button>
-            <button
-              data-testid="btn-full-detail"
-              onClick={() => navigate(`/inventory/${item.id}`)}
-              style={{
-                flex: 1, padding: "10px 0", borderRadius: 10, fontWeight: 700, fontSize: 14,
-                background: F.surface, color: F.textMuted, border: `1px solid ${F.borderStrong}`, cursor: "pointer",
-                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
-              }}
-            >
-              Full Detail
-            </button>
+
+            {/* Cart section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+              {/* In-cart status line */}
+              {existingCartItem ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <CheckCircle2 style={{ width: 13, height: 13, color: F.accent }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: F.accent, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
+                      In cart: {existingCartItem.requestedQty} {item.unitOfMeasure}
+                    </span>
+                  </div>
+                  <button
+                    data-testid="btn-remove-from-cart"
+                    onClick={handleRemoveFromCart}
+                    style={{
+                      fontSize: 10, fontWeight: 600, color: F.danger,
+                      background: "none", border: "none", cursor: "pointer", padding: 0,
+                      fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3,
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <p style={{ fontSize: 10, fontWeight: 600, color: F.textDim, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  Request Qty
+                </p>
+              )}
+
+              {/* Qty stepper + Add to Cart button */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* Stepper */}
+                <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                  <button
+                    data-testid="btn-cart-qty-dec"
+                    onClick={() => setCartQty(q => Math.max(1, q - 1))}
+                    style={{
+                      width: 32, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: "8px 0 0 8px", border: `1px solid ${F.borderStrong}`, borderRight: "none",
+                      background: F.surface, color: F.textMuted, cursor: "pointer",
+                    }}
+                  >
+                    <Minus style={{ width: 12, height: 12 }} />
+                  </button>
+                  <input
+                    data-testid="input-cart-qty"
+                    type="text"
+                    inputMode="numeric"
+                    value={cartQty}
+                    onChange={e => {
+                      const v = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                      setCartQty(isNaN(v) || v < 1 ? 1 : v);
+                    }}
+                    style={{
+                      width: 48, height: 34, textAlign: "center", fontSize: 14, fontWeight: 700,
+                      border: `1px solid ${F.borderStrong}`, borderLeft: "none", borderRight: "none",
+                      background: F.surface2, color: F.text, outline: "none", padding: 0,
+                    }}
+                  />
+                  <button
+                    data-testid="btn-cart-qty-inc"
+                    onClick={() => setCartQty(q => q + 1)}
+                    style={{
+                      width: 32, height: 34, display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: "0 8px 8px 0", border: `1px solid ${F.borderStrong}`, borderLeft: "none",
+                      background: F.surface, color: F.textMuted, cursor: "pointer",
+                    }}
+                  >
+                    <Plus style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
+
+                {/* Add / Update button */}
+                <button
+                  data-testid="btn-add-to-cart"
+                  onClick={handleAddToCart}
+                  style={{
+                    flex: 1, height: 34, borderRadius: 8, fontWeight: 700, fontSize: 13,
+                    background: existingCartItem ? F.surface2 : F.accent,
+                    color: existingCartItem ? F.accent : F.accentText,
+                    border: existingCartItem ? `1.5px solid ${F.accentBorder}` : "none",
+                    cursor: "pointer",
+                    fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  }}
+                >
+                  <ShoppingCart style={{ width: 13, height: 13 }} />
+                  {existingCartItem ? "Update Cart" : "Add to Cart"}
+                </button>
+              </div>
+            </div>
+
+            {/* Manager / Admin — Log Movement + Full Detail */}
+            {isManagerOrAbove && (
+              <div style={{ display: "flex", gap: 8, paddingTop: 4, borderTop: `1px solid ${F.border}` }}>
+                <button
+                  data-testid="btn-log-movement"
+                  onClick={() => navigate(`/field/movement?itemId=${item.id}`)}
+                  style={{
+                    flex: 1, padding: "9px 0", borderRadius: 10, fontWeight: 700, fontSize: 13,
+                    background: F.accent, color: F.accentText, border: "none", cursor: "pointer",
+                    fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+                  }}
+                >
+                  Log Movement
+                </button>
+                <button
+                  data-testid="btn-full-detail"
+                  onClick={() => navigate(`/inventory/${item.id}`)}
+                  style={{
+                    flex: 1, padding: "9px 0", borderRadius: 10, fontWeight: 700, fontSize: 13,
+                    background: F.surface, color: F.textMuted, border: `1px solid ${F.borderStrong}`, cursor: "pointer",
+                    fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+                  }}
+                >
+                  Full Detail
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -494,6 +618,71 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
           />
         </div>
       )}
+    </div>,
+    document.body
+  );
+}
+
+// ─── Field Cart Bar ───────────────────────────────────────────────────────────
+
+function FieldCartBar() {
+  const { canDoMovements } = useAuth();
+  const { totalItems, totalQty } = useFieldCart();
+
+  if (!canDoMovements || totalItems === 0) return null;
+
+  return createPortal(
+    <div
+      data-testid="field-cart-bar"
+      style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 8500,
+        background: "#0d2016",
+        borderTop: `1px solid ${F.accentBorder}`,
+        padding: "10px 20px",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        boxShadow: "0 -4px 24px rgba(0,0,0,0.55)",
+      }}
+    >
+      {/* Left: cart summary */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: "rgba(45,219,111,0.12)",
+          border: `1px solid ${F.accentBorder}`,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <ShoppingCart style={{ width: 15, height: 15, color: F.accent }} />
+        </div>
+        <div>
+          <p style={{
+            fontSize: 13, fontWeight: 700, color: F.text,
+            fontFamily: "'Barlow Condensed', sans-serif", margin: 0, lineHeight: 1.1,
+          }}>
+            {totalItems} {totalItems === 1 ? "item" : "items"} in cart
+          </p>
+          <p style={{
+            fontSize: 10, color: F.textDim,
+            fontFamily: "'Barlow Condensed', sans-serif", margin: 0, letterSpacing: 0.3,
+          }}>
+            {totalQty} total units requested
+          </p>
+        </div>
+      </div>
+
+      {/* Right: Review Cart button (stub — submission flow comes later) */}
+      <button
+        data-testid="btn-review-cart"
+        style={{
+          padding: "8px 18px", borderRadius: 8, fontWeight: 700, fontSize: 13,
+          background: F.accent, color: F.accentText, border: "none", cursor: "pointer",
+          fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5,
+          display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <ShoppingCart style={{ width: 13, height: 13 }} />
+        Review Cart
+      </button>
     </div>,
     document.body
   );
@@ -1183,6 +1372,9 @@ export default function FieldInventory() {
       {selectedItem && (
         <FieldItemDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
+
+      {/* Sticky cart bar — shown when cart has items */}
+      <FieldCartBar />
     </div>
   );
 }

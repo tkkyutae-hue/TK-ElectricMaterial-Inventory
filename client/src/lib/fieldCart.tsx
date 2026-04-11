@@ -16,6 +16,7 @@ export interface CartItem {
   requestedQty: number;
   unit: string;
   locationName: string | null;
+  imageUrl?: string | null;
 }
 
 interface FieldCartContextValue {

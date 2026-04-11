@@ -8,7 +8,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
-  User, ChevronDown, X as XIcon, Check,
+  User, ChevronDown, X as XIcon, Check, ImageOff,
 } from "lucide-react";
 import { useFieldCart } from "@/lib/fieldCart";
 import { useLanguage } from "@/hooks/use-language";
@@ -19,6 +19,36 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { Worker } from "@shared/schema";
 import type { Project } from "@shared/schema";
+
+// ── CartPhoto — compact 36×36 thumbnail with ImageOff fallback ───────────────
+
+function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+  const base: React.CSSProperties = {
+    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+    background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center",
+  };
+  if (!imageUrl) {
+    return (
+      <div style={base}>
+        <ImageOff style={{ width: 15, height: 15, color: F.textDim }} />
+      </div>
+    );
+  }
+  return (
+    <div style={{ ...base, overflow: "hidden", border: `1px solid ${F.borderStrong}` }}>
+      <img
+        src={imageUrl}
+        alt={name}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        onError={e => {
+          e.currentTarget.style.display = "none";
+          (e.currentTarget.parentElement as HTMLElement).innerHTML =
+            `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${F.textDim}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M10.41 10.41a2 2 0 1 0 3.18 3.18"/><path d="M21 15V6a2 2 0 0 0-2-2H9"/><path d="M3 3H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h17"/></svg>`;
+        }}
+      />
+    </div>
+  );
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -447,11 +477,14 @@ export default function FieldCartReview() {
             data-testid={`cart-item-row-${item.itemId}`}
             style={{
               display: "flex", alignItems: "center", gap: 10,
-              padding: "12px 16px",
+              padding: "10px 14px",
               borderBottom: `1px solid ${F.border}`,
               background: idx % 2 === 0 ? F.bg : F.surface2,
             }}
           >
+            {/* Thumbnail */}
+            <CartPhoto imageUrl={item.imageUrl} name={item.itemName} />
+
             {/* Item info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{

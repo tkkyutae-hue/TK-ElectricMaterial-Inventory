@@ -259,6 +259,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
       sku: item.sku,
       unit: item.unitOfMeasure,
       locationName: item.location?.name ?? null,
+      imageUrl: item.imageUrl ?? null,
     }, cartQty);
   }
 

@@ -1,0 +1,255 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, historical movement records, routing, or permissions unless explicitly required below.
+2. Do NOT redesign the whole Field/Requests UI from scratch.
+3. Keep this task focused only on improving the existing cart/request/request-status flow and related UI clarity.
+4. Preserve current Field visual identity and existing request/cart foundations.
+5. Do NOT change user-entered content values; only fix labels, layout, visibility, and workflow clarity.
+
+TASK GOAL
+Improve the current cart/request flow in Field Mode with the following required changes:
+
+1. Show the item photo to the left of the item name in cart rows
+2. Fix untranslated UI labels such as "Project" and "Requested By", and scan this request/cart/field flow for other untranslated UI labels and convert them to i18n keys
+3. Clarify and implement the request workflow so it is obvious who changes request status and when a real transaction is created
+4. In the Requests list/cards, clearly show who requested the item, where it will be used, and which project it belongs to
+5. Fix the "from -> to" text contrast in transaction display so the "from" side is readable in Field dark mode
+
+IMPORTANT WORKFLOW RULE (MUST FOLLOW)
+Use this request lifecycle:
+
+- Submit Request:
+  creates a request record only
+  status = requested
+  NO inventory transaction yet
+  NO inventory deduction yet
+
+- Warehouse/Admin review:
+  manager/admin/warehouse-role users can update status
+  requested -> preparing -> ready
+
+- Pickup completion:
+  only when the request is ready
+  a warehouse/admin/authorized manager can mark it complete
+  THAT action creates the real inventory transaction(s)
+  request status becomes completed
+  transaction must reference requestId if the model supports it
+
+Do NOT create a transaction at request-submit time.
+Do NOT create a transaction at "ready" time.
+Only create it at pickup completion.
+
+FILES TO FOCUS ON
+Inspect the repo first and modify only the relevant files for:
+- Field cart review UI
+- Field requests list UI
+- request status update logic
+- request completion / pickup logic
+- transaction row rendering
+- translation/i18n keys in the request/cart/field flow
+- any tiny shared helper/component only if truly needed
+
+==================================================
+PART 1 — CART ROW PHOTO PLACEMENT
+==================================================
+
+In the cart review UI:
+- show the item photo thumbnail to the LEFT of the item name
+- keep the row compact and mobile-friendly
+- preserve existing quantity/edit/remove behavior
+
+Requirements:
+1. Thumbnail should be small but clear
+2. If no photo exists, use the existing fallback behavior/pattern already used elsewhere in the repo
+3. Do NOT let the image push important quantity/status controls off-screen
+4. Keep the visual hierarchy:
+   photo | item name/size | qty/unit | actions
+
+==================================================
+PART 2 — FIX UNTRANSLATED UI LABELS IN THIS FLOW
+==================================================
+
+Current issue:
+Some labels in the cart/request/field flow are not going through language switching, including examples such as:
+- Project
+- Requested By
+
+Task:
+Inspect the cart/request/field request flow and convert any remaining hardcoded UI labels into the repo’s existing i18n/translation system.
+
+Requirements:
+1. Do NOT change user content/data values
+2. Only change UI labels/static text
+3. Scan at minimum these areas:
+   - cart review screen
+   - requests tab
+   - request detail/summary cards
+   - submit request form/panel
+   - field transaction/request status labels
+4. Convert all obvious hardcoded UI strings in this flow to translation keys
+
+Likely examples to check:
+- Project
+- Requested By
+- Requester
+- Submit Request
+- Review Cart
+- In Cart
+- Ready
+- Preparing
+- Requested
+- Completed
+- Cancelled
+- No requests found
+- Remove
+- Qty
+- Status
+- Created
+- Ready for Pickup
+- Complete Pickup
+- From
+- To
+
+Use existing translation conventions already in the repo.
+Do NOT invent a second translation system.
+
+==================================================
+PART 3 — MAKE THE REQUEST WORKFLOW CLEAR IN THE UI
+==================================================
+
+The current flow is unclear about:
+- who reviews requests
+- who marks them ready
+- when transactions are created
+
+Implement the workflow clearly in both UI and logic.
+
+Requirements:
+
+A. Request submission
+- Submit Request should create a request only
+- after submit, move the user to the Requests tab
+- show the new request with status = requested
+- do NOT create a transaction yet
+
+B. Request status updates
+- only authorized roles (manager/admin/warehouse-authorized role if the repo already has such a pattern) should be able to update:
+  - requested -> preparing
+  - preparing -> ready
+- regular field workers should not see or use these status controls unless existing business rules explicitly allow it
+
+C. Pickup completion
+- once request status = ready, show a clear completion action such as:
+  - Complete Pickup
+- only the appropriate authorized role should see/use it
+- this action must create the real inventory transaction(s)
+- request status becomes completed
+- link requestId to the created transaction if supported
+
+D. UI copy
+Make the status flow visually clear and easy to understand.
+
+==================================================
+PART 4 — REQUESTS LIST MUST SHOW WHO / WHERE / PROJECT
+==================================================
+
+In the Requests tab/list/cards:
+Do NOT show only generic request ids like:
+- REQ-0001
+- REQ-0002
+
+Each request card/row should clearly show:
+- requester name
+- requester role if available
+- project name if available
+- where the materials are going / usage context
+  - e.g. destination location, project location, or target context based on the current request model
+- item count or line count
+- current status
+- created/requested time
+
+Requirements:
+1. Keep the request id visible, but not as the only identifying info
+2. Make it easy to answer:
+   - who asked for this?
+   - where is it going?
+   - what project is it for?
+3. Keep the layout mobile-friendly
+4. Preserve Field visual style
+
+==================================================
+PART 5 — TRANSACTION "FROM -> TO" CONTRAST FIX
+==================================================
+
+In Field transaction display, the "from -> to" text currently has poor contrast, especially the "from" side.
+
+Fix it so:
+- both "from" and "to" are clearly readable in Field dark mode
+- the arrow and labels remain visually distinct
+- the field dark industrial theme is preserved
+
+Requirements:
+1. Improve contrast only
+2. Do NOT redesign the transaction row
+3. Keep emphasis appropriate and readable on mobile
+
+==================================================
+PART 6 — ROLE VISIBILITY / SAFETY
+==================================================
+
+Use the repo’s existing auth/role pattern.
+
+Requirements:
+- regular worker/staff users can:
+  - add to cart
+  - submit request
+  - view their requests / general request statuses if allowed by current business rules
+- only authorized manager/admin/warehouse roles can:
+  - mark preparing
+  - mark ready
+  - complete pickup if that is the intended controlled workflow
+
+Do NOT invent a new permission system.
+Use the existing role logic and extend safely only where required for request-status actions.
+
+==================================================
+PART 7 — TRANSACTION CREATION AT PICKUP COMPLETION
+==================================================
+
+When Complete Pickup is used:
+- create the actual issue or transfer transaction(s)
+- keep quantity/unit/source/destination/project context correct
+- mark request as completed
+- associate requestId with the resulting transaction if supported
+
+Important:
+- do NOT create movement rows on request submit
+- do NOT create movement rows on ready
+- only create them on pickup completion
+
+Preserve inventory correctness and existing transaction patterns as much as possible.
+
+==================================================
+PART 8 — CONSTRAINTS
+==================================================
+
+1. Do NOT redesign unrelated pages
+2. Do NOT change historical transactions
+3. Do NOT change inventory semantics
+4. Do NOT touch unrelated Admin screens
+5. Keep changes incremental, safe, and scoped
+6. Prefer improving the existing request/cart flow rather than inventing a whole new architecture
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the request/cart improvements
+2. Files modified
+3. Which untranslated labels were converted to i18n keys
+4. How request status visibility/permissions were handled
+5. How the request cards now show requester / destination / project context
+6. How transaction creation is triggered only at pickup completion
+7. Notes on what was intentionally left unchanged

@@ -1,0 +1,91 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT modify historical inventory quantities, movement history, or completed historical requests.
+2. Do NOT create transactions at request submission time.
+3. Do NOT redesign the whole request system from scratch.
+4. Keep this task focused on finishing the request workflow and improving request visibility.
+
+TASK GOAL
+Close the request workflow properly by doing both of the following:
+1. Create the real issue/transfer transaction only when a request is completed/picked up
+2. Improve request card/list metadata so users can clearly see who requested it, for which project, and from/to where
+
+BUSINESS RULE
+Request lifecycle:
+- requested: request submitted, no transaction yet
+- preparing: warehouse/admin working on it, no transaction yet
+- ready: materials prepared, no transaction yet
+- completed: ONLY now create the real issue/transfer transaction
+- cancelled: no transaction
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- request routes/handlers
+- request completion logic
+- storage/service functions for movement creation
+- request list/detail UI
+- request card component(s)
+- any tiny helper needed for request-to-transaction linkage
+
+PART 1 — CREATE REAL TRANSACTION ONLY ON COMPLETION
+When a request moves to `completed`:
+- create the corresponding real inventory movement
+- issue request => create issue movement
+- transfer request => create transfer movement
+
+Requirements:
+1. Do NOT create a transaction when request is submitted
+2. Do NOT create a transaction when request becomes preparing
+3. Do NOT create a transaction when request becomes ready
+4. Create it only when request becomes completed
+5. Link the created movement to the request using requestId/reference if the current schema supports it safely
+6. Prevent duplicate transaction creation if completion is triggered twice
+
+PART 2 — DUPLICATE SAFETY
+Prevent double-fulfillment.
+
+Requirements:
+1. If the request already has a linked fulfilled movement / completion marker, block a second completion attempt
+2. Return a clear error instead of silently duplicating movement history
+3. Keep this compatibility-safe
+
+PART 3 — REQUEST CARD / LIST CONTEXT
+Improve each request card/list row so it clearly shows:
+- requester name
+- requester role if available
+- request type (issue / transfer)
+- project name
+- from location
+- to location
+- created date/time
+- item count
+- current status
+- request number
+
+Requirements:
+1. Request number should remain visible but not be the only identifying info
+2. Transfer requests should clearly show from → to context
+3. Issue requests should clearly show source and destination/use context as available
+4. Keep the layout compact and mobile-friendly
+5. Preserve current Field visual identity
+
+PART 4 — COMPLETION CLARITY
+When a request is completed:
+- clearly indicate that the real transaction has been recorded
+- if a transaction reference or movement link is available, surface it in a lightweight way
+- preserve current translation/i18n behavior if already wired
+
+PART 5 — SAFETY
+- Do NOT change historical completed movements
+- Do NOT migrate old requests
+- Do NOT redesign the page
+- Keep the implementation incremental and scoped
+
+OUTPUT
+1. Summary of request workflow completion changes
+2. Files modified
+3. When the real transaction is created
+4. How duplicate completion is prevented
+5. Which request metadata fields are now shown
+6. Notes on what was intentionally left unchanged

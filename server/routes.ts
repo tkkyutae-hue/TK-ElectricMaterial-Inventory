@@ -1901,11 +1901,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
 
         // Parse cart items from the request
-        let cartItems: Array<{ itemId: number; requestedQty: number; itemName?: string }> = [];
+        let cartItems: Array<{ itemId: number; requestedQty: number; itemName?: string; locationName?: string | null }> = [];
         try { cartItems = JSON.parse(request.itemsJson || "[]"); } catch { cartItems = []; }
 
         const movementType = request.requestType === "transfer" ? "transfer" : "issue";
         let firstMovementId: number | null = null;
+
+        // Build a name→id lookup for source location resolution
+        const allLocations = await storage.getLocations();
+        const locationIdByName = new Map(allLocations.map(l => [l.name.trim().toLowerCase(), l.id]));
 
         for (const cartItem of cartItems) {
           try {
@@ -1914,6 +1918,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
             const qty = Number(cartItem.requestedQty);
             if (!qty || qty <= 0) continue;
+
+            // Resolve source location from the cart item's recorded location name
+            const sourceLocationId = cartItem.locationName
+              ? (locationIdByName.get(cartItem.locationName.trim().toLowerCase()) ?? null)
+              : null;
 
             // For issue: deduct from on-hand; for transfer: quantity unchanged
             const newQty = movementType === "issue"
@@ -1926,6 +1935,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               quantity: qty,
               previousQuantity: dbItem.quantityOnHand,
               newQuantity: newQty,
+              sourceLocationId,
               projectId: request.projectId ?? null,
               referenceType: "material_request",
               referenceId: String(id),

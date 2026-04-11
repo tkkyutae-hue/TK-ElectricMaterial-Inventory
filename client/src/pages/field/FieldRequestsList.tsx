@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X } from "lucide-react";
+import { ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Loader2, Pencil, X, ArrowRight, MapPin } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -601,6 +601,32 @@ function RequestCard({
               <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>—</span>
             )}
           </div>
+
+          {/* Row 3: From → To context (always visible, compact) */}
+          {sourceLocations.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              <MapPin style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND }}>
+                {sourceLocations.join(" · ")}
+              </span>
+              {req.requestType === "issue" && project && (
+                <>
+                  <ArrowRight style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: F.textMuted, fontFamily: FONT_COND }}>
+                    {project.name}
+                  </span>
+                </>
+              )}
+              {req.requestType === "issue" && !project && requesterDisplay && (
+                <>
+                  <ArrowRight style={{ width: 9, height: 9, color: F.textDim, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, color: F.textDim, fontFamily: FONT_COND, fontStyle: "italic" }}>
+                    {requesterDisplay}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </button>
 
         {/* ── Expanded detail ── */}

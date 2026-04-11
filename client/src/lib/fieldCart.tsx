@@ -25,6 +25,7 @@ interface FieldCartContextValue {
   updateQty: (itemId: number, qty: number) => void;
   removeFromCart: (itemId: number) => void;
   clearCart: () => void;
+  restoreCart: (items: CartItem[]) => void;
   getCartItem: (itemId: number) => CartItem | undefined;
   totalItems: number;
   totalQty: number;
@@ -59,6 +60,8 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => setCartItems([]), []);
 
+  const restoreCart = useCallback((items: CartItem[]) => setCartItems([...items]), []);
+
   const getCartItem = useCallback(
     (itemId: number) => cartItems.find(c => c.itemId === itemId),
     [cartItems]
@@ -70,7 +73,7 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
   return (
     <FieldCartContext.Provider value={{
       cartItems, addToCart, updateQty, removeFromCart,
-      clearCart, getCartItem, totalItems, totalQty,
+      clearCart, restoreCart, getCartItem, totalItems, totalQty,
     }}>
       {children}
     </FieldCartContext.Provider>

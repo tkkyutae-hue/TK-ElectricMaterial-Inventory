@@ -1,0 +1,71 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, historical movement data, routing structure, or permissions.
+2. Do NOT redesign the whole request/cart flow.
+3. Keep this task focused only on the post-submit success UX after sending a request from Field Inventory.
+4. Preserve the current Field dark visual identity.
+
+TASK GOAL
+Improve the post-submit request experience so that after a request is successfully submitted from Inventory cart review, the toast provides:
+- a clear action to go to the Requests tab
+- an Undo action
+
+CURRENT PROBLEM
+Right now, after request submission, the user only sees a simple success toast.
+That is not enough for real operational use.
+
+REQUIRED UX
+After a request is successfully submitted:
+- show a Field-styled success toast
+- include action: "Go to Requests"
+- include action: "Undo"
+
+PART 1 — GO TO REQUESTS ACTION
+The toast should include a "Go to Requests" action.
+
+Behavior:
+- navigating to the Field transactions page
+- opening the Requests tab directly
+- use the repo’s existing route/tab pattern safely
+
+Preferred intent:
+- route like /field/transactions?tab=requests or current equivalent
+
+PART 2 — UNDO ACTION
+The toast should include an Undo action that safely reverses only the just-submitted request.
+
+Undo rules:
+1. Undo is only for the most recently submitted request from this flow
+2. Undo should be allowed only if the request is still in `requested` status
+3. Undo must NOT be allowed if the request already moved into preparing/ready/completed
+4. Undo should:
+   - remove/cancel that just-submitted request safely according to the repo’s request model
+   - restore the cart contents, project, requester, and notes back into the Inventory cart review flow if feasible
+5. Undo must NOT create or remove any inventory movement because no movement should exist yet at submit time
+
+Preferred safe behavior:
+- if the current repo already uses soft-cancel instead of hard delete, keep that safe model
+- if cart restoration is implemented, restore the last submitted cart snapshot into the Field Inventory cart review panel
+
+PART 3 — TOAST PRESENTATION
+Requirements:
+1. Keep the current dark Field toast style
+2. Make the actions clearly clickable
+3. Keep the toast compact and mobile-friendly
+4. Do NOT use browser alert/confirm for this
+5. Keep the toast readable and not overly long
+
+PART 4 — SAFETY
+- Do NOT create new transaction logic in this task
+- Do NOT change request status lifecycle rules beyond supporting safe undo of a fresh `requested` request
+- Do NOT redesign Inventory or Transactions pages
+- Keep the work scoped and compatibility-safe
+
+OUTPUT
+1. Summary of post-submit toast improvements
+2. Files modified
+3. How "Go to Requests" works
+4. How Undo works
+5. What conditions block Undo
+6. Notes on what was intentionally left unchanged

@@ -8,12 +8,14 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
-  User, ChevronDown, X as XIcon, Check, ImageOff,
+  User, ChevronDown, X as XIcon, Check, ImageOff, Undo2, ClipboardList,
 } from "lucide-react";
 import { useFieldCart } from "@/lib/fieldCart";
+import type { CartItem } from "@/lib/fieldCart";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { F } from "@/lib/fieldTokens";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -381,14 +383,16 @@ function RequesterPicker({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function FieldCartReview({ onClose }: { onClose?: () => void } = {}) {
-  const { cartItems, updateQty, removeFromCart, clearCart, totalItems } = useFieldCart();
+  const { cartItems, updateQty, removeFromCart, clearCart, restoreCart, totalItems } = useFieldCart();
   const { t }          = useLanguage();
   const { toast }      = useToast();
   const queryClient    = useQueryClient();
   const { user }       = useAuth();
+  const [, navigate]   = useLocation();
 
   const [notes,       setNotes]       = useState("");
   const [submitting,  setSubmitting]  = useState(false);
+  const [undoing,     setUndoing]     = useState(false);
   const [projectId,   setProjectId]   = useState<number | null>(null);
   const [requester,   setRequester]   = useState<{ name: string; role?: string } | null>(null);
   const [requestType, setRequestType] = useState<"issue" | "transfer">("issue");
@@ -405,9 +409,17 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
 
   async function handleSubmit() {
     if (cartItems.length === 0) return;
+
+    // Snapshot form state before clearing (for Undo restoration)
+    const cartSnapshot: CartItem[] = cartItems.map(i => ({ ...i }));
+    const notesSnapshot     = notes;
+    const projectIdSnapshot = projectId;
+    const requesterSnapshot = requester;
+    const requestTypeSnapshot = requestType;
+
     setSubmitting(true);
     try {
-      await apiRequest("POST", "/api/field/requests", {
+      const res = await apiRequest("POST", "/api/field/requests", {
         itemsJson: JSON.stringify(cartItems),
         notes: notes.trim() || null,
         projectId: projectId ?? undefined,
@@ -415,14 +427,91 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         requesterRole: requester?.role ?? null,
         requestType,
       });
+      const submitted: any = await res.json().catch(() => null);
+      const submittedId: number | null = submitted?.id ?? null;
+
+      // Clear cart and form state
       clearCart();
       setNotes("");
       setProjectId(null);
       setRequester(null);
       setRequestType("issue");
       queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
-      toast({ title: t.requestSubmitted, description: t.requestSubmittedHint });
-      setTimeout(() => onClose?.(), 400);
+
+      // ── Undo handler ─────────────────────────────────────────────────────────
+      async function performUndo(dismissToast: () => void) {
+        if (!submittedId) return;
+        setUndoing(true);
+        dismissToast();
+        try {
+          await apiRequest("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" });
+          // Restore full form state
+          restoreCart(cartSnapshot);
+          setNotes(notesSnapshot);
+          setProjectId(projectIdSnapshot);
+          setRequester(requesterSnapshot);
+          setRequestType(requestTypeSnapshot);
+          queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
+          toast({ title: t.undoDone });
+        } catch (err: any) {
+          toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+        } finally {
+          setUndoing(false);
+        }
+      }
+
+      // ── "Go to Requests" handler ──────────────────────────────────────────────
+      function goToRequests(dismissToast: () => void) {
+        dismissToast();
+        onClose?.();
+        navigate("/field/transactions?tab=requests");
+      }
+
+      // ── Rich toast with inline actions ───────────────────────────────────────
+      const btnBase: React.CSSProperties = {
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+        fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif",
+        letterSpacing: "0.05em", border: "none", transition: "opacity 0.15s",
+      };
+
+      const { dismiss } = toast({
+        title: t.requestSubmitted,
+        description: (
+          <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              data-testid="toast-goto-requests"
+              onClick={() => goToRequests(dismiss)}
+              style={{
+                ...btnBase,
+                background: "rgba(71,130,82,0.18)",
+                border: "1px solid rgba(71,130,82,0.4)",
+                color: "#7de898",
+              }}
+            >
+              <ClipboardList style={{ width: 11, height: 11, flexShrink: 0 }} />
+              {t.goToRequests}
+            </button>
+            {submittedId && (
+              <button
+                type="button"
+                data-testid="toast-undo-request"
+                onClick={() => performUndo(dismiss)}
+                style={{
+                  ...btnBase,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  color: "#b0c4b8",
+                }}
+              >
+                <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+                {t.undoRequest}
+              </button>
+            )}
+          </div>
+        ),
+      });
     } catch (err: any) {
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {
@@ -655,11 +744,11 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={submitting || totalItems === 0}
+          disabled={submitting || undoing || totalItems === 0}
           data-testid="btn-submit-request"
           style={{
             width: "100%", padding: "13px 20px",
-            background: submitting ? F.surface2 : F.accent,
+            background: (submitting || undoing) ? F.surface2 : F.accent,
             border: `1px solid ${submitting ? F.borderStrong : F.accent}`,
             borderRadius: 10, cursor: submitting ? "default" : "pointer",
             color: submitting ? F.textDim : F.accentText,
@@ -675,7 +764,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           <button
             type="button"
             onClick={onClose}
-            disabled={submitting}
+            disabled={submitting || undoing}
             data-testid="btn-cart-cancel"
             style={{
               width: "100%", padding: "11px 20px",

@@ -1,0 +1,134 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or current completed transaction behavior.
+2. Do NOT redesign the entire Field Transactions page from scratch.
+3. Keep this task focused only on restructuring the Draft area into a request-oriented Cart/Requests flow.
+4. Preserve current Field visual identity and current working draft movement features where possible.
+
+TASK GOAL
+Refactor the Field Mode draft/request area so users can:
+- review cart/draft items before submission
+- submit a material request
+- separately view already-submitted requests and their statuses
+
+BUSINESS RULE
+These states must be clearly separated:
+
+1. Cart / Draft
+- items collected by the user
+- editable
+- not yet submitted
+- no real inventory movement yet
+
+2. Requests
+- already submitted to warehouse/admin
+- status-based tracking only
+- example statuses:
+  - requested
+  - preparing
+  - ready
+  - completed
+  - cancelled
+
+3. Transactions
+- actual inventory movement history
+- shown only after pickup/completion logic creates a real movement
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- FieldTransactions.tsx
+- DraftMovementsList.tsx
+- any field request/cart subcomponent files
+- any tiny request state/helper/component only if truly needed
+
+PART 1 — SPLIT THE DRAFT AREA INTO CART / REQUESTS
+
+In the Field transactions/request area:
+- replace the single ambiguous Draft-only presentation with a clearer structure
+
+Preferred UX:
+- Tab A: Cart / Draft
+- Tab B: Requests
+
+If tabs are not a good fit in the current layout, a clearly separated two-section approach is acceptable.
+But do NOT leave submitted requests mixed into the same ambiguous list as editable draft/cart items.
+
+PART 2 — CART / DRAFT TAB
+
+The Cart / Draft area should support:
+- list cart items
+- edit qty
+- remove items
+- show compact request summary info
+- show a primary action:
+  - "Submit Request"
+
+Requirements:
+1. This tab should feel like a pre-submission holding area.
+2. It must be clearly different from actual completed transactions.
+3. Submitting the request should move the items into the Requests state rather than creating movement history immediately.
+
+PART 3 — REQUESTS TAB
+
+The Requests tab should show already submitted requests with statuses such as:
+- requested
+- preparing
+- ready
+- completed
+- cancelled
+
+For each request, show useful summary info such as:
+- request id/number if available
+- created time
+- requester
+- item count
+- status
+- project/location context if available
+
+Requirements:
+1. Keep it readable on mobile
+2. Make status very easy to scan
+3. Preserve current Field visual language
+4. Do NOT make this look like completed transaction history
+
+PART 4 — SUBMIT REQUEST ACTION
+
+The "Submit Request" action from the Cart/Draft area should:
+- create a request record or request state
+- clear/move those cart items out of the editable cart state
+- place the request into the Requests list
+- NOT create an inventory transaction yet
+
+Important:
+- No inventory deduction yet
+- No movement history row yet
+- This is request submission only
+
+PART 5 — STATUS LANGUAGE
+
+Use clear user-facing labels.
+Preferred wording:
+- Submit Request
+- Requested
+- Preparing
+- Ready for Pickup
+- Completed
+- Cancelled
+
+Avoid wording that implies a real movement happened before pickup.
+
+PART 6 — CONSTRAINTS
+
+1. Do NOT create the final pickup-to-transaction workflow in this task unless a minimal placeholder already exists
+2. Do NOT change historical movement data
+3. Do NOT redesign the whole Field page
+4. Do NOT mix submitted requests back into the editable draft list
+5. Keep the work incremental and mobile-friendly
+
+OUTPUT
+1. Summary of Cart / Requests restructuring
+2. Files modified
+3. Files created
+4. How Cart/Draft differs from Requests after this change
+5. Notes on what was intentionally left unchanged

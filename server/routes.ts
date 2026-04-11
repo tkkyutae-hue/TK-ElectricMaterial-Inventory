@@ -1758,5 +1758,58 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Material Requests ────────────────────────────────────────────────────
+  // Field-submitted material requests (no inventory change until pickup).
+
+  app.get("/api/field/requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const isManagerPlus = user?.role === "manager" || user?.role === "admin";
+      const requests = isManagerPlus
+        ? await storage.getMaterialRequests()
+        : await storage.getMaterialRequests(user?.id);
+      res.json(requests);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/field/requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const { itemsJson, notes, projectId } = req.body;
+      if (!itemsJson) return res.status(400).json({ message: "itemsJson is required" });
+
+      const count = await storage.getMaterialRequests();
+      const reqNumber = `REQ-${String(count.length + 1).padStart(4, "0")}`;
+
+      const created = await storage.createMaterialRequest({
+        requestNumber: reqNumber,
+        itemsJson,
+        submittedBy: user?.id,
+        submittedByName: user?.name || user?.username || "Unknown",
+        notes: notes ?? null,
+        projectId: projectId ?? null,
+      });
+      res.json(created);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/field/requests/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid request ID" });
+      const { status } = req.body;
+      const valid = ["requested", "preparing", "ready", "completed", "cancelled"];
+      if (!valid.includes(status)) return res.status(400).json({ message: "Invalid status" });
+      const updated = await storage.updateMaterialRequestStatus(id, status);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

@@ -6,9 +6,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
 import { FieldMovementBadge } from "@/components/StatusBadge";
 import DraftMovementsList from "./DraftMovementsList";
+import FieldCartReview from "./FieldCartReview";
+import FieldRequestsList from "./FieldRequestsList";
+import { useFieldCart } from "@/lib/fieldCart";
 import {
   Search, ClipboardList, ImageOff, CalendarDays,
   Trash2, X, AlertTriangle, FileText, Pencil,
+  ShoppingCart, ClipboardCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -159,9 +163,14 @@ export default function FieldTransactions() {
 
   const urlSearch = useSearch();
   const urlSearchParams = new URLSearchParams(urlSearch);
-  const [activeTab, setActiveTab] = useState<"history" | "drafts">(
-    urlSearchParams.get("tab") === "drafts" ? "drafts" : "history"
+  const rawTab = urlSearchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<"history" | "drafts" | "cart" | "requests">(
+    rawTab === "drafts" ? "drafts"
+      : rawTab === "cart" ? "cart"
+      : rawTab === "requests" ? "requests"
+      : "history"
   );
+  const { totalItems: cartItemCount } = useFieldCart();
 
   // ── Filters ──
   const [search,        setSearch]        = useState("");
@@ -336,21 +345,48 @@ export default function FieldTransactions() {
       </div>
 
       {/* ── Tab Switcher + Export CSV ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", gap: 2, background: F.bg, border: `1px solid ${F.borderStrong}`, borderRadius: 10, padding: 3, width: "fit-content" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", gap: 2, background: F.bg, border: `1px solid ${F.borderStrong}`, borderRadius: 10, padding: 3, width: "fit-content", flexWrap: "wrap" }}>
+          {/* History */}
           <button
             type="button"
             onClick={() => setActiveTab("history")}
             data-testid="tab-history"
-            style={{ background: activeTab === "history" ? F.surface : "transparent", border: activeTab === "history" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? F.text : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
+            style={{ background: activeTab === "history" ? F.surface : "transparent", border: activeTab === "history" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: activeTab === "history" ? F.text : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s" }}
           >
             {t.txHistoryTab}
           </button>
+          {/* Cart */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("cart")}
+            data-testid="tab-cart"
+            style={{ background: activeTab === "cart" ? F.surface : "transparent", border: activeTab === "cart" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: activeTab === "cart" ? F.accent : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            <ShoppingCart style={{ width: 12, height: 12 }} />
+            {t.txCartTab}
+            {cartItemCount > 0 && (
+              <span style={{ background: F.accent, color: F.accentText, borderRadius: 9, padding: "1px 5px", fontSize: 9, fontWeight: 800, lineHeight: 1.3, minWidth: 15, textAlign: "center" }}>
+                {cartItemCount}
+              </span>
+            )}
+          </button>
+          {/* Requests */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("requests")}
+            data-testid="tab-requests"
+            style={{ background: activeTab === "requests" ? F.surface : "transparent", border: activeTab === "requests" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: activeTab === "requests" ? F.info : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            <ClipboardCheck style={{ width: 12, height: 12 }} />
+            {t.txRequestsTab}
+          </button>
+          {/* Drafts */}
           <button
             type="button"
             onClick={() => setActiveTab("drafts")}
             data-testid="tab-drafts"
-            style={{ background: activeTab === "drafts" ? F.surface : "transparent", border: activeTab === "drafts" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? F.warning : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
+            style={{ background: activeTab === "drafts" ? F.surface : "transparent", border: activeTab === "drafts" ? `1px solid ${F.borderStrong}` : "1px solid transparent", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: activeTab === "drafts" ? F.warning : F.textDim, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 5 }}
           >
             <FileText style={{ width: 12, height: 12 }} />
             {t.txDraftsTab}
@@ -367,6 +403,12 @@ export default function FieldTransactions() {
           </button>
         )}
       </div>
+
+      {/* ── Cart Tab ── */}
+      {activeTab === "cart" && <FieldCartReview />}
+
+      {/* ── Requests Tab ── */}
+      {activeTab === "requests" && <FieldRequestsList />}
 
       {/* ── Drafts Tab ── */}
       {activeTab === "drafts" && <DraftMovementsList />}

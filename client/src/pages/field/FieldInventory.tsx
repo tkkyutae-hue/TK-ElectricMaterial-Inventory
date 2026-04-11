@@ -628,6 +628,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
 function FieldCartBar() {
   const { canDoMovements } = useAuth();
   const { totalItems, totalQty } = useFieldCart();
+  const [, navigate] = useLocation();
 
   if (!canDoMovements || totalItems === 0) return null;
 
@@ -669,9 +670,10 @@ function FieldCartBar() {
         </div>
       </div>
 
-      {/* Right: Review Cart button (stub — submission flow comes later) */}
+      {/* Right: Review Cart → navigates to Transactions > Cart tab */}
       <button
         data-testid="btn-review-cart"
+        onClick={() => navigate("/field/transactions?tab=cart")}
         style={{
           padding: "8px 18px", borderRadius: 8, fontWeight: 700, fontSize: 13,
           background: F.accent, color: F.accentText, border: "none", cursor: "pointer",

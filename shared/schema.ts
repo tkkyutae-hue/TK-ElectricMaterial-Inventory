@@ -517,5 +517,28 @@ export const insertEquipmentSchema = createInsertSchema(equipment).omit({
 
 export type Equipment = typeof equipment.$inferSelect;
 export type EquipmentWithProject = Equipment & { project?: Project | null };
+
+// ─── Material Requests ────────────────────────────────────────────────────────
+// Submitted by field workers to request materials from the warehouse.
+// These are NOT inventory movements — no quantities change until pickup.
+
+export const materialRequests = pgTable("material_requests", {
+  id: serial("id").primaryKey(),
+  requestNumber: text("request_number").notNull(),
+  status: text("status").notNull().default("requested"),
+  itemsJson: text("items_json").notNull().default("[]"),
+  submittedBy: text("submitted_by").references(() => users.id),
+  submittedByName: text("submitted_by_name"),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  notes: text("notes"),
+  projectId: integer("project_id").references(() => projects.id),
+});
+
+export const insertMaterialRequestSchema = createInsertSchema(materialRequests).omit({
+  id: true, submittedAt: true,
+});
+
+export type MaterialRequest = typeof materialRequests.$inferSelect;
+export type InsertMaterialRequest = typeof materialRequests.$inferInsert;
 export type CreateEquipmentRequest = z.infer<typeof insertEquipmentSchema>;
 export type UpdateEquipmentRequest = Partial<CreateEquipmentRequest>;

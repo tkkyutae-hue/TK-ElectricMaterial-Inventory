@@ -23,6 +23,7 @@ import {
   workerAttendance, type WorkerAttendance, type CreateWorkerAttendanceRequest,
   workerEvaluations, type WorkerEvaluation, type CreateWorkerEvaluationRequest,
   equipment, type Equipment, type EquipmentWithProject, type CreateEquipmentRequest, type UpdateEquipmentRequest,
+  materialRequests, type MaterialRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -157,6 +158,10 @@ export interface IStorage {
   createEquipment(data: CreateEquipmentRequest): Promise<Equipment>;
   updateEquipment(id: number, data: UpdateEquipmentRequest): Promise<Equipment>;
   deleteEquipment(id: number): Promise<void>;
+
+  getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]>;
+  createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null }): Promise<MaterialRequest>;
+  updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2140,6 +2145,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEquipment(id: number): Promise<void> {
     await db.update(equipment).set({ isActive: false, updatedAt: new Date() }).where(eq(equipment.id, id));
+  }
+
+  async getMaterialRequests(submittedBy?: string): Promise<MaterialRequest[]> {
+    const q = db.select().from(materialRequests);
+    if (submittedBy) {
+      return q.where(eq(materialRequests.submittedBy, submittedBy)).orderBy(desc(materialRequests.submittedAt));
+    }
+    return q.orderBy(desc(materialRequests.submittedAt));
+  }
+
+  async createMaterialRequest(data: { requestNumber: string; itemsJson: string; submittedBy?: string; submittedByName?: string; notes?: string | null; projectId?: number | null }): Promise<MaterialRequest> {
+    const [created] = await db.insert(materialRequests).values(data).returning();
+    return created;
+  }
+
+  async updateMaterialRequestStatus(id: number, status: string): Promise<MaterialRequest> {
+    const [updated] = await db.update(materialRequests)
+      .set({ status })
+      .where(eq(materialRequests.id, id))
+      .returning();
+    return updated;
   }
 }
 

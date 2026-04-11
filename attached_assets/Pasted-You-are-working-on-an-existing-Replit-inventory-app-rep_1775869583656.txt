@@ -1,0 +1,143 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT rebuild the dashboard UI.
+2. Do NOT change business logic, routing, or the visible dashboard layout.
+3. Do NOT modify inventory quantities or historical movement data.
+4. Do NOT change unrelated endpoints or pages.
+5. Keep this task focused on dashboard data aggregation performance only.
+
+TASK GOAL
+Optimize the dashboard stats/data loading by moving expensive in-memory inventory aggregation into SQL-level aggregation wherever reasonable, while preserving the current response shape and dashboard behavior as much as possible.
+
+FILES TO FOCUS ON
+- server/storage.ts
+- server/routes.ts
+- any dashboard-related server/service file actually used in this repo
+- client/src/pages/Dashboard.tsx only if a tiny compatibility-safe response mapping update is needed
+
+IMPORTANT
+- Inspect the current dashboard data flow first
+- Find the real implementation used by the dashboard, such as getDashboardStats() or equivalent
+- Do NOT redesign charts or cards
+- Do NOT change current KPI meaning
+- Keep the work incremental and compatibility-safe
+
+==================================================
+PART 1 — IDENTIFY CURRENT IN-MEMORY AGGREGATION
+==================================================
+
+Inspect the current dashboard stats implementation and identify where inventory rows are being fully loaded and looped over in memory to compute KPI totals.
+
+Typical examples to look for:
+- out of stock count
+- low stock count
+- reorder-needed count
+- total SKU count
+- total inventory value
+- category summary counts
+- action-required counts
+
+Document internally which metrics are currently computed by loading all items and looping in Node.
+
+==================================================
+PART 2 — MOVE KPI AGGREGATION TO SQL
+==================================================
+
+Refactor the relevant storage/service query so the main dashboard KPI values are computed in SQL instead of by fetching all rows and reducing in memory.
+
+Goals:
+- Use COUNT / SUM / CASE-style aggregation in SQL
+- Keep the current KPI meanings unchanged
+- Preserve the existing dashboard response shape as much as possible
+
+Metrics that should preferably be aggregated in SQL if they are currently memory-looped:
+- outOfStockCount
+- lowStockCount
+- reorderCount / actionRequiredCount
+- totalSkuCount
+- totalInventoryValue
+
+Implementation guidance:
+- Reuse current filtering assumptions already used by the dashboard
+- If status logic currently depends on quantity/reorder fields, reproduce that logic in SQL safely
+- If a metric cannot be safely moved without breaking meaning, leave it unchanged and note it clearly
+
+==================================================
+PART 3 — CATEGORY SUMMARY / STATUS GRID
+==================================================
+
+If the dashboard includes category-level summary/status tiles or category grids, move those aggregate counts to SQL as well where practical.
+
+Examples:
+- SKU count by category
+- total quantity by category
+- out-of-stock count by category
+- low-stock count by category
+
+Requirements:
+1. Preserve current displayed values and meaning
+2. Keep the current response structure if possible
+3. Prefer grouped SQL queries over loading all items and grouping in memory
+
+Important:
+- Do NOT redesign the category grid
+- Do NOT change gradient/color logic
+- Only improve data aggregation efficiency
+
+==================================================
+PART 4 — LEAVE RECENT ACTIVITY / CHART DATA ALONE UNLESS SAFE
+==================================================
+
+Do NOT aggressively rewrite recent transactions, chart series, or trend logic in this task unless there is a very obvious and small SQL optimization that is safe.
+
+Specifically:
+- Keep chart granularity behavior unchanged
+- Keep recent activity display behavior unchanged
+- Keep dashboard card layout unchanged
+
+This task is mainly about expensive inventory/KPI aggregation.
+
+==================================================
+PART 5 — PRESERVE RESPONSE SHAPE
+==================================================
+
+Keep the existing dashboard API response shape and frontend expectations as stable as possible.
+
+If a tiny compatibility-safe mapping change is necessary:
+- make it minimal
+- update only the exact dashboard consumer
+- do not ripple changes across unrelated pages
+
+==================================================
+PART 6 — SAFETY / CORRECTNESS
+==================================================
+
+Requirements:
+1. Do NOT change KPI meaning just to make SQL easier
+2. Do NOT change historical inventory data
+3. Do NOT change reorder/min stock semantics
+4. Validate that totals/counts still match the old logic
+5. If needed, leave comments or notes on any metric intentionally left in memory for safety
+
+==================================================
+PART 7 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch Field Mode
+2. Do NOT redesign Dashboard.tsx
+3. Do NOT change chart UX in this task
+4. Do NOT refactor unrelated storage methods broadly
+5. Keep the work scoped to dashboard aggregation performance
+6. Prefer SQL aggregation over Node loops wherever safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of dashboard aggregation optimizations
+2. Files modified
+3. Which metrics were moved to SQL
+4. Which metrics, if any, were intentionally left unchanged for safety
+5. Notes on how response compatibility was preserved

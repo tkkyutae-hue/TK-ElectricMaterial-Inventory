@@ -1134,23 +1134,22 @@ export class DatabaseStorage implements IStorage {
   // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
   async getDashboardStats(): Promise<any> {
-    const allItems = await db.select().from(items).where(eq(items.isActive, true));
+    // Single SQL aggregation replaces full table fetch + in-memory loop
+    const [kpi] = await db.select({
+      totalSkus:       sql<string>`COUNT(*)`,
+      totalQuantity:   sql<string>`COALESCE(SUM(${items.quantityOnHand}), 0)`,
+      totalValue:      sql<string>`COALESCE(SUM(CAST(${items.unitCost} AS NUMERIC) * ${items.quantityOnHand}), 0)`,
+      outOfStockCount: sql<string>`COUNT(*) FILTER (WHERE ${items.quantityOnHand} = 0)`,
+      // lowStock: quantity > 0 AND quantity <= reorderPoint (preserves original KPI meaning)
+      lowStockCount:   sql<string>`COUNT(*) FILTER (WHERE ${items.quantityOnHand} > 0 AND ${items.quantityOnHand} <= ${items.reorderPoint})`,
+    }).from(items).where(eq(items.isActive, true));
 
-    let totalQuantity = 0;
-    let totalValue = 0;
-    let lowStockCount = 0;
-    let outOfStockCount = 0;
+    // COUNT(*) in SQL rather than fetching all pending rows
+    const [recRow] = await db.select({
+      cnt: sql<string>`COUNT(*)`,
+    }).from(purchaseRecommendations).where(eq(purchaseRecommendations.status, 'pending'));
 
-    for (const item of allItems) {
-      totalQuantity += item.quantityOnHand;
-      const cost = item.unitCost ? parseFloat(item.unitCost) : 0;
-      totalValue += cost * item.quantityOnHand;
-      if (item.quantityOnHand === 0) outOfStockCount++;
-      else if (item.quantityOnHand <= item.reorderPoint) lowStockCount++;
-    }
-
-    const pendingRecs = await db.select().from(purchaseRecommendations).where(eq(purchaseRecommendations.status, 'pending'));
-
+    // Already SQL-efficient: join + ORDER BY + LIMIT 10
     const movementRows = await db.select({ movement: inventoryMovements, item: items })
       .from(inventoryMovements)
       .leftJoin(items, eq(inventoryMovements.itemId, items.id))
@@ -1160,12 +1159,12 @@ export class DatabaseStorage implements IStorage {
     const recentActivity = movementRows.map(r => ({ ...r.movement, item: r.item }));
 
     return {
-      totalSkus: allItems.length,
-      totalQuantity,
-      totalValue: totalValue.toFixed(2),
-      lowStockCount,
-      outOfStockCount,
-      pendingReorderCount: pendingRecs.length,
+      totalSkus:           Number(kpi.totalSkus),
+      totalQuantity:       Number(kpi.totalQuantity),
+      totalValue:          parseFloat(kpi.totalValue).toFixed(2),
+      lowStockCount:       Number(kpi.lowStockCount),
+      outOfStockCount:     Number(kpi.outOfStockCount),
+      pendingReorderCount: Number(recRow.cnt),
       recentActivity,
     };
   }
@@ -1174,22 +1173,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-    const allMovementsRaw = await db
-      .select({
-        movementType: inventoryMovements.movementType,
-        quantity: inventoryMovements.quantity,
-        createdAt: inventoryMovements.createdAt,
-        unitCost: items.unitCost,
-      })
-      .from(inventoryMovements)
-      .leftJoin(items, eq(inventoryMovements.itemId, items.id))
-      .where(gte(inventoryMovements.createdAt, startDate));
-
-    const allItems = await db.select({ unitCost: items.unitCost, quantityOnHand: items.quantityOnHand })
-      .from(items).where(eq(items.isActive, true));
-
-    const currentValue = allItems.reduce((s, i) => s + parseFloat(i.unitCost || '0') * i.quantityOnHand, 0);
-
+    // Build the 12-month label/bucket array
     const months: Array<{ year: number; month: number; label: string; netValueDelta: number }> = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -1197,17 +1181,40 @@ export class DatabaseStorage implements IStorage {
       months.push({ year: d.getFullYear(), month: d.getMonth(), label, netValueDelta: 0 });
     }
 
-    for (const m of allMovementsRaw) {
-      const cost = parseFloat(m.unitCost || '0');
-      const valueChange = cost * m.quantity;
-      const d = new Date(m.createdAt);
-      const bucket = months.find(b => b.year === d.getFullYear() && b.month === d.getMonth());
-      if (bucket) {
-        if (m.movementType === 'receive' || m.movementType === 'return') bucket.netValueDelta += valueChange;
-        else if (m.movementType === 'issue') bucket.netValueDelta -= valueChange;
-      }
+    // Move per-row iteration to a SQL GROUP BY — returns at most 12 rows instead of N movements
+    const buckets = await db.select({
+      yr:       sql<number>`EXTRACT(YEAR FROM ${inventoryMovements.createdAt})::int`,
+      // 0-indexed month to match JS Date.getMonth()
+      mo:       sql<number>`(EXTRACT(MONTH FROM ${inventoryMovements.createdAt}) - 1)::int`,
+      netDelta: sql<string>`
+        COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} IN ('receive', 'return')
+                         THEN CAST(${items.unitCost} AS NUMERIC) * ${inventoryMovements.quantity}
+                         ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN ${inventoryMovements.movementType} = 'issue'
+                            THEN CAST(${items.unitCost} AS NUMERIC) * ${inventoryMovements.quantity}
+                            ELSE 0 END), 0)
+      `,
+    }).from(inventoryMovements)
+      .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+      .where(gte(inventoryMovements.createdAt, startDate))
+      .groupBy(
+        sql`EXTRACT(YEAR FROM ${inventoryMovements.createdAt})`,
+        sql`EXTRACT(MONTH FROM ${inventoryMovements.createdAt})`,
+      );
+
+    for (const b of buckets) {
+      const bucket = months.find(m => m.year === Number(b.yr) && m.month === Number(b.mo));
+      if (bucket) bucket.netValueDelta = parseFloat(String(b.netDelta));
     }
 
+    // Current inventory value via SQL aggregation (no full-table fetch + reduce)
+    const [valueRow] = await db.select({
+      currentValue: sql<string>`COALESCE(SUM(CAST(${items.unitCost} AS NUMERIC) * ${items.quantityOnHand}), 0)`,
+    }).from(items).where(eq(items.isActive, true));
+
+    const currentValue = parseFloat(valueRow.currentValue);
+
+    // Backward-calculate month values — only 12 iterations, same logic as before
     const monthValues: number[] = new Array(12).fill(0);
     monthValues[11] = currentValue;
     for (let i = 10; i >= 0; i--) {

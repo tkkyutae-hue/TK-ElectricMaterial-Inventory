@@ -1,0 +1,84 @@
+Do NOT rebuild any component. Fix only the toast styling in Field Mode.
+
+CONTEXT
+The app has a dark Field Mode (`body[data-field-mode]` is set).
+`index.css` already has dark toast overrides for Field Mode, but they are not applying to all toasts.
+Some toasts still appear as white/light-theme popups, such as:
+- "Request submitted"
+- "요청이 삭제되었습니다"
+
+FIRST, INSPECT THESE FILES
+- `client/src/pages/field/FieldCartReview.tsx`
+- `client/src/pages/field/FieldRequestsList.tsx`
+
+Check how the toasts are triggered.
+Look for:
+- `toast(...)` calls
+- whether they use standard shadcn / Radix toast structure
+- whether they inject custom JSX into title/description/action
+- whether any custom floating container is bypassing the normal radix toast DOM
+
+GOAL
+All toasts triggered inside Field Mode pages must visually match the dark Field theme.
+
+TARGET COLORS
+- background: `#1c2b1f`
+- border: `1px solid #2a4030`
+- text: `#e2f0e5`
+- title: `#e2f0e5`
+- description: `#7aab82`
+- secondary/action text: `#7aab82`
+
+IMPORTANT
+Do NOT change:
+- toast logic
+- navigation behavior
+- undo functionality
+- Admin Mode toast styling
+- toast layout/content structure
+
+Only change styling so Field Mode toasts consistently render dark.
+
+CURRENT CSS
+`index.css` already targets something like:
+- `body[data-field-mode] [data-radix-toast-viewport] li`
+
+If some toasts are not using that structure, fix them in the safest way:
+
+OPTION A — PREFERRED
+Refactor only the affected Field Mode toasts so they render through the standard shadcn/radix toast structure that the existing CSS already styles.
+
+OPTION B
+If a toast must keep a custom wrapper/container, add a stable `className` or `data-*` attribute so the existing Field Mode CSS can target it cleanly.
+
+SPECIFIC REQUIREMENT — "Request submitted" TOAST
+This toast currently shows a white card with:
+- "Go to Requests"
+- "Undo"
+
+Style this specific toast to match Field Mode using `F.*` tokens from `fieldTokens.ts`.
+
+Use:
+- container background/border/text from the Field dark palette
+- "Go to Requests" button:
+  - background: `F.accentBg`
+  - border: `F.accent`
+  - text: `F.accent`
+- "Undo" button:
+  - transparent background
+  - text: `F.textMuted`
+
+Make sure:
+- both buttons stay visually identical in size/layout to current behavior
+- only colors/theme change
+- no logic changes
+
+DELIVERABLE
+Provide:
+1. Summary of why some Field Mode toasts were bypassing the dark toast CSS
+2. Files modified
+3. Which fix path was used (A or B)
+4. Confirmation that:
+   - Field Mode toasts are now dark
+   - Admin Mode toasts were left unchanged
+   - toast behavior/layout/content did not change

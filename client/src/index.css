@@ -167,22 +167,24 @@ input[type="number"] {
 }
 
 /* Field dark toast override — active when FieldLayout sets data-field-mode on body */
-body[data-field-mode] [data-radix-toast-viewport] li {
-  background-color: #1c2b1f;
-  border-color: #2a4030;
-  color: #e2f0e5;
+/* Note: data-toast-viewport is a custom attr added to ToastViewport in toast.tsx.    */
+/* Radix v1.2.x does NOT add data-radix-toast-viewport, so that selector never matched. */
+body[data-field-mode] [data-toast-viewport] li {
+  background-color: #1c2b1f !important;
+  border-color: #2a4030 !important;
+  color: #e2f0e5 !important;
 }
-body[data-field-mode] [data-radix-toast-viewport] li [data-title] {
-  color: #e2f0e5;
+body[data-field-mode] [data-toast-viewport] li [data-title] {
+  color: #e2f0e5 !important;
 }
-body[data-field-mode] [data-radix-toast-viewport] li [data-description] {
-  color: #7aab82;
+body[data-field-mode] [data-toast-viewport] li [data-description] {
+  color: #7aab82 !important;
 }
-body[data-field-mode] [data-radix-toast-viewport] li button {
-  color: #7aab82;
+body[data-field-mode] [data-toast-viewport] li button[toast-close] {
+  color: #7aab82 !important;
 }
-body[data-field-mode] [data-radix-toast-viewport] li button:hover {
-  color: #e2f0e5;
+body[data-field-mode] [data-toast-viewport] li button[toast-close]:hover {
+  color: #e2f0e5 !important;
 }
 
 /* Field Inventory — hide scrollbar on mobile category strip */

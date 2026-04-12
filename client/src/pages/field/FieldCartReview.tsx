@@ -229,9 +229,9 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
               onClick={() => goToRequests(dismiss)}
               style={{
                 ...btnBase,
-                background: "rgba(71,130,82,0.18)",
-                border: "1px solid rgba(71,130,82,0.4)",
-                color: "#7de898",
+                background: F.accentBg,
+                border: `1px solid ${F.accent}`,
+                color: F.accent,
               }}
             >
               <ClipboardList style={{ width: 11, height: 11, flexShrink: 0 }} />
@@ -244,9 +244,9 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
                 onClick={() => performUndo(dismiss)}
                 style={{
                   ...btnBase,
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  color: "#b0c4b8",
+                  background: "transparent",
+                  border: "1px solid transparent",
+                  color: F.textMuted,
                 }}
               >
                 <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />

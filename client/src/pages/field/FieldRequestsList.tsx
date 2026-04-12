@@ -111,9 +111,9 @@ function StatusActions({
     fontSize: 11, fontWeight: 700,
     fontFamily: "'Barlow Condensed', sans-serif",
     letterSpacing: "0.05em",
-    background: "rgba(71,130,82,0.18)",
-    border: "1px solid rgba(71,130,82,0.4)",
-    color: "#7de898",
+    background: "transparent",
+    border: "1px solid transparent",
+    color: F.textMuted,
   };
 
   async function changeStatus(newStatus: string) {
@@ -278,9 +278,9 @@ function EditRequestPanel({
         fontSize: 11, fontWeight: 700,
         fontFamily: "'Barlow Condensed', sans-serif",
         letterSpacing: "0.05em",
-        background: "rgba(71,130,82,0.18)",
-        border: "1px solid rgba(71,130,82,0.4)",
-        color: "#7de898",
+        background: "transparent",
+        border: "1px solid transparent",
+        color: F.textMuted,
       };
       const { dismiss } = toast({
         title: t.reqSaved,

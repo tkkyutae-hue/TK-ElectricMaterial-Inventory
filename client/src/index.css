@@ -188,3 +188,33 @@ body[data-field-mode] [data-radix-toast-viewport] li button:hover {
 /* Field Inventory — hide scrollbar on mobile category strip */
 .fi-cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 .fi-cat-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Field Mode — dark dropdown / select popover ──────────────────────────── */
+body[data-field-mode] [role="listbox"] {
+  background: #0d1410 !important;
+  border: 1px solid #2a4030 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.72) !important;
+  color: #c8deca !important;
+}
+body[data-field-mode] [role="option"] {
+  color: #c8deca !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+}
+body[data-field-mode] [role="option"]:focus,
+body[data-field-mode] [role="option"][data-highlighted] {
+  background: rgba(45,219,111,0.12) !important;
+  color: #2ddb6f !important;
+  outline: none !important;
+}
+body[data-field-mode] [role="option"][data-state="checked"],
+body[data-field-mode] [role="option"][aria-selected="true"] {
+  color: #2ddb6f !important;
+  background: rgba(45,219,111,0.08) !important;
+}
+
+/* ── Field Mode — subtle interaction feedback ─────────────────────────────── */
+body[data-field-mode] button:active:not([disabled]) {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}

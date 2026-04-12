@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
@@ -798,16 +798,46 @@ function qtyColor(status: string): string {
   return F.accent;
 }
 
-// ─── Mobile: Compact Selected Category Bar ──────────────────────────────────
+// ─── React-state image fallback components ──────────────────────────────────
+
+function CatBarThumb({ imageUrl, gradient }: { imageUrl?: string | null; gradient: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!imageUrl || broken) return <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />;
+  return (
+    <img src={imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={() => setBroken(true)} />
+  );
+}
+
+function CatStripCardImage({ imageUrl, name, gradient }: { imageUrl?: string | null; name: string; gradient: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!imageUrl || broken) return <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />;
+  return (
+    <>
+      <img src={imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-90 brightness-75 saturate-150 pointer-events-none" onError={() => setBroken(true)} />
+      <img src={imageUrl} alt={name} className="absolute inset-0 w-full h-full object-contain object-center z-10" />
+    </>
+  );
+}
+
+function CatGridCardImage({ imageUrl, name, gradient }: { imageUrl?: string | null; name: string; gradient: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!imageUrl || broken) return <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />;
+  return (
+    <>
+      <img src={imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" onError={() => setBroken(true)} />
+      <img src={imageUrl} alt={name} className="absolute inset-0 w-full h-full object-contain object-center z-10" />
+    </>
+  );
+}
+
+// ─── Mobile compact selected-category bar ────────────────────────────────────
 
 function MobileCatBar({
   cat,
   onExpand,
-  onClear,
 }: {
   cat: CategorySummary;
   onExpand: () => void;
-  onClear: () => void;
 }) {
   const gradient = getCategoryGradient(cat.code);
   return (
@@ -822,16 +852,7 @@ function MobileCatBar({
     >
       {/* Thumbnail */}
       <div style={{ width: 38, height: 38, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#0f1612", border: "1px solid rgba(45,219,111,0.15)" }}>
-        {cat.imageUrl ? (
-          <img
-            src={cat.imageUrl}
-            alt={cat.name}
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            onError={e => { (e.currentTarget.parentElement as HTMLElement).innerHTML = `<div class="w-full h-full bg-gradient-to-br ${gradient}" />`; }}
-          />
-        ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />
-        )}
+        <CatBarThumb imageUrl={cat.imageUrl} gradient={gradient} />
       </div>
 
       {/* Name + stats */}
@@ -867,25 +888,13 @@ function MobileCatBar({
           cursor: "pointer", flexShrink: 0,
           fontFamily: "'Barlow Condensed', sans-serif",
           letterSpacing: 0.5, textTransform: "uppercase",
+          transition: "background 0.15s, border-color 0.15s",
         }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(45,219,111,0.18)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(45,219,111,0.45)"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(45,219,111,0.10)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(45,219,111,0.25)"; }}
       >
         <ChevronDown style={{ width: 11, height: 11 }} />
         Change
-      </button>
-
-      {/* Clear X */}
-      <button
-        onClick={onClear}
-        data-testid="btn-mobile-cat-clear"
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: 28, height: 28, borderRadius: 8,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          cursor: "pointer", flexShrink: 0,
-        }}
-      >
-        <X style={{ width: 13, height: 13, color: F.textMuted }} />
       </button>
     </div>
   );
@@ -915,6 +924,7 @@ export default function FieldInventory() {
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
   const [catGridCollapsed, setCatGridCollapsed] = useState(false);
+  const filterAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-collapse on mobile if a category was pre-selected via URL
   useEffect(() => {
@@ -1049,7 +1059,10 @@ export default function FieldInventory() {
       setCatGridCollapsed(false);
     } else {
       setSelectedCatId(cat.id);
-      if (isMobile) setCatGridCollapsed(true);
+      if (isMobile) {
+        setCatGridCollapsed(true);
+        setTimeout(() => filterAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+      }
     }
     setSelectedFamily("all");
     setSelectedType("all");
@@ -1140,15 +1153,6 @@ export default function FieldInventory() {
         <MobileCatBar
           cat={selectedCat}
           onExpand={() => setCatGridCollapsed(false)}
-          onClear={() => {
-            setSelectedCatId(null);
-            setSelectedFamily("all");
-            setSelectedType("all");
-            setSelectedSubcategory("all");
-            setSelectedSize("all");
-            setPage(1);
-            setCatGridCollapsed(false);
-          }}
         />
       ) : (
         /* Full grid — always on desktop, on mobile when no selection or user expanded */
@@ -1191,16 +1195,7 @@ export default function FieldInventory() {
                         }}
                       >
                         <div className="absolute inset-0">
-                          {cat.imageUrl ? (
-                            <>
-                              <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-90 brightness-75 saturate-150 pointer-events-none" />
-                              <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
-                                onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-                              <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
-                            </>
-                          ) : (
-                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                          )}
+                          <CatStripCardImage imageUrl={cat.imageUrl} name={cat.name} gradient={gradient} />
                           <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
                           <div className="absolute bottom-0 left-0 right-0 z-30 px-1.5 pb-1">
                             <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 9, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="line-clamp-2">
@@ -1250,16 +1245,7 @@ export default function FieldInventory() {
                       }}
                     >
                       <div className="absolute inset-0">
-                        {cat.imageUrl ? (
-                          <>
-                            <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
-                            <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
-                              onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
-                          </>
-                        ) : (
-                          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                        )}
+                        <CatGridCardImage imageUrl={cat.imageUrl} name={cat.name} gradient={gradient} />
                         <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                         <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
                           <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
@@ -1329,6 +1315,9 @@ export default function FieldInventory() {
           />
         </div>
       )}
+
+      {/* Scroll anchor — mobile auto-scrolls here after category selection */}
+      <div ref={filterAreaRef} />
 
       {/* ── Quick Preset Filters — desktop only (mobile uses status dropdown) ── */}
       {!isMobile && <div className="flex items-center gap-2">

@@ -1,0 +1,215 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, permissions, or backend business rules.
+2. Do NOT redesign the whole Field Mode app from scratch.
+3. Keep this task focused only on the remaining unapplied Field Mode UI/design refinements.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a tiny shared improvement is clearly needed.
+
+TASK GOAL
+Implement ONLY the remaining Field Mode design/UI refinements that are still not properly applied.
+
+THESE ARE THE REMAINING ITEMS TO FIX
+
+1. Mobile top header still is not fully icon-first / visually normalized
+2. Field dropdown/list popovers are not fully unified with the dark Field design
+3. Compact selected-category bar still has both "Change" and "X" even though they feel redundant
+4. The Field transactions/history page title/description still has not been updated as requested
+5. Category strip scrollbar is still too visible / not minimized enough
+6. After category selection, the UI still does not gently move the user toward the filter/list area
+7. Image fallback behavior still uses DOM manipulation instead of React-state-driven fallback in key Field Inventory surfaces
+8. Interactive feedback patterns are still not consistently applied across Field cards/buttons/chips beyond the header
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/layouts/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- any extracted field category bar/card/filter components
+- any Field dropdown/select/popover component styling
+- any small shared helper/component only if truly needed
+
+==================================================
+PART 1 — MOBILE TOP HEADER: ICON-FIRST + SIZE NORMALIZATION
+==================================================
+
+Current issue:
+The mobile top header is improved, but still not fully normalized.
+The language control still visually feels different from adjacent controls, and the mobile action cluster is not fully compact/icon-first.
+
+Requirements:
+1. On mobile, make the upper header action controls feel like one coherent compact system
+2. Remove extra descriptive text where it causes clutter
+3. Keep icon-first controls where appropriate
+4. Normalize:
+   - height
+   - padding
+   - border radius
+   - overall visual weight
+5. Specifically ensure the language control no longer feels oversized or visually inconsistent compared with home/back/mode/profile controls
+6. Preserve functionality
+7. Keep desktop behavior stable
+
+==================================================
+PART 2 — FIELD DROPDOWN / LIST POPOVER DARK THEME UNIFICATION
+==================================================
+
+Current issue:
+Field filter dropdowns/lists still do not consistently match the Field dark design.
+Some list popovers still look too close to default white/basic UI.
+
+Targets may include:
+- status filter list
+- size filter list
+- family/type/subcategory related popovers/select menus
+- other similar Field filter/list surfaces
+
+Requirements:
+1. Unify dropdown/list popovers with the Field dark token system
+2. Use:
+   - dark background
+   - readable text
+   - clear hover state
+   - clear selected state
+   - subtle border
+   - matching shadow
+3. Avoid bright white/plain default popover appearance
+4. Keep interactions readable and mobile-friendly
+5. Do NOT change filter logic
+
+==================================================
+PART 3 — COMPACT CATEGORY BAR: REMOVE REDUNDANT ACTION
+==================================================
+
+Current issue:
+After category selection, the compact selected-category bar still shows both "Change" and "X", and these feel redundant.
+
+Required change:
+1. Remove the redundant "X" action from the compact selected-category bar
+2. Keep only "Change" as the visible category-switching action there
+3. Preserve category clearing/reset behavior elsewhere (for example via active chips / Clear all if already present)
+4. Keep the compact bar cleaner, slimmer, and less crowded
+
+==================================================
+PART 4 — FIELD TRANSACTIONS TITLE / DESCRIPTION COPY
+==================================================
+
+Current issue:
+The Field transactions/history page still has the older title/description.
+
+Required change:
+1. Change the visible title from the current generic transaction wording to:
+   - 입/출고 내역
+   or the current repo’s translated equivalent
+2. Update the description/subtitle so it also clearly includes request history context
+3. Use the existing translation/i18n system
+4. Do NOT change routing or business logic
+
+==================================================
+PART 5 — CATEGORY STRIP SCROLLBAR MINIMIZATION
+==================================================
+
+Current issue:
+The category strip scrollbar is still too visible.
+
+Requirements:
+1. On mobile category strip:
+   - keep touch swipe fully working
+   - visually hide or nearly hide the horizontal scrollbar
+2. On desktop:
+   - keep it usable
+   - make it very subtle rather than fully obvious
+3. Preserve current swipe/scroll behavior
+4. Do NOT break category interaction
+
+==================================================
+PART 6 — AFTER CATEGORY SELECTION, GUIDE THE USER DOWNWARD
+==================================================
+
+Current issue:
+After selecting a category, the category area collapses, but the UI still does not help the user move naturally toward filters or the item list.
+
+Required change:
+1. After category selection on mobile, gently move the user’s focus toward the filter/list area
+2. Preferred solution:
+   - a small `scrollIntoView` toward the filter area or item list start
+3. Keep it subtle and not disorienting
+4. Do NOT introduce jarring auto-scroll behavior
+5. Preserve current category selection logic
+
+==================================================
+PART 7 — REACT-BASED IMAGE FALLBACKS
+==================================================
+
+Current issue:
+Field Inventory still uses DOM-manipulation-based image fallback patterns in key places.
+
+Examples to inspect:
+- PhotoCell
+- compact selected-category bar image
+- detail panel image surfaces
+- other Field image surfaces using onError + DOM manipulation
+
+Required change:
+1. Replace DOM-manipulation fallback patterns with React-state-driven fallback handling
+2. Use a local broken-image state pattern
+3. Reuse the app’s existing fallback style/visual language where possible
+4. Do NOT let broken images create layout instability
+5. Keep the current look intact as much as possible
+
+Important:
+- Do NOT use innerHTML / parentElement / previousElementSibling / style.display DOM hacks for these fallbacks
+
+==================================================
+PART 8 — EXPAND INTERACTION FEEDBACK ACROSS FIELD MODE
+==================================================
+
+Current issue:
+Header controls already have better interaction feedback, but that behavior is not consistently extended across Field Mode.
+
+Apply the same light interaction-feedback pattern to high-value Field surfaces such as:
+- category cards
+- compact category bar action
+- filter chips
+- dropdown triggers
+- inventory item cards
+- Add to Cart / Change / Send Request style buttons
+- other obvious tappable/clickable Field controls
+
+Requirements:
+1. Keep the feedback subtle
+2. Use a consistent pattern:
+   - hover / pointer over: slight brighten / border emphasis / micro-scale
+   - active / press: slight press-in feel
+   - selected: separate persistent selected styling where appropriate
+3. Mobile should feel like touch feedback, not hover spam
+4. Do NOT over-animate the page
+5. Reuse the existing header interaction language as the model
+
+==================================================
+PART 9 — SAFETY
+==================================================
+
+- Do NOT change business logic
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin mode
+- Do NOT turn this into a broad refactor
+- Keep changes incremental and compatibility-safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the remaining Field UI refinements completed
+2. Files modified
+3. Which header controls were normalized
+4. Which dropdown/list surfaces were restyled
+5. Confirmation that the compact category bar now uses only "Change"
+6. What title/description text was updated
+7. How category strip scrollbar visibility was handled
+8. How the category-selection follow-through scroll works
+9. Which image fallbacks were converted to React-state-based handling
+10. Which interactive Field surfaces now share the same feedback pattern

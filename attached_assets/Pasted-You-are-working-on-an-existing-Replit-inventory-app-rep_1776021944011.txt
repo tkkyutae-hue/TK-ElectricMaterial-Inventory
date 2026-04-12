@@ -1,0 +1,131 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or backend business logic.
+2. Do NOT redesign the whole Field Mode app from scratch.
+3. Keep this task focused ONLY on:
+   - fixing the runtime error when opening Field select/filter/picker UI
+   - making unstable mobile dropdowns use a safer mobile picker pattern
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a small shared fix is clearly necessary.
+
+TASK GOAL
+Fix the two highest-priority Field Mode problems:
+
+1. Runtime errors when opening filter/select/picker UI
+2. Broken mobile dropdown behavior in movement forms and unstable Field picker surfaces
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/components/MovementForm.tsx
+- any shared select/dropdown/picker component used by Field Mode
+- any field sheet/modal/popover component
+- any tiny shared helper only if truly needed
+
+==================================================
+PART 1 — FIX THE RUNTIME ERROR FIRST
+==================================================
+
+CURRENT PROBLEM
+Opening some Field Mode filter/select/picker surfaces causes a runtime error overlay.
+
+Examples seen:
+- Inventory size/status filters
+- Movement form project/location/item-related dropdowns
+
+REQUIRED RESULT
+Find the true root cause and fix it.
+Do NOT hide or suppress the error overlay as a workaround.
+
+Requirements:
+1. Identify the actual render/state/prop issue causing the crash
+2. Fix the underlying code, not the overlay
+3. Preserve current filter and selection behavior
+4. After the fix, these filter/select/picker surfaces must open reliably in Field Mode without throwing runtime errors
+
+Important:
+- Do NOT set `server.hmr.overlay = false`
+- Do NOT bypass the problem with try/catch-only hacks
+- Fix the real code issue
+
+==================================================
+PART 2 — MOBILE PICKERS MUST BE VIEWPORT-SAFE
+==================================================
+
+CURRENT PROBLEM
+On mobile, some dropdowns/pickers behave like desktop floating menus:
+- they overlap bottom buttons
+- they create awkward nested scrolling
+- they feel unstable and cramped
+
+REQUIRED RESULT
+For mobile only, use a safer picker pattern where needed.
+
+Preferred mobile behavior:
+- bottom sheet
+OR
+- full-screen picker modal
+instead of a standard floating dropdown
+for unstable/high-density selection cases, especially in MovementForm
+
+High-priority targets:
+- item picker in Issue / Transfer / Receive / Return forms
+- project picker if it currently breaks layout
+- location picker if it currently breaks layout
+- any other mobile Field picker that is currently unstable
+
+Requirements:
+1. Desktop can keep current dropdown/popover behavior if it is already stable
+2. Mobile must use a viewport-safe picker/sheet pattern where the current dropdown is breaking layout
+3. Opened mobile pickers must not overlap footer CTA buttons awkwardly
+4. The picker should own its own internal scroll intentionally
+5. Main page scroll and picker scroll should not feel like competing nested scroll areas
+6. Preserve existing selection logic and search behavior
+7. Keep the current dark Field styling
+
+Implementation guidance:
+- use a sheet/modal style for the unstable mobile pickers
+- search input at top
+- scrollable result list below
+- clear close/dismiss action
+- safe max height within viewport
+- avoid off-screen overflow
+
+==================================================
+PART 3 — KEEP SCOPE TIGHT
+==================================================
+
+Do NOT also do:
+- filter row redesign
+- page size default changes
+- compact category bar changes
+- low/out filter merging
+- header redesign
+- toast redesign
+- admin mode changes
+
+This task is ONLY:
+- runtime error fix
+- mobile picker stabilization
+
+==================================================
+PART 4 — SAFETY
+==================================================
+
+- Do NOT change inventory logic
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin Mode
+- Keep changes incremental and compatibility-safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the runtime error root cause and fix
+2. Files modified
+3. Which mobile dropdowns/pickers were converted to viewport-safe sheet/modal behavior
+4. How desktop behavior was preserved
+5. Notes on what was intentionally left unchanged

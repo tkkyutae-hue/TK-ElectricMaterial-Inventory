@@ -1384,7 +1384,7 @@ export default function FieldInventory() {
               </SelectTrigger>
               <SelectContent className="max-h-[264px] overflow-y-auto">
                 <SelectItem value="all">{t.allSizes}</SelectItem>
-                {sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {sizes.filter(s => s && s.trim()).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -1408,14 +1408,14 @@ export default function FieldInventory() {
               </button>
             )}
           </div>
-          {selectedCatId !== null && sizes.length > 0 && (
+          {selectedCatId !== null && sizes.filter(s => s && s.trim()).length > 0 && (
             <Select value={selectedSize} onValueChange={handleSizeChange}>
               <SelectTrigger className="w-32 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
                 <SelectValue placeholder={t.allSizes} />
               </SelectTrigger>
               <SelectContent className="max-h-[264px] overflow-y-auto">
                 <SelectItem value="all">{t.allSizes}</SelectItem>
-                {sizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {sizes.filter(s => s && s.trim()).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

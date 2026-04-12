@@ -678,7 +678,7 @@ export function MovementForm({
                       style={fieldMode ? { flex: 1, background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.30)", color: "#ff5050", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0 } : undefined}
                       data-testid="button-cancel-movement"
                     >
-                      Cancel
+                      {t.cancel}
                     </Button>
                   )}
                   <Button
@@ -778,7 +778,7 @@ function LocationProjectSection({
                   value={field.value ?? null}
                   onChange={(id) => field.onChange(id)}
                   locations={locations || []}
-                  placeholder="Search or type to create…"
+                  placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                   testId="select-source-location"
                   dark={fieldMode}
                 />
@@ -796,7 +796,7 @@ function LocationProjectSection({
                   value={field.value ?? null}
                   onChange={(id) => field.onChange(id)}
                   locations={locations || []}
-                  placeholder="Select destination…"
+                  placeholder={(t as any).selectDestination ?? "Select destination…"}
                   testId="select-dest-location"
                   dark={fieldMode}
                 />
@@ -817,6 +817,7 @@ function LocationProjectSection({
                   projects={projects || []}
                   hideCreate={fieldMode}
                   dark={fieldMode}
+                  placeholder={(t as any).selectProject ?? "Select project…"}
                 />
               </FormControl>
               <FormMessage />
@@ -832,7 +833,7 @@ function LocationProjectSection({
                   value={field.value ?? null}
                   onChange={(id) => field.onChange(id)}
                   locations={locations || []}
-                  placeholder="Select destination…"
+                  placeholder={(t as any).selectDestination ?? "Select destination…"}
                   testId="select-dest-location"
                   dark={fieldMode}
                 />
@@ -854,7 +855,7 @@ function LocationProjectSection({
                   value={field.value ?? null}
                   onChange={(id) => field.onChange(id)}
                   locations={locations || []}
-                  placeholder="Search or type to create…"
+                  placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                   testId="select-dest-location"
                   dark={fieldMode}
                 />
@@ -891,7 +892,7 @@ function LocationProjectSection({
                   value={field.value ?? null}
                   onChange={(id) => field.onChange(id)}
                   locations={locations || []}
-                  placeholder="Search or type to create…"
+                  placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                   testId="select-source-location"
                   dark={fieldMode}
                 />
@@ -972,6 +973,8 @@ function ItemsSection({
             movementType={movType}
             isLoading={isLoading}
             errorMessage={errorMessage}
+            searchPlaceholder={(t as any).itemSearchPlaceholder ?? "Search by name, SKU, or size…"}
+            closeText={(t as any).itemPickerClose ?? "Done"}
           />
         ))}
       </div>

@@ -8,12 +8,14 @@ export function SearchableProjectSelect({
   projects,
   hideCreate = false,
   dark = false,
+  placeholder = "Select project…",
 }: {
   value?: number | null;
   onChange: (id: number | undefined) => void;
   projects: any[];
   hideCreate?: boolean;
   dark?: boolean;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -93,7 +95,7 @@ export function SearchableProjectSelect({
         {selected ? (
           <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{label(selected)}</span>
         ) : (
-          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>Select project…</span>
+          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
         )}
         <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>

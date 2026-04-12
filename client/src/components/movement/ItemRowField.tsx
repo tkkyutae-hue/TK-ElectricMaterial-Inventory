@@ -398,6 +398,8 @@ function BulkReelEntry({
 export function ItemRowField({
   row, idx, itemCount, items, locations, onUpdate, onRemove, movementType,
   isLoading = false, errorMessage = null,
+  searchPlaceholder = "Search by name, SKU, or size…",
+  closeText = "Done",
 }: {
   row: ItemRow;
   idx: number;
@@ -409,6 +411,8 @@ export function ItemRowField({
   movementType?: string;
   isLoading?: boolean;
   errorMessage?: string | null;
+  searchPlaceholder?: string;
+  closeText?: string;
 }) {
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
 
@@ -505,6 +509,8 @@ export function ItemRowField({
             dark={true}
             isLoading={isLoading}
             errorMessage={errorMessage}
+            searchPlaceholder={searchPlaceholder}
+            closeText={closeText}
           />
           {row.errors.itemId && (
             <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>

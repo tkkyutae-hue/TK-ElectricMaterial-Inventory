@@ -244,6 +244,15 @@ const en = {
   reqDeleteBlocked:           "Cannot delete a fulfilled request — it has a linked movement.",
   reqQtyLabel:                "Qty",
 
+  // ── SearchableItemSelect / ItemRowField ──────────────────────────────────
+  itemSearchPlaceholder: "Search by name, SKU, or size…",
+  itemPickerClose:       "Done",
+
+  // ── Location / Project pickers ────────────────────────────────────────────
+  searchOrTypeToCreate:  "Search or type to create…",
+  selectDestination:     "Select destination…",
+  selectProject:         "Select project…",
+
   // ── MovementForm labels (field mode) ─────────────────────────────────────
   movementType:       "Movement Type",
   receiveFrom:        "Receive From",
@@ -522,6 +531,13 @@ const ko: Translations = {
   reqDeleteBlocked:           "이행된 요청은 삭제할 수 없습니다 — 연결된 이동 기록이 있습니다.",
   reqQtyLabel:                "수량",
 
+  itemSearchPlaceholder: "이름, SKU 또는 사이즈 검색…",
+  itemPickerClose:       "완료",
+
+  searchOrTypeToCreate:  "검색하거나 입력하여 생성…",
+  selectDestination:     "목적지 선택…",
+  selectProject:         "프로젝트 선택…",
+
   movementType:       "이동 유형",
   receiveFrom:        "입고처",
   returnFrom:         "반품처",
@@ -797,6 +813,13 @@ const es: Translations = {
   reqDeleted:                 "Solicitud eliminada",
   reqDeleteBlocked:           "No se puede eliminar una solicitud cumplida — tiene un movimiento vinculado.",
   reqQtyLabel:                "Cant.",
+
+  itemSearchPlaceholder: "Buscar por nombre, SKU o tamaño…",
+  itemPickerClose:       "Listo",
+
+  searchOrTypeToCreate:  "Buscar o escribir para crear…",
+  selectDestination:     "Seleccionar destino…",
+  selectProject:         "Seleccionar proyecto…",
 
   movementType:       "Tipo de movimiento",
   receiveFrom:        "Recibir de",

@@ -1,0 +1,173 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or business logic.
+2. Do NOT redesign the whole Field Mode app from scratch.
+3. Keep this task focused only on fixing unstable mobile picker/dropdown behavior and related i18n gaps.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a small shared fix is clearly necessary.
+
+TASK GOAL
+Fix the highest-priority mobile Field Mode UX/stability issues:
+
+1. In the mobile Issue / Transfer form, the item search dropdown/picker currently breaks the layout, overlaps the bottom action buttons, and creates a bad nested-scroll experience.
+2. In Field Inventory, opening filter dropdowns (such as size) can trigger a runtime error.
+3. Field dropdown/picker surfaces are not viewport-safe enough on mobile and need better layer/height/scroll behavior.
+4. Some strings remain untranslated in Spanish and mixed-language UI still appears.
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldInventory.tsx
+- any shared select/dropdown/picker component used in Field Mode
+- any field sheet/modal/popover components
+- i18n/translation files only where needed
+- any tiny helper/component only if truly needed
+
+==================================================
+PART 1 — MOBILE ISSUE / TRANSFER ITEM PICKER MUST STOP BREAKING LAYOUT
+==================================================
+
+CURRENT PROBLEM
+On mobile, when the user opens the item search dropdown in Issue / Transfer:
+- the dropdown opens like a normal inline dropdown
+- it overlaps the bottom buttons
+- it creates awkward nested scrolling
+- it feels like a desktop dropdown forced into a phone layout
+
+REQUIRED FIX
+Replace or adapt the mobile item search/dropdown interaction into a mobile-safe picker pattern.
+
+Preferred mobile behavior:
+- open as a bottom sheet
+OR
+- open as a full-screen picker modal
+instead of a normal dropdown floating inside the form
+
+Requirements:
+1. Desktop can keep the current inline dropdown if it is already acceptable
+2. Mobile must use a viewport-safe picker pattern
+3. The picker must not overlap Confirm / Cancel buttons awkwardly
+4. The picker should own its own internal scroll intentionally
+5. The main page should not feel like it is competing with the picker scroll
+6. Preserve current item search logic and item selection behavior
+
+Inside the mobile picker:
+- search input at top
+- result list below
+- scrollable result area with a safe max height
+- clear close/dismiss control
+- keep current dark Field styling
+
+==================================================
+PART 2 — FIX FIELD INVENTORY FILTER RUNTIME ERROR
+==================================================
+
+CURRENT PROBLEM
+Opening filter dropdowns such as the size filter in Field Inventory can cause a runtime error.
+This is a stability bug, not just a styling issue.
+
+REQUIRED FIX
+Inspect the Field Inventory filter/select open logic and fix the underlying runtime error.
+
+Requirements:
+1. Identify the actual root cause rather than hiding the error
+2. Fix the component/state/render issue causing the crash
+3. Preserve current filter behavior and current selected values
+4. After the fix, filters such as:
+   - size
+   - status
+   - other similar inventory filters
+   should open reliably on mobile without throwing runtime errors
+
+Important:
+- Do NOT just disable the Vite/HMR overlay
+- Fix the code issue that triggers the error
+
+==================================================
+PART 3 — MAKE ALL MOBILE DROPDOWNS / PICKERS VIEWPORT-SAFE
+==================================================
+
+This applies to both:
+- MovementForm item selection
+- Field Inventory filter dropdowns / select lists
+- other similar Field list/picker surfaces if they share the same problems
+
+REQUIRED FIXES
+1. Add proper max-height handling
+2. Keep opened lists within the mobile viewport
+3. Avoid lists extending behind bottom CTAs or off-screen
+4. Avoid accidental nested-scroll confusion where possible
+5. Use an intentional layer/z-index strategy so opened lists/sheets appear above the right surfaces
+6. Preserve current touch usability
+7. Keep the current dark theme
+
+Implementation guidance:
+- mobile lists should feel like deliberate picker surfaces, not accidental floating menus
+- use sheet/modal style where needed
+- use popover/select style only where it stays stable and readable
+- keep scroll containers obvious and isolated
+
+==================================================
+PART 4 — SPANISH / I18N CLEANUP FOR THESE FLOWS
+==================================================
+
+CURRENT PROBLEM
+Some Field screens translated into Spanish still show English text mixed in, especially in forms/pickers/buttons/placeholders.
+
+Fix untranslated strings in the affected mobile Field flows, especially:
+- Issue / Transfer form
+- item search placeholder text
+- select placeholders
+- button labels
+- any nearby picker/dropdown helper text
+
+Examples seen in mixed-language UI:
+- Select destination...
+- Select project...
+- Search or type to create...
+- Search by name, SKU, or size...
+- Cancel
+
+Requirements:
+1. Use the repo’s existing translation/i18n system
+2. Keep the intended meaning unchanged
+3. Do NOT rewrite product wording more than necessary
+4. Only fix missing translation wiring / keys in the affected flows
+
+==================================================
+PART 5 — KEEP FIELD STYLE CONSISTENT
+==================================================
+
+While fixing the above, preserve and slightly reinforce the current Field dark design:
+
+Requirements:
+1. Dark picker/dropdown surfaces
+2. Readable text
+3. Clear hover/active/selected states
+4. Compact but usable mobile controls
+5. No bright default browser-like white surfaces
+
+==================================================
+PART 6 — SAFETY
+==================================================
+
+- Do NOT change inventory logic
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin mode
+- Do NOT broaden scope into unrelated pages
+- Keep changes incremental and compatibility-safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the mobile picker/dropdown fixes
+2. Files modified
+3. Root cause of the runtime error and how it was fixed
+4. How the mobile item picker now behaves in Issue / Transfer
+5. How viewport-safe dropdown/list behavior was improved
+6. Which untranslated strings were fixed
+7. Notes on what was intentionally left unchanged

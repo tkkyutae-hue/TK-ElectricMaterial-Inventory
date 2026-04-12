@@ -1347,39 +1347,27 @@ export default function FieldInventory() {
 
       {/* ── Filter Row ── */}
       {isMobile ? (
-        /* Mobile: search + status on same row, size below */
-        <div className="flex flex-col gap-2">
-          {/* Row 1: Search (flex-grow) + Status (fixed) */}
-          <div className="flex gap-2">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
-              <Input
-                placeholder={t.searchPlaceholder}
-                value={searchInput}
-                onChange={e => handleSearch(e.target.value)}
-                className="pl-8 h-10 text-sm w-full"
-                style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
-                data-testid="field-inv-search"
-              />
-              {searchInput && (
-                <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[120px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
-                <SelectValue placeholder={t.allStatus} />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        /* Mobile: single row — Search(flex-1) + Size(w-[100px], conditional) + Status(w-[100px]) */
+        <div className="flex gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
+            <Input
+              placeholder={t.searchPlaceholder}
+              value={searchInput}
+              onChange={e => handleSearch(e.target.value)}
+              className="pl-8 h-10 text-sm w-full"
+              style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
+              data-testid="field-inv-search"
+            />
+            {searchInput && (
+              <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          {/* Row 2: Size filter — full width, only when visible */}
           {selectedCatId !== null && sizes.filter(s => s && s.trim()).length > 0 && (
             <Select value={selectedSize} onValueChange={handleSizeChange}>
-              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
+              <SelectTrigger className="w-[100px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
                 <SelectValue placeholder={t.allSizes} />
               </SelectTrigger>
               <SelectContent className="max-h-[264px] overflow-y-auto">
@@ -1388,6 +1376,14 @@ export default function FieldInventory() {
               </SelectContent>
             </Select>
           )}
+          <Select value={selectedStatus} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-[100px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
+              <SelectValue placeholder={t.allStatus} />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       ) : (
         /* Desktop: search (flex-1) + size (conditional) + status */

@@ -1,0 +1,134 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole app from scratch.
+3. Keep this task focused only on mobile layout optimization for Field Mode, especially the Field header and Field movement form pages.
+4. Preserve the current Field dark industrial visual identity.
+
+TASK GOAL
+Fix the mobile Field Mode layout so it no longer feels cramped, wrapped, or double-scrolling.
+
+PRIMARY PROBLEMS TO SOLVE
+1. On mobile, the page appears to have awkward top/bottom scrolling behavior or nested vertical scroll feel
+2. The top header wraps badly:
+   - Field Mode badge
+   - date/time
+   - back button
+   - mode select
+   and related controls feel squeezed and broken across lines
+3. The top area feels too dense and visually cramped
+4. The Issue / Transfer mobile form feels vertically crowded and not well organized
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/layouts/FieldLayout.tsx
+- client/src/components or pages related to the Field header/top bar
+- client/src/components/MovementForm.tsx
+- any field page wrapper used by Issue / Transfer
+- field token/style files only if needed for safe responsive tuning
+
+PART 1 — REMOVE MOBILE NESTED-SCROLL / DOUBLE-SCROLL FEEL
+Find the current mobile Field layout scroll structure.
+
+Requirements:
+1. Avoid having both the page and a major inner container feel like competing vertical scroll areas on mobile
+2. Use one clear primary scroll container for the page content where possible
+3. If a modal/sheet needs its own scroll, keep that isolated and intentional
+4. Prevent awkward extra vertical overflow caused by wrapper height/min-height mistakes
+5. Preserve desktop behavior
+
+Implementation guidance:
+- inspect height / min-height / overflow-y settings on FieldLayout and page wrappers
+- remove unnecessary nested `overflow-y-auto` usage on mobile
+- ensure the main mobile page content scrolls naturally
+- preserve safe area behavior
+
+PART 2 — FIX MOBILE HEADER WRAPPING
+The top mobile Field header must not feel squeezed or broken by wrapping.
+
+Current problematic elements include:
+- Field Mode badge
+- date/time
+- language selector
+- back button
+- mode select
+- profile/avatar action
+
+Requirements:
+1. Reorganize the mobile header into a cleaner responsive layout
+2. Do NOT let these controls wrap in an ugly compressed way
+3. Prefer one of these safe patterns:
+   - two-row mobile header
+   - or tighter grouped layout with reduced text density
+4. Keep desktop header unchanged
+
+Recommended mobile hierarchy:
+- Row 1: logo + Field Mode badge + compact date/time
+- Row 2: language / back / mode select / avatar actions
+OR another similarly clean grouping
+
+Important:
+- avoid vertical text stacking inside narrow buttons
+- avoid overly tall wrapped pills
+- keep touch targets usable
+- keep the header compact but breathable
+
+PART 3 — IMPROVE MOBILE HEADER SPACING / SAFE AREA
+Requirements:
+1. Add proper mobile safe-area top handling
+2. Give the header and first content section more breathing room
+3. Prevent the content from looking jammed directly under the header
+4. Keep the current branding and dark style intact
+
+PART 4 — CLEAN UP ISSUE / TRANSFER MOBILE FORM LAYOUT
+Optimize the Field movement form (especially Issue / Transfer) for mobile.
+
+Requirements:
+1. Keep all current fields and logic intact
+2. Improve vertical rhythm and grouping
+3. Make the form feel less cramped on narrow screens
+4. Ensure fields are clearly separated and full-width where appropriate
+5. Keep labels readable and not too close to inputs
+6. Keep the bottom action bar/buttons usable and visually balanced
+
+Suggested mobile improvements:
+- consistent section spacing
+- slightly clearer group separation
+- cleaner spacing between label and control
+- ensure requester / project / location inputs are easy to scan
+- ensure the item row area does not feel compressed
+
+PART 5 — BUTTON / CONTROL RESPONSIVENESS
+Fix mobile responsiveness for small control clusters such as:
+- top header actions
+- movement type selector
+- quantity controls
+- footer buttons
+
+Requirements:
+1. Prevent awkward wrapping and crushed button labels
+2. Keep minimum touch-friendly heights
+3. Preserve current logic and actions
+4. Keep visual balance on narrow screens
+
+PART 6 — KEEP DESKTOP UNCHANGED
+Requirements:
+1. These fixes should primarily affect mobile/small-screen layouts
+2. Do NOT regress desktop/tablet layout unless a tiny shared fix is clearly necessary
+3. Keep the current desktop Field experience intact
+
+PART 7 — SAFETY
+- Do NOT change movement validation
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin mode
+- Keep this as a responsive/mobile layout optimization pass only
+
+OUTPUT
+1. Summary of mobile Field layout fixes
+2. Files modified
+3. How the mobile header wrapping was solved
+4. How the scroll/nested-scroll issue was solved
+5. How the Issue / Transfer mobile form was improved
+6. Notes on what was intentionally left unchanged

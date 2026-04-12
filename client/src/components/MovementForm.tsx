@@ -586,7 +586,7 @@ export function MovementForm({
 
           {/* ── Section A: Movement Details ── */}
           {fieldMode ? (
-            <div className="space-y-3 pb-3">
+            <div className="space-y-4 pb-4">
               <MovementTypeSection form={form} movementTypes={movementTypes} allowedTypes={allowedTypes} fieldMode={true} t={t} />
               <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={true} t={t} workers={workers} projectName={projectName} />
             </div>
@@ -599,7 +599,7 @@ export function MovementForm({
 
           {/* ── Section B: Items ── */}
           {fieldMode ? (
-            <div style={{ borderTop: "1px solid #203023", paddingTop: 16 }}>
+            <div style={{ borderTop: "1px solid #203023", paddingTop: 20 }}>
               <ItemsSection form={form} itemRows={itemRows} items={items} locations={locations} addRow={addRow} updateRow={updateRow} removeRow={removeRow} fieldMode={true} movType={movType} t={t} isLoading={itemsLoading} errorMessage={itemsErrorMessage} />
             </div>
           ) : (
@@ -624,7 +624,7 @@ export function MovementForm({
 
           {/* ── Note ── */}
           {fieldMode ? (
-            <div style={{ flexShrink: 0, paddingTop: 16, borderTop: "1px solid #203023", marginTop: 8 }}>
+            <div style={{ flexShrink: 0, paddingTop: 20, borderTop: "1px solid #203023", marginTop: 4 }}>
               <NoteField form={form} fieldMode={true} t={t} />
             </div>
           ) : (
@@ -635,10 +635,10 @@ export function MovementForm({
 
           {/* ── Submit footer ── */}
           <div
-            style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 16, marginLeft: -16, marginRight: -16, paddingLeft: 16, paddingRight: 16, background: "#0d1410", borderTop: "1px solid #203023" } : undefined}
-            className={fieldMode ? undefined : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}
+            style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 8, paddingTop: 12, paddingBottom: 12, marginTop: 16, background: "#0d1410", borderTop: "1px solid #203023" } : undefined}
+            className={fieldMode ? "-mx-4 sm:-mx-6 px-4 sm:px-6" : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}
           >
-            <div className="flex items-center gap-2">
+            <div className={fieldMode ? "w-full flex items-center gap-2" : "flex items-center gap-2"}>
               {readOnly ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -662,7 +662,7 @@ export function MovementForm({
                     type="button"
                     disabled={draftSaving || submitting}
                     variant={fieldMode ? undefined : "outline"}
-                    style={fieldMode ? { background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 18px", minWidth: 110 } : undefined}
+                    style={fieldMode ? { flex: 1, background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0 } : undefined}
                     className={fieldMode ? undefined : "min-w-[110px]"}
                     data-testid="button-save-draft"
                     onClick={onSaveDraft}
@@ -675,7 +675,7 @@ export function MovementForm({
                       variant={fieldMode ? undefined : "destructive"}
                       onClick={onCancel}
                       disabled={submitting}
-                      style={fieldMode ? { background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.30)", color: "#ff5050", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 22px", minWidth: 100 } : undefined}
+                      style={fieldMode ? { flex: 1, background: "rgba(255,80,80,0.08)", border: "1px solid rgba(255,80,80,0.30)", color: "#ff5050", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0 } : undefined}
                       data-testid="button-cancel-movement"
                     >
                       Cancel
@@ -684,7 +684,7 @@ export function MovementForm({
                   <Button
                     type="submit"
                     disabled={submitting}
-                    style={fieldMode ? { background: "#2ddb6f", color: "#07090a", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 22px", minWidth: 100, border: "none", letterSpacing: "0.03em" } : undefined}
+                    style={fieldMode ? { flex: 1, background: "#2ddb6f", color: "#07090a", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0, border: "none", letterSpacing: "0.03em" } : undefined}
                     className={fieldMode ? undefined : "bg-brand-700 hover:bg-brand-800 min-w-[100px]"}
                     data-testid="button-submit-movement"
                   >

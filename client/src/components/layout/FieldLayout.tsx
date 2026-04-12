@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, HardHat } from "lucide-react";
+import { ArrowLeft, HardHat, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { F } from "@/lib/fieldTokens";
@@ -18,6 +18,8 @@ const CSS = `
 }
 .fl-pulse-dot { animation: fl-pulse-dot 2.5s ease-in-out infinite; }
 .fl-k         { animation: fl-flicker 7s ease-in-out 3s infinite; }
+.fl-outer     { height: 100vh; }
+@supports (height: 100dvh) { .fl-outer { height: 100dvh; } }
 `;
 
 function useClock() {
@@ -46,7 +48,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <FieldCartProvider>
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: F.bg, position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
+    <div className="fl-outer" style={{ display: "flex", flexDirection: "column", background: F.bg, position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
       <style>{CSS}</style>
 
       {/* Grid texture */}
@@ -64,17 +66,18 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       }} />
 
       {/* ── Top header ── */}
-      <header style={{
-        position: "relative", zIndex: 50, flexShrink: 0,
-        minHeight: 52,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        paddingTop: "env(safe-area-inset-top)",
-        paddingLeft: 20,
-        paddingRight: 20,
-        paddingBottom: 0,
-        background: F.bg,
-        borderBottom: `1px solid ${F.borderStrong}`,
-      }}>
+      <header
+        className="px-3 sm:px-5"
+        style={{
+          position: "relative", zIndex: 50, flexShrink: 0,
+          minHeight: 52,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: 0,
+          background: F.bg,
+          borderBottom: `1px solid ${F.borderStrong}`,
+        }}
+      >
 
         {/* Left: TK lettermark + Field Mode chip + date/time */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -97,7 +100,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           }}>
             <div className="fl-pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: F.accent, flexShrink: 0 }} />
             <HardHat style={{ width: 11, height: 11, flexShrink: 0 }} />
-            <span>{t.fieldModeChip}</span>
+            <span className="hidden-mobile">{t.fieldModeChip}</span>
           </div>
 
           {/* Date & Time */}
@@ -114,7 +117,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Right: Language switcher + Back + Mode Select + Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
 
           <LanguageSwitcher theme="dark" />
 
@@ -127,7 +130,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   background: F.surface2, border: `1px solid ${F.borderStrong}`,
-                  borderRadius: 8, padding: "5px 11px",
+                  borderRadius: 8, padding: "5px 10px",
                   color: F.textMuted, fontSize: 11,
                   fontFamily: "'Barlow Condensed', sans-serif",
                   fontWeight: 600, letterSpacing: 0.5,
@@ -138,7 +141,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = F.textMuted; (e.currentTarget as HTMLButtonElement).style.borderColor = F.borderStrong; }}
               >
                 <ArrowLeft style={{ width: 11, height: 11 }} />
-                <span>{t.back}</span>
+                <span className="hidden-mobile">{t.back}</span>
               </button>
             </Link>
           )}
@@ -151,7 +154,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
               style={{
                 display: "flex", alignItems: "center", gap: 5,
                 background: F.surface2, border: `1px solid ${F.borderStrong}`,
-                borderRadius: 8, padding: "5px 11px",
+                borderRadius: 8, padding: "5px 10px",
                 color: F.textMuted, fontSize: 11,
                 fontFamily: "'Barlow Condensed', sans-serif",
                 fontWeight: 600, letterSpacing: 0.5,
@@ -161,7 +164,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#c8deca"; (e.currentTarget as HTMLButtonElement).style.borderColor = F.accentBorder; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = F.textMuted; (e.currentTarget as HTMLButtonElement).style.borderColor = F.borderStrong; }}
             >
-              <span>{t.modeSelect}</span>
+              <Home style={{ width: 11, height: 11, flexShrink: 0 }} />
+              <span className="hidden-mobile">{t.modeSelect}</span>
             </button>
           </Link>
 
@@ -183,7 +187,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main
         className="relative"
-        style={{ zIndex: 10, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: F.bg }}
+        style={{ zIndex: 10, flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", background: F.bg }}
       >
         <div
           className="px-4 sm:px-6"

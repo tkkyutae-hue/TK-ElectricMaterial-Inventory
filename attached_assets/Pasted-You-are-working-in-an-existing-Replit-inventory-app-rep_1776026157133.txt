@@ -1,0 +1,172 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix only the people-name input UX in Field Mode so it behaves like a proper searchable combobox.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+2. client/src/pages/field/FieldCartReview.tsx
+
+Only if absolutely necessary for a shared people-picker implementation:
+3. client/src/components/ui/command.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+
+Especially:
+- DO NOT touch header
+- DO NOT touch category/filter/page-size UI
+- DO NOT touch request lifecycle logic
+- DO NOT touch toast behavior
+- DO NOT touch backend
+
+==================================================
+GOAL
+==================================================
+
+Make the people-name field work the same way across these Field Mode flows:
+
+1. 입고 / 반품
+2. 출고 / 이송
+3. 요청 제출 / 요청 수정
+
+It must behave like a searchable combobox:
+- clickable
+- typeable
+- selectable
+- reopenable after selection
+
+==================================================
+REQUIRED UX
+==================================================
+
+When the user clicks the person field:
+- a list opens
+
+The list must:
+- show recommended people first
+- still allow scrolling through the full available list
+- support typing to filter names
+
+After a person has already been selected:
+- clicking anywhere on the field again must reopen the list
+- the user must be able to change the selected person without first clearing the field
+
+Typing behavior:
+- user can type directly into the field
+- typing filters the list
+- matching is case-insensitive
+- no exact match required
+
+==================================================
+DATA SOURCE RULES
+==================================================
+
+Use the current manpower/worker source pattern already used in the repo.
+
+Preferred source priority:
+1. project-related manpower if available
+2. recent manpower names for that project if available
+3. recent/global manpower names
+4. worker master fallback
+5. current signed-in user as optional fallback if appropriate
+
+Do NOT invent a new people system.
+Do NOT hardcode fake people.
+
+==================================================
+FLOW-SPECIFIC REQUIREMENTS
+==================================================
+
+A. MovementForm.tsx
+Apply the same combobox behavior to the person fields used in:
+- receive / return
+- issue / transfer
+
+B. FieldCartReview.tsx
+Apply the same combobox behavior to:
+- requester field in request submit
+- requester field in request edit flow if handled there
+
+Important:
+- the UX should feel consistent across all these flows
+- do NOT leave request flow on one pattern and movement flow on another
+
+==================================================
+BEHAVIOR RULES
+==================================================
+
+1. Show recommended people first, but do NOT limit the dropdown to only 5 results total
+2. The full list must remain scrollable
+3. After selection, the field remains editable/reopenable
+4. Do NOT set the field into a locked readOnly state that blocks reopening
+5. Keep the control compact and mobile-friendly
+6. Preserve current value storage behavior where possible
+
+If the current form only stores a name string:
+- keep storing the selected name safely
+- do NOT redesign schemas in this task
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- redesign the whole form
+- change request logic
+- change movement logic
+- change permissions
+- change toast behavior
+- change header or inventory layout
+- touch backend
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. ONLY these allowed files were modified:
+   - MovementForm.tsx
+   - FieldCartReview.tsx
+   - command.tsx only if strictly necessary
+
+2. In all three Field flows (입고/반품, 출고/이송, 요청):
+   - the person field opens on click
+   - typing works
+   - the list scrolls
+   - selecting works
+   - clicking again after selection reopens the list
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the combobox now behaves in MovementForm
+3. How the combobox now behaves in FieldCartReview
+4. How reopen-after-selection works
+5. Confirmation that no other files were modified
+6. Confirmation that header, inventory layout, request logic, toast logic, and backend were untouched

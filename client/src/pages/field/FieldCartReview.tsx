@@ -167,7 +167,6 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   const { data: workers = [] } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: projects = [] } = useQuery<Project[]>({ queryKey: ["/api/projects"] });
 
-  const activeWorkers = useMemo(() => workers.filter(w => w.isActive), [workers]);
   const selectedProject = useMemo(() => projects.find(p => p.id === projectId) ?? null, [projects, projectId]);
 
   // Derive current user display name for fallback
@@ -561,7 +560,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           <PersonPicker
             value={requester}
             onChange={setRequester}
-            workers={activeWorkers}
+            workers={workers}
             projectName={selectedProject?.name ?? null}
             currentUserName={currentUserName}
             dark={true}

@@ -884,24 +884,26 @@ function LocationProjectSection({
           )} />
         </div>
       )}
-      {movType === "issue" && (
+      {(movType === "issue" || movType === "transfer") && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField control={form.control} name="sourceLocationId" render={({ field }: { field: any }) => (
-            <FormItem>
-              <FormLabel>{t.sendingLocation}</FormLabel>
-              <FormControl>
-                <SearchableLocationSelect
-                  value={field.value ?? null}
-                  onChange={(id) => field.onChange(id)}
-                  locations={locations || []}
-                  placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
-                  testId="select-source-location"
-                  dark={fieldMode}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          {movType === "issue" && (
+            <FormField control={form.control} name="sourceLocationId" render={({ field }: { field: any }) => (
+              <FormItem>
+                <FormLabel>{t.sendingLocation}</FormLabel>
+                <FormControl>
+                  <SearchableLocationSelect
+                    value={field.value ?? null}
+                    onChange={(id) => field.onChange(id)}
+                    locations={locations || []}
+                    placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
+                    testId="select-source-location"
+                    dark={fieldMode}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          )}
           <FormField control={form.control} name="personName" render={({ field }: { field: any }) => (
             <FormItem>
               <FormLabel>{t.requestedBy}</FormLabel>

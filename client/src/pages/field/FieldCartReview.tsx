@@ -292,45 +292,59 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         letterSpacing: "0.05em", border: "none", transition: "opacity 0.15s",
       };
 
-      const toastTitle = isEditMode ? (t as any).requestUpdated : t.requestSubmitted;
-
-      const { dismiss } = toast({
-        title: toastTitle,
-        description: (
-          <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              data-testid="toast-goto-requests"
-              onClick={() => goToRequests(dismiss)}
-              style={{
-                ...btnBase,
-                background: F.accentBg,
-                border: `1px solid ${F.accent}`,
-                color: F.accent,
-              }}
-            >
-              <ClipboardList style={{ width: 11, height: 11, flexShrink: 0 }} />
-              {t.goToRequests}
-            </button>
-            {submittedId && (
-              <button
-                type="button"
-                data-testid="toast-undo-request"
-                onClick={() => performUndo(dismiss)}
-                style={{
-                  ...btnBase,
-                  background: "transparent",
-                  border: "1px solid transparent",
-                  color: F.textMuted,
-                }}
+      // Explicitly separate toasts for new-request vs edit-request so
+      // neither path can accidentally regress the other.
+      if (isEditMode) {
+        // ── EDIT request updated — Go to Requests + Undo (re-patches snapshot)
+        const { dismiss } = toast({
+          title: (t as any).requestUpdated ?? t.requestSubmitted,
+          description: (
+            <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+              <button type="button" data-testid="toast-goto-requests"
+                onClick={() => goToRequests(dismiss)}
+                style={{ ...btnBase, background: F.accentBg, border: `1px solid ${F.accent}`, color: F.accent }}
               >
-                <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
-                {t.undoRequest}
+                <ClipboardList style={{ width: 11, height: 11, flexShrink: 0 }} />
+                {t.goToRequests}
               </button>
-            )}
-          </div>
-        ),
-      });
+              {submittedId && (
+                <button type="button" data-testid="toast-undo-request"
+                  onClick={() => performUndo(dismiss)}
+                  style={{ ...btnBase, background: "transparent", border: "1px solid transparent", color: F.textMuted }}
+                >
+                  <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+                  {t.undoRequest}
+                </button>
+              )}
+            </div>
+          ),
+        });
+      } else {
+        // ── NEW request submitted — Go to Requests + Undo (cancels the request)
+        const { dismiss } = toast({
+          title: t.requestSubmitted,
+          description: (
+            <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
+              <button type="button" data-testid="toast-goto-requests"
+                onClick={() => goToRequests(dismiss)}
+                style={{ ...btnBase, background: F.accentBg, border: `1px solid ${F.accent}`, color: F.accent }}
+              >
+                <ClipboardList style={{ width: 11, height: 11, flexShrink: 0 }} />
+                {t.goToRequests}
+              </button>
+              {submittedId && (
+                <button type="button" data-testid="toast-undo-request"
+                  onClick={() => performUndo(dismiss)}
+                  style={{ ...btnBase, background: "transparent", border: "1px solid transparent", color: F.textMuted }}
+                >
+                  <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+                  {t.undoRequest}
+                </button>
+              )}
+            </div>
+          ),
+        });
+      }
     } catch (err: any) {
       toast({ title: t.errorTitle, description: err.message, variant: "destructive" });
     } finally {

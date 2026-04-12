@@ -1,0 +1,148 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Mode app.
+3. Keep this task focused only on restoring regressed Field behaviors and preventing them from regressing again.
+4. Preserve all currently working request/cart logic unless explicitly mentioned below.
+5. This is a regression-fix pass, not a feature expansion pass.
+
+TASK GOAL
+Restore and lock down the following Field Mode behaviors that have regressed:
+
+1. After submitting a NEW request, the success toast must again include:
+   - Go to Requests
+   - Undo
+2. Mobile Field header must remain in its intended compact state instead of drifting back to the older/cluttered version
+3. Field Inventory must keep mobile default page size = 5
+4. Scrollbars (especially horizontal category-strip scrollbar and visually noisy page scrollbars) should be minimized so they are not distracting
+
+IMPORTANT
+Do NOT break the newer request edit behavior:
+- when editing an existing request and updating it, keep the current correct edit/update logic
+- only restore the missing new-request submit toast action where appropriate
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/layouts/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- relevant Field CSS/style files
+- any tiny helper/constants file if truly needed
+
+==================================================
+PART 1 — RESTORE NEW-REQUEST SUBMIT TOAST ACTIONS
+==================================================
+
+CURRENT PROBLEM
+After a new request is submitted, the toast no longer includes the "Go to Requests" action that existed before.
+
+REQUIRED RESULT
+For NEW request submission success:
+- toast must include:
+  - Go to Requests
+  - Undo
+
+For EXISTING request edit/update success:
+- preserve the current intended edit/update behavior
+- do NOT incorrectly force the same new-request toast pattern onto edit mode
+
+Requirements:
+1. Distinguish clearly between:
+   - new request submit success
+   - existing request update success
+2. Restore Go to Requests only where appropriate for new request submission
+3. Keep Undo working
+4. Do NOT change navigation logic or undo behavior beyond restoring the missing action
+
+==================================================
+PART 2 — MAKE MOBILE HEADER COMPACT RULES HARD TO REGRESS
+==================================================
+
+CURRENT PROBLEM
+The mobile header keeps drifting back toward the old/cluttered layout after unrelated changes.
+
+REQUIRED RESULT
+Reinforce the intended mobile compact header behavior so it does not easily regress.
+
+Requirements:
+1. Keep the intended compact mobile header structure
+2. Keep date/time compact
+3. Keep mobile controls visually normalized
+4. Preserve current desktop behavior
+5. If helpful, extract tiny constants/helpers/class decisions so the compact-mobile behavior is driven by one clear rule instead of scattered markup conditions
+
+Goal:
+make the intended mobile header state explicit and less fragile during future edits
+
+==================================================
+PART 3 — LOCK MOBILE DEFAULT PAGE SIZE = 5
+==================================================
+
+CURRENT PROBLEM
+Mobile default page size keeps reverting to older/default behavior.
+
+REQUIRED RESULT
+Field Inventory must reliably default to 5 items per page on mobile.
+
+Requirements:
+1. Mobile default = 5
+2. Desktop keeps current default
+3. Preserve page-size selector behavior
+4. If helpful, extract a small explicit constant/helper for mobile default page size so this does not keep regressing
+5. Preserve safe persistence behavior if the app already stores user page-size choice
+
+Goal:
+make the mobile default explicit and durable, not easy to overwrite accidentally
+
+==================================================
+PART 4 — MINIMIZE DISTRACTING SCROLLBARS
+==================================================
+
+CURRENT PROBLEM
+Horizontal and vertical scrollbars remain too visually prominent and distracting in Field Mode.
+
+REQUIRED RESULT
+Reduce scrollbar visibility without breaking usability.
+
+Requirements:
+A. Mobile category strip
+- keep swipe working
+- hide or nearly hide the horizontal scrollbar
+
+B. Desktop category strip
+- keep it usable
+- make scrollbar very subtle rather than loud
+
+C. Main vertical page scrollbar
+- do not fully remove it if that harms usability
+- make it thinner, darker, and less distracting
+
+D. Prevent accidental page-level horizontal overflow where possible
+- use overflow-x hidden on the correct outer wrapper(s)
+- do NOT break intended horizontal strip scrolling
+
+==================================================
+PART 5 — REGRESSION SAFETY
+==================================================
+
+When making these fixes:
+1. Do NOT undo the newer correct request-edit mode behavior
+2. Do NOT remove the current distinction between new request mode and edit-request mode
+3. Do NOT broaden scope into unrelated layout changes
+4. Prefer small explicit constants/helpers when they make the intended behavior less fragile
+5. Keep all fixes compatibility-safe
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of the regressions fixed
+2. Files modified
+3. How new-request submit toast behavior was restored without breaking edit-request behavior
+4. How mobile header behavior was made less fragile
+5. How mobile default page size = 5 was made durable
+6. How scrollbar visibility was minimized
+7. Notes on what was intentionally left unchanged

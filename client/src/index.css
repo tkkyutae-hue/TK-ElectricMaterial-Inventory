@@ -187,9 +187,27 @@ body[data-field-mode] [data-toast-viewport] li button[toast-close]:hover {
   color: #e2f0e5 !important;
 }
 
-/* Field Inventory — hide scrollbar on mobile category strip */
-.fi-cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-.fi-cat-scroll::-webkit-scrollbar { display: none; }
+/* Field Inventory — category strip scrollbar:
+   Mobile → hidden completely (swipe still works)
+   Desktop → very thin and subtle so it's not loud */
+@media (max-width: 767px) {
+  .fi-cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  .fi-cat-scroll::-webkit-scrollbar { display: none; }
+}
+@media (min-width: 768px) {
+  .fi-cat-scroll { scrollbar-width: thin; scrollbar-color: rgba(45,219,111,0.18) transparent; }
+  .fi-cat-scroll::-webkit-scrollbar { height: 3px; }
+  .fi-cat-scroll::-webkit-scrollbar-track { background: transparent; }
+  .fi-cat-scroll::-webkit-scrollbar-thumb { background: rgba(45,219,111,0.18); border-radius: 10px; }
+  .fi-cat-scroll::-webkit-scrollbar-thumb:hover { background: rgba(45,219,111,0.38); }
+}
+
+/* Field Mode — thin, dark, unobtrusive scrollbars everywhere in field mode */
+body[data-field-mode] { scrollbar-width: thin; scrollbar-color: rgba(45,219,111,0.14) transparent; }
+body[data-field-mode] ::-webkit-scrollbar { width: 3px; height: 3px; }
+body[data-field-mode] ::-webkit-scrollbar-track { background: transparent; }
+body[data-field-mode] ::-webkit-scrollbar-thumb { background: rgba(45,219,111,0.14); border-radius: 10px; }
+body[data-field-mode] ::-webkit-scrollbar-thumb:hover { background: rgba(45,219,111,0.34); }
 
 /* ── Field Mode — dark dropdown / select popover ──────────────────────────── */
 body[data-field-mode] [role="listbox"] {

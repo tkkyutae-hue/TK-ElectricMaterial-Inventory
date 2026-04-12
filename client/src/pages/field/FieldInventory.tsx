@@ -71,6 +71,9 @@ type FieldWireReel = {
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25];
+// Mobile shows fewer items by default to avoid excessive scrolling
+const MOBILE_DEFAULT_PAGE_SIZE = 5;
+const DESKTOP_DEFAULT_PAGE_SIZE = 10;
 
 function getFamilyDisplay(name: string): string {
   return name;
@@ -920,7 +923,9 @@ export default function FieldInventory() {
   const [selectedStatus, setSelectedStatus] = useState(() => urlParams.get("status") || "all");
   const [searchInput, setSearchInput] = useState(() => urlParams.get("q") || "");
   const [page, setPage] = useState(() => urlParams.get("page") ? Number(urlParams.get("page")) : 1);
-  const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (isMobile ? 5 : 10));
+  const [pageSize, setPageSize] = useState(() =>
+    urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (isMobile ? MOBILE_DEFAULT_PAGE_SIZE : DESKTOP_DEFAULT_PAGE_SIZE)
+  );
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
   const [catGridCollapsed, setCatGridCollapsed] = useState(false);

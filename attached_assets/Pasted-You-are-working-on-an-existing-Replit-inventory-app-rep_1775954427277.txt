@@ -1,0 +1,85 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Inventory page.
+3. Keep this task focused only on two mobile-specific UX improvements:
+   - horizontal touch-swipe category strip
+   - smaller default page size on mobile
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a tiny shared fix is clearly needed.
+
+TASK GOAL
+Improve mobile Field Inventory usability by:
+1. making the category icon strip easy to swipe left/right by touch
+2. reducing the default visible item count to 5 per page on mobile so the page fits better without excessive vertical scrolling
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- any extracted mobile category strip component
+- any pagination/page-size control component
+- any tiny helper only if truly needed
+
+PART 1 — MOBILE CATEGORY STRIP SHOULD BE TOUCH-SWIPE FRIENDLY
+The current mobile category icon size is acceptable.
+Now make the category strip easy to move left/right with touch.
+
+Requirements:
+1. Mobile users should be able to swipe/drag the category strip horizontally with their finger
+2. Use a proper horizontal scroll container with touch-friendly behavior
+3. Prefer smooth momentum scrolling on mobile
+4. Add scroll snapping if appropriate so category cards feel neat when swiped
+5. Keep the current category selection logic unchanged
+6. Keep desktop behavior unchanged unless a tiny improvement is shared safely
+
+Implementation intent:
+- horizontal overflow container
+- touch pan-x behavior
+- smooth/mobile momentum scroll
+- optional snap-x / snap-start style behavior
+- avoid awkward clipping or broken spacing
+- scrollbar may be visually minimized if that matches the current UI
+
+PART 2 — MOBILE DEFAULT PAGE SIZE SHOULD BE 5
+On mobile Field Inventory:
+- default items-per-page should be 5
+
+Requirements:
+1. This should apply by default on mobile only
+2. Desktop can keep its current default
+3. Keep the existing page-size selector available at the bottom pagination area
+4. Users should still be able to change page size manually if that feature already exists
+5. If filters/search/category change and pagination resets, keep behavior sensible and consistent
+
+Preferred behavior:
+- first mobile load => page size starts at 5
+- if the app already persists page-size choice safely, preserve that pattern instead of fighting it
+- if no persistence exists, just use 5 as the mobile default
+
+PART 3 — DO NOT BREAK CURRENT LAYOUT
+Requirements:
+1. Keep the compact selected-category bar/collapse behavior already added
+2. Do NOT change filter logic
+3. Do NOT change search logic
+4. Do NOT change pagination logic beyond the mobile default page size
+5. Do NOT redesign desktop Field Inventory
+
+PART 4 — OPTIONAL SMALL POLISH
+If it fits naturally:
+- keep the first visible categories aligned cleanly
+- make sure swiping does not interfere badly with vertical page scrolling
+- ensure category cards still feel tappable and not too sensitive
+
+PART 5 — SAFETY
+- Do NOT change business logic
+- Do NOT broaden scope into Admin mode
+- Keep the implementation incremental and compatibility-safe
+
+OUTPUT
+1. Summary of the mobile swipe improvement
+2. Summary of the mobile default page-size change
+3. Files modified
+4. How touch-swipe was implemented
+5. How the mobile default page size now behaves
+6. Notes on what was intentionally left unchanged

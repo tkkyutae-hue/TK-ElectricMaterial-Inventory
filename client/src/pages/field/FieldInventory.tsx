@@ -70,7 +70,7 @@ type FieldWireReel = {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const PAGE_SIZE_OPTIONS = [10, 15, 20, 25];
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25];
 
 function getFamilyDisplay(name: string): string {
   return name;
@@ -911,7 +911,7 @@ export default function FieldInventory() {
   const [selectedStatus, setSelectedStatus] = useState(() => urlParams.get("status") || "all");
   const [searchInput, setSearchInput] = useState(() => urlParams.get("q") || "");
   const [page, setPage] = useState(() => urlParams.get("page") ? Number(urlParams.get("page")) : 1);
-  const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : 10);
+  const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (isMobile ? 5 : 10));
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
   const [catGridCollapsed, setCatGridCollapsed] = useState(false);
@@ -1167,7 +1167,7 @@ export default function FieldInventory() {
           </div>
           {isMobile ? (
             /* Mobile: single-row horizontal scroll strip — 78×78px square cards */
-            <div className="fi-cat-scroll" style={{ overflowX: "auto", display: "flex", gap: 7, paddingBottom: 2 }}>
+            <div className="fi-cat-scroll" style={{ overflowX: "auto", display: "flex", gap: 7, paddingBottom: 2, WebkitOverflowScrolling: "touch", touchAction: "pan-x", scrollSnapType: "x mandatory", scrollBehavior: "smooth" }}>
               {!categorySummary
                 ? [1,2,3,4,5,6].map(i => (
                     <div key={i} style={{ width: 78, height: 78, borderRadius: 10, background: "#162019", flexShrink: 0 }} className="animate-pulse" />
@@ -1187,6 +1187,7 @@ export default function FieldInventory() {
                           border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
                           borderRadius: 10,
                           transition: "border-color 0.15s ease",
+                          scrollSnapAlign: "start",
                         }}
                       >
                         <div className="absolute inset-0">

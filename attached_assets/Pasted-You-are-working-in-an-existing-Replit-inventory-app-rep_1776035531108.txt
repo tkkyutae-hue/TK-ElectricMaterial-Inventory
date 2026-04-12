@@ -1,0 +1,127 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix ONLY the runtime error that occurs when selecting/clicking movement type in Field Mode forms.
+
+DO NOT change any previously completed UI/UX work.
+DO NOT clean up anything else.
+DO NOT redesign anything.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+
+Only if strictly necessary for the exact root cause:
+2. client/src/components/ui/select.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/field/PersonPicker.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+- any header code
+- any filter/page-size/category UI
+- any people-picker code
+- any reel-entry layout
+
+Especially:
+- DO NOT touch header
+- DO NOT touch inventory layout
+- DO NOT touch people input UX
+- DO NOT touch toast behavior
+- DO NOT touch request behavior
+- DO NOT touch reel UI
+- DO NOT touch previously completed mobile styling
+
+==================================================
+GOAL
+==================================================
+
+Fix ONLY the runtime error that appears when the user clicks/selects movement type in Field Mode forms such as:
+- receive
+- return
+- issue
+- transfer
+
+This is a stability fix only.
+
+==================================================
+KNOWN SUSPECT / DEBUG DIRECTION
+==================================================
+
+Inspect MovementForm.tsx first.
+
+Look very carefully at the movement type SelectItem rendering.
+A likely issue is that the movement type SelectItem may be rendering complex children (for example multiple spans / label + description structure) in a way that is incompatible with the current Select implementation.
+
+Check for:
+- SelectItem children structure
+- ItemText expectations in ui/select.tsx
+- invalid value vs label rendering
+- undefined/null movement type value
+- controlled/uncontrolled mismatch
+- anything specific to movementType options only
+
+IMPORTANT:
+Do not blindly refactor the whole Select system.
+Fix the smallest real cause only.
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+After the fix:
+1. Clicking/selecting movement type no longer throws a runtime error
+2. Movement type dropdown opens normally
+3. Choosing receive/return/issue/transfer still works
+4. Existing layout, colors, spacing, header, filters, people picker, reels, toasts, and request flows remain unchanged
+
+==================================================
+STRICT RULES
+==================================================
+
+- Do NOT disable the Vite/HMR overlay
+- Do NOT hide the error instead of fixing it
+- Do NOT use broad try/catch suppression
+- Do NOT refactor unrelated code
+- Do NOT make visual changes unless absolutely required by the exact runtime-error fix
+- Prefer the smallest possible code change
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+- the runtime error is gone
+- only allowed files were modified
+- no previously completed UI/UX work changed
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Exact root cause of the runtime error
+3. Exact lines/areas fixed
+4. Confirmation that no other files were modified
+5. Confirmation that header, inventory layout, people-picker UX, toast behavior, reel layout, request logic, and backend were untouched

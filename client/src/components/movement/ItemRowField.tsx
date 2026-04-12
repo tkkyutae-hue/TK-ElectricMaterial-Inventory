@@ -6,6 +6,18 @@ import { ChevronLeft, ChevronRight, ChevronDown, Trash2, Plus, X, Search } from 
 import { SearchableItemSelect } from "./SearchableItemSelect";
 import type { ItemRow, NewReel } from "./types";
 
+function useIsNarrow() {
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+  useEffect(() => {
+    function onResize() { setNarrow(window.innerWidth < 640); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return narrow;
+}
+
 // ── Brand combobox ────────────────────────────────────────────────────────────
 const KNOWN_BRANDS = [
   "Southwire", "Ideal", "Hubbell", "Leviton", "Siemens",
@@ -288,25 +300,117 @@ function BulkReelEntry({
     setRows([makeBulkRow()]);
   }
 
+  const narrow = useIsNarrow();
+
   const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: "#527856", textTransform: "uppercase" as const, letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif" };
   const INPUT: React.CSSProperties = { height: 32, padding: "0 8px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none", width: "100%", boxSizing: "border-box" as const };
   const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(100px,130px) 78px 1fr 1fr 68px 26px", gap: 6, alignItems: "center" };
+
+  const RemoveBtn = ({ tempId, idx: i }: { tempId: string; idx: number }) => (
+    <button
+      type="button"
+      onClick={() => removeRow(tempId)}
+      title="Remove row"
+      style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#ff5050", opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+      data-testid={`btn-remove-bulk-row-${i}`}
+    >
+      <X style={{ width: 13, height: 13 }} />
+    </button>
+  );
 
   return (
     <div style={{ marginTop: 10, padding: "10px 12px", background: "#0f1a12", border: "1px solid rgba(45,219,111,0.2)", borderRadius: 9 }} data-testid="bulk-reel-entry">
       <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
         New Reels
       </div>
-      <div style={{ ...GRID, marginBottom: 4 }}>
-        <div style={LBL}>Reel ID</div>
-        <div style={LBL}>Length FT</div>
-        <div style={LBL}>Brand</div>
-        <div style={LBL}>Location</div>
-        <div style={LBL}>Status</div>
-        <div />
-      </div>
+
+      {/* ── Desktop header row ── */}
+      {!narrow && (
+        <div style={{ ...GRID, marginBottom: 4 }}>
+          <div style={LBL}>Reel ID</div>
+          <div style={LBL}>Length FT</div>
+          <div style={LBL}>Brand</div>
+          <div style={LBL}>Location</div>
+          <div style={LBL}>Status</div>
+          <div />
+        </div>
+      )}
+
       {rows.map((row, idx) => {
         const reelId = getReelId(row.brand, idx);
+
+        if (narrow) {
+          // ── Mobile: two-row card layout ────────────────────────────────────
+          return (
+            <div key={row.tempId} style={{ marginBottom: 8, background: "#0a150c", border: "1px solid #1e3022", borderRadius: 8, padding: "8px 10px" }}>
+              {/* Row 1: Reel ID + Length FT */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+                <div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>Reel ID</div>
+                  <div style={{ height: 32, display: "flex", alignItems: "center", background: "#080f09", border: "1px solid #1a2c1e", borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? "#4a7052" : reelId ? "#2ddb6f" : "#4a7052", fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis" }} data-testid={`bulk-reel-id-${idx}`}>
+                      {fetching ? "…" : reelId ?? "—"}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>Length FT</div>
+                  <input
+                    type="number" min={1} value={row.lengthFt}
+                    onChange={e => { const v = parseInt(e.target.value, 10); updateRow(row.tempId, { lengthFt: isNaN(v) ? "" : v }); }}
+                    style={INPUT}
+                    data-testid={`bulk-reel-length-${idx}`}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Brand + Location + Status + Remove */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 72px 26px", gap: 6, alignItems: "end" }}>
+                <div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>Brand</div>
+                  <BrandCombobox
+                    value={row.brand}
+                    onChange={v => updateRow(row.tempId, { brand: v })}
+                    allBrands={allBrands}
+                    idx={idx}
+                  />
+                </div>
+                <div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>Location</div>
+                  <ReelLocationSelect
+                    value={row.locationId}
+                    onChange={v => updateRow(row.tempId, { locationId: v })}
+                    locations={locations}
+                    idx={idx}
+                  />
+                </div>
+                <div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>Status</div>
+                  <select
+                    value={row.status}
+                    onChange={e => updateRow(row.tempId, { status: e.target.value })}
+                    style={INPUT}
+                    data-testid={`bulk-reel-status-${idx}`}
+                  >
+                    <option value="new">New</option>
+                    <option value="used">Used</option>
+                  </select>
+                </div>
+                <div style={{ paddingBottom: 1 }}>
+                  <RemoveBtn tempId={row.tempId} idx={idx} />
+                </div>
+              </div>
+
+              {row.error && (
+                <p style={{ fontSize: 10, color: "#ff5050", marginTop: 4 }}>{row.error}</p>
+              )}
+            </div>
+          );
+        }
+
+        // ── Desktop: single-row grid ──────────────────────────────────────────
         return (
           <div key={row.tempId} style={{ marginBottom: 5 }}>
             <div style={GRID}>
@@ -342,17 +446,7 @@ function BulkReelEntry({
                 <option value="new">New</option>
                 <option value="used">Used</option>
               </select>
-              <button
-                type="button"
-                onClick={() => removeRow(row.tempId)}
-                title="Remove row"
-                style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#ff5050", opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
-                data-testid={`btn-remove-bulk-row-${idx}`}
-              >
-                <X style={{ width: 13, height: 13 }} />
-              </button>
+              <RemoveBtn tempId={row.tempId} idx={idx} />
             </div>
             {row.error && (
               <p style={{ fontSize: 10, color: "#ff5050", marginTop: 2, paddingLeft: 2 }}>{row.error}</p>
@@ -360,7 +454,8 @@ function BulkReelEntry({
           </div>
         );
       })}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 6 }}>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 6, flexWrap: "wrap" }}>
         <button
           type="button"
           onClick={() => setRows(prev => [...prev, makeBulkRow()])}

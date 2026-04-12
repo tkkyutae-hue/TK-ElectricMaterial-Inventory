@@ -1139,6 +1139,10 @@ export default function FieldInventory() {
 
   return (
     <div className="space-y-3 sm:space-y-4 py-4 sm:py-6">
+      <style>{`
+        .fi-cat-scroll::-webkit-scrollbar { display: none; }
+        .fi-cat-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between">

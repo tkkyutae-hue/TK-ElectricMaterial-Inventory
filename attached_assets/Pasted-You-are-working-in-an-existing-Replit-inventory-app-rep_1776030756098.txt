@@ -1,0 +1,82 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix ONLY the horizontal category-strip scrollbar visibility in Field Inventory mobile view.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/pages/field/FieldInventory.tsx
+
+Only if absolutely necessary for the exact overflow wrapper behavior:
+2. client/src/components/layout/FieldLayout.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+- any header layout/behavior
+- any page-size logic
+- any filter-row logic
+- any category selection logic
+
+==================================================
+GOAL
+==================================================
+
+In mobile Field Inventory, keep the category strip horizontally swipeable,
+but hide or nearly hide the bright visible horizontal scrollbar underneath it.
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+1. Keep category strip horizontal swipe fully working
+2. Prevent page-level horizontal overflow
+3. Hide or visually minimize the category strip scrollbar in mobile view
+4. Do NOT change category size/order/selection behavior
+5. Do NOT redesign the category area
+
+Implementation intent:
+- page/wrapper can use overflow-x hidden where appropriate
+- category strip itself must remain overflow-x auto
+- touch swipe must continue to work
+- avoid white/bright scrollbar presentation
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+- only allowed files were modified
+- category strip still swipes normally
+- the ugly visible horizontal scrollbar is hidden or nearly invisible
+- page does not horizontally overflow
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How horizontal overflow was contained
+3. How category strip scroll remained usable
+4. Confirmation that no other files were modified

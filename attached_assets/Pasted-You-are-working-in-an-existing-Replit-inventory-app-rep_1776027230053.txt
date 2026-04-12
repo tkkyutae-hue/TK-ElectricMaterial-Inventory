@@ -1,0 +1,214 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Do NOT redesign the whole app.
+Do NOT touch unrelated layout, header, inventory filter row, page-size, category UI, toast logic, request lifecycle, or backend logic.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+2. client/src/pages/field/FieldCartReview.tsx
+3. client/src/components/field/PersonPicker.tsx
+
+Only if strictly necessary for the exact picker behavior:
+4. client/src/components/ui/command.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+
+Especially:
+- DO NOT touch header
+- DO NOT touch inventory layout
+- DO NOT touch category/filter/page-size UI
+- DO NOT touch request workflow logic
+- DO NOT touch toast behavior
+- DO NOT touch backend
+
+==================================================
+GOAL
+==================================================
+
+Make the people-name input in Field Mode use:
+- manpower-based data
+- but the UI/interaction style of the FIRST reference image
+
+This applies to:
+1. 입고 / 반품
+2. 출고 / 이송
+3. 요청 제출 / 요청 수정
+
+==================================================
+DESIRED UI STYLE
+==================================================
+
+The people picker must look and behave like the FIRST reference image, NOT the current heavier recommendation-list style.
+
+Target structure:
+- opens as a clean mobile sheet/panel
+- top row has:
+  - search input on the left
+  - Done button on the right
+- below that:
+  - simple full list of people
+- list is scrollable
+- visual style is clean, minimal, dark, and compact
+- do NOT use large section headers like "추천" repeatedly
+- do NOT make the UI look heavy or cluttered
+
+In other words:
+- use manpower data
+- but present it in the cleaner first-image style
+
+==================================================
+DATA SOURCE RULES
+==================================================
+
+Use manpower-related data as the source.
+
+Preferred source priority:
+1. manpower associated with the currently selected project
+2. recent manpower names already used in that project
+3. recent/global manpower names
+4. worker master fallback
+5. current signed-in user as optional fallback if appropriate
+
+Do NOT invent a new people system.
+Do NOT hardcode fake names.
+
+Important:
+- The list should still include the FULL available people list
+- manpower priority should influence ordering, not restrict the list to only a few entries
+
+==================================================
+REQUIRED UX
+==================================================
+
+The field must behave like a proper searchable combobox/picker:
+
+1. Clicking the field opens the picker
+2. User can type directly to search/filter names
+3. The full list remains scrollable
+4. Selecting a person fills the field
+5. After a person is selected, clicking the field again must reopen the picker
+6. User must be able to change the selected person without first clearing the field
+7. Matching should be case-insensitive
+8. No exact match required
+
+==================================================
+VISUAL / CONTENT RULES
+==================================================
+
+For each person row:
+- show the name clearly
+- optionally show role/title as smaller secondary text only if available
+- keep the row visually simple
+- do NOT make each row too tall
+- do NOT add excessive badges/sections/labels
+
+The picker should feel like:
+- search at top
+- clean list below
+- minimal clutter
+- easy to scan quickly on mobile
+
+==================================================
+FLOW-SPECIFIC APPLICATION
+==================================================
+
+A. MovementForm.tsx
+Apply this people picker style/behavior to:
+- receive / return person field
+- issue / transfer requester/receiver-related field
+
+B. FieldCartReview.tsx
+Apply this same picker style/behavior to:
+- requester field in request submit
+- requester field in request edit flow if handled there
+
+Important:
+- all three Field flows must feel consistent
+- do NOT leave one flow using a different picker pattern
+
+==================================================
+STORAGE RULES
+==================================================
+
+Keep current storage behavior compatible.
+
+If the current form stores only a name string:
+- keep storing the selected name safely
+
+If role/title is already supported:
+- keep using it as secondary display info where helpful
+
+Do NOT redesign schemas in this task.
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- redesign the whole form
+- change request logic
+- change movement logic
+- change permissions
+- change toast behavior
+- change header or inventory layout
+- touch backend
+- touch shared select styling unless absolutely necessary
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. ONLY these allowed files were modified:
+   - MovementForm.tsx
+   - FieldCartReview.tsx
+   - PersonPicker.tsx
+   - command.tsx only if strictly necessary
+
+2. In all three Field flows (입고/반품, 출고/이송, 요청):
+   - the person field opens as a clean picker like the first reference image
+   - typing works
+   - the list scrolls
+   - selecting works
+   - clicking again after selection reopens the picker
+
+3. The data source still comes from manpower-related data
+
+4. The UI is simplified toward the first-image style, not the heavier current recommendation-list style
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the picker now behaves in MovementForm
+3. How the picker now behaves in FieldCartReview
+4. How manpower data is used for ordering/source
+5. How reopen-after-selection works
+6. Confirmation that no other files were modified
+7. Confirmation that header, inventory layout, request logic, toast logic, and backend were untouched

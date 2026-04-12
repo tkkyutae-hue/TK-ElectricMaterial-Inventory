@@ -82,11 +82,11 @@ export function PersonPicker({
   const searchRef  = useRef<HTMLInputElement>(null);
   const dropRef    = useRef<HTMLDivElement>(null);
 
-  // Focus search every time the picker opens
+  // Focus search every time the picker opens (desktop only; mobile users tap to type)
   useEffect(() => {
     if (open) {
       setQuery("");
-      setTimeout(() => searchRef.current?.focus(), 60);
+      setTimeout(() => searchRef.current?.focus(), 80);
     }
   }, [open]);
 
@@ -388,6 +388,8 @@ export function PersonPicker({
                 <input
                   ref={searchRef}
                   type="text"
+                  inputMode="search"
+                  autoComplete="off"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder={ph}
@@ -423,8 +425,9 @@ export function PersonPicker({
           return createPortal(
             <>
               <div
-                style={{ position: "fixed", inset: 0, zIndex: 9990, background: "rgba(0,0,0,0.72)" }}
+                style={{ position: "fixed", inset: 0, zIndex: 9990, background: "rgba(0,0,0,0.72)", cursor: "pointer" }}
                 onMouseDown={() => closePicker()}
+                onTouchEnd={e => { e.preventDefault(); closePicker(); }}
               />
               <div
                 ref={dropRef}
@@ -450,6 +453,8 @@ export function PersonPicker({
                   <input
                     ref={searchRef}
                     type="text"
+                    inputMode="search"
+                    autoComplete="off"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder={ph}
@@ -514,6 +519,8 @@ export function PersonPicker({
               <input
                 ref={searchRef}
                 type="text"
+                inputMode="search"
+                autoComplete="off"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder={ph}

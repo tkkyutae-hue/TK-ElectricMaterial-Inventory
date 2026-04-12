@@ -1,0 +1,98 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix only the people-name input UX in Field Mode so it behaves like a proper searchable combobox.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+2. client/src/pages/field/FieldCartReview.tsx
+3. client/src/components/field/PersonPicker.tsx
+
+Only if strictly necessary for the exact picker interaction:
+4. client/src/components/ui/command.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+
+==================================================
+GOAL
+==================================================
+
+Make the people-name field work the same way across these Field Mode flows:
+1. 입고 / 반품
+2. 출고 / 이송
+3. 요청 제출 / 요청 수정
+
+The picker must:
+- open on click
+- allow direct typing
+- filter the list as the user types
+- keep the full list scrollable
+- reopen when clicked again after a selection
+- use manpower-related data as the source
+
+==================================================
+REQUIRED UX
+==================================================
+
+Use manpower-based data ordering, but a simple mobile-friendly picker:
+- search input fixed at the top
+- list below
+- typing filters the list
+- selecting fills the field
+- clicking the field again reopens the picker
+- do NOT require clearing first
+- keep the UI simple and not cluttered
+
+Data priority:
+1. project-related manpower if available
+2. recent manpower names for that project
+3. recent/global manpower names
+4. worker master fallback
+
+Keep storage compatible:
+- if current forms store only a name string, keep storing the selected name safely
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+- only allowed files were modified
+- MovementForm and FieldCartReview both use the same people-picker behavior
+- typing works
+- list scrolls
+- selecting works
+- reopening after selection works
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the people picker behaves in MovementForm
+3. How it behaves in FieldCartReview
+4. How reopen-after-selection works
+5. Confirmation that no other files were modified

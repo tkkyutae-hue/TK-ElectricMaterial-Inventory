@@ -126,7 +126,7 @@ const en = {
 
   // ── Field Transactions page ──────────────────────────────────────────────
   transactions:       "Transactions",
-  viewHistory:        "View transaction history.",
+  viewHistory:        "View transaction and request history.",
   txHistoryTab:       "Transaction History",
   txDraftsTab:        "Draft Movements",
   exportCsv:          "Export CSV",
@@ -346,7 +346,7 @@ const ko: Translations = {
   receiveReturn:      "입고 / 반품",
   issueTransfer:      "출고 / 이송",
   inventoryCard:      "재고",
-  transactionsCard:   "거래 내역",
+  transactionsCard:   "입/출고 내역",
   draftMovements:     "임시 저장",
 
   tagReceiveUpper:    "입고",
@@ -404,9 +404,9 @@ const ko: Translations = {
   reelInventory:      "릴 재고",
   noReelsRecorded:    "등록된 릴 없음",
 
-  transactions:       "거래 내역",
-  viewHistory:        "거래 내역 보기.",
-  txHistoryTab:       "거래 내역",
+  transactions:       "입/출고 내역",
+  viewHistory:        "입/출고 및 요청 내역 보기.",
+  txHistoryTab:       "입/출고 내역",
   txDraftsTab:        "임시 저장",
   exportCsv:          "CSV 내보내기",
   txSearch:           "검색",
@@ -681,7 +681,7 @@ const es: Translations = {
   noReelsRecorded:    "Sin bobinas registradas",
 
   transactions:       "Transacciones",
-  viewHistory:        "Ver historial de transacciones.",
+  viewHistory:        "Ver historial de transacciones y solicitudes.",
   txHistoryTab:       "Historial de transacciones",
   txDraftsTab:        "Borradores",
   exportCsv:          "Exportar CSV",

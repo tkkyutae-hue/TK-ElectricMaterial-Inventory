@@ -1330,8 +1330,8 @@ export default function FieldInventory() {
         </div>
       )}
 
-      {/* ── Quick Preset Filters ── */}
-      <div className="flex items-center gap-2">
+      {/* ── Quick Preset Filters — desktop only (mobile uses status dropdown) ── */}
+      {!isMobile && <div className="flex items-center gap-2">
         {[
           { label: "⚠ Low Stock",    value: "low_stock"    },
           { label: "✗ Out of Stock", value: "out_of_stock" },
@@ -1354,7 +1354,7 @@ export default function FieldInventory() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {/* ── Filter Row ── */}
       {isMobile ? (

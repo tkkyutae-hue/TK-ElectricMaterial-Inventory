@@ -42,9 +42,11 @@ export function useLanguage() {
 interface SwitcherProps {
   /** "dark" = field/login/home dark bg | "light" = admin white bg */
   theme?: "dark" | "light";
+  /** compact = reduce button height to match adjacent icon-button controls */
+  compact?: boolean;
 }
 
-export function LanguageSwitcher({ theme = "dark" }: SwitcherProps) {
+export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherProps) {
   const { lang, setLang } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -100,8 +102,7 @@ export function LanguageSwitcher({ theme = "dark" }: SwitcherProps) {
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          height: 30,
-          padding: "0 10px",
+          ...(compact ? { padding: "5px 10px" } : { height: 30, padding: "0 10px" }),
           background: open ? triggerActiveBg : triggerBg,
           border: `1px solid ${open ? triggerActiveBorder : triggerBorder}`,
           borderRadius: 8,

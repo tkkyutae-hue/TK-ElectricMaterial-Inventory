@@ -43,7 +43,8 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
     return () => { delete document.body.dataset.fieldMode; };
   }, []);
 
-  const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const dateStr      = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const dateStrShort = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
@@ -103,14 +104,15 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
             <span className="hidden-mobile">{t.fieldModeChip}</span>
           </div>
 
-          {/* Date & Time */}
-          <div className="hidden-mobile" style={{
+          {/* Date & Time — compact on mobile, full on desktop */}
+          <div style={{
             fontSize: 11, color: F.textDim,
             fontFamily: "'Barlow Condensed', sans-serif",
             letterSpacing: 0.5,
             display: "flex", gap: 4, alignItems: "center",
           }}>
-            <span>{dateStr}</span>
+            <span className="sm:hidden">{dateStrShort}</span>
+            <span className="hidden sm:inline">{dateStr}</span>
             <span style={{ opacity: 0.5 }}>·</span>
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
           </div>
@@ -119,7 +121,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         {/* Right: Language switcher + Back + Mode Select + Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
 
-          <LanguageSwitcher theme="dark" />
+          <LanguageSwitcher theme="dark" compact={true} />
 
           {/* Back button — only on sub-pages */}
           {!isFieldHome && (

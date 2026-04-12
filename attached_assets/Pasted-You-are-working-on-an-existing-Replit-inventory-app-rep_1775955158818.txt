@@ -1,0 +1,127 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Mode app from scratch.
+3. Keep this task focused only on mobile/header/inventory UI refinement.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a tiny shared improvement is clearly needed.
+
+TASK GOAL
+Implement the following Field Mode UI refinements:
+
+1. On mobile, show date/time in the very top header
+2. Make the language selector the same visual size as the home/back buttons on mobile
+3. Rename "거래내역" to "입/출고 내역"
+4. Update the description text under that page title to include requests
+5. Make Field Inventory default to 5 items per page on mobile
+6. Reduce duplicated filtering by merging Low Stock / Out of Stock into the main status filter on mobile
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/layouts/FieldLayout.tsx
+- Field header/top-bar component(s)
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- any shared translation/i18n files if needed
+- any small filter/pagination component only if truly needed
+
+PART 1 — MOBILE HEADER DATE/TIME
+Add date/time to the top mobile Field header.
+
+Requirements:
+1. Mobile only
+2. Keep the date/time compact and readable
+3. Do NOT let it cause ugly wrapping
+4. Prefer a compact format such as:
+   - Apr 11 · 4:10 PM
+   - or Sat, Apr 11 · 4:10 PM
+5. Reorganize the mobile header into a clean responsive structure if needed
+
+Recommended mobile hierarchy:
+- row 1: logo + Field Mode badge + date/time
+- row 2: language / home / back / mode select / avatar
+or another similarly clean arrangement
+
+PART 2 — LANGUAGE BUTTON SIZE CONSISTENCY
+On mobile, make the language selector visually match the size of the home/back buttons.
+
+Requirements:
+1. Same height
+2. Similar padding and border radius
+3. Similar font size and overall visual weight
+4. Do NOT make the language control look oversized compared with adjacent controls
+5. Keep desktop behavior unchanged unless a small shared fix is clearly appropriate
+
+PART 3 — PAGE TITLE / DESCRIPTION COPY
+In Field Mode transaction/history page:
+- change the title from:
+  - 거래내역
+  to:
+  - 입/출고 내역
+
+Update the description/subtitle to clearly include requests.
+
+Example intent:
+- 입/출고 및 요청 내역 보기
+Use the repo’s existing translation/i18n system if applicable.
+
+Requirements:
+1. Update the displayed copy only
+2. Do NOT change routing or business logic
+3. Preserve current page behavior
+
+PART 4 — MOBILE INVENTORY DEFAULT PAGE SIZE = 5
+In Field Inventory:
+- make the default items-per-page on mobile = 5
+
+Requirements:
+1. Mobile only
+2. Desktop can keep its current default
+3. Keep the existing page-size selector available
+4. Preserve current pagination logic
+5. If the app already persists page-size safely, keep that pattern where possible
+
+PART 5 — MERGE LOW STOCK / OUT OF STOCK INTO STATUS FILTER ON MOBILE
+Current problem:
+- Low Stock and Out of Stock quick filters overlap with the main status filter
+- On mobile this wastes space and duplicates function
+
+Implement this mobile-first refinement:
+- remove or hide the separate Low Stock / Out of Stock quick chips on mobile
+- move those options into the main status filter dropdown
+
+Recommended mobile status filter options:
+- 전체 상태
+- 재고 있음
+- 재고 부족
+- 품절
+
+Requirements:
+1. Keep filter logic intact
+2. This is mainly a mobile space-saving / UX simplification improvement
+3. Desktop may keep its existing quick-filter treatment if that still makes sense
+4. Do NOT create conflicting filter states
+
+PART 6 — KEEP DESKTOP STABLE
+Requirements:
+1. These changes should primarily optimize mobile
+2. Do NOT unnecessarily disturb desktop layout
+3. Preserve current desktop Field workflow unless a tiny shared improvement is clearly needed
+
+PART 7 — SAFETY
+- Do NOT change business logic
+- Do NOT change request logic
+- Do NOT change permissions
+- Do NOT redesign Admin mode
+- Keep the work incremental and compatibility-safe
+
+OUTPUT
+1. Summary of the mobile/header/inventory refinements
+2. Files modified
+3. How the mobile header was reorganized
+4. How the language button sizing was normalized
+5. What text was changed for the transaction/history page
+6. How the mobile default page size now works
+7. How Low Stock / Out of Stock were merged into the status filter on mobile
+8. Notes on what was intentionally left unchanged

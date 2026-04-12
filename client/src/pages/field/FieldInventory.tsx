@@ -1138,7 +1138,7 @@ export default function FieldInventory() {
   ], [t]);
 
   return (
-    <div className="space-y-3 sm:space-y-4 py-4 sm:py-6" style={{ overflowX: "hidden" }}>
+    <div className="space-y-3 sm:space-y-4 py-4 sm:py-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between">

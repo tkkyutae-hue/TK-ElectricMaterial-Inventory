@@ -1,0 +1,131 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS A STRICT FIELD MODE RESTORE TASK.
+Do NOT add features.
+Do NOT touch picker logic.
+Restore only the regressed Field Mode header/scroll behavior.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/layout/FieldLayout.tsx
+2. client/src/pages/field/FieldInventory.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+
+Especially:
+- DO NOT touch movement form logic
+- DO NOT touch people picker logic
+- DO NOT touch request/cart behavior
+- DO NOT touch runtime error handling in this task
+
+==================================================
+GOAL
+==================================================
+
+Restore ONLY these Field Mode UI behaviors that regressed:
+
+A. Mobile Field header must return to the intended compact state
+B. Scrollbars/overflow must return to the intended less-distracting behavior
+C. Do not break the currently working mobile category browsing behavior
+
+==================================================
+A. FIELD HEADER RESTORE
+==================================================
+
+File:
+- client/src/components/layout/FieldLayout.tsx
+
+Restore the intended compact mobile header behavior:
+
+1. Field Mode chip must be compact again
+2. On mobile, hide the long text inside the Field Mode chip again
+3. Keep date/time compact
+4. Keep top controls compact and visually consistent
+5. Do NOT let the mobile header return to the larger cluttered state
+6. Preserve desktop behavior
+
+Do NOT redesign the header.
+Do NOT touch business logic.
+Restore the previously intended compact mobile version only.
+
+==================================================
+B. SCROLL / OVERFLOW RESTORE
+==================================================
+
+Files:
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+
+Restore the intended scrollbar/overflow behavior:
+
+1. Prevent accidental horizontal overflow on the page
+2. Keep the category strip usable, but make its scrollbar hidden or visually minimal
+3. Keep main vertical scrolling usable but less visually distracting
+4. Do NOT create nested-scroll weirdness
+5. Do NOT break intended horizontal category browsing
+
+Important:
+- outer wrapper may use overflow-x hidden if needed
+- intended category strip horizontal scroll must still work
+- do not break touch swipe / horizontal browse behavior
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- touch MovementForm
+- touch shared select/command components
+- touch request logic
+- touch toast logic
+- touch category business logic
+- touch filter-row layout
+- touch page-size default
+- touch admin mode
+- touch backend
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. ONLY these two files were modified:
+   - client/src/components/layout/FieldLayout.tsx
+   - client/src/pages/field/FieldInventory.tsx
+
+2. Mobile header is compact again
+
+3. Scrollbars/overflow are visually restored without breaking intended category browsing
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Exact UI regressions restored in each file
+3. Confirmation that NO other files were modified
+4. Confirmation that MovementForm, shared select components, request logic, toast logic, backend, and admin mode were untouched

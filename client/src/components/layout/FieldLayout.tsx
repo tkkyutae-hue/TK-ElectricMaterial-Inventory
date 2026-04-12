@@ -17,9 +17,14 @@ const CSS = `
 .fl-k         { animation: fl-flicker 7s ease-in-out 3s infinite; }
 .fl-outer     { height: 100vh; }
 @supports (height: 100dvh) { .fl-outer { height: 100dvh; } }
-/* Icon-only header buttons: tighter horizontal padding on mobile */
 @media (max-width: 767px) {
+  /* Icon-only header buttons: tighter horizontal padding */
   .fl-hdr-btn { padding: 5px 7px !important; }
+  /* Chip text hidden on mobile — reinforces hidden-mobile from index.css */
+  .hidden-mobile { display: none !important; }
+  /* Main scroll area: hide scrollbar on mobile; touch handles scrolling natively */
+  .fl-outer > main { -ms-overflow-style: none; scrollbar-width: none; }
+  .fl-outer > main::-webkit-scrollbar { display: none; }
 }
 `;
 

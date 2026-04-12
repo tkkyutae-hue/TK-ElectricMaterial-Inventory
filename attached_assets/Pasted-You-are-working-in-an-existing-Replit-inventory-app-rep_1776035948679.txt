@@ -1,0 +1,113 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS EXTREMELY NARROW.
+Fix ONLY the runtime error caused by clicking/opening the movement type select in Field Mode.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+
+Only if absolutely proven necessary for the exact root cause:
+2. client/src/components/ui/select.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/field/PersonPicker.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+- any header code
+- any reel-entry layout
+- any inventory filter/category/page-size code
+
+==================================================
+GOAL
+==================================================
+
+Fix ONLY the runtime error that happens when the user clicks or opens the movement type field in MovementForm for:
+- receive
+- return
+- issue
+- transfer
+
+Do NOT redesign anything.
+Do NOT touch any other Field Mode behavior.
+
+==================================================
+PRIMARY SUSPECT TO CHECK FIRST
+==================================================
+
+Inspect the movement type SelectItem rendering in:
+- client/src/components/MovementForm.tsx
+
+The most likely cause is that movement type options are rendered with complex children inside SelectItem, such as multiple spans / label + description nodes.
+
+Check whether MovementForm currently does something like:
+- SelectItem contains more than plain text
+- label and description are rendered as separate nodes inside SelectItem
+- SelectItem children are incompatible with the current ui/select.tsx ItemText expectations
+
+If so:
+- fix movement type option rendering with the smallest possible change
+- prefer plain text content inside SelectItem for movement type
+- do NOT refactor the whole select system unless ui/select.tsx is conclusively the root cause
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+After the fix:
+1. Clicking/opening movement type no longer throws a runtime error
+2. The dropdown opens normally
+3. Selecting receive/return/issue/transfer still works
+4. Existing layout and styling remain unchanged
+5. No previously completed UI/UX work is altered
+
+==================================================
+STRICT RULES
+==================================================
+
+- Do NOT disable the dev overlay
+- Do NOT hide the error instead of fixing it
+- Do NOT use broad try/catch suppression
+- Do NOT refactor unrelated code
+- Do NOT make visual changes unless the exact runtime-error fix absolutely requires it
+- Prefer the smallest possible code change
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+- movement type opens without runtime error
+- only allowed files were modified
+- nothing else in Field Mode changed
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Exact root cause of the movement type runtime error
+3. Exact lines/areas fixed
+4. Confirmation that no other files were modified
+5. Confirmation that header, inventory, people-picker UX, toast behavior, reel layout, request logic, and backend were untouched

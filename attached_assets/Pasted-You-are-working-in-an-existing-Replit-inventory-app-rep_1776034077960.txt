@@ -1,0 +1,110 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY AN AUDIT + IMPLEMENTATION PLAN TASK.
+DO NOT MODIFY ANY FILE IN THIS TASK.
+
+==================================================
+GOAL
+==================================================
+
+Audit all repeated/listed input cells in Field Mode and produce a safe implementation plan for unifying their UX without causing regressions.
+
+The scope is NOT just people fields.
+The scope is ALL repeated/listed cells in these Field Mode flows:
+
+1. 입고 / 반품
+2. 출고 / 이송
+3. 요청 제출 / 요청 수정 / 요청 관련 반복 입력 row
+
+Examples of repeated/listed cell types include:
+- person/requester/receiver fields
+- item fields
+- quantity/length fields
+- brand/location/status fields
+- project fields
+- reel-entry row fields
+- other repeated row cells shown inside Field Mode forms/lists
+
+==================================================
+FILES TO INSPECT
+==================================================
+
+Inspect only these Field Mode files first:
+
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/components/field/PersonPicker.tsx
+
+If other Field Mode files are clearly needed for understanding the repeated row/cell structure, you may inspect them, but DO NOT modify anything.
+
+==================================================
+WHAT TO PRODUCE
+==================================================
+
+Produce an implementation plan only.
+
+The report must include:
+
+1. A full list of repeated/listed cell types in the above Field Mode flows
+   - where each appears
+   - what current UX pattern it uses
+   - whether that UX is inconsistent with the others
+
+2. Group the cells into UX families, for example:
+   - searchable picker cells
+   - simple select/dropdown cells
+   - numeric input cells
+   - reel-entry row cells
+   - row action cells
+
+3. For each family, define the safe shared UX rule
+   Example questions:
+   - should the search bar stay fixed?
+   - should the list below be the only scrolling area?
+   - should text truncate in the trigger?
+   - should the row become 2-line/card layout on mobile?
+
+4. Identify exactly which file(s) should own the shared behavior
+   - what should remain in MovementForm
+   - what should remain in FieldCartReview
+   - what should be centralized in PersonPicker
+   - whether any new shared Field component is actually necessary
+
+5. List regression risks before implementation
+   For example:
+   - touching header by accident
+   - touching request lifecycle logic
+   - touching inventory filter row
+   - breaking reel row binding
+   - breaking mobile picker positioning
+
+6. Recommend the safest implementation order
+   - smallest/highest-confidence step first
+   - highest-risk layout changes later
+
+==================================================
+STRICT RULES
+==================================================
+
+- DO NOT MODIFY ANY FILE
+- DO NOT REFACTOR YET
+- DO NOT CHANGE LOGIC
+- DO NOT TOUCH HEADER
+- DO NOT TOUCH INVENTORY PAGE LAYOUT
+- DO NOT TOUCH TOASTS
+- DO NOT TOUCH BACKEND
+- DO NOT TOUCH REQUEST LIFECYCLE
+- This is a planning-only task
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+Return:
+1. Repeated/listed cell inventory
+2. UX family grouping
+3. Shared UX rules per family
+4. Exact files that would need to change in implementation
+5. Regression risks
+6. Safest implementation order
+7. Confirmation that no files were modified

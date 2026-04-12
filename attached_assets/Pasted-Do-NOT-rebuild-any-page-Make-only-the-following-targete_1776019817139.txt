@@ -1,0 +1,203 @@
+Do NOT rebuild any page. Make only the following targeted changes in order.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — Extract FieldHeader into its own component
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a new file: client/src/components/layout/FieldHeader.tsx
+
+Move the entire <header> block out of FieldLayout.tsx into this new file.
+The header must contain exactly these elements with these exact classes/styles:
+
+<header
+  className="px-3 sm:px-5"
+  style={{
+    position: "relative", zIndex: 50, flexShrink: 0,
+    minHeight: 52,
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    paddingTop: "env(safe-area-inset-top)",
+    paddingBottom: 0,
+    background: F.bg,
+    borderBottom: `1px solid ${F.borderStrong}`,
+  }}
+>
+  {/* Left side */}
+  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+
+    {/* TK lettermark */}
+    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36,
+      lineHeight: 1, letterSpacing: 1, display: "flex", gap: 0 }}>
+      <span style={{ color: "transparent",
+        WebkitTextStroke: "1.4px rgba(255,255,255,0.85)" }}>T</span>
+      <span className="fl-k" style={{ color: "transparent",
+        WebkitTextStroke: `1.4px ${F.accent}`,
+        filter: "drop-shadow(0 0 8px rgba(45,219,111,0.65)) drop-shadow(0 0 3px rgba(45,219,111,0.4))" }}>K</span>
+    </div>
+
+    {/* Field Mode chip */}
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      background: "rgba(45,219,111,0.08)",
+      border: "1px solid rgba(45,219,111,0.22)",
+      borderRadius: 20, padding: "3px 10px",
+      fontFamily: "'Barlow Condensed', sans-serif",
+      fontSize: 11, fontWeight: 700, letterSpacing: 1,
+      color: F.accent, textTransform: "uppercase",
+    }}>
+      <div className="fl-pulse-dot" style={{ width: 5, height: 5,
+        borderRadius: "50%", background: F.accent, flexShrink: 0 }} />
+      <HardHat style={{ width: 11, height: 11, flexShrink: 0 }} />
+      <span className="hidden-mobile">{t.fieldModeChip}</span>
+    </div>
+
+    {/* Date & Time — compact on mobile, full on desktop */}
+    <div style={{
+      fontSize: 11, color: F.textDim,
+      fontFamily: "'Barlow Condensed', sans-serif",
+      letterSpacing: 0.5,
+      display: "flex", gap: 4, alignItems: "center",
+    }}>
+      <span className="sm:hidden">{dateStrShort}</span>
+      <span className="hidden sm:inline">{dateStr}</span>
+      <span style={{ opacity: 0.5 }}>·</span>
+      <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
+    </div>
+  </div>
+
+  {/* Right side */}
+  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+
+    <LanguageSwitcher theme="dark" compact={true} />
+
+    {/* Back button — sub-pages only */}
+    {!isFieldHome && (
+      <Link href="/field">
+        <button
+          data-testid="btn-field-back"
+          className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2
+            focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1
+            focus-visible:ring-offset-[#0d1410]"
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: F.surface2, border: `1px solid ${F.borderStrong}`,
+            borderRadius: 8, padding: "5px 10px",
+            color: F.textMuted, fontSize: 11,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 600, letterSpacing: 0.5,
+            cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+            textTransform: "uppercase",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = F.accent;
+            (e.currentTarget as HTMLButtonElement).style.borderColor = F.accentBorder;
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = F.textMuted;
+            (e.currentTarget as HTMLButtonElement).style.borderColor = F.borderStrong;
+          }}
+        >
+          <ArrowLeft style={{ width: 11, height: 11 }} />
+          <span className="hidden-mobile">{t.back}</span>
+        </button>
+      </Link>
+    )}
+
+    {/* Mode Select button */}
+    <Link href="/home">
+      <button
+        data-testid="btn-field-home"
+        className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2
+          focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1
+          focus-visible:ring-offset-[#0d1410]"
+        style={{
+          display: "flex", alignItems: "center", gap: 5,
+          background: F.surface2, border: `1px solid ${F.borderStrong}`,
+          borderRadius: 8, padding: "5px 10px",
+          color: F.textMuted, fontSize: 11,
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontWeight: 600, letterSpacing: 0.5,
+          cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+          textTransform: "uppercase",
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLButtonElement).style.color = "#c8deca";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = F.accentBorder;
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLButtonElement).style.color = F.textMuted;
+          (e.currentTarget as HTMLButtonElement).style.borderColor = F.borderStrong;
+        }}
+      >
+        <Home style={{ width: 11, height: 11, flexShrink: 0 }} />
+        <span className="hidden-mobile">{t.modeSelect}</span>
+      </button>
+    </Link>
+
+    {/* User avatar */}
+    <div style={{
+      width: 28, height: 28, borderRadius: "50%",
+      background: F.accentBg,
+      border: `1px solid ${F.borderStrong}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
+    }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: F.accent,
+        fontFamily: "'Barlow Condensed', sans-serif" }}>
+        {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
+      </span>
+    </div>
+  </div>
+</header>
+
+The component needs these imports:
+- F from @/lib/fieldTokens
+- useAuth from @/hooks/use-auth
+- useLocation from wouter
+- Link from wouter
+- LanguageSwitcher from @/hooks/use-language (with useLanguage for t)
+- ArrowLeft, HardHat, Home from lucide-react
+- useClock (move the clock hook into this file or import from FieldLayout)
+
+In FieldLayout.tsx, replace the entire header block with:
+  <FieldHeader />
+
+Import FieldHeader at the top of FieldLayout.tsx.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — Mobile default page size = 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: client/src/pages/field/FieldInventory.tsx
+
+Find the pageSize useState. Make sure it reads:
+  const [pageSize, setPageSize] = useState(() =>
+    urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (isMobile ? 5 : 10)
+  );
+
+Make sure PAGE_SIZE_OPTIONS includes 5:
+  const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25];
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — Hide scrollbar on category horizontal strip
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: client/src/pages/field/FieldInventory.tsx
+
+Find the outermost wrapper div of the FieldInventory page.
+It currently has className="space-y-4".
+Add overflow-x: hidden to its style so the horizontal category strip
+does not cause a page-level scrollbar to appear:
+
+  <div className="space-y-4" style={{ overflowX: "hidden" }}>
+
+The category strip itself keeps its own overflowX: "auto" — only the
+page wrapper gets overflow-x: hidden.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SAFETY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Do NOT change any business logic, routing, or permissions
+- Do NOT modify Admin Mode
+- Do NOT change filter logic or data fetching
+- Do NOT change colors or visual design
+- Complete all 3 steps in order

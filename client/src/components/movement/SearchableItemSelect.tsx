@@ -250,7 +250,7 @@ export function SearchableItemSelect({
                 borderRadius: "18px 18px 0 0",
                 boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
                 display: "flex", flexDirection: "column",
-                maxHeight: "72vh",
+                maxHeight: "72vh", minHeight: "44vh",
               }}
             >
               {/* Sheet header — search + close */}
@@ -301,7 +301,7 @@ export function SearchableItemSelect({
                 </button>
               </div>
               {/* Results */}
-              {itemList({ flex: 1, WebkitOverflowScrolling: "touch" as any })}
+              {itemList({ flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" as any })}
             </div>
           </>
         ) : (

@@ -187,7 +187,7 @@ export function SearchableProjectSelect({
                 borderRadius: "18px 18px 0 0",
                 boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
                 display: "flex", flexDirection: "column",
-                maxHeight: "72vh",
+                maxHeight: "72vh", minHeight: "44vh",
               }}
             >
               {/* Search header */}
@@ -238,7 +238,7 @@ export function SearchableProjectSelect({
                 </button>
               </div>
               {/* Results */}
-              {projectList({ flex: 1, WebkitOverflowScrolling: "touch" as any })}
+              {projectList({ flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" as any })}
             </div>
           </>
         ) : (
@@ -249,6 +249,7 @@ export function SearchableProjectSelect({
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
               zIndex: 9999, background: "#0f1612", border: "1px solid #203023",
               borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden",
+              maxHeight: 240,
             } : {
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
               zIndex: 9999,

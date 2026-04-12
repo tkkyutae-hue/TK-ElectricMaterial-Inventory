@@ -5,7 +5,7 @@ import { useSearch, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Search, Package, X, ChevronLeft, ChevronRight,
-  ImageOff, ZoomIn, ShoppingCart, Minus, Plus, CheckCircle2,
+  ImageOff, ZoomIn, ShoppingCart, Minus, Plus, CheckCircle2, ChevronDown,
 } from "lucide-react";
 import { useFieldCart } from "@/lib/fieldCart";
 import { Button } from "@/components/ui/button";
@@ -798,6 +798,99 @@ function qtyColor(status: string): string {
   return F.accent;
 }
 
+// ─── Mobile: Compact Selected Category Bar ──────────────────────────────────
+
+function MobileCatBar({
+  cat,
+  onExpand,
+  onClear,
+}: {
+  cat: CategorySummary;
+  onExpand: () => void;
+  onClear: () => void;
+}) {
+  const gradient = getCategoryGradient(cat.code);
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        background: "rgba(45,219,111,0.07)",
+        border: "1px solid rgba(45,219,111,0.22)",
+        borderRadius: 12, padding: "7px 10px",
+      }}
+      data-testid="mobile-cat-bar"
+    >
+      {/* Thumbnail */}
+      <div style={{ width: 38, height: 38, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#0f1612", border: "1px solid rgba(45,219,111,0.15)" }}>
+        {cat.imageUrl ? (
+          <img
+            src={cat.imageUrl}
+            alt={cat.name}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            onError={e => { (e.currentTarget.parentElement as HTMLElement).innerHTML = `<div class="w-full h-full bg-gradient-to-br ${gradient}" />`; }}
+          />
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />
+        )}
+      </div>
+
+      {/* Name + stats */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 13, fontWeight: 700, color: F.accent,
+          margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3,
+        }}>
+          {cat.name}
+        </p>
+        <p style={{ fontSize: 10, color: F.textMuted, margin: 0, fontFamily: "'Barlow Condensed', sans-serif" }}>
+          {cat.skuCount} SKU{cat.skuCount !== 1 ? "s" : ""}
+          {cat.lowStockCount > 0 && (
+            <span style={{ color: F.warning, marginLeft: 6 }}>· {cat.lowStockCount} low</span>
+          )}
+          {cat.outOfStockCount > 0 && (
+            <span style={{ color: F.danger, marginLeft: 6 }}>· {cat.outOfStockCount} out</span>
+          )}
+        </p>
+      </div>
+
+      {/* Change / expand button */}
+      <button
+        onClick={onExpand}
+        data-testid="btn-mobile-cat-change"
+        style={{
+          display: "flex", alignItems: "center", gap: 4,
+          fontSize: 11, fontWeight: 700, color: F.accent,
+          background: "rgba(45,219,111,0.10)",
+          border: "1px solid rgba(45,219,111,0.25)",
+          borderRadius: 8, padding: "5px 9px",
+          cursor: "pointer", flexShrink: 0,
+          fontFamily: "'Barlow Condensed', sans-serif",
+          letterSpacing: 0.5, textTransform: "uppercase",
+        }}
+      >
+        <ChevronDown style={{ width: 11, height: 11 }} />
+        Change
+      </button>
+
+      {/* Clear X */}
+      <button
+        onClick={onClear}
+        data-testid="btn-mobile-cat-clear"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 28, height: 28, borderRadius: 8,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          cursor: "pointer", flexShrink: 0,
+        }}
+      >
+        <X style={{ width: 13, height: 13, color: F.textMuted }} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function FieldInventory() {
@@ -821,6 +914,14 @@ export default function FieldInventory() {
   const [pageSize, setPageSize] = useState(() => urlParams.get("perPage") ? Number(urlParams.get("perPage")) : 10);
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
+  const [catGridCollapsed, setCatGridCollapsed] = useState(false);
+
+  // Auto-collapse on mobile if a category was pre-selected via URL
+  useEffect(() => {
+    if (isMobile && selectedCatId !== null) {
+      setCatGridCollapsed(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const debouncedSearch = useDebounce(searchInput, 300);
 
@@ -945,8 +1046,10 @@ export default function FieldInventory() {
   function handleCategoryClick(cat: CategorySummary) {
     if (selectedCatId === cat.id) {
       setSelectedCatId(null);
+      setCatGridCollapsed(false);
     } else {
       setSelectedCatId(cat.id);
+      if (isMobile) setCatGridCollapsed(true);
     }
     setSelectedFamily("all");
     setSelectedType("all");
@@ -999,6 +1102,7 @@ export default function FieldInventory() {
     setSelectedStatus("all");
     setSearchInput("");
     setPage(1);
+    setCatGridCollapsed(false);
   }
 
   const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSubcategory !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
@@ -1030,82 +1134,101 @@ export default function FieldInventory() {
       </div>
 
       {/* ── Category Cards ── */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
-          {selectedCatId !== null && (
-            <button
-              onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }}
-              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
-              data-testid="btn-clear-category"
-            >
-              <X style={{ width: 12, height: 12 }} /> {t.clear}
-            </button>
+
+      {/* Mobile: collapsed compact bar when a category is selected */}
+      {isMobile && selectedCat && catGridCollapsed ? (
+        <MobileCatBar
+          cat={selectedCat}
+          onExpand={() => setCatGridCollapsed(false)}
+          onClear={() => {
+            setSelectedCatId(null);
+            setSelectedFamily("all");
+            setSelectedType("all");
+            setSelectedSubcategory("all");
+            setSelectedSize("all");
+            setPage(1);
+            setCatGridCollapsed(false);
+          }}
+        />
+      ) : (
+        /* Full grid — always on desktop, on mobile when no selection or user expanded */
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 style={{ fontSize: 11, fontWeight: 700, color: "#7aab82", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t.browseByCategory}</h2>
+            {selectedCatId !== null && (
+              <button
+                onClick={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); setCatGridCollapsed(false); }}
+                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#7aab82", background: "none", border: "none", cursor: "pointer" }}
+                data-testid="btn-clear-category"
+              >
+                <X style={{ width: 12, height: 12 }} /> {t.clear}
+              </button>
+            )}
+          </div>
+          {!categorySummary ? (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "4/3", background: "#162019" }} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {categorySummary.map(cat => {
+                const gradient = getCategoryGradient(cat.code);
+                const isActive = selectedCatId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryClick(cat)}
+                    data-testid={`card-category-${cat.id}`}
+                    className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
+                    style={{
+                      aspectRatio: isMobile ? "4/3" : "16/8",
+                      background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
+                      border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
+                      borderRadius: 10,
+                      transition: "filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+                    }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.55), 0 0 14px rgba(45,219,111,0.13)";
+                      if (!isActive) el.style.borderColor = "#2a4030";
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.boxShadow = "none";
+                      if (!isActive) el.style.borderColor = "#1e2e21";
+                    }}
+                  >
+                    <div className="absolute inset-0">
+                      {cat.imageUrl ? (
+                        <>
+                          <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
+                          <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
+                            onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
+                          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
+                        </>
+                      ) : (
+                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                      )}
+                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                      <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
+                        <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
+                          {cat.name}
+                        </p>
+                      </div>
+                      {isActive && (
+                        <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
-        {!categorySummary ? (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "4/3", background: "#162019" }} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {categorySummary.map(cat => {
-              const gradient = getCategoryGradient(cat.code);
-              const isActive = selectedCatId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategoryClick(cat)}
-                  data-testid={`card-category-${cat.id}`}
-                  className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
-                  style={{
-                    aspectRatio: isMobile ? "4/3" : "16/8",
-                    background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
-                    border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
-                    borderRadius: 10,
-                    transition: "filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.55), 0 0 14px rgba(45,219,111,0.13)";
-                    if (!isActive) el.style.borderColor = "#2a4030";
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.boxShadow = "none";
-                    if (!isActive) el.style.borderColor = "#1e2e21";
-                  }}
-                >
-                  <div className="absolute inset-0">
-                    {cat.imageUrl ? (
-                      <>
-                        <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
-                        <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
-                          onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
-                      </>
-                    ) : (
-                      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                    )}
-                    <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
-                      <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
-                        {cat.name}
-                      </p>
-                    </div>
-                    {isActive && (
-                      <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* ── Selected category heading ── */}
-      {selectedCat && (
+      {/* ── Selected category heading ── (hidden on mobile when compact bar is showing) */}
+      {selectedCat && !(isMobile && catGridCollapsed) && (
         <div className="flex items-center gap-2 px-1">
           <span style={{ fontSize: 12, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: "0.1em" }}>{selectedCat.name}</span>
           <div style={{ flex: 1, height: 1, background: "rgba(45,219,111,0.3)" }} />

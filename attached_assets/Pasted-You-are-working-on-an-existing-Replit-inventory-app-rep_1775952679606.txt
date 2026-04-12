@@ -1,0 +1,90 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Inventory page from scratch.
+3. Keep this task focused only on improving the mobile category selection layout in Field Inventory.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior unchanged unless a tiny shared fix is clearly needed.
+
+TASK GOAL
+Optimize mobile Field Inventory by collapsing the large category image grid after a category has been selected, so the item list and filters can appear higher on the screen.
+
+CURRENT PROBLEM
+On mobile, after a category is selected, the large category image grid still takes too much vertical space.
+This pushes the useful content (filters and item list) too far down and wastes space.
+
+DESIRED MOBILE BEHAVIOR
+
+BEFORE category selection:
+- keep the current category image grid behavior
+
+AFTER category selection (mobile only):
+- collapse the category area into a compact selected-category header
+- show only the currently selected category prominently
+- hide the rest of the large category image grid by default
+- provide a clear action such as:
+  - "다른 카테고리 보기"
+  - or "Change Category"
+  - or an expand/collapse toggle
+- allow the user to reopen the full category image grid when needed
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- any extracted field category card/grid component
+- any small helper/state component only if truly needed
+
+PART 1 — MOBILE-ONLY SELECTED CATEGORY COLLAPSED MODE
+When a category is selected on mobile:
+- replace the large category grid with a compact selected-category summary header
+
+Recommended compact header contents:
+- selected category thumbnail/image
+- category name
+- item count if already available
+- clear/expand/change action
+
+Requirements:
+1. Keep desktop category grid behavior unchanged
+2. On mobile, default to collapsed once a category is selected
+3. Preserve current category selection logic
+4. Preserve current clear-category behavior
+
+PART 2 — EXPAND / REOPEN FULL CATEGORY GRID
+Add a clear way to reopen the full category image grid.
+
+Requirements:
+1. The user must be able to switch categories easily
+2. Reopening should reveal the existing large category image grid
+3. Keep the interaction simple and mobile-friendly
+4. Use the current Field visual style
+
+PART 3 — SPACE SAVING / INFORMATION HIERARCHY
+The goal is to move useful content higher on mobile once a category is selected.
+
+Requirements:
+1. After collapse, filters and item list should appear noticeably higher on the screen
+2. Keep the selected category context visible
+3. Do NOT make the collapsed header too tall
+4. Preserve readability and touchability
+
+PART 4 — KEEP CURRENT FILTER / LIST LOGIC
+- Do NOT change filter logic
+- Do NOT change search behavior
+- Do NOT change inventory item list logic
+- Do NOT change request/cart behavior
+- This is a layout optimization only
+
+PART 5 — SAFETY
+- Do NOT redesign desktop Field Inventory
+- Do NOT change business logic
+- Do NOT remove the ability to browse other categories
+- Keep the implementation incremental and compatibility-safe
+
+OUTPUT
+1. Summary of the mobile category collapse behavior
+2. Files modified
+3. How the selected-category compact header works
+4. How the full category grid is reopened
+5. Notes on what was intentionally left unchanged

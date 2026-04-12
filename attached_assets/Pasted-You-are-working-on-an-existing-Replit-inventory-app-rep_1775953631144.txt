@@ -1,0 +1,126 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Inventory page from scratch.
+3. Keep this task focused only on Field Inventory layout/UX refinement.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a tiny shared improvement is clearly needed.
+
+TASK GOAL
+Improve Field Inventory layout and reduce wasted vertical space, especially on mobile.
+
+PRIMARY REQUESTS
+1. Move the "items per page" control to the bottom pagination area, aligned to the left side of the pagination controls
+2. Place the status filter on the same row as the search bar, to the right of the search input
+3. Reduce how much vertical space the category image section consumes
+4. Improve the category area so the page requires less unnecessary up/down scrolling
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- any extracted Field category grid / filter / pagination component
+- any tiny layout helper/component only if truly needed
+
+PART 1 — STATUS FILTER NEXT TO SEARCH
+Update the filter layout so:
+- search input stays on the left
+- status filter sits to the right of the search input on the same row
+
+Requirements:
+1. Keep the current filter logic unchanged
+2. Preserve current status filter behavior
+3. On wider screens, search should take most of the row width and status filter should sit neatly to the right
+4. On smaller screens, allow a sensible responsive fallback if absolutely necessary, but still prioritize keeping search + status closely grouped
+5. Do NOT make the row feel cramped
+
+Recommended layout intent:
+- search = flexible / wide
+- status filter = fixed or compact width on the right
+
+PART 2 — MOVE ITEMS-PER-PAGE TO BOTTOM PAGINATION AREA
+Take the "items per page" / page-size control out of the upper filter area and move it to the bottom pagination area.
+
+Requirements:
+1. Place it on the left side of the bottom pagination section
+2. Keep the page navigation controls to the right or in their current logical area
+3. Preserve current page-size behavior
+4. Do NOT change pagination logic
+5. Make the bottom controls feel balanced and easy to scan
+
+Recommended layout intent:
+- bottom left: items-per-page selector
+- bottom right: page navigation controls
+
+PART 3 — CATEGORY IMAGES TAKE TOO MUCH SPACE
+The current category image area is too tall and consumes too much vertical space, especially on mobile.
+
+Implement a better space-saving solution.
+
+Recommended solution approach:
+A. Before a category is selected:
+- keep the category images visible
+- but reduce their vertical footprint using a more compact aspect ratio and tighter spacing on mobile
+
+B. After a category is selected (mobile-first priority):
+- collapse the large category image grid by default
+- show only the selected category in a compact summary/header form
+- provide a clear way to reopen the full category grid, such as:
+  - "다른 카테고리 보기"
+  - "Change Category"
+  - expand/collapse toggle
+
+C. Preserve desktop behavior as much as possible:
+- desktop can keep the fuller category grid if space allows
+- mobile should prioritize saving vertical space
+
+Requirements:
+1. Do NOT remove category browsing
+2. Do NOT change category selection logic
+3. The selected category must remain visible after collapse
+4. Reopening the full category grid must be easy
+5. The collapsed selected-category bar/header should be compact and mobile-friendly
+
+PART 4 — REDUCE UNNECESSARY VERTICAL SCROLLING
+The main objective is to reduce how much the user needs to scroll up and down before reaching the useful item list.
+
+Use these principles:
+- reduce category area height
+- keep selected category context visible but compact
+- bring filters and item list higher on the page after category selection
+- avoid wasting vertical space on oversized image cards
+
+Optional helpful behavior:
+- after selecting a category on mobile, auto-scroll the page slightly so the filters or item list come into view faster
+- only do this if it feels smooth and not disorienting
+
+PART 5 — MOBILE-FIRST CATEGORY SPACE OPTIMIZATION
+For mobile only:
+- use a smaller category card/image ratio before selection
+- use a compact selected-category bar after selection
+- keep spacing between the collapsed category area and filters tight but readable
+
+Do NOT force the same compressed behavior onto desktop if desktop already has enough space.
+
+PART 6 — KEEP LOGIC INTACT
+- Do NOT change search logic
+- Do NOT change filter logic
+- Do NOT change category data
+- Do NOT change pagination logic
+- Do NOT change cart/request behavior
+- This is a layout and usability refinement only
+
+PART 7 — SAFETY
+- Do NOT redesign desktop Field Inventory unnecessarily
+- Do NOT change business logic
+- Do NOT broaden scope into Admin mode
+- Keep the implementation incremental and compatibility-safe
+
+OUTPUT
+1. Summary of Field Inventory layout improvements
+2. Files modified
+3. How search + status layout was changed
+4. How items-per-page was moved to the bottom pagination area
+5. How category image area was reduced
+6. How the collapse/compact selected-category behavior works
+7. Notes on what was intentionally left unchanged

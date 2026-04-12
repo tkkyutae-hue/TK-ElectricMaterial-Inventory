@@ -184,3 +184,7 @@ body[data-field-mode] [data-radix-toast-viewport] li button {
 body[data-field-mode] [data-radix-toast-viewport] li button:hover {
   color: #e2f0e5;
 }
+
+/* Field Inventory — hide scrollbar on mobile category strip */
+.fi-cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.fi-cat-scroll::-webkit-scrollbar { display: none; }

@@ -1165,63 +1165,114 @@ export default function FieldInventory() {
               </button>
             )}
           </div>
-          {!categorySummary ? (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {[1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "4/3", background: "#162019" }} />)}
+          {isMobile ? (
+            /* Mobile: single-row horizontal scroll strip — 78×78px square cards */
+            <div className="fi-cat-scroll" style={{ overflowX: "auto", display: "flex", gap: 7, paddingBottom: 2 }}>
+              {!categorySummary
+                ? [1,2,3,4,5,6].map(i => (
+                    <div key={i} style={{ width: 78, height: 78, borderRadius: 10, background: "#162019", flexShrink: 0 }} className="animate-pulse" />
+                  ))
+                : categorySummary.map(cat => {
+                    const gradient = getCategoryGradient(cat.code);
+                    const isActive = selectedCatId === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => handleCategoryClick(cat)}
+                        data-testid={`card-category-${cat.id}`}
+                        className="relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410]"
+                        style={{
+                          width: 78, height: 78, flexShrink: 0,
+                          background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
+                          border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
+                          borderRadius: 10,
+                          transition: "border-color 0.15s ease",
+                        }}
+                      >
+                        <div className="absolute inset-0">
+                          {cat.imageUrl ? (
+                            <>
+                              <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-90 brightness-75 saturate-150 pointer-events-none" />
+                              <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
+                                onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
+                              <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
+                            </>
+                          ) : (
+                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                          )}
+                          <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+                          <div className="absolute bottom-0 left-0 right-0 z-30 px-1.5 pb-1">
+                            <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 9, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="line-clamp-2">
+                              {cat.name}
+                            </p>
+                          </div>
+                          {isActive && (
+                            <div style={{ position: "absolute", top: 5, right: 5, zIndex: 30, width: 10, height: 10, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+              }
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {categorySummary.map(cat => {
-                const gradient = getCategoryGradient(cat.code);
-                const isActive = selectedCatId === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleCategoryClick(cat)}
-                    data-testid={`card-category-${cat.id}`}
-                    className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
-                    style={{
-                      aspectRatio: isMobile ? "4/3" : "16/8",
-                      background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
-                      border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
-                      borderRadius: 10,
-                      transition: "filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
-                    }}
-                    onMouseEnter={e => {
-                      const el = e.currentTarget as HTMLButtonElement;
-                      el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.55), 0 0 14px rgba(45,219,111,0.13)";
-                      if (!isActive) el.style.borderColor = "#2a4030";
-                    }}
-                    onMouseLeave={e => {
-                      const el = e.currentTarget as HTMLButtonElement;
-                      el.style.boxShadow = "none";
-                      if (!isActive) el.style.borderColor = "#1e2e21";
-                    }}
-                  >
-                    <div className="absolute inset-0">
-                      {cat.imageUrl ? (
-                        <>
-                          <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
-                          <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
-                            onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-                          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
-                        </>
-                      ) : (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                      )}
-                      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-                      <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
-                        <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
-                          {cat.name}
-                        </p>
+            /* Desktop: landscape grid */
+            <div className="grid grid-cols-5 gap-2">
+              {!categorySummary ? (
+                [1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/8", background: "#162019" }} />)
+              ) : (
+                categorySummary.map(cat => {
+                  const gradient = getCategoryGradient(cat.code);
+                  const isActive = selectedCatId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleCategoryClick(cat)}
+                      data-testid={`card-category-${cat.id}`}
+                      className="relative overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d1410] hover:brightness-[1.08]"
+                      style={{
+                        aspectRatio: "16/8",
+                        background: isActive ? "rgba(45,219,111,0.10)" : "#16202e",
+                        border: isActive ? "2px solid #2ddb6f" : "2px solid #1e2e21",
+                        borderRadius: 10,
+                        transition: "filter 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+                      }}
+                      onMouseEnter={e => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.boxShadow = "0 4px 20px rgba(0,0,0,0.55), 0 0 14px rgba(45,219,111,0.13)";
+                        if (!isActive) el.style.borderColor = "#2a4030";
+                      }}
+                      onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLButtonElement;
+                        el.style.boxShadow = "none";
+                        if (!isActive) el.style.borderColor = "#1e2e21";
+                      }}
+                    >
+                      <div className="absolute inset-0">
+                        {cat.imageUrl ? (
+                          <>
+                            <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
+                            <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
+                              onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
+                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
+                          </>
+                        ) : (
+                          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+                        )}
+                        <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
+                          <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">
+                            {cat.name}
+                          </p>
+                        </div>
+                        {isActive && (
+                          <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
+                        )}
                       </div>
-                      {isActive && (
-                        <div style={{ position: "absolute", top: 6, right: 6, zIndex: 30, width: 12, height: 12, borderRadius: "50%", background: "#2ddb6f", border: "2px solid #0d1410" }} />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
@@ -1306,26 +1357,36 @@ export default function FieldInventory() {
 
       {/* ── Filter Row ── */}
       {isMobile ? (
-        /* Mobile: stacked layout — search full-width, then selects in a 2-col grid */
+        /* Mobile: search + status on same row, size below */
         <div className="flex flex-col gap-2">
-          {/* Search — full width */}
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
-            <Input
-              placeholder={t.searchPlaceholder}
-              value={searchInput}
-              onChange={e => handleSearch(e.target.value)}
-              className="pl-8 h-10 text-sm w-full"
-              style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
-              data-testid="field-inv-search"
-            />
-            {searchInput && (
-              <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          {/* Row 1: Search (flex-grow) + Status (fixed) */}
+          <div className="flex gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
+              <Input
+                placeholder={t.searchPlaceholder}
+                value={searchInput}
+                onChange={e => handleSearch(e.target.value)}
+                className="pl-8 h-10 text-sm w-full"
+                style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 9 }}
+                data-testid="field-inv-search"
+              />
+              {searchInput && (
+                <button onClick={() => handleSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: F.textDim, background: "none", border: "none", cursor: "pointer" }}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <Select value={selectedStatus} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-[138px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
+                <SelectValue placeholder={t.allStatus} />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          {/* Size filter — full width, only when visible */}
+          {/* Row 2: Size filter — full width, only when visible */}
           {selectedCatId !== null && sizes.length > 0 && (
             <Select value={selectedSize} onValueChange={handleSizeChange}>
               <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
@@ -1337,28 +1398,9 @@ export default function FieldInventory() {
               </SelectContent>
             </Select>
           )}
-          {/* Status + Page size — 2 columns */}
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
-                <SelectValue placeholder={t.allStatus} />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-              <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       ) : (
-        /* Desktop: horizontal flex row */
+        /* Desktop: search (flex-1) + size (conditional) + status */
         <div className="flex flex-wrap gap-2 items-center">
           <div className="relative flex-1 min-w-[160px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: F.textDim }} />
@@ -1393,14 +1435,6 @@ export default function FieldInventory() {
             </SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-            <SelectTrigger className="w-24 h-9 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -1620,11 +1654,21 @@ export default function FieldInventory() {
 
         {/* Pagination */}
         {totalItems > 0 && (
-          <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: `1px solid ${F.border}` }}>
-            <span style={{ fontSize: 12, color: F.textDim }}>
-              {`${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)}`} of {totalItems.toLocaleString()}
-            </span>
+          <div className="px-3 py-2 flex items-center justify-between gap-2" style={{ borderTop: `1px solid ${F.border}` }}>
+            {/* Left: items-per-page selector */}
+            <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
+              <SelectTrigger className="h-7 w-[96px] text-xs" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-page-size">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n} {t.perPage}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {/* Right: range + nav buttons */}
             <div className="flex items-center gap-1">
+              <span style={{ fontSize: 11, color: F.textDim, whiteSpace: "nowrap" }}>
+                {`${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)}`} / {totalItems.toLocaleString()}
+              </span>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1636,7 +1680,7 @@ export default function FieldInventory() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span style={{ padding: "0 8px", fontSize: 12, color: F.textMuted, fontWeight: 500, minWidth: 80, textAlign: "center" }}>
+              <span style={{ fontSize: 12, color: F.textMuted, fontWeight: 500, minWidth: 44, textAlign: "center" }}>
                 {page} / {totalPages}
               </span>
               <Button

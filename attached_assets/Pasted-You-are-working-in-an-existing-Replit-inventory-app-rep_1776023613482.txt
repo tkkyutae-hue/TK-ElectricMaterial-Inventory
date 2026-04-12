@@ -1,0 +1,145 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Modify ONLY the two files listed below.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/layout/FieldLayout.tsx
+2. client/src/pages/field/FieldInventory.tsx
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any admin mode file
+- any toast logic
+- any request logic
+- any picker/shared UI component
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+GOAL
+==================================================
+
+Restore ONLY these Field Mode UI behaviors:
+
+A. Mobile Field header must return to the intended compact state
+B. Scrollbars/overflow must return to the intended less-distracting behavior
+C. In Field Inventory, after category selection, mobile default items-per-page must remain 5
+
+Do NOT add new features.
+Do NOT redesign anything.
+Do NOT continue previous experimental changes.
+
+==================================================
+A. FIELD HEADER RESTORE
+==================================================
+
+File:
+- client/src/components/layout/FieldLayout.tsx
+
+Restore the intended compact mobile header behavior:
+
+1. Field Mode chip must be compact again
+2. On mobile, hide the long text inside the Field Mode chip again
+3. Keep date/time compact
+4. Top controls must stay compact and not expand back into the larger cluttered state
+5. Preserve desktop behavior
+
+Do NOT redesign the header.
+Do NOT touch any logic outside compact mobile presentation.
+
+==================================================
+B. SCROLL / OVERFLOW RESTORE
+==================================================
+
+Files:
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+
+Restore the intended scrollbar/overflow behavior:
+
+1. Prevent accidental horizontal overflow on the page
+2. Keep the category strip usable, but make its scrollbar hidden or visually minimal
+3. Keep main vertical scrolling usable but less visually distracting
+4. Do NOT create nested-scroll weirdness
+5. Do NOT change unrelated layout structures
+
+Important:
+- outer wrapper can use overflow-x hidden if needed
+- intended horizontal category browsing must still work
+- do not break touch swipe / horizontal browse behavior
+
+==================================================
+C. FIELD INVENTORY DEFAULT PAGE SIZE = 5
+==================================================
+
+File:
+- client/src/pages/field/FieldInventory.tsx
+
+Restore the intended mobile default items-per-page behavior:
+
+1. Mobile default page size must be 5
+2. Desktop may keep current default
+3. Preserve current pagination logic
+4. Preserve current page-size selector behavior
+5. Do NOT move pagination UI in this task
+6. Do NOT redesign filters in this task
+
+Important:
+- this must remain true after category selection as well
+- do not let it silently fall back to 10 on mobile
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- touch MovementForm
+- touch shared select/command components
+- touch request logic
+- touch toast logic
+- touch category business logic
+- touch filter-row layout
+- touch admin mode
+- touch backend
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. ONLY these two files were modified:
+   - client/src/components/layout/FieldLayout.tsx
+   - client/src/pages/field/FieldInventory.tsx
+
+2. Mobile header is compact again
+
+3. Scrollbars/overflow are visually restored without breaking intended category browsing
+
+4. Mobile Field Inventory default page size is 5 again, including after category selection
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Exact lines/areas changed in each file
+3. Confirmation that NO other files were modified
+4. Confirmation that MovementForm, shared select components, request logic, toast logic, backend, and admin mode were untouched

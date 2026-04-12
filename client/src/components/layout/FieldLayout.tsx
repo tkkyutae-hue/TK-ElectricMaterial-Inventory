@@ -54,7 +54,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main
         className="relative"
-        style={{ zIndex: 10, flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", background: F.bg }}
+        style={{ zIndex: 10, flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", background: F.bg }}
       >
         <div
           className="px-4 sm:px-6"

@@ -924,7 +924,7 @@ export default function FieldInventory() {
   const [searchInput, setSearchInput] = useState(() => urlParams.get("q") || "");
   const [page, setPage] = useState(() => urlParams.get("page") ? Number(urlParams.get("page")) : 1);
   const [pageSize, setPageSize] = useState(() =>
-    urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (isMobile ? MOBILE_DEFAULT_PAGE_SIZE : DESKTOP_DEFAULT_PAGE_SIZE)
+    urlParams.get("perPage") ? Number(urlParams.get("perPage")) : (window.innerWidth < 768 ? MOBILE_DEFAULT_PAGE_SIZE : DESKTOP_DEFAULT_PAGE_SIZE)
   );
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");

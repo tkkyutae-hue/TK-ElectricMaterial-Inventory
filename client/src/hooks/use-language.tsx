@@ -102,7 +102,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          ...(compact ? { padding: "5px 10px" } : { height: 30, padding: "0 10px" }),
+          ...(compact ? { padding: "5px 8px" } : { height: 30, padding: "0 10px" }),
           background: open ? triggerActiveBg : triggerBg,
           border: `1px solid ${open ? triggerActiveBorder : triggerBorder}`,
           borderRadius: 8,
@@ -134,14 +134,15 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
           }
         }}
       >
-        {/* "US EN" */}
-        <span style={{ lineHeight: 1 }}>{triggerLabel}</span>
+        {/* Mobile: flag emoji only; Desktop: "US EN" */}
+        <span className="sm:hidden" style={{ fontSize: 15, lineHeight: 1 }}>{current.flag}</span>
+        <span className="hidden sm:inline" style={{ lineHeight: 1 }}>{triggerLabel}</span>
 
-        {/* Chevron */}
+        {/* Chevron — hidden on mobile to keep flag button minimal */}
         <svg
           width="8" height="5" viewBox="0 0 8 5" fill="none"
+          className="hidden sm:block"
           style={{
-            display: "block",
             flexShrink: 0,
             opacity: 0.55,
             transform: open ? "rotate(180deg)" : "rotate(0deg)",

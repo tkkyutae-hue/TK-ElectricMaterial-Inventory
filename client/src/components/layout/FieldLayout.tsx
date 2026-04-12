@@ -20,6 +20,10 @@ const CSS = `
 .fl-k         { animation: fl-flicker 7s ease-in-out 3s infinite; }
 .fl-outer     { height: 100vh; }
 @supports (height: 100dvh) { .fl-outer { height: 100dvh; } }
+/* Icon-only header buttons: tighter horizontal padding on mobile */
+@media (max-width: 767px) {
+  .fl-hdr-btn { padding: 5px 7px !important; }
+}
 `;
 
 function useClock() {
@@ -128,7 +132,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
             <Link href="/field">
               <button
                 data-testid="btn-field-back"
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
+                className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   background: F.surface2, border: `1px solid ${F.borderStrong}`,
@@ -152,7 +156,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
           <Link href="/home">
             <button
               data-testid="btn-field-home"
-              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
+              className="fl-hdr-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2ddb6f] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d1410]"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
                 background: F.surface2, border: `1px solid ${F.borderStrong}`,

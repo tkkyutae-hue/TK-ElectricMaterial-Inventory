@@ -1,0 +1,71 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Mode app from scratch.
+3. Keep this task focused only on restoring the intended mobile Field header design.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop header behavior unchanged unless a tiny shared fix is clearly needed.
+
+TASK GOAL
+Restore the intended compact mobile Field header design, because the header has regressed back toward the older, more cluttered version.
+
+CURRENT PROBLEM
+The mobile top header no longer reflects the intended compact/icon-first layout.
+It feels more like the old version again, with weaker visual consistency and less compact control sizing.
+
+REQUIRED FIX
+On mobile only:
+- restore the compact/icon-first header direction
+- normalize the upper action controls so they feel like one consistent system
+- preserve date/time in a compact form
+- keep the header clean and balanced without awkward wrapping
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/layouts/FieldLayout.tsx
+- any extracted Field header/top-bar component
+- any Field token/style file only if needed
+
+PART 1 — NORMALIZE MOBILE HEADER CONTROLS
+Make the mobile top controls feel visually consistent:
+- language selector
+- back button
+- home button if present
+- mode select
+- profile/avatar
+
+Requirements:
+1. Normalize height, padding, border radius, and visual weight
+2. Avoid one control feeling much larger than the others
+3. Keep functionality unchanged
+4. Keep desktop unchanged
+
+PART 2 — KEEP DATE/TIME COMPACT
+Mobile header should still show date/time, but in a compact way.
+
+Requirements:
+1. Keep it readable but secondary
+2. Avoid ugly wrapping
+3. Do not let it dominate the header
+
+PART 3 — ICON-FIRST / LOW-CLUTTER MOBILE HEADER
+Reduce clutter in the upper mobile header by keeping controls compact and icon-first where appropriate.
+
+Requirements:
+1. Preserve meaning and usability
+2. Do NOT over-expand button labels
+3. Keep touch targets usable
+4. Keep the header visually clean and balanced
+
+PART 4 — SAFETY
+- Do NOT change business logic
+- Do NOT redesign desktop
+- Keep this as a mobile header restoration only
+
+OUTPUT
+1. Summary of the mobile header restoration
+2. Files modified
+3. Which controls were normalized
+4. How date/time was handled
+5. Notes on what was intentionally left unchanged

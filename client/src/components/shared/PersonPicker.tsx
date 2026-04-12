@@ -374,10 +374,11 @@ export function PersonPicker({
               borderRadius: 10,
               boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
               zIndex: 200,
-              maxHeight: 300, display: "flex", flexDirection: "column",
+              minHeight: 240, maxHeight: 300,
+              display: "flex", flexDirection: "column",
               overflow: "hidden",
             }}>
-              {/* Search row */}
+              {/* Search row — flexShrink:0 keeps it fixed while list filters */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "9px 12px 8px",
@@ -412,8 +413,8 @@ export function PersonPicker({
                   {tv.done ?? "Done"}
                 </button>
               </div>
-              {/* List */}
-              <div style={{ overflowY: "auto", flex: 1 }}>
+              {/* Scrollable list — minHeight:0 allows flex child to scroll */}
+              <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
                 {renderRows(false, 13)}
               </div>
             </div>
@@ -437,7 +438,7 @@ export function PersonPicker({
                   borderTop: `2px solid ${F.accentBorder}`,
                   borderRadius: "18px 18px 0 0",
                   boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
-                  maxHeight: "72vh",
+                  minHeight: "44vh", maxHeight: "72vh",
                   display: "flex", flexDirection: "column",
                   overflow: "hidden",
                 }}
@@ -481,8 +482,8 @@ export function PersonPicker({
                   </button>
                 </div>
 
-                {/* Scrollable list */}
-                <div style={{ overflowY: "auto", flex: 1 }}>
+                {/* Scrollable list — minHeight:0 allows flex child to scroll */}
+                <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
                   {renderRows(true, 14)}
                 </div>
               </div>
@@ -503,7 +504,7 @@ export function PersonPicker({
               border: `1px solid ${F.borderStrong}`,
               borderRadius: 10,
               boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
-              maxHeight: 300,
+              minHeight: 240, maxHeight: 300,
               display: "flex", flexDirection: "column",
               overflow: "hidden",
             }}
@@ -547,8 +548,8 @@ export function PersonPicker({
               </button>
             </div>
 
-            {/* Scrollable list */}
-            <div style={{ overflowY: "auto", flex: 1 }}>
+            {/* Scrollable list — minHeight:0 allows flex child to scroll */}
+            <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
               {renderRows(true, 13)}
             </div>
           </div>,

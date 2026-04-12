@@ -1,0 +1,191 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix ONLY the people-name picker UX in Field Mode.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+2. client/src/pages/field/FieldCartReview.tsx
+3. client/src/components/field/PersonPicker.tsx
+
+Only if strictly necessary for the exact list/search interaction:
+4. client/src/components/ui/command.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+- any header code
+- any page-size / category / filter-row code
+
+Especially:
+- DO NOT touch header
+- DO NOT touch inventory layout
+- DO NOT touch movement type logic
+- DO NOT touch reel layout
+- DO NOT touch request lifecycle logic
+- DO NOT touch backend
+
+==================================================
+GOAL
+==================================================
+
+Make the people-name fields in Field Mode behave like a stable searchable picker with a fixed search bar and a filtered list below.
+
+Apply this to:
+1. 입고 / 반품
+2. 출고 / 이송
+3. 요청 제출 / 요청 수정
+
+==================================================
+REQUIRED UX
+==================================================
+
+The picker must behave like this:
+
+1. Clicking the field opens the picker
+2. The search input stays fixed at the top
+3. The search input height must stay fixed
+4. Typing must NOT make the search field jump up/down
+5. Typing filters ONLY the list below
+6. The result list area must stay in a stable scrollable region
+7. Selecting a person fills the field and closes the picker
+8. Clicking the field again after selection reopens the picker
+9. The user must be able to change the selected person without clearing first
+
+==================================================
+DATA SOURCE RULES
+==================================================
+
+Use manpower-related data as the source.
+
+Preferred priority:
+1. manpower associated with the currently selected project
+2. recent manpower names already used in that project
+3. recent/global manpower names
+4. worker master fallback
+
+Do NOT invent a new people system.
+Do NOT hardcode fake names.
+
+Important:
+- keep the FULL list available
+- manpower priority should affect ordering, not hide the rest of the list
+
+==================================================
+LAYOUT / INTERACTION RULES
+==================================================
+
+The picker should follow this stable structure:
+
+A. Fixed top area
+- search input on the top
+- optional Done button on the right if already part of the current design
+- this top area must NOT move while typing
+
+B. Fixed-height result area below
+- the list area must have a stable height or max-height
+- only this list area should scroll
+- typing should only change the list items shown, not the overall picker layout
+
+C. Clean list behavior
+- use one list area only
+- do NOT repeatedly add/remove heavy section blocks that make the layout jump
+- keep rows simple and easy to scan
+
+==================================================
+BEHAVIOR DETAILS
+==================================================
+
+1. Typing should be case-insensitive
+2. No exact match required
+3. The field should not become readOnly in a way that blocks reopening
+4. The selected value may remain displayed, but clicking again must reopen the picker
+5. Keep current value storage compatible
+6. If current forms only store the person name string, keep storing the selected name safely
+
+==================================================
+FLOW-SPECIFIC APPLICATION
+==================================================
+
+A. MovementForm.tsx
+Apply this people-picker behavior to:
+- receive / return person field
+- issue / transfer person/requester-related field
+
+B. FieldCartReview.tsx
+Apply this same people-picker behavior to:
+- requester field in request submit
+- requester field in request edit flow if handled there
+
+Important:
+- all three flows must feel consistent
+- do NOT leave one flow with old behavior and another with new behavior
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- redesign the whole form
+- change movement logic
+- change request logic
+- change permissions
+- change toast behavior
+- change header or inventory layout
+- touch backend
+- touch reel UI
+- touch movement type select
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. ONLY these allowed files were modified:
+   - MovementForm.tsx
+   - FieldCartReview.tsx
+   - PersonPicker.tsx
+   - command.tsx only if strictly necessary
+
+2. In 입고 / 출고 / 요청:
+   - the person field opens on click
+   - the search bar stays fixed
+   - typing filters only the list below
+   - the list scrolls
+   - selecting works
+   - clicking again after selection reopens the picker
+
+3. The picker no longer visually jumps up/down while typing
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the fixed search bar was implemented
+3. How the filtered list area was stabilized
+4. How reopen-after-selection works
+5. Confirmation that no other files were modified
+6. Confirmation that header, inventory layout, movement type, reel UI, request logic, and backend were untouched

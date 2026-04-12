@@ -1368,7 +1368,7 @@ export default function FieldInventory() {
               )}
             </div>
             <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[138px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
+              <SelectTrigger className="w-[120px] h-10 text-sm shrink-0" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-status-filter">
                 <SelectValue placeholder={t.allStatus} />
               </SelectTrigger>
               <SelectContent>
@@ -1377,7 +1377,7 @@ export default function FieldInventory() {
             </Select>
           </div>
           {/* Row 2: Size filter — full width, only when visible */}
-          {selectedCatId !== null && sizes.length > 0 && (
+          {selectedCatId !== null && sizes.filter(s => s && s.trim()).length > 0 && (
             <Select value={selectedSize} onValueChange={handleSizeChange}>
               <SelectTrigger className="w-full h-10 text-sm" style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted }} data-testid="field-inv-size-filter">
                 <SelectValue placeholder={t.allSizes} />

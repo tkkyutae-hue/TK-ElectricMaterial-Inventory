@@ -1,0 +1,63 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement logic, request logic, routing, or permissions.
+2. Do NOT redesign the whole Field Inventory page.
+3. Keep this task focused only on restoring the intended filter-row layout in Field Inventory.
+4. Preserve the current Field dark industrial visual identity.
+5. Keep desktop behavior mostly unchanged unless a tiny shared improvement is clearly needed.
+
+TASK GOAL
+Restore the intended Field Inventory filter-row layout because the search/status arrangement regressed and the filter row cleanup is no longer properly applied.
+
+CURRENT PROBLEM
+The intended filter-row structure is not being preserved.
+The search/status relationship and the upper filter density no longer feel like the intended cleaned-up mobile layout.
+
+REQUIRED FIX
+In Field Inventory:
+- keep the search input and status filter on the same row
+- search should take most of the width
+- status filter should sit to the right in a compact width
+- the row should feel balanced and not cramped
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- client/src/pages/field/FieldInventory.tsx
+- any extracted Field filter bar / filter row component
+- any tiny layout helper only if truly needed
+
+PART 1 — SEARCH + STATUS SAME ROW
+Requirements:
+1. Search stays on the left and gets most of the width
+2. Status filter sits on the right
+3. Keep the current filter logic unchanged
+4. Keep the current translation behavior unchanged
+5. Preserve desktop layout unless a tiny shared improvement is needed
+
+PART 2 — CLEANER UPPER FILTER DENSITY
+Requirements:
+1. Keep the upper filter region visually tighter and more organized
+2. Avoid spreading the primary filters awkwardly across too many rows
+3. Preserve current family/type/subcategory logic
+4. Do NOT reintroduce unnecessary clutter
+
+PART 3 — MOBILE-FIRST
+This refinement should prioritize mobile readability and space-saving.
+
+Requirements:
+1. On mobile, same-row search + status is the main goal
+2. If an extreme narrow screen needs a fallback, keep it graceful
+3. Do NOT let the row become obviously cramped or broken
+
+PART 4 — SAFETY
+- Do NOT change filter logic
+- Do NOT change search logic
+- Do NOT change category logic
+- Keep this as layout restoration only
+
+OUTPUT
+1. Summary of filter-row restoration
+2. Files modified
+3. How search + status now behave
+4. Notes on what was intentionally left unchanged

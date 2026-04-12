@@ -1,0 +1,138 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Fix ONLY the runtime error that occurs when clicking the movement type field in Field Mode forms.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/components/MovementForm.tsx
+
+Only if absolutely necessary for the exact root cause:
+2. client/src/components/ui/select.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/command.tsx
+- client/src/hooks/use-mobile.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any routes file
+- any schema/storage file
+- any admin mode file
+- any toast logic
+- any request logic
+- any header code
+- any category/filter/page-size code
+
+Especially:
+- DO NOT touch the header
+- DO NOT touch inventory filters
+- DO NOT touch page-size default
+- DO NOT touch category compact UI
+- DO NOT touch request behavior
+- DO NOT touch toast behavior
+
+==================================================
+GOAL
+==================================================
+
+Fix the runtime error that appears when the user clicks the "movement type" field in Field Mode forms such as:
+- 입고 / 반품
+- 출고 / 이송
+
+This is a stability fix only.
+
+==================================================
+KNOWN PROBLEM
+==================================================
+
+When clicking the movement type select/dropdown in MovementForm, a runtime error overlay appears.
+
+You must:
+1. identify the exact root cause
+2. fix the actual code issue
+3. preserve the current visible UI and current business logic
+
+Do NOT hide the error overlay.
+Do NOT disable Vite/HMR overlay.
+Do NOT use try/catch-only hacks to suppress symptoms.
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+After the fix:
+- clicking movement type no longer throws a runtime error
+- the movement type list opens normally
+- selecting movement type still works
+- receive/return and issue/transfer flows still behave as before
+- no unrelated UI changes are introduced
+
+==================================================
+DEBUGGING INSTRUCTIONS
+==================================================
+
+Inspect the movement type field implementation in MovementForm.tsx carefully.
+
+Check for issues like:
+- invalid SelectItem values
+- undefined/null value being passed into Select / SelectTrigger / SelectValue
+- mismatched controlled vs uncontrolled state
+- map/render logic that can produce undefined children
+- translation/value mismatch
+- conditional rendering around movement type options
+- assumptions about current mode that break on click/open
+- any mobile-only branch that returns invalid content
+
+If Select component internals are truly the cause, you may modify:
+- client/src/components/ui/select.tsx
+But only if the root cause is proven there.
+
+==================================================
+STRICT NO-TOUCH RULES
+==================================================
+
+In this task, DO NOT:
+- redesign the picker
+- change modal/sheet behavior
+- change layout
+- change dark theme styling
+- change dropdown styling
+- change any other field besides the movement type stability issue
+- touch inventory page
+- touch header
+- touch request/cart logic
+- touch admin mode
+
+==================================================
+SUCCESS CONDITION
+==================================================
+
+This task is successful only if:
+
+1. The movement type field no longer causes a runtime error
+2. Only allowed files were modified
+3. The rest of Field Mode remains untouched
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Exact root cause of the runtime error
+3. Exact lines/areas fixed
+4. Confirmation that no other files were modified
+5. Confirmation that header, inventory, page-size, category UI, toast logic, and request logic were untouched

@@ -726,8 +726,10 @@ function MovementTypeSection({
             <SelectContent className="fm-dark-select-content">
               {movementTypes.filter(mt => !allowedTypes || allowedTypes.includes(mt.value)).map(mt => (
                 <SelectItem key={mt.value} value={mt.value}>
-                  <span className="font-medium">{mt.label}</span>
-                  <span style={{ color: "#527856", fontSize: 11, marginLeft: 6 }}>— {mt.desc}</span>
+                  <span>
+                    <span className="font-medium">{mt.label}</span>
+                    <span style={{ color: "#527856", fontSize: 11, marginLeft: 6 }}>— {mt.desc}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

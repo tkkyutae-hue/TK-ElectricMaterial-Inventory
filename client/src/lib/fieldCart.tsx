@@ -19,6 +19,14 @@ export interface CartItem {
   imageUrl?: string | null;
 }
 
+export interface EditingRequestMeta {
+  requestType: "issue" | "transfer";
+  projectId: number | null;
+  notes: string;
+  requesterName: string;
+  requesterRole: string;
+}
+
 interface FieldCartContextValue {
   cartItems: CartItem[];
   addToCart: (item: Omit<CartItem, "requestedQty">, qty: number) => void;
@@ -29,12 +37,23 @@ interface FieldCartContextValue {
   getCartItem: (itemId: number) => CartItem | undefined;
   totalItems: number;
   totalQty: number;
+  // ── Edit-request session ─────────────────────────────────────────────────
+  editingRequestId: number | null;
+  editingRequestNumber: string | null;
+  editingMeta: EditingRequestMeta | null;
+  setEditingRequest: (id: number, requestNumber: string, meta: EditingRequestMeta) => void;
+  clearEditingRequest: () => void;
 }
 
 const FieldCartContext = createContext<FieldCartContextValue | null>(null);
 
 export function FieldCartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // ── Edit-request session state ──────────────────────────────────────────
+  const [editingRequestId,     setEditingRequestId]     = useState<number | null>(null);
+  const [editingRequestNumber, setEditingRequestNumber] = useState<string | null>(null);
+  const [editingMeta,          setEditingMeta]          = useState<EditingRequestMeta | null>(null);
 
   const addToCart = useCallback((item: Omit<CartItem, "requestedQty">, qty: number) => {
     setCartItems(prev => {
@@ -67,6 +86,18 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
     [cartItems]
   );
 
+  const setEditingRequest = useCallback((id: number, requestNumber: string, meta: EditingRequestMeta) => {
+    setEditingRequestId(id);
+    setEditingRequestNumber(requestNumber);
+    setEditingMeta(meta);
+  }, []);
+
+  const clearEditingRequest = useCallback(() => {
+    setEditingRequestId(null);
+    setEditingRequestNumber(null);
+    setEditingMeta(null);
+  }, []);
+
   const totalItems = cartItems.length;
   const totalQty = cartItems.reduce((sum, c) => sum + c.requestedQty, 0);
 
@@ -74,6 +105,8 @@ export function FieldCartProvider({ children }: { children: React.ReactNode }) {
     <FieldCartContext.Provider value={{
       cartItems, addToCart, updateQty, removeFromCart,
       clearCart, restoreCart, getCartItem, totalItems, totalQty,
+      editingRequestId, editingRequestNumber, editingMeta,
+      setEditingRequest, clearEditingRequest,
     }}>
       {children}
     </FieldCartContext.Provider>

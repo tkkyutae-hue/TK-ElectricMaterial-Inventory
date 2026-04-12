@@ -223,7 +223,7 @@ function EditRequestPanel({
   const { t } = useLanguage();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { restoreCart } = useFieldCart();
+  const { restoreCart, setEditingRequest } = useFieldCart();
   const [saving, setSaving] = useState(false);
 
   let initialItems: CartItem[] = [];
@@ -514,6 +514,13 @@ function EditRequestPanel({
             data-testid="btn-edit-continue-inventory"
             onClick={() => {
               restoreCart(editItems);
+              setEditingRequest(req.id, req.requestNumber, {
+                requestType,
+                projectId,
+                notes,
+                requesterName,
+                requesterRole,
+              });
               onClose();
               navigate("/field/inventory?cart=open");
             }}

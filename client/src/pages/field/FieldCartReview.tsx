@@ -5,7 +5,7 @@
  * "Submit Request" POSTs to /api/field/requests and clears the cart.
  * No inventory quantities change here.
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   ShoppingCart, Trash2, Minus, Plus, Send,
   ChevronDown, Check, ImageOff, Undo2, ClipboardList,
@@ -127,7 +127,10 @@ function QtyInput({ value, onChange }: { value: number; onChange: (n: number) =>
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function FieldCartReview({ onClose }: { onClose?: () => void } = {}) {
-  const { cartItems, updateQty, removeFromCart, clearCart, restoreCart, totalItems } = useFieldCart();
+  const {
+    cartItems, updateQty, removeFromCart, clearCart, restoreCart, totalItems,
+    editingRequestId, editingRequestNumber, editingMeta, clearEditingRequest, setEditingRequest,
+  } = useFieldCart();
   const { t }          = useLanguage();
   const { toast }      = useToast();
   const queryClient    = useQueryClient();
@@ -141,6 +144,25 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   const [requester,   setRequester]   = useState<{ name: string; role?: string } | null>(null);
   const [requestType, setRequestType] = useState<"issue" | "transfer">("issue");
 
+  // ── Pre-populate form from editingMeta when entering edit-request mode ────
+  const populatedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (editingRequestId !== null && editingMeta && populatedRef.current !== editingRequestId) {
+      populatedRef.current = editingRequestId;
+      setRequestType(editingMeta.requestType);
+      setProjectId(editingMeta.projectId);
+      setNotes(editingMeta.notes);
+      setRequester(
+        editingMeta.requesterName
+          ? { name: editingMeta.requesterName, role: editingMeta.requesterRole || undefined }
+          : null
+      );
+    }
+    if (editingRequestId === null) {
+      populatedRef.current = null;
+    }
+  }, [editingRequestId, editingMeta]);
+
   // ── Data fetches ──
   const { data: workers = [] } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
   const { data: projects = [] } = useQuery<Project[]>({ queryKey: ["/api/projects"] });
@@ -151,31 +173,54 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
   // Derive current user display name for fallback
   const currentUserName = (user as any)?.name || (user as any)?.username || null;
 
+  // ── Derived edit-mode flag ─────────────────────────────────────────────────
+  const isEditMode = editingRequestId !== null;
+
   async function handleSubmit() {
     if (cartItems.length === 0) return;
 
     // Snapshot form state before clearing (for Undo restoration)
     const cartSnapshot: CartItem[] = cartItems.map(i => ({ ...i }));
-    const notesSnapshot     = notes;
-    const projectIdSnapshot = projectId;
-    const requesterSnapshot = requester;
+    const notesSnapshot       = notes;
+    const projectIdSnapshot   = projectId;
+    const requesterSnapshot   = requester;
     const requestTypeSnapshot = requestType;
+    const editingIdSnapshot   = editingRequestId;
+    const editingNumSnapshot  = editingRequestNumber;
 
     setSubmitting(true);
     try {
-      const res = await apiRequest("POST", "/api/field/requests", {
-        itemsJson: JSON.stringify(cartItems),
-        notes: notes.trim() || null,
-        projectId: projectId ?? undefined,
-        requesterName: requester?.name ?? null,
-        requesterRole: requester?.role ?? null,
-        requestType,
-      });
-      const submitted: any = await res.json().catch(() => null);
-      const submittedId: number | null = submitted?.id ?? null;
+      let submittedId: number | null = null;
 
-      // Clear cart and form state
+      if (isEditMode && editingIdSnapshot !== null) {
+        // ── PATCH existing request ────────────────────────────────────────────
+        const res = await apiRequest("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
+          itemsJson:     JSON.stringify(cartItems),
+          notes:         notes.trim() || null,
+          projectId:     projectId ?? null,
+          requesterName: requester?.name ?? null,
+          requesterRole: requester?.role ?? null,
+          requestType,
+        });
+        const updated: any = await res.json().catch(() => null);
+        submittedId = updated?.id ?? editingIdSnapshot;
+      } else {
+        // ── POST new request ──────────────────────────────────────────────────
+        const res = await apiRequest("POST", "/api/field/requests", {
+          itemsJson:     JSON.stringify(cartItems),
+          notes:         notes.trim() || null,
+          projectId:     projectId ?? undefined,
+          requesterName: requester?.name ?? null,
+          requesterRole: requester?.role ?? null,
+          requestType,
+        });
+        const submitted: any = await res.json().catch(() => null);
+        submittedId = submitted?.id ?? null;
+      }
+
+      // Clear cart, edit session, and form state
       clearCart();
+      clearEditingRequest();
       setNotes("");
       setProjectId(null);
       setRequester(null);
@@ -188,13 +233,41 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         setUndoing(true);
         dismissToast();
         try {
-          await apiRequest("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" });
-          // Restore full form state
-          restoreCart(cartSnapshot);
-          setNotes(notesSnapshot);
-          setProjectId(projectIdSnapshot);
-          setRequester(requesterSnapshot);
-          setRequestType(requestTypeSnapshot);
+          if (isEditMode && editingIdSnapshot !== null) {
+            // Restore original items by re-patching with snapshot
+            await apiRequest("PATCH", `/api/field/requests/${editingIdSnapshot}`, {
+              itemsJson:     JSON.stringify(cartSnapshot),
+              notes:         notesSnapshot.trim() || null,
+              projectId:     projectIdSnapshot ?? null,
+              requesterName: requesterSnapshot?.name ?? null,
+              requesterRole: requesterSnapshot?.role ?? null,
+              requestType:   requestTypeSnapshot,
+            });
+            // Re-enter edit mode so the user can keep editing
+            restoreCart(cartSnapshot);
+            setNotes(notesSnapshot);
+            setProjectId(projectIdSnapshot);
+            setRequester(requesterSnapshot);
+            setRequestType(requestTypeSnapshot);
+            if (editingNumSnapshot) {
+              // Re-activate edit session context so banner + PATCH path stay active
+              setEditingRequest(editingIdSnapshot, editingNumSnapshot, {
+                requestType:   requestTypeSnapshot,
+                projectId:     projectIdSnapshot,
+                notes:         notesSnapshot,
+                requesterName: requesterSnapshot?.name ?? "",
+                requesterRole: requesterSnapshot?.role ?? "",
+              });
+            }
+          } else {
+            await apiRequest("PATCH", `/api/field/requests/${submittedId}/status`, { status: "cancelled" });
+            // Restore full form state
+            restoreCart(cartSnapshot);
+            setNotes(notesSnapshot);
+            setProjectId(projectIdSnapshot);
+            setRequester(requesterSnapshot);
+            setRequestType(requestTypeSnapshot);
+          }
           queryClient.invalidateQueries({ queryKey: ["/api/field/requests"] });
           toast({ title: t.undoDone });
         } catch (err: any) {
@@ -219,8 +292,10 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
         letterSpacing: "0.05em", border: "none", transition: "opacity 0.15s",
       };
 
+      const toastTitle = isEditMode ? (t as any).requestUpdated : t.requestSubmitted;
+
       const { dismiss } = toast({
-        title: t.requestSubmitted,
+        title: toastTitle,
         description: (
           <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
             <button
@@ -263,6 +338,7 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
     }
   }
 
+
   if (totalItems === 0) {
     return (
       <div style={{
@@ -282,6 +358,24 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+      {/* ── Edit-request mode banner ── */}
+      {isEditMode && editingRequestNumber && (
+        <div
+          data-testid="edit-mode-banner"
+          style={{
+            padding: "7px 16px",
+            background: `${F.accentBg}`,
+            borderBottom: `1px solid ${F.accent}`,
+            display: "flex", alignItems: "center", gap: 8,
+          }}
+        >
+          <Check style={{ width: 12, height: 12, color: F.accent, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: F.accent, fontFamily: FONT_COND, letterSpacing: "0.06em" }}>
+            {(t as any).editingRequestLabel?.toUpperCase() ?? "EDITING"} · {editingRequestNumber}
+          </span>
+        </div>
+      )}
 
       {/* ── Cart header info ── */}
       <div style={{
@@ -501,7 +595,10 @@ export default function FieldCartReview({ onClose }: { onClose?: () => void } = 
           }}
         >
           <Send style={{ width: 15, height: 15 }} />
-          {submitting ? t.submitting : t.submitRequest}
+          {submitting
+            ? (isEditMode ? (t as any).updating ?? t.submitting : t.submitting)
+            : (isEditMode ? (t as any).updateRequest ?? t.submitRequest : t.submitRequest)
+          }
         </button>
         {onClose && (
           <button

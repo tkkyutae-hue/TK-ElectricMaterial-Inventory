@@ -1,0 +1,140 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT change inventory quantities, movement history, routing, permissions, or completed request logic.
+2. Do NOT redesign the whole request/cart system.
+3. Keep this task focused only on fixing the broken "edit request -> continue in inventory -> submit" flow.
+4. Preserve the current Field dark visual identity and current request/cart UI as much as possible.
+
+TASK GOAL
+Fix the request editing flow so that when a user edits an existing request, goes to Inventory, adds/removes items, and submits again, the app updates the existing request instead of creating a brand new request.
+
+CURRENT BUG
+Right now the flow behaves like this:
+1. User edits existing request (example: REQ-0007)
+2. User goes to Inventory from request edit flow
+3. User modifies cart by adding/removing items
+4. User presses Submit Request
+5. The app creates a NEW request instead of updating REQ-0007
+
+This is wrong.
+
+CORRECT BEHAVIOR
+If the user is currently editing an existing request, Inventory/cart must remain in "edit existing request" mode.
+
+That means:
+- the request number stays the same
+- submit action should update the existing request
+- no new request should be created
+- the UI should clearly indicate the user is editing an existing request
+
+FILES TO FOCUS ON
+Inspect the repo first and update only the relevant files for:
+- Field request edit flow
+- Field Inventory cart state/store/helper
+- Field cart review panel/component
+- request submit/update handlers
+- any tiny shared helper needed for request-edit session context
+
+PART 1 — ADD REQUEST EDIT SESSION CONTEXT TO CART STATE
+Introduce a clear editing context in the cart/request flow.
+
+The cart/request state should be able to distinguish:
+- new request mode
+- editing existing request mode
+
+Recommended shape (adapt to the repo as needed):
+- mode: "new" | "edit-request"
+- editingRequestId
+- requestType
+- project
+- requester
+- notes
+- items
+
+Requirements:
+1. When entering Inventory from an existing request edit flow, set the cart into edit-request mode
+2. Preserve the original request id in that editing context
+3. Preserve the current editable request payload in the cart state
+4. Do NOT treat this as a new blank request cart
+
+PART 2 — CONTINUE IN INVENTORY MUST PRESERVE REQUEST CONTEXT
+When the user chooses the existing "Back to Inventory" / "Continue in Inventory" path from request edit:
+- restore the request items into the Inventory cart
+- preserve:
+  - request id
+  - request type
+  - project
+  - requester
+  - notes
+- mark the cart as editing an existing request, not creating a new one
+
+Requirements:
+1. Do NOT duplicate items unnecessarily
+2. Do NOT lose the request identity
+3. The Inventory cart review should clearly know it is editing an existing request
+
+PART 3 — SUBMIT BUTTON BEHAVIOR MUST CHANGE IN EDIT MODE
+When cart mode is:
+- "new" -> normal behavior: create a new request
+- "edit-request" -> do NOT create a new request
+
+Instead:
+- update the existing request using its editingRequestId
+
+Requirements:
+1. Reuse the current request update path if one already exists
+2. Do NOT post to the new-request create flow while editing an existing request
+3. Keep the request number unchanged
+4. After successful update, clear the edit-session state safely
+
+PART 4 — UI CLARITY IN CART REVIEW
+The user must be able to tell that they are editing an existing request.
+
+In Inventory cart review:
+- show a compact banner or label such as:
+  - "Editing Request REQ-0007"
+  - or equivalent translated wording
+- change the primary action label:
+  - new mode: "Submit Request"
+  - edit-request mode: "Update Request"
+
+Requirements:
+1. Keep the UI compact
+2. Preserve current styling
+3. Do NOT redesign the whole cart panel
+4. Use existing translation/i18n patterns
+
+PART 5 — SERVER-SIDE SAFETY
+Do not rely only on client state.
+
+Requirements:
+1. If editingRequestId exists, use/update the correct request update route
+2. Ensure the request is still editable under existing lifecycle rules
+   - for example, still `requested` if that is the current rule
+3. Block update if the request is no longer editable
+4. Prevent accidental duplicate create+update behavior
+5. Prevent double-submit issues
+
+PART 6 — BUTTON / ACTION SAFETY
+Requirements:
+1. Disable or guard the submit/update button while the request action is in flight
+2. After success, clear edit mode so the cart does not accidentally keep editing the old request forever
+3. Preserve existing undo behavior where compatible
+4. Do NOT create movement/transaction here; this is request update only
+
+PART 7 — KEEP EXISTING RULES
+- Do NOT change who is allowed to edit requests
+- Do NOT change request lifecycle rules
+- Do NOT change transaction creation/completion logic
+- Do NOT redesign the request workflow
+- Only fix the broken edit-vs-new-request distinction
+
+OUTPUT
+1. Summary of the request edit flow fix
+2. Files modified
+3. How the cart now distinguishes new vs edit-request mode
+4. How Continue in Inventory preserves request identity
+5. How submit/update behavior differs in new vs edit mode
+6. What UI indicators were added for edit mode
+7. Notes on what was intentionally left unchanged

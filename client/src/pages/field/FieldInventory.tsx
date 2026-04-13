@@ -822,6 +822,17 @@ function CatStripCardImage({ imageUrl, name, gradient }: { imageUrl?: string | n
   );
 }
 
+function CatGridCardImage({ imageUrl, name, gradient }: { imageUrl?: string | null; name: string; gradient: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!imageUrl || broken) return <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />;
+  return (
+    <>
+      <img src={imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" onError={() => setBroken(true)} />
+      <img src={imageUrl} alt={name} className="absolute inset-0 w-full h-full object-cover object-center z-10" />
+    </>
+  );
+}
+
 // ─── Mobile compact selected-category bar ────────────────────────────────────
 
 function MobileCatBar({
@@ -1211,7 +1222,7 @@ export default function FieldInventory() {
             </div>
           ) : (
             /* Desktop: landscape grid */
-            <div className="grid grid-cols-5 gap-2">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
               {!categorySummary ? (
                 [1,2,3,4,5].map(i => <div key={i} className="rounded-xl animate-pulse" style={{ aspectRatio: "16/8", background: "#162019" }} />)
               ) : (
@@ -1243,16 +1254,7 @@ export default function FieldInventory() {
                       }}
                     >
                       <div className="absolute inset-0">
-                        {cat.imageUrl ? (
-                          <>
-                            <img src={cat.imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" />
-                            <img src={cat.imageUrl} alt={cat.name} className="absolute inset-0 w-full h-full object-contain object-center z-10"
-                              onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.previousElementSibling as HTMLElement)?.style.setProperty("display","none"); (e.currentTarget.nextElementSibling as HTMLElement)?.style.removeProperty("display"); }} />
-                            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} style={{ display: "none" }} />
-                          </>
-                        ) : (
-                          <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-                        )}
+                        <CatGridCardImage imageUrl={cat.imageUrl} name={cat.name} gradient={gradient} />
                         <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                         <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-1.5">
                           <p style={{ color: "#e2f0e5", fontWeight: 700, fontSize: 10, lineHeight: 1.3, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }} className="sm:text-xs line-clamp-2">

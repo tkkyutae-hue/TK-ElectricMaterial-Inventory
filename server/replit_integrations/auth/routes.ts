@@ -1,7 +1,16 @@
 import type { Express } from "express";
 import bcrypt from "bcryptjs";
+import rateLimit from "express-rate-limit";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many attempts. Please try again in 15 minutes." },
+});
 
 export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
@@ -15,7 +24,7 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/signup", async (req, res) => {
+  app.post("/api/auth/signup", authLimiter, async (req, res) => {
     const { email, password, name } = req.body ?? {};
     if (!email || !password || !name) {
       return res.status(400).json({ message: "email, password and name are required" });
@@ -36,7 +45,7 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/login", async (req: any, res) => {
+  app.post("/api/auth/login", authLimiter, async (req: any, res) => {
     const { email, password } = req.body ?? {};
     if (!email || !password) {
       return res.status(400).json({ message: "email and password are required" });
@@ -73,7 +82,11 @@ export function registerAuthRoutes(app: Express): void {
   });
 
   // ─── Seed Initial Admin (one-time setup, protected by ADMIN_SEED_TOKEN) ──────
-  app.post("/api/admin/seed-initial-admin", async (req: any, res) => {
+  app.post("/api/admin/seed-initial-admin", authLimiter, async (req: any, res) => {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED_IN_PROD !== "true") {
+      return res.status(403).json({ message: "Seed route is disabled in production." });
+    }
+
     const token = req.headers["x-seed-token"] ?? req.body?.token;
     const expectedToken = process.env.ADMIN_SEED_TOKEN;
 
@@ -84,6 +97,11 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(401).json({ message: "Invalid or missing x-seed-token header" });
     }
 
+    const seedPassword = process.env.ADMIN_SEED_PASSWORD;
+    if (!seedPassword) {
+      return res.status(500).json({ message: "ADMIN_SEED_PASSWORD env var is not set on this server" });
+    }
+
     try {
       const ADMIN_EMAIL = "michael_kim@tkelectricllc.us";
       const existing = await authStorage.findUserByEmail(ADMIN_EMAIL);
@@ -91,7 +109,7 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(409).json({ message: "Initial admin already exists — no changes made", email: existing.email });
       }
 
-      const passwordHash = await bcrypt.hash("tk69956995!!", 12);
+      const passwordHash = await bcrypt.hash(seedPassword, 12);
       await authStorage.upsertUser({
         email: ADMIN_EMAIL,
         passwordHash,

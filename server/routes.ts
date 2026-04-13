@@ -14,6 +14,52 @@ import fs from "fs";
 import express from "express";
 import crypto from "crypto";
 
+// ─── RBAC middleware ─────────────────────────────────────────────────────────
+// Roles: viewer < staff < manager < admin
+// - viewer:  field mode, read-only
+// - staff:   field mode, can do movements
+// - manager: admin mode (normal pages), cannot access Admin Tools
+// - admin:   full access including Admin Tools
+async function requireRole(roles: string | string[], req: any, res: any, next: any) {
+  const userId = req.session?.userId;
+  if (!userId) return res.status(401).json({ message: "Authentication required" });
+  try {
+    const { authStorage } = await import("./replit_integrations/auth/storage");
+    const user = await authStorage.getUser(userId);
+    if (!user || user.status !== "active") return res.status(401).json({ message: "Authentication required" });
+    const allowed = Array.isArray(roles) ? roles : [roles];
+    if (!allowed.includes(user.role ?? "")) return res.status(403).json({ message: "Insufficient permissions" });
+    (req as any).currentUser = user;
+    next();
+  } catch {
+    res.status(500).json({ message: "Authorization check failed" });
+  }
+}
+
+// Populates req.user from session without restricting by role.
+async function loadCurrentUser(req: any, _res: any, next: any) {
+  try {
+    const userId = req.session?.userId;
+    if (userId) {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const user = await authStorage.getUser(userId);
+      if (user && user.status === "active") {
+        req.user = user;
+      }
+    }
+  } catch {
+    // Non-fatal — route can still run
+  }
+  next();
+}
+
+// Admin Tools only (User Approvals, Export)
+const requireAdmin   = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
+// Normal admin operations (inventory CRUD, suppliers, projects, reports, etc.)
+const requireManager = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
+// Field operations (movements, transactions, drafts)
+const requireStaff   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
+
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -165,7 +211,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getLocations());
   });
 
-  app.post("/api/locations", isAuthenticated, async (req, res) => {
+  app.post("/api/locations", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { name, code, locationType, description } = req.body;
       if (!name || !name.trim()) return res.status(400).json({ ok: false, error: "Name is required" });
@@ -179,7 +225,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/locations/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/locations/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
@@ -190,7 +236,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/locations/:id/restore", isAuthenticated, async (req, res) => {
+  app.post("/api/locations/:id/restore", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
@@ -212,7 +258,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(data);
   });
 
-  app.post("/api/suppliers", isAuthenticated, async (req, res) => {
+  app.post("/api/suppliers", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.createSupplier(req.body);
       res.status(201).json(data);
@@ -221,7 +267,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.put("/api/suppliers/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/suppliers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.updateSupplier(Number(req.params.id), req.body);
       res.json(data);
@@ -230,7 +276,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/suppliers/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/suppliers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       await storage.deleteSupplier(Number(req.params.id));
       res.json({ success: true });
@@ -250,7 +296,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(data);
   });
 
-  app.post("/api/projects", isAuthenticated, async (req, res) => {
+  app.post("/api/projects", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.createProject(req.body);
       res.status(201).json(data);
@@ -259,7 +305,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.put("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/projects/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.updateProject(Number(req.params.id), req.body);
       res.json(data);
@@ -268,7 +314,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/projects/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       await storage.deleteProject(Number(req.params.id));
       res.json({ success: true });
@@ -329,7 +375,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   // ── Classify preview endpoint ──────────────────────────────────────────────
-  app.post("/api/items/classify", isAuthenticated, async (req, res) => {
+  app.post("/api/items/classify", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { name = '', baseItemName, categoryId, sizeLabel } = req.body;
       const cats = await storage.getCategories();
@@ -349,7 +395,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/items", isAuthenticated, async (req, res) => {
+  app.post("/api/items", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { imageUrl, ...rest } = req.body;
       const catId = rest.categoryId ? Number(rest.categoryId) : undefined;
@@ -382,7 +428,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.put("/api/items/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const body = {
         ...req.body,
@@ -396,7 +442,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/items/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/items/:id", isAuthenticated, requireManager, async (req, res) => {
     await storage.deleteItem(Number(req.params.id));
     res.status(204).end();
   });
@@ -418,7 +464,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // Generic movement endpoint
-  app.post("/api/movements", isAuthenticated, async (req, res) => {
+  app.post("/api/movements", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const body = req.body;
       const movementType = body.movementType as string;
@@ -490,7 +536,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Specific typed movement endpoints
   for (const type of ['receive', 'issue', 'return', 'adjust', 'transfer']) {
-    app.post(`/api/movements/${type}`, isAuthenticated, async (req, res) => {
+    app.post(`/api/movements/${type}`, isAuthenticated, requireStaff, async (req, res) => {
       try {
         req.body.movementType = type;
 
@@ -553,7 +599,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   }
 
   // Legacy alias
-  app.post("/api/items/movements", isAuthenticated, async (req, res) => {
+  app.post("/api/items/movements", isAuthenticated, requireStaff, async (req, res) => {
     try {
       // ── Validate new movement input ──────────────────────────────────────────
       const vr = validateNewMovement({
@@ -598,7 +644,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.put("/api/movements/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/movements/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const { movementType, quantity, sourceLocationId, destinationLocationId, projectId, note, reason, itemId, transactionDate } = req.body;
@@ -621,7 +667,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/movements/:id/undo", isAuthenticated, async (req, res) => {
+  app.post("/api/movements/:id/undo", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const reverted = await storage.undoMovementEdit(id);
@@ -631,7 +677,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/movements/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/movements/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       await storage.deleteMovement(Number(req.params.id));
       res.json({ success: true });
@@ -640,7 +686,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/movements/bulk-delete", isAuthenticated, async (req, res) => {
+  app.post("/api/movements/bulk-delete", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
@@ -653,7 +699,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/movements/bulk-restore", isAuthenticated, async (req, res) => {
+  app.post("/api/movements/bulk-restore", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { snapshots } = req.body;
       if (!Array.isArray(snapshots) || snapshots.length === 0) {
@@ -667,7 +713,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Item Groups (family metadata) ───────────────────────────────────────────
-  app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, async (req, res) => {
+  app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, requireManager, async (req, res) => {
     try {
       const categoryId = Number(req.params.categoryId);
       const { baseItemName, imageUrl, newName } = req.body;
@@ -684,7 +730,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/inventory/items/move-family", isAuthenticated, async (req, res) => {
+  app.post("/api/inventory/items/move-family", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { itemIds, newBaseItemName } = req.body;
       if (!Array.isArray(itemIds) || itemIds.length === 0) return res.status(400).json({ message: "itemIds required" });
@@ -696,7 +742,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/inventory/items/bulk-delete", isAuthenticated, async (req, res) => {
+  app.post("/api/inventory/items/bulk-delete", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { itemIds } = req.body;
       if (!Array.isArray(itemIds) || itemIds.length === 0) return res.status(400).json({ message: "itemIds required" });
@@ -718,12 +764,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getPurchaseRecommendations());
   });
 
-  app.post("/api/reorder/generate", isAuthenticated, async (_req, res) => {
+  app.post("/api/reorder/generate", isAuthenticated, requireManager, async (_req, res) => {
     const data = await storage.generatePurchaseRecommendations();
     res.json(data);
   });
 
-  app.put("/api/reorder/recommendations/:id/status", isAuthenticated, async (req, res) => {
+  app.put("/api/reorder/recommendations/:id/status", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = await storage.updateRecommendationStatus(Number(req.params.id), req.body.status);
       res.json(data);
@@ -769,7 +815,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/drafts", isAuthenticated, async (req, res) => {
+  app.post("/api/drafts", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const { movementType, sourceLocationId, destinationLocationId, projectId, itemsJson, note } = req.body;
       if (!movementType) return res.status(400).json({ message: "movementType is required" });
@@ -798,7 +844,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/drafts/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/drafts/:id", isAuthenticated, requireStaff, async (req, res) => {
     try {
       await storage.deleteDraft(Number(req.params.id));
       res.json({ ok: true });
@@ -807,7 +853,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/drafts/:id/confirm", isAuthenticated, async (req, res) => {
+  app.post("/api/drafts/:id/confirm", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const draftId = Number(req.params.id);
       const draft = await storage.getDraft(draftId);
@@ -844,14 +890,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/upload/item-image", isAuthenticated, upload.single("file"), (req, res) => {
+  app.post("/api/upload/item-image", isAuthenticated, requireManager, upload.single("file"), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file or unsupported file type. Allowed: jpg, jpeg, png, webp (max 8 MB)." });
     }
     res.json({ url: `/uploads/${req.file.filename}` });
   });
 
-  app.patch("/api/inventory/:id/image", isAuthenticated, async (req, res) => {
+  app.patch("/api/inventory/:id/image", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { imageUrl } = req.body;
@@ -866,54 +912,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   function sha256hex(s: string): string {
     return crypto.createHash("sha256").update(s).digest("hex");
   }
-
-  // ─── RBAC middleware ─────────────────────────────────────────────────────────
-  // Roles: viewer < staff < manager < admin
-  // - viewer:  field mode, read-only
-  // - staff:   field mode, can do movements
-  // - manager: admin mode (normal pages), cannot access Admin Tools
-  // - admin:   full access including Admin Tools
-  async function requireRole(roles: string | string[], req: any, res: any, next: any) {
-    const userId = req.session?.userId;
-    if (!userId) return res.status(401).json({ message: "Authentication required" });
-    try {
-      const { authStorage } = await import("./replit_integrations/auth/storage");
-      const user = await authStorage.getUser(userId);
-      if (!user || user.status !== "active") return res.status(401).json({ message: "Authentication required" });
-      const allowed = Array.isArray(roles) ? roles : [roles];
-      if (!allowed.includes(user.role ?? "")) return res.status(403).json({ message: "Insufficient permissions" });
-      (req as any).currentUser = user;
-      next();
-    } catch {
-      res.status(500).json({ message: "Authorization check failed" });
-    }
-  }
-
-  // Populates req.user from session without restricting by role.
-  // Used on routes that need the current user's identity/role but don't have a
-  // minimum-role requirement (e.g. field request list/create/status).
-  async function loadCurrentUser(req: any, _res: any, next: any) {
-    try {
-      const userId = req.session?.userId;
-      if (userId) {
-        const { authStorage } = await import("./replit_integrations/auth/storage");
-        const user = await authStorage.getUser(userId);
-        if (user && user.status === "active") {
-          req.user = user;
-        }
-      }
-    } catch {
-      // Non-fatal — route can still run; role checks will simply treat user as unauthenticated
-    }
-    next();
-  }
-
-  // Admin Tools only (User Approvals, Export)
-  const requireAdmin   = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
-  // Normal admin operations (inventory CRUD, suppliers, projects, reports, etc.)
-  const requireManager = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
-  // Field operations (movements, transactions)
-  const requireStaff   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
 
   // Keep legacy admin session endpoints for compatibility
   app.post("/api/admin/verify", isAuthenticated, (req: any, res) => {
@@ -951,6 +949,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/admin/users/:id", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
+      if (req.params.id === req.session?.userId) {
+        return res.status(400).json({ message: "You cannot modify your own role or status." });
+      }
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const { role, status } = req.body ?? {};
       const allowed: Record<string, string[]> = {
@@ -1346,7 +1347,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     status: z.enum(["new", "used"]).optional().nullable(),
   });
 
-  app.post("/api/wire-reels/bulk", isAuthenticated, async (req, res) => {
+  app.post("/api/wire-reels/bulk", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { reels } = z.object({ reels: z.array(reelSchema).min(1) }).parse(req.body);
       const created = [];
@@ -1360,7 +1361,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/wire-reels", isAuthenticated, async (req, res) => {
+  app.post("/api/wire-reels", isAuthenticated, requireManager, async (req, res) => {
     try {
       const data = reelSchema.parse(req.body);
       const reel = await storage.createWireReel(data);
@@ -1370,7 +1371,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/wire-reels/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/wire-reels/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
@@ -1391,7 +1392,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/wire-reels/:id/restore", isAuthenticated, async (req, res) => {
+  app.post("/api/wire-reels/:id/restore", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
@@ -1402,7 +1403,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/wire-reels/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/wire-reels/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
@@ -1447,7 +1448,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/daily-reports", isAuthenticated, async (req, res) => {
+  app.post("/api/daily-reports", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { projectId, reportDate, reportNumber, preparedBy, status, formData } = req.body;
       if (!projectId || !reportDate) {
@@ -1468,7 +1469,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/daily-reports/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/daily-reports/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
@@ -1486,7 +1487,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/daily-reports/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/daily-reports/:id", isAuthenticated, requireManager, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
@@ -1515,7 +1516,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(worker);
   });
 
-  app.post("/api/workers", isAuthenticated, async (req, res) => {
+  app.post("/api/workers", isAuthenticated, requireManager, async (req, res) => {
     try {
       const worker = await storage.createWorker(req.body);
       res.status(201).json(worker);
@@ -1524,7 +1525,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.put("/api/workers/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -1535,7 +1536,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/workers/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -1558,7 +1559,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/workers/:id/attendance", isAuthenticated, async (req, res) => {
+  app.post("/api/workers/:id/attendance", isAuthenticated, requireManager, async (req, res) => {
     try {
       const workerId = parseInt(req.params.id);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -1569,7 +1570,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/workers/:id/attendance/:recordId", isAuthenticated, async (req, res) => {
+  app.delete("/api/workers/:id/attendance/:recordId", isAuthenticated, requireManager, async (req, res) => {
     try {
       const recordId = parseInt(req.params.recordId);
       if (isNaN(recordId)) return res.status(400).json({ message: "Invalid record ID" });
@@ -1592,7 +1593,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/workers/:id/evaluations", isAuthenticated, async (req, res) => {
+  app.post("/api/workers/:id/evaluations", isAuthenticated, requireManager, async (req, res) => {
     try {
       const workerId = parseInt(req.params.id);
       if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -1627,7 +1628,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/projects/:id/scope-items", isAuthenticated, async (req, res) => {
+  app.post("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
@@ -1645,7 +1646,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/scope-items/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/scope-items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });
@@ -1670,7 +1671,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/scope-items/:id", isAuthenticated, async (req, res) => {
+  app.delete("/api/scope-items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid scope item ID" });

@@ -1,0 +1,152 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT RULES
+1. Do NOT rebuild the auth system from scratch.
+2. Do NOT change inventory quantities, business logic, or UI behavior unrelated to security hardening.
+3. Do NOT modify historical movement data.
+4. Keep changes incremental, compatibility-safe, and production-focused.
+5. This task is ONLY about closing the most urgent server-side security gaps.
+
+TASK GOAL
+Fix the highest-priority security issues with minimal code changes, focusing first on missing server-side RBAC enforcement.
+
+FILES TO FOCUS ON
+Inspect the repo first and focus on the real files involved, especially:
+- server/routes.ts
+- server/replitAuth.ts
+- server/index.ts
+- any auth/login route file
+- any server bootstrap/middleware file actually used for auth/security setup
+
+Do NOT do broad unrelated refactors.
+
+==================================================
+PART 0 — FIX MISSING SERVER-SIDE RBAC ON WRITE ROUTES
+==================================================
+
+Current risk:
+Some write/destructive endpoints appear to use only isAuthenticated without role enforcement.
+Client-side role checks are not enough.
+
+Tasks:
+1. Inspect server/routes.ts for write/admin-sensitive endpoints.
+2. Reuse the existing role middleware already present in the repo, such as:
+   - requireManager
+   - requireStaff
+3. Apply server-side role enforcement to the correct endpoints.
+
+Suggested intent:
+- requireManager:
+  - items create/update/delete
+  - bulk delete endpoints
+  - destructive admin-only actions
+- requireStaff or higher:
+  - movement creation endpoints
+  - operational write actions appropriate for staff
+- Preserve existing read access where appropriate
+
+Requirements:
+- Do NOT invent a new RBAC system
+- Reuse the existing middleware
+- Keep the fix minimal: add the correct middleware into the route chain
+- Inspect all write/destructive endpoints, not just one or two examples
+- Ensure the server enforces the same permission intent the UI already assumes
+
+Also check for any account-management guardrails that should exist, for example:
+- prevent unsafe self-role modification
+- prevent unsafe self-deactivation/deletion if applicable
+
+Keep those guardrails minimal and compatibility-safe.
+
+==================================================
+PART 1 — CHECK FOR BOOTSTRAP / SEED ADMIN RISK
+==================================================
+
+Before changing anything, first confirm whether a bootstrap/seed admin route or hardcoded bootstrap credential actually exists in this repo.
+
+If such a route/config exists:
+1. Remove any hardcoded default admin password from source code
+2. Remove any hardcoded bootstrap secret/token from source code if present
+3. Make the route safe for production by:
+   - disabling it in production unless explicitly enabled via env
+   - or requiring a secure env-provided bootstrap token
+
+If no such route/config exists:
+- skip this part cleanly
+- do not invent a new bootstrap system
+
+Keep local/dev bootstrap workable only if clearly gated and env-controlled.
+
+==================================================
+PART 2 — HARDEN SESSION COOKIE SETTINGS
+==================================================
+
+Tasks:
+1. Find the session cookie configuration in the auth/session setup.
+2. Explicitly ensure:
+   - httpOnly: true
+   - secure: true in production
+   - sameSite: "lax" at minimum
+3. Keep development behavior workable if secure cookies need environment-sensitive handling.
+
+Requirements:
+- Do not break local development unnecessarily
+- In production, cookie settings should be appropriate for a session-auth app
+- Keep current auth flow working
+
+==================================================
+PART 3 — ADD RATE LIMITING FOR LOGIN / AUTH-SENSITIVE ROUTES
+==================================================
+
+Tasks:
+1. Add lightweight rate limiting for:
+   - login/authentication route(s)
+   - bootstrap/seed route(s) only if such routes exist
+2. Use an existing library already in the repo if available; otherwise add a small standard Express-compatible solution.
+3. Keep the scope narrow: auth-sensitive routes only.
+
+Requirements:
+- Do NOT rate-limit the whole app in this task
+- Keep limits strict enough to reduce brute-force risk
+- Return a simple clean error message when the limit is exceeded
+
+==================================================
+PART 4 — REMOVE RESPONSE BODY LOGGING
+==================================================
+
+Tasks:
+1. Find the API logging middleware in server/index.ts or equivalent.
+2. Remove full response body logging for API responses.
+3. Keep safe operational logging only, such as:
+   - method
+   - path
+   - status code
+   - duration
+
+Requirements:
+- Do NOT log full JSON response bodies in production
+- Prefer concise metadata-only logs
+- Preserve useful debugging info without leaking sensitive payloads
+
+==================================================
+PART 5 — KEEP AUTH / RBAC BEHAVIOR COMPATIBLE
+==================================================
+
+Requirements:
+1. Do NOT redesign the approval flow
+2. Do NOT change role semantics
+3. Do NOT break existing sessions unnecessarily
+4. Do NOT touch unrelated inventory logic
+5. If environment variables are introduced, document exactly which are needed
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of security hardening changes
+2. Files modified
+3. Which write routes had RBAC enforced
+4. Any new environment variables required
+5. Which risky behaviors were removed or gated
+6. Anything intentionally left unchanged for compatibility

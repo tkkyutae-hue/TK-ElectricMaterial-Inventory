@@ -1,0 +1,158 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Improve ONLY the mobile bottom controls and top type-filter ordering in Field Mode transactions/history.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/pages/field/FieldTransactions.tsx
+
+Only if these already exist and are clearly used by FieldTransactions:
+2. client/src/components/field/FieldTransactionCard.tsx
+3. client/src/components/field/FieldTransactionsFilters.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any request logic
+- any toast logic
+- any admin mode file
+
+==================================================
+GOAL
+==================================================
+
+Improve three things in mobile Field transactions/history:
+
+1. Bottom pagination/action layout
+2. Export CSV placement
+3. Type filter ordering and readability
+
+==================================================
+PART 1 — BOTTOM CONTROLS REORGANIZATION
+==================================================
+
+CURRENT PROBLEM
+On mobile, the bottom area feels crowded because:
+- "items per page"
+- pagination
+- SELECT action
+are too close together and feel like one mixed control group.
+
+REQUIRED RESULT
+Reorganize the bottom area so the controls are grouped by meaning.
+
+Preferred mobile structure:
+
+Row 1:
+- left: "Showing X–Y of Z"
+- right: items-per-page selector
+
+Row 2:
+- center or left: pagination controls (< current/total >)
+- right: SELECT action button
+
+Requirements:
+1. Separate display settings from page navigation
+2. Keep SELECT visually distinct from pagination
+3. Keep the bottom area compact but clearer
+4. Preserve current pagination logic and select-mode behavior
+
+==================================================
+PART 2 — EXPORT CSV PLACEMENT
+==================================================
+
+CURRENT PROBLEM
+Export CSV placement feels secondary/awkward and may compete with primary filter/action areas.
+
+REQUIRED RESULT
+Place Export CSV in a more intentional mobile location.
+
+Recommended behavior:
+- keep it visible but secondary
+- place it near the top utility/action area, or near the filter-more section, not mixed into the bottom pagination/action cluster
+- it should feel like a utility action, not a primary list-navigation control
+
+Requirements:
+1. Preserve current export behavior
+2. Do NOT change export logic
+3. Keep it accessible but not visually competing with pagination or SELECT mode
+4. Keep desktop behavior mostly unchanged unless a small shared improvement is clearly needed
+
+==================================================
+PART 3 — TYPE FILTER ORDER / SORTING
+==================================================
+
+CURRENT PROBLEM
+Type chips/order can feel arbitrary, making quick scanning less intuitive.
+
+REQUIRED RESULT
+Order the mobile transaction type filters in a clearer, more useful sequence.
+
+Recommended order:
+1. ALL
+2. RECEIVE
+3. ISSUE
+4. TRANSFER
+5. RETURN
+6. ADJUST (if present)
+
+If the app has a different supported type set, keep the same principle:
+- ALL first
+- highest-frequency / most important operational types next
+- rarer/admin-like types later
+
+Requirements:
+1. Keep current filter logic unchanged
+2. Change only ordering/presentation
+3. Keep chip styling consistent
+4. Preserve selected-state behavior
+
+==================================================
+PART 4 — KEEP MOBILE READABILITY
+==================================================
+
+Requirements:
+1. Do NOT make the bottom area taller than necessary
+2. Do NOT reintroduce clutter
+3. Keep mobile spacing consistent with the current Field dark design
+4. Keep transaction list behavior unchanged
+
+==================================================
+STRICT RULES
+==================================================
+
+- Do NOT touch header
+- Do NOT touch transaction data logic
+- Do NOT touch backend
+- Do NOT touch request logic
+- Do NOT redesign cards in this task
+- Do NOT change CSV export logic
+- Do NOT change pagination logic
+- Do NOT change select-mode behavior, only its placement/presentation
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the bottom controls were reorganized
+3. Where Export CSV was moved and why
+4. What type filter order is now used
+5. Confirmation that no other files were modified

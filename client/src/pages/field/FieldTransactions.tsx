@@ -76,9 +76,9 @@ const LABEL_STYLE: React.CSSProperties = {
 const TYPE_PILLS: { value: MovementTypeFilter; label: string; color: string; activeBg: string; activeBorder: string }[] = [
   { value: "all",      label: "ALL",      color: "#7aab82", activeBg: "rgba(122,171,130,0.14)", activeBorder: "rgba(122,171,130,0.40)" },
   { value: "receive",  label: "RECEIVE",  color: "#2ddb6f", activeBg: "rgba(45,219,111,0.13)",  activeBorder: "rgba(45,219,111,0.40)" },
-  { value: "return",   label: "RETURN",   color: "#2ddb6f", activeBg: "rgba(45,219,111,0.13)",  activeBorder: "rgba(45,219,111,0.40)" },
   { value: "issue",    label: "ISSUE",    color: "#ff5050", activeBg: "rgba(255,80,80,0.12)",   activeBorder: "rgba(255,80,80,0.40)" },
   { value: "transfer", label: "TRANSFER", color: "#5b9cf6", activeBg: "rgba(91,156,246,0.13)",  activeBorder: "rgba(91,156,246,0.40)" },
+  { value: "return",   label: "RETURN",   color: "#2ddb6f", activeBg: "rgba(45,219,111,0.13)",  activeBorder: "rgba(45,219,111,0.40)" },
   { value: "adjust",   label: "ADJUST",   color: "#f5a623", activeBg: "rgba(245,166,35,0.12)",  activeBorder: "rgba(245,166,35,0.40)" },
 ];
 
@@ -393,7 +393,7 @@ export default function FieldTransactions() {
           </button>
         </div>
 
-        {activeTab === "history" && filtered.length > 0 && (
+        {!isMobile && activeTab === "history" && filtered.length > 0 && (
           <button
             onClick={exportCsv}
             data-testid="btn-export-csv"
@@ -456,6 +456,22 @@ export default function FieldTransactions() {
                     <SlidersHorizontal style={{ width: 12, height: 12 }} />
                     {secondaryFilterCount > 0 ? `Filters (${secondaryFilterCount})` : "Filters"}
                   </button>
+                  {filtered.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={exportCsv}
+                      data-testid="btn-export-csv"
+                      style={{
+                        flexShrink: 0, display: "flex", alignItems: "center",
+                        padding: "8px 10px", borderRadius: 7, cursor: "pointer",
+                        fontSize: 11, fontWeight: 600, fontFamily: "'Barlow Condensed', sans-serif",
+                        background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.textDim,
+                      }}
+                      title={t.exportCsv}
+                    >
+                      ↓
+                    </button>
+                  )}
                 </div>
 
                 {/* Collapsible secondary filters */}
@@ -1020,85 +1036,156 @@ export default function FieldTransactions() {
               </table>
             )}
 
-            {/* ── Persistent action bar (bottom of table) ── */}
-            <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
-              {/* Left: showing count */}
-              <span style={{ fontSize: 11, color: F.textMuted, flex: 1 }}>
-                Showing{" "}
-                <strong style={{ color: F.text }}>
-                  {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
-                </strong>
-                {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
-              </span>
-
-              {/* Center: page-size + pagination */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ position: "relative" }}>
-                  <button
-                    type="button"
-                    onClick={() => setPageSizeOpen(o => !o)}
-                    data-testid="btn-page-size-toggle"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: pageSizeOpen ? F.accentBg : F.surface2, border: `1px solid ${pageSizeOpen ? F.accentBorder : F.borderStrong}`, color: pageSizeOpen ? F.accent : F.textMuted, fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em", cursor: "pointer" }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}><rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>
-                    {pageSize}
-                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.6 }}><path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  {pageSizeOpen && (
-                    <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 9, padding: 4, zIndex: 50, display: "flex", flexDirection: "column", gap: 2, minWidth: 72, boxShadow: "0 4px 16px rgba(0,0,0,0.45)" }}>
-                      {[10, 15, 25, 35, 45].map(n => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
-                          data-testid={`btn-page-size-${n}`}
-                          style={{ padding: "6px 10px", borderRadius: 6, textAlign: "center", background: pageSize === n ? F.accentBg : "transparent", border: `1px solid ${pageSize === n ? F.accentBorder : "transparent"}`, color: pageSize === n ? F.accent : F.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em" }}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+            {/* ── Persistent action bar (bottom) ── */}
+            {isMobile ? (
+              /* ── Mobile: two-row action bar ── */
+              <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                {/* Row 1: Showing count (left) + page-size selector (right) */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px 7px" }}>
+                  <span style={{ fontSize: 11, color: F.textMuted }}>
+                    Showing{" "}
+                    <strong style={{ color: F.text }}>
+                      {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
+                    </strong>
+                    {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
+                  </span>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setPageSizeOpen(o => !o)}
+                      data-testid="btn-page-size-toggle"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: pageSizeOpen ? F.accentBg : F.surface2, border: `1px solid ${pageSizeOpen ? F.accentBorder : F.borderStrong}`, color: pageSizeOpen ? F.accent : F.textMuted, fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em", cursor: "pointer" }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}><rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>
+                      {pageSize}
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.6 }}><path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                    {pageSizeOpen && (
+                      <div style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 9, padding: 4, zIndex: 50, display: "flex", flexDirection: "column", gap: 2, minWidth: 72, boxShadow: "0 4px 16px rgba(0,0,0,0.45)" }}>
+                        {[10, 15, 25, 35, 45].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
+                            data-testid={`btn-page-size-${n}`}
+                            style={{ padding: "6px 10px", borderRadius: 6, textAlign: "center", background: pageSize === n ? F.accentBg : "transparent", border: `1px solid ${pageSize === n ? F.accentBorder : "transparent"}`, color: pageSize === n ? F.accent : F.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em" }}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} data-testid="btn-page-prev" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage <= 1 ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}>‹</button>
-                <span style={{ fontSize: 11, color: F.textMuted, fontFamily: "monospace", minWidth: 52, textAlign: "center" }}>{safePage} / {totalPages}</span>
-                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
-              </div>
+                {/* Row 2: Pagination nav (left) + SELECT / selection actions (right) */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px 8px", borderTop: `1px solid ${F.border}` }}>
+                  {/* Pagination */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} data-testid="btn-page-prev" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage <= 1 ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}>‹</button>
+                    <span style={{ fontSize: 11, color: F.textMuted, fontFamily: "monospace", minWidth: 46, textAlign: "center" }}>{safePage} / {totalPages}</span>
+                    <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
+                  </div>
 
-              {/* Right: selection actions */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-                {selectionMode ? (
-                  <>
-                    {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>}
-                    {!isMobile && (
+                  {/* SELECT / selection actions */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    {selectionMode ? (
+                      <>
+                        {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim }}>{selCount} {t.selected}</span>}
+                        {canEdit && hasDeletePerm && (
+                          <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            <Pencil style={{ width: 10, height: 10 }} /> Edit
+                          </button>
+                        )}
+                        {canDelete && hasDeletePerm && (
+                          <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                            <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+                        data-testid="btn-selection-mode-toggle"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.accentBg, border: `1px solid ${F.accentBorder}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Barlow Condensed', sans-serif", textTransform: "uppercase" }}
+                      >
+                        {t.selectBtn}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── Desktop: existing single-row action bar (unchanged) ── */
+              <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                {/* Left: showing count */}
+                <span style={{ fontSize: 11, color: F.textMuted, flex: 1 }}>
+                  Showing{" "}
+                  <strong style={{ color: F.text }}>
+                    {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
+                  </strong>
+                  {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
+                </span>
+
+                {/* Center: page-size + pagination */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setPageSizeOpen(o => !o)}
+                      data-testid="btn-page-size-toggle"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 9px", borderRadius: 7, background: pageSizeOpen ? F.accentBg : F.surface2, border: `1px solid ${pageSizeOpen ? F.accentBorder : F.borderStrong}`, color: pageSizeOpen ? F.accent : F.textMuted, fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em", cursor: "pointer" }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}><rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/><rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>
+                      {pageSize}
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.6 }}><path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                    {pageSizeOpen && (
+                      <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 9, padding: 4, zIndex: 50, display: "flex", flexDirection: "column", gap: 2, minWidth: 72, boxShadow: "0 4px 16px rgba(0,0,0,0.45)" }}>
+                        {[10, 15, 25, 35, 45].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => { setPageSize(n); setCurrentPage(1); setPageSizeOpen(false); }}
+                            data-testid={`btn-page-size-${n}`}
+                            style={{ padding: "6px 10px", borderRadius: 6, textAlign: "center", background: pageSize === n ? F.accentBg : "transparent", border: `1px solid ${pageSize === n ? F.accentBorder : "transparent"}`, color: pageSize === n ? F.accent : F.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.04em" }}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage <= 1} data-testid="btn-page-prev" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage <= 1 ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer", fontFamily: "monospace" }}>‹</button>
+                  <span style={{ fontSize: 11, color: F.textMuted, fontFamily: "monospace", minWidth: 52, textAlign: "center" }}>{safePage} / {totalPages}</span>
+                  <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
+                </div>
+
+                {/* Right: selection actions */}
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+                  {selectionMode ? (
+                    <>
+                      {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>}
                       <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <X style={{ width: 10, height: 10 }} /> {t.cancel}
                       </button>
-                    )}
-                    {canEdit && hasDeletePerm && (
-                      <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                        <Pencil style={{ width: 10, height: 10 }} /> Edit
-                      </button>
-                    )}
-                    {canDelete && hasDeletePerm && (
-                      <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                        <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
-                      </button>
-                    )}
-                  </>
-                ) : isMobile ? (
-                  <button
-                    type="button"
-                    onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                    data-testid="btn-selection-mode-toggle"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.accentBg, border: `1px solid ${F.accentBorder}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Barlow Condensed', sans-serif", textTransform: "uppercase" }}
-                  >
-                    {t.selectBtn}
-                  </button>
-                ) : null}
+                      {canEdit && hasDeletePerm && (
+                        <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                          <Pencil style={{ width: 10, height: 10 }} /> Edit
+                        </button>
+                      )}
+                      {canDelete && hasDeletePerm && (
+                        <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                          <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
+                        </button>
+                      )}
+                    </>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}

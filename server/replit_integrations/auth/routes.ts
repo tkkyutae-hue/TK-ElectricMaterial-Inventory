@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+import { db } from "../../db";
+import { sql } from "drizzle-orm";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -128,6 +130,28 @@ export function registerAuthRoutes(app: Express): void {
 
       console.log("[seed] Initial admin seeded");
       res.json({ ok: true, message: "Initial admin seeded" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Migrate users table (one-time fix, protected by ADMIN_SEED_TOKEN) ────────
+  app.post("/api/admin/migrate-users", authLimiter, async (req: any, res) => {
+    const token = req.headers["x-seed-token"] ?? req.body?.token;
+    const expectedToken = process.env.ADMIN_SEED_TOKEN;
+    if (!expectedToken || !token || token !== expectedToken) {
+      return res.status(401).json({ message: "Invalid or missing x-seed-token header" });
+    }
+    try {
+      await db.execute(sql`
+        ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS name varchar,
+          ADD COLUMN IF NOT EXISTS password_hash varchar,
+          ADD COLUMN IF NOT EXISTS role varchar DEFAULT 'viewer',
+          ADD COLUMN IF NOT EXISTS status varchar DEFAULT 'pending',
+          ADD COLUMN IF NOT EXISTS last_login_at timestamp
+      `);
+      res.json({ ok: true, message: "users table migrated" });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

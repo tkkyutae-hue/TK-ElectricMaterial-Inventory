@@ -1,0 +1,157 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT NON-DESTRUCTIVE RULES
+1. Do NOT rebuild the app navigation from scratch.
+2. Do NOT change inventory logic, daily report business logic, or admin business logic.
+3. Do NOT modify historical movement data or inventory quantities.
+4. Do NOT change existing role semantics.
+5. This task is ONLY about improving role-based access UX and route protection for restricted sections.
+
+TASK GOAL
+Keep the Daily Report and Admin Mode entry cards visible on the home screen, but show them as locked for users below the required role.
+Also add route-level protection so restricted users cannot access those routes directly by URL.
+
+IMPORTANT BEHAVIOR
+- Manager/admin users should keep normal access
+- Staff/viewer users should see the cards but as locked/unavailable
+- Clicking a locked card must NOT navigate
+- Direct URL access must also be blocked and redirected safely
+
+FILES TO FOCUS ON
+Inspect the repo first and focus on the real files involved, likely including:
+- client/src/pages/Home.tsx
+- client/src/App.tsx
+- any auth/role hook or helper already used in the repo
+- any small shared card or route guard helper file only if truly needed
+
+Do NOT do broad unrelated refactors.
+
+==================================================
+PART 1 — LOCKED CARDS ON HOME SCREEN
+==================================================
+
+File:
+- client/src/pages/Home.tsx
+
+Current goal:
+Keep the Daily Report card and Admin Mode card visible, but show them as locked for users without permission.
+
+Required behavior:
+1. If the current user has sufficient role:
+   - card remains active/clickable
+   - existing navigation behavior stays the same
+
+2. If the current user does NOT have sufficient role:
+   - card remains visible
+   - visually appears disabled/locked
+   - clicking it does NOT navigate
+   - show a lock icon
+   - show a short restricted label/message
+
+Recommended labels:
+- Daily Report: "Manager+ only" or equivalent existing role language
+- Admin Mode: "Manager+ only" or "Admin only" depending on the repo’s actual access rule
+
+UI requirements:
+- Keep the card in the same overall layout
+- Use a visually muted/disabled state
+- Add a lock icon and clear restricted text
+- Remove or suppress strong hover/click affordance for locked cards
+- Preserve the rest of the home screen design
+
+Important:
+- Do NOT hide the cards entirely for lower roles
+- Do NOT create confusing duplicate cards
+- Do NOT break the active cards for authorized users
+
+==================================================
+PART 2 — ROUTE-LEVEL GUARDING
+==================================================
+
+File:
+- client/src/App.tsx
+- and/or a tiny reusable route guard helper if helpful
+
+Current issue:
+Even if the home card is visually locked, users could still type restricted URLs directly.
+
+Required behavior:
+Add route-level protection for restricted sections such as:
+- Daily Report routes
+- Admin Mode routes / admin router entry points
+
+Requirements:
+1. Authorized users:
+   - normal access
+2. Unauthorized users:
+   - should NOT be able to access these routes directly
+   - should be redirected safely (for example to / or /field)
+   - optionally show a small toast/message if the repo already has a lightweight existing pattern
+
+Important:
+- Reuse the repo’s current auth/role source
+- Do NOT invent a new auth system
+- Do NOT duplicate role logic in many places if a small helper can centralize it
+- Keep routing changes minimal and clear
+
+==================================================
+PART 3 — ROLE LOGIC
+==================================================
+
+Use the repo’s real existing role logic / hooks / auth state.
+
+Requirements:
+- Do NOT hardcode fake role state
+- Do NOT create a second permission model
+- Align with current UI assumptions already in the app
+
+Suggested access intent:
+- Daily Report: manager and above
+- Admin Mode: manager and above, unless current repo semantics require stricter admin-only treatment
+
+Before implementing, verify the current intended role rule in the code and preserve it.
+
+==================================================
+PART 4 — UX DETAILS
+==================================================
+
+For locked cards:
+- muted surface/background
+- slightly reduced opacity or muted border
+- lock icon
+- restricted label
+- no real click navigation
+- keep readable, not hidden
+
+For blocked route access:
+- redirect cleanly
+- avoid blank screens
+- avoid infinite redirect loops
+
+If a small message is shown, keep it short and clear, such as:
+- "Access restricted"
+- "Manager+ only"
+
+Do NOT add a large modal flow for this task.
+
+==================================================
+PART 5 — CONSTRAINTS
+==================================================
+
+1. Do NOT change role definitions
+2. Do NOT touch inventory logic
+3. Do NOT touch server RBAC in this task
+4. Do NOT redesign the home page
+5. Do NOT hide restricted cards completely
+6. Keep the work small, clear, and compatible
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of locked-card behavior added
+2. Summary of route guarding added
+3. Files modified
+4. Notes on which roles can access Daily Report and Admin Mode
+5. Notes on what was intentionally left unchanged

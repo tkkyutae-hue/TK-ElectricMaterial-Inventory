@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut } from "lucide-react";
+import { LogOut, Lock } from "lucide-react";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 
 function getTimeKey(): "morning" | "afternoon" | "evening" {
@@ -53,39 +53,43 @@ interface SquareCardProps {
   tags: string[];
   tagStyle: React.CSSProperties;
   tagGap?: number;
+  locked?: boolean;
+  lockedLabel?: string;
 }
 
-function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4 }: SquareCardProps) {
+function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4, locked = false, lockedLabel = "Manager+ only" }: SquareCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
   return (
     <button
       data-testid={testId}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setPressed(false); }}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
+      onClick={locked ? undefined : onClick}
+      onMouseEnter={() => { if (!locked) setHovered(true); }}
+      onMouseLeave={() => { if (!locked) { setHovered(false); setPressed(false); } }}
+      onMouseDown={() => { if (!locked) setPressed(true); }}
+      onMouseUp={() => { if (!locked) setPressed(false); }}
       style={{
         flex: 1,
         minHeight: 220,
         textAlign: "center",
-        background: "#162019",
-        border: `1px solid ${hovered ? accentColor : "#2a4030"}`,
+        background: locked ? "#111815" : "#162019",
+        border: `1px solid ${locked ? "#1e2d22" : hovered ? accentColor : "#2a4030"}`,
         borderRadius: 14,
         padding: 0,
-        cursor: "pointer",
-        transform: hovered && !pressed ? "translateY(-2px)" : pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
-        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        cursor: locked ? "not-allowed" : "pointer",
+        transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
+        boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         alignItems: "stretch",
+        opacity: locked ? 0.6 : 1,
+        position: "relative",
       }}
     >
-      <div style={{ height: 2, background: accentColor, width: "100%" }} />
+      <div style={{ height: 2, background: locked ? "#1e2d22" : accentColor, width: "100%" }} />
 
       <div style={{
         flex: 1,
@@ -109,7 +113,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         <p style={{
           fontFamily: "'Barlow Condensed', sans-serif",
           fontSize: 17, fontWeight: 700,
-          color: "#e2f0e5", margin: 0,
+          color: locked ? "#4a7052" : "#e2f0e5", margin: 0,
           letterSpacing: 0.3,
           lineHeight: 1.2,
         }}>{title}</p>
@@ -126,17 +130,31 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
           ))}
         </div>
 
-        <span style={{
-          position: "absolute",
-          bottom: 14,
-          right: 16,
-          fontSize: 14,
-          color: hovered ? accentColor : "#4a7052",
-          transition: "color 0.15s, transform 0.15s",
-          transform: hovered ? "translateX(3px)" : "translateX(0)",
-          display: "inline-block",
-          lineHeight: 1,
-        }}>→</span>
+        {locked ? (
+          <div style={{
+            position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
+            display: "flex", alignItems: "center", gap: 4,
+            background: "rgba(13,20,16,0.85)", borderRadius: 6, padding: "3px 8px",
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
+            color: "#4a7052", whiteSpace: "nowrap",
+          }}>
+            <Lock style={{ width: 9, height: 9, flexShrink: 0 }} />
+            {lockedLabel}
+          </div>
+        ) : (
+          <span style={{
+            position: "absolute",
+            bottom: 14,
+            right: 16,
+            fontSize: 14,
+            color: hovered ? accentColor : "#4a7052",
+            transition: "color 0.15s, transform 0.15s",
+            transform: hovered ? "translateX(3px)" : "translateX(0)",
+            display: "inline-block",
+            lineHeight: 1,
+          }}>→</span>
+        )}
       </div>
     </button>
   );
@@ -151,35 +169,38 @@ interface WideCardProps {
   title: string;
   tags: string[];
   tagStyle: React.CSSProperties;
+  locked?: boolean;
+  lockedLabel?: string;
 }
 
-function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle }: WideCardProps) {
+function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, locked = false, lockedLabel = "Manager+ only" }: WideCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
   return (
     <button
       data-testid={testId}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setPressed(false); }}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
+      onClick={locked ? undefined : onClick}
+      onMouseEnter={() => { if (!locked) setHovered(true); }}
+      onMouseLeave={() => { if (!locked) { setHovered(false); setPressed(false); } }}
+      onMouseDown={() => { if (!locked) setPressed(true); }}
+      onMouseUp={() => { if (!locked) setPressed(false); }}
       style={{
         width: "100%",
         textAlign: "left",
-        background: "#162019",
-        border: `1px solid ${hovered ? accentColor : "#2a4030"}`,
+        background: locked ? "#111815" : "#162019",
+        border: `1px solid ${locked ? "#1e2d22" : hovered ? accentColor : "#2a4030"}`,
         borderRadius: 14,
         padding: 0,
-        cursor: "pointer",
-        transform: hovered && !pressed ? "translateY(-2px)" : pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
-        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        cursor: locked ? "not-allowed" : "pointer",
+        transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
+        boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
         overflow: "hidden",
+        opacity: locked ? 0.6 : 1,
       }}
     >
-      <div style={{ height: 2, background: accentColor, width: "100%" }} />
+      <div style={{ height: 2, background: locked ? "#1e2d22" : accentColor, width: "100%" }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 22px" }}>
         <div style={{
@@ -195,7 +216,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 19, fontWeight: 700,
-            color: "#e2f0e5", margin: "0 0 8px",
+            color: locked ? "#4a7052" : "#e2f0e5", margin: "0 0 8px",
             letterSpacing: 0.3,
           }}>{title}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -211,14 +232,27 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           </div>
         </div>
 
-        <span style={{
-          fontSize: 20, flexShrink: 0,
-          color: hovered ? accentColor : "#4a7052",
-          transition: "color 0.15s, transform 0.15s",
-          transform: hovered ? "translateX(3px)" : "translateX(0)",
-          display: "inline-block",
-          lineHeight: 1,
-        }}>→</span>
+        {locked ? (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 5,
+            flexShrink: 0,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 11, fontWeight: 600, letterSpacing: 0.5,
+            color: "#4a7052",
+          }}>
+            <Lock style={{ width: 12, height: 12, flexShrink: 0 }} />
+            <span>{lockedLabel}</span>
+          </div>
+        ) : (
+          <span style={{
+            fontSize: 20, flexShrink: 0,
+            color: hovered ? accentColor : "#4a7052",
+            transition: "color 0.15s, transform 0.15s",
+            transform: hovered ? "translateX(3px)" : "translateX(0)",
+            display: "inline-block",
+            lineHeight: 1,
+          }}>→</span>
+        )}
       </div>
     </button>
   );
@@ -350,35 +384,27 @@ export default function Home() {
                   border: "1px solid rgba(96,165,250,0.15)",
                   color: "#60a5fa",
                 }}
+                locked={!canAccessAdminMode}
               />
             </div>
 
-            {/* Bottom row: full-width Admin Mode card */}
-            {canAccessAdminMode && (
-              <WideCard
-                testId="btn-admin-mode"
-                onClick={() => navigate("/")}
-                accentColor="#f5a623"
-                emoji="⚙️"
-                emojiBg="rgba(245,166,35,0.08)"
-                title={t.adminMode}
-                tags={[t.tagDashboard, t.tagReports, t.tagSuppliers, t.tagUsers]}
-                tagStyle={{
-                  background: "rgba(245,166,35,0.08)",
-                  border: "1px solid rgba(245,166,35,0.15)",
-                  color: "#f5a623",
-                }}
-              />
-            )}
+            {/* Bottom row: full-width Admin Mode card — always visible, locked for staff/viewer */}
+            <WideCard
+              testId="btn-admin-mode"
+              onClick={() => navigate("/")}
+              accentColor="#f5a623"
+              emoji="⚙️"
+              emojiBg="rgba(245,166,35,0.08)"
+              title={t.adminMode}
+              tags={[t.tagDashboard, t.tagReports, t.tagSuppliers, t.tagUsers]}
+              tagStyle={{
+                background: "rgba(245,166,35,0.08)",
+                border: "1px solid rgba(245,166,35,0.15)",
+                color: "#f5a623",
+              }}
+              locked={!canAccessAdminMode}
+            />
           </div>
-
-          {!canAccessAdminMode && (
-            <p style={{ fontSize: 11, color: "#4a7052", marginTop: 20, fontFamily: "'Barlow', sans-serif" }}>
-              {t.role}:{" "}
-              <strong style={{ color: "#7aab82" }}>{user?.role ?? "viewer"}</strong>
-              {" "}{t.roleNote}
-            </p>
-          )}
         </div>
       </div>
     </div>

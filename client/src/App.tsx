@@ -101,22 +101,39 @@ function DailyReportLayout({
 
 function DailyReportRouter() {
   return (
-    <AuthGuard>
+    <ManagerGuard>
       <DailyReportLayout>
         <DailyReport />
       </DailyReportLayout>
-    </AuthGuard>
+    </ManagerGuard>
   );
 }
 
 function DailyReportWorkspaceRouter() {
   return (
-    <AuthGuard>
+    <ManagerGuard>
       <DailyReportLayout backTo="/daily-report" backLabel="Project List">
         <DailyReportWorkspace />
       </DailyReportLayout>
-    </AuthGuard>
+    </ManagerGuard>
   );
+}
+
+// Allows admin + manager into Daily Report; staff/viewer are redirected to /home
+function ManagerGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, canAccessAdminMode } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (!canAccessAdminMode) return <Redirect to="/home" />;
+  return <>{children}</>;
 }
 
 // Allows admin + manager into Admin Mode; all others go back to /home

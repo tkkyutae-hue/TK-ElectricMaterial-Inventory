@@ -26,11 +26,12 @@ import type { Project } from "@shared/schema";
 // ── CartPhoto — compact 36×36 thumbnail with ImageOff fallback ───────────────
 
 export function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+  const [imgError, setImgError] = useState(false);
   const base: React.CSSProperties = {
     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
     background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center",
   };
-  if (!imageUrl) {
+  if (!imageUrl || imgError) {
     return (
       <div style={base}>
         <ImageOff style={{ width: 15, height: 15, color: F.textDim }} />
@@ -43,11 +44,7 @@ export function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: 
         src={imageUrl}
         alt={name}
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        onError={e => {
-          e.currentTarget.style.display = "none";
-          (e.currentTarget.parentElement as HTMLElement).innerHTML =
-            `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${F.textDim}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M10.41 10.41a2 2 0 1 0 3.18 3.18"/><path d="M21 15V6a2 2 0 0 0-2-2H9"/><path d="M3 3H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h17"/></svg>`;
-        }}
+        onError={() => setImgError(true)}
       />
     </div>
   );

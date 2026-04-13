@@ -1274,15 +1274,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
   app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
-    const ALLOWED = ["categories", "locations", "suppliers", "projects", "items", "inventory_movements", "inventory_location_balances", "item_groups", "users"];
+    const EXPORT_QUERIES: Record<string, string> = {
+      categories:                  "SELECT * FROM categories LIMIT 50000",
+      locations:                   "SELECT * FROM locations LIMIT 50000",
+      suppliers:                   "SELECT * FROM suppliers LIMIT 50000",
+      projects:                    "SELECT * FROM projects LIMIT 50000",
+      items:                       "SELECT * FROM items LIMIT 50000",
+      inventory_movements:         "SELECT * FROM inventory_movements LIMIT 50000",
+      inventory_location_balances: "SELECT * FROM inventory_location_balances LIMIT 50000",
+      item_groups:                 "SELECT * FROM item_groups LIMIT 50000",
+      users:                       "SELECT * FROM users LIMIT 50000",
+    };
     const table = req.params.table;
-    if (!ALLOWED.includes(table)) {
+    const exportQuery = EXPORT_QUERIES[table];
+    if (!exportQuery) {
       return res.status(400).json({ message: "Unknown table" });
     }
     try {
       const { db } = await import("./db");
       const { sql } = await import("drizzle-orm");
-      const result = await db.execute(sql.raw(`SELECT * FROM ${table} LIMIT 50000`));
+      const result = await db.execute(sql.raw(exportQuery));
       const rows: any[] = (result as any).rows ?? [];
       if (rows.length === 0) {
         res.setHeader("Content-Type", "text/csv");

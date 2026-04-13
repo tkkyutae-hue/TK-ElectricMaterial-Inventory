@@ -828,7 +828,7 @@ function CatGridCardImage({ imageUrl, name, gradient }: { imageUrl?: string | nu
   return (
     <>
       <img src={imageUrl} aria-hidden className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none" onError={() => setBroken(true)} />
-      <img src={imageUrl} alt={name} className="absolute inset-0 w-full h-full object-contain object-center z-10" />
+      <img src={imageUrl} alt={name} className="absolute inset-0 w-full h-full object-cover object-center z-10" />
     </>
   );
 }

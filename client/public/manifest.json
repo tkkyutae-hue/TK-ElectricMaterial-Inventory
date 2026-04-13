@@ -1,6 +1,6 @@
 {
-  "name": "VoltStock — TK Electric",
-  "short_name": "VoltStock",
+  "name": "TK자재관리",
+  "short_name": "TK자재관리",
   "description": "TK Electric inventory management",
   "start_url": "/",
   "scope": "/",

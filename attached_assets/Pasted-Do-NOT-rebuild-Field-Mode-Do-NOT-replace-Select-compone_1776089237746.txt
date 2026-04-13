@@ -1,0 +1,70 @@
+Do NOT rebuild Field Mode.
+Do NOT replace Select components.
+Do NOT touch inventory logic, routing, or page structure.
+Do NOT edit Field page/component files for this task.
+
+TASK GOAL
+Fix a likely dev-only runtime overlay issue in Replit preview that appears when opening dropdowns/selects in Field Mode.
+
+CRITICAL CONTEXT
+The app is not showing a useful React component stack.
+The runtime overlay appears across multiple Field pages whenever Radix Select-style dropdowns open.
+This strongly suggests a benign dev-only overlay issue, likely caused by ResizeObserver warnings being captured by the Replit runtime error overlay plugin.
+
+Likely source:
+- @replit/vite-plugin-runtime-error-modal in vite.config.ts
+- Radix Select / dropdown positioning triggers ResizeObserver warnings
+- Replit dev overlay shows them as unknown runtime errors
+
+FILES TO FOCUS ON
+- vite.config.ts
+- client/src/main.tsx only if fallback is needed
+
+PART 1 — TRY PLUGIN-LEVEL FILTER FIRST
+In vite.config.ts, inspect the use of:
+  @replit/vite-plugin-runtime-error-modal
+
+If the plugin supports a filter option, replace:
+  runtimeErrorOverlay()
+
+with a filtered version like:
+  runtimeErrorOverlay({
+    filter: (e) => !e?.message?.includes("ResizeObserver")
+  })
+
+Goal:
+- keep real runtime errors visible
+- suppress only benign ResizeObserver noise in dev overlay
+
+PART 2 — FALL BACK TO WINDOW-LEVEL SUPPRESSION ONLY IF NEEDED
+If the plugin does NOT support filtering, add a narrow suppression in client/src/main.tsx before createRoot:
+
+- suppress only ResizeObserver-related benign errors
+- do NOT mute all errors
+- do NOT disable the overlay entirely
+
+Use a pattern like:
+  const _onerror = window.onerror;
+  window.onerror = (msg, ...args) => {
+    if (typeof msg === "string" && msg.includes("ResizeObserver")) return true;
+    return _onerror?.apply(window, [msg, ...args]) ?? false;
+  };
+
+  window.addEventListener("error", (e) => {
+    if (e.message?.includes("ResizeObserver")) e.stopImmediatePropagation();
+  }, true);
+
+PART 3 — DO NOT OVERFIX
+- Do NOT disable all overlays globally
+- Do NOT rewrite Field pages
+- Do NOT replace Radix Select
+- Do NOT touch business logic
+- Do NOT touch routing
+- Only fix the benign dev overlay issue
+
+OUTPUT
+1. What the actual source of the overlay was
+2. Whether vite plugin filtering was possible
+3. Which approach was used (Option A or Option B)
+4. Files modified
+5. Confirmation that real runtime errors are still visible

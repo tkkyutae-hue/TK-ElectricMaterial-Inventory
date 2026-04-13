@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { categories, locations } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { count } from "drizzle-orm";
 
 function seedLog(msg: string) {
   const t = new Date().toLocaleTimeString("en-US", { hour12: true, hour: "numeric", minute: "2-digit", second: "2-digit" });
@@ -27,16 +27,10 @@ const DEFAULT_LOCATIONS = [
   { name: "Job Trailer B",  code: "JTB", locationType: "trailer"   },
 ];
 
-async function countRows(table: string): Promise<number> {
-  const result = await db.execute(sql.raw(`SELECT COUNT(*)::int AS cnt FROM ${table}`));
-  const row = (result as any).rows?.[0] ?? (Array.isArray(result) ? result[0] : result);
-  return Number(row?.cnt ?? row?.count ?? 0);
-}
-
 export async function runSeed() {
   seedLog("checking seed requirements…");
 
-  const catCount = await countRows("categories");
+  const [{ cnt: catCount }] = await db.select({ cnt: count() }).from(categories);
   if (catCount === 0) {
     seedLog(`categories empty — inserting ${DEFAULT_CATEGORIES.length} defaults`);
     await db.insert(categories).values(DEFAULT_CATEGORIES.map(c => ({ ...c, isActive: true }))).onConflictDoNothing();
@@ -45,7 +39,7 @@ export async function runSeed() {
     seedLog(`categories already seeded (${catCount} rows) — skipping`);
   }
 
-  const locCount = await countRows("locations");
+  const [{ cnt: locCount }] = await db.select({ cnt: count() }).from(locations);
   if (locCount === 0) {
     seedLog(`locations empty — inserting ${DEFAULT_LOCATIONS.length} defaults`);
     await db.insert(locations).values(DEFAULT_LOCATIONS.map(l => ({ ...l, isActive: true }))).onConflictDoNothing();

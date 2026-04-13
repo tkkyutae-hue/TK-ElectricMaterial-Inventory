@@ -113,11 +113,14 @@ export function registerAuthRoutes(app: Express): void {
 
     try {
       const existing = await authStorage.findUserByEmail(seedEmail.toLowerCase());
+      const passwordHash = await bcrypt.hash(seedPassword, 12);
+
       if (existing) {
-        return res.status(409).json({ message: "Initial admin already exists — no changes made" });
+        await authStorage.updateUser(existing.id, { role: "admin", status: "active" });
+        console.log("[seed] Existing admin promoted to active admin");
+        return res.json({ ok: true, message: "Existing user updated to admin/active" });
       }
 
-      const passwordHash = await bcrypt.hash(seedPassword, 12);
       await authStorage.upsertUser({
         email: seedEmail.toLowerCase(),
         passwordHash,

@@ -187,11 +187,18 @@ export default function FieldHome() {
           </p>
           <h1 style={{
             fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 48, lineHeight: 1.05, margin: "0 0 8px",
+            fontSize: "clamp(32px, 7vw, 48px)",
+            lineHeight: 1.05, margin: "0 0 8px",
             color: "#e2f0e5", letterSpacing: 1,
-            whiteSpace: "pre-line",
           }}>
-            {t.whatToDo}
+            {t.whatToDo.split("\n").map((line, i) => (
+              <span key={i} style={{
+                display: "block",
+                wordBreak: "keep-all",
+                overflowWrap: "normal",
+                lineBreak: "strict",
+              }}>{line}</span>
+            ))}
           </h1>
           <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
             {t.selectAction}

@@ -1,0 +1,112 @@
+Do NOT rebuild the page.
+Do NOT change routing, translations data structure, or business logic.
+Make only a targeted UI cleanup for:
+1. the Korean hero headline wrapping
+2. the language switcher button appearance
+
+FILES TO FOCUS ON
+- the mode select / landing page component that renders the large greeting headline
+- the component that renders the language switcher in the top-right area
+- any tiny shared style/helper file only if needed
+
+TASK GOAL
+Fix awkward Korean text wrapping in the hero headline and clean up the language switcher so it looks intentional, readable, and production-ready.
+
+==================================================
+PART 1 — FIX KOREAN HERO HEADLINE WRAPPING
+==================================================
+
+Current issue:
+When the hero text is translated to Korean, it wraps awkwardly at the syllable level and breaks the visual hierarchy.
+
+Required changes:
+1. Treat the Korean greeting line and the user name line as separate blocks.
+   Example structure:
+   - line 1: Korean greeting sentence
+   - line 2: highlighted user name
+
+2. Apply Korean-friendly text wrapping rules:
+   - word-break: keep-all
+   - overflow-wrap: normal
+   - line-break: strict
+   - text-wrap: balance (where supported)
+
+3. Use a responsive font size with clamp() so the headline scales better on narrower widths.
+
+4. Keep the existing visual identity:
+   - bold oversized Korean greeting
+   - highlighted green name line
+   - strong field-mode hero feel
+
+Requirements:
+- Do NOT reduce the headline to a generic small title
+- Keep the current dramatic hero impact
+- Preserve the existing color hierarchy
+
+==================================================
+PART 2 — CLEAN UP THE LANGUAGE SWITCHER
+==================================================
+
+Current issue:
+The language switcher looks broken / duplicated / debug-like (for example showing KR KR KO too tightly together).
+
+Required changes:
+1. Normalize the language options so they render clearly and only once each.
+2. Remove duplicated or redundant language labels.
+3. Make the control visually read like a real segmented language switcher, not a debug cluster.
+
+Preferred UI behavior:
+- Show only the actual supported languages
+- Use a clean segmented-pill style
+- Clearly distinguish active vs inactive language
+- Keep the control compact but readable
+
+Recommended display format:
+- KR | EN
+or
+- 한국어 | English
+
+Requirements:
+- Active language should have a stronger filled/emphasized style
+- Inactive language should be muted but readable
+- Add enough horizontal padding so labels are not cramped
+- Add consistent spacing between segments
+- Maintain the existing field-mode dark styling language
+
+If the current implementation is mapping language codes incorrectly:
+- fix the display mapping only
+- do NOT redesign the translation system
+
+==================================================
+PART 3 — VISUAL POLISH
+==================================================
+
+For the language switcher:
+- slightly increase internal horizontal padding
+- improve border contrast
+- make hover/focus/active states clearer
+- ensure the button height matches nearby top-bar controls visually
+
+For the hero:
+- ensure the Korean line and highlighted name line align cleanly
+- keep the subtitle spacing balanced under the hero text
+
+==================================================
+PART 4 — CONSTRAINTS
+==================================================
+
+1. Do NOT touch unrelated pages
+2. Do NOT change app logic
+3. Do NOT change translation keys unless absolutely necessary to fix duplicate display labels
+4. Keep the work small and UI-focused
+5. Preserve the current field-mode visual identity
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of headline wrapping fixes
+2. Summary of language switcher cleanup
+3. Files modified
+4. Notes on what was intentionally left unchanged

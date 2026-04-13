@@ -294,12 +294,22 @@ export default function Home() {
             </p>
             <h1 style={{
               fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 58, lineHeight: 1.02, margin: "0 0 10px",
+              fontSize: "clamp(36px, 8vw, 58px)",
+              lineHeight: 1.05, margin: "0 0 10px",
               color: "#e2f0e5",
               letterSpacing: 1,
             }}>
-              {greeting.toUpperCase()}<br />
-              <span style={{ color: "#2ddb6f" }}>{firstName}.</span>
+              <span style={{
+                display: "block",
+                wordBreak: "keep-all",
+                overflowWrap: "normal",
+                lineBreak: "strict",
+              }}>
+                {greeting.toUpperCase()}
+              </span>
+              <span style={{ color: "#2ddb6f", display: "block" }}>
+                {firstName}.
+              </span>
             </h1>
             <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
               {t.selectMode}

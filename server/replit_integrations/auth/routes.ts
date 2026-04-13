@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+import { pool } from "../../db";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -136,4 +137,54 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ─── Bulk Import (one-time data migration, protected by ADMIN_SEED_TOKEN) ────
+  const ALLOWED_IMPORT_TABLES = [
+    "categories", "locations", "suppliers", "items",
+    "projects", "inventory_movements", "inventory_location_balances",
+  ];
+
+  app.post("/api/admin/bulk-import", async (req: any, res) => {
+    const token = req.headers["x-seed-token"] ?? req.body?.token;
+    if (!token || token !== process.env.ADMIN_SEED_TOKEN) {
+      return res.status(401).json({ message: "Invalid or missing x-seed-token" });
+    }
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED_IN_PROD !== "true") {
+      return res.status(403).json({ message: "Import disabled in production." });
+    }
+
+    const { table, rows, truncate } = req.body ?? {};
+    if (!table || !ALLOWED_IMPORT_TABLES.includes(table)) {
+      return res.status(400).json({ message: "Invalid or missing table name" });
+    }
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ message: "rows must be a non-empty array" });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      if (truncate) {
+        await client.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
+      }
+      const cols = Object.keys(rows[0]);
+      const colList = cols.map(c => `"${c}"`).join(", ");
+      let inserted = 0;
+      for (const row of rows) {
+        const vals = cols.map(c => row[c] === undefined ? null : row[c]);
+        const placeholders = vals.map((_, i) => `$${i + 1}`).join(", ");
+        await client.query(
+          `INSERT INTO "${table}" (${colList}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+          vals
+        );
+        inserted++;
+      }
+      await client.query("COMMIT");
+      res.json({ ok: true, table, inserted });
+    } catch (err: any) {
+      await client.query("ROLLBACK");
+      res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
+    }
+  });
 }

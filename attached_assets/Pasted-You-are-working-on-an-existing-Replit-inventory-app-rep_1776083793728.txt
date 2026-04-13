@@ -1,0 +1,115 @@
+You are working on an existing Replit inventory app repository.
+
+IMPORTANT RULES
+1. Do NOT rebuild auth or security architecture.
+2. Do NOT change inventory logic, business logic, or UI behavior unrelated to these two security cleanup tasks.
+3. Do NOT modify historical movement data or inventory quantities.
+4. Keep changes minimal, compatibility-safe, and production-focused.
+5. This task is ONLY for final hardening of the admin seed route and the health endpoint.
+
+TASK GOAL
+Finish two small security hardening tasks:
+1. further lock down the admin seed/bootstrap route
+2. reduce unnecessary information exposure from the health endpoint
+
+FILES TO FOCUS ON
+Inspect the repo first and focus on the real files involved, likely including:
+- server/replit_integrations/auth/routes.ts
+- server/routes.ts
+- any file where /api/health is implemented
+- any config/bootstrap/auth helper file actually used by these routes
+
+Do NOT do broad unrelated refactors.
+
+==================================================
+PART 1 — HARDEN THE ADMIN SEED ROUTE FURTHER
+==================================================
+
+Current direction is already improved, but finish the hardening.
+
+Tasks:
+1. Find the current admin seed/bootstrap route implementation.
+2. Remove any remaining hardcoded bootstrap identity values from source code if present, such as:
+   - hardcoded admin email
+   - hardcoded admin display name
+3. Move those values to environment variables if they are still required.
+4. If the route currently remains accessible in production, make it stricter:
+   - disabled by default in production unless an explicit env flag enables it
+   - and/or require a secure env-provided bootstrap token
+5. Keep local/dev bootstrap workable only if clearly env-gated.
+
+Requirements:
+- No hardcoded real admin identity values in source code
+- No casually usable seed route in production
+- Keep implementation minimal and practical
+- Do NOT invent a whole new onboarding system
+
+Preferred environment variables if needed (adapt to repo naming style if necessary):
+- ADMIN_SEED_EMAIL
+- ADMIN_SEED_NAME
+- ADMIN_SEED_PASSWORD
+- ADMIN_SEED_ENABLED
+- ADMIN_SEED_TOKEN
+
+If some already exist, reuse them instead of inventing duplicates.
+
+Important:
+- If production-safe disabling is already present, keep it and only remove remaining hardcoded identity values
+- Preserve existing dev bootstrap flow as much as possible
+
+==================================================
+PART 2 — MINIMIZE HEALTH ENDPOINT EXPOSURE
+==================================================
+
+Find the current /api/health implementation.
+
+Tasks:
+1. Reduce the response to the minimum useful operational health information.
+2. Remove unnecessary environment/internal detail exposure such as:
+   - dbName
+   - env
+   - any internal configuration detail
+3. Keep the endpoint useful for basic health checks.
+
+Preferred response shape:
+{
+  "ok": true
+}
+
+If a lightweight DB connectivity signal is already needed and easy to preserve safely, something like this is acceptable:
+{
+  "ok": true,
+  "database": "ok"
+}
+
+Requirements:
+- Do NOT expose database name
+- Do NOT expose environment name
+- Do NOT expose internal config values
+- Keep the route simple and stable
+
+Optional:
+- If the health endpoint is only meant for internal/admin use and the repo already has a clear safe auth pattern for that, you may restrict it appropriately
+- But do NOT overcomplicate this task
+
+==================================================
+PART 3 — KEEP CHANGES SMALL
+==================================================
+
+Requirements:
+1. Do NOT touch unrelated auth flows
+2. Do NOT change login/signup behavior
+3. Do NOT refactor unrelated routes
+4. If new env vars are required, document them clearly
+5. Keep this as a final cleanup pass, not a redesign
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of seed route hardening
+2. Summary of health endpoint cleanup
+3. Files modified
+4. Any new environment variables required
+5. What was intentionally left unchanged for compatibility

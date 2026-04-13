@@ -93,11 +93,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { pool } = await import("./db");
       const client = await pool.connect();
       client.release();
-      const dbUrl = process.env.DATABASE_URL ?? "";
-      const dbName = dbUrl.split("/").pop()?.split("?")[0] ?? "unknown";
-      res.json({ ok: true, db: "ok", dbName, env: process.env.NODE_ENV ?? "development", ts: new Date().toISOString() });
-    } catch (err: any) {
-      res.status(503).json({ ok: false, db: "error", error: err.message });
+      res.json({ ok: true, database: "ok" });
+    } catch {
+      res.status(503).json({ ok: false, database: "error" });
     }
   });
 

@@ -102,24 +102,32 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(500).json({ message: "ADMIN_SEED_PASSWORD env var is not set on this server" });
     }
 
+    const seedEmail = process.env.ADMIN_SEED_EMAIL;
+    const seedName  = process.env.ADMIN_SEED_NAME;
+    if (!seedEmail) {
+      return res.status(500).json({ message: "ADMIN_SEED_EMAIL env var is not set on this server" });
+    }
+    if (!seedName) {
+      return res.status(500).json({ message: "ADMIN_SEED_NAME env var is not set on this server" });
+    }
+
     try {
-      const ADMIN_EMAIL = "michael_kim@tkelectricllc.us";
-      const existing = await authStorage.findUserByEmail(ADMIN_EMAIL);
+      const existing = await authStorage.findUserByEmail(seedEmail.toLowerCase());
       if (existing) {
-        return res.status(409).json({ message: "Initial admin already exists — no changes made", email: existing.email });
+        return res.status(409).json({ message: "Initial admin already exists — no changes made" });
       }
 
       const passwordHash = await bcrypt.hash(seedPassword, 12);
       await authStorage.upsertUser({
-        email: ADMIN_EMAIL,
+        email: seedEmail.toLowerCase(),
         passwordHash,
-        name: "Michael Kim",
+        name: seedName,
         role: "admin",
         status: "active",
       });
 
-      console.log("[seed] Initial admin seeded:", ADMIN_EMAIL);
-      res.json({ ok: true, message: "Initial admin seeded", email: ADMIN_EMAIL });
+      console.log("[seed] Initial admin seeded");
+      res.json({ ok: true, message: "Initial admin seeded" });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

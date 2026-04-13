@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowLeft, HardHat, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { F } from "@/lib/fieldTokens";
 
 function useClock() {
@@ -20,6 +21,7 @@ export function FieldHeader() {
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
+  const isMobile = useIsMobile();
 
   const dateStr      = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const dateStrShort = now.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -74,8 +76,7 @@ export function FieldHeader() {
           letterSpacing: 0.5,
           display: "flex", gap: 4, alignItems: "center",
         }}>
-          <span className="sm:hidden">{dateStrShort}</span>
-          <span className="hidden sm:inline">{dateStr}</span>
+          <span>{isMobile ? dateStrShort : dateStr}</span>
           <span style={{ opacity: 0.5 }}>·</span>
           <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
         </div>

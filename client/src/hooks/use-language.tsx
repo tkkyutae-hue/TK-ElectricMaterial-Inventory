@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import { Lang, LANGUAGES, TRANSLATIONS, Translations } from "@/lib/i18n";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const LS_KEY = "voltstock_lang";
 
@@ -48,6 +49,7 @@ interface SwitcherProps {
 
 export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherProps) {
   const { lang, setLang } = useLanguage();
+  const isMobile = useIsMobile();
   const isDark = theme === "dark";
 
   const trackBg     = isDark ? "#162019" : "#f1f5f9";
@@ -107,8 +109,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
               if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = inactiveColor;
             }}
           >
-            <span className="sm:hidden">{l.country}</span>
-            <span className="hidden sm:inline">{l.code.toUpperCase()}</span>
+            {isMobile ? l.country : l.code.toUpperCase()}
           </button>
         );
       })}

@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
-import { pool } from "../../db";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -137,36 +136,5 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  // ── Temporary bulk-import endpoint for workers ──────────────────────────
-  app.post("/api/admin/bulk-import-workers", async (req, res) => {
-    if (process.env.ALLOW_SEED_IN_PROD !== "true") {
-      return res.status(403).json({ message: "Not allowed" });
-    }
-    const token = req.headers["x-seed-token"];
-    if (token !== process.env.ADMIN_SEED_TOKEN) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    const rows: any[] = req.body.rows;
-    if (!rows || !rows.length) return res.status(400).json({ message: "No rows" });
-    let inserted = 0;
-    for (const r of rows) {
-      await pool.query(
-        `INSERT INTO workers (id, full_name, trade, is_active, notes, created_at, updated_at, photo_url, skill, control, attitude, special_ability, skill_board, gender, nationality, worker_state, date_of_tk, project)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-         ON CONFLICT (id) DO UPDATE SET
-           full_name=EXCLUDED.full_name, trade=EXCLUDED.trade, is_active=EXCLUDED.is_active,
-           notes=EXCLUDED.notes, updated_at=EXCLUDED.updated_at, photo_url=EXCLUDED.photo_url,
-           skill=EXCLUDED.skill, control=EXCLUDED.control, attitude=EXCLUDED.attitude,
-           special_ability=EXCLUDED.special_ability, skill_board=EXCLUDED.skill_board,
-           gender=EXCLUDED.gender, nationality=EXCLUDED.nationality, worker_state=EXCLUDED.worker_state,
-           date_of_tk=EXCLUDED.date_of_tk, project=EXCLUDED.project`,
-        [r.id, r.full_name, r.trade, r.is_active, r.notes, r.created_at, r.updated_at,
-         r.photo_url, r.skill, r.control, r.attitude, r.special_ability, r.skill_board,
-         r.gender, r.nationality, r.worker_state, r.date_of_tk, r.project]
-      );
-      inserted++;
-    }
-    res.json({ ok: true, inserted });
-  });
 
 }

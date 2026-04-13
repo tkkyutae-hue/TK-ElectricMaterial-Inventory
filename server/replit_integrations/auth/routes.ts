@@ -140,7 +140,7 @@ export function registerAuthRoutes(app: Express): void {
   // ─── Bulk Import (one-time data migration, protected by ADMIN_SEED_TOKEN) ────
   const ALLOWED_IMPORT_TABLES = [
     "categories", "locations", "suppliers", "items",
-    "projects", "inventory_movements", "inventory_location_balances",
+    "projects", "inventory_movements", "inventory_location_balances", "users",
   ];
 
   app.post("/api/admin/bulk-import", async (req: any, res) => {

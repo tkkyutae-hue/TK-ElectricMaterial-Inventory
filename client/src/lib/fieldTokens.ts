@@ -10,19 +10,19 @@
 
 export const F = {
   // ── Surfaces ──────────────────────────────────────────────────────────────
-  bg:           "#0d1410",                 // page bg, drawer bg, sticky panel bg
-  surface:      "var(--field-surface)",    // inputs, row hover, inactive pills, secondary buttons
-  surface2:     "var(--field-surface-2)",  // card/panel inset, photo cells, reel rows, table rows
+  bg:           "#0d1410",  // page bg, drawer bg, sticky panel bg
+  surface:      "#1c2b1f",  // inputs, row hover, inactive pills, secondary buttons
+  surface2:     "#162019",  // card/panel inset, photo cells, reel rows, table rows
 
   // ── Borders ───────────────────────────────────────────────────────────────
-  border:       "var(--field-border)",        // subtle dividers, row separators
-  borderStrong: "var(--field-border-strong)", // card edges, input borders, section separators
+  border:       "#1e2e21",  // subtle dividers, row separators
+  borderStrong: "#2a4030",  // card edges, input borders, section separators
 
   // ── Text ──────────────────────────────────────────────────────────────────
-  text:         "#e2f0e5",                   // primary: headers, item names, values
-  textMuted:    "var(--field-text-muted)",   // secondary: SKUs, categories, metadata
-  textSub:      "#9abda2",                   // sub-primary: readable "from" location, size labels (between muted and primary)
-  textDim:      "var(--field-text-dim)",     // labels, placeholder icons, disabled / faint text
+  text:         "#e2f0e5",  // primary: headers, item names, values
+  textMuted:    "#7aab82",  // secondary: SKUs, categories, metadata
+  textSub:      "#9abda2",  // sub-primary: readable "from" location, size labels (between muted and primary)
+  textDim:      "#4a7052",  // labels, placeholder icons, disabled / faint text
 
   // ── Accent (green) ────────────────────────────────────────────────────────
   accent:       "#2ddb6f",  // CTA buttons, active pills, in-stock qty, checkbox fill

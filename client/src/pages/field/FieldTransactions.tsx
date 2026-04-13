@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
@@ -10,7 +10,7 @@ import FieldRequestsList from "./FieldRequestsList";
 import {
   Search, ClipboardList, ImageOff, CalendarDays,
   Trash2, X, AlertTriangle, FileText, Pencil,
-  ClipboardCheck,
+  ClipboardCheck, SlidersHorizontal,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -143,6 +143,20 @@ function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { icon?
   );
 }
 
+// ─── Narrow viewport hook ─────────────────────────────────────────────────────
+
+function useIsNarrow() {
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    function onResize() { setNarrow(window.innerWidth < 768); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return narrow;
+}
+
 // ─── TH style ─────────────────────────────────────────────────────────────────
 
 const TH: React.CSSProperties = {
@@ -188,6 +202,10 @@ export default function FieldTransactions() {
   const [pageSize,     setPageSize]     = useState(10);
   const [currentPage,  setCurrentPage]  = useState(1);
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
+
+  // ── Mobile filter collapse ──
+  const isMobile  = useIsNarrow();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const { data: movements, isLoading } = useMovements();
   const bulkDelete  = useBulkDeleteMovements();
@@ -321,6 +339,7 @@ export default function FieldTransactions() {
   const canDelete  = selCount >= 1;
   const selectedTx = selCount === 1 ? (filtered ?? []).find(m => selectedIds.has(m.id)) ?? null : null;
   const hasActiveFilters = typeFilter !== "all" || fromFilter !== "all" || toFilter !== "all" || projectFilter !== "all" || !!dateFrom || !!dateTo;
+  const secondaryFilterCount = [fromFilter !== "all", toFilter !== "all", projectFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
   const COLS_COUNT = 11;
 
@@ -397,110 +416,231 @@ export default function FieldTransactions() {
           {/* ── Filter Panel ── */}
           <div style={{ background: F.surface2, border: `1px solid ${F.borderStrong}`, borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 
-            {/* Row 1: Type quick-filter pills */}
+            {/* Row 1: Type quick-filter pills — always visible */}
             <div>
               <label style={LABEL_STYLE}>{t.colType}</label>
               <TypePillFilter value={typeFilter} onChange={v => { setTypeFilter(v); setCurrentPage(1); }} />
             </div>
 
-            {/* Row 2: Search + location + project selects */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr" }}>
-              {/* Search */}
-              <div>
-                <label style={LABEL_STYLE}>{t.txSearch}</label>
-                <FieldInput
-                  type="text"
-                  placeholder={t.txSearchPlaceholder}
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-                  data-testid="field-tx-search"
-                  icon={<Search style={{ width: 13, height: 13, color: F.textDim }} />}
-                  style={{ fontFamily: "'Barlow', sans-serif" }}
-                />
-              </div>
-
-              {/* From */}
-              <div>
-                <label style={LABEL_STYLE}>{t.txFrom}</label>
-                <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
-                    <SelectValue placeholder={t.allFilter} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.allFilter}</SelectItem>
-                    {fromOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* To */}
-              <div>
-                <label style={LABEL_STYLE}>{t.txTo}</label>
-                <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
-                    <SelectValue placeholder={t.allFilter} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.allFilter}</SelectItem>
-                    {toOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Project */}
-              <div>
-                <label style={LABEL_STYLE}>{t.txProject}</label>
-                <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
-                    <SelectValue placeholder={t.allFilter} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t.allFilter}</SelectItem>
-                    {projectOptions.map(([id, label]) => <SelectItem key={id} value={id}>{label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Row 3: Date range */}
-            <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr auto" }}>
-              <div>
-                <label style={LABEL_STYLE}>{t.txDateFrom}</label>
-                <FieldInput
-                  type="date"
-                  value={dateFrom}
-                  onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
-                  data-testid="field-tx-date-from"
-                  style={{ colorScheme: "dark" }}
-                  icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
-                />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>{t.txDateTo}</label>
-                <FieldInput
-                  type="date"
-                  value={dateTo}
-                  onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
-                  data-testid="field-tx-date-to"
-                  style={{ colorScheme: "dark" }}
-                  icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "flex-end" }}>
-                {hasActiveFilters && (
+            {isMobile ? (
+              /* ── Mobile layout ─────────────────────────────────── */
+              <>
+                {/* Search + More-filters button side by side */}
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={LABEL_STYLE}>{t.txSearch}</label>
+                    <FieldInput
+                      type="text"
+                      placeholder={t.txSearchPlaceholder}
+                      value={search}
+                      onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                      data-testid="field-tx-search"
+                      icon={<Search style={{ width: 13, height: 13, color: F.textDim }} />}
+                      style={{ fontFamily: "'Barlow', sans-serif" }}
+                    />
+                  </div>
                   <button
-                    onClick={() => {
-                      setSearch(""); setTypeFilter("all"); setFrom("all"); setTo("all");
-                      setProj("all"); setDateFrom(""); setDateTo(""); setCurrentPage(1);
+                    type="button"
+                    onClick={() => setMoreOpen(o => !o)}
+                    data-testid="field-tx-more-filters"
+                    style={{
+                      flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+                      padding: "8px 12px", borderRadius: 7, cursor: "pointer",
+                      fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif",
+                      letterSpacing: "0.06em",
+                      background: (moreOpen || secondaryFilterCount > 0) ? F.accentBg : F.surface,
+                      border: `1px solid ${(moreOpen || secondaryFilterCount > 0) ? F.accentBorder : F.borderStrong}`,
+                      color: (moreOpen || secondaryFilterCount > 0) ? F.accent : F.textMuted,
                     }}
-                    data-testid="field-tx-date-clear"
-                    style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
                   >
-                    <X style={{ width: 11, height: 11 }} /> Clear all
+                    <SlidersHorizontal style={{ width: 12, height: 12 }} />
+                    {secondaryFilterCount > 0 ? `Filters (${secondaryFilterCount})` : "Filters"}
                   </button>
+                </div>
+
+                {/* Collapsible secondary filters */}
+                {moreOpen && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4, borderTop: `1px solid ${F.border}` }}>
+                    {/* From + To */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={LABEL_STYLE}>{t.txFrom}</label>
+                        <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
+                          <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
+                            <SelectValue placeholder={t.allFilter} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{t.allFilter}</SelectItem>
+                            {fromOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label style={LABEL_STYLE}>{t.txTo}</label>
+                        <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
+                          <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
+                            <SelectValue placeholder={t.allFilter} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{t.allFilter}</SelectItem>
+                            {toOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {/* Project */}
+                    <div>
+                      <label style={LABEL_STYLE}>{t.txProject}</label>
+                      <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
+                        <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
+                          <SelectValue placeholder={t.allFilter} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t.allFilter}</SelectItem>
+                          {projectOptions.map(([id, label]) => <SelectItem key={id} value={id}>{label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Date range */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label style={LABEL_STYLE}>{t.txDateFrom}</label>
+                        <FieldInput
+                          type="date"
+                          value={dateFrom}
+                          onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                          data-testid="field-tx-date-from"
+                          style={{ colorScheme: "dark" }}
+                          icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
+                        />
+                      </div>
+                      <div>
+                        <label style={LABEL_STYLE}>{t.txDateTo}</label>
+                        <FieldInput
+                          type="date"
+                          value={dateTo}
+                          onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
+                          data-testid="field-tx-date-to"
+                          style={{ colorScheme: "dark" }}
+                          icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
+                        />
+                      </div>
+                    </div>
+                    {/* Clear all */}
+                    {hasActiveFilters && (
+                      <button
+                        onClick={() => {
+                          setSearch(""); setTypeFilter("all"); setFrom("all"); setTo("all");
+                          setProj("all"); setDateFrom(""); setDateTo(""); setCurrentPage(1);
+                        }}
+                        data-testid="field-tx-date-clear"
+                        style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, width: "fit-content" }}
+                      >
+                        <X style={{ width: 11, height: 11 }} /> Clear all
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
-            </div>
+              </>
+            ) : (
+              /* ── Desktop layout (unchanged) ───────────────────── */
+              <>
+                {/* Row 2: Search + location + project selects */}
+                <div className="grid gap-3" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr" }}>
+                  {/* Search */}
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txSearch}</label>
+                    <FieldInput
+                      type="text"
+                      placeholder={t.txSearchPlaceholder}
+                      value={search}
+                      onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                      data-testid="field-tx-search"
+                      icon={<Search style={{ width: 13, height: 13, color: F.textDim }} />}
+                      style={{ fontFamily: "'Barlow', sans-serif" }}
+                    />
+                  </div>
+                  {/* From */}
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txFrom}</label>
+                    <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
+                        <SelectValue placeholder={t.allFilter} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t.allFilter}</SelectItem>
+                        {fromOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* To */}
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txTo}</label>
+                    <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
+                        <SelectValue placeholder={t.allFilter} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t.allFilter}</SelectItem>
+                        {toOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Project */}
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txProject}</label>
+                    <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
+                        <SelectValue placeholder={t.allFilter} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t.allFilter}</SelectItem>
+                        {projectOptions.map(([id, label]) => <SelectItem key={id} value={id}>{label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {/* Row 3: Date range */}
+                <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr auto" }}>
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txDateFrom}</label>
+                    <FieldInput
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                      data-testid="field-tx-date-from"
+                      style={{ colorScheme: "dark" }}
+                      icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
+                    />
+                  </div>
+                  <div>
+                    <label style={LABEL_STYLE}>{t.txDateTo}</label>
+                    <FieldInput
+                      type="date"
+                      value={dateTo}
+                      onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
+                      data-testid="field-tx-date-to"
+                      style={{ colorScheme: "dark" }}
+                      icon={<CalendarDays style={{ width: 12, height: 12, color: F.textDim }} />}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end" }}>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={() => {
+                          setSearch(""); setTypeFilter("all"); setFrom("all"); setTo("all");
+                          setProj("all"); setDateFrom(""); setDateTo(""); setCurrentPage(1);
+                        }}
+                        data-testid="field-tx-date-clear"
+                        style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
+                      >
+                        <X style={{ width: 11, height: 11 }} /> Clear all
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Table ── */}

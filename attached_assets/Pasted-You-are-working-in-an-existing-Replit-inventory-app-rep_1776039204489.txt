@@ -1,0 +1,77 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Improve ONLY the mobile top filter area in Field Mode transactions/history.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/pages/field/FieldTransactions.tsx
+
+Only if these already exist and are clearly used by FieldTransactions:
+2. client/src/components/field/FieldTransactionsFilters.tsx
+3. client/src/components/field/FieldTransactionFilterSheet.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any request logic
+- any toast logic
+- any admin mode file
+
+==================================================
+GOAL
+==================================================
+
+In Field Mode transaction/history mobile view, reduce clutter in the top filter area.
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+On mobile:
+1. Keep transaction type filter and search as the primary visible controls
+2. Move secondary filters such as:
+   - from
+   - to
+   - project
+   - date range
+   into a collapsed "more filters" area or filter sheet
+3. Make the top section shorter so transaction cards/list start higher on the screen
+4. Preserve current filter logic and current filter values
+5. Keep desktop behavior mostly unchanged
+
+==================================================
+STRICT RULES
+==================================================
+
+- Do NOT redesign transaction cards in this task
+- Do NOT change transaction logic
+- Do NOT touch header
+- Do NOT touch inventory
+- Do NOT change backend
+- Do NOT change exports/download logic
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. Which filters remain visible by default on mobile
+3. Which filters moved into the collapsed/filter-more area
+4. Confirmation that no other files were modified

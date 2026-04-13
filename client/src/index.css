@@ -155,6 +155,18 @@ input[type="number"] {
 
 @media (max-width: 767px) {
   .hidden-mobile { display: none !important; }
+
+  /* ── Field Mode — mobile readability boost ──────────────────────────────
+     Slightly brighter border/surface/text-dim values for outdoor use.
+     Desktop :root values remain unchanged; these only activate on ≤767px.  */
+  :root {
+    --field-border:        #253a29;
+    --field-border-strong: #335240;
+    --field-text-muted:    #8fc498;
+    --field-text-dim:      #5d8a66;
+    --field-surface:       #1f3024;
+    --field-surface-2:     #192d1e;
+  }
 }
 
 /* Field filter pill-bar entry animation */

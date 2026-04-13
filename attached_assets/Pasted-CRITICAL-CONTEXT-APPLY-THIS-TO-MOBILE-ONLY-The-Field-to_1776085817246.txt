@@ -1,0 +1,65 @@
+CRITICAL CONTEXT — APPLY THIS TO MOBILE ONLY
+
+The Field token system already exists in:
+  client/src/lib/fieldTokens.ts
+
+However, this readability adjustment must apply ONLY to the mobile version of Field Mode.
+Desktop Field Mode should remain visually unchanged.
+
+TASK GOAL
+Improve outdoor/mobile readability in Field Mode only, without affecting desktop styling.
+
+IMPORTANT IMPLEMENTATION RULE
+Do NOT globally replace the base token values for all breakpoints.
+Instead, implement a mobile-only token override strategy.
+
+Preferred approach:
+1. Keep the existing default Field tokens unchanged for desktop.
+2. Add a mobile-specific token override layer that activates only on smaller screens.
+3. Reuse the same token names so existing Field components automatically benefit on mobile.
+
+SAFE IMPLEMENTATION OPTIONS
+Choose the smallest safe option for this repo:
+
+Option A — preferred if feasible:
+- Keep base values in fieldTokens.ts
+- Add a mobile token variant or helper used only when isMobile is true
+
+Option B:
+- Add CSS variable overrides under a mobile media query
+- Keep desktop values unchanged
+- Mobile values become slightly higher contrast
+
+Do NOT edit many component files unless absolutely necessary.
+Do NOT manually patch colors in many .tsx files.
+Keep the solution centralized.
+
+MOBILE-ONLY TARGET VALUES
+Apply these brighter values only on mobile:
+
+  border:       "#253a29"
+  borderStrong: "#335240"
+  textMuted:    "#8fc498"
+  textDim:      "#5d8a66"
+  surface:      "#1f3024"
+  surface2:     "#192d1e"
+
+Keep these unchanged everywhere:
+  bg:      "#0d1410"
+  text:    "#e2f0e5"
+  accent:  "#2ddb6f"
+  danger:  "#ff5050"
+  warning: "#f5a623"
+
+REQUIREMENTS
+- Mobile Field Mode should become easier to read outdoors
+- Desktop Field Mode should remain unchanged
+- Do NOT change layout, spacing, or typography
+- Do NOT redesign the app
+- Keep the work centralized and minimal
+
+OUTPUT
+1. Summary of the mobile-only readability change
+2. Files modified
+3. How mobile-only override was implemented
+4. Confirmation that desktop styling was left unchanged

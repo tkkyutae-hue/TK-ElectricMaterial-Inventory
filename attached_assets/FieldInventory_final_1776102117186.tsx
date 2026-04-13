@@ -822,6 +822,8 @@ function CatStripCardImage({ imageUrl, name, gradient }: { imageUrl?: string | n
   );
 }
 
+
+
 // ─── Mobile compact selected-category bar ────────────────────────────────────
 
 function MobileCatBar({

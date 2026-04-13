@@ -643,80 +643,51 @@ export default function FieldTransactions() {
             )}
           </div>
 
-          {/* ── Table ── */}
+          {/* ── Table / Card list ── */}
           <div style={{ border: `1px solid ${F.borderStrong}`, borderRadius: 12, overflow: "hidden" }}>
-            <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
-              <colgroup>
-                {/* #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note, Select */}
-                <col style={{ width: 36 }} />
-                <col style={{ width: 82 }} />
-                <col style={{ width: 42 }} />
-                <col />
-                <col style={{ width: 56 }} />
-                <col style={{ width: 62 }} />
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "11%" }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 70 }} />
-                <col style={{ width: 68 }} />
-              </colgroup>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${F.borderStrong}` }}>
-                  <th style={{ ...TH, textAlign: "center" }}>#</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
-                  <th style={TH}>{t.colPhoto}</th>
-                  <th style={TH}>{t.colItem}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colSize}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colQtyUnit}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colFromTo}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
-                  <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
-                  <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: selectionMode ? F.surface : F.surface2 }}>
-                    {selectionMode ? (
-                      <div
-                        role="checkbox"
-                        aria-checked={allSelected}
-                        onClick={toggleAll}
-                        data-testid="field-checkbox-select-all-right"
-                        title="Select all"
-                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
-                      >
-                        {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                        data-testid="btn-selection-mode-toggle"
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.16)"; el.style.borderColor = "rgba(45,219,111,0.55)"; el.style.color = F.accent; }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = F.accentBg; el.style.borderColor = F.accentBorder; el.style.color = F.textMuted; }}
-                        style={{ display: "block", width: "100%", padding: "6px 0", background: F.accentBg, border: `1px solid ${F.accentBorder}`, borderRadius: 6, color: F.textMuted, fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1, textAlign: "center" }}
-                      >
-                        {t.selectBtn}
-                      </button>
-                    )}
-                  </th>
-                </tr>
-              </thead>
 
-              <tbody>
+            {isMobile ? (
+              /* ── Mobile: compact scannable card list ── */
+              <>
+                {/* Selection-mode header bar */}
+                {selectionMode && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, background: F.surface }}>
+                    <div
+                      role="checkbox"
+                      aria-checked={allSelected}
+                      onClick={toggleAll}
+                      data-testid="field-checkbox-select-all-right"
+                      title="Select all"
+                      style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                    >
+                      {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif", flex: 1 }}>
+                      {selCount > 0 ? `${selCount} ${t.selected}` : "Select all"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+                      style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}
+                    >
+                      {t.cancel}
+                    </button>
+                  </div>
+                )}
+
+                {/* Card list body */}
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.loading}</td>
-                  </tr>
+                  <div style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.loading}</div>
                 ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.noTransactions}</td>
-                  </tr>
+                  <div style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.noTransactions}</div>
                 ) : paginated.map((m, idx) => {
-                  const mx        = m as any;
-                  const item      = mx.item;
-                  const fromLoc   = mx.sourceLocation;
-                  const toLoc     = mx.destinationLocation;
-                  const project   = mx.project;
+                  const mx = m as any;
+                  const item = mx.item;
+                  const fromLoc = mx.sourceLocation;
+                  const toLoc = mx.destinationLocation;
+                  const project = mx.project;
                   const isSelected = selectedIds.has(m.id);
-                  const isEdited   = !!(mx.editedAt);
+                  const isEdited = !!(mx.editedAt);
                   const editHistory: any[] = Array.isArray(mx.editHistory) ? mx.editHistory : [];
                   const lastEdit = editHistory[editHistory.length - 1];
                   const editLabel = lastEdit
@@ -724,142 +695,330 @@ export default function FieldTransactions() {
                     : "edited";
 
                   return (
-                    <tr
+                    <div
                       key={m.id}
                       data-testid={`field-tx-row-${m.id}`}
+                      onClick={() => { if (selectionMode) toggleRow(m.id); }}
                       style={{
-                        background: isSelected ? F.accentBg : F.surface2,
+                        padding: "10px 14px",
+                        background: isSelected ? F.accentBg : idx % 2 === 0 ? F.surface2 : F.bg,
                         borderBottom: `1px solid ${F.border}`,
                         borderLeft: isSelected ? `3px solid ${F.accent}` : "3px solid transparent",
+                        cursor: selectionMode ? "pointer" : "default",
                         transition: "background 0.1s",
                       }}
-                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface; }}
-                      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface2; }}
                     >
-                      {/* # */}
-                      <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: F.textMuted, textAlign: "center" }}>
-                        {(safePage - 1) * pageSize + idx + 1}
-                      </td>
+                      {/* Row 1: type badge + compact date + select checkbox */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <FieldMovementBadge type={m.movementType} past />
+                          {isEdited && (
+                            <span
+                              title={editLabel}
+                              data-testid={`field-edited-tag-${m.id}`}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}
+                            >
+                              ✎ EDITED
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {m.createdAt && (
+                            <span style={{ fontSize: 10, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                              {format(new Date(m.createdAt), "MMM d")} · {format(new Date(m.createdAt), "HH:mm")}
+                            </span>
+                          )}
+                          {selectionMode && (
+                            <div
+                              role="checkbox"
+                              aria-checked={isSelected}
+                              data-testid={`field-checkbox-sel-${m.id}`}
+                              style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* Type */}
-                      <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                        <FieldMovementBadge type={m.movementType} past />
-                      </td>
-
-                      {/* Photo */}
-                      <td style={{ padding: "8px 2px", textAlign: "center" }}>
+                      {/* Row 2: photo + item name + qty/unit */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
-                      </td>
-
-                      {/* Item name + subcategory (highest priority) */}
-                      <td style={{ padding: "12px 8px" }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: F.text, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item?.name ?? `#${m.itemId}`}
-                        </p>
-                        {item?.extractedSubcategory && (
-                          <p style={{ fontSize: 10, color: F.textMuted, lineHeight: 1.3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {item.extractedSubcategory}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 }}>
+                            {item?.name ?? `#${m.itemId}`}
                           </p>
-                        )}
-                      </td>
-
-                      {/* Size */}
-                      <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
-                        {item?.sizeLabel || <span style={{ color: F.textDim }}>—</span>}
-                      </td>
-
-                      {/* Qty + Unit (large, high-contrast) */}
-                      <td style={{ padding: "12px 8px", whiteSpace: "nowrap", textAlign: "center" }}>
-                        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 18, color: qtyColor(m.movementType), letterSpacing: "-0.01em" }}>
-                          {m.quantity}
-                        </span>
-                        {item?.unitOfMeasure && (
-                          <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase", display: "block", marginTop: 1 }}>
-                            {item.unitOfMeasure}
+                          {item?.sizeLabel && (
+                            <p style={{ fontSize: 10, color: F.textMuted, margin: "2px 0 0" }}>{item.sizeLabel}</p>
+                          )}
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 22, color: qtyColor(m.movementType), letterSpacing: "-0.01em", lineHeight: 1 }}>
+                            {m.quantity}
                           </span>
-                        )}
-                      </td>
+                          {item?.unitOfMeasure && (
+                            <span style={{ display: "block", fontSize: 9, color: F.textMuted, textTransform: "uppercase", marginTop: 1 }}>
+                              {item.unitOfMeasure}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* From → To (location) */}
-                      <td style={{ padding: "12px 8px", textAlign: "center" }}>
-                        <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <span style={{ color: F.textSub, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                            {fromLoc?.name ?? <span style={{ color: F.textDim }}>—</span>}
+                      {/* Row 3: from → to */}
+                      {(fromLoc || toLoc) && (
+                        <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                          <span style={{ color: F.textSub, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "42%" }}>
+                            {fromLoc?.name ?? "—"}
                           </span>
-                          <span style={{ color: F.textMuted, fontSize: 9 }}>↓</span>
-                          <span style={{ color: F.text, fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                          <span style={{ color: F.textDim, flexShrink: 0 }}>→</span>
+                          <span style={{ color: F.text, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "42%" }}>
                             {toLoc?.name ?? "—"}
                           </span>
                         </div>
-                      </td>
+                      )}
 
-                      {/* Project / PO */}
-                      <td style={{ padding: "12px 8px", textAlign: "center" }}>
-                        {project?.name || project?.poNumber ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
-                            {project?.name && (
-                              <span style={{ fontSize: 11, fontWeight: 600, color: F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
-                                {project.name}
-                              </span>
-                            )}
-                            {project?.poNumber && (
-                              <span style={{ fontSize: 9, color: F.textMuted }}>{project.poNumber}</span>
-                            )}
-                          </div>
-                        ) : <span style={{ color: F.textDim, fontSize: 12 }}>—</span>}
-                      </td>
-
-                      {/* Date (secondary — moved after primary info) */}
-                      <td style={{ padding: "12px 8px", textAlign: "center" }}>
-                        {m.createdAt ? (
-                          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 500, color: F.text }}>
-                              {format(new Date(m.createdAt), "MMM d, yyyy")}
+                      {/* Row 4: project (secondary, lighter) */}
+                      {(project?.name || project?.poNumber) && (
+                        <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                          {project.name && (
+                            <span style={{ fontSize: 10, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {project.name}
                             </span>
-                            <span style={{ fontSize: 10, color: F.textMuted }}>
-                              {format(new Date(m.createdAt), "HH:mm")}
-                            </span>
-                            {isEdited && (
-                              <span
-                                title={editLabel}
-                                data-testid={`field-edited-tag-${m.id}`}
-                                style={{ marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default" }}
-                              >
-                                ✎ EDITED
-                              </span>
-                            )}
-                          </div>
-                        ) : <span style={{ color: F.textDim }}>—</span>}
-                      </td>
+                          )}
+                          {project.poNumber && (
+                            <span style={{ fontSize: 10, color: F.textDim }}>· {project.poNumber}</span>
+                          )}
+                        </div>
+                      )}
 
-                      {/* Note */}
-                      <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.note || <span style={{ color: F.textDim }}>—</span>}
-                      </td>
-
-                      {/* Select */}
-                      <td
-                        style={{ padding: "12px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: isSelected ? F.accentBg : selectionMode ? F.surface : F.surface2 }}
-                        onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}
-                      >
-                        {selectionMode ? (
-                          <div
-                            role="checkbox"
-                            aria-checked={isSelected}
-                            data-testid={`field-checkbox-sel-${m.id}`}
-                            style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
-                          >
-                            {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                          </div>
-                        ) : (
-                          <span style={{ color: F.textDim, fontSize: 10 }}>·</span>
-                        )}
-                      </td>
-                    </tr>
+                      {/* Row 5: note (subdued single line) */}
+                      {m.note && (
+                        <p style={{ margin: "4px 0 0", fontSize: 10, color: F.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          "{m.note}"
+                        </p>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </>
+            ) : (
+              /* ── Desktop: existing table (unchanged) ── */
+              <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                <colgroup>
+                  {/* #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note, Select */}
+                  <col style={{ width: 36 }} />
+                  <col style={{ width: 82 }} />
+                  <col style={{ width: 42 }} />
+                  <col />
+                  <col style={{ width: 56 }} />
+                  <col style={{ width: 62 }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 70 }} />
+                  <col style={{ width: 68 }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${F.borderStrong}` }}>
+                    <th style={{ ...TH, textAlign: "center" }}>#</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
+                    <th style={TH}>{t.colPhoto}</th>
+                    <th style={TH}>{t.colItem}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colSize}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colQtyUnit}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colFromTo}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
+                    <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: selectionMode ? F.surface : F.surface2 }}>
+                      {selectionMode ? (
+                        <div
+                          role="checkbox"
+                          aria-checked={allSelected}
+                          onClick={toggleAll}
+                          data-testid="field-checkbox-select-all-right"
+                          title="Select all"
+                          style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                        >
+                          {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+                          data-testid="btn-selection-mode-toggle"
+                          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.16)"; el.style.borderColor = "rgba(45,219,111,0.55)"; el.style.color = F.accent; }}
+                          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = F.accentBg; el.style.borderColor = F.accentBorder; el.style.color = F.textMuted; }}
+                          style={{ display: "block", width: "100%", padding: "6px 0", background: F.accentBg, border: `1px solid ${F.accentBorder}`, borderRadius: 6, color: F.textMuted, fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1, textAlign: "center" }}
+                        >
+                          {t.selectBtn}
+                        </button>
+                      )}
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.loading}</td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={COLS_COUNT} style={{ textAlign: "center", padding: "48px 0", fontSize: 13, color: F.textMuted }}>{t.noTransactions}</td>
+                    </tr>
+                  ) : paginated.map((m, idx) => {
+                    const mx        = m as any;
+                    const item      = mx.item;
+                    const fromLoc   = mx.sourceLocation;
+                    const toLoc     = mx.destinationLocation;
+                    const project   = mx.project;
+                    const isSelected = selectedIds.has(m.id);
+                    const isEdited   = !!(mx.editedAt);
+                    const editHistory: any[] = Array.isArray(mx.editHistory) ? mx.editHistory : [];
+                    const lastEdit = editHistory[editHistory.length - 1];
+                    const editLabel = lastEdit
+                      ? `edited by ${(lastEdit.editedBy ?? "").replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEdit.editedAt), { addSuffix: true })}`
+                      : "edited";
+
+                    return (
+                      <tr
+                        key={m.id}
+                        data-testid={`field-tx-row-${m.id}`}
+                        style={{
+                          background: isSelected ? F.accentBg : F.surface2,
+                          borderBottom: `1px solid ${F.border}`,
+                          borderLeft: isSelected ? `3px solid ${F.accent}` : "3px solid transparent",
+                          transition: "background 0.1s",
+                        }}
+                        onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface; }}
+                        onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface2; }}
+                      >
+                        {/* # */}
+                        <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: F.textMuted, textAlign: "center" }}>
+                          {(safePage - 1) * pageSize + idx + 1}
+                        </td>
+
+                        {/* Type */}
+                        <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                          <FieldMovementBadge type={m.movementType} past />
+                        </td>
+
+                        {/* Photo */}
+                        <td style={{ padding: "8px 2px", textAlign: "center" }}>
+                          <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
+                        </td>
+
+                        {/* Item name + subcategory (highest priority) */}
+                        <td style={{ padding: "12px 8px" }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: F.text, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item?.name ?? `#${m.itemId}`}
+                          </p>
+                          {item?.extractedSubcategory && (
+                            <p style={{ fontSize: 10, color: F.textMuted, lineHeight: 1.3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {item.extractedSubcategory}
+                            </p>
+                          )}
+                        </td>
+
+                        {/* Size */}
+                        <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
+                          {item?.sizeLabel || <span style={{ color: F.textDim }}>—</span>}
+                        </td>
+
+                        {/* Qty + Unit (large, high-contrast) */}
+                        <td style={{ padding: "12px 8px", whiteSpace: "nowrap", textAlign: "center" }}>
+                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 18, color: qtyColor(m.movementType), letterSpacing: "-0.01em" }}>
+                            {m.quantity}
+                          </span>
+                          {item?.unitOfMeasure && (
+                            <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase", display: "block", marginTop: 1 }}>
+                              {item.unitOfMeasure}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* From → To (location) */}
+                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, lineHeight: 1.5, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <span style={{ color: F.textSub, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                              {fromLoc?.name ?? <span style={{ color: F.textDim }}>—</span>}
+                            </span>
+                            <span style={{ color: F.textMuted, fontSize: 9 }}>↓</span>
+                            <span style={{ color: F.text, fontWeight: 700, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                              {toLoc?.name ?? "—"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Project / PO */}
+                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                          {project?.name || project?.poNumber ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+                              {project?.name && (
+                                <span style={{ fontSize: 11, fontWeight: 600, color: F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
+                                  {project.name}
+                                </span>
+                              )}
+                              {project?.poNumber && (
+                                <span style={{ fontSize: 9, color: F.textMuted }}>{project.poNumber}</span>
+                              )}
+                            </div>
+                          ) : <span style={{ color: F.textDim, fontSize: 12 }}>—</span>}
+                        </td>
+
+                        {/* Date */}
+                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                          {m.createdAt ? (
+                            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.5, alignItems: "center" }}>
+                              <span style={{ fontSize: 11, fontWeight: 500, color: F.text }}>
+                                {format(new Date(m.createdAt), "MMM d, yyyy")}
+                              </span>
+                              <span style={{ fontSize: 10, color: F.textMuted }}>
+                                {format(new Date(m.createdAt), "HH:mm")}
+                              </span>
+                              {isEdited && (
+                                <span
+                                  title={editLabel}
+                                  data-testid={`field-edited-tag-${m.id}`}
+                                  style={{ marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default" }}
+                                >
+                                  ✎ EDITED
+                                </span>
+                              )}
+                            </div>
+                          ) : <span style={{ color: F.textDim }}>—</span>}
+                        </td>
+
+                        {/* Note */}
+                        <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.note || <span style={{ color: F.textDim }}>—</span>}
+                        </td>
+
+                        {/* Select */}
+                        <td
+                          style={{ padding: "12px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: isSelected ? F.accentBg : selectionMode ? F.surface : F.surface2 }}
+                          onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}
+                        >
+                          {selectionMode ? (
+                            <div
+                              role="checkbox"
+                              aria-checked={isSelected}
+                              data-testid={`field-checkbox-sel-${m.id}`}
+                              style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                            >
+                              {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          ) : (
+                            <span style={{ color: F.textDim, fontSize: 10 }}>·</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
 
             {/* ── Persistent action bar (bottom of table) ── */}
             <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
@@ -912,9 +1071,11 @@ export default function FieldTransactions() {
                 {selectionMode ? (
                   <>
                     {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>}
-                    <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                      <X style={{ width: 10, height: 10 }} /> {t.cancel}
-                    </button>
+                    {!isMobile && (
+                      <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                        <X style={{ width: 10, height: 10 }} /> {t.cancel}
+                      </button>
+                    )}
                     {canEdit && hasDeletePerm && (
                       <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <Pencil style={{ width: 10, height: 10 }} /> Edit
@@ -926,6 +1087,15 @@ export default function FieldTransactions() {
                       </button>
                     )}
                   </>
+                ) : isMobile ? (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+                    data-testid="btn-selection-mode-toggle"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.accentBg, border: `1px solid ${F.accentBorder}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Barlow Condensed', sans-serif", textTransform: "uppercase" }}
+                  >
+                    {t.selectBtn}
+                  </button>
                 ) : null}
               </div>
             </div>

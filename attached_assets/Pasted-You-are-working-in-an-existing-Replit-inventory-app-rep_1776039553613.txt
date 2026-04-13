@@ -1,0 +1,85 @@
+You are working in an existing Replit inventory app repository.
+
+THIS TASK IS STRICTLY SCOPED.
+Improve ONLY the mobile transaction item/list presentation in Field Mode.
+
+==================================================
+FILES YOU MAY MODIFY
+==================================================
+
+1. client/src/pages/field/FieldTransactions.tsx
+
+Only if these already exist and are clearly used by FieldTransactions:
+2. client/src/components/field/FieldTransactionCard.tsx
+3. client/src/components/field/FieldTransactionRow.tsx
+
+If you think any other file must be changed, STOP and explain why before changing it.
+
+==================================================
+FILES YOU MUST NOT MODIFY
+==================================================
+
+- client/src/components/layout/FieldLayout.tsx
+- client/src/pages/field/FieldInventory.tsx
+- client/src/components/MovementForm.tsx
+- client/src/pages/field/FieldCartReview.tsx
+- client/src/pages/field/FieldRequestsList.tsx
+- client/src/components/ui/select.tsx
+- client/src/components/ui/command.tsx
+- client/src/lib/fieldTokens.ts
+- client/src/index.css
+- any backend file
+- any request logic
+- any toast logic
+- any admin mode file
+
+==================================================
+GOAL
+==================================================
+
+In mobile Field Mode transactions/history, make each transaction easier to scan by presenting it as a compact card instead of a cramped table-like row.
+
+==================================================
+REQUIRED RESULT
+==================================================
+
+On mobile:
+1. Each transaction should read like one compact card
+2. Prioritize this information:
+   - transaction type
+   - item/photo
+   - item name
+   - quantity + unit
+   - time/date
+   - from → to
+3. Keep project as a lighter secondary line
+4. Keep note/PO subdued or hidden from the primary card view if too noisy
+5. Make cards easier to scan without looking squeezed
+6. Preserve desktop behavior as much as possible
+
+Recommended hierarchy:
+- top row: type badge + compact date/time
+- main row: photo + item name + quantity/unit
+- secondary row: from → to
+- tertiary row: project or note preview if needed
+
+==================================================
+STRICT RULES
+==================================================
+
+- Do NOT change transaction logic
+- Do NOT change filters in this task
+- Do NOT touch header
+- Do NOT touch backend
+- Do NOT change request logic
+- Do NOT redesign Admin mode
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+When done, report:
+1. Exact files changed
+2. How the mobile transaction card hierarchy was reorganized
+3. Which fields became primary vs secondary
+4. Confirmation that no other files were modified

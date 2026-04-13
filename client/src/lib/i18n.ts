@@ -46,7 +46,7 @@ const en = {
   tagSuppliers:       "Suppliers",
   tagUsers:           "Users",
   tagProjects:        "Projects",
-  tagManpower:        "작업자",
+  tagManpower:        "Manpower",
   tagProgress:        "Progress",
 
   // ── Field layout header ──────────────────────────────────────────────────
@@ -195,8 +195,8 @@ const en = {
   noteOptionalLabel:  "Note (optional)",
 
   // ── Cart / Requester picker ───────────────────────────────────────────────
-  requesterSearchPlaceholder: "작업자 검색…",
-  requesterNoMatch:           "검색 결과가 없습니다",
+  requesterSearchPlaceholder: "Search manpower…",
+  requesterNoMatch:           "No matching manpower found",
   requesterSuggested:         "Suggested",
   requesterSearchResults:     "Search Results",
   requesterThisProject:       "This Project",
@@ -299,7 +299,7 @@ const en = {
   navTransactions:    "Transactions",
   navSuppliers:       "Suppliers",
   navProjects:        "Projects",
-  navManpower:        "작업자 관리",
+  navManpower:        "Manpower",
   navEquipment:       "Equipment",
   navReorder:         "Reorder",
   navReports:         "Reports",

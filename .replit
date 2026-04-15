@@ -51,3 +51,4 @@ integrations = ["javascript_log_in_with_replit:2.0.0"]
 ADMIN_SEED_TOKEN = "tk-admin-seed-2026"
 
 [userenv.production]
+ALLOW_SEED_IN_PROD = "true"

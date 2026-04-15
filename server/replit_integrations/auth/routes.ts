@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
+import { pool } from "../../db";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -136,5 +137,33 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ── Temporary bulk-import endpoint for wire_reels ────────────────────────
+  app.post("/api/admin/bulk-import-wire-reels", async (req, res) => {
+    if (process.env.ALLOW_SEED_IN_PROD !== "true") {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+    const token = req.headers["x-seed-token"];
+    if (token !== process.env.ADMIN_SEED_TOKEN) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const rows: any[] = req.body.rows;
+    if (!rows || !rows.length) return res.status(400).json({ message: "No rows" });
+    let inserted = 0;
+    for (const r of rows) {
+      await pool.query(
+        `INSERT INTO wire_reels (id, item_id, reel_id, length_ft, brand, supplier_id, location_id, status, notes, is_active, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         ON CONFLICT (id) DO UPDATE SET
+           item_id=EXCLUDED.item_id, reel_id=EXCLUDED.reel_id, length_ft=EXCLUDED.length_ft,
+           brand=EXCLUDED.brand, supplier_id=EXCLUDED.supplier_id, location_id=EXCLUDED.location_id,
+           status=EXCLUDED.status, notes=EXCLUDED.notes, is_active=EXCLUDED.is_active,
+           updated_at=EXCLUDED.updated_at`,
+        [r.id, r.item_id, r.reel_id, r.length_ft, r.brand, r.supplier_id, r.location_id,
+         r.status, r.notes, r.is_active, r.created_at, r.updated_at]
+      );
+      inserted++;
+    }
+    res.json({ ok: true, inserted });
+  });
 
 }

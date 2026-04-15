@@ -137,6 +137,72 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ── Temporary bulk-import endpoint for item_groups ──────────────────────
+  app.post("/api/admin/bulk-import-item-groups", async (req, res) => {
+    if (process.env.ALLOW_SEED_IN_PROD !== "true") return res.status(403).json({ message: "Not allowed" });
+    if (req.headers["x-seed-token"] !== process.env.ADMIN_SEED_TOKEN) return res.status(401).json({ message: "Unauthorized" });
+    const rows: any[] = req.body.rows;
+    if (!rows?.length) return res.status(400).json({ message: "No rows" });
+    let inserted = 0;
+    for (const r of rows) {
+      await pool.query(
+        `INSERT INTO item_groups (id, category_id, base_item_name, image_url, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (id) DO UPDATE SET
+           category_id=EXCLUDED.category_id, base_item_name=EXCLUDED.base_item_name,
+           image_url=EXCLUDED.image_url, updated_at=EXCLUDED.updated_at`,
+        [r.id, r.category_id, r.base_item_name, r.image_url, r.created_at, r.updated_at]
+      );
+      inserted++;
+    }
+    res.json({ ok: true, inserted });
+  });
+
+  // ── Temporary bulk-import endpoint for project_material_transactions ─────
+  app.post("/api/admin/bulk-import-pmt", async (req, res) => {
+    if (process.env.ALLOW_SEED_IN_PROD !== "true") return res.status(403).json({ message: "Not allowed" });
+    if (req.headers["x-seed-token"] !== process.env.ADMIN_SEED_TOKEN) return res.status(401).json({ message: "Unauthorized" });
+    const rows: any[] = req.body.rows;
+    if (!rows?.length) return res.status(400).json({ message: "No rows" });
+    let inserted = 0;
+    for (const r of rows) {
+      await pool.query(
+        `INSERT INTO project_material_transactions (id, project_id, item_id, movement_id, transaction_type, quantity, note, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         ON CONFLICT (id) DO UPDATE SET
+           project_id=EXCLUDED.project_id, item_id=EXCLUDED.item_id, movement_id=EXCLUDED.movement_id,
+           transaction_type=EXCLUDED.transaction_type, quantity=EXCLUDED.quantity,
+           note=EXCLUDED.note`,
+        [r.id, r.project_id, r.item_id, r.movement_id, r.transaction_type, r.quantity, r.note, r.created_at]
+      );
+      inserted++;
+    }
+    res.json({ ok: true, inserted });
+  });
+
+  // ── Temporary endpoint to fix sequences ──────────────────────────────────
+  app.post("/api/admin/fix-sequences", async (req, res) => {
+    if (process.env.ALLOW_SEED_IN_PROD !== "true") return res.status(403).json({ message: "Not allowed" });
+    if (req.headers["x-seed-token"] !== process.env.ADMIN_SEED_TOKEN) return res.status(401).json({ message: "Unauthorized" });
+    const tables = [
+      'categories', 'daily_reports', 'equipment', 'inventory_location_balances',
+      'inventory_movements', 'item_groups', 'item_images', 'items',
+      'locations', 'material_requests', 'project_material_transactions',
+      'project_scope_items', 'projects', 'purchase_recommendations',
+      'suppliers', 'wire_reels', 'worker_attendance', 'workers'
+    ];
+    const results: any[] = [];
+    for (const t of tables) {
+      const r = await pool.query(`SELECT MAX(id) as max_id FROM ${t}`);
+      const maxId = r.rows[0].max_id;
+      if (maxId) {
+        await pool.query(`SELECT setval('${t}_id_seq', $1)`, [maxId]);
+        results.push({ table: t, set_to: maxId });
+      }
+    }
+    res.json({ ok: true, results });
+  });
+
   // ── Temporary bulk-import endpoint for wire_reels ────────────────────────
   app.post("/api/admin/bulk-import-wire-reels", async (req, res) => {
     if (process.env.ALLOW_SEED_IN_PROD !== "true") {

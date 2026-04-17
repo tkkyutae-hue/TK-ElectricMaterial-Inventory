@@ -1,0 +1,150 @@
+Do NOT touch ProjectDetail, OverviewTab, ScopeItemsTab, routing, or backend project APIs broadly.
+Do NOT change project business logic or data semantics.
+Focus ONLY on:
+- client/src/pages/Projects.tsx
+- small directly related UI helpers only if truly needed
+
+TASK GOAL
+Enhance the current grouped Projects board list with Monday-style management features while preserving the current grouped-by-customer structure and existing project mutations.
+
+IMPORTANT CURRENT CONTEXT
+The current page already has:
+- grouped customer sections
+- search
+- status filter
+- inline status mutation
+- inline add-project row
+- explicit open action on the right
+
+Keep that structure.
+Do NOT rebuild the page from scratch.
+
+==================================================
+PART 1 — ADD COLUMN SORT CONTROLS
+==================================================
+
+Add sortable controls to the column headers.
+
+Target columns:
+- PO / Code
+- Project Name
+- Customer
+- Location
+- Timeline
+- Status
+
+Requirements:
+1. Add a compact sort icon/affordance on each sortable header
+2. Clicking should cycle through:
+   - default
+   - ascending
+   - descending
+3. Sorting should apply to the visible project list before grouped rendering, then preserve grouped-by-customer display
+4. Keep the UI compact and desktop-first
+5. Do NOT redesign the entire header row
+
+Notes:
+- For Status, use a stable business order if needed:
+  active, on_hold, completed, cancelled
+- For Timeline, sort primarily by startDate, then endDate
+
+==================================================
+PART 2 — MERGE STARTED / ENDED INTO ONE TIMELINE COLUMN
+==================================================
+
+Replace the separate Started and Ended columns with a single Timeline column.
+
+Timeline cell behavior:
+- display start and end as one compact range
+- if one or both are missing, show a muted em dash where appropriate
+- clicking the Timeline cell should open a small inline date-range editor or popover calendar
+- allow editing both startDate and endDate from that one interaction
+- save via the existing update mutation
+
+Requirements:
+1. Do NOT change the underlying data model
+2. Keep startDate and endDate as the stored fields
+3. This is a UI consolidation only
+4. Keep it compact and readable for desktop admin use
+
+==================================================
+PART 3 — FIX STATUS DROPDOWN LAYERING
+==================================================
+
+Current issue:
+When the status selector opens, it appears clipped / behind the card instead of expanding outward cleanly.
+
+Fix the status selector so it opens above surrounding row/group containers.
+
+Requirements:
+1. Use a proper popover/portal/dropdown layer if appropriate
+2. Ensure it is not clipped by parent overflow
+3. Keep z-index high enough
+4. Preserve current inline status change behavior
+5. Do NOT replace the existing mutation logic
+
+==================================================
+PART 4 — ADD "NEW CUSTOMER" ACTION
+==================================================
+
+Add a "+ New Customer" button to the right of the existing Status Filter in the top toolbar.
+
+Important:
+Do NOT introduce a completely new customer master data model unless one already exists.
+Use the safest existing-data-compatible behavior.
+
+Preferred behavior:
+- Clicking "+ New Customer" opens a lightweight inline or small dialog flow
+- user enters a new customer name
+- this starts a new project creation flow with that customerName prefilled
+- keep it compatible with the current useCreateProject() logic
+
+Requirements:
+1. Keep it lightweight
+2. Do NOT remove the existing grouped-by-customer display
+3. Do NOT add large modal complexity unless necessary
+4. Preserve current project creation semantics as much as possible
+
+==================================================
+PART 5 — CUSTOMER / LOCATION SUGGESTION INPUTS
+==================================================
+
+For inline editing and inline add-row flows:
+- make Customer use a suggestion/combobox input
+- make Location use a suggestion/combobox input
+
+Suggestion source:
+- derive unique existing values from currently loaded projects
+- allow selecting an existing value
+- also allow typing a new value
+
+Requirements:
+1. Keep the UI compact
+2. Do NOT force selection-only mode
+3. Allow free text for new values
+4. Reuse the same suggestion behavior for both editing and add-row flows where practical
+
+==================================================
+PART 6 — KEEP SCOPE NARROW
+==================================================
+
+- No ProjectDetail changes
+- No backend route redesign
+- No OverviewTab / ScopeItemsTab changes
+- No drag-and-drop column resizing in this task
+- No broad refactor outside Projects.tsx
+- Keep the grouped customer board structure
+- Keep admin desktop efficiency
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of sorting behavior added
+2. Summary of Timeline column behavior
+3. Summary of status dropdown layering fix
+4. Summary of New Customer action behavior
+5. Summary of Customer/Location suggestion inputs
+6. Files modified
+7. Anything intentionally left unchanged

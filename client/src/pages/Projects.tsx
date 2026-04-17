@@ -3,9 +3,12 @@ import { useProjects, useCreateProject, useUpdateProject } from "@/hooks/use-ref
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
   ChevronDown, ChevronUp, Users, Check, Plus, X,
+  ArrowUp, ArrowDown, ChevronsUpDown, UserPlus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { format } from "date-fns";
 
@@ -18,111 +21,86 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Completed", dotClass: "bg-slate-400",   chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" },
   { value: "cancelled", label: "Cancelled", dotClass: "bg-rose-500",    chipClass: "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200" },
 ];
+const STATUS_ORDER: Record<string, number> = { active: 0, on_hold: 1, completed: 2, cancelled: 3 };
 const statusMap = Object.fromEntries(STATUS_OPTIONS.map(s => [s.value, s]));
-function getStatusCfg(status: string) {
-  return statusMap[status] ?? { label: status, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
+function getStatusCfg(s: string) {
+  return statusMap[s] ?? { label: s, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resizable column widths
 // ─────────────────────────────────────────────────────────────────────────────
-const LS_KEY = "tkelectric_project_col_widths";
-const MIN_COL_WIDTH = 60;
+const LS_COL  = "tkelectric_project_col_widths_v2";
+const MIN_COL = 60;
 
-type ColWidths = {
-  po: number;
-  name: number;
-  customer: number;
-  location: number;
-  started: number;
-  ended: number;
-  status: number;
-};
-
-const DEFAULT_WIDTHS: ColWidths = {
-  po: 128,
-  name: 260,
-  customer: 144,
-  location: 152,
-  started: 112,
-  ended: 112,
-  status: 128,
-};
+type ColWidths = { po: number; name: number; customer: number; location: number; timeline: number; status: number };
+const DEFAULT_WIDTHS: ColWidths = { po: 128, name: 260, customer: 144, location: 152, timeline: 200, status: 128 };
 
 function loadWidths(): ColWidths {
-  try {
-    const s = localStorage.getItem(LS_KEY);
-    if (s) return { ...DEFAULT_WIDTHS, ...JSON.parse(s) };
-  } catch {}
+  try { const s = localStorage.getItem(LS_COL); if (s) return { ...DEFAULT_WIDTHS, ...JSON.parse(s) }; } catch {}
   return { ...DEFAULT_WIDTHS };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Resize handle
-// ─────────────────────────────────────────────────────────────────────────────
-function ResizeHandle({
-  col, currentWidth, setColWidths,
-}: {
-  col: keyof ColWidths;
-  currentWidth: number;
-  setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
-}) {
-  const startX = useRef(0);
-  const startW = useRef(0);
-
+function ResizeHandle({ col, cw, setColWidths }: { col: keyof ColWidths; cw: ColWidths; setColWidths: React.Dispatch<React.SetStateAction<ColWidths>> }) {
+  const startX = useRef(0), startW = useRef(0);
   function onMouseDown(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    startX.current = e.clientX;
-    startW.current = currentWidth;
-
-    function onMove(ev: MouseEvent) {
-      const delta = ev.clientX - startX.current;
-      const newW  = Math.max(MIN_COL_WIDTH, startW.current + delta);
-      setColWidths(prev => ({ ...prev, [col]: newW }));
-    }
-    function onUp() {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",   onUp);
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",   onUp);
+    e.preventDefault(); e.stopPropagation();
+    startX.current = e.clientX; startW.current = cw[col];
+    function onMove(ev: MouseEvent) { setColWidths(p => ({ ...p, [col]: Math.max(MIN_COL, startW.current + ev.clientX - startX.current) })); }
+    function onUp()  { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+    document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
   }
-
   return (
-    <div
-      className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center group/rh select-none z-10"
-      onMouseDown={onMouseDown}
-      title="Drag to resize"
-    >
+    <div className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center group/rh select-none z-10" onMouseDown={onMouseDown} title="Drag to resize">
       <div className="w-px h-4 rounded-full bg-slate-200 group-hover/rh:bg-brand-400 transition-colors" />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline Status Chip + Popover
+// Sort
 // ─────────────────────────────────────────────────────────────────────────────
-function StatusChip({
-  projectId, status, onChangeStart, openPopoverId, setOpenPopoverId,
-}: {
-  projectId: number;
-  status: string;
-  onChangeStart: (id: number, newStatus: string) => void;
-  openPopoverId: number | null;
-  setOpenPopoverId: (id: number | null) => void;
-}) {
-  const cfg    = getStatusCfg(status);
-  const isOpen = openPopoverId === projectId;
-  const ref    = useRef<HTMLDivElement>(null);
+type SortCol = "po" | "name" | "customer" | "location" | "timeline" | "status";
+type SortDir = "asc" | "desc" | null;
+type SortState = { col: SortCol | null; dir: SortDir };
 
+function cmpProjects(a: any, b: any, col: SortCol, dir: SortDir): number {
+  let av: any = "", bv: any = "";
+  if (col === "po")       { av = a.poNumber || ""; bv = b.poNumber || ""; }
+  if (col === "name")     { av = a.name || ""; bv = b.name || ""; }
+  if (col === "customer") { av = a.customerName || ""; bv = b.customerName || ""; }
+  if (col === "location") { av = a.jobLocation || ""; bv = b.jobLocation || ""; }
+  if (col === "status")   { av = STATUS_ORDER[a.status] ?? 99; bv = STATUS_ORDER[b.status] ?? 99; }
+  if (col === "timeline") {
+    av = a.startDate || "9999"; bv = b.startDate || "9999";
+    if (av === bv) { av = a.endDate || "9999"; bv = b.endDate || "9999"; }
+  }
+  const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv));
+  return dir === "asc" ? cmp : -cmp;
+}
+
+function SortIcon({ col, ss }: { col: SortCol; ss: SortState }) {
+  const cls = "w-3 h-3 flex-shrink-0";
+  if (ss.col !== col) return <ChevronsUpDown className={`${cls} text-slate-300 group-hover/hdr:text-slate-400 transition-colors`} />;
+  if (ss.dir === "asc")  return <ArrowUp   className={`${cls} text-brand-500`} />;
+  return <ArrowDown className={`${cls} text-brand-500`} />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline Status Chip + Popover  (overflow fixed by removing overflow-hidden from card)
+// ─────────────────────────────────────────────────────────────────────────────
+function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPopoverId }: {
+  projectId: number; status: string;
+  onChangeStart: (id: number, s: string) => void;
+  openPopoverId: number | null; setOpenPopoverId: (id: number | null) => void;
+}) {
+  const cfg = getStatusCfg(status), isOpen = openPopoverId === projectId;
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
-    function outside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpenPopoverId(null);
-    }
-    document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
+    function out(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpenPopoverId(null); }
+    document.addEventListener("mousedown", out);
+    return () => document.removeEventListener("mousedown", out);
   }, [isOpen, setOpenPopoverId]);
 
   return (
@@ -137,11 +115,9 @@ function StatusChip({
         <ChevronDown className="w-2.5 h-2.5 ml-0.5 opacity-60" />
       </button>
       {isOpen && (
-        <div className="absolute z-50 top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left"
+        <div className="absolute z-[200] top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+          {STATUS_OPTIONS.map(opt => (
+            <button key={opt.value} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left"
               data-testid={`status-option-${opt.value}`}
               onClick={(e) => { e.stopPropagation(); setOpenPopoverId(null); if (opt.value !== status) onChangeStart(projectId, opt.value); }}
             >
@@ -157,39 +133,68 @@ function StatusChip({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline Editable Cell
+// Compact suggestion input (self-contained, compact h-7 variant)
+// ─────────────────────────────────────────────────────────────────────────────
+function CompactSuggestion({ value, onChange, suggestions, placeholder, testId, className = "" }: {
+  value: string; onChange: (v: string) => void; suggestions: string[];
+  placeholder?: string; testId?: string; className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const filtered = suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s.toLowerCase() !== value.toLowerCase()).slice(0, 8);
+
+  useEffect(() => {
+    if (!open) return;
+    function out(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", out);
+    return () => document.removeEventListener("mousedown", out);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        className={`w-full text-sm px-2 bg-white border border-slate-200 rounded focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200 ${className}`}
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => { if (suggestions.length > 0) setOpen(true); }}
+        placeholder={placeholder}
+        autoComplete="off"
+        data-testid={testId}
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[150] top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded shadow-lg max-h-40 overflow-y-auto">
+          {filtered.map(s => (
+            <button key={s} type="button" className="w-full text-left px-2 py-1.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 transition-colors"
+              onMouseDown={() => { onChange(s); setOpen(false); }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline Editable Cell (with optional suggestion dropdown)
 // ─────────────────────────────────────────────────────────────────────────────
 type EditKey = { id: number; field: string } | null;
 
-function EditableCell({
-  projectId, field, value, type = "text",
-  editKey, setEditKey, onSave, className = "",
-}: {
-  projectId: number;
-  field: string;
-  value: string | null | undefined;
-  type?: "text" | "date";
-  editKey: EditKey;
-  setEditKey: (k: EditKey) => void;
+function EditableCell({ projectId, field, value, type = "text", editKey, setEditKey, onSave, className = "", suggestions }: {
+  projectId: number; field: string; value: string | null | undefined;
+  type?: "text" | "date"; editKey: EditKey; setEditKey: (k: EditKey) => void;
   onSave: (id: number, field: string, value: string | null) => void;
-  className?: string;
+  className?: string; suggestions?: string[];
 }) {
   const isEditing = editKey?.id === projectId && editKey?.field === field;
   const inputRef  = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(value ?? "");
 
   useEffect(() => {
-    if (isEditing) {
-      setDraft(value ?? "");
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
+    if (isEditing) { setDraft(value ?? ""); setTimeout(() => inputRef.current?.focus(), 0); }
   }, [isEditing]);
 
-  function commit() {
-    const trimmed = draft.trim();
-    onSave(projectId, field, trimmed === "" ? null : trimmed);
-    setEditKey(null);
-  }
+  function commit() { const t = draft.trim(); onSave(projectId, field, t === "" ? null : t); setEditKey(null); }
   function cancel() { setDraft(value ?? ""); setEditKey(null); }
 
   function displayDate(d: string | null | undefined) {
@@ -198,19 +203,24 @@ function EditableCell({
   }
 
   if (isEditing) {
+    const inputCls = `w-full bg-white border border-brand-300 rounded px-2 py-1 text-sm text-slate-900 outline-none ring-2 ring-brand-200 ${className}`;
+    if (suggestions && suggestions.length > 0 && type === "text") {
+      return (
+        <CompactSuggestion
+          value={draft}
+          onChange={setDraft}
+          suggestions={suggestions}
+          className="h-7 py-1 border-brand-300 ring-2 ring-brand-200"
+        />
+      );
+    }
     return (
-      <input
-        ref={inputRef}
-        type={type}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+      <input ref={inputRef} type={type} value={draft}
+        onChange={e => setDraft(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter")  { e.preventDefault(); commit(); }
-          if (e.key === "Escape") { e.preventDefault(); cancel(); }
-        }}
-        className={`w-full bg-white border border-brand-300 rounded px-2 py-1 text-sm text-slate-900 outline-none ring-2 ring-brand-200 ${className}`}
-        onClick={(e) => e.stopPropagation()}
+        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); commit(); } if (e.key === "Escape") { e.preventDefault(); cancel(); } }}
+        className={inputCls}
+        onClick={e => e.stopPropagation()}
         data-testid={`input-edit-${field}-${projectId}`}
       />
     );
@@ -218,118 +228,172 @@ function EditableCell({
 
   const display = type === "date" ? displayDate(value) : (value || null);
   return (
-    <div
-      className={`cursor-text truncate rounded px-1 -mx-1 py-0.5 hover:bg-slate-100/80 transition-colors ${className}`}
-      onClick={(e) => { e.stopPropagation(); setEditKey({ id: projectId, field }); }}
+    <div className={`cursor-text truncate rounded px-1 -mx-1 py-0.5 hover:bg-slate-100/80 transition-colors ${className}`}
+      onClick={e => { e.stopPropagation(); setEditKey({ id: projectId, field }); }}
       data-testid={`cell-${field}-${projectId}`}
     >
-      {display
-        ? <span className="text-sm text-slate-700">{display}</span>
-        : <span className="text-slate-300 text-sm select-none">—</span>
-      }
+      {display ? <span className="text-sm text-slate-700">{display}</span> : <span className="text-slate-300 text-sm select-none">—</span>}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Column header label style
+// Timeline Cell (merged start + end with inline popover editor)
+// ─────────────────────────────────────────────────────────────────────────────
+function TimelineCell({ projectId, startDate, endDate, onTimelineSave }: {
+  projectId: number; startDate: string | null | undefined; endDate: string | null | undefined;
+  onTimelineSave: (id: number, start: string | null, end: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [ds, setDs] = useState(startDate ?? "");
+  const [de, setDe] = useState(endDate ?? "");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setDs(startDate ?? ""); setDe(endDate ?? "");
+    function out(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", out);
+    return () => document.removeEventListener("mousedown", out);
+  }, [open]);
+
+  function save() { onTimelineSave(projectId, ds || null, de || null); setOpen(false); }
+
+  function fmtShort(d: string | null | undefined) {
+    if (!d) return "—";
+    try { return format(new Date(d + "T00:00:00"), "MMM d"); } catch { return d; }
+  }
+
+  const isEmpty = !startDate && !endDate;
+  const dateCls = "w-full h-7 text-sm px-2 border border-slate-200 rounded focus:outline-none focus:border-brand-400 bg-white";
+
+  return (
+    <div className="relative" ref={ref}>
+      <div
+        className="cursor-text truncate rounded px-1 -mx-1 py-0.5 hover:bg-slate-100/80 transition-colors flex items-center gap-1"
+        onClick={e => { e.stopPropagation(); setOpen(true); }}
+        data-testid={`cell-timeline-${projectId}`}
+      >
+        {isEmpty
+          ? <span className="text-slate-300 text-sm select-none">—</span>
+          : <>
+              <Calendar className="w-3 h-3 text-slate-300 flex-shrink-0" />
+              <span className="text-sm text-slate-700 truncate">{fmtShort(startDate)} – {fmtShort(endDate)}</span>
+            </>
+        }
+      </div>
+
+      {open && (
+        <div className="absolute z-[200] top-full mt-1 left-0 bg-white border border-slate-200 rounded-lg shadow-xl p-3 min-w-[268px]" onClick={e => e.stopPropagation()}>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Timeline</p>
+          <div className="flex items-end gap-2 mb-3">
+            <div className="flex-1">
+              <label className="text-[10px] text-slate-400 font-medium block mb-1">Start</label>
+              <input type="date" className={dateCls} value={ds} onChange={e => setDs(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false); }} />
+            </div>
+            <span className="text-slate-400 text-sm pb-1.5">–</span>
+            <div className="flex-1">
+              <label className="text-[10px] text-slate-400 font-medium block mb-1">End</label>
+              <input type="date" className={dateCls} value={de} onChange={e => setDe(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false); }} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button className="h-6 px-3 text-xs rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors" onClick={() => setOpen(false)}>Cancel</button>
+            <button className="h-6 px-3 text-xs rounded bg-brand-600 hover:bg-brand-700 text-white font-semibold transition-colors" onClick={save} data-testid={`btn-save-timeline-${projectId}`}>Save</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Column header label
 // ─────────────────────────────────────────────────────────────────────────────
 const CH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Sortable column header cell
+// ─────────────────────────────────────────────────────────────────────────────
+function SortableHeader({ label, col, ss, onSort, cw, cwKey, setColWidths, className = "" }: {
+  label: string; col: SortCol; ss: SortState; onSort: (c: SortCol) => void;
+  cw: ColWidths; cwKey: keyof ColWidths; setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`relative flex-shrink-0 flex items-center gap-1 cursor-pointer group/hdr select-none pr-3 ${className}`}
+      style={{ width: cw[cwKey] }}
+      onClick={() => onSort(col)}
+    >
+      <span className={CH}>{label}</span>
+      <SortIcon col={col} ss={ss} />
+      <ResizeHandle col={cwKey} cw={cw} setColWidths={setColWidths} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Inline Add-Project Row
 // ─────────────────────────────────────────────────────────────────────────────
-function AddProjectRow({
-  defaultCustomer, onCreate, onClose, cw,
-}: {
-  defaultCustomer: string;
-  onCreate: (data: any) => void;
-  onClose: () => void;
-  cw: ColWidths;
+function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggestions, locationSuggestions }: {
+  defaultCustomer: string; onCreate: (data: any) => void; onClose: () => void;
+  cw: ColWidths; customerSuggestions: string[]; locationSuggestions: string[];
 }) {
-  const [name,     setName]     = useState("");
-  const [po,       setPo]       = useState("");
-  const [customer, setCustomer] = useState(defaultCustomer);
-  const [location, setLocation] = useState("");
-  const [started,  setStarted]  = useState("");
-  const [ended,    setEnded]    = useState("");
-  const [status,   setStatus]   = useState("active");
+  const [name, setName]     = useState("");
+  const [po,   setPo]       = useState("");
+  const [cust, setCust]     = useState(defaultCustomer);
+  const [loc,  setLoc]      = useState("");
+  const [start, setStart]   = useState("");
+  const [end,   setEnd]     = useState("");
+  const [stat,  setStat]    = useState("active");
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 0); }, []);
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") onClose();
-    if (e.key === "Enter" && name.trim()) submit();
-  }
+  function kd(e: React.KeyboardEvent) { if (e.key === "Escape") onClose(); if (e.key === "Enter" && name.trim()) submit(); }
 
   function submit() {
     if (!name.trim()) return;
-    const code = `PRJ-${Date.now().toString(36).toUpperCase()}`;
-    onCreate({
-      name:         name.trim(),
-      poNumber:     po.trim() || null,
-      customerName: customer.trim() || null,
-      jobLocation:  location.trim() || null,
-      startDate:    started || null,
-      endDate:      ended || null,
-      status,
-      code,
-    });
+    onCreate({ name: name.trim(), poNumber: po.trim()||null, customerName: cust.trim()||null, jobLocation: loc.trim()||null, startDate: start||null, endDate: end||null, status: stat, code: `PRJ-${Date.now().toString(36).toUpperCase()}` });
   }
 
-  const inputCls = "h-7 text-sm px-2 bg-white border-slate-200 focus:border-brand-400 focus:ring-1 focus:ring-brand-200 rounded w-full";
+  const inputCls = "h-7 text-sm px-2 bg-white border border-slate-200 rounded focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200 w-full";
 
   return (
-    <div className="flex items-center px-4 py-2 gap-2 bg-brand-50/40 border-t border-brand-100" onClick={(e) => e.stopPropagation()}>
-      {/* PO */}
+    <div className="flex items-center px-4 py-2 gap-2 bg-brand-50/40 border-t border-brand-100" onClick={e => e.stopPropagation()}>
       <div className="flex-shrink-0 hidden lg:block" style={{ width: cw.po }}>
-        <Input className={inputCls} placeholder="PO / Code" value={po} onChange={e => setPo(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-po" />
+        <input className={inputCls} placeholder="PO / Code" value={po} onChange={e => setPo(e.target.value)} onKeyDown={kd} data-testid="add-row-po" />
       </div>
-      {/* Name */}
       <div className="flex-shrink-0 min-w-0" style={{ width: cw.name }}>
-        <Input ref={nameRef} className={inputCls} placeholder="Project name *" value={name} onChange={e => setName(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-name" />
+        <input ref={nameRef} className={inputCls} placeholder="Project name *" value={name} onChange={e => setName(e.target.value)} onKeyDown={kd} data-testid="add-row-name" />
       </div>
-      {/* Customer */}
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.customer }}>
-        <Input className={inputCls} placeholder="Customer" value={customer} onChange={e => setCustomer(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-customer" />
+        <CompactSuggestion value={cust} onChange={setCust} suggestions={customerSuggestions} placeholder="Customer" testId="add-row-customer" className="h-7" />
       </div>
-      {/* Location */}
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
-        <Input className={inputCls} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-location" />
+        <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder="Location" testId="add-row-location" className="h-7" />
       </div>
-      {/* Started */}
-      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.started }}>
-        <input type="date" className={inputCls} value={started} onChange={e => setStarted(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-started" />
+      <div className="flex-shrink-0 hidden xl:flex items-end gap-1.5" style={{ width: cw.timeline }}>
+        <div className="flex-1">
+          <input type="date" className={inputCls} placeholder="Start" value={start} onChange={e => setStart(e.target.value)} onKeyDown={kd} data-testid="add-row-started" />
+        </div>
+        <span className="text-slate-400 text-xs pb-1.5 flex-shrink-0">–</span>
+        <div className="flex-1">
+          <input type="date" className={inputCls} placeholder="End" value={end} onChange={e => setEnd(e.target.value)} onKeyDown={kd} data-testid="add-row-ended" />
+        </div>
       </div>
-      {/* Ended */}
-      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.ended }}>
-        <input type="date" className={inputCls} value={ended} onChange={e => setEnded(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-ended" />
-      </div>
-      {/* Status */}
       <div className="flex-shrink-0" style={{ width: cw.status }}>
-        <select
-          className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
-          value={status}
-          onChange={e => setStatus(e.target.value)}
-          data-testid="add-row-status"
-        >
+        <select className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
+          value={stat} onChange={e => setStat(e.target.value)} data-testid="add-row-status">
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
-      {/* Actions — fixed 64px */}
       <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 64 }}>
-        <button
-          className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors"
-          disabled={!name.trim()}
-          onClick={submit}
-          data-testid="add-row-save"
-        >
-          Add
-        </button>
-        <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 transition-colors" onClick={onClose} data-testid="add-row-cancel">
-          <X className="w-3.5 h-3.5" />
-        </button>
+        <button className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors" disabled={!name.trim()} onClick={submit} data-testid="add-row-save">Add</button>
+        <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 transition-colors" onClick={onClose} data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
       </div>
     </div>
   );
@@ -340,185 +404,105 @@ function AddProjectRow({
 // ─────────────────────────────────────────────────────────────────────────────
 function CustomerGroup({
   customerName, projects, collapsed, onToggle,
-  openPopoverId, setOpenPopoverId, onStatusChange, onFieldSave,
+  openPopoverId, setOpenPopoverId, onStatusChange, onFieldSave, onTimelineSave,
   editKey, setEditKey, onCreate,
-  cw, setColWidths,
+  cw, setColWidths, ss, onSort,
+  customerSuggestions, locationSuggestions,
+  autoOpenAdd, onAutoAddClosed,
 }: {
-  customerName: string;
-  projects: any[];
-  collapsed: boolean;
-  onToggle: () => void;
-  openPopoverId: number | null;
-  setOpenPopoverId: (id: number | null) => void;
+  customerName: string; projects: any[]; collapsed: boolean; onToggle: () => void;
+  openPopoverId: number | null; setOpenPopoverId: (id: number | null) => void;
   onStatusChange: (id: number, status: string) => void;
   onFieldSave: (id: number, field: string, value: string | null) => void;
-  editKey: EditKey;
-  setEditKey: (k: EditKey) => void;
+  onTimelineSave: (id: number, start: string | null, end: string | null) => void;
+  editKey: EditKey; setEditKey: (k: EditKey) => void;
   onCreate: (data: any) => void;
-  cw: ColWidths;
-  setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
+  cw: ColWidths; setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
+  ss: SortState; onSort: (c: SortCol) => void;
+  customerSuggestions: string[]; locationSuggestions: string[];
+  autoOpenAdd?: boolean; onAutoAddClosed?: () => void;
 }) {
   const isNoCustomer = customerName === "__none__";
   const [showAdd, setShowAdd] = useState(false);
 
-  function handleCreate(data: any) {
-    onCreate(data);
-    setShowAdd(false);
-  }
+  useEffect(() => { if (autoOpenAdd) setShowAdd(true); }, [autoOpenAdd]);
+
+  function handleCreate(data: any) { onCreate(data); setShowAdd(false); onAutoAddClosed?.(); }
+  function handleClose()           { setShowAdd(false); onAutoAddClosed?.(); }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Group header */}
+    // overflow-hidden removed so status dropdown can escape the card boundary
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <button
-        className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50/80 hover:bg-slate-100/60 transition-colors border-b border-slate-100 text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50/80 hover:bg-slate-100/60 transition-colors border-b border-slate-100 text-left rounded-t-xl"
         onClick={onToggle}
         data-testid={`group-header-${customerName}`}
       >
         <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-        <span className="font-semibold text-sm text-slate-700 flex-1 truncate">
-          {isNoCustomer ? "No Customer" : customerName}
-        </span>
+        <span className="font-semibold text-sm text-slate-700 flex-1 truncate">{isNoCustomer ? "No Customer" : customerName}</span>
         <span className="text-[11px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full">{projects.length}</span>
-        {collapsed
-          ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          : <ChevronUp   className="w-4 h-4 text-slate-400 flex-shrink-0" />
-        }
+        {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />}
       </button>
 
       {!collapsed && (
         <>
-          {/* ── Column headers (desktop) ── */}
-          <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none overflow-x-auto">
-            {/* PO / Code */}
-            <div className="relative flex-shrink-0 pr-3 hidden lg:flex items-center" style={{ width: cw.po }}>
-              <span className={CH}>PO / Code</span>
-              <ResizeHandle col="po" currentWidth={cw.po} setColWidths={setColWidths} />
-            </div>
-            {/* Project Name */}
-            <div className="relative flex-shrink-0 pr-4" style={{ width: cw.name }}>
-              <span className={CH}>Project Name</span>
-              <ResizeHandle col="name" currentWidth={cw.name} setColWidths={setColWidths} />
-            </div>
-            {/* Customer */}
-            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.customer }}>
-              <span className={CH}>Customer</span>
-              <ResizeHandle col="customer" currentWidth={cw.customer} setColWidths={setColWidths} />
-            </div>
-            {/* Location */}
-            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.location }}>
-              <span className={CH}>Location</span>
-              <ResizeHandle col="location" currentWidth={cw.location} setColWidths={setColWidths} />
-            </div>
-            {/* Started */}
-            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.started }}>
-              <span className={CH}>Started</span>
-              <ResizeHandle col="started" currentWidth={cw.started} setColWidths={setColWidths} />
-            </div>
-            {/* Ended */}
-            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.ended }}>
-              <span className={CH}>Ended</span>
-              <ResizeHandle col="ended" currentWidth={cw.ended} setColWidths={setColWidths} />
-            </div>
-            {/* Status */}
-            <div className="relative flex-shrink-0" style={{ width: cw.status }}>
-              <span className={CH}>Status</span>
-              <ResizeHandle col="status" currentWidth={cw.status} setColWidths={setColWidths} />
-            </div>
-            {/* Open — fixed */}
+          {/* Column headers */}
+          <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none">
+            <SortableHeader label="PO / Code"     col="po"       ss={ss} onSort={onSort} cw={cw} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
+            <SortableHeader label="Project Name"  col="name"     ss={ss} onSort={onSort} cw={cw} cwKey="name"     setColWidths={setColWidths} />
+            <SortableHeader label="Customer"      col="customer" ss={ss} onSort={onSort} cw={cw} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label="Location"      col="location" ss={ss} onSort={onSort} cw={cw} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label="Timeline"      col="timeline" ss={ss} onSort={onSort} cw={cw} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label="Status"        col="status"   ss={ss} onSort={onSort} cw={cw} cwKey="status"   setColWidths={setColWidths} />
             <div className="flex-shrink-0" style={{ width: 64 }} />
           </div>
 
-          {/* ── Project rows ── */}
+          {/* Project rows */}
           <div className="divide-y divide-slate-50">
-            {projects.map((project: any) => (
-              <div
-                key={project.id}
-                className="flex items-center px-4 py-2.5 hover:bg-slate-50/50 transition-colors group"
-                data-testid={`row-project-${project.id}`}
-              >
+            {projects.map(project => (
+              <div key={project.id} className="flex items-center px-4 py-2.5 hover:bg-slate-50/50 transition-colors group" data-testid={`row-project-${project.id}`}>
+
                 {/* PO / Code */}
-                <div className="flex-shrink-0 pr-3 hidden lg:block" style={{ width: cw.po }}>
-                  <EditableCell
-                    projectId={project.id} field="poNumber" value={project.poNumber}
-                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                  />
+                <div className="flex-shrink-0 pr-2 hidden lg:block" style={{ width: cw.po }}>
+                  <EditableCell projectId={project.id} field="poNumber" value={project.poNumber} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} />
                 </div>
 
                 {/* Project Name */}
-                <div className="flex-shrink-0 min-w-0 pr-4" style={{ width: cw.name }}>
-                  <EditableCell
-                    projectId={project.id} field="name" value={project.name}
-                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                    className="font-semibold text-slate-900 group-hover:text-brand-700"
-                  />
-                  {project.ownerName && (
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5 pl-1">{project.ownerName}</p>
-                  )}
-                  {/* Mobile status */}
+                <div className="flex-shrink-0 min-w-0 pr-2" style={{ width: cw.name }}>
+                  <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700" />
+                  {project.ownerName && <p className="text-[11px] text-slate-400 truncate mt-0.5 pl-1">{project.ownerName}</p>}
                   <div className="flex items-center gap-2 mt-1.5 md:hidden">
-                    <StatusChip
-                      projectId={project.id} status={project.status}
-                      onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId}
-                    />
+                    <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                   </div>
                 </div>
 
                 {/* Customer */}
-                <div className="flex-shrink-0 pr-3 hidden xl:block" style={{ width: cw.customer }}>
-                  <EditableCell
-                    projectId={project.id} field="customerName" value={project.customerName}
-                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                  />
+                <div className="flex-shrink-0 pr-2 hidden xl:block" style={{ width: cw.customer }}>
+                  <EditableCell projectId={project.id} field="customerName" value={project.customerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={customerSuggestions} />
                 </div>
 
                 {/* Location */}
-                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.location }}>
-                  {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
+                <div className="flex-shrink-0 pr-2 hidden xl:flex items-center gap-1" style={{ width: cw.location }}>
+                  {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0" /> : null}
                   <div className="flex-1 min-w-0">
-                    <EditableCell
-                      projectId={project.id} field="jobLocation" value={project.jobLocation}
-                      editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                    />
+                    <EditableCell projectId={project.id} field="jobLocation" value={project.jobLocation} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={locationSuggestions} />
                   </div>
                 </div>
 
-                {/* Started */}
-                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.started }}>
-                  {project.startDate ? <Calendar className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
-                  <div className="flex-1 min-w-0">
-                    <EditableCell
-                      projectId={project.id} field="startDate" value={project.startDate}
-                      type="date" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                    />
-                  </div>
-                </div>
-
-                {/* Ended */}
-                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.ended }}>
-                  {project.endDate ? <Calendar className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
-                  <div className="flex-1 min-w-0">
-                    <EditableCell
-                      projectId={project.id} field="endDate" value={project.endDate}
-                      type="date" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
-                    />
-                  </div>
+                {/* Timeline */}
+                <div className="flex-shrink-0 pr-2 hidden xl:block" style={{ width: cw.timeline }}>
+                  <TimelineCell projectId={project.id} startDate={project.startDate} endDate={project.endDate} onTimelineSave={onTimelineSave} />
                 </div>
 
                 {/* Status */}
-                <div className="flex-shrink-0 hidden md:flex" style={{ width: cw.status }} onClick={(e) => e.stopPropagation()}>
-                  <StatusChip
-                    projectId={project.id} status={project.status}
-                    onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId}
-                  />
+                <div className="flex-shrink-0 hidden md:flex" style={{ width: cw.status }} onClick={e => e.stopPropagation()}>
+                  <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                 </div>
 
-                {/* Open — fixed */}
+                {/* Open */}
                 <div className="flex-shrink-0 flex justify-end" style={{ width: 64 }}>
-                  <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                    <span
-                      className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors"
-                      data-testid={`link-open-project-${project.id}`}
-                    >
+                  <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors" data-testid={`link-open-project-${project.id}`}>
                       Open <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </Link>
@@ -527,22 +511,13 @@ function CustomerGroup({
             ))}
           </div>
 
-          {/* Inline add row */}
+          {/* Add row */}
           {showAdd ? (
-            <AddProjectRow
-              defaultCustomer={isNoCustomer ? "" : customerName}
-              onCreate={handleCreate}
-              onClose={() => setShowAdd(false)}
-              cw={cw}
-            />
+            <AddProjectRow defaultCustomer={isNoCustomer ? "" : customerName} onCreate={handleCreate} onClose={handleClose} cw={cw} customerSuggestions={customerSuggestions} locationSuggestions={locationSuggestions} />
           ) : (
-            <button
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50"
-              onClick={() => setShowAdd(true)}
-              data-testid={`btn-add-project-${customerName}`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="font-medium">Add project</span>
+            <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 rounded-b-xl"
+              onClick={() => setShowAdd(true)} data-testid={`btn-add-project-${customerName}`}>
+              <Plus className="w-3.5 h-3.5" /><span className="font-medium">Add project</span>
             </button>
           )}
         </>
@@ -559,101 +534,108 @@ export default function Projects() {
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
 
-  const [statusFilter,    setStatusFilter]    = useState("all");
-  const [search,          setSearch]          = useState("");
-  const [openPopoverId,   setOpenPopoverId]   = useState<number | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [editKey,         setEditKey]         = useState<EditKey>(null);
-  const [colWidths,       setColWidths]       = useState<ColWidths>(loadWidths);
+  const [statusFilter,      setStatusFilter]      = useState("all");
+  const [search,            setSearch]            = useState("");
+  const [openPopoverId,     setOpenPopoverId]     = useState<number | null>(null);
+  const [collapsedGroups,   setCollapsedGroups]   = useState<Set<string>>(new Set());
+  const [editKey,           setEditKey]           = useState<EditKey>(null);
+  const [colWidths,         setColWidths]         = useState<ColWidths>(loadWidths);
+  const [sortState,         setSortState]         = useState<SortState>({ col: null, dir: null });
+  const [newCustDialog,     setNewCustDialog]     = useState(false);
+  const [newCustInput,      setNewCustInput]      = useState("");
+  const [newCustomerForAdd, setNewCustomerForAdd] = useState<string | null>(null);
 
-  // Persist column widths to localStorage whenever they change
+  // Persist widths
   useEffect(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(colWidths)); } catch {}
+    try { localStorage.setItem(LS_COL, JSON.stringify(colWidths)); } catch {}
   }, [colWidths]);
 
   const allProjects: any[] = projects ?? [];
+
+  const customerSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.customerName).filter(Boolean))] as string[], [allProjects]);
+  const locationSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.jobLocation).filter(Boolean))] as string[], [allProjects]);
 
   // Filter
   const filtered = useMemo(() => allProjects.filter((p: any) => {
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     if (!search.trim()) return matchStatus;
     const q = search.toLowerCase();
-    return matchStatus && (
-      p.name?.toLowerCase().includes(q) ||
-      p.customerName?.toLowerCase().includes(q) ||
-      p.ownerName?.toLowerCase().includes(q) ||
-      p.jobLocation?.toLowerCase().includes(q) ||
-      p.poNumber?.toLowerCase().includes(q) ||
-      p.status?.toLowerCase().includes(q)
-    );
+    return matchStatus && (p.name?.toLowerCase().includes(q) || p.customerName?.toLowerCase().includes(q) || p.ownerName?.toLowerCase().includes(q) || p.jobLocation?.toLowerCase().includes(q) || p.poNumber?.toLowerCase().includes(q) || p.status?.toLowerCase().includes(q));
   }), [allProjects, statusFilter, search]);
 
-  // Group by customer
+  // Sort
+  const sorted = useMemo(() => {
+    if (!sortState.col || !sortState.dir) return filtered;
+    return [...filtered].sort((a, b) => cmpProjects(a, b, sortState.col!, sortState.dir));
+  }, [filtered, sortState]);
+
+  // Group
   const groups = useMemo(() => {
     const map = new Map<string, any[]>();
-    filtered.forEach((p: any) => {
-      const key = p.customerName?.trim() || "__none__";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(p);
-    });
-    return [...map.entries()].sort(([a], [b]) => {
-      if (a === "__none__") return 1;
-      if (b === "__none__") return -1;
-      return a.localeCompare(b);
-    });
-  }, [filtered]);
+    sorted.forEach((p: any) => { const k = p.customerName?.trim() || "__none__"; if (!map.has(k)) map.set(k, []); map.get(k)!.push(p); });
+    return [...map.entries()].sort(([a], [b]) => { if (a === "__none__") return 1; if (b === "__none__") return -1; return a.localeCompare(b); });
+  }, [sorted]);
+
+  // Inject new customer group if needed
+  const groupsWithNew = useMemo(() => {
+    if (!newCustomerForAdd) return groups;
+    if (groups.some(([k]) => k === newCustomerForAdd)) return groups;
+    const entry: [string, any[]] = [newCustomerForAdd, []];
+    const result = [...groups];
+    const noneIdx = result.findIndex(([k]) => k === "__none__");
+    const insertIdx = result.findIndex(([k]) => k !== "__none__" && k.localeCompare(newCustomerForAdd) > 0);
+    if (insertIdx !== -1) result.splice(insertIdx, 0, entry);
+    else if (noneIdx !== -1) result.splice(noneIdx, 0, entry);
+    else result.push(entry);
+    return result;
+  }, [groups, newCustomerForAdd]);
 
   function toggleGroup(key: string) {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
+    setCollapsedGroups(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
+
+  function handleSort(col: SortCol) {
+    setSortState(prev => {
+      if (prev.col !== col) return { col, dir: "asc" };
+      if (prev.dir === "asc") return { col, dir: "desc" };
+      return { col: null, dir: null };
     });
   }
 
-  const handleStatusChange = useCallback((id: number, newStatus: string) => {
-    updateMutation.mutate({ id, status: newStatus });
-  }, [updateMutation]);
+  const handleStatusChange  = useCallback((id: number, s: string)                              => { updateMutation.mutate({ id, status: s }); },                   [updateMutation]);
+  const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val }); },                [updateMutation]);
+  const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)    => { updateMutation.mutate({ id, startDate: s, endDate: e }); },    [updateMutation]);
+  const handleCreate        = useCallback((data: any)                                           => { createMutation.mutate(data); },                                [createMutation]);
 
-  const handleFieldSave = useCallback((id: number, field: string, value: string | null) => {
-    updateMutation.mutate({ id, [field]: value });
-  }, [updateMutation]);
-
-  const handleCreate = useCallback((data: any) => {
-    createMutation.mutate(data);
-  }, [createMutation]);
+  function startNewCustomer() {
+    const name = newCustInput.trim();
+    if (!name) return;
+    setNewCustomerForAdd(name);
+    setNewCustInput("");
+    setNewCustDialog(false);
+  }
 
   return (
     <div className="space-y-5">
 
-      {/* ── Toolbar ── */}
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-baseline gap-2 mr-1">
           <h1 className="text-2xl font-display font-bold text-slate-900 leading-none">Projects</h1>
           {!isLoading && allProjects.length > 0 && (
             <span className="text-sm font-medium text-slate-400" data-testid="text-project-count">
-              {filtered.length === allProjects.length
-                ? `${allProjects.length}`
-                : `${filtered.length} / ${allProjects.length}`}
+              {filtered.length === allProjects.length ? `${allProjects.length}` : `${filtered.length} / ${allProjects.length}`}
             </span>
           )}
         </div>
 
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <Input
-            placeholder="Search projects, customer, PO…"
-            className="pl-9 bg-white border-slate-200 h-9 text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            data-testid="input-project-search"
-          />
+          <Input placeholder="Search projects, customer, PO…" className="pl-9 bg-white border-slate-200 h-9 text-sm" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-project-search" />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[138px] bg-white h-9 text-sm" data-testid="select-status-filter">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-[138px] bg-white h-9 text-sm" data-testid="select-status-filter"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -662,27 +644,26 @@ export default function Projects() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button
+          variant="outline"
+          className="h-9 text-sm border-dashed border-slate-300 text-slate-600 hover:border-brand-400 hover:text-brand-700 hover:bg-brand-50 shrink-0"
+          onClick={() => setNewCustDialog(true)}
+          data-testid="btn-new-customer"
+        >
+          <UserPlus className="w-4 h-4 mr-1.5" />New Customer
+        </Button>
       </div>
 
       {/* Clear filters */}
       {!isLoading && (search || statusFilter !== "all") && (
         <div className="flex items-center gap-2 text-sm text-slate-500 -mt-1">
-          <span>
-            {filtered.length === allProjects.length
-              ? `${allProjects.length} project${allProjects.length !== 1 ? "s" : ""}`
-              : `${filtered.length} of ${allProjects.length} matching`}
-          </span>
-          <button
-            className="text-brand-600 hover:text-brand-800 font-medium text-xs transition-colors"
-            onClick={() => { setSearch(""); setStatusFilter("all"); }}
-            data-testid="btn-clear-filters"
-          >
-            Clear filters
-          </button>
+          <span>{filtered.length === allProjects.length ? `${allProjects.length} project${allProjects.length !== 1 ? "s" : ""}` : `${filtered.length} of ${allProjects.length} matching`}</span>
+          <button className="text-brand-600 hover:text-brand-800 font-medium text-xs transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }} data-testid="btn-clear-filters">Clear filters</button>
         </div>
       )}
 
-      {/* ── Board ── */}
+      {/* Board */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map(g => (
@@ -700,27 +681,22 @@ export default function Projects() {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !newCustomerForAdd ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-            <Briefcase className="w-7 h-7 text-slate-400" />
-          </div>
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><Briefcase className="w-7 h-7 text-slate-400" /></div>
           <p className="font-semibold text-slate-900">No projects found</p>
           {search
             ? <p className="text-sm text-slate-500 mt-1">No results for "<span className="font-medium">{search}</span>" — try different terms.</p>
             : statusFilter !== "all"
               ? <p className="text-sm text-slate-500 mt-1">No projects match the selected status filter.</p>
-              : <p className="text-sm text-slate-500 mt-1">Projects will appear here grouped by customer.</p>
-          }
+              : <p className="text-sm text-slate-500 mt-1">Projects will appear here grouped by customer.</p>}
           {(search || statusFilter !== "all") && (
-            <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
-              Clear filters
-            </button>
+            <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>Clear filters</button>
           )}
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.map(([customerKey, groupProjects]) => (
+          {groupsWithNew.map(([customerKey, groupProjects]) => (
             <CustomerGroup
               key={customerKey}
               customerName={customerKey}
@@ -731,15 +707,46 @@ export default function Projects() {
               setOpenPopoverId={setOpenPopoverId}
               onStatusChange={handleStatusChange}
               onFieldSave={handleFieldSave}
+              onTimelineSave={handleTimelineSave}
               editKey={editKey}
               setEditKey={setEditKey}
               onCreate={handleCreate}
               cw={colWidths}
               setColWidths={setColWidths}
+              ss={sortState}
+              onSort={handleSort}
+              customerSuggestions={customerSuggestions}
+              locationSuggestions={locationSuggestions}
+              autoOpenAdd={newCustomerForAdd === customerKey}
+              onAutoAddClosed={() => setNewCustomerForAdd(null)}
             />
           ))}
         </div>
       )}
+
+      {/* New Customer Dialog */}
+      <Dialog open={newCustDialog} onOpenChange={setNewCustDialog}>
+        <DialogContent className="sm:max-w-[340px]">
+          <DialogHeader><DialogTitle>New Customer Group</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-sm text-slate-500">Enter a customer name to start a new project group.</p>
+            <Input
+              placeholder="Customer name"
+              value={newCustInput}
+              onChange={e => setNewCustInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && newCustInput.trim()) startNewCustomer(); }}
+              autoFocus
+              data-testid="input-new-customer-name"
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setNewCustDialog(false)}>Cancel</Button>
+              <Button size="sm" disabled={!newCustInput.trim()} onClick={startNewCustomer} className="bg-brand-700 hover:bg-brand-800" data-testid="btn-confirm-new-customer">
+                Start Project
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

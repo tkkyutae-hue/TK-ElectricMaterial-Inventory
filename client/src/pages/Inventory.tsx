@@ -28,6 +28,8 @@ type CategorySummary = {
 
 function CategoryCard({ cat }: { cat: CategorySummary }) {
   const gradient = getCategoryGradient(cat.code);
+  const [imgError, setImgError] = useState(false);
+  const showImage = !!cat.imageUrl && !imgError;
 
   return (
     <Link href={`/inventory/category/${cat.id}`}>
@@ -37,28 +39,23 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
       >
         <div className="relative h-28 overflow-hidden bg-[#16202e]">
           {/* Blurred ambient fill — hides letterbox bars */}
-          {cat.imageUrl && (
+          {showImage && (
             <img
-              src={cat.imageUrl}
+              src={cat.imageUrl!}
               aria-hidden
               className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-80 brightness-75 saturate-200 pointer-events-none"
             />
           )}
           {/* Primary sharp image */}
-          {cat.imageUrl ? (
+          {showImage && (
             <img
-              src={cat.imageUrl}
+              src={cat.imageUrl!}
               alt={cat.name}
               className="absolute inset-0 w-full h-full object-contain object-center z-10 group-hover:scale-[1.04] transition-transform duration-500 ease-out"
-              onError={(e) => {
-                const t = e.currentTarget;
-                t.style.display = "none";
-                (t.previousElementSibling as HTMLElement)?.style.setProperty("display", "none");
-                t.parentElement?.querySelector(".fallback-grad")?.classList.remove("hidden");
-              }}
+              onError={() => setImgError(true)}
             />
-          ) : null}
-          <div className={`fallback-grad ${cat.imageUrl ? "hidden" : ""} absolute inset-0 bg-gradient-to-br ${gradient}`} />
+          )}
+          <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${showImage ? "hidden" : ""}`} />
           {/* Gradient for text legibility */}
           <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
           {/* Bottom text */}
@@ -628,7 +625,7 @@ export default function Inventory() {
                 <Button
                   variant="outline"
                   className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-50"
-                  onClick={() => navigate(`/inventory/${previewItem.id}`)}
+                  onClick={() => { setPreviewItem(null); navigate("/transactions"); }}
                   data-testid="drawer-btn-log-movement"
                 >
                   Log Movement

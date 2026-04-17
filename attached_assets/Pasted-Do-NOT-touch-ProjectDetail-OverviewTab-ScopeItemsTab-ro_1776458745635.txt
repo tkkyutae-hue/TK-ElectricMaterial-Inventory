@@ -1,0 +1,118 @@
+Do NOT touch ProjectDetail, OverviewTab, ScopeItemsTab, routing, or project APIs broadly.
+Do NOT rebuild project business logic.
+Focus ONLY on:
+- client/src/pages/Projects.tsx
+- reuse existing hooks already present in the repo, especially useProjects, useCreateProject, and useUpdateProject
+
+TASK GOAL
+Redesign the Admin Projects list screen into a Monday.com-inspired grouped project board/list, grouped by customer, with compact row-based scanning and inline status editing.
+
+IMPORTANT CONTEXT
+The repo already has:
+- useProjects()
+- useCreateProject()
+- useUpdateProject()
+
+So do NOT invent new project update APIs.
+Reuse the existing project update mutation for inline status changes.
+
+DESIGN / UX REQUIREMENTS
+
+PART 1 — GROUP PROJECTS BY CUSTOMER
+Replace the flat projects list with customer-grouped sections.
+
+Requirements:
+1. Group projects by customerName
+2. Projects without customerName should fall under a fallback group like:
+   - "No Customer"
+3. Each customer section should have:
+   - customer name header
+   - project count
+   - compact grouped list below
+
+Keep search and status filtering working across all projects before grouping.
+
+PART 2 — CHANGE THE COLUMN ORDER
+Use this visual order for each project row:
+
+1. PO / Code
+2. Project Name
+3. Customer
+4. Location
+5. Started
+6. Ended
+7. Status
+8. Open / row action affordance
+
+Requirements:
+- Use existing project fields where available
+- If "ended" date is not reliably present in the current data, display a muted em dash (—) instead of inventing data
+- Keep the layout desktop-first and easy to scan
+- Keep rows compact, but not cramped
+
+PART 3 — INLINE STATUS CHANGE
+Make the status cell interactive.
+
+Requirements:
+1. The status chip should be clickable
+2. Clicking it should open a small status selector/dropdown
+3. Reuse the existing project status values already used in this page:
+   - active
+   - on_hold
+   - completed
+   - cancelled
+4. On selection, update the project using the existing useUpdateProject() mutation
+5. Refresh/invalidate the projects list after success
+6. Keep the UI lightweight and Monday-style, not heavy modal-based
+
+Important:
+- Do NOT change create/edit/delete semantics
+- Do NOT add a new API if useUpdateProject() already works
+
+PART 4 — TOOLBAR IN ONE ROW
+Make the top controls fit into one clean row on desktop.
+
+Toolbar should include:
+- page title area
+- search
+- status filter
+- New Project button
+
+Requirements:
+- Keep it on one row on desktop
+- Still allow responsive wrapping on smaller widths if needed
+- Make it feel like a project board control bar, not a stacked form
+
+PART 5 — MONDAY-STYLE BOARD FEEL
+Do NOT turn it into a plain HTML table.
+Keep it as a board-like grouped list.
+
+Requirements:
+- each project row should feel like a rounded board item
+- soft background / subtle border
+- stronger hover state
+- compact but readable status chips
+- clearer visual hierarchy for project name vs secondary fields
+- grouped customer sections should feel like management boards, not plain tables
+
+PART 6 — KEEP SCOPE NARROW
+- No changes to ProjectDetail
+- No changes to project tabs
+- No changes to backend route contracts
+- No broad refactor outside Projects.tsx
+- No drag-and-drop column reordering in this task
+- No new data model fields
+
+OPTIONAL SAFE ENHANCEMENTS
+If low-risk and already supported by available data:
+- small customer group collapse/expand
+- total projects count near the page header
+- subtle empty-state polish
+
+OUTPUT
+1. Summary of Projects page redesign
+2. Files modified
+3. How customer grouping was implemented
+4. How inline status change was implemented
+5. Any field that had to be treated as optional (for example ended date)
+6. What was intentionally left unchanged

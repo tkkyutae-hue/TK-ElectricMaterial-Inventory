@@ -1,0 +1,125 @@
+Do NOT touch ProjectDetail, OverviewTab, ScopeItemsTab, routing, or project APIs broadly.
+Do NOT change project business logic.
+Focus ONLY on:
+- client/src/pages/Projects.tsx
+
+TASK GOAL
+Turn the current grouped Projects list into a more Monday-style inline-editable board list.
+
+IMPORTANT CURRENT CONTEXT
+This file already has:
+- customer grouping
+- search
+- status filter
+- inline status mutation via useUpdateProject()
+- create mutation via useCreateProject()
+
+Reuse those existing hooks.
+Do NOT invent new backend APIs unless absolutely necessary.
+
+==================================================
+PART 1 — REMOVE FULL-ROW LINK BEHAVIOR
+==================================================
+
+Current problem:
+The whole project row is wrapped in a Link to /projects/:id.
+This conflicts with inline editing because clicking a cell navigates away.
+
+Required change:
+- Remove full-row click navigation
+- Keep only the rightmost chevron/open affordance as the detail navigation trigger
+- Make the row itself non-navigating so cells can be edited safely
+
+==================================================
+PART 2 — INLINE EDITABLE CELLS
+==================================================
+
+Make these columns inline-editable on desktop:
+- PO / Code
+- Project Name
+- Customer
+- Location
+- Started
+- Ended
+- Status (status already has inline chip/dropdown, keep and reuse it)
+
+Requirements:
+1. Clicking a cell should switch it into a small inline edit control
+2. On save / blur / enter, update the project via the existing useUpdateProject() mutation
+3. On escape, cancel editing
+4. Keep the UI compact and admin-friendly
+5. Preserve grouped-by-customer rendering
+
+Important:
+- Ended date should be optional
+- If customer is edited, the row may move to a different customer group after save
+- Keep the current grouped list behavior intact after mutation refresh
+
+==================================================
+PART 3 — REMOVE "NEW PROJECT" BUTTON
+==================================================
+
+Remove the top-right "New Project" button from this page.
+
+Do NOT remove project creation capability from the app entirely.
+Only remove the button from this Projects list toolbar.
+
+==================================================
+PART 4 — ADD INLINE "ADD PROJECT" ROW UNDER EACH CUSTOMER GROUP
+==================================================
+
+At the bottom of each customer group, add a lightweight blank row for creating a new project inline.
+
+Behavior:
+- visually similar to a table/board add row
+- customerName should be prefilled from the current group
+- allow entering:
+  - PO / Code
+  - Project Name
+  - Location
+  - Started
+  - Ended
+  - Status
+- create via existing useCreateProject()
+
+Requirements:
+1. Keep it compact
+2. No modal for this flow
+3. One add row per customer group
+4. For the fallback "No Customer" group, customerName can remain empty unless user types one
+
+==================================================
+PART 5 — KEEP CURRENT FILTERING / GROUPING
+==================================================
+
+Preserve:
+- search
+- status filter
+- customer grouping
+- collapse/expand by customer group
+
+Do NOT redesign the whole page into a kanban board.
+Keep it as a grouped, board-like row list.
+
+==================================================
+CONSTRAINTS
+==================================================
+
+- No ProjectDetail changes
+- No OverviewTab / ScopeItemsTab changes
+- No broad refactor outside Projects.tsx
+- No backend route redesign
+- Reuse existing mutations
+- Keep desktop-first UX
+- Keep admin theme
+
+==================================================
+OUTPUT
+==================================================
+
+Provide:
+1. Summary of inline editing added
+2. Summary of inline add-row behavior
+3. Files modified
+4. Confirmation that full-row navigation was removed and replaced with explicit open action only
+5. Anything intentionally left unchanged

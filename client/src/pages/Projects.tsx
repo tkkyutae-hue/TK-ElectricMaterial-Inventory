@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useProjects, useCreateProject, useUpdateProject } from "@/hooks/use-reference-data";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
-  FileText, Hash, ChevronDown, ChevronUp, Users, Check, Plus, X,
+  ChevronDown, ChevronUp, Users, Check, Plus, X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,83 @@ const STATUS_OPTIONS = [
 const statusMap = Object.fromEntries(STATUS_OPTIONS.map(s => [s.value, s]));
 function getStatusCfg(status: string) {
   return statusMap[status] ?? { label: status, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resizable column widths
+// ─────────────────────────────────────────────────────────────────────────────
+const LS_KEY = "tkelectric_project_col_widths";
+const MIN_COL_WIDTH = 60;
+
+type ColWidths = {
+  po: number;
+  name: number;
+  customer: number;
+  location: number;
+  started: number;
+  ended: number;
+  status: number;
+};
+
+const DEFAULT_WIDTHS: ColWidths = {
+  po: 128,
+  name: 260,
+  customer: 144,
+  location: 152,
+  started: 112,
+  ended: 112,
+  status: 128,
+};
+
+function loadWidths(): ColWidths {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) return { ...DEFAULT_WIDTHS, ...JSON.parse(s) };
+  } catch {}
+  return { ...DEFAULT_WIDTHS };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resize handle
+// ─────────────────────────────────────────────────────────────────────────────
+function ResizeHandle({
+  col, currentWidth, setColWidths,
+}: {
+  col: keyof ColWidths;
+  currentWidth: number;
+  setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
+}) {
+  const startX = useRef(0);
+  const startW = useRef(0);
+
+  function onMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    startX.current = e.clientX;
+    startW.current = currentWidth;
+
+    function onMove(ev: MouseEvent) {
+      const delta = ev.clientX - startX.current;
+      const newW  = Math.max(MIN_COL_WIDTH, startW.current + delta);
+      setColWidths(prev => ({ ...prev, [col]: newW }));
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+  }
+
+  return (
+    <div
+      className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center group/rh select-none z-10"
+      onMouseDown={onMouseDown}
+      title="Drag to resize"
+    >
+      <div className="w-px h-4 rounded-full bg-slate-200 group-hover/rh:bg-brand-400 transition-colors" />
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,14 +162,13 @@ function StatusChip({
 type EditKey = { id: number; field: string } | null;
 
 function EditableCell({
-  projectId, field, value, type = "text", placeholder = "—",
+  projectId, field, value, type = "text",
   editKey, setEditKey, onSave, className = "",
 }: {
   projectId: number;
   field: string;
   value: string | null | undefined;
   type?: "text" | "date";
-  placeholder?: string;
   editKey: EditKey;
   setEditKey: (k: EditKey) => void;
   onSave: (id: number, field: string, value: string | null) => void;
@@ -114,11 +190,7 @@ function EditableCell({
     onSave(projectId, field, trimmed === "" ? null : trimmed);
     setEditKey(null);
   }
-
-  function cancel() {
-    setDraft(value ?? "");
-    setEditKey(null);
-  }
+  function cancel() { setDraft(value ?? ""); setEditKey(null); }
 
   function displayDate(d: string | null | undefined) {
     if (!d) return null;
@@ -134,7 +206,7 @@ function EditableCell({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Enter")  { e.preventDefault(); commit(); }
           if (e.key === "Escape") { e.preventDefault(); cancel(); }
         }}
         className={`w-full bg-white border border-brand-300 rounded px-2 py-1 text-sm text-slate-900 outline-none ring-2 ring-brand-200 ${className}`}
@@ -145,7 +217,6 @@ function EditableCell({
   }
 
   const display = type === "date" ? displayDate(value) : (value || null);
-
   return (
     <div
       className={`cursor-text truncate rounded px-1 -mx-1 py-0.5 hover:bg-slate-100/80 transition-colors ${className}`}
@@ -161,7 +232,7 @@ function EditableCell({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Column header
+// Column header label style
 // ─────────────────────────────────────────────────────────────────────────────
 const CH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest";
 
@@ -169,13 +240,12 @@ const CH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest";
 // Inline Add-Project Row
 // ─────────────────────────────────────────────────────────────────────────────
 function AddProjectRow({
-  defaultCustomer,
-  onCreate,
-  onClose,
+  defaultCustomer, onCreate, onClose, cw,
 }: {
   defaultCustomer: string;
   onCreate: (data: any) => void;
   onClose: () => void;
+  cw: ColWidths;
 }) {
   const [name,     setName]     = useState("");
   const [po,       setPo]       = useState("");
@@ -208,36 +278,36 @@ function AddProjectRow({
     });
   }
 
-  const inputCls = "h-7 text-sm px-2 bg-white border-slate-200 focus:border-brand-400 focus:ring-1 focus:ring-brand-200 rounded";
+  const inputCls = "h-7 text-sm px-2 bg-white border-slate-200 focus:border-brand-400 focus:ring-1 focus:ring-brand-200 rounded w-full";
 
   return (
     <div className="flex items-center px-4 py-2 gap-2 bg-brand-50/40 border-t border-brand-100" onClick={(e) => e.stopPropagation()}>
       {/* PO */}
-      <div className="w-32 flex-shrink-0 hidden lg:block">
+      <div className="flex-shrink-0 hidden lg:block" style={{ width: cw.po }}>
         <Input className={inputCls} placeholder="PO / Code" value={po} onChange={e => setPo(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-po" />
       </div>
       {/* Name */}
-      <div className="flex-1 min-w-0">
-        <Input ref={nameRef} className={inputCls + " w-full"} placeholder="Project name *" value={name} onChange={e => setName(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-name" />
+      <div className="flex-shrink-0 min-w-0" style={{ width: cw.name }}>
+        <Input ref={nameRef} className={inputCls} placeholder="Project name *" value={name} onChange={e => setName(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-name" />
       </div>
       {/* Customer */}
-      <div className="w-36 flex-shrink-0 hidden xl:block">
+      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.customer }}>
         <Input className={inputCls} placeholder="Customer" value={customer} onChange={e => setCustomer(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-customer" />
       </div>
       {/* Location */}
-      <div className="w-36 flex-shrink-0 hidden xl:block">
+      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
         <Input className={inputCls} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-location" />
       </div>
       {/* Started */}
-      <div className="w-28 flex-shrink-0 hidden xl:block">
-        <input type="date" className={`${inputCls} w-full`} value={started} onChange={e => setStarted(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-started" />
+      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.started }}>
+        <input type="date" className={inputCls} value={started} onChange={e => setStarted(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-started" />
       </div>
       {/* Ended */}
-      <div className="w-28 flex-shrink-0 hidden xl:block">
-        <input type="date" className={`${inputCls} w-full`} value={ended} onChange={e => setEnded(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-ended" />
+      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.ended }}>
+        <input type="date" className={inputCls} value={ended} onChange={e => setEnded(e.target.value)} onKeyDown={handleKeyDown} data-testid="add-row-ended" />
       </div>
       {/* Status */}
-      <div className="w-32 flex-shrink-0">
+      <div className="flex-shrink-0" style={{ width: cw.status }}>
         <select
           className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
           value={status}
@@ -247,8 +317,8 @@ function AddProjectRow({
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
-      {/* Actions */}
-      <div className="w-16 flex-shrink-0 flex items-center gap-1 justify-end">
+      {/* Actions — fixed 64px */}
+      <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 64 }}>
         <button
           className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors"
           disabled={!name.trim()}
@@ -272,6 +342,7 @@ function CustomerGroup({
   customerName, projects, collapsed, onToggle,
   openPopoverId, setOpenPopoverId, onStatusChange, onFieldSave,
   editKey, setEditKey, onCreate,
+  cw, setColWidths,
 }: {
   customerName: string;
   projects: any[];
@@ -284,6 +355,8 @@ function CustomerGroup({
   editKey: EditKey;
   setEditKey: (k: EditKey) => void;
   onCreate: (data: any) => void;
+  cw: ColWidths;
+  setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
 }) {
   const isNoCustomer = customerName === "__none__";
   const [showAdd, setShowAdd] = useState(false);
@@ -314,19 +387,48 @@ function CustomerGroup({
 
       {!collapsed && (
         <>
-          {/* Column headers */}
-          <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none">
-            <div className="w-32 flex-shrink-0 pr-3 hidden lg:block"><span className={CH}>PO / Code</span></div>
-            <div className="flex-1 min-w-0 pr-4"><span className={CH}>Project Name</span></div>
-            <div className="w-36 flex-shrink-0 pr-3 hidden xl:block"><span className={CH}>Customer</span></div>
-            <div className="w-36 flex-shrink-0 pr-3 hidden xl:block"><span className={CH}>Location</span></div>
-            <div className="w-28 flex-shrink-0 pr-3 hidden xl:block"><span className={CH}>Started</span></div>
-            <div className="w-28 flex-shrink-0 pr-3 hidden xl:block"><span className={CH}>Ended</span></div>
-            <div className="w-32 flex-shrink-0"><span className={CH}>Status</span></div>
-            <div className="w-16 flex-shrink-0" />
+          {/* ── Column headers (desktop) ── */}
+          <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none overflow-x-auto">
+            {/* PO / Code */}
+            <div className="relative flex-shrink-0 pr-3 hidden lg:flex items-center" style={{ width: cw.po }}>
+              <span className={CH}>PO / Code</span>
+              <ResizeHandle col="po" currentWidth={cw.po} setColWidths={setColWidths} />
+            </div>
+            {/* Project Name */}
+            <div className="relative flex-shrink-0 pr-4" style={{ width: cw.name }}>
+              <span className={CH}>Project Name</span>
+              <ResizeHandle col="name" currentWidth={cw.name} setColWidths={setColWidths} />
+            </div>
+            {/* Customer */}
+            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.customer }}>
+              <span className={CH}>Customer</span>
+              <ResizeHandle col="customer" currentWidth={cw.customer} setColWidths={setColWidths} />
+            </div>
+            {/* Location */}
+            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.location }}>
+              <span className={CH}>Location</span>
+              <ResizeHandle col="location" currentWidth={cw.location} setColWidths={setColWidths} />
+            </div>
+            {/* Started */}
+            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.started }}>
+              <span className={CH}>Started</span>
+              <ResizeHandle col="started" currentWidth={cw.started} setColWidths={setColWidths} />
+            </div>
+            {/* Ended */}
+            <div className="relative flex-shrink-0 pr-3 hidden xl:flex items-center" style={{ width: cw.ended }}>
+              <span className={CH}>Ended</span>
+              <ResizeHandle col="ended" currentWidth={cw.ended} setColWidths={setColWidths} />
+            </div>
+            {/* Status */}
+            <div className="relative flex-shrink-0" style={{ width: cw.status }}>
+              <span className={CH}>Status</span>
+              <ResizeHandle col="status" currentWidth={cw.status} setColWidths={setColWidths} />
+            </div>
+            {/* Open — fixed */}
+            <div className="flex-shrink-0" style={{ width: 64 }} />
           </div>
 
-          {/* Project rows */}
+          {/* ── Project rows ── */}
           <div className="divide-y divide-slate-50">
             {projects.map((project: any) => (
               <div
@@ -335,18 +437,18 @@ function CustomerGroup({
                 data-testid={`row-project-${project.id}`}
               >
                 {/* PO / Code */}
-                <div className="w-32 flex-shrink-0 pr-3 hidden lg:block">
+                <div className="flex-shrink-0 pr-3 hidden lg:block" style={{ width: cw.po }}>
                   <EditableCell
                     projectId={project.id} field="poNumber" value={project.poNumber}
-                    placeholder="PO / Code" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                   />
                 </div>
 
                 {/* Project Name */}
-                <div className="flex-1 min-w-0 pr-4">
+                <div className="flex-shrink-0 min-w-0 pr-4" style={{ width: cw.name }}>
                   <EditableCell
                     projectId={project.id} field="name" value={project.name}
-                    placeholder="Project name" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                     className="font-semibold text-slate-900 group-hover:text-brand-700"
                   />
                   {project.ownerName && (
@@ -362,59 +464,56 @@ function CustomerGroup({
                 </div>
 
                 {/* Customer */}
-                <div className="w-36 flex-shrink-0 pr-3 hidden xl:block">
+                <div className="flex-shrink-0 pr-3 hidden xl:block" style={{ width: cw.customer }}>
                   <EditableCell
                     projectId={project.id} field="customerName" value={project.customerName}
-                    placeholder="Customer" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                    editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                   />
                 </div>
 
                 {/* Location */}
-                <div className="w-36 flex-shrink-0 pr-3 hidden xl:flex items-center gap-1">
-                  {project.jobLocation
-                    ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" />
-                    : null
-                  }
+                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.location }}>
+                  {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
                   <div className="flex-1 min-w-0">
                     <EditableCell
                       projectId={project.id} field="jobLocation" value={project.jobLocation}
-                      placeholder="Location" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                      editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                     />
                   </div>
                 </div>
 
                 {/* Started */}
-                <div className="w-28 flex-shrink-0 pr-3 hidden xl:flex items-center gap-1">
+                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.started }}>
                   {project.startDate ? <Calendar className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
                   <div className="flex-1 min-w-0">
                     <EditableCell
                       projectId={project.id} field="startDate" value={project.startDate}
-                      type="date" placeholder="Started" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                      type="date" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                     />
                   </div>
                 </div>
 
                 {/* Ended */}
-                <div className="w-28 flex-shrink-0 pr-3 hidden xl:flex items-center gap-1">
+                <div className="flex-shrink-0 pr-3 hidden xl:flex items-center gap-1" style={{ width: cw.ended }}>
                   {project.endDate ? <Calendar className="w-3 h-3 text-slate-300 flex-shrink-0 mt-0.5" /> : null}
                   <div className="flex-1 min-w-0">
                     <EditableCell
                       projectId={project.id} field="endDate" value={project.endDate}
-                      type="date" placeholder="Ended" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
+                      type="date" editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave}
                     />
                   </div>
                 </div>
 
                 {/* Status */}
-                <div className="w-32 flex-shrink-0 hidden md:flex" onClick={(e) => e.stopPropagation()}>
+                <div className="flex-shrink-0 hidden md:flex" style={{ width: cw.status }} onClick={(e) => e.stopPropagation()}>
                   <StatusChip
                     projectId={project.id} status={project.status}
                     onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId}
                   />
                 </div>
 
-                {/* Open → */}
-                <div className="w-16 flex-shrink-0 flex justify-end">
+                {/* Open — fixed */}
+                <div className="flex-shrink-0 flex justify-end" style={{ width: 64 }}>
                   <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
                     <span
                       className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors"
@@ -434,10 +533,11 @@ function CustomerGroup({
               defaultCustomer={isNoCustomer ? "" : customerName}
               onCreate={handleCreate}
               onClose={() => setShowAdd(false)}
+              cw={cw}
             />
           ) : (
             <button
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 group"
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50"
               onClick={() => setShowAdd(true)}
               data-testid={`btn-add-project-${customerName}`}
             >
@@ -464,6 +564,12 @@ export default function Projects() {
   const [openPopoverId,   setOpenPopoverId]   = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [editKey,         setEditKey]         = useState<EditKey>(null);
+  const [colWidths,       setColWidths]       = useState<ColWidths>(loadWidths);
+
+  // Persist column widths to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(colWidths)); } catch {}
+  }, [colWidths]);
 
   const allProjects: any[] = projects ?? [];
 
@@ -520,7 +626,7 @@ export default function Projects() {
   return (
     <div className="space-y-5">
 
-      {/* ── One-row toolbar (no New Project button) ── */}
+      {/* ── Toolbar ── */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-baseline gap-2 mr-1">
           <h1 className="text-2xl font-display font-bold text-slate-900 leading-none">Projects</h1>
@@ -558,7 +664,7 @@ export default function Projects() {
         </Select>
       </div>
 
-      {/* Clear filters strip */}
+      {/* Clear filters */}
       {!isLoading && (search || statusFilter !== "all") && (
         <div className="flex items-center gap-2 text-sm text-slate-500 -mt-1">
           <span>
@@ -576,7 +682,7 @@ export default function Projects() {
         </div>
       )}
 
-      {/* Board */}
+      {/* ── Board ── */}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map(g => (
@@ -628,6 +734,8 @@ export default function Projects() {
               editKey={editKey}
               setEditKey={setEditKey}
               onCreate={handleCreate}
+              cw={colWidths}
+              setColWidths={setColWidths}
             />
           ))}
         </div>

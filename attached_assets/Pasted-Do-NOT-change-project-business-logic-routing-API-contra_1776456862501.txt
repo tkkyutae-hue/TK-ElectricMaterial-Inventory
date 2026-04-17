@@ -1,0 +1,81 @@
+Do NOT change project business logic, routing, API contracts, or project detail tabs.
+Do NOT touch OverviewTab, ScopeItemsTab, or ProjectDetail internals.
+
+Focus ONLY on the Projects list page / Projects landing screen in Admin Mode.
+
+TASK GOAL
+Redesign the Projects list screen to feel more like a Monday.com-inspired project board, while preserving the current admin theme and all existing project data behavior.
+
+CURRENT PROBLEM
+The current screen uses a card grid layout.
+It looks clean, but it becomes hard to scan and compare projects quickly as the list grows.
+
+DESIGN DIRECTION
+Convert the current card-grid projects screen into a more board-like, row-based project list that is easier to scan at a glance.
+
+This is NOT a full Monday.com clone.
+It should be Monday-inspired:
+- cleaner row-based project list
+- stronger column scanning
+- status chips
+- easier comparison across projects
+- admin/project management feel
+
+KEEP
+- current sidebar
+- current top bar
+- current search/filter/new project actions
+- current admin visual identity
+- current project data and behaviors
+
+CHANGE
+- replace the main project card grid with a structured row/table-like board layout
+- each project should render as one row
+- rows should be compact, readable, and clickable
+- use clear column organization
+
+SUGGESTED COLUMNS
+Use the existing project data already available on this screen where possible:
+- Project Name
+- Status
+- Customer
+- Location
+- Start Date
+- Project Code
+- optional small progress/status summary if already cheaply available
+- Action / open details affordance
+
+REQUIREMENTS
+1. Preserve existing search behavior
+2. Preserve existing status filter behavior
+3. Preserve New Project action
+4. Preserve row click / view details behavior
+5. Keep the layout desktop-first and efficient for admin use
+6. Do NOT make it feel like a generic plain HTML table
+7. Use soft board styling:
+   - rounded row containers
+   - subtle column separators or spacing
+   - clear hover state
+   - compact status chips
+   - crisp typography hierarchy
+
+OPTIONAL SMALL IMPROVEMENTS
+If low-risk and already supported by the data on this page:
+- add a lightweight project count summary above the board
+- add empty-state polish
+- add clearer sort affordance visually if sorting already exists
+But do NOT add new server-side features in this task.
+
+IMPORTANT CONSTRAINTS
+- No broad refactor
+- No changes to project APIs
+- No changes to detail tabs
+- No changes to permissions
+- No changes to create/edit/delete semantics
+- This task is UI/UX only for the Projects list screen
+
+OUTPUT
+1. Summary of the Projects list redesign
+2. Files modified
+3. What Monday-style elements were introduced
+4. What was intentionally left unchanged

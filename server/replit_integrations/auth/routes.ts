@@ -136,5 +136,4 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-
 }

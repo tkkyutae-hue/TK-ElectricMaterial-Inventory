@@ -1117,15 +1117,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // ── Colour palette ────────────────────────────────────────────────────────────
       const C = {
-        headerBg:  "FF1A2E44",  // dark navy  – header row
-        l1Bg:      "FF2D3748",  // dark slate – level-1 group (대분류)
-        l2Bg:      "FFF0E6D3",  // light beige – level-2 group (중분류)
+        headerBg:  "FF1A2E44",  // dark navy   – header row
+        l1Bg:      "FF2D3748",  // dark slate  – level-1 group (subcategory)
+        l2Bg:      "FFF0E6D3",  // light beige – level-2 group (detailType)
+        l3Bg:      "FFE8F0FD",  // pale blue   – level-3 group (baseItemName)
+        l3Text:    "FF1E3A5F",  // dark blue   – level-3 text
         white:     "FFFFFFFF",
         darkText:  "FF1A1A1A",
         greenText: "FF1D6B3B",  greenBg: "FFD6F5E3",  // In Stock
         redText:   "FF9B1C1C",  redBg:   "FFFDE8E8",  // Out of Stock
         orangeText:"FF92400E",  orangeBg:"FFFEF3C7",  // Low Stock
       } as const;
+
+      // ── Size sort helper ─────────────────────────────────────────────────────────
+      // Uses DB sizeSortValue when set; otherwise parses sizeLabel for conduit /
+      // cable inch-sizes (fractions, compound fractions, plain inches).
+      function exportSizeKey(item: any): number {
+        const dbVal = item.sizeSortValue ?? 0;
+        if (dbVal !== 0) return dbVal;
+        const label = (item.sizeLabel ?? "").trim();
+        if (!label) return 999999;
+        const clean = label.replace(/['"]/g, "").trim();
+        // compound fraction: 1-1/4, 1-1/2, 2-1/2, 3-1/2
+        const compound = clean.match(/^(\d+)[-\s](\d+)\/(\d+)$/);
+        if (compound) return (+compound[1] + +compound[2] / +compound[3]) * 1000;
+        // simple fraction: 1/2, 3/4
+        const frac = clean.match(/^(\d+)\/(\d+)$/);
+        if (frac) return (+frac[1] / +frac[2]) * 1000;
+        // plain integer / decimal: 1, 2, 3, 4, 6
+        const num = parseFloat(clean);
+        if (!isNaN(num)) return num * 1000;
+        return 999999;
+      }
 
       // ── 8 export columns ──────────────────────────────────────────────────────────
       const COLS = [
@@ -1159,7 +1182,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           cell.border    = { bottom: { style: "thin", color: { argb: C.white } } };
         });
 
-        // ── Sort: subcategory → detailType → baseItemName → sizeSortValue ─────────
+        // ── Sort: subcategory → detailType → baseItemName → exportSizeKey ───────────
         const sorted = [...catItems].sort((a, b) => {
           const fa = (a.subcategory  || "\uFFFF").toLowerCase();
           const fb = (b.subcategory  || "\uFFFF").toLowerCase();
@@ -1170,19 +1193,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const na = (a.baseItemName || a.name || "").toLowerCase();
           const nb = (b.baseItemName || b.name || "").toLowerCase();
           if (na !== nb) return na.localeCompare(nb);
-          return (a.sizeSortValue ?? 0) - (b.sizeSortValue ?? 0);
+          return exportSizeKey(a) - exportSizeKey(b);
         });
 
         // ── Group-row helper ──────────────────────────────────────────────────────
-        const addGroupRow = (label: string, level: 1 | 2) => {
+        const addGroupRow = (label: string, level: 1 | 2 | 3) => {
           const gRow = ws.addRow([label]);
-          gRow.height = level === 1 ? 20 : 18;
-          const isL1 = level === 1;
-          gRow.eachCell({ includeEmpty: true }, cell => {
-            cell.font      = { bold: true, size: isL1 ? 11 : 10, color: { argb: isL1 ? C.white : C.darkText } };
-            cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: isL1 ? C.l1Bg : C.l2Bg } };
-            cell.alignment = { vertical: "middle", indent: isL1 ? 1 : 2 };
-          });
+          if (level === 1) {
+            gRow.height = 20;
+            gRow.eachCell({ includeEmpty: true }, cell => {
+              cell.font      = { bold: true, size: 11, color: { argb: C.white } };
+              cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: C.l1Bg } };
+              cell.alignment = { vertical: "middle", indent: 1 };
+            });
+          } else if (level === 2) {
+            gRow.height = 18;
+            gRow.eachCell({ includeEmpty: true }, cell => {
+              cell.font      = { bold: true, size: 10, color: { argb: C.darkText } };
+              cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: C.l2Bg } };
+              cell.alignment = { vertical: "middle", indent: 2 };
+            });
+          } else {
+            // Level 3 — pale blue, bold small, indent 3
+            gRow.height = 16;
+            gRow.eachCell({ includeEmpty: true }, cell => {
+              cell.font      = { bold: true, size: 9, color: { argb: C.l3Text } };
+              cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: C.l3Bg } };
+              cell.alignment = { vertical: "middle", indent: 3 };
+              cell.border    = { bottom: { style: "hair", color: { argb: "FFBFD4F0" } } };
+            });
+          }
           ws.mergeCells(gRow.number, 1, gRow.number, NUM_COLS);
         };
 
@@ -1190,24 +1230,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const SENTINEL = "\x00__sentinel__";
         let lastFamily: string = SENTINEL;
         let lastType:   string = SENTINEL;
+        let lastBase:   string = SENTINEL;
 
         for (const item of sorted) {
           const family  = item.subcategory ?? null;
           const type    = item.detailType  ?? null;
+          const base    = item.baseItemName || item.name || null;
           const status  = itemStatus(item);
           const qty     = item.quantityOnHand ?? 0;
 
           const familyKey = family ?? "";
           const typeKey   = type   ?? "";
+          const baseKey   = base   ?? "";
 
           if (familyKey !== lastFamily) {
             lastFamily = familyKey;
             lastType   = SENTINEL;
+            lastBase   = SENTINEL;
             addGroupRow(family || "(No Family)", 1);
           }
           if (typeKey !== lastType) {
             lastType = typeKey;
+            lastBase = SENTINEL;
             if (type) addGroupRow(type, 2);
+          }
+          if (baseKey !== lastBase) {
+            lastBase = baseKey;
+            if (base) addGroupRow(base, 3);
           }
 
           const updatedAt = item.updatedAt
@@ -1226,7 +1275,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           });
 
           dataRow.height = 16;
-          dataRow.getCell("matName").alignment = { vertical: "middle", indent: 3 };
+          dataRow.getCell("matName").alignment = { vertical: "middle", indent: 4 };
 
           // Quantity: number format + red if 0
           const qtyCell = dataRow.getCell("qty");

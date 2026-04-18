@@ -1,0 +1,76 @@
+Do NOT change inventory business logic, item classification logic, or UI screens.
+Do NOT change import/export routes other than the Admin inventory Excel export.
+Focus ONLY on:
+- server/routes.ts
+- the /api/admin/export/inventory-xlsx implementation
+
+TASK GOAL
+Improve the Excel export grouping so similar items inside the same Family/Subcategory and Type/DetailType are separated into their own subgroup sections.
+
+CURRENT PROBLEM
+The export currently:
+- sorts by subcategory → detailType → baseItemName → sizeSortValue
+- but only creates visible group rows for:
+  1. subcategory
+  2. detailType
+
+Because of that, items like:
+- Metal Flexible Conduit Connector 90°
+- Metal Flexible Conduit Connector Straight
+
+are sorted near each other but still appear under one shared "Fittings" block with no visible subgroup separation.
+
+REQUIRED CHANGE
+Add a third visible grouping level in the Excel export:
+
+Level 1:
+- subcategory (existing)
+
+Level 2:
+- detailType (existing)
+
+Level 3:
+- baseItemName (new subgroup row)
+
+Example desired structure:
+- Metal Flexible
+  - Fittings
+    - Metal Flexible Conduit Connector 90°
+      rows...
+    - Metal Flexible Conduit Connector Straight
+      rows...
+
+This same behavior should also help other similar inventory groups, such as:
+- bushing / locknut
+- connector / coupling
+- straight / 90 / reducer style variants
+- any case where multiple distinct baseItemName values currently collapse visually into one shared Type section
+
+IMPLEMENTATION REQUIREMENTS
+1. Keep the current worksheet-per-category structure
+2. Keep the current column set unless truly necessary
+3. Keep current sorting logic, but extend visible grouping to include baseItemName
+4. Do NOT change how quantities, status, or dates are calculated
+5. Do NOT change filename generation
+6. Do NOT change the frontend export button
+7. Keep the existing color palette style, but add a visually distinct Level 3 subgroup row style
+
+LEVEL 3 GROUP STYLE
+Add a third subgroup row style that is visually lighter/subtler than Level 1 and Level 2, but still clearly separates item families within a Type section.
+
+For example:
+- slightly lighter fill
+- bold but smaller font
+- indented more than Level 2
+
+IMPORTANT
+- Use baseItemName as the subgroup label when available
+- fall back safely to item.name only if baseItemName is missing
+- avoid duplicate consecutive subgroup rows
+- preserve merged cells behavior for group rows
+
+OUTPUT
+1. Summary of export grouping improvements
+2. Exact grouping hierarchy after the change
+3. Files modified
+4. Confirmation that no UI or non-export logic was changed

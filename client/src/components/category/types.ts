@@ -112,19 +112,52 @@ const INCH_SIZE_CODES: Record<string, string> = {
 
 // ── Size helpers ──────────────────────────────────────────────────────────────
 
+// U.S. electrical wire size ascending order (smallest → largest conductor).
+// Mirrors WIRE_SORT_MAP in server/storage.ts — keep in sync.
+const WIRE_SORT_MAP: Record<string, number> = {
+  "#14": 100, "#12": 200, "#10": 300,
+  "#8": 400,  "#6": 500,  "#4": 600,  "#3": 700, "#2": 800, "#1": 900,
+  "1/0": 1000, "2/0": 1100, "3/0": 1200, "4/0": 1300,
+  "250 KCMIL": 1400, "300 KCMIL": 1500, "350 KCMIL": 1600, "400 KCMIL": 1700,
+  "500 KCMIL": 1800, "600 KCMIL": 1900, "750 KCMIL": 2000, "1000 KCMIL": 2100,
+  "250 MCM": 1400, "300 MCM": 1500, "350 MCM": 1600, "400 MCM": 1700,
+  "500 MCM": 1800, "600 MCM": 1900, "750 MCM": 2000, "1000 MCM": 2100,
+};
+
 export function parseSizeToNumber(size: string | null | undefined): number {
   if (!size) return Infinity;
-  const s = size.trim();
+  const s = size.trim().replace(/["""'']/g, "").trim();
 
+  // ── AWG / KCMIL wire sizes ────────────────────────────────────────────────
+  // Direct map lookup (fastest, most accurate)
+  if (WIRE_SORT_MAP[s] !== undefined) return WIRE_SORT_MAP[s];
+
+  // #N/0 format (e.g. "#1/0", "#2/0", "#3/0", "#4/0") — strip # then re-lookup
+  const hashSlash = s.match(/^#\s*(\d+\/0)$/i);
+  if (hashSlash && WIRE_SORT_MAP[hashSlash[1]] !== undefined) return WIRE_SORT_MAP[hashSlash[1]];
+
+  // "#N AWG" variants
+  const hashAwg = s.match(/^(#\d+)\s*AWG$/i);
+  if (hashAwg && WIRE_SORT_MAP[hashAwg[1]] !== undefined) return WIRE_SORT_MAP[hashAwg[1]];
+
+  // Bare N/0 without # (e.g. "1/0", "2/0") — already covered by map above via direct key
+  // "N KCMIL" / "N MCM" without the exact spacing
+  const kcmil = s.match(/^(\d+)\s*(KCMIL|MCM)$/i);
+  if (kcmil) {
+    const key = `${kcmil[1]} ${kcmil[2].toUpperCase()}`;
+    if (WIRE_SORT_MAP[key] !== undefined) return WIRE_SORT_MAP[key];
+  }
+
+  // ── Conduit / inch sizes ──────────────────────────────────────────────────
+  // Compound fraction: "1-1/4", "2-1/2", etc.
   const compound = s.match(/^(\d+)[-\s]+(\d+)\s*\/\s*(\d+)/);
   if (compound) return +compound[1] + +compound[2] / +compound[3];
 
-  const frac = s.match(/^(\d+)\s*\/\s*(\d+)/);
+  // Simple fraction: "1/2", "3/4" (not N/0 AWG — those were caught above)
+  const frac = s.match(/^(\d+)\s*\/\s*(\d+)$/);
   if (frac) return +frac[1] / +frac[2];
 
-  const hash = s.match(/^#\s*(\d+)/);
-  if (hash) return +hash[1];
-
+  // Plain number: "1", "2", "3", etc.
   const num = s.match(/^(\d+\.?\d*)/);
   if (num) return parseFloat(num[1]);
 

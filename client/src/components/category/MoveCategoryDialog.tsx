@@ -69,8 +69,9 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
       qc.invalidateQueries({ queryKey: ["/api/field/families"] });
       onClose();
     },
-    onError: (err: any) => {
-      toast({ title: "이동 실패", description: err.message, variant: "destructive" });
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "이동 실패";
+      toast({ title: "이동 실패", description: msg, variant: "destructive" });
     },
   });
 

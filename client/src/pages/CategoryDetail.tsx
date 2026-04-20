@@ -290,7 +290,8 @@ export default function CategoryDetail() {
       setEditDrafts({});
       setEditNewRows([]);
     } catch (err: any) {
-      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+      const msg: string = err.message ?? '저장 중 오류가 발생했습니다';
+      toast({ title: "저장 실패", description: msg.length > 200 ? msg.slice(0, 197) + '…' : msg, variant: "destructive" });
     } finally {
       setSavingInline(false);
     }

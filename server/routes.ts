@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel } from "../shared/reelEligibility";
+import { insertItemSchema } from "../shared/schema";
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
@@ -403,7 +404,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ? await autoClassify(rest.name || '', rest.baseItemName, catId)
         : {};
 
-      const body = {
+      const rawBody = {
         ...rest,
         ...autoFields,
         subcategory: rest.subcategory || autoFields.subcategory || null,
@@ -416,13 +417,63 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         reorderPoint: Number(rest.reorderPoint ?? 0),
         reorderQuantity: Number(rest.reorderQuantity ?? 0),
       };
-      const created = await storage.createItem(body);
+
+      // Zod validation — catches type errors before hitting the DB
+      const parsed = insertItemSchema.safeParse(rawBody);
+      if (!parsed.success) {
+        const msg = parsed.error.issues
+          .map(i => `${i.path.join('.') || 'field'}: ${i.message}`)
+          .join('; ');
+        console.error('[POST /api/items] Validation failed:', parsed.error.issues);
+        return res.status(400).json({ message: `입력값 오류: ${msg}` });
+      }
+
+      const created = await storage.createItem(parsed.data);
       if (imageUrl && typeof imageUrl === "string" && imageUrl.trim()) {
         await storage.createItemImage(created.id, imageUrl.trim());
       }
       res.status(201).json(created);
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      // Always log the full technical error server-side
+      console.error('[POST /api/items] Insert failed:', err);
+
+      // Extract Postgres error code from err or its cause (Drizzle wraps pg errors)
+      const pgCode: string | undefined = err.code ?? err.cause?.code;
+      const pgDetail: string = err.detail ?? err.cause?.detail ?? '';
+      const pgColumn: string = err.column ?? err.cause?.column ?? '';
+
+      if (pgCode === '23505') {
+        // unique_violation — most commonly a duplicate SKU
+        const match = pgDetail.match(/Key \((\w+)\)=\(([^)]+)\)/i);
+        if (match) {
+          const field = match[1];
+          const value = match[2];
+          if (field === 'sku') {
+            return res.status(400).json({ message: `SKU '${value}'이(가) 이미 존재합니다` });
+          }
+          return res.status(400).json({ message: `중복된 값입니다: ${field} = '${value}'` });
+        }
+        return res.status(400).json({ message: 'SKU 또는 다른 필드 값이 이미 존재합니다' });
+      }
+
+      if (pgCode === '23503') {
+        // foreign_key_violation
+        return res.status(400).json({ message: '잘못된 카테고리 또는 위치 ID입니다' });
+      }
+
+      if (pgCode === '23502') {
+        // not_null_violation
+        const col = pgColumn || '알 수 없는 필드';
+        return res.status(400).json({ message: `필수 필드가 누락되었습니다: ${col}` });
+      }
+
+      // Unknown DB/server error — strip SQL dump, return only the PG message line
+      const rawMsg: string = err.message ?? '';
+      const cleanMsg = rawMsg
+        .split('\n')
+        .find(line => !line.startsWith(' ') && !line.includes('insert into') && !line.includes('params:') && line.trim().length > 0)
+        ?? '아이템 저장 중 오류가 발생했습니다';
+      res.status(400).json({ message: cleanMsg });
     }
   });
 

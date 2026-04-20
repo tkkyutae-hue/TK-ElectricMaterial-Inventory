@@ -1779,6 +1779,22 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getWireReelsByItemIds(itemIds: number[]): Promise<Map<number, string[]>> {
+    if (itemIds.length === 0) return new Map();
+    const rows = await db
+      .select({ itemId: wireReels.itemId, reelId: wireReels.reelId })
+      .from(wireReels)
+      .where(and(inArray(wireReels.itemId, itemIds), eq(wireReels.isActive, true)))
+      .orderBy(asc(wireReels.createdAt));
+    const result = new Map<number, string[]>();
+    for (const row of rows) {
+      const list = result.get(row.itemId) ?? [];
+      list.push(row.reelId);
+      result.set(row.itemId, list);
+    }
+    return result;
+  }
+
   private async syncItemQtyFromReels(itemId: number): Promise<void> {
     const result = await db
       .select({ total: sql<number>`coalesce(sum(${wireReels.lengthFt}), 0)` })

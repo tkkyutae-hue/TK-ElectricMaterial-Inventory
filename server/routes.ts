@@ -1212,27 +1212,49 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } as const;
 
       // ── Size sort helper ─────────────────────────────────────────────────────────
-      // Uses DB sizeSortValue when set; otherwise parses sizeLabel for conduit /
-      // cable inch-sizes (fractions, compound fractions, plain inches).
+      // AWG/KCMIL wire sizes checked first (1/0, 2/0, #12, etc.) then conduit inch-sizes.
+      const EXPORT_AWG_MAP: Record<string, number> = {
+        '#14': 100, '#12': 200, '#10': 300,
+        '#8': 400, '#6': 500, '#4': 600, '#3': 700, '#2': 800, '#1': 900,
+        '1/0': 1000, '2/0': 1100, '3/0': 1200, '4/0': 1300,
+        '250 KCMIL': 1400, '300 KCMIL': 1500, '350 KCMIL': 1600, '400 KCMIL': 1700,
+        '500 KCMIL': 1800, '600 KCMIL': 1900, '750 KCMIL': 2000, '1000 KCMIL': 2100,
+      };
       function exportSizeKey(item: any): number {
-        const dbVal = item.sizeSortValue ?? 0;
-        if (dbVal !== 0) return dbVal;
         const label = (item.sizeLabel ?? "").trim();
         if (!label) return 999999;
+        // AWG/KCMIL lookup takes priority (standardised wire-size sort order)
+        if (EXPORT_AWG_MAP[label] !== undefined) return EXPORT_AWG_MAP[label];
+        // Strip leading # and retry (e.g. "#1/0" → "1/0")
+        const stripped = label.replace(/^#/, "");
+        if (EXPORT_AWG_MAP[stripped] !== undefined) return EXPORT_AWG_MAP[stripped];
+        // N/0-suffix range: "1/0-14AWG", "2/0-14AWG" → sort by primary conductor
+        const slashORange = label.match(/^(\d+\/0)-/);
+        if (slashORange && EXPORT_AWG_MAP[slashORange[1]] !== undefined) return EXPORT_AWG_MAP[slashORange[1]];
+        // Fall back to DB sizeSortValue for non-AWG sizes
+        const dbVal = item.sizeSortValue ?? 0;
+        if (dbVal !== 0) return dbVal;
+        // Conduit / inch-based sizes
         const clean = label.replace(/['"]/g, "").trim();
         // compound fraction: 1-1/4, 1-1/2, 2-1/2, 3-1/2
         const compound = clean.match(/^(\d+)[-\s](\d+)\/(\d+)$/);
         if (compound) return (+compound[1] + +compound[2] / +compound[3]) * 1000;
-        // simple fraction: 1/2, 3/4
+        // simple fraction: 1/2, 3/4 (denominator ≠ 0 to avoid N/0 wire sizes slipping through)
         const frac = clean.match(/^(\d+)\/(\d+)$/);
-        if (frac) return (+frac[1] / +frac[2]) * 1000;
+        if (frac && frac[2] !== "0") return (+frac[1] / +frac[2]) * 1000;
         // plain integer / decimal: 1, 2, 3, 4, 6
         const num = parseFloat(clean);
         if (!isNaN(num)) return num * 1000;
         return 999999;
       }
 
-      // ── 8 export columns ──────────────────────────────────────────────────────────
+      // ── Column-letter helper (supports > 26 columns) ──────────────────────────────
+      const colLetter = (n: number): string => {
+        if (n <= 26) return String.fromCharCode(64 + n);
+        return String.fromCharCode(64 + Math.floor((n - 1) / 26)) + String.fromCharCode(64 + ((n - 1) % 26 + 1));
+      };
+
+      // ── 8 base export columns ─────────────────────────────────────────────────────
       const COLS = [
         { key: "matName",   header: "Material Name", width: 36 },
         { key: "size",      header: "Size",          width: 14 },
@@ -1243,19 +1265,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { key: "status",    header: "Status",        width: 16 },
         { key: "updatedAt", header: "Last Updated",  width: 16 },
       ];
-      const NUM_COLS = COLS.length;
-      const lastColLetter = String.fromCharCode(64 + NUM_COLS); // "H"
+
+      // ── Pre-fetch reel data for Cable & Wire (CW) sheet ──────────────────────────
+      const wcCat = allCategories.find(c => c.code === "CW");
+      const reelsByItemId = new Map<number, string[]>();
+      let maxReelCount = 0;
+      if (wcCat) {
+        const wcItems = byCategoryId.get(wcCat.id) ?? [];
+        const wcItemIds = wcItems.map((i: any) => i.id);
+        if (wcItemIds.length > 0) {
+          const reelMap = await storage.getWireReelsByItemIds(wcItemIds);
+          for (const [itemId, reelIds] of reelMap) {
+            reelsByItemId.set(itemId, reelIds);
+            if (reelIds.length > maxReelCount) maxReelCount = reelIds.length;
+          }
+        }
+      }
 
       // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
         const catItems = byCategoryId.get(cat.id);
         if (!catItems || catItems.length === 0) continue;
 
+        const isWC = cat.code === "CW";
+        const reelColCount = isWC ? maxReelCount : 0;
+        const numCols = COLS.length + reelColCount;
+
         const ws = wb.addWorksheet(toSheetName(cat.name));
-        ws.columns = COLS.map(c => ({ key: c.key, width: c.width }));
+
+        // Base columns + optional reel columns
+        const wsColDefs = COLS.map(c => ({ key: c.key, width: c.width }));
+        for (let n = 1; n <= reelColCount; n++) {
+          wsColDefs.push({ key: `reel${n}`, width: 12 });
+        }
+        ws.columns = wsColDefs;
 
         // ── Header row ────────────────────────────────────────────────────────────
-        const headerRow = ws.addRow(COLS.map(c => c.header));
+        const headerValues: string[] = COLS.map(c => c.header);
+        for (let n = 1; n <= reelColCount; n++) headerValues.push(`Reel #${n}`);
+        const headerRow = ws.addRow(headerValues);
         headerRow.height = 22;
         headerRow.eachCell({ includeEmpty: true }, cell => {
           cell.font      = { bold: true, size: 11, color: { argb: C.white } };
@@ -1296,7 +1344,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               cell.alignment = { vertical: "middle", indent: 2 };
             });
           } else {
-            // Level 3 — pale blue, bold small, indent 3
             gRow.height = 16;
             gRow.eachCell({ includeEmpty: true }, cell => {
               cell.font      = { bold: true, size: 9, color: { argb: C.l3Text } };
@@ -1305,7 +1352,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               cell.border    = { bottom: { style: "hair", color: { argb: "FFBFD4F0" } } };
             });
           }
-          ws.mergeCells(gRow.number, 1, gRow.number, NUM_COLS);
+          ws.mergeCells(gRow.number, 1, gRow.number, numCols);
         };
 
         // ── Add grouped data rows ─────────────────────────────────────────────────
@@ -1345,7 +1392,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             ? new Date(item.updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
             : "";
 
-          const dataRow = ws.addRow({
+          const rowData: Record<string, any> = {
             matName:   item.baseItemName || item.name || "",
             size:      item.sizeLabel   ?? "",
             family:    family           ?? "",
@@ -1354,8 +1401,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             unit:      item.unitOfMeasure ?? "",
             status,
             updatedAt,
-          });
+          };
 
+          // Reel columns (WC sheet only)
+          if (isWC && reelColCount > 0) {
+            const reelIds = reelsByItemId.get(item.id) ?? [];
+            for (let n = 1; n <= reelColCount; n++) {
+              rowData[`reel${n}`] = reelIds[n - 1] ?? "";
+            }
+          }
+
+          const dataRow = ws.addRow(rowData);
           dataRow.height = 16;
           dataRow.getCell("matName").alignment = { vertical: "middle", indent: 4 };
 
@@ -1381,13 +1437,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             stCell.font = { color: { argb: C.orangeText } };
             stCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.orangeBg } };
           }
+
+          // Reel cell styling (WC sheet only)
+          if (isWC && reelColCount > 0) {
+            for (let n = 1; n <= reelColCount; n++) {
+              const rc = dataRow.getCell(`reel${n}`);
+              rc.alignment = { vertical: "middle", horizontal: "center" };
+              rc.font = { size: 9, color: { argb: C.darkText } };
+            }
+          }
         }
 
         // ── Freeze pane at A2 ────────────────────────────────────────────────────
         ws.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
         // ── Auto-filter on header row ────────────────────────────────────────────
-        ws.autoFilter = { from: "A1", to: `${lastColLetter}1` };
+        ws.autoFilter = { from: "A1", to: `${colLetter(numCols)}1` };
       }
 
       // 5. Stream buffer to client

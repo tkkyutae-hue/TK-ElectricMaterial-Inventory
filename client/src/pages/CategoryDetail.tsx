@@ -291,7 +291,7 @@ export default function CategoryDetail() {
       setEditNewRows([]);
     } catch (err: any) {
       const msg: string = err.message ?? '저장 중 오류가 발생했습니다';
-      toast({ title: "저장 실패", description: msg.length > 200 ? msg.slice(0, 197) + '…' : msg, variant: "destructive" });
+      toast({ title: "저장 실패", description: msg.length > 400 ? msg.slice(0, 397) + '…' : msg, variant: "destructive" });
     } finally {
       setSavingInline(false);
     }

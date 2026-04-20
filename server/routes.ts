@@ -1482,42 +1482,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Body: { updates: [{id: number, sku: string}] }
   app.put("/api/admin/sku-bulk", isAuthenticated, requireAdmin, async (req, res) => {
     try {
-      const { updates } = req.body as { updates: { id: number; sku: string }[] };
-      if (!Array.isArray(updates) || updates.length === 0) {
+      const rawUpdates = req.body?.updates;
+      if (!Array.isArray(rawUpdates) || rawUpdates.length === 0) {
         return res.status(400).json({ message: "updates array required" });
       }
 
-      const { db } = await import("./db");
-      const { sql } = await import("drizzle-orm");
+      // Validate and normalise each entry
+      const updates: { id: number; sku: string }[] = [];
+      for (const u of rawUpdates) {
+        const id = Number(u.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ message: `유효하지 않은 아이템 ID: ${u.id}` });
+        }
+        const sku = typeof u.sku === "string" ? u.sku.trim().toUpperCase() : "";
+        if (!sku || !/^[A-Z0-9/_. -]+$/.test(sku)) {
+          return res.status(400).json({ message: `유효하지 않은 SKU 형식: ${u.sku}` });
+        }
+        updates.push({ id, sku });
+      }
 
-      // Validate: new SKU must not conflict with other existing items
-      const ids = updates.map(u => u.id);
-      const skus = updates.map(u => u.sku.trim().toUpperCase());
-
-      // Check duplicates within the update batch
+      // Check duplicates within the batch
       const skuSet = new Set<string>();
-      for (const s of skus) {
-        if (skuSet.has(s)) return res.status(400).json({ message: `SKU 중복: ${s}` });
-        skuSet.add(s);
+      for (const { sku } of updates) {
+        if (skuSet.has(sku)) return res.status(400).json({ message: `배치 내 SKU 중복: ${sku}` });
+        skuSet.add(sku);
       }
 
-      // Check DB conflicts (exclude items being updated)
-      const idList = ids.join(",");
-      const skuList = skus.map(s => `'${s.replace(/'/g, "''")}'`).join(",");
-      const conflictResult = await db.execute(sql.raw(`
-        SELECT sku FROM items
-        WHERE sku IN (${skuList}) AND id NOT IN (${idList})
-      `));
-      const conflictRows: any[] = (conflictResult as any).rows ?? [];
-      if (conflictRows.length > 0) {
-        return res.status(409).json({ message: `이미 사용 중인 SKU: ${conflictRows.map((r: any) => r.sku).join(", ")}` });
+      const { db } = await import("./db");
+      const { eq, inArray, notInArray, and } = await import("drizzle-orm");
+      const { items: itemsTable } = await import("../shared/schema");
+
+      const ids  = updates.map(u => u.id);
+      const skus = updates.map(u => u.sku);
+
+      // Check DB conflicts: find existing items (not in the update set) that already own one of the new SKUs
+      const conflicting = await db
+        .select({ sku: itemsTable.sku })
+        .from(itemsTable)
+        .where(and(inArray(itemsTable.sku, skus), notInArray(itemsTable.id, ids)));
+
+      if (conflicting.length > 0) {
+        return res.status(409).json({
+          message: `이미 사용 중인 SKU: ${conflicting.map(r => r.sku).join(", ")}`,
+        });
       }
 
-      // Execute updates
+      // Execute updates using parameterised Drizzle queries
       let updated = 0;
-      for (const u of updates) {
-        const newSku = u.sku.trim().toUpperCase();
-        await db.execute(sql.raw(`UPDATE items SET sku = '${newSku.replace(/'/g, "''")}' WHERE id = ${u.id}`));
+      for (const { id, sku } of updates) {
+        await db.update(itemsTable).set({ sku }).where(eq(itemsTable.id, id));
         updated++;
       }
 

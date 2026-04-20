@@ -1,0 +1,226 @@
+Do NOT rebuild the whole SKU system.
+Do NOT change inventory business logic, item_id references, movement history, or project links.
+Do NOT touch non-SKU parts of the app.
+
+Focus ONLY on extending the existing SKU cleanup workflow already present in this repo:
+- client/src/pages/admin/SkuCleanup.tsx
+- server/routes.ts
+- any tiny directly related shared helper file if needed
+
+TASK GOAL
+Extend the existing SKU cleanup tool so cable-related items can be regenerated into a clearer standardized SKU format.
+
+IMPORTANT CURRENT CONTEXT
+This repo already has:
+- /admin/sku page
+- /api/admin/sku-issues
+- /api/admin/sku-bulk
+- current proposeSkus() style logic
+
+Do NOT replace that system.
+Extend it.
+
+==================================================
+PART 1 — KEEP GOOD SKU FAMILIES UNTOUCHED
+==================================================
+
+Do NOT regenerate everything.
+
+Keep already-clean SKU families unchanged, especially patterns that are already good and stable, such as:
+- CT-...
+- EMT-...
+- other already-clean structured families without collision suffixes
+
+Only target cable/wire-related items that are messy, ambiguous, or collision-based.
+
+Target families typically include:
+- WIRE-...
+- GW-...
+- CABLE-...
+- and any cable-like legacy SKU patterns with -2 / -3 suffixes or ambiguous size encoding
+
+==================================================
+PART 2 — ADD A NEW STANDARDIZED SKU REGENERATION MODE
+==================================================
+
+Add a new regeneration mode in the SKU cleanup flow for cable-related items only.
+
+Use these new standardized rules:
+
+A. Single wire:
+WIRE-{size}[-{color}]
+
+Examples:
+- WIRE-12-BLK
+- WIRE-10-RED
+- WIRE-8-WHT
+- WIRE-4
+- WIRE-2
+- WIRE-1
+- WIRE-O1
+- WIRE-O2
+- WIRE-O3
+- WIRE-O4
+- WIRE-250
+- WIRE-350
+- WIRE-500
+
+B. Grounding wire:
+GW-{size}
+
+Examples:
+- GW-12
+- GW-10
+- GW-8
+- GW-4
+- GW-1
+- GW-O1
+- GW-O2
+- GW-O3
+- GW-O4
+- GW-250
+- GW-350
+- GW-500
+
+C. Multi-conductor cable:
+CABLE-{size}-{config}
+
+Examples:
+- CABLE-12-2C
+- CABLE-12-2CG
+- CABLE-12-3C
+- CABLE-12-3CG
+- CABLE-12-4C
+- CABLE-12-4CG
+- CABLE-10-2C
+- CABLE-10-3C
+- CABLE-1-3C
+- CABLE-O1-3CG
+- CABLE-O2-3CG
+- CABLE-O3-3C
+- CABLE-O4-4CG
+- CABLE-250-3CG
+- CABLE-350-4CG
+- CABLE-500-3CG
+
+==================================================
+PART 3 — SIZE NORMALIZATION RULES
+==================================================
+
+Normalize cable/wire sizes using these exact conventions:
+
+- #12  -> 12
+- #10  -> 10
+- #8   -> 8
+- #6   -> 6
+- #4   -> 4
+- #2   -> 2
+- #1   -> 1
+- #1/0 -> O1
+- #2/0 -> O2
+- #3/0 -> O3
+- #4/0 -> O4
+- 250 kcmil -> 250
+- 350 kcmil -> 350
+- 500 kcmil -> 500
+
+IMPORTANT:
+Use capital letter O, not zero, for /0 sizes.
+Examples:
+- O1 = 1/0
+- O2 = 2/0
+- O3 = 3/0
+- O4 = 4/0
+
+==================================================
+PART 4 — CONFIG NORMALIZATION RULES
+==================================================
+
+For multi-conductor cable, standardize config exactly as:
+
+- 2C   = 2 conductor
+- 2CG  = 2 conductor + ground
+- 3C   = 3 conductor
+- 3CG  = 3 conductor + ground
+- 4C   = 4 conductor
+- 4CG  = 4 conductor + ground
+
+Do NOT allow mixed formats like:
+- 2C+G
+- 2C-G
+- 2 conductor ground
+- etc.
+
+Normalize them into the standard config tokens above.
+
+==================================================
+PART 5 — COLOR CODE NORMALIZATION
+==================================================
+
+For single wire SKUs, use a fixed 3-letter color code suffix only when color is actually needed to distinguish same-size items.
+
+Preferred color codes:
+- BLK
+- RED
+- BLU
+- WHT
+- GRN
+- YEL
+- BRN
+- ORG
+- GRY
+
+Requirements:
+- Use fixed standard color codes only
+- Do NOT create arbitrary new abbreviations
+- If a wire item has no meaningful color distinction, omit the color suffix
+
+==================================================
+PART 6 — ADD THIS AS A PREVIEWABLE REGENERATION TOOL
+==================================================
+
+In the existing SKU cleanup page:
+- add a cable/wire-specific regeneration action
+- show current SKU
+- show proposed SKU
+- show why it changed
+- show conflict state before apply
+
+This must remain a preview-first workflow.
+
+Requirements:
+1. No automatic immediate overwrite
+2. User must see proposed replacements before applying
+3. Detect conflicts before save
+4. Allow selected apply only
+5. Reuse the existing bulk update flow if possible
+
+==================================================
+PART 7 — LEGACY / SAFETY RULES
+==================================================
+
+Requirements:
+- Do NOT touch already-clean non-cable SKU families
+- Do NOT break item_id references
+- Do NOT change movement history semantics
+- Do NOT change project links
+- Do NOT regenerate unrelated categories
+- If a proposed SKU conflicts with an existing SKU, clearly mark it as conflict and do not silently overwrite
+
+If helpful, include a small note or legend in the SKU cleanup UI:
+- O1 = 1/0
+- O2 = 2/0
+- O3 = 3/0
+- O4 = 4/0
+
+==================================================
+PART 8 — OUTPUT
+==================================================
+
+Provide:
+1. Summary of the new cable/wire SKU regeneration mode
+2. Which SKU families are targeted
+3. Exact normalization rules implemented
+4. Files modified
+5. How conflicts are shown before apply
+6. Confirmation that existing good SKU families remain untouched

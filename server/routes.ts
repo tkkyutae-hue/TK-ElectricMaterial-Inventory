@@ -1509,6 +1509,147 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Cable SKU normalisation helpers ────────────────────────────────────────
+
+  function extractAwgSize(name: string): string | null {
+    // Order matters: /0 first, then 3-digit kcmil, then 2-digit AWG, then 1-digit AWG
+    const m1 = name.match(/#(\d)\/0/);
+    if (m1) return `O${m1[1]}`;                    // 1/0 → O1, 2/0 → O2, etc.
+    const m2 = name.match(/#(\d{3})/);
+    if (m2) return m2[1];                           // 250, 350, 500, 600, 750
+    const m3 = name.match(/#(\d{2})/);
+    if (m3) return m3[1];                           // 10, 12
+    const m4 = name.match(/#(\d)(?!\d)/);
+    if (m4) return m4[1];                           // 1, 2, 4, 6, 8
+    return null;
+  }
+
+  function extractWireColor(name: string): string | null {
+    const colorMap: Record<string, string> = {
+      black: "BLK", brown: "BRN", red: "RED", blue: "BLU", orange: "ORG",
+      yellow: "YEL", grey: "GRY", gray: "GRY", white: "WHT", green: "GRN",
+      purple: "PUR", pink: "PNK",
+    };
+    const m = name.match(/\(([^)]+)\)/i);
+    if (!m) return null;
+    const raw = m[1].toLowerCase().trim();
+    return colorMap[raw] ?? null;
+  }
+
+  function extractCableConfig(name: string): string | null {
+    const m = name.match(/\((\d+C(?:\+G)?)\)/i);
+    if (!m) return null;
+    const raw = m[1].toUpperCase();
+    return raw.includes("+G") ? raw.replace("+G", "G") : raw; // 3C+G → 3CG
+  }
+
+  function normalizeCableSku(item: { sku: string; name: string }): {
+    proposedSku: string | null;
+    reason: string | null;
+  } {
+    const { sku, name } = item;
+    const isWire = sku.startsWith("WIRE-");
+    const isCable = sku.startsWith("CABLE-");
+    const isGW = sku.startsWith("GW-");
+    if (!isWire && !isCable && !isGW) return { proposedSku: null, reason: null };
+
+    const size = extractAwgSize(name);
+    if (!size) return { proposedSku: null, reason: "size not recognized" };
+
+    if (isGW) {
+      const proposed = `GW-${size}`;
+      if (proposed === sku) return { proposedSku: proposed, reason: null };
+      return { proposedSku: proposed, reason: `사이즈 표준화 (${sku} → ${proposed})` };
+    }
+
+    if (isWire) {
+      const color = extractWireColor(name);
+      const proposed = color ? `WIRE-${size}-${color}` : `WIRE-${size}`;
+      if (proposed === sku) return { proposedSku: proposed, reason: null };
+      return { proposedSku: proposed, reason: `사이즈/색상 표준화 (${sku} → ${proposed})` };
+    }
+
+    if (isCable) {
+      const config = extractCableConfig(name);
+      if (!config) return { proposedSku: null, reason: "config not recognized" };
+      const proposed = `CABLE-${size}-${config}`;
+      if (proposed === sku) return { proposedSku: proposed, reason: null };
+      return { proposedSku: proposed, reason: `사이즈/구성 표준화 (${sku} → ${proposed})` };
+    }
+
+    return { proposedSku: null, reason: null };
+  }
+
+  // Returns proposed standard SKUs for all cable/wire/GW items (preview only, no writes)
+  app.get("/api/admin/cable-sku-preview", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { eq, and, sql } = await import("drizzle-orm");
+      const { items: itemsTable } = await import("../shared/schema");
+
+      const rows = await db
+        .select({ id: itemsTable.id, sku: itemsTable.sku, name: itemsTable.name })
+        .from(itemsTable)
+        .where(and(
+          eq(itemsTable.isActive, true),
+          sql`${itemsTable.sku} ~ '^(WIRE-|CABLE-|GW-)'`,
+        ));
+
+      // Full active SKU map for conflict detection
+      const allSkuRows = await db
+        .select({ id: itemsTable.id, sku: itemsTable.sku })
+        .from(itemsTable)
+        .where(eq(itemsTable.isActive, true));
+      const allSkuMap = new Map<string, number>();
+      for (const r of allSkuRows) allSkuMap.set(r.sku, r.id);
+
+      const results = rows.map(item => {
+        const { proposedSku, reason } = normalizeCableSku(item);
+
+        if (!proposedSku) {
+          return {
+            id: item.id,
+            currentSku: item.sku,
+            proposedSku: item.sku,
+            name: item.name,
+            reason: reason ?? "파싱 불가",
+            hasConflict: false,
+            alreadyClean: true,
+            cannotParse: true,
+          };
+        }
+
+        const alreadyClean = proposedSku === item.sku;
+        const conflictId = allSkuMap.get(proposedSku);
+        const hasConflict = !alreadyClean && conflictId != null && conflictId !== item.id;
+
+        return {
+          id: item.id,
+          currentSku: item.sku,
+          proposedSku,
+          name: item.name,
+          reason: reason ?? "이미 표준 형식",
+          hasConflict,
+          alreadyClean,
+          cannotParse: false,
+        };
+      });
+
+      // Sort: conflicts first, then items that need change, then clean
+      results.sort((a, b) => {
+        if (a.cannotParse !== b.cannotParse) return a.cannotParse ? 1 : -1;
+        if (a.alreadyClean !== b.alreadyClean) return a.alreadyClean ? 1 : -1;
+        if (a.hasConflict !== b.hasConflict) return a.hasConflict ? -1 : 1;
+        return a.currentSku.localeCompare(b.currentSku);
+      });
+
+      res.json({ items: results });
+    } catch (err: any) {
+      console.error("[cable-sku-preview]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // Atomically bulk-update SKUs inside a DB transaction.
   // Body: { updates: [{id: number, sku: string}] }
   app.put("/api/admin/sku-bulk", isAuthenticated, requireAdmin, async (req, res) => {

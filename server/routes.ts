@@ -1231,6 +1231,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // N/0-suffix range: "1/0-14AWG", "2/0-14AWG" → sort by primary conductor
         const slashORange = label.match(/^(\d+\/0)-/);
         if (slashORange && EXPORT_AWG_MAP[slashORange[1]] !== undefined) return EXPORT_AWG_MAP[slashORange[1]];
+        // NNNMCM-MAWG range: "250MCM-6AWG", "500MCM-4AWG" → sort by KCMIL value
+        const mcmRange = label.match(/^(\d+)MCM-/i);
+        if (mcmRange) {
+          const key = `${mcmRange[1]} KCMIL`;
+          if (EXPORT_AWG_MAP[key] !== undefined) return EXPORT_AWG_MAP[key];
+          return 2000 + (parseInt(mcmRange[1]) - 750) / 5;
+        }
+        // N-MMMKCMIL/MCM range: "1000-500MCM" → sort by first number (KCMIL)
+        const kcmilSuffix = label.match(/^(\d+)-\d+(MCM|KCMIL)/i);
+        if (kcmilSuffix) {
+          const key = `${kcmilSuffix[1]} KCMIL`;
+          if (EXPORT_AWG_MAP[key] !== undefined) return EXPORT_AWG_MAP[key];
+          return 2000 + (parseInt(kcmilSuffix[1]) - 750) / 5;
+        }
+        // N-MAWG or N-M range: "2-14AWG", "4-14" → sort by primary AWG gauge
+        const awgRange = label.match(/^(\d+)-(\d+)(AWG)?$/i);
+        if (awgRange) {
+          const first = parseInt(awgRange[1]);
+          if (first >= 200) {
+            const key = `${first} KCMIL`;
+            if (EXPORT_AWG_MAP[key] !== undefined) return EXPORT_AWG_MAP[key];
+            return 2000 + (first - 750) / 5;
+          }
+          const v = EXPORT_AWG_MAP[`#${first}`];
+          if (v !== undefined) return v;
+        }
         // Fall back to DB sizeSortValue for non-AWG sizes
         const dbVal = item.sizeSortValue ?? 0;
         if (dbVal !== 0) return dbVal;
@@ -1266,8 +1292,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { key: "updatedAt", header: "Last Updated",  width: 16 },
       ];
 
-      // ── Pre-fetch reel data for Cable & Wire (CW) sheet ──────────────────────────
-      const wcCat = allCategories.find(c => c.code === "CW");
+      // ── Pre-fetch reel data for Wire & Cable sheet (seed code "WC", legacy "CW") ──
+      const wcCat = allCategories.find(c => c.code === "WC" || c.code === "CW");
       const reelsByItemId = new Map<number, string[]>();
       let maxReelCount = 0;
       if (wcCat) {
@@ -1287,7 +1313,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const catItems = byCategoryId.get(cat.id);
         if (!catItems || catItems.length === 0) continue;
 
-        const isWC = cat.code === "CW";
+        const isWC = cat.code === "WC" || cat.code === "CW";
         const reelColCount = isWC ? maxReelCount : 0;
         const numCols = COLS.length + reelColCount;
 

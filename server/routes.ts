@@ -1532,8 +1532,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           // ── PHOTO block: advance end-row + capture first available image ─────
           photoBaseEndRow = dataRow.number;
-          if (!photoBaseImageUrl && (item as any).imageUrl) {
-            photoBaseImageUrl = (item as any).imageUrl as string;
+          if (!photoBaseImageUrl && item.imageUrl) {
+            photoBaseImageUrl = item.imageUrl;
           }
 
           // Quantity: number format + red if 0

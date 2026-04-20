@@ -18,6 +18,7 @@ import {
   HardHat,
   Wrench,
   Tag,
+  PackageX,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -71,6 +72,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/admin/users", label: t.navUserApprovals, icon: Users },
         { href: "/admin/export", label: t.navExportBackup, icon: Download },
         { href: "/admin/sku", label: "SKU 정리", icon: Tag },
+        { href: "/admin/inactive-items", label: "비활성 자재", icon: PackageX },
       ],
     }] : []),
   ];

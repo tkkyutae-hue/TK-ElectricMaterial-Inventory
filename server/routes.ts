@@ -1559,6 +1559,117 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin Inactive Items ─────────────────────────────────────────────────────
+
+  // Returns all inactive (isActive = false) items with movement/transaction counts.
+  app.get("/api/admin/inactive-items", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      const result = await db.execute(sql`
+        SELECT
+          i.id,
+          i.sku,
+          i.name,
+          i.quantity_on_hand  AS "quantityOnHand",
+          i.updated_at        AS "updatedAt",
+          COUNT(DISTINCT m.id)::int AS "movementCount",
+          COUNT(DISTINCT t.id)::int AS "txCount"
+        FROM items i
+        LEFT JOIN inventory_movements            m ON m.item_id = i.id
+        LEFT JOIN project_material_transactions  t ON t.item_id = i.id
+        WHERE i.is_active = false
+        GROUP BY i.id, i.sku, i.name, i.quantity_on_hand, i.updated_at
+        ORDER BY i.sku
+      `);
+
+      const items = (result.rows as any[]).map(r => ({
+        id:              Number(r.id),
+        sku:             r.sku as string,
+        name:            r.name as string,
+        quantityOnHand:  Number(r.quantityOnHand),
+        updatedAt:       r.updatedAt as string,
+        movementCount:   Number(r.movementCount),
+        txCount:         Number(r.txCount),
+        hasMoveHistory:  Number(r.movementCount) > 0 || Number(r.txCount) > 0,
+      }));
+
+      res.json({ items });
+    } catch (err: any) {
+      console.error("[inactive-items]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Permanently hard-deletes inactive items.
+  // Body: { ids: number[] }  — all IDs must have isActive=false and no movement history.
+  app.delete("/api/admin/items/purge", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const rawIds = req.body?.ids;
+      if (!Array.isArray(rawIds) || rawIds.length === 0) {
+        return res.status(400).json({ message: "ids 배열이 필요합니다." });
+      }
+      const ids: number[] = rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0);
+      if (ids.length === 0) {
+        return res.status(400).json({ message: "유효한 ID가 없습니다." });
+      }
+
+      const { db } = await import("./db");
+      const { eq, inArray, sql } = await import("drizzle-orm");
+      const {
+        items: itemsTable,
+        itemImages,
+        inventoryLocationBalances,
+        supplierItems,
+        purchaseRecommendations,
+        wireReels,
+      } = await import("../shared/schema");
+
+      // Safety check: reject if any ID is still active
+      const activeItems = await db
+        .select({ id: itemsTable.id, isActive: itemsTable.isActive })
+        .from(itemsTable)
+        .where(inArray(itemsTable.id, ids));
+
+      const stillActive = activeItems.filter(r => r.isActive === true);
+      if (stillActive.length > 0) {
+        return res.status(400).json({
+          message: `활성 아이템은 영구 삭제할 수 없습니다: ID ${stillActive.map(r => r.id).join(", ")}`,
+        });
+      }
+
+      // Safety check: reject if any item has movement history
+      const movementCheck = await db.execute(
+        sql`SELECT item_id, COUNT(*) AS cnt FROM inventory_movements WHERE item_id = ANY(${ids}) GROUP BY item_id
+            UNION ALL
+            SELECT item_id, COUNT(*) AS cnt FROM project_material_transactions WHERE item_id = ANY(${ids}) GROUP BY item_id`
+      );
+      const withHistory = (movementCheck.rows as any[]).filter(r => Number(r.cnt) > 0);
+      if (withHistory.length > 0) {
+        const blockedIds = [...new Set((withHistory as any[]).map(r => r.item_id))];
+        return res.status(400).json({
+          message: `이동 기록이 있는 아이템은 삭제할 수 없습니다: ID ${blockedIds.join(", ")}`,
+        });
+      }
+
+      // Cascade delete related records, then hard-delete the items
+      await db.transaction(async (tx) => {
+        await tx.delete(itemImages).where(inArray(itemImages.itemId, ids));
+        await tx.delete(inventoryLocationBalances).where(inArray(inventoryLocationBalances.itemId, ids));
+        await tx.delete(supplierItems).where(inArray(supplierItems.itemId, ids));
+        await tx.delete(purchaseRecommendations).where(inArray(purchaseRecommendations.itemId, ids));
+        await tx.delete(wireReels).where(inArray(wireReels.itemId, ids));
+        await tx.delete(itemsTable).where(inArray(itemsTable.id, ids));
+      });
+
+      res.json({ deleted: ids.length });
+    } catch (err: any) {
+      console.error("[items/purge]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
   app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
     const EXPORT_QUERIES: Record<string, string> = {

@@ -1492,7 +1492,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // Bulk-update SKUs in a single transaction.
+  // Atomically bulk-update SKUs inside a DB transaction.
   // Body: { updates: [{id: number, sku: string}] }
   app.put("/api/admin/sku-bulk", isAuthenticated, requireAdmin, async (req, res) => {
     try {
@@ -1541,12 +1541,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // Execute updates using parameterised Drizzle queries
+      // Execute all updates inside a single DB transaction for atomicity
       let updated = 0;
-      for (const { id, sku } of updates) {
-        await db.update(itemsTable).set({ sku }).where(eq(itemsTable.id, id));
-        updated++;
-      }
+      await db.transaction(async (tx) => {
+        for (const { id, sku } of updates) {
+          await tx.update(itemsTable).set({ sku }).where(eq(itemsTable.id, id));
+          updated++;
+        }
+      });
 
       res.json({ updated });
     } catch (err: any) {

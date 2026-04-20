@@ -101,6 +101,16 @@ export default function CategoryDetail() {
       return;
     }
     setDraftFamily(prev => prev ? { ...prev, name: trimmed, confirmed: true } : null);
+    setInlineEditFamily(trimmed);
+    setEditDrafts({});
+    setEditNewRows([{
+      tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
+      unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
+      skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
+      subcategoryOverride: null, detailTypeOverride: null,
+      trackingMode: null, trackingModeError: "",
+    }]);
   }, [draftFamily, data, toast]);
 
   const handleSaveDraftFamilyImage = useCallback(async (familyName: string, imageUrl: string) => {
@@ -196,6 +206,16 @@ export default function CategoryDetail() {
       newSkusSeen.add(sku);
     }
 
+    const checkedFetch = async (url: string, opts: RequestInit): Promise<Response> => {
+      const res = await fetch(url, { ...opts, credentials: "include" });
+      if (!res.ok) {
+        let msg = `Server error (${res.status})`;
+        try { const body = await res.json(); msg = body.message || body.error || JSON.stringify(body); } catch {}
+        throw new Error(msg);
+      }
+      return res;
+    };
+
     setSavingInline(true);
     try {
       const promises: Promise<any>[] = [];
@@ -204,7 +224,7 @@ export default function CategoryDetail() {
         const d = editDrafts[item.id];
         if (!d) continue;
         if (d._deleted) {
-          promises.push(fetch(`/api/items/${item.id}`, { method: "DELETE", credentials: "include" }));
+          promises.push(checkedFetch(`/api/items/${item.id}`, { method: "DELETE" }));
           continue;
         }
         const changed = d.name !== item.name || d.sizeLabel !== (item.sizeLabel ?? "") ||
@@ -212,22 +232,22 @@ export default function CategoryDetail() {
           d.primaryLocationId !== ((item as any).primaryLocationId ?? null) ||
           (d.trackingMode ?? null) !== (item.trackingMode ?? null);
         if (changed) {
-          promises.push(fetch(`/api/items/${item.id}`, {
-            method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+          promises.push(checkedFetch(`/api/items/${item.id}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null, trackingMode: d.trackingMode ?? null }),
           }));
         }
         if (d.imageUrl !== (item.imageUrl ?? null)) {
-          promises.push(fetch(`/api/inventory/${item.id}/image`, {
-            method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+          promises.push(checkedFetch(`/api/inventory/${item.id}/image`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageUrl: d.imageUrl }),
           }));
         }
       }
 
       for (const row of editNewRows) {
-        promises.push(fetch("/api/items", {
-          method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        promises.push(checkedFetch("/api/items", {
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sku: row.sku.trim().toUpperCase(),
             name: row.name.trim(),

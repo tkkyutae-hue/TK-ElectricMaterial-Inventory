@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Wand2, RotateCcw, Trash2 } from "lucide-react";
 
@@ -509,26 +510,44 @@ export default function SkuCleanup() {
   // ── Delete mutation ───────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      let succeeded = 0;
+      const succeededIds: number[] = [];
       let failed = 0;
       for (const id of ids) {
         try {
           await apiRequest("DELETE", `/api/items/${id}`);
-          succeeded++;
+          succeededIds.push(id);
         } catch {
           failed++;
         }
       }
-      return { succeeded, failed };
+      return { succeededIds, failed };
     },
-    onSuccess: ({ succeeded, failed }) => {
-      if (succeeded > 0) {
-        toast({
+    onSuccess: ({ succeededIds, failed }) => {
+      if (succeededIds.length > 0) {
+        const handleUndo = async (dismiss: () => void) => {
+          dismiss();
+          try {
+            await apiRequest("POST", "/api/items/restore-batch", { ids: succeededIds });
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/sku-issues"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+            setInitialized(false);
+            toast({ title: "복구 완료", description: `${succeededIds.length}개 아이템이 복구되었습니다.` });
+          } catch {
+            toast({ title: "복구 실패", description: "아이템 복구에 실패했습니다.", variant: "destructive" });
+          }
+        };
+        const { dismiss } = toast({
           title: "삭제 완료",
-          description: `${succeeded}개 아이템이 삭제되었습니다.${failed > 0 ? ` (${failed}개 실패)` : ""}`,
+          description: `${succeededIds.length}개 아이템이 삭제되었습니다.${failed > 0 ? ` (${failed}개 실패)` : ""}`,
+          duration: 15000,
+          action: (
+            <ToastAction altText="되돌리기" data-testid="toast-undo-delete" onClick={() => handleUndo(dismiss)}>
+              되돌리기
+            </ToastAction>
+          ),
         });
       }
-      if (failed > 0 && succeeded === 0) {
+      if (failed > 0 && succeededIds.length === 0) {
         toast({
           title: "삭제 실패",
           description: "선택한 아이템을 삭제할 수 없습니다. 이동 내역이 있는 아이템은 삭제할 수 없습니다.",

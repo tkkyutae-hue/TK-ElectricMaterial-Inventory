@@ -496,6 +496,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.status(204).end();
   });
 
+  app.post("/api/items/restore-batch", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const rawIds = req.body?.ids;
+      if (!Array.isArray(rawIds) || rawIds.length === 0) {
+        return res.status(400).json({ message: "ids 배열이 필요합니다." });
+      }
+      const ids = [...new Set(rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0))];
+      if (ids.length === 0) return res.status(400).json({ message: "유효한 ID가 없습니다." });
+      await storage.restoreItems(ids);
+      res.json({ restored: ids.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Inventory Movements ─────────────────────────────────────────────────────
   app.get("/api/movements", isAuthenticated, async (req, res) => {
     const itemId = req.query.itemId ? Number(req.query.itemId) : undefined;

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { ToastAction } from "@/components/ui/toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import type { CategoryItemGroup, ItemClassDraft } from "./types";
 
@@ -145,9 +146,32 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
   });
 
   const deleteItems = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/inventory/items/bulk-delete`, { itemIds: [...selectedIds] }),
-    onSuccess: () => {
-      toast({ title: `${selectedIds.size} item(s) removed` });
+    mutationFn: () => {
+      const ids = [...selectedIds];
+      return apiRequest("POST", `/api/inventory/items/bulk-delete`, { itemIds: ids })
+        .then(() => ids);
+    },
+    onSuccess: (deletedIds: number[]) => {
+      const handleUndo = async (dismiss: () => void) => {
+        dismiss();
+        try {
+          await apiRequest("POST", "/api/items/restore-batch", { ids: deletedIds });
+          queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+          toast({ title: "복구 완료", description: `${deletedIds.length}개 아이템이 복구되었습니다.` });
+        } catch {
+          toast({ title: "복구 실패", description: "아이템 복구에 실패했습니다.", variant: "destructive" });
+        }
+      };
+      const { dismiss } = toast({
+        title: `${deletedIds.length}개 아이템 삭제됨`,
+        duration: 15000,
+        action: (
+          <ToastAction altText="되돌리기" data-testid="toast-undo-family-delete" onClick={() => handleUndo(dismiss)}>
+            되돌리기
+          </ToastAction>
+        ),
+      });
       invalidate(); setSelectedIds(new Set()); setConfirmDelete(false); onClose();
     },
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),

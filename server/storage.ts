@@ -63,6 +63,7 @@ export interface IStorage {
   setItemImage(itemId: number, imageUrl: string | null): Promise<void>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
+  restoreItems(ids: number[]): Promise<void>;
   upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup>;
   renameFamily(categoryId: number, oldName: string, newName: string): Promise<void>;
   moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void>;
@@ -562,6 +563,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteItem(id: number): Promise<void> {
     await db.update(items).set({ isActive: false, updatedAt: new Date() }).where(eq(items.id, id));
+  }
+
+  async restoreItems(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await db.update(items).set({ isActive: true, updatedAt: new Date() }).where(inArray(items.id, ids));
   }
 
   // ─── Inventory Movements ─────────────────────────────────────────────────────

@@ -1,11 +1,22 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Wand2, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Wand2, RotateCcw, Trash2 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,10 +62,8 @@ function extractColorCode(name: string): string | null {
 
 function proposeSkus(family: SkuFamily): Map<number, string> {
   const proposals = new Map<number, string>();
-  // Track which proposed SKUs are already used within this family to avoid intra-family collisions
   const usedInFamily = new Set<string>();
 
-  // Pass 1: non-collision items keep their current SKU (they're already clean)
   for (const item of family.items) {
     if (!item.isCollision) {
       proposals.set(item.id, item.sku);
@@ -62,21 +71,16 @@ function proposeSkus(family: SkuFamily): Map<number, string> {
     }
   }
 
-  // Pass 2: collision items get proposed clean SKUs
   for (const item of family.items) {
     if (!item.isCollision) continue;
 
-    let proposed = item.sku; // default: keep current (no change)
+    let proposed = item.sku;
 
     if (item.cleanCandidate && !item.cleanConflict) {
-      // The "base" SKU (without -N) is free in the DB
       if (!usedInFamily.has(item.cleanCandidate)) {
-        // Also safe within this batch
         proposed = item.cleanCandidate;
         usedInFamily.add(item.cleanCandidate);
       } else {
-        // Another item in this family already claimed the clean candidate →
-        // try color-based disambiguation
         const colorCode = extractColorCode(item.name);
         if (colorCode) {
           const colorSku = `${item.cleanCandidate}-${colorCode}`;
@@ -84,13 +88,9 @@ function proposeSkus(family: SkuFamily): Map<number, string> {
             proposed = colorSku;
             usedInFamily.add(colorSku);
           }
-          // else keep current (couldn't resolve)
         }
-        // else keep current
       }
     } else if (item.cleanConflict && item.sizeLabelCount > 1) {
-      // Base exists in DB for a different item AND same sizeLabel used multiple times →
-      // try color disambiguation on the clean candidate
       const colorCode = extractColorCode(item.name);
       if (colorCode && item.cleanCandidate) {
         const colorSku = `${item.cleanCandidate}-${colorCode}`;
@@ -99,7 +99,6 @@ function proposeSkus(family: SkuFamily): Map<number, string> {
           usedInFamily.add(colorSku);
         }
       }
-      // else keep current
     }
 
     proposals.set(item.id, proposed);
@@ -110,10 +109,7 @@ function proposeSkus(family: SkuFamily): Map<number, string> {
 
 // ── Detect conflicts ──────────────────────────────────────────────────────
 
-function detectConflicts(
-  editMap: Map<number, string>,
-): Set<number> {
-  // Count occurrences of each proposed SKU
+function detectConflicts(editMap: Map<number, string>): Set<number> {
   const countMap = new Map<string, number[]>();
   for (const [id, sku] of editMap.entries()) {
     const key = sku.toUpperCase();
@@ -137,12 +133,16 @@ function FamilyRow({
   onEdit,
   conflictIds,
   onReset,
+  selectedIds,
+  onToggleSelect,
 }: {
   family: SkuFamily;
   editMap: Map<number, string>;
   onEdit: (id: number, val: string) => void;
   conflictIds: Set<number>;
   onReset: (id: number) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
 }) {
   const [open, setOpen] = useState(true);
   const collisionCount = family.items.filter(i => i.isCollision).length;
@@ -150,6 +150,16 @@ function FamilyRow({
     const proposed = editMap.get(i.id);
     return proposed && proposed !== i.sku;
   }).length;
+
+  const familySelectedCount = family.items.filter(i => selectedIds.has(i.id)).length;
+  const allFamilySelected = family.items.length > 0 && familySelectedCount === family.items.length;
+  const someFamilySelected = familySelectedCount > 0 && familySelectedCount < family.items.length;
+
+  const handleFamilyCheckbox = (checked: boolean) => {
+    for (const item of family.items) {
+      onToggleSelect(item.id, checked);
+    }
+  };
 
   return (
     <div className="border border-slate-200 rounded-lg mb-2 overflow-hidden">
@@ -168,12 +178,25 @@ function FamilyRow({
             변경 {changedCount}개
           </Badge>
         )}
+        {familySelectedCount > 0 && (
+          <Badge variant="outline" className="text-xs text-red-700 border-red-300 bg-red-50">
+            {familySelectedCount}개 선택
+          </Badge>
+        )}
       </button>
 
       {open && (
         <div className="divide-y divide-slate-100">
-          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50/50 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-            <div className="col-span-4">현재 SKU</div>
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50/50 text-[10px] font-semibold text-slate-400 uppercase tracking-wider items-center">
+            <div className="col-span-1 flex items-center">
+              <Checkbox
+                checked={allFamilySelected || (someFamilySelected ? "indeterminate" : false)}
+                onCheckedChange={(v) => handleFamilyCheckbox(v === true)}
+                data-testid={`chk-family-${family.baseItemName}`}
+                aria-label="패밀리 전체 선택"
+              />
+            </div>
+            <div className="col-span-3">현재 SKU</div>
             <div className="col-span-5">새 SKU (직접 편집 가능)</div>
             <div className="col-span-3">아이템명</div>
           </div>
@@ -181,17 +204,28 @@ function FamilyRow({
             const proposed = editMap.get(item.id) ?? item.sku;
             const isChanged = proposed !== item.sku;
             const hasConflict = conflictIds.has(item.id);
+            const isSelected = selectedIds.has(item.id);
 
             return (
               <div
                 key={item.id}
                 className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm ${
+                  isSelected ? "bg-red-50/60" :
                   hasConflict ? "bg-red-50" :
                   isChanged ? "bg-brand-50/30" : ""
                 }`}
                 data-testid={`sku-row-${item.id}`}
               >
-                <div className="col-span-4 flex items-center gap-2">
+                <div className="col-span-1 flex items-center">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(v) => onToggleSelect(item.id, v === true)}
+                    data-testid={`chk-item-${item.id}`}
+                    aria-label={`${item.sku} 선택`}
+                  />
+                </div>
+
+                <div className="col-span-3 flex items-center gap-2">
                   <code className={`text-xs font-mono px-1.5 py-0.5 rounded ${
                     item.isCollision
                       ? "bg-amber-100 text-amber-800"
@@ -257,6 +291,8 @@ function CategorySection({
   conflictIds,
   onReset,
   onAutoFix,
+  selectedIds,
+  onToggleSelect,
 }: {
   category: SkuCategory;
   editMap: Map<number, string>;
@@ -264,6 +300,8 @@ function CategorySection({
   conflictIds: Set<number>;
   onReset: (id: number) => void;
   onAutoFix: (families: SkuFamily[]) => void;
+  selectedIds: Set<number>;
+  onToggleSelect: (id: number, checked: boolean) => void;
 }) {
   const [open, setOpen] = useState(true);
   const totalCollisions = category.families.reduce((s, f) => s + f.items.filter(i => i.isCollision).length, 0);
@@ -307,6 +345,8 @@ function CategorySection({
               onEdit={onEdit}
               conflictIds={conflictIds}
               onReset={onReset}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </div>
@@ -324,11 +364,11 @@ export default function SkuCleanup() {
     queryKey: ["/api/admin/sku-issues"],
   });
 
-  // editMap: item id → proposed sku (starts as auto-proposals)
   const [editMap, setEditMap] = useState<Map<number, string>>(new Map());
   const [initialized, setInitialized] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Initialize proposals once data is loaded
   const allFamilies = useMemo(() => {
     return data?.categories.flatMap(c => c.families) ?? [];
   }, [data]);
@@ -355,7 +395,6 @@ export default function SkuCleanup() {
   };
 
   const handleReset = (id: number) => {
-    // Find original SKU for this item
     for (const fam of allFamilies) {
       const item = fam.items.find(i => i.id === id);
       if (item) {
@@ -382,7 +421,15 @@ export default function SkuCleanup() {
     handleAutoFix(allFamilies);
   };
 
-  // Build list of changes to submit
+  const handleToggleSelect = useCallback((id: number, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
   const changesToSubmit = useMemo(() => {
     const changes: { id: number; sku: string }[] = [];
     for (const fam of allFamilies) {
@@ -396,7 +443,8 @@ export default function SkuCleanup() {
     return changes;
   }, [editMap, allFamilies]);
 
-  const mutation = useMutation({
+  // ── SKU bulk update mutation ──────────────────────────────────────────
+  const skuMutation = useMutation({
     mutationFn: async (updates: { id: number; sku: string }[]) => {
       const res = await apiRequest("PUT", "/api/admin/sku-bulk", { updates });
       return res.json() as Promise<{ updated: number }>;
@@ -411,7 +459,7 @@ export default function SkuCleanup() {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setInitialized(false);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({
         title: "업데이트 실패",
         description: err.message ?? "오류가 발생했습니다.",
@@ -433,8 +481,63 @@ export default function SkuCleanup() {
       toast({ title: "변경사항 없음", description: "수정된 SKU가 없습니다." });
       return;
     }
-    mutation.mutate(changesToSubmit);
+    skuMutation.mutate(changesToSubmit);
   };
+
+  // ── Delete mutation ───────────────────────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const results = await Promise.allSettled(
+        ids.map(id => apiRequest("DELETE", `/api/items/${id}`))
+      );
+      const failed = results.filter(r => r.status === "rejected").length;
+      const succeeded = results.filter(r => r.status === "fulfilled").length;
+      return { succeeded, failed };
+    },
+    onSuccess: ({ succeeded, failed }) => {
+      if (succeeded > 0) {
+        toast({
+          title: "삭제 완료",
+          description: `${succeeded}개 아이템이 삭제되었습니다.${failed > 0 ? ` (${failed}개 실패)` : ""}`,
+        });
+      }
+      if (failed > 0 && succeeded === 0) {
+        toast({
+          title: "삭제 실패",
+          description: "선택한 아이템을 삭제할 수 없습니다. 이동 내역이 있는 아이템은 삭제할 수 없습니다.",
+          variant: "destructive",
+        });
+      }
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sku-issues"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setInitialized(false);
+    },
+    onError: () => {
+      toast({
+        title: "삭제 실패",
+        description: "오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteConfirm = () => {
+    setDeleteDialogOpen(false);
+    deleteMutation.mutate(Array.from(selectedIds));
+  };
+
+  // Gather info about selected items for the dialog
+  const selectedItems = useMemo(() => {
+    const items: SkuItem[] = [];
+    for (const fam of allFamilies) {
+      for (const item of fam.items) {
+        if (selectedIds.has(item.id)) items.push(item);
+      }
+    }
+    return items;
+  }, [selectedIds, allFamilies]);
 
   if (isLoading) {
     return (
@@ -466,6 +569,35 @@ export default function SkuCleanup() {
           충돌 접미사(-2, -3 등)가 붙은 SKU를 정리합니다. 새 SKU를 직접 수정하거나 자동 수정을 사용하세요.
         </p>
       </div>
+
+      {/* Selection action bar — shown when items are selected */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+          <Trash2 className="w-4 h-4 text-red-600 flex-shrink-0" />
+          <span className="text-sm text-red-800 flex-1">
+            <span className="font-semibold">{selectedIds.size}개</span> 아이템 선택됨
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs h-7 border-red-200 text-red-700 hover:bg-red-100"
+            data-testid="btn-clear-selection"
+          >
+            선택 해제
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleteMutation.isPending}
+            className="gap-1.5 text-xs bg-red-600 hover:bg-red-700 text-white"
+            data-testid="btn-delete-selected"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            선택 삭제
+          </Button>
+        </div>
+      )}
 
       {/* Summary bar */}
       <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-6">
@@ -500,12 +632,12 @@ export default function SkuCleanup() {
           </span>
           <Button
             onClick={handleApply}
-            disabled={mutation.isPending || conflictIds.size > 0}
+            disabled={skuMutation.isPending || conflictIds.size > 0}
             size="sm"
             className="gap-1.5"
             data-testid="btn-apply-all"
           >
-            {mutation.isPending ? (
+            {skuMutation.isPending ? (
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
             ) : (
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -525,8 +657,50 @@ export default function SkuCleanup() {
           conflictIds={conflictIds}
           onReset={handleReset}
           onAutoFix={handleAutoFix}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
         />
       ))}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>아이템 삭제 확인</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  선택한 <strong>{selectedIds.size}개</strong> 아이템을 삭제합니다.
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+                <ul className="max-h-48 overflow-y-auto space-y-1 text-sm border border-slate-200 rounded-md p-2 bg-slate-50">
+                  {selectedItems.map(item => (
+                    <li key={item.id} className="flex items-center gap-2">
+                      <code className="text-xs font-mono bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                        {item.sku}
+                      </code>
+                      <span className="text-slate-600 truncate">{item.name}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-slate-500">
+                  ※ 이동 내역(입출고 기록)이 있는 아이템은 삭제되지 않습니다.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="btn-delete-cancel">취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="btn-delete-confirm"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

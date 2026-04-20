@@ -1143,6 +1143,28 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(items.id, itemIds));
   }
 
+  async familyExistsInCategory(categoryId: number, baseItemName: string): Promise<boolean> {
+    const [row] = await db.select({ id: items.id }).from(items)
+      .where(and(eq(items.categoryId, categoryId), eq(items.baseItemName, baseItemName), eq(items.isActive, true)))
+      .limit(1);
+    return !!row;
+  }
+
+  async moveFamilyToCategory(fromCategoryId: number, baseItemName: string, toCategoryId: number): Promise<number> {
+    const result = await db.update(items)
+      .set({ categoryId: toCategoryId, updatedAt: new Date() })
+      .where(and(eq(items.categoryId, fromCategoryId), eq(items.baseItemName, baseItemName), eq(items.isActive, true)))
+      .returning({ id: items.id });
+    const [existing] = await db.select().from(itemGroups)
+      .where(and(eq(itemGroups.categoryId, fromCategoryId), eq(itemGroups.baseItemName, baseItemName)));
+    if (existing) {
+      await db.update(itemGroups)
+        .set({ categoryId: toCategoryId, updatedAt: new Date() })
+        .where(eq(itemGroups.id, existing.id));
+    }
+    return result.length;
+  }
+
   async bulkSoftDeleteItems(itemIds: number[]): Promise<void> {
     if (itemIds.length === 0) return;
     await db.update(items)

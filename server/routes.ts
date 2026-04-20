@@ -806,6 +806,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/inventory/items/move-family-to-category", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { fromCategoryId, baseItemName, toCategoryId } = req.body;
+      if (!fromCategoryId || !baseItemName || !toCategoryId) return res.status(400).json({ message: "fromCategoryId, baseItemName, toCategoryId are required" });
+      if (fromCategoryId === toCategoryId) return res.status(400).json({ message: "Source and target categories must be different" });
+      const hasConflict = await storage.familyExistsInCategory(Number(toCategoryId), String(baseItemName));
+      if (hasConflict) {
+        return res.status(409).json({ message: `Target category already has a family named "${baseItemName}"` });
+      }
+      const moved = await storage.moveFamilyToCategory(Number(fromCategoryId), String(baseItemName), Number(toCategoryId));
+      res.json({ moved });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/inventory/items/bulk-delete", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { itemIds } = req.body;

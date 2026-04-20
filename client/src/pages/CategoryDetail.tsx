@@ -20,13 +20,16 @@ import type {
 } from "@/components/category/types";
 import { FamilyEditDialog } from "@/components/category/FamilyEditDialog";
 import { FamilyGroupCard } from "@/components/category/FamilyGroupCard";
+import { MoveCategoryDialog } from "@/components/category/MoveCategoryDialog";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useAuth } from "@/hooks/use-auth";
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CategoryDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { isAdminRole } = useAuth();
   const { data: locations } = useLocations();
 
   const [search, setSearch] = useState("");
@@ -34,6 +37,7 @@ export default function CategoryDetail() {
   const [familyFilter, setFamilyFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
+  const [moveCategoryGroup, setMoveCategoryGroup] = useState<CategoryItemGroup | null>(null);
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
@@ -501,6 +505,8 @@ export default function CategoryDetail() {
               onRemoveNewRow={removeNewRow}
               onToggleSort={toggleFamilySort}
               onOpenSettings={setEditingGroup}
+              onMoveCategory={setMoveCategoryGroup}
+              isAdmin={isAdminRole}
             />
           ))}
         </div>
@@ -509,6 +515,17 @@ export default function CategoryDetail() {
       {/* Family Settings dialog */}
       {editingGroup && (
         <FamilyEditDialog open={!!editingGroup} onClose={() => setEditingGroup(null)} categoryId={data.category.id} group={editingGroup} allFamilies={existingFamilies} />
+      )}
+
+      {/* Move Category dialog */}
+      {moveCategoryGroup && (
+        <MoveCategoryDialog
+          open={!!moveCategoryGroup}
+          onClose={() => setMoveCategoryGroup(null)}
+          categoryId={data.category.id}
+          categoryName={data.category.name}
+          group={moveCategoryGroup}
+        />
       )}
     </div>
   );

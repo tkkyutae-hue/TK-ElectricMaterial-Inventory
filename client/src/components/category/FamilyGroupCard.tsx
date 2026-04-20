@@ -1,4 +1,4 @@
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon } from "lucide-react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,6 +28,8 @@ interface FamilyGroupCardProps {
   onRemoveNewRow: (tmpId: string) => void;
   onToggleSort: (familyName: string) => void;
   onOpenSettings: (group: CategoryItemGroup) => void;
+  onMoveCategory?: (group: CategoryItemGroup) => void;
+  isAdmin?: boolean;
 }
 
 export function FamilyGroupCard({
@@ -35,7 +37,7 @@ export function FamilyGroupCard({
   familySortDir, locations, allSkus, data,
   onEnterEdit, onCancelEdit, onSaveEdit, onAddRow,
   onUpdateDraft, onDeleteRow, onUpdateNewRow, onRemoveNewRow,
-  onToggleSort, onOpenSettings,
+  onToggleSort, onOpenSettings, onMoveCategory, isAdmin,
 }: FamilyGroupCardProps) {
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === group.baseItemName;
@@ -90,6 +92,13 @@ export function FamilyGroupCard({
                 onClick={() => onOpenSettings(group)} data-testid={`button-family-settings-${group.baseItemName.replace(/\s+/g, "-")}`} title="Family settings">
                 <Pencil className="w-3 h-3" />Settings
               </Button>
+              {isAdmin && onMoveCategory && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 gap-1"
+                  onClick={() => onMoveCategory(group)} disabled={!!inlineEditFamily}
+                  data-testid={`button-move-category-${group.baseItemName.replace(/\s+/g, "-")}`} title="카테고리 이동">
+                  <FolderInput className="w-3 h-3" />이동
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 gap-1"
                 onClick={() => onEnterEdit(group)} disabled={!!inlineEditFamily} data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}>
                 <Pencil className="w-3 h-3" />Edit

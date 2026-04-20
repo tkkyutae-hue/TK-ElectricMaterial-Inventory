@@ -188,10 +188,11 @@ export default function InactiveItems() {
                 )}
               </div>
               <div className="col-span-2">SKU</div>
-              <div className="col-span-4">아이템명</div>
+              <div className="col-span-3">아이템명</div>
               <div className="col-span-1 text-right">재고</div>
+              <div className="col-span-2 text-center">이동내역</div>
               <div className="col-span-2 text-center">상태</div>
-              <div className="col-span-2 text-right">비활성화 날짜</div>
+              <div className="col-span-1 text-right">비활성화</div>
             </div>
 
             {/* Rows */}
@@ -224,7 +225,7 @@ export default function InactiveItems() {
                       </code>
                     </div>
 
-                    <div className="col-span-4 text-slate-700 truncate text-xs" title={item.name}>
+                    <div className="col-span-3 text-slate-700 truncate text-xs" title={item.name}>
                       {item.name || <span className="text-slate-400 italic">(이름 없음)</span>}
                     </div>
 
@@ -236,6 +237,17 @@ export default function InactiveItems() {
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">0</span>
+                      )}
+                    </div>
+
+                    <div className="col-span-2 flex justify-center" data-testid={`move-count-${item.id}`}>
+                      {item.movementCount > 0 || item.txCount > 0 ? (
+                        <span className="text-xs text-amber-700 flex items-center gap-1">
+                          <History className="w-3 h-3" />
+                          {item.movementCount + item.txCount}건
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
                       )}
                     </div>
 
@@ -260,7 +272,7 @@ export default function InactiveItems() {
                       )}
                     </div>
 
-                    <div className="col-span-2 text-right text-xs text-slate-400">
+                    <div className="col-span-1 text-right text-xs text-slate-400">
                       {item.updatedAt ? formatDate(item.updatedAt) : "—"}
                     </div>
                   </div>

@@ -1,0 +1,61 @@
+Do NOT change inventory business logic, grouping logic, reel logic, or export filename behavior.
+Focus ONLY on the Admin inventory Excel export in:
+- server/routes.ts
+- any tiny directly related export helper if needed
+
+TASK GOAL
+Improve the exported Excel readability by using a merged PHOTO cell for each lower subgroup block, with one representative image centered in that merged area.
+
+IMPORTANT
+Do NOT put images on every item row.
+Do NOT put images on broad family rows.
+Use merged PHOTO cells only for lower subgroup/base-item sections such as:
+- Tee
+- Vertical Tee
+- Vertical In
+- Vertical Out
+- Straight
+- Connector 90°
+- Connector Straight
+etc.
+
+REQUIRED CHANGES
+
+PART 1 — KEEP PHOTO COLUMN ON THE FAR LEFT
+Use the PHOTO column as the first column in the sheet.
+
+PART 2 — MERGE PHOTO CELLS PER SUBGROUP BLOCK
+For each lower subgroup/base-item block:
+- merge the PHOTO column vertically across the full row range of that subgroup block
+- place one representative thumbnail image in the center of the merged PHOTO cell
+
+Example:
+If a subgroup has 4 item rows under it, merge the PHOTO cells across that subgroup block and place one image centered in the merged area.
+
+PART 3 — IMAGE SOURCE
+For each subgroup block:
+1. find the first valid imageUrl from items in that subgroup
+2. use that as the representative image
+3. if no image exists, leave the merged PHOTO cell blank
+
+PART 4 — KEEP DATA CELLS UNMERGED
+Only merge the PHOTO column.
+Do NOT merge Material Name, Size, Family, Type, Quantity, Status, or other data columns.
+
+PART 5 — VISUAL STYLE
+- keep current export grouping hierarchy
+- keep current item rows compact
+- center the subgroup image in the merged PHOTO region
+- use moderate thumbnail sizing
+- keep the export readable and professional
+
+PART 6 — SAFE IMAGE HANDLING
+- if image fetch fails, leave the merged PHOTO cell blank and continue
+- do NOT let one bad image fail the export
+
+OUTPUT
+1. Summary of merged PHOTO cell behavior
+2. Which row level gets merged-image treatment
+3. How representative subgroup images are chosen
+4. Files modified
+5. Confirmation that only the PHOTO column is merged

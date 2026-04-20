@@ -1,0 +1,63 @@
+Do NOT change inventory business logic, grouping logic, reel logic, or export filename behavior.
+Focus ONLY on the Admin inventory Excel export in:
+- server/routes.ts
+- any tiny directly related export helper if needed
+
+TASK GOAL
+Improve the Excel export readability by showing one representative image on FAMILY rows only, instead of placing images on every item row.
+
+DESIGN DIRECTION
+Use a PHOTO column on the far left, but embed images only for FAMILY rows.
+Do NOT insert thumbnails into normal item rows.
+
+REQUIRED CHANGES
+
+PART 1 — KEEP PHOTO COLUMN ON THE LEFT
+Add or keep a PHOTO column as the first column in the export.
+
+PART 2 — FAMILY ROW IMAGE ONLY
+For family/group rows only:
+- place one representative thumbnail image in the PHOTO cell
+- enlarge the family row height so the image is clearly visible
+- keep family name visually emphasized
+
+For normal item rows:
+- leave the PHOTO cell blank
+- do NOT insert per-item thumbnails
+
+PART 3 — REPRESENTATIVE IMAGE SELECTION
+For each family row, use the best available representative image:
+1. prefer a family-level image if one already exists in the export data
+2. otherwise use the first valid item image found within that family group
+3. if no image exists, leave the PHOTO cell blank
+
+PART 4 — VISUAL STYLE
+Keep the current export style, but make family rows more readable:
+- increase family row height
+- keep family name bold and prominent
+- keep item rows compact
+- align the family image cleanly inside the PHOTO cell
+- do NOT oversize images
+
+Recommended sizing:
+- family row height: moderate increase only
+- thumbnail size: small/medium, enough to recognize visually
+
+PART 5 — KEEP EXPORT STRUCTURE STABLE
+- preserve worksheet-per-category structure
+- preserve current grouping hierarchy
+- preserve subgroup/item rows
+- preserve reel export columns and logic
+- do NOT change quantity/status calculations
+- do NOT change export button behavior
+
+PART 6 — SAFE IMAGE HANDLING
+- if an image fetch fails, leave the family PHOTO cell blank and continue
+- do NOT let one broken image fail the export
+
+OUTPUT
+1. Summary of the family-row image enhancement
+2. How representative images are selected
+3. How family row sizing was changed
+4. Files modified
+5. Confirmation that normal item rows remain image-free

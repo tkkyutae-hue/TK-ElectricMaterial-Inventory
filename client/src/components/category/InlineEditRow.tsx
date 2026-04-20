@@ -123,9 +123,12 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
       <TableCell className="py-2 pr-5">
         <div className="flex items-center justify-center">
           {confirmDelete ? (
-            <div className="flex gap-1 items-center">
-              <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>Confirm</button>
-              <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600">Cancel</button>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] text-red-600 font-medium whitespace-nowrap leading-tight">정말 삭제하시겠습니까?</span>
+              <div className="flex gap-1 items-center">
+                <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>확인</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600" data-testid={`btn-cancel-delete-${item.id}`}>취소</button>
+              </div>
             </div>
           ) : (
             <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete item" data-testid={`btn-delete-row-${item.id}`}>

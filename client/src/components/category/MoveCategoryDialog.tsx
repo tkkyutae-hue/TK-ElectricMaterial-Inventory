@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { FolderInput } from "lucide-react";
+import { FolderInput, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { CategoryItemGroup } from "./types";
+import type { CategoryItemGroup, CategoryGroupedDetail } from "./types";
 
 interface Category {
   id: number;
@@ -33,8 +33,15 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
   });
 
   const otherCategories = (categories ?? []).filter(c => c.id !== categoryId);
-
   const selectedCategory = otherCategories.find(c => String(c.id) === targetCategoryId);
+
+  const { data: targetData, isLoading: checkingConflict } = useQuery<CategoryGroupedDetail>({
+    queryKey: ["/api/inventory/category", targetCategoryId, "grouped"],
+    queryFn: () => fetch(`/api/inventory/category/${targetCategoryId}/grouped`).then(r => r.json()),
+    enabled: !!targetCategoryId,
+  });
+
+  const hasConflict = !!targetData && targetData.groups.some(g => g.baseItemName === group.baseItemName);
 
   const moveMutation = useMutation({
     mutationFn: async () => {
@@ -70,11 +77,12 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
   const handleClose = () => {
     if (!moveMutation.isPending) {
       setTargetCategoryId("");
+      moveMutation.reset();
       onClose();
     }
   };
 
-  const isConflictWarning = moveMutation.isError;
+  const canMove = !!targetCategoryId && !hasConflict && !checkingConflict && !moveMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
@@ -104,7 +112,10 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700">이동할 카테고리</label>
-            <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
+            <Select
+              value={targetCategoryId}
+              onValueChange={(val) => { setTargetCategoryId(val); moveMutation.reset(); }}
+            >
               <SelectTrigger className="w-full" data-testid="select-target-category">
                 <SelectValue placeholder="카테고리 선택…" />
               </SelectTrigger>
@@ -118,9 +129,16 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
             </Select>
           </div>
 
-          {isConflictWarning && moveMutation.error && (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-              {(moveMutation.error as Error).message}
+          {targetCategoryId && checkingConflict && (
+            <p className="text-xs text-slate-400">충돌 여부 확인 중…</p>
+          )}
+
+          {targetCategoryId && !checkingConflict && hasConflict && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800" data-testid="alert-move-conflict">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+              <span>
+                <strong>{selectedCategory?.name}</strong> 카테고리에 이미 <strong>"{group.baseItemName}"</strong> 패밀리가 존재합니다. 다른 카테고리를 선택해 주세요.
+              </span>
             </div>
           )}
 
@@ -137,7 +155,7 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
               type="button"
               className="bg-brand-700 hover:bg-brand-800"
               onClick={() => moveMutation.mutate()}
-              disabled={!targetCategoryId || moveMutation.isPending}
+              disabled={!canMove}
               data-testid="button-confirm-move-category"
             >
               {moveMutation.isPending ? "이동 중…" : "이동"}

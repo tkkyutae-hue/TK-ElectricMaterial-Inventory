@@ -1332,7 +1332,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const ws = wb.addWorksheet(toSheetName(cat.name));
 
         // Base columns + reel summary + reel detail columns
-        const wsColDefs = COLS.map(c => ({ key: c.key, width: c.width }));
+        // PHOTO column is prepended as column 1 (image-only — no key in rowData)
+        const wsColDefs: { key: string; width: number }[] = [
+          { key: "photo", width: 9 },
+          ...COLS.map(c => ({ key: c.key, width: c.width })),
+        ];
         if (maxReelCount > 0) {
           wsColDefs.push({ key: "reelQty",   width: 13 }); // Quantity (ft)
           wsColDefs.push({ key: "reelCount",  width: 13 }); // Total Reels
@@ -1343,7 +1347,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ws.columns = wsColDefs;
 
         // ── Header row ────────────────────────────────────────────────────────────
-        const headerValues: string[] = COLS.map(c => c.header);
+        const headerValues: string[] = ["PHOTO", ...COLS.map(c => c.header)];
         if (maxReelCount > 0) {
           headerValues.push("Quantity", "Total Reels");
           for (let n = 1; n <= maxReelCount; n++) headerValues.push(`Reel #${n}`);
@@ -1372,8 +1376,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
 
         // ── Group-row helper ──────────────────────────────────────────────────────
+        // PHOTO col (col 1) is intentionally excluded from the merge so the
+        // base-item image block can span it independently.
         const addGroupRow = (label: string, level: 1 | 2 | 3) => {
-          const gRow = ws.addRow([label]);
+          // col 1 = PHOTO (blank), col 2 = label
+          const gRow = ws.addRow(["", label]);
           if (level === 1) {
             gRow.height = 20;
             gRow.eachCell({ includeEmpty: true }, cell => {
@@ -1397,7 +1404,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               cell.border    = { bottom: { style: "hair", color: { argb: "FFBFD4F0" } } };
             });
           }
-          ws.mergeCells(gRow.number, 1, gRow.number, totalCols);
+          // Merge from col 2 (label column) to the last column; col 1 (PHOTO) stays separate
+          ws.mergeCells(gRow.number, 2, gRow.number, totalCols + 1);
         };
 
         // ── Add grouped data rows ─────────────────────────────────────────────────
@@ -1405,6 +1413,48 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let lastFamily: string = SENTINEL;
         let lastType:   string = SENTINEL;
         let lastBase:   string = SENTINEL;
+
+        // ── Base-block PHOTO merge tracking ──────────────────────────────────────
+        // For each level-3 (baseItemName) block we merge PHOTO col (col 1) across
+        // the level-3 header row + all item rows, then embed one representative image.
+        let photoBaseStartRow: number | null = null;
+        let photoBaseEndRow:   number        = 0;
+        let photoBaseImageUrl: string | null = null;
+
+        const finalizePhotoBlock = () => {
+          if (photoBaseStartRow === null) return;
+          const startRow = photoBaseStartRow;
+          const endRow   = photoBaseEndRow;
+          // Merge PHOTO col vertically across the full block
+          if (endRow >= startRow) {
+            ws.mergeCells(startRow, 1, endRow, 1);
+            const mc = ws.getCell(startRow, 1);
+            mc.alignment = { vertical: "middle", horizontal: "center" };
+          }
+          // Embed representative image if one was found
+          if (photoBaseImageUrl) {
+            try {
+              const urlPath  = photoBaseImageUrl;
+              const filename = urlPath.startsWith("/uploads/")
+                ? urlPath.slice("/uploads/".length)
+                : path.basename(urlPath);
+              const fsPath = path.join(process.cwd(), "uploads", filename);
+              if (fs.existsSync(fsPath)) {
+                const buf = fs.readFileSync(fsPath);
+                const raw = path.extname(fsPath).slice(1).toLowerCase();
+                const ext = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png";
+                const imageId = wb.addImage({ buffer: buf, extension: ext });
+                ws.addImage(imageId, {
+                  tl: { col: 0, row: startRow - 1 },
+                  br: { col: 1, row: endRow },
+                  editAs: "oneCell",
+                });
+              }
+            } catch { /* one bad image must not abort the export */ }
+          }
+          photoBaseStartRow = null;
+          photoBaseImageUrl = null;
+        };
 
         for (const item of sorted) {
           const family  = item.subcategory ?? null;
@@ -1429,8 +1479,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             if (type) addGroupRow(type, 2);
           }
           if (baseKey !== lastBase) {
+            finalizePhotoBlock();  // finish previous base-item block before starting new one
             lastBase = baseKey;
-            if (base) addGroupRow(base, 3);
+            if (base) {
+              addGroupRow(base, 3);
+              photoBaseStartRow = ws.rowCount;   // level-3 header row is included in the merged block
+              photoBaseEndRow   = ws.rowCount;   // will advance as item rows are added
+              photoBaseImageUrl = null;
+            } else {
+              photoBaseStartRow = null;
+            }
           }
 
           const updatedAt = item.updatedAt
@@ -1471,6 +1529,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const dataRow = ws.addRow(rowData);
           dataRow.height = 16;
           dataRow.getCell("matName").alignment = { vertical: "middle", indent: 4 };
+
+          // ── PHOTO block: advance end-row + capture first available image ─────
+          photoBaseEndRow = dataRow.number;
+          if (!photoBaseImageUrl && (item as any).imageUrl) {
+            photoBaseImageUrl = (item as any).imageUrl as string;
+          }
 
           // Quantity: number format + red if 0
           const qtyCell = dataRow.getCell("qty");
@@ -1521,11 +1585,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
 
-        // ── Freeze pane at A2 ────────────────────────────────────────────────────
-        ws.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+        // ── Finalize the last base-item block for this sheet ─────────────────────
+        finalizePhotoBlock();
 
-        // ── Auto-filter on header row ────────────────────────────────────────────
-        ws.autoFilter = { from: "A1", to: `${colLetter(totalCols)}1` };
+        // ── Freeze pane: header row + PHOTO column frozen ────────────────────────
+        ws.views = [{ state: "frozen", xSplit: 1, ySplit: 1, topLeftCell: "B2", activeCell: "B2" }];
+
+        // ── Auto-filter on header row (all columns incl. PHOTO) ──────────────────
+        ws.autoFilter = { from: "A1", to: `${colLetter(totalCols + 1)}1` };
       }
 
       // 5. Stream buffer to client

@@ -1292,37 +1292,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { key: "updatedAt", header: "Last Updated",  width: 16 },
       ];
 
-      // ── Pre-fetch reel export data for ALL reel-eligible items (all categories) ──
-      // Uses resolveReelMode() — respects explicit trackingMode and falls back to
-      // the inferred classifier (cable / wire / flexible conduit, etc.).
-      const reelEligibleIds = allItems
-        .filter((item: any) => {
-          const cat = allCategories.find(c => c.id === item.categoryId);
-          return resolveReelMode({
-            name:         item.name,
-            sku:          item.sku,
-            subcategory:  item.subcategory,
-            detailType:   item.detailType,
-            baseItemName: item.baseItemName,
-            unitOfMeasure: item.unitOfMeasure,
-            trackingMode: item.trackingMode,
-            category:     cat ? { name: cat.name, code: cat.code } : null,
-          });
-        })
-        .map((item: any) => item.id as number);
-
-      const reelEligibleSet = new Set<number>(reelEligibleIds);
-      const reelExportMap = await storage.getWireReelExportData(reelEligibleIds);
-      let maxReelCount = 0;
-      for (const reels of reelExportMap.values()) {
-        if (reels.length > maxReelCount) maxReelCount = reels.length;
-      }
-
-      // ── Right-side reel breakdown column count ────────────────────────────────
-      // 2 summary cols (Quantity / Total Reels) + up to maxReelCount detail cols
-      const reelSummaryCols = maxReelCount > 0 ? 2 : 0;
-      const numReelCols     = reelSummaryCols + maxReelCount;
-      const totalCols       = COLS.length + numReelCols;
+      // ── Pre-fetch item_groups image map (priority-1 images for PHOTO cells) ────
+      // Keys: "${categoryId}:${baseItemName}" → imageUrl
+      const itemGroupImageMap = await storage.getItemGroupImages();
 
       // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
@@ -1331,16 +1303,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         const ws = wb.addWorksheet(toSheetName(cat.name));
 
+        // ── Per-sheet reel eligibility — only items in this category ─────────────
+        // This ensures non-reel sheets have zero reel columns; reel sheets use
+        // only their own maximum active-reel count, not a global cross-sheet max.
+        const catReelEligibleIds = catItems
+          .filter(item => resolveReelMode({
+            name:          item.name,
+            sku:           item.sku,
+            subcategory:   item.subcategory,
+            detailType:    item.detailType,
+            baseItemName:  item.baseItemName,
+            unitOfMeasure: item.unitOfMeasure,
+            trackingMode:  item.trackingMode,
+            category:      { name: cat.name, code: cat.code },
+          }))
+          .map(item => item.id);
+        const catReelEligibleSet = new Set<number>(catReelEligibleIds);
+        const catReelExportMap   = catReelEligibleIds.length > 0
+          ? await storage.getWireReelExportData(catReelEligibleIds)
+          : new Map<number, Array<{ reelId: string; lengthFt: number }>>();
+        let catMaxReelCount = 0;
+        for (const reels of catReelExportMap.values()) {
+          if (reels.length > catMaxReelCount) catMaxReelCount = reels.length;
+        }
+        const catReelSummaryCols = catMaxReelCount > 0 ? 2 : 0;
+        const totalCols          = COLS.length + catReelSummaryCols + catMaxReelCount;
+
         // Base columns + reel summary + reel detail columns
         // PHOTO column is prepended as column 1 (image-only — no key in rowData)
         const wsColDefs: { key: string; width: number }[] = [
-          { key: "photo", width: 9 },
+          { key: "photo", width: 20 },
           ...COLS.map(c => ({ key: c.key, width: c.width })),
         ];
-        if (maxReelCount > 0) {
+        if (catMaxReelCount > 0) {
           wsColDefs.push({ key: "reelQty",   width: 13 }); // Quantity (ft)
           wsColDefs.push({ key: "reelCount",  width: 13 }); // Total Reels
-          for (let n = 1; n <= maxReelCount; n++) {
+          for (let n = 1; n <= catMaxReelCount; n++) {
             wsColDefs.push({ key: `reel${n}`, width: 11 });
           }
         }
@@ -1348,9 +1346,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         // ── Header row ────────────────────────────────────────────────────────────
         const headerValues: string[] = ["PHOTO", ...COLS.map(c => c.header)];
-        if (maxReelCount > 0) {
+        if (catMaxReelCount > 0) {
           headerValues.push("Quantity", "Total Reels");
-          for (let n = 1; n <= maxReelCount; n++) headerValues.push(`Reel #${n}`);
+          for (let n = 1; n <= catMaxReelCount; n++) headerValues.push(`Reel #${n}`);
         }
         const headerRow = ws.addRow(headerValues);
         headerRow.height = 22;
@@ -1485,7 +1483,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               addGroupRow(base, 3);
               photoBaseStartRow = ws.rowCount;   // level-3 header row is included in the merged block
               photoBaseEndRow   = ws.rowCount;   // will advance as item rows are added
-              photoBaseImageUrl = null;
+              // Priority 1: item_groups managed image; priority 2: first item image (collected below)
+              photoBaseImageUrl = itemGroupImageMap.get(`${cat.id}:${baseKey}`) ?? null;
             } else {
               photoBaseStartRow = null;
             }
@@ -1507,22 +1506,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           };
 
           // Right-side reel breakdown — reel-eligible items only
-          const itemReels = reelEligibleSet.has(item.id)
-            ? (reelExportMap.get(item.id) ?? [])
+          const itemReels = catReelEligibleSet.has(item.id)
+            ? (catReelExportMap.get(item.id) ?? [])
             : null;
 
-          if (maxReelCount > 0) {
+          if (catMaxReelCount > 0) {
             if (itemReels && itemReels.length > 0) {
               const totalFt = itemReels.reduce((s, r) => s + r.lengthFt, 0);
               rowData["reelQty"]   = totalFt;
               rowData["reelCount"] = itemReels.length;
-              for (let n = 1; n <= maxReelCount; n++) {
+              for (let n = 1; n <= catMaxReelCount; n++) {
                 rowData[`reel${n}`] = itemReels[n - 1]?.lengthFt ?? "";
               }
             } else {
               rowData["reelQty"]   = "";
               rowData["reelCount"] = "";
-              for (let n = 1; n <= maxReelCount; n++) rowData[`reel${n}`] = "";
+              for (let n = 1; n <= catMaxReelCount; n++) rowData[`reel${n}`] = "";
             }
           }
 
@@ -1560,7 +1559,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
 
           // Right-side reel section styling
-          if (maxReelCount > 0 && itemReels && itemReels.length > 0) {
+          if (catMaxReelCount > 0 && itemReels && itemReels.length > 0) {
             // Quantity (ft) summary cell
             const qtyFtCell = dataRow.getCell("reelQty");
             qtyFtCell.numFmt = "#,##0";
@@ -1574,7 +1573,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             cntCell.font = { size: 10, color: { argb: C.darkText } };
 
             // Individual reel ft cells
-            for (let n = 1; n <= maxReelCount; n++) {
+            for (let n = 1; n <= catMaxReelCount; n++) {
               const rc = dataRow.getCell(`reel${n}`);
               if (itemReels[n - 1] !== undefined) {
                 rc.numFmt = "#,##0";

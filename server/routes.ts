@@ -1380,7 +1380,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/admin/sku-issues", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const { db } = await import("./db");
-      const { eq, inArray, sql, asc } = await import("drizzle-orm");
+      const { eq, and, inArray, sql, asc } = await import("drizzle-orm");
       const { items: itemsTable, categories: categoriesTable } = await import("../shared/schema");
 
       // 1. Find all base_item_names whose family contains at least one collision-suffix SKU.
@@ -1389,7 +1389,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const collisionFamilies = await db
         .selectDistinct({ baseItemName: itemsTable.baseItemName })
         .from(itemsTable)
-        .where(sql`${itemsTable.sku} ~ '[0-9]+-[0-9]{1,2}$'`);
+        .where(sql`${itemsTable.sku} ~ '[0-9]+-[0-9]{1,2}$' AND ${itemsTable.isActive} = true`);
 
       const familyNames = collisionFamilies
         .map(r => r.baseItemName)
@@ -1414,13 +1414,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         })
         .from(itemsTable)
         .innerJoin(categoriesTable, eq(categoriesTable.id, itemsTable.categoryId))
-        .where(inArray(itemsTable.baseItemName, familyNames))
+        .where(and(inArray(itemsTable.baseItemName, familyNames), eq(itemsTable.isActive, true)))
         .orderBy(asc(itemsTable.categoryId), asc(itemsTable.baseItemName), asc(itemsTable.sizeLabel), asc(itemsTable.sku));
 
-      // 3. Full set of ALL SKUs in the DB (for collision checking)
+      // 3. Full set of ALL active SKUs in the DB (for collision checking)
       const allSkuRows = await db
         .select({ id: itemsTable.id, sku: itemsTable.sku })
-        .from(itemsTable);
+        .from(itemsTable)
+        .where(eq(itemsTable.isActive, true));
       const allSkuMap = new Map<string, number>(); // sku → item id
       for (const r of allSkuRows) allSkuMap.set(r.sku, r.id);
 
@@ -1647,11 +1648,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // Safety check: reject if any item has movement history
+      // Safety check: reject if any item has movement history.
+      // IDs are already validated as positive integers above — safe to interpolate directly.
+      const idList = ids.join(", ");
       const movementCheck = await db.execute(
-        sql`SELECT item_id, COUNT(*) AS cnt FROM inventory_movements WHERE item_id = ANY(${ids}) GROUP BY item_id
+        sql.raw(`SELECT item_id, COUNT(*) AS cnt FROM inventory_movements WHERE item_id IN (${idList}) GROUP BY item_id
             UNION ALL
-            SELECT item_id, COUNT(*) AS cnt FROM project_material_transactions WHERE item_id = ANY(${ids}) GROUP BY item_id`
+            SELECT item_id, COUNT(*) AS cnt FROM project_material_transactions WHERE item_id IN (${idList}) GROUP BY item_id`)
       );
       const withHistory = (movementCheck.rows as any[]).filter(r => Number(r.cnt) > 0);
       if (withHistory.length > 0) {

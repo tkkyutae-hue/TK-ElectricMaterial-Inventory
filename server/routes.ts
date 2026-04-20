@@ -1452,8 +1452,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                     buf = Buffer.from(srcUrl.slice(comma + 1), "base64");
                   }
                 }
-              } else if (srcUrl.startsWith("https://") || srcUrl.startsWith("http://")) {
-                // ── remote HTTP(S) URL ──────────────────────────────────────────
+              } else if (srcUrl.startsWith("https://")) {
+                // ── remote HTTPS URL ────────────────────────────────────────────
                 const resp = await fetch(srcUrl);
                 if (!resp.ok) {
                   console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
@@ -1474,9 +1474,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 const filename = srcUrl.slice("/uploads/".length);
                 const fsPath   = path.join(process.cwd(), "uploads", filename);
                 if (fs.existsSync(fsPath)) {
-                  buf = fs.readFileSync(fsPath);
                   const raw = path.extname(fsPath).slice(1).toLowerCase();
-                  ext = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png";
+                  const localExt = raw === "jpg" || raw === "jpeg" ? "jpeg" : raw === "png" ? "png" : null;
+                  if (!localExt) {
+                    console.warn("[export] PHOTO: unsupported local file extension", raw, "—", fsPath);
+                  } else {
+                    buf = fs.readFileSync(fsPath);
+                    ext = localExt;
+                  }
                 } else {
                   console.warn("[export] PHOTO: local file not found:", fsPath);
                 }

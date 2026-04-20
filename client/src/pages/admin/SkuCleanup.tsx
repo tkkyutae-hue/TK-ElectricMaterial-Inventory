@@ -487,11 +487,16 @@ export default function SkuCleanup() {
   // ── Delete mutation ───────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      const results = await Promise.allSettled(
-        ids.map(id => apiRequest("DELETE", `/api/items/${id}`))
-      );
-      const failed = results.filter(r => r.status === "rejected").length;
-      const succeeded = results.filter(r => r.status === "fulfilled").length;
+      let succeeded = 0;
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await apiRequest("DELETE", `/api/items/${id}`);
+          succeeded++;
+        } catch {
+          failed++;
+        }
+      }
       return { succeeded, failed };
     },
     onSuccess: ({ succeeded, failed }) => {

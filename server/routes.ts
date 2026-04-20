@@ -1372,6 +1372,164 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin SKU Cleanup ───────────────────────────────────────────────────────
+
+  // Returns every item that has a collision-suffix SKU (ends with -2 … -99),
+  // grouped by category → family, together with every OTHER item in the same family
+  // (so the UI can show the full picture per family).
+  app.get("/api/admin/sku-issues", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      // 1. All items that belong to a family that contains at least one collision-suffix SKU.
+      //    Pattern: ends with {digits}-{1 or 2 digits}, e.g. "CATRHO-12-2", "WIRE-12-10".
+      //    This avoids false-positives like "CT-BC-12" (non-digit before the last -12).
+      const result = await db.execute(sql.raw(`
+        SELECT
+          i.id,
+          i.sku,
+          i.name,
+          i.base_item_name,
+          i.size_label,
+          i.category_id,
+          c.name  AS category_name,
+          c.code  AS category_code
+        FROM items i
+        JOIN categories c ON c.id = i.category_id
+        WHERE i.base_item_name IN (
+          SELECT DISTINCT base_item_name
+          FROM items
+          WHERE sku ~ '[0-9]+-[0-9]{1,2}$'
+        )
+        ORDER BY c.id, i.base_item_name, i.size_label NULLS LAST, i.sku
+      `));
+
+      const rows: any[] = (result as any).rows ?? [];
+
+      // 2. Full set of ALL SKUs in the DB (for collision checking)
+      const allSkuResult = await db.execute(sql.raw(`SELECT id, sku FROM items`));
+      const allSkuRows: any[] = (allSkuResult as any).rows ?? [];
+      const allSkuMap = new Map<string, number>(); // sku → item id
+      for (const r of allSkuRows) allSkuMap.set(r.sku, Number(r.id));
+
+      // 3. Group by category → family
+      const catMap = new Map<number, {
+        id: number; name: string; code: string;
+        families: Map<string, any[]>;
+      }>();
+
+      for (const r of rows) {
+        let cat = catMap.get(Number(r.category_id));
+        if (!cat) {
+          cat = { id: Number(r.category_id), name: r.category_name, code: r.category_code, families: new Map() };
+          catMap.set(Number(r.category_id), cat);
+        }
+        const fam = cat.families.get(r.base_item_name) ?? [];
+        fam.push({ id: Number(r.id), sku: r.sku, name: r.name, sizeLabel: r.size_label });
+        cat.families.set(r.base_item_name, fam);
+      }
+
+      // 4. For each family, figure out which items have collision-suffix SKUs
+      //    and whether their "clean" version (suffix removed) is available
+      const categories = [];
+      for (const cat of catMap.values()) {
+        const families = [];
+        for (const [familyName, items] of cat.families.entries()) {
+          const COLLISION_RE = /[0-9]+-[0-9]{1,2}$/;
+          const hasCollision = items.some(i => COLLISION_RE.test(i.sku));
+          if (!hasCollision) continue;
+
+          // sizeLabelCounts within the family
+          const sizeLabelCount: Record<string, number> = {};
+          for (const i of items) {
+            const k = i.sizeLabel ?? "";
+            sizeLabelCount[k] = (sizeLabelCount[k] ?? 0) + 1;
+          }
+
+          const processedItems = items.map((item: any) => {
+            const isCollision = COLLISION_RE.test(item.sku);
+            // "clean" candidate = remove trailing -N (strip the last -digits suffix)
+            const cleanCandidate = item.sku.replace(/-[0-9]{1,2}$/, "");
+            const cleanConflictId = allSkuMap.get(cleanCandidate);
+            const cleanConflict = cleanConflictId != null && cleanConflictId !== item.id
+              ? cleanCandidate
+              : null;
+
+            return {
+              ...item,
+              isCollision,
+              cleanCandidate: isCollision ? cleanCandidate : null,
+              cleanConflict,
+              sizeLabelCount: sizeLabelCount[item.sizeLabel ?? ""] ?? 1,
+            };
+          });
+
+          families.push({ baseItemName: familyName, items: processedItems });
+        }
+        if (families.length) categories.push({ ...cat, families, families_map: undefined });
+      }
+
+      // Remove the Map object before serialising
+      res.json({ categories: categories.map(c => ({ id: c.id, name: c.name, code: c.code, families: c.families })) });
+    } catch (err: any) {
+      console.error("[sku-issues]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Bulk-update SKUs in a single transaction.
+  // Body: { updates: [{id: number, sku: string}] }
+  app.put("/api/admin/sku-bulk", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { updates } = req.body as { updates: { id: number; sku: string }[] };
+      if (!Array.isArray(updates) || updates.length === 0) {
+        return res.status(400).json({ message: "updates array required" });
+      }
+
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      // Validate: new SKU must not conflict with other existing items
+      const ids = updates.map(u => u.id);
+      const skus = updates.map(u => u.sku.trim().toUpperCase());
+
+      // Check duplicates within the update batch
+      const skuSet = new Set<string>();
+      for (const s of skus) {
+        if (skuSet.has(s)) return res.status(400).json({ message: `SKU 중복: ${s}` });
+        skuSet.add(s);
+      }
+
+      // Check DB conflicts (exclude items being updated)
+      const idList = ids.join(",");
+      const skuList = skus.map(s => `'${s.replace(/'/g, "''")}'`).join(",");
+      const conflictResult = await db.execute(sql.raw(`
+        SELECT sku FROM items
+        WHERE sku IN (${skuList}) AND id NOT IN (${idList})
+      `));
+      const conflictRows: any[] = (conflictResult as any).rows ?? [];
+      if (conflictRows.length > 0) {
+        return res.status(409).json({ message: `이미 사용 중인 SKU: ${conflictRows.map((r: any) => r.sku).join(", ")}` });
+      }
+
+      // Execute updates
+      let updated = 0;
+      for (const u of updates) {
+        const newSku = u.sku.trim().toUpperCase();
+        await db.execute(sql.raw(`UPDATE items SET sku = '${newSku.replace(/'/g, "''")}' WHERE id = ${u.id}`));
+        updated++;
+      }
+
+      res.json({ updated });
+    } catch (err: any) {
+      console.error("[sku-bulk]", err);
+      const code = err.code ?? err.cause?.code;
+      if (code === "23505") return res.status(409).json({ message: "SKU 중복 오류가 발생했습니다." });
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Export (CSV) ──────────────────────────────────────────────────────
   app.get("/api/admin/export/:table", isAuthenticated, requireAdmin, async (req, res) => {
     const EXPORT_QUERIES: Record<string, string> = {

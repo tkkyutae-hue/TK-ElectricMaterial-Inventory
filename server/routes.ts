@@ -1407,6 +1407,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           name: itemsTable.name,
           baseItemName: itemsTable.baseItemName,
           sizeLabel: itemsTable.sizeLabel,
+          isActive: itemsTable.isActive,
           categoryId: itemsTable.categoryId,
           categoryName: categoriesTable.name,
           categoryCode: categoriesTable.code,
@@ -1423,7 +1424,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const allSkuMap = new Map<string, number>(); // sku → item id
       for (const r of allSkuRows) allSkuMap.set(r.sku, r.id);
 
-      type FamilyItem = { id: number; sku: string; name: string; sizeLabel: string | null };
+      type FamilyItem = { id: number; sku: string; name: string; sizeLabel: string | null; isActive: boolean };
 
       // 4. Group by category → family
       const catMap = new Map<number, {
@@ -1440,7 +1441,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
         const familyKey = r.baseItemName ?? "";
         const fam = cat.families.get(familyKey) ?? [];
-        fam.push({ id: r.id, sku: r.sku, name: r.name, sizeLabel: r.sizeLabel ?? null });
+        fam.push({ id: r.id, sku: r.sku, name: r.name, sizeLabel: r.sizeLabel ?? null, isActive: r.isActive ?? true });
         cat.families.set(familyKey, fam);
       }
 

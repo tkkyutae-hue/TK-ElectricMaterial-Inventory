@@ -25,6 +25,7 @@ type SkuItem = {
   sku: string;
   name: string;
   sizeLabel: string | null;
+  isActive: boolean;
   isCollision: boolean;
   cleanCandidate: string | null;
   cleanConflict: string | null;
@@ -196,9 +197,10 @@ function FamilyRow({
                 aria-label="패밀리 전체 선택"
               />
             </div>
-            <div className="col-span-3">현재 SKU</div>
-            <div className="col-span-5">새 SKU (직접 편집 가능)</div>
+            <div className="col-span-2">현재 SKU</div>
+            <div className="col-span-4">새 SKU (직접 편집 가능)</div>
             <div className="col-span-3">아이템명</div>
+            <div className="col-span-2 text-center">인벤토리</div>
           </div>
           {family.items.map(item => {
             const proposed = editMap.get(item.id) ?? item.sku;
@@ -225,7 +227,7 @@ function FamilyRow({
                   />
                 </div>
 
-                <div className="col-span-3 flex items-center gap-2">
+                <div className="col-span-2 flex items-center gap-2">
                   <code className={`text-xs font-mono px-1.5 py-0.5 rounded ${
                     item.isCollision
                       ? "bg-amber-100 text-amber-800"
@@ -238,7 +240,7 @@ function FamilyRow({
                   )}
                 </div>
 
-                <div className="col-span-5 flex items-center gap-1.5">
+                <div className="col-span-4 flex items-center gap-1.5">
                   <Input
                     value={proposed}
                     onChange={e => onEdit(item.id, e.target.value.toUpperCase())}
@@ -272,6 +274,26 @@ function FamilyRow({
                 <div className="col-span-3 text-xs text-slate-500 truncate" title={item.name}>
                   {item.name}
                   {item.sizeLabel && <span className="ml-1 text-slate-400">({item.sizeLabel})</span>}
+                </div>
+
+                <div className="col-span-2 flex justify-center">
+                  {item.isActive ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-green-700 border-green-300 bg-green-50"
+                      data-testid={`badge-active-${item.id}`}
+                    >
+                      활성
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] text-slate-500 border-slate-300 bg-slate-100"
+                      data-testid={`badge-inactive-${item.id}`}
+                    >
+                      비활성
+                    </Badge>
+                  )}
                 </div>
               </div>
             );

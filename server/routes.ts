@@ -1610,13 +1610,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!Array.isArray(rawIds) || rawIds.length === 0) {
         return res.status(400).json({ message: "ids 배열이 필요합니다." });
       }
-      const ids: number[] = rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0);
+      // Deduplicate and normalise IDs
+      const ids: number[] = [...new Set(rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0))];
       if (ids.length === 0) {
         return res.status(400).json({ message: "유효한 ID가 없습니다." });
       }
 
       const { db } = await import("./db");
-      const { eq, inArray, sql } = await import("drizzle-orm");
+      const { inArray, sql } = await import("drizzle-orm");
       const {
         items: itemsTable,
         itemImages,
@@ -1626,13 +1627,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         wireReels,
       } = await import("../shared/schema");
 
-      // Safety check: reject if any ID is still active
-      const activeItems = await db
+      // Fetch all matching items and validate they are all inactive
+      const matchedItems = await db
         .select({ id: itemsTable.id, isActive: itemsTable.isActive })
         .from(itemsTable)
         .where(inArray(itemsTable.id, ids));
 
-      const stillActive = activeItems.filter(r => r.isActive === true);
+      const foundIds = new Set(matchedItems.map(r => r.id));
+      const missingIds = ids.filter(id => !foundIds.has(id));
+      if (missingIds.length > 0) {
+        return res.status(400).json({ message: `존재하지 않는 아이템 ID: ${missingIds.join(", ")}` });
+      }
+
+      const stillActive = matchedItems.filter(r => r.isActive === true);
       if (stillActive.length > 0) {
         return res.status(400).json({
           message: `활성 아이템은 영구 삭제할 수 없습니다: ID ${stillActive.map(r => r.id).join(", ")}`,
@@ -1653,17 +1660,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // Cascade delete related records, then hard-delete the items
+      // Cascade delete related records, then hard-delete items; capture actual count
+      let deleted = 0;
       await db.transaction(async (tx) => {
         await tx.delete(itemImages).where(inArray(itemImages.itemId, ids));
         await tx.delete(inventoryLocationBalances).where(inArray(inventoryLocationBalances.itemId, ids));
         await tx.delete(supplierItems).where(inArray(supplierItems.itemId, ids));
         await tx.delete(purchaseRecommendations).where(inArray(purchaseRecommendations.itemId, ids));
         await tx.delete(wireReels).where(inArray(wireReels.itemId, ids));
-        await tx.delete(itemsTable).where(inArray(itemsTable.id, ids));
+        const result = await tx.delete(itemsTable).where(inArray(itemsTable.id, ids)).returning({ id: itemsTable.id });
+        deleted = result.length;
       });
 
-      res.json({ deleted: ids.length });
+      res.json({ deleted });
     } catch (err: any) {
       console.error("[items/purge]", err);
       res.status(500).json({ message: err.message });

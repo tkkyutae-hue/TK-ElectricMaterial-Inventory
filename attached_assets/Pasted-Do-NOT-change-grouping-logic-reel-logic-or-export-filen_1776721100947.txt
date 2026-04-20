@@ -1,0 +1,55 @@
+Do NOT change grouping logic, reel logic, or export filename behavior.
+Focus ONLY on diagnosing why subgroup PHOTO cells are merged correctly but no images appear in the exported Excel file.
+
+FILES TO CHECK
+- server/routes.ts
+- any export helper used by the inventory xlsx export
+
+TASK GOAL
+Find the exact reason why merged PHOTO cells are created but the representative images are not actually embedded into the workbook.
+
+CHECK THESE SPECIFIC POINTS
+
+1. Confirm whether the export is using ExcelJS image embedding at all
+- verify that workbook.addImage(...) is called
+- verify that worksheet.addImage(...) is called
+- verify this happens for subgroup representative images
+
+2. Confirm whether remote image URLs are actually downloaded before embedding
+- if imageUrl is only written as text or only selected logically, that is not enough
+- fetch the remote image
+- convert it to a buffer/arrayBuffer
+- detect extension (png/jpeg)
+- then embed it into the workbook
+
+3. Confirm image fetch is awaited
+- if async image download is not awaited before workbook write, the image will not appear
+
+4. Confirm merged-cell image placement logic
+- the PHOTO cell may be merged, but the image still needs explicit anchor coordinates
+- verify worksheet.addImage uses the correct top-left anchor and ext width/height for the merged PHOTO region
+
+5. Confirm failure handling
+- if image fetch fails, log it and continue export
+- but do not silently swallow all failures without reporting why images are missing
+
+REQUIRED FIX
+If the issue is that URLs are not being embedded:
+- implement proper remote image fetching
+- embed with ExcelJS using workbook.addImage + worksheet.addImage
+- support png/jpg/jpeg
+- skip unsupported or failed images safely
+
+IMPORTANT
+- Keep the existing subgroup-only representative image behavior
+- Keep PHOTO-column-only merge behavior
+- Do NOT add images to normal item rows
+- Do NOT change non-reel sheet behavior
+- Do NOT refactor unrelated export logic
+
+OUTPUT
+1. Exact root cause of why images are missing
+2. Whether ExcelJS embedding was missing or broken
+3. What was changed
+4. Files modified
+5. Any image format limitations still remaining

@@ -110,6 +110,8 @@ export interface IStorage {
   getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>;
 
   getWireReels(itemId: number): Promise<WireReelWithRelations[]>;
+  getWireReelsByItemIds(itemIds: number[]): Promise<Map<number, string[]>>;
+  getWireReelExportData(itemIds: number[]): Promise<Map<number, Array<{ reelId: string; lengthFt: number }>>>;
   getNextReelSeq(itemId: number): Promise<number>;
   getDistinctReelBrands(): Promise<string[]>;
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
@@ -1790,6 +1792,22 @@ export class DatabaseStorage implements IStorage {
     for (const row of rows) {
       const list = result.get(row.itemId) ?? [];
       list.push(row.reelId);
+      result.set(row.itemId, list);
+    }
+    return result;
+  }
+
+  async getWireReelExportData(itemIds: number[]): Promise<Map<number, Array<{ reelId: string; lengthFt: number }>>> {
+    if (itemIds.length === 0) return new Map();
+    const rows = await db
+      .select({ itemId: wireReels.itemId, reelId: wireReels.reelId, lengthFt: wireReels.lengthFt })
+      .from(wireReels)
+      .where(and(inArray(wireReels.itemId, itemIds), eq(wireReels.isActive, true)))
+      .orderBy(asc(wireReels.createdAt));
+    const result = new Map<number, Array<{ reelId: string; lengthFt: number }>>();
+    for (const row of rows) {
+      const list = result.get(row.itemId) ?? [];
+      list.push({ reelId: row.reelId, lengthFt: Number(row.lengthFt ?? 0) });
       result.set(row.itemId, list);
     }
     return result;

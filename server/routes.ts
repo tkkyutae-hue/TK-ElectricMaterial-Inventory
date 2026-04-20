@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
-import { classifyReel } from "../shared/reelEligibility";
+import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
 import { insertItemSchema } from "../shared/schema";
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
@@ -1292,43 +1292,62 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { key: "updatedAt", header: "Last Updated",  width: 16 },
       ];
 
-      // ── Pre-fetch reel data for Wire & Cable sheet (seed code "WC", legacy "CW") ──
-      const wcCat = allCategories.find(c => c.code === "WC" || c.code === "CW");
-      const reelsByItemId = new Map<number, string[]>();
+      // ── Pre-fetch reel export data for ALL reel-eligible items (all categories) ──
+      // Uses resolveReelMode() — respects explicit trackingMode and falls back to
+      // the inferred classifier (cable / wire / flexible conduit, etc.).
+      const reelEligibleIds = allItems
+        .filter((item: any) => {
+          const cat = allCategories.find(c => c.id === item.categoryId);
+          return resolveReelMode({
+            name:         item.name,
+            sku:          item.sku,
+            subcategory:  item.subcategory,
+            detailType:   item.detailType,
+            baseItemName: item.baseItemName,
+            unitOfMeasure: item.unitOfMeasure,
+            trackingMode: item.trackingMode,
+            category:     cat ? { name: cat.name, code: cat.code } : null,
+          });
+        })
+        .map((item: any) => item.id as number);
+
+      const reelEligibleSet = new Set<number>(reelEligibleIds);
+      const reelExportMap = await storage.getWireReelExportData(reelEligibleIds);
       let maxReelCount = 0;
-      if (wcCat) {
-        const wcItems = byCategoryId.get(wcCat.id) ?? [];
-        const wcItemIds = wcItems.map((i: any) => i.id);
-        if (wcItemIds.length > 0) {
-          const reelMap = await storage.getWireReelsByItemIds(wcItemIds);
-          for (const [itemId, reelIds] of reelMap) {
-            reelsByItemId.set(itemId, reelIds);
-            if (reelIds.length > maxReelCount) maxReelCount = reelIds.length;
-          }
-        }
+      for (const reels of reelExportMap.values()) {
+        if (reels.length > maxReelCount) maxReelCount = reels.length;
       }
+
+      // ── Right-side reel breakdown column count ────────────────────────────────
+      // 2 summary cols (Quantity / Total Reels) + up to maxReelCount detail cols
+      const reelSummaryCols = maxReelCount > 0 ? 2 : 0;
+      const numReelCols     = reelSummaryCols + maxReelCount;
+      const totalCols       = COLS.length + numReelCols;
 
       // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
         const catItems = byCategoryId.get(cat.id);
         if (!catItems || catItems.length === 0) continue;
 
-        const isWC = cat.code === "WC" || cat.code === "CW";
-        const reelColCount = isWC ? maxReelCount : 0;
-        const numCols = COLS.length + reelColCount;
-
         const ws = wb.addWorksheet(toSheetName(cat.name));
 
-        // Base columns + optional reel columns
+        // Base columns + reel summary + reel detail columns
         const wsColDefs = COLS.map(c => ({ key: c.key, width: c.width }));
-        for (let n = 1; n <= reelColCount; n++) {
-          wsColDefs.push({ key: `reel${n}`, width: 12 });
+        if (maxReelCount > 0) {
+          wsColDefs.push({ key: "reelQty",   width: 13 }); // Quantity (ft)
+          wsColDefs.push({ key: "reelCount",  width: 13 }); // Total Reels
+          for (let n = 1; n <= maxReelCount; n++) {
+            wsColDefs.push({ key: `reel${n}`, width: 11 });
+          }
         }
         ws.columns = wsColDefs;
 
         // ── Header row ────────────────────────────────────────────────────────────
         const headerValues: string[] = COLS.map(c => c.header);
-        for (let n = 1; n <= reelColCount; n++) headerValues.push(`Reel #${n}`);
+        if (maxReelCount > 0) {
+          headerValues.push("Quantity", "Total Reels");
+          for (let n = 1; n <= maxReelCount; n++) headerValues.push(`Reel #${n}`);
+        }
         const headerRow = ws.addRow(headerValues);
         headerRow.height = 22;
         headerRow.eachCell({ includeEmpty: true }, cell => {
@@ -1378,7 +1397,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               cell.border    = { bottom: { style: "hair", color: { argb: "FFBFD4F0" } } };
             });
           }
-          ws.mergeCells(gRow.number, 1, gRow.number, numCols);
+          ws.mergeCells(gRow.number, 1, gRow.number, totalCols);
         };
 
         // ── Add grouped data rows ─────────────────────────────────────────────────
@@ -1429,11 +1448,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             updatedAt,
           };
 
-          // Reel columns (WC sheet only)
-          if (isWC && reelColCount > 0) {
-            const reelIds = reelsByItemId.get(item.id) ?? [];
-            for (let n = 1; n <= reelColCount; n++) {
-              rowData[`reel${n}`] = reelIds[n - 1] ?? "";
+          // Right-side reel breakdown — reel-eligible items only
+          const itemReels = reelEligibleSet.has(item.id)
+            ? (reelExportMap.get(item.id) ?? [])
+            : null;
+
+          if (maxReelCount > 0) {
+            if (itemReels && itemReels.length > 0) {
+              const totalFt = itemReels.reduce((s, r) => s + r.lengthFt, 0);
+              rowData["reelQty"]   = totalFt;
+              rowData["reelCount"] = itemReels.length;
+              for (let n = 1; n <= maxReelCount; n++) {
+                rowData[`reel${n}`] = itemReels[n - 1]?.lengthFt ?? "";
+              }
+            } else {
+              rowData["reelQty"]   = "";
+              rowData["reelCount"] = "";
+              for (let n = 1; n <= maxReelCount; n++) rowData[`reel${n}`] = "";
             }
           }
 
@@ -1464,12 +1495,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             stCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.orangeBg } };
           }
 
-          // Reel cell styling (WC sheet only)
-          if (isWC && reelColCount > 0) {
-            for (let n = 1; n <= reelColCount; n++) {
+          // Right-side reel section styling
+          if (maxReelCount > 0 && itemReels && itemReels.length > 0) {
+            // Quantity (ft) summary cell
+            const qtyFtCell = dataRow.getCell("reelQty");
+            qtyFtCell.numFmt = "#,##0";
+            qtyFtCell.alignment = { vertical: "middle", horizontal: "right" };
+            qtyFtCell.font = { size: 10, bold: true, color: { argb: C.l3Text } };
+
+            // Total Reels summary cell
+            const cntCell = dataRow.getCell("reelCount");
+            cntCell.numFmt = "#,##0";
+            cntCell.alignment = { vertical: "middle", horizontal: "center" };
+            cntCell.font = { size: 10, color: { argb: C.darkText } };
+
+            // Individual reel ft cells
+            for (let n = 1; n <= maxReelCount; n++) {
               const rc = dataRow.getCell(`reel${n}`);
-              rc.alignment = { vertical: "middle", horizontal: "center" };
-              rc.font = { size: 9, color: { argb: C.darkText } };
+              if (itemReels[n - 1] !== undefined) {
+                rc.numFmt = "#,##0";
+                rc.alignment = { vertical: "middle", horizontal: "center" };
+                rc.font = { size: 9, color: { argb: C.darkText } };
+              }
             }
           }
         }
@@ -1478,7 +1525,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ws.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
 
         // ── Auto-filter on header row ────────────────────────────────────────────
-        ws.autoFilter = { from: "A1", to: `${colLetter(numCols)}1` };
+        ws.autoFilter = { from: "A1", to: `${colLetter(totalCols)}1` };
       }
 
       // 5. Stream buffer to client

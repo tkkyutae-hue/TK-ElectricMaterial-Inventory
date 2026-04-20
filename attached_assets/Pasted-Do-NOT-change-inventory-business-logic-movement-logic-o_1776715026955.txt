@@ -1,0 +1,102 @@
+Do NOT change inventory business logic, movement logic, or UI screens.
+Do NOT change the export button or filename behavior.
+Focus ONLY on the Admin inventory Excel export in:
+- server/routes.ts
+- server/storage.ts
+- reuse shared/reelEligibility.ts
+
+TASK GOAL
+Enhance the Admin inventory Excel export so reel-eligible items include a right-side reel breakdown section per row, similar to the provided spreadsheet example.
+
+CURRENT STATE
+The current export already adds Reel # columns for the Wire & Cable sheet, but:
+- it only special-cases the WC/CW category
+- it fills Reel # cells with reelId strings
+- it does NOT include the desired per-row reel quantity breakdown
+
+DESIRED RESULT
+For reel-eligible items, add these extra export columns on the right side of each row:
+
+- Quantity
+- Total Reels
+- Reel #1
+- Reel #2
+- Reel #3
+- ...
+(up to the max active reel count needed across exported reel-eligible items)
+
+Expected meaning:
+- right-side Quantity = sum of active reel lengths for that item
+- Total Reels = number of active reels for that item
+- Reel #1..#N = each active reel's lengthFt value, ordered consistently
+
+IMPORTANT
+This should apply to reel-rule items based on reel eligibility rules, not only to the WC/CW category.
+Use the existing shared reel eligibility classifier.
+
+REQUIRED IMPLEMENTATION
+
+PART 1 — USE REEL ELIGIBILITY RULES
+Use shared/reelEligibility.ts classification so the reel breakdown applies to reel-eligible items, not just one hardcoded category.
+
+PART 2 — ADD EXPORT-SPECIFIC REEL DATA FETCH
+In storage, add a helper that returns active reel export data by itemId, including:
+- reelId
+- lengthFt
+- stable order (createdAt ascending is fine)
+
+Do NOT remove the existing helper if other screens rely on it.
+Add a new export-oriented helper if needed.
+
+Preferred shape:
+Map<number, Array<{ reelId: string; lengthFt: number }>>
+
+PART 3 — ADD RIGHT-SIDE REEL BREAKDOWN COLUMNS
+In the workbook export:
+Keep the existing left/base columns unchanged.
+
+Then append these right-side columns:
+- Quantity
+- Total Reels
+- Reel #1
+- Reel #2
+- Reel #3
+- ...
+
+For reel-eligible item rows:
+- right-side Quantity = total active reel length
+- Total Reels = active reel count
+- Reel #1..#N = each reel's lengthFt
+
+For non-reel items:
+- leave these right-side reel columns blank
+
+PART 4 — KEEP STYLING CONSISTENT
+Keep the existing export visual style, but make the right-side reel breakdown clearly readable.
+
+Requirements:
+- preserve current worksheet-per-category structure
+- preserve current group rows
+- preserve current base Quantity column
+- style the new right-side reel section so it feels like an attached secondary block
+- numeric reel cells should use centered/right-aligned numeric formatting as appropriate
+
+PART 5 — MAX REEL COLUMN COUNT
+Determine the maximum active reel count across exported reel-eligible items and create enough Reel # columns to cover it.
+
+Example:
+If the largest reel-eligible item has 11 active reels, create Reel #1 through Reel #11.
+
+PART 6 — DO NOT OVERCHANGE
+- Do NOT change quantity calculations outside export
+- Do NOT change item tracking behavior
+- Do NOT change frontend inventory pages
+- Do NOT remove existing export grouping logic
+- Keep this an export-only enhancement
+
+OUTPUT
+1. Summary of the reel export enhancement
+2. Which items now receive the reel breakdown
+3. What new storage/export helper was added
+4. The final meaning of Quantity / Total Reels / Reel # columns
+5. Files modified

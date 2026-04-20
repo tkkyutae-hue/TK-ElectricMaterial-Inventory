@@ -1558,9 +1558,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // Execute all updates inside a single DB transaction for atomicity
+      // Execute all updates inside a single DB transaction for atomicity.
+      // Two-phase approach prevents unique constraint violations when SKUs are
+      // being swapped or rotated within the batch (circular rename problem):
+      // Phase 1 — rename to guaranteed-unique temp SKUs
+      // Phase 2 — rename to the final target SKUs
       let updated = 0;
       await db.transaction(async (tx) => {
+        for (const { id } of updates) {
+          await tx.update(itemsTable).set({ sku: `__TEMP_${id}__` }).where(eq(itemsTable.id, id));
+        }
         for (const { id, sku } of updates) {
           await tx.update(itemsTable).set({ sku }).where(eq(itemsTable.id, id));
           updated++;

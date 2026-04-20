@@ -1380,74 +1380,88 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/admin/sku-issues", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const { db } = await import("./db");
-      const { sql } = await import("drizzle-orm");
+      const { eq, inArray, sql, asc } = await import("drizzle-orm");
+      const { items: itemsTable, categories: categoriesTable } = await import("../shared/schema");
 
-      // 1. All items that belong to a family that contains at least one collision-suffix SKU.
-      //    Pattern: ends with {digits}-{1 or 2 digits}, e.g. "CATRHO-12-2", "WIRE-12-10".
-      //    This avoids false-positives like "CT-BC-12" (non-digit before the last -12).
-      const result = await db.execute(sql.raw(`
-        SELECT
-          i.id,
-          i.sku,
-          i.name,
-          i.base_item_name,
-          i.size_label,
-          i.category_id,
-          c.name  AS category_name,
-          c.code  AS category_code
-        FROM items i
-        JOIN categories c ON c.id = i.category_id
-        WHERE i.base_item_name IN (
-          SELECT DISTINCT base_item_name
-          FROM items
-          WHERE sku ~ '[0-9]+-[0-9]{1,2}$'
-        )
-        ORDER BY c.id, i.base_item_name, i.size_label NULLS LAST, i.sku
-      `));
+      // 1. Find all base_item_names whose family contains at least one collision-suffix SKU.
+      //    Pattern: ends with {digits}-{1 or 2 digits} e.g. "CATRHO-12-2", "WIRE-12-10".
+      //    Avoids false-positives like "CT-BC-12" (non-digit before the last -12).
+      const collisionFamilies = await db
+        .selectDistinct({ baseItemName: itemsTable.baseItemName })
+        .from(itemsTable)
+        .where(sql`${itemsTable.sku} ~ '[0-9]+-[0-9]{1,2}$'`);
 
-      const rows: any[] = (result as any).rows ?? [];
+      const familyNames = collisionFamilies
+        .map(r => r.baseItemName)
+        .filter((n): n is string => typeof n === "string" && n.length > 0);
 
-      // 2. Full set of ALL SKUs in the DB (for collision checking)
-      const allSkuResult = await db.execute(sql.raw(`SELECT id, sku FROM items`));
-      const allSkuRows: any[] = (allSkuResult as any).rows ?? [];
+      if (familyNames.length === 0) {
+        return res.json({ categories: [] });
+      }
+
+      // 2. All items that belong to those families, with category info.
+      const rows = await db
+        .select({
+          id: itemsTable.id,
+          sku: itemsTable.sku,
+          name: itemsTable.name,
+          baseItemName: itemsTable.baseItemName,
+          sizeLabel: itemsTable.sizeLabel,
+          categoryId: itemsTable.categoryId,
+          categoryName: categoriesTable.name,
+          categoryCode: categoriesTable.code,
+        })
+        .from(itemsTable)
+        .innerJoin(categoriesTable, eq(categoriesTable.id, itemsTable.categoryId))
+        .where(inArray(itemsTable.baseItemName, familyNames))
+        .orderBy(asc(itemsTable.categoryId), asc(itemsTable.baseItemName), asc(itemsTable.sizeLabel), asc(itemsTable.sku));
+
+      // 3. Full set of ALL SKUs in the DB (for collision checking)
+      const allSkuRows = await db
+        .select({ id: itemsTable.id, sku: itemsTable.sku })
+        .from(itemsTable);
       const allSkuMap = new Map<string, number>(); // sku → item id
-      for (const r of allSkuRows) allSkuMap.set(r.sku, Number(r.id));
+      for (const r of allSkuRows) allSkuMap.set(r.sku, r.id);
 
-      // 3. Group by category → family
+      type FamilyItem = { id: number; sku: string; name: string; sizeLabel: string | null };
+
+      // 4. Group by category → family
       const catMap = new Map<number, {
-        id: number; name: string; code: string;
-        families: Map<string, any[]>;
+        id: number; name: string; code: string | null;
+        families: Map<string, FamilyItem[]>;
       }>();
 
       for (const r of rows) {
-        let cat = catMap.get(Number(r.category_id));
+        const catId = r.categoryId ?? 0;
+        let cat = catMap.get(catId);
         if (!cat) {
-          cat = { id: Number(r.category_id), name: r.category_name, code: r.category_code, families: new Map() };
-          catMap.set(Number(r.category_id), cat);
+          cat = { id: catId, name: r.categoryName, code: r.categoryCode ?? null, families: new Map() };
+          catMap.set(catId, cat);
         }
-        const fam = cat.families.get(r.base_item_name) ?? [];
-        fam.push({ id: Number(r.id), sku: r.sku, name: r.name, sizeLabel: r.size_label });
-        cat.families.set(r.base_item_name, fam);
+        const familyKey = r.baseItemName ?? "";
+        const fam = cat.families.get(familyKey) ?? [];
+        fam.push({ id: r.id, sku: r.sku, name: r.name, sizeLabel: r.sizeLabel ?? null });
+        cat.families.set(familyKey, fam);
       }
 
-      // 4. For each family, figure out which items have collision-suffix SKUs
+      // 5. For each family, figure out which items have collision-suffix SKUs
       //    and whether their "clean" version (suffix removed) is available
+      const COLLISION_RE = /[0-9]+-[0-9]{1,2}$/;
       const categories = [];
       for (const cat of catMap.values()) {
         const families = [];
-        for (const [familyName, items] of cat.families.entries()) {
-          const COLLISION_RE = /[0-9]+-[0-9]{1,2}$/;
-          const hasCollision = items.some(i => COLLISION_RE.test(i.sku));
+        for (const [familyName, familyItems] of cat.families.entries()) {
+          const hasCollision = familyItems.some(i => COLLISION_RE.test(i.sku));
           if (!hasCollision) continue;
 
           // sizeLabelCounts within the family
           const sizeLabelCount: Record<string, number> = {};
-          for (const i of items) {
+          for (const i of familyItems) {
             const k = i.sizeLabel ?? "";
             sizeLabelCount[k] = (sizeLabelCount[k] ?? 0) + 1;
           }
 
-          const processedItems = items.map((item: any) => {
+          const processedItems = familyItems.map((item: FamilyItem) => {
             const isCollision = COLLISION_RE.test(item.sku);
             // "clean" candidate = remove trailing -N (strip the last -digits suffix)
             const cleanCandidate = item.sku.replace(/-[0-9]{1,2}$/, "");
@@ -1467,7 +1481,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
           families.push({ baseItemName: familyName, items: processedItems });
         }
-        if (families.length) categories.push({ ...cat, families, families_map: undefined });
+        if (families.length) categories.push({ id: cat.id, name: cat.name, code: cat.code, families });
       }
 
       // Remove the Map object before serialising

@@ -1,0 +1,161 @@
+Do NOT change inventory business logic, UI screens, movement logic, reel logic, or export filename behavior.
+Focus ONLY on the Admin inventory Excel export in:
+- server/routes.ts
+- server/storage.ts
+- shared/reelEligibility.ts
+- any tiny directly related export helper if needed
+
+TASK GOAL
+Enhance the Admin inventory Excel export in two ways:
+
+1. Add subgroup-level representative photos in the Excel sheet
+2. Add reel breakdown columns only where reel-eligible items exist
+
+Keep all non-reel sheets unchanged.
+
+IMPORTANT
+This must be an export-only enhancement.
+Do NOT change frontend inventory pages.
+Do NOT change export button behavior.
+Do NOT change worksheet-per-category structure.
+Do NOT change grouping logic except for visual/photo handling already tied to subgroup rows.
+
+==================================================
+PART 1 — PHOTO COLUMN FOR SUBGROUP BLOCKS ONLY
+==================================================
+
+Add a PHOTO column as the first column in the exported sheet.
+
+Do NOT put images on:
+- category rows
+- family rows
+- type rows
+- normal item rows
+
+Only put one representative image on the lower subgroup/base-item title rows, such as:
+- Tee
+- Vertical Tee
+- Vertical In
+- Vertical Out
+- Straight
+- Connector 90°
+- Connector Straight
+- similar subgroup/baseItemName rows
+
+==================================================
+PART 2 — MERGED PHOTO CELL PER SUBGROUP BLOCK
+==================================================
+
+For each subgroup/base-item block:
+- merge the PHOTO column vertically across the full row range of that subgroup block
+- place one representative thumbnail image centered in that merged PHOTO cell
+
+Only the PHOTO column may be merged.
+Do NOT merge any data columns.
+
+Keep normal item rows compact and image-free.
+
+==================================================
+PART 3 — REPRESENTATIVE IMAGE PRIORITY
+==================================================
+
+Use this exact priority for subgroup representative photos:
+
+1. item_groups.imageUrl
+2. first valid item.imageUrl within that subgroup/base-item block
+3. blank if neither exists
+
+Important:
+- The admin-managed group image is the official representative image and must take priority over item-level images
+- If image fetch fails, leave the PHOTO cell blank and continue
+- Do NOT let one bad image fail the export
+
+==================================================
+PART 4 — SUBGROUP ROW VISUAL TREATMENT
+==================================================
+
+Keep the current export style, but make subgroup/base-item blocks more readable:
+- subgroup row/title remains visually emphasized
+- merged PHOTO cell should show one centered thumbnail
+- keep sizing moderate and clean
+- keep the export professional and readable
+
+Recommended practical sizing:
+- PHOTO column width around 18–22
+- subgroup visual region large enough for a small/medium thumbnail
+- do NOT oversize images
+
+==================================================
+PART 5 — REEL BREAKDOWN FOR REEL-ELIGIBLE ITEMS ONLY
+==================================================
+
+Enhance the export so reel-eligible items include a right-side reel breakdown section per row.
+
+Use the existing shared reel eligibility rules, not a hardcoded category-only rule.
+
+For reel-eligible item rows, append these right-side columns:
+- Quantity
+- Total Reels
+- Reel #1
+- Reel #2
+- Reel #3
+- ...
+(up to the maximum active reel count needed)
+
+Meanings:
+- right-side Quantity = sum of active reel lengths for that item
+- Total Reels = number of active reels for that item
+- Reel #1..#N = each active reel's lengthFt value in a stable order
+
+Preferred export helper shape if needed:
+Map<number, Array<{ reelId: string; lengthFt: number }>>
+
+==================================================
+PART 6 — NON-REEL SHEETS MUST STAY UNCHANGED
+==================================================
+
+IMPORTANT:
+If a worksheet/category contains no reel-eligible items, leave that worksheet completely unchanged from the current export format.
+
+Do NOT add:
+- right-side Quantity
+- Total Reels
+- Reel # columns
+
+to sheets that have no reel-related items.
+
+For mixed sheets:
+- apply reel breakdown only to reel-eligible item rows
+- leave the reel columns blank for non-reel item rows in that sheet
+
+Also:
+- do NOT change row height, grouping, spacing, or styling for non-reel sheets
+- do NOT change any existing non-reel export behavior
+
+==================================================
+PART 7 — KEEP CURRENT EXPORT STRUCTURE STABLE
+==================================================
+
+Preserve:
+- worksheet-per-category structure
+- current grouping hierarchy
+- current subgroup/baseItemName grouping
+- current size sorting
+- current quantity/status calculations
+- current filename generation
+- current export button flow
+
+Do NOT broadly redesign the workbook.
+
+==================================================
+PART 8 — OUTPUT
+==================================================
+
+Provide:
+1. Summary of subgroup representative photo enhancement
+2. Summary of reel breakdown enhancement
+3. Exact image priority order used
+4. Which row level gets merged PHOTO cells
+5. Which rows get reel breakdown columns
+6. Confirmation that non-reel sheets remain unchanged
+7. Files modified

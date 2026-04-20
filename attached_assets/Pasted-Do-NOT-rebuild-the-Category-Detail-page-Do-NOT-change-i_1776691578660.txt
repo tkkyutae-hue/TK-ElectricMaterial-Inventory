@@ -1,0 +1,76 @@
+Do NOT rebuild the Category Detail page.
+Do NOT change inventory business logic, classification logic, or backend routes broadly.
+
+Focus ONLY on:
+- client/src/pages/CategoryDetail.tsx
+
+TASK GOAL
+Fix the false-success item add/save behavior and improve the family creation UX so adding a new family flows directly into adding items.
+
+==================================================
+PART 1 — FIX FALSE SUCCESS TOASTS
+==================================================
+
+Current problem:
+CategoryDetail.saveInlineEdits() uses fetch() inside Promise.all() for item update/create/image patch requests, but does not check response.ok.
+
+Because of that:
+- server-side 400/500 responses do NOT reject
+- Promise.all resolves
+- success toast appears
+- but the item is not actually created/updated
+
+Required fix:
+1. For every fetch request inside saveInlineEdits():
+   - update existing item
+   - patch image
+   - create new item
+2. Check res.ok explicitly
+3. If not ok:
+   - parse the error response if possible
+   - throw a real Error
+4. Only show the success toast after all requests have truly succeeded
+5. If any request fails, show the destructive error toast with the real message
+
+IMPORTANT
+Do NOT change backend APIs for this task.
+Fix the client-side response handling only.
+
+==================================================
+PART 2 — IMPROVE NEW FAMILY FLOW
+==================================================
+
+Current issue:
+New Family creation is separated from actually adding the first item, which makes the flow slower.
+
+Required UX improvement:
+After confirming a new family name:
+1. automatically enter inline edit mode for that family
+2. automatically add one blank new-item row
+3. allow the user to start adding the first item immediately
+
+Requirements:
+- keep the current draft family card concept
+- preserve optional image support
+- do NOT force image entry
+- keep duplicate family validation
+- if the draft family already exists, keep the current duplicate warning behavior
+
+Preferred behavior:
+- confirming a new family should immediately transition into “ready to add first item”
+
+==================================================
+PART 3 — KEEP SCOPE NARROW
+==================================================
+
+- No broad refactor
+- No backend route redesign
+- No changes to CategoryGroupCard structure unless needed for the inline family flow
+- No changes to Inventory.tsx
+- No changes to export logic
+
+OUTPUT
+1. Summary of the false-success fix
+2. Summary of the family creation UX improvement
+3. Files modified
+4. Confirmation that item save success toast now only appears after true success

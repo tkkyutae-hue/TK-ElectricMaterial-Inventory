@@ -1419,7 +1419,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let photoBaseEndRow:   number        = 0;
         let photoBaseImageUrl: string | null = null;
 
-        const finalizePhotoBlock = () => {
+        const finalizePhotoBlock = async () => {
           if (photoBaseStartRow === null) return;
           const startRow = photoBaseStartRow;
           const endRow   = photoBaseEndRow;
@@ -1431,16 +1431,60 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
           // Embed representative image if one was found
           if (photoBaseImageUrl) {
+            const srcUrl = photoBaseImageUrl;
             try {
-              const urlPath  = photoBaseImageUrl;
-              const filename = urlPath.startsWith("/uploads/")
-                ? urlPath.slice("/uploads/".length)
-                : path.basename(urlPath);
-              const fsPath = path.join(process.cwd(), "uploads", filename);
-              if (fs.existsSync(fsPath)) {
-                const buf = fs.readFileSync(fsPath);
-                const raw = path.extname(fsPath).slice(1).toLowerCase();
-                const ext = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png";
+              let buf: Buffer | null = null;
+              let ext: "jpeg" | "png" | null = null;
+
+              if (srcUrl.startsWith("data:image/")) {
+                // ── base64 data URI ─────────────────────────────────────────────
+                const semicolon = srcUrl.indexOf(";");
+                const comma     = srcUrl.indexOf(",");
+                if (semicolon === -1 || comma === -1) {
+                  console.warn("[export] PHOTO: malformed data URI, skipping:", srcUrl.slice(0, 60));
+                } else {
+                  const mime    = srcUrl.slice("data:image/".length, semicolon).toLowerCase();
+                  const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg" : mime === "png" ? "png" : null;
+                  if (!rawExt) {
+                    console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
+                  } else {
+                    ext = rawExt;
+                    buf = Buffer.from(srcUrl.slice(comma + 1), "base64");
+                  }
+                }
+              } else if (srcUrl.startsWith("https://") || srcUrl.startsWith("http://")) {
+                // ── remote HTTP(S) URL ──────────────────────────────────────────
+                const resp = await fetch(srcUrl);
+                if (!resp.ok) {
+                  console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
+                } else {
+                  const ct = (resp.headers.get("content-type") ?? "").toLowerCase();
+                  const rawExt = ct.includes("jpeg") || ct.includes("jpg") ? "jpeg"
+                               : ct.includes("png")  ? "png"
+                               : null;
+                  if (!rawExt) {
+                    console.warn("[export] PHOTO: unsupported content-type", ct, "for:", srcUrl);
+                  } else {
+                    ext = rawExt;
+                    buf = Buffer.from(await resp.arrayBuffer());
+                  }
+                }
+              } else if (srcUrl.startsWith("/uploads/")) {
+                // ── local /uploads/ file ────────────────────────────────────────
+                const filename = srcUrl.slice("/uploads/".length);
+                const fsPath   = path.join(process.cwd(), "uploads", filename);
+                if (fs.existsSync(fsPath)) {
+                  buf = fs.readFileSync(fsPath);
+                  const raw = path.extname(fsPath).slice(1).toLowerCase();
+                  ext = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png";
+                } else {
+                  console.warn("[export] PHOTO: local file not found:", fsPath);
+                }
+              } else {
+                console.warn("[export] PHOTO: unrecognised image source format, skipping:", srcUrl.slice(0, 80));
+              }
+
+              if (buf && ext) {
                 const imageId = wb.addImage({ buffer: buf, extension: ext });
                 ws.addImage(imageId, {
                   tl: { col: 0, row: startRow - 1 },
@@ -1448,7 +1492,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                   editAs: "oneCell",
                 });
               }
-            } catch { /* one bad image must not abort the export */ }
+            } catch (err) {
+              console.warn("[export] PHOTO: unexpected error embedding image from", srcUrl.slice(0, 80), "—", err);
+            }
           }
           photoBaseStartRow = null;
           photoBaseImageUrl = null;
@@ -1477,7 +1523,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             if (type) addGroupRow(type, 2);
           }
           if (baseKey !== lastBase) {
-            finalizePhotoBlock();  // finish previous base-item block before starting new one
+            await finalizePhotoBlock();  // finish previous base-item block before starting new one
             lastBase = baseKey;
             if (base) {
               addGroupRow(base, 3);
@@ -1585,7 +1631,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
 
         // ── Finalize the last base-item block for this sheet ─────────────────────
-        finalizePhotoBlock();
+        await finalizePhotoBlock();
 
         // ── Freeze pane: header row + PHOTO column frozen ────────────────────────
         ws.views = [{ state: "frozen", xSplit: 1, ySplit: 1, topLeftCell: "B2", activeCell: "B2" }];

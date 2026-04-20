@@ -539,7 +539,7 @@ export default function SkuCleanup() {
         const { dismiss } = toast({
           title: "삭제 완료",
           description: `${succeededIds.length}개 아이템이 삭제되었습니다.${failed > 0 ? ` (${failed}개 실패)` : ""}`,
-          duration: 15000,
+          duration: 8000,
           action: (
             <ToastAction altText="되돌리기" data-testid="toast-undo-delete" onClick={() => handleUndo(dismiss)}>
               되돌리기

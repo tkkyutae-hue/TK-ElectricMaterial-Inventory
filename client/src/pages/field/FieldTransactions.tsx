@@ -10,7 +10,7 @@ import FieldRequestsList from "./FieldRequestsList";
 import {
   Search, ClipboardList, ImageOff, CalendarDays,
   Trash2, X, AlertTriangle, FileText, Pencil,
-  ClipboardCheck, SlidersHorizontal,
+  ClipboardCheck, SlidersHorizontal, Undo2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -283,31 +283,46 @@ export default function FieldTransactions() {
           createdBy: raw.createdBy ?? null, createdAt: raw.createdAt ?? null,
         };
       });
+    const btnBase: React.CSSProperties = {
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+      fontSize: 11, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif",
+      letterSpacing: "0.05em", background: "transparent",
+      border: "1px solid transparent", color: F.textMuted, transition: "opacity 0.15s",
+    };
+
     try {
       await bulkDelete.mutateAsync(ids);
       clearSelection();
       setConfirmOpen(false);
-      toast({
-        title: `${count} transaction${count !== 1 ? "s" : ""} deleted`,
+
+      const { dismiss } = toast({
+        title: t.txDeleted.replace("{n}", String(count)),
         duration: 8000,
-        action: (
-          <button
-            className="shrink-0 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
-            onClick={async () => {
-              try {
-                await bulkRestore.mutateAsync(snapshots);
-                toast({ title: `${count} transaction${count !== 1 ? "s" : ""} restored` });
-              } catch (err: any) {
-                toast({ title: "Restore failed", description: err.message, variant: "destructive" });
-              }
-            }}
-          >
-            Undo
-          </button>
-        ) as any,
+        description: (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              data-testid="toast-undo-tx-delete"
+              style={btnBase}
+              onClick={async () => {
+                dismiss();
+                try {
+                  await bulkRestore.mutateAsync(snapshots);
+                  toast({ title: t.txRestored.replace("{n}", String(count)) });
+                } catch (err: any) {
+                  toast({ title: t.restoreFailed, description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              <Undo2 style={{ width: 11, height: 11, flexShrink: 0 }} />
+              {t.undoMovement}
+            </button>
+          </div>
+        ),
       });
     } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: t.deleteFailed, description: err.message, variant: "destructive" });
     }
   }
 

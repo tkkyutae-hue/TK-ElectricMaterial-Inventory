@@ -296,6 +296,9 @@ const en = {
   draftDeleted:       "Draft deleted",
   confirmFailed:      "Confirm failed",
   deleteFailed:       "Delete failed",
+  txDeleted:          "{n} transactions deleted",
+  txRestored:         "{n} transactions restored",
+  restoreFailed:      "Restore failed",
 
   // ── Admin sidebar nav ────────────────────────────────────────────────────
   navMain:            "Main",
@@ -594,6 +597,9 @@ const ko: Translations = {
   draftDeleted:       "임시저장 삭제됨",
   confirmFailed:      "확정 실패",
   deleteFailed:       "삭제 실패",
+  txDeleted:          "{n}건 삭제됨",
+  txRestored:         "{n}건 복원됨",
+  restoreFailed:      "복원 실패",
 
   navMain:            "메인",
   navMaterials:       "자재",
@@ -891,6 +897,9 @@ const es: Translations = {
   draftDeleted:       "Borrador eliminado",
   confirmFailed:      "Error al confirmar",
   deleteFailed:       "Error al eliminar",
+  txDeleted:          "{n} transacciones eliminadas",
+  txRestored:         "{n} transacciones restauradas",
+  restoreFailed:      "Error al restaurar",
 
   navMain:            "Principal",
   navMaterials:       "Materiales",

@@ -1,0 +1,64 @@
+Do NOT rebuild the Projects page.
+Do NOT touch ProjectDetail, project tabs, routing, or backend project APIs broadly.
+Focus ONLY on:
+- client/src/pages/Projects.tsx
+- client/src/hooks/use-reference-data.ts only if a tiny hook usage adjustment is needed
+
+TASK GOAL
+Fix the Admin Projects page so project fields are editable where expected, and add the missing delete flow.
+
+CURRENT CONFIRMED ISSUES
+1. project owner name under the project title is display-only and not inline editable
+2. delete functionality exists in hooks/server, but the Projects page does not actually use useDeleteProject and has no delete UI
+3. status chip opens a selector, but I do NOT want toast notifications for status changes
+
+REQUIRED CHANGES
+
+PART 1 — MAKE OWNER NAME INLINE EDITABLE
+In client/src/pages/Projects.tsx:
+- change the ownerName text under the project title into an inline editable field
+- use the same inline edit pattern already used for name/customer/location
+- keep it visually secondary under the project title
+- save through the existing update mutation using field = ownerName
+
+PART 2 — KEEP STATUS INLINE EDITING, BUT NO TOASTS
+Keep the existing inline status chip/dropdown behavior.
+
+Requirements:
+- status should still update through the existing update mutation
+- do NOT add success toast for status changes
+- do NOT add failure toast for status changes unless absolutely necessary for error visibility
+- keep the UI lightweight and quiet
+
+PART 3 — ADD PROJECT DELETE TO THE PAGE
+Use the existing useDeleteProject hook already present in client/src/hooks/use-reference-data.ts.
+
+Required:
+- import and use useDeleteProject in Projects.tsx
+- add a delete affordance per project row (desktop admin-appropriate, compact)
+- add a confirm step before deletion
+- on successful delete:
+  - refresh the projects list
+- on failed delete:
+  - show the server error message if needed
+  - preserve the current server-side rule that blocks deleting projects with logged inventory movements
+
+PART 4 — KEEP THE CURRENT BOARD STRUCTURE
+Do NOT redesign the grouped customer board.
+Do NOT remove inline add-row behavior.
+Do NOT remove inline status chip editing.
+Do NOT change customer grouping.
+
+PART 5 — KEEP THE CHANGES NARROW
+- No backend route redesign
+- No ProjectDetail changes
+- No OverviewTab / ScopeItemsTab changes
+- No broad refactor
+- Keep the page desktop-first
+
+OUTPUT
+1. Summary of ownerName inline edit change
+2. Summary of delete flow added
+3. Confirmation that status editing was kept without toast notifications
+4. Files modified
+5. Anything intentionally left unchanged

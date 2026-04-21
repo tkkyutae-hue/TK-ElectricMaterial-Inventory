@@ -627,9 +627,10 @@ export default function Projects() {
     if (deleteConfirmId == null) return;
     deleteMutation.mutate(deleteConfirmId, {
       onSuccess: () => { setDeleteConfirmId(null); },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
         setDeleteConfirmId(null);
-        toast({ variant: "destructive", title: "삭제 실패", description: err?.message ?? "프로젝트를 삭제할 수 없습니다." });
+        const msg = err instanceof Error ? err.message : "프로젝트를 삭제할 수 없습니다.";
+        toast({ variant: "destructive", title: "삭제 실패", description: msg });
       },
     });
   }, [deleteConfirmId, deleteMutation, toast]);

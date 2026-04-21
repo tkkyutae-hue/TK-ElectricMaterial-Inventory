@@ -916,7 +916,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/drafts/:id", isAuthenticated, async (req, res) => {
     try {
-      const draft = await storage.getDraft(Number(req.params.id));
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
+      const draft = await storage.getDraft(id);
       if (!draft) return res.status(404).json({ message: "Draft not found" });
       res.json(draft);
     } catch (err: any) {

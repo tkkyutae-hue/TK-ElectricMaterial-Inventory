@@ -1961,30 +1961,35 @@ export class DatabaseStorage implements IStorage {
 
     await db.transaction(async (tx) => {
       for (const di of draftItems) {
-        const item = await this.getItem(di.itemId);
-        if (!item) throw new Error(`아이템 ${di.itemId}을(를) 찾을 수 없습니다 — 출고 확정 취소`);
+        // Use tx so we see uncommitted writes from earlier iterations in this loop
+        const [itemRow] = await tx
+          .select()
+          .from(items)
+          .where(eq(items.id, di.itemId))
+          .limit(1);
+        if (!itemRow) throw new Error(`아이템 ${di.itemId}을(를) 찾을 수 없습니다 — 출고 확정 취소`);
 
         const qty = di.qty;
         const movementType = draft.movementType;
-        let newQty = item.quantityOnHand;
+        let newQty = itemRow.quantityOnHand;
 
         if (movementType === "receive" || movementType === "return") newQty += qty;
         else if (movementType === "issue") {
           newQty -= qty;
-          if (newQty < 0) throw new Error(`재고 부족: ${item.name} (현재 ${item.quantityOnHand}, 요청 ${qty}) — 출고 확정 취소`);
+          if (newQty < 0) throw new Error(`재고 부족: ${itemRow.name} (현재 ${itemRow.quantityOnHand}, 요청 ${qty}) — 출고 확정 취소`);
         }
         else if (movementType === "adjust") newQty = qty;
 
         await this.createInventoryMovement({
-          itemId: item.id,
+          itemId: itemRow.id,
           movementType,
           quantity: qty,
-          previousQuantity: item.quantityOnHand,
+          previousQuantity: itemRow.quantityOnHand,
           newQuantity: newQty,
           sourceLocationId: draft.sourceLocationId ?? null,
           destinationLocationId: draft.destinationLocationId ?? null,
           projectId: draft.projectId ?? null,
-          unitCostSnapshot: item.unitCost,
+          unitCostSnapshot: itemRow.unitCost,
           note: draft.note ?? null,
           reason: null,
           referenceType: "draft",

@@ -349,8 +349,6 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
   const [po,   setPo]       = useState("");
   const [cust, setCust]     = useState(defaultCustomer);
   const [loc,  setLoc]      = useState("");
-  const [start, setStart]   = useState("");
-  const [end,   setEnd]     = useState("");
   const [stat,  setStat]    = useState("active");
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -360,7 +358,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
 
   function submit() {
     if (!name.trim()) return;
-    onCreate({ name: name.trim(), poNumber: po.trim()||null, customerName: cust.trim()||null, jobLocation: loc.trim()||null, startDate: start||null, endDate: end||null, status: stat, code: `PRJ-${Date.now().toString(36).toUpperCase()}` });
+    onCreate({ name: name.trim(), poNumber: po.trim()||null, customerName: cust.trim()||null, jobLocation: loc.trim()||null, startDate: null, endDate: null, status: stat, code: `PRJ-${Date.now().toString(36).toUpperCase()}` });
   }
 
   const inputCls = "h-7 text-sm px-2 bg-white border border-slate-200 rounded focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200 w-full";
@@ -379,15 +377,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
         <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder="Location" testId="add-row-location" className="h-7" />
       </div>
-      <div className="flex-shrink-0 hidden xl:flex items-end gap-1.5" style={{ width: cw.timeline }}>
-        <div className="flex-1">
-          <input type="date" className={inputCls} placeholder="Start" value={start} onChange={e => setStart(e.target.value)} onKeyDown={kd} data-testid="add-row-started" />
-        </div>
-        <span className="text-slate-400 text-xs pb-1.5 flex-shrink-0">–</span>
-        <div className="flex-1">
-          <input type="date" className={inputCls} placeholder="End" value={end} onChange={e => setEnd(e.target.value)} onKeyDown={kd} data-testid="add-row-ended" />
-        </div>
-      </div>
+      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.timeline }} />
       <div className="flex-shrink-0" style={{ width: cw.status }}>
         <select className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
           value={stat} onChange={e => setStat(e.target.value)} data-testid="add-row-status">
@@ -618,9 +608,14 @@ export default function Projects() {
     });
   }
 
-  const handleStatusChange  = useCallback((id: number, s: string)                              => { updateMutation.mutate({ id, status: s }); },                   [updateMutation]);
-  const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val }); },                [updateMutation]);
-  const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)    => { updateMutation.mutate({ id, startDate: s, endDate: e }); },    [updateMutation]);
+  const onUpdateError = useCallback((err: unknown) => {
+    const msg = err instanceof Error ? err.message : "변경 사항을 저장하지 못했습니다.";
+    toast({ variant: "destructive", title: "저장 실패", description: msg });
+  }, [toast]);
+
+  const handleStatusChange  = useCallback((id: number, s: string)                              => { updateMutation.mutate({ id, status: s },                    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
+  const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val },                 { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
+  const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)    => { updateMutation.mutate({ id, startDate: s, endDate: e },    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
   const handleCreate        = useCallback((data: any)                                           => { createMutation.mutate(data); },                                [createMutation]);
   const handleDelete        = useCallback((id: number)                                          => { setDeleteConfirmId(id); },                                     []);
   const confirmDelete       = useCallback(() => {

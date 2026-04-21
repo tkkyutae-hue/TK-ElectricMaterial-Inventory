@@ -52,7 +52,7 @@ export function EditProjectDialog({
 
   function onSubmit(data: EditFormData) {
     updateMutation.mutate(
-      { id: project.id, data: cleanFormData(data) },
+      { id: project.id, ...cleanFormData(data) },
       {
         onSuccess: () => { toast({ title: "Project updated" }); onClose(); },
         onError:   (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),

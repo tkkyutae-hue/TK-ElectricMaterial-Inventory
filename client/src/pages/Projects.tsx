@@ -394,7 +394,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
-      <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 64 }}>
+      <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 88 }}>
         <button className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors" disabled={!name.trim()} onClick={submit} data-testid="add-row-save">Add</button>
         <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 transition-colors" onClick={onClose} data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
       </div>
@@ -499,7 +499,7 @@ function CustomerGroup({
                 </div>
 
                 {/* Status */}
-                <div className="flex-shrink-0 hidden md:flex" style={{ width: cw.status }} onClick={e => e.stopPropagation()}>
+                <div className="flex-shrink-0 hidden md:flex pr-2" style={{ width: cw.status }} onClick={e => e.stopPropagation()}>
                   <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                 </div>
 
@@ -509,7 +509,7 @@ function CustomerGroup({
                     type="button"
                     onClick={e => { e.stopPropagation(); onDelete(project.id); }}
                     data-testid={`btn-delete-project-${project.id}`}
-                    className="opacity-0 group-hover:opacity-100 inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                    className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-opacity"
                     title="Delete project"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

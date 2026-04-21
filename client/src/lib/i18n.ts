@@ -286,6 +286,17 @@ const en = {
   items:              "Items",
   selected:           "selected",
 
+  // ── Movement / Draft toast messages ──────────────────────────────────────
+  movementLogged:     "Movement logged",
+  movementUndone:     "Undone",
+  undoMovement:       "Undo",
+  viewTransactions:   "View Transactions",
+  draftConfirmed:     "Draft confirmed",
+  draftConfirmedDesc: "Inventory has been updated.",
+  draftDeleted:       "Draft deleted",
+  confirmFailed:      "Confirm failed",
+  deleteFailed:       "Delete failed",
+
   // ── Admin sidebar nav ────────────────────────────────────────────────────
   navMain:            "Main",
   navMaterials:       "Materials",
@@ -574,6 +585,16 @@ const ko: Translations = {
   items:              "품목",
   selected:           "선택됨",
 
+  movementLogged:     "이동 기록됨",
+  movementUndone:     "취소됨",
+  undoMovement:       "되돌리기",
+  viewTransactions:   "거래 내역 보기",
+  draftConfirmed:     "임시저장 확정됨",
+  draftConfirmedDesc: "재고가 업데이트되었습니다.",
+  draftDeleted:       "임시저장 삭제됨",
+  confirmFailed:      "확정 실패",
+  deleteFailed:       "삭제 실패",
+
   navMain:            "메인",
   navMaterials:       "자재",
   navOperations:      "운영",
@@ -860,6 +881,16 @@ const es: Translations = {
   saving:             "Guardando…",
   items:              "Artículos",
   selected:           "seleccionados",
+
+  movementLogged:     "Movimiento registrado",
+  movementUndone:     "Deshecho",
+  undoMovement:       "Deshacer",
+  viewTransactions:   "Ver transacciones",
+  draftConfirmed:     "Borrador confirmado",
+  draftConfirmedDesc: "El inventario ha sido actualizado.",
+  draftDeleted:       "Borrador eliminado",
+  confirmFailed:      "Error al confirmar",
+  deleteFailed:       "Error al eliminar",
 
   navMain:            "Principal",
   navMaterials:       "Materiales",

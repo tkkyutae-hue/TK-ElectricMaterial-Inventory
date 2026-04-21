@@ -186,6 +186,20 @@ body[data-field-mode] [data-toast-viewport] li button[toast-close] {
 body[data-field-mode] [data-toast-viewport] li button[toast-close]:hover {
   color: #e2f0e5 !important;
 }
+/* Field mode: move toast to bottom so it doesn't hide behind FieldHeader */
+body[data-field-mode] [data-toast-viewport] {
+  top: auto !important;
+  bottom: max(env(safe-area-inset-bottom, 0px), 0px) !important;
+}
+/* Field mode: make action/undo buttons readable on dark toast background */
+body[data-field-mode] [data-toast-viewport] li button:not([toast-close]) {
+  color: #5deba0 !important;
+  text-decoration-color: #5deba0 !important;
+}
+body[data-field-mode] [data-toast-viewport] li button:not([toast-close]):hover {
+  color: #e2f0e5 !important;
+  text-decoration-color: #e2f0e5 !important;
+}
 
 /* Field Inventory — category strip scrollbar:
    Mobile → hidden completely (swipe still works)

@@ -338,10 +338,10 @@ export default function DraftMovementsList() {
         qc.invalidateQueries({ queryKey: ["/api/items"] }),
       ]);
       setConfirmingDraft(null);
-      toast({ title: "Draft confirmed", description: "Inventory has been updated." });
+      toast({ title: t.draftConfirmed, description: t.draftConfirmedDesc });
       navigate("/field/transactions");
     } catch (err: any) {
-      toast({ title: "Confirm failed", description: err.message, variant: "destructive" });
+      toast({ title: t.confirmFailed, description: err.message, variant: "destructive" });
     } finally {
       setConfirmLoading(false);
     }
@@ -353,9 +353,9 @@ export default function DraftMovementsList() {
       await fetch(`/api/drafts/${id}`, { method: "DELETE", credentials: "include" });
       await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
       setDeletingId(null);
-      toast({ title: "Draft deleted" });
+      toast({ title: t.draftDeleted });
     } catch (err: any) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: t.deleteFailed, description: err.message, variant: "destructive" });
     } finally {
       setDeleteLoading(false);
     }

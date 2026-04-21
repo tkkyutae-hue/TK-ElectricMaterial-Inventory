@@ -487,22 +487,23 @@ export function MovementForm({
       const dismissRef = { fn: () => {} };
 
       const { dismiss } = toast({
-        title: count === 1 ? "Movement logged" : `${count} movements logged`,
+        title: count === 1 ? t.movementLogged : `${count} ${t.movementLogged}`,
         description: (
           <div>
-            <p>{count} item{count > 1 ? "s" : ""} recorded as {shared.movementType}.</p>
-            <div className="flex gap-3 mt-2">
+            <div className="flex gap-3 mt-1">
               <button
                 type="button"
-                className="text-xs font-medium text-brand-700 hover:text-brand-900 underline underline-offset-2"
+                data-testid="toast-view-transactions"
+                className="text-xs font-medium underline underline-offset-2"
                 onClick={() => { navigate(txPath); dismissRef.fn(); }}
               >
-                View Transactions
+                {t.viewTransactions}
               </button>
               {createdIds.length > 0 && (
                 <button
                   type="button"
-                  className="text-xs font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2"
+                  data-testid="toast-undo-movement"
+                  className="text-xs font-medium underline underline-offset-2"
                   onClick={async () => {
                     dismissRef.fn();
                     try {
@@ -515,13 +516,18 @@ export function MovementForm({
                       await qc.invalidateQueries({ queryKey: [api.movements.list.path] });
                       await qc.invalidateQueries({ queryKey: [api.items.list.path] });
                       await qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });
-                      toast({ title: "Undone", description: `${count} movement${count > 1 ? "s" : ""} removed.` });
+                      await qc.invalidateQueries({ queryKey: [api.projects.list.path] });
+                      await qc.invalidateQueries({ queryKey: ["/api/wire-reels"] });
+                      await qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+                      await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+                      await qc.invalidateQueries({ queryKey: ["/api/field/items"] });
+                      toast({ title: t.movementUndone });
                     } catch (err: any) {
-                      toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+                      toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
                     }
                   }}
                 >
-                  Undo
+                  {t.undoMovement}
                 </button>
               )}
             </div>

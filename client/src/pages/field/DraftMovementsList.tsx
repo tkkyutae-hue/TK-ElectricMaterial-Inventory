@@ -365,7 +365,7 @@ export default function DraftMovementsList() {
                     body: JSON.stringify({ ids: createdIds }),
                   });
                   if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Undo failed"); }
-                  await fetch("/api/drafts", {
+                  const rd = await fetch("/api/drafts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
@@ -378,6 +378,7 @@ export default function DraftMovementsList() {
                       note: snapshot.note ?? null,
                     }),
                   });
+                  if (!rd.ok) { const e = await rd.json(); throw new Error(e.message || "Draft restore failed"); }
                   await Promise.all([
                     qc.invalidateQueries({ queryKey: ["/api/drafts"] }),
                     qc.invalidateQueries({ queryKey: ["/api/movements"] }),

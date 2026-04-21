@@ -1,16 +1,17 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useProjects, useCreateProject, useUpdateProject } from "@/hooks/use-reference-data";
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
   ChevronDown, ChevronUp, Users, Check, Plus, X,
-  ArrowUp, ArrowDown, ChevronsUpDown, UserPlus,
+  ArrowUp, ArrowDown, ChevronsUpDown, UserPlus, Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status config
@@ -180,11 +181,11 @@ function CompactSuggestion({ value, onChange, suggestions, placeholder, testId, 
 // ─────────────────────────────────────────────────────────────────────────────
 type EditKey = { id: number; field: string } | null;
 
-function EditableCell({ projectId, field, value, type = "text", editKey, setEditKey, onSave, className = "", suggestions }: {
+function EditableCell({ projectId, field, value, type = "text", editKey, setEditKey, onSave, className = "", valueClassName, suggestions }: {
   projectId: number; field: string; value: string | null | undefined;
   type?: "text" | "date"; editKey: EditKey; setEditKey: (k: EditKey) => void;
   onSave: (id: number, field: string, value: string | null) => void;
-  className?: string; suggestions?: string[];
+  className?: string; valueClassName?: string; suggestions?: string[];
 }) {
   const isEditing = editKey?.id === projectId && editKey?.field === field;
   const inputRef  = useRef<HTMLInputElement>(null);
@@ -227,12 +228,14 @@ function EditableCell({ projectId, field, value, type = "text", editKey, setEdit
   }
 
   const display = type === "date" ? displayDate(value) : (value || null);
+  const valCls  = valueClassName ?? "text-sm text-slate-700";
+  const mtdCls  = valueClassName ?? "text-slate-300 text-sm";
   return (
     <div className={`cursor-text truncate rounded px-1 -mx-1 py-0.5 hover:bg-slate-100/80 transition-colors ${className}`}
       onClick={e => { e.stopPropagation(); setEditKey({ id: projectId, field }); }}
       data-testid={`cell-${field}-${projectId}`}
     >
-      {display ? <span className="text-sm text-slate-700">{display}</span> : <span className="text-slate-300 text-sm select-none">—</span>}
+      {display ? <span className={valCls}>{display}</span> : <span className={`${mtdCls} select-none`}>—</span>}
     </div>
   );
 }
@@ -405,7 +408,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
 function CustomerGroup({
   customerName, projects, collapsed, onToggle,
   openPopoverId, setOpenPopoverId, onStatusChange, onFieldSave, onTimelineSave,
-  editKey, setEditKey, onCreate,
+  editKey, setEditKey, onCreate, onDelete,
   cw, setColWidths, ss, onSort,
   customerSuggestions, locationSuggestions,
   autoOpenAdd, onAutoAddClosed,
@@ -417,6 +420,7 @@ function CustomerGroup({
   onTimelineSave: (id: number, start: string | null, end: string | null) => void;
   editKey: EditKey; setEditKey: (k: EditKey) => void;
   onCreate: (data: any) => void;
+  onDelete: (id: number) => void;
   cw: ColWidths; setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
   ss: SortState; onSort: (c: SortCol) => void;
   customerSuggestions: string[]; locationSuggestions: string[];
@@ -454,7 +458,7 @@ function CustomerGroup({
             <SortableHeader label="Location"      col="location" ss={ss} onSort={onSort} cw={cw} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
             <SortableHeader label="Timeline"      col="timeline" ss={ss} onSort={onSort} cw={cw} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
             <SortableHeader label="Status"        col="status"   ss={ss} onSort={onSort} cw={cw} cwKey="status"   setColWidths={setColWidths} />
-            <div className="flex-shrink-0" style={{ width: 64 }} />
+            <div className="flex-shrink-0" style={{ width: 88 }} />
           </div>
 
           {/* Project rows */}
@@ -470,7 +474,7 @@ function CustomerGroup({
                 {/* Project Name */}
                 <div className="flex-shrink-0 min-w-0 pr-2" style={{ width: cw.name }}>
                   <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700" />
-                  {project.ownerName && <p className="text-[11px] text-slate-400 truncate mt-0.5 pl-1">{project.ownerName}</p>}
+                  <EditableCell projectId={project.id} field="ownerName" value={project.ownerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} valueClassName="text-[11px] text-slate-400" className="mt-0.5" />
                   <div className="flex items-center gap-2 mt-1.5 md:hidden">
                     <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                   </div>
@@ -499,8 +503,17 @@ function CustomerGroup({
                   <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                 </div>
 
-                {/* Open */}
-                <div className="flex-shrink-0 flex justify-end" style={{ width: 64 }}>
+                {/* Actions: Delete + Open */}
+                <div className="flex-shrink-0 flex items-center justify-end gap-0.5" style={{ width: 88 }}>
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); onDelete(project.id); }}
+                    data-testid={`btn-delete-project-${project.id}`}
+                    className="opacity-0 group-hover:opacity-100 inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                    title="Delete project"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                   <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
                     <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors" data-testid={`link-open-project-${project.id}`}>
                       Open <ChevronRight className="w-3.5 h-3.5" />
@@ -533,6 +546,8 @@ export default function Projects() {
   const { data: projects, isLoading } = useProjects();
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
+  const deleteMutation = useDeleteProject();
+  const { toast } = useToast();
 
   const [statusFilter,      setStatusFilter]      = useState("all");
   const [search,            setSearch]            = useState("");
@@ -544,6 +559,7 @@ export default function Projects() {
   const [newCustDialog,     setNewCustDialog]     = useState(false);
   const [newCustInput,      setNewCustInput]      = useState("");
   const [newCustomerForAdd, setNewCustomerForAdd] = useState<string | null>(null);
+  const [deleteConfirmId,   setDeleteConfirmId]   = useState<number | null>(null);
 
   // Persist widths
   useEffect(() => {
@@ -606,6 +622,17 @@ export default function Projects() {
   const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val }); },                [updateMutation]);
   const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)    => { updateMutation.mutate({ id, startDate: s, endDate: e }); },    [updateMutation]);
   const handleCreate        = useCallback((data: any)                                           => { createMutation.mutate(data); },                                [createMutation]);
+  const handleDelete        = useCallback((id: number)                                          => { setDeleteConfirmId(id); },                                     []);
+  const confirmDelete       = useCallback(() => {
+    if (deleteConfirmId == null) return;
+    deleteMutation.mutate(deleteConfirmId, {
+      onSuccess: () => { setDeleteConfirmId(null); },
+      onError: (err: any) => {
+        setDeleteConfirmId(null);
+        toast({ variant: "destructive", title: "삭제 실패", description: err?.message ?? "프로젝트를 삭제할 수 없습니다." });
+      },
+    });
+  }, [deleteConfirmId, deleteMutation, toast]);
 
   function startNewCustomer() {
     const name = newCustInput.trim();
@@ -711,6 +738,7 @@ export default function Projects() {
               editKey={editKey}
               setEditKey={setEditKey}
               onCreate={handleCreate}
+              onDelete={handleDelete}
               cw={colWidths}
               setColWidths={setColWidths}
               ss={sortState}
@@ -723,6 +751,24 @@ export default function Projects() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmId !== null} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>프로젝트 삭제</DialogTitle>
+            <DialogDescription>이 프로젝트를 영구적으로 삭제하시겠습니까? 관련 이동 기록이 있으면 삭제할 수 없습니다.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteConfirmId(null)} disabled={deleteMutation.isPending} data-testid="btn-cancel-delete-project">
+              취소
+            </Button>
+            <Button size="sm" variant="destructive" onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="btn-confirm-delete-project">
+              {deleteMutation.isPending ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Customer Dialog */}
       <Dialog open={newCustDialog} onOpenChange={setNewCustDialog}>

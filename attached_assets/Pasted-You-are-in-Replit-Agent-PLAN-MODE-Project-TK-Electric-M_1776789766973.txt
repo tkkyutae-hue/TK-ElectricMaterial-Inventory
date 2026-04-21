@@ -1,0 +1,262 @@
+You are in Replit Agent PLAN MODE.
+
+Project:
+TK Electric Material Inventory
+
+Your job is NOT to implement yet.
+Your job is to inspect the existing codebase carefully and produce a concrete patch plan for the highest-priority stability fixes only.
+
+CRITICAL RULE
+Do not modify code yet.
+Do not give generic advice.
+Read the real code first and base all findings on actual files, actual functions, and actual write paths in this repo.
+
+==================================================
+PRIMARY GOAL
+==================================================
+
+Produce a P0 implementation plan for inventory integrity stabilization.
+
+This is NOT a broad refactor plan.
+This is NOT a UI redesign plan.
+This is NOT a security wishlist.
+
+This is a targeted stability/integrity plan for the current inventory system.
+
+==================================================
+PRIORITY-1 REVIEW SCOPE
+==================================================
+
+Focus ONLY on these P0 concerns, in this order:
+
+1. Whether every stock-affecting flow in the current UI can be represented through a real or virtual location
+2. Stock source of truth mismatch
+3. Movement / draft invariants
+4. Transaction atomicity for stock-affecting write paths
+5. Route-level validation + parse normalization
+6. Critical write error standardization
+7. Silent failure / false-success behavior in critical admin flows
+
+==================================================
+PART 1 — STOCK MODEL / SOURCE OF TRUTH
+==================================================
+
+Inspect the actual relationship between:
+- items.quantityOnHand
+- inventoryLocationBalances
+
+Determine the CURRENT real behavior, not just comments or intended design.
+
+You must answer:
+- Which one is currently acting as the real source of truth?
+- Are they already inconsistent by design or by bug?
+- Do movement types like receive / issue / return / transfer / adjust update both correctly?
+- Where exactly do they diverge?
+
+Important:
+Do NOT jump straight to transaction recommendations before answering this question.
+
+Explicitly analyze whether the app can safely move to this model:
+
+- inventoryLocationBalances = authoritative per-location stock
+- items.quantityOnHand = derived/cache total
+
+Also answer this implementation-gate question explicitly:
+
+Can every stock-affecting movement in the current UI be mapped to a real or virtual location without breaking existing operational flows?
+
+If the answer is no, say so clearly and identify which current flows block full conversion.
+
+==================================================
+PART 2 — MOVEMENT / DRAFT INVARIANTS
+==================================================
+
+Inspect the real inventory movement logic, especially in storage-layer write paths.
+
+At minimum inspect these actual functions:
+- createInventoryMovement
+- updateInventoryMovement
+- deleteMovement
+- undoMovementEdit
+- confirmDraft
+- bulkDeleteMovements
+- bulkRestoreMovements
+- _adjustLocationBalance
+- _upsertLocationBalance
+
+Determine the required inventory invariants that all committed write paths must preserve.
+
+You must explicitly reason about:
+- receive
+- issue
+- return
+- transfer
+- adjust
+- draft confirm
+
+Also determine whether adjust currently behaves as:
+- delta adjustment
+- target quantity adjustment
+- or a mixed/unclear model
+
+Recommend the safest P0 rule:
+- Prefer delta-based adjustments for normal operations
+- Allow target-quantity adjustments only in explicit admin reconciliation flows
+
+Call out any code patterns that hide inconsistency instead of rejecting it, especially any:
+- Math.max(0, ...)
+- silent clamping
+- partial stock correction shortcuts
+
+==================================================
+PART 3 — TRANSACTION ATOMICITY
+==================================================
+
+After invariants are identified, inspect all stock-affecting multi-write flows and determine exactly which database operations must succeed or fail together.
+
+Do NOT review this only at the route layer.
+The real integrity risk is in storage.ts multi-step write sequences.
+
+For each of these:
+- createInventoryMovement
+- updateInventoryMovement
+- deleteMovement
+- undoMovementEdit
+- confirmDraft
+- bulkDeleteMovements
+- bulkRestoreMovements
+
+Identify:
+A. every DB write involved
+B. which writes must be atomic together
+C. where partial failure can currently corrupt stock, movement history, project transactions, reel state, or location balances
+
+For confirmDraft, explicitly state whether it is currently all-or-nothing or partial-success prone.
+
+Hard rule to evaluate against:
+confirmDraft must be all-or-nothing.
+If any line fails validation or stock mutation, the entire draft confirmation must roll back with zero committed inventory effects.
+
+==================================================
+PART 4 — ROUTE INPUT NORMALIZATION / VALIDATION
+==================================================
+
+Inspect server/routes.ts for repeated unsafe request handling patterns.
+
+Look for:
+- req.params.id style direct use
+- repeated Number(...)
+- string | string[] | unknown passed directly into typed logic
+- body/query/params values flowing into storage without consistent normalization
+- missing schema validation on critical write routes
+
+Do NOT propose ad-hoc fixes only.
+Propose a reusable normalization/validation pattern.
+
+Preferred direction:
+- shared parsing helpers for params/query
+- Zod-backed body/query/params validation for critical write routes
+
+At minimum identify P0 routes that must be normalized/validated first.
+
+These must include:
+- movement write routes
+- draft confirm route
+- POST /api/items
+- PUT /api/items/:id
+- POST /api/items/restore-batch
+- SKU bulk update routes if present
+- family/category move routes if present
+- movement bulk delete / restore routes if present
+
+==================================================
+PART 5 — CRITICAL TYPE DRIFT ONLY
+==================================================
+
+Identify only the highest-priority type mismatches that block safe future work.
+
+Focus on real blockers, not cosmetic TypeScript cleanup.
+
+Inspect especially:
+- server/routes.ts
+- server/storage.ts
+- client/src/pages/field/FieldInventory.tsx
+- any critical admin write UI that currently shows false-success or unchecked fetch success behavior
+
+Do NOT spend much time on low-risk UI typing.
+Only capture type drift that directly affects:
+- stock integrity
+- movement correctness
+- write-path safety
+- validation correctness
+- critical admin operations
+
+==================================================
+PART 6 — TYPESCRIPT CONFIGURATION
+==================================================
+
+Inspect tsconfig.json carefully.
+
+Do NOT assume target/module/lib alone is the main issue.
+
+Determine:
+- whether the current single tsconfig covering client + server + shared is part of the type-check noise
+- whether current target/module/lib/moduleResolution/types settings are creating misleading failures
+- the minimum safe tsconfig change needed first
+- whether a split tsconfig plan (base/client/server) should be recommended later, but only if justified by the real repo structure
+
+Important:
+Recommend the minimum safe change first.
+Optional cleanup later should be clearly separated.
+
+==================================================
+PART 7 — SILENT FAILURE / FALSE SUCCESS
+==================================================
+
+Inspect critical admin/client write flows for success being reported before verified success.
+
+Especially look for:
+- unchecked fetch resolution
+- success toast after Promise resolution without res.ok validation
+- catch {} or swallowed failure
+- raw DB/SQL error leakage to the UI
+- partial failure being presented as success
+
+Focus on critical admin writes, especially item creation/update and movement-related admin actions.
+
+Hard rule:
+For critical admin write flows, success toasts must only appear after verified success responses (res.ok + validated payload), never after unchecked fetch resolution.
+
+==================================================
+OUTPUT FORMAT
+==================================================
+
+Your output must be concrete and repo-specific.
+
+Use this exact structure:
+
+1. Executive summary
+2. P0 patch order (exact order, no generic roadmap)
+3. Confirmed issues by category
+   - A. Confirmed issue
+   - B. Why it is risky
+   - C. Exact files/functions involved
+   - D. Proposed patch order
+   - E. Estimated blast radius
+4. File-by-file breakdown
+5. Risk notes before implementation
+6. Ready-to-implement checklist
+
+==================================================
+IMPORTANT CONSTRAINTS
+==================================================
+
+- Stay in PLAN MODE
+- Do NOT modify code yet
+- Do NOT propose broad refactors as P0 unless absolutely required
+- Do NOT treat RLS as a P0 patch
+- Do NOT spend time on low-priority UI polish
+- Be concrete enough that the next implementation prompt can be executed file by file with low risk
+
+FINAL GUIDING SENTENCE
+Before adding transaction guarantees, first define whether every stock-affecting operation in the current UI can be represented through real or virtual locations, and establish a single stock invariant that all write paths must preserve.

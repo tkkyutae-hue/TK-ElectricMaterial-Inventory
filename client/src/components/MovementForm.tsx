@@ -533,7 +533,7 @@ export function MovementForm({
               )}
             </div>
           </div>
-        ) as any,
+        ),
       });
       dismissRef.fn = dismiss;
 

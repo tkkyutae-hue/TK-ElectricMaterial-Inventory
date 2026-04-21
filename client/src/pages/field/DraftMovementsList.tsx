@@ -328,9 +328,10 @@ export default function DraftMovementsList() {
 
   async function handleConfirm() {
     if (!confirmingDraft) return;
+    const snapshot = confirmingDraft;
     setConfirmLoading(true);
     try {
-      const res = await fetch(`/api/drafts/${confirmingDraft.id}/confirm`, { method: "POST", credentials: "include" });
+      const res = await fetch(`/api/drafts/${snapshot.id}/confirm`, { method: "POST", credentials: "include" });
       if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Failed to confirm draft"); }
       const data = await res.json();
       const createdIds: number[] = data.movementIds ?? [];
@@ -345,50 +346,60 @@ export default function DraftMovementsList() {
       ]);
       setConfirmingDraft(null);
       navigate("/field/transactions");
-      if (createdIds.length > 0) {
-        const dismissRef = { fn: () => {} };
-        const { dismiss } = toast({
-          title: t.draftConfirmed,
-          description: (
-            <div style={{ marginTop: 4 }}>
-              <button
-                type="button"
-                data-testid="toast-undo-draft-confirm"
-                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 2 }}
-                onClick={async () => {
-                  dismissRef.fn();
-                  try {
-                    const r = await fetch("/api/movements/bulk-delete", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({ ids: createdIds }),
-                    });
-                    if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Undo failed"); }
-                    await Promise.all([
-                      qc.invalidateQueries({ queryKey: ["/api/movements"] }),
-                      qc.invalidateQueries({ queryKey: ["/api/items"] }),
-                      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] }),
-                      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] }),
-                      qc.invalidateQueries({ queryKey: ["/api/field/items"] }),
-                      qc.invalidateQueries({ queryKey: ["/api/wire-reels"] }),
-                    ]);
-                    toast({ title: t.movementUndone });
-                  } catch (err: any) {
-                    toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
-                  }
-                }}
-              >
-                <RotateCcw style={{ width: 10, height: 10, flexShrink: 0 }} />
-                {t.undoMovement}
-              </button>
-            </div>
-          ) as any,
-        });
-        dismissRef.fn = dismiss;
-      } else {
-        toast({ title: t.draftConfirmed, description: t.draftConfirmedDesc });
-      }
+      const dismissRef = { fn: () => {} };
+      const { dismiss } = toast({
+        title: t.draftConfirmed,
+        description: createdIds.length > 0 ? (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              data-testid="toast-undo-draft-confirm"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 2 }}
+              onClick={async () => {
+                dismissRef.fn();
+                try {
+                  const r = await fetch("/api/movements/bulk-delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ ids: createdIds }),
+                  });
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Undo failed"); }
+                  await fetch("/api/drafts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      movementType: snapshot.movementType,
+                      sourceLocationId: snapshot.sourceLocationId ?? null,
+                      destinationLocationId: snapshot.destinationLocationId ?? null,
+                      projectId: snapshot.projectId ?? null,
+                      itemsJson: snapshot.itemsJson,
+                      note: snapshot.note ?? null,
+                    }),
+                  });
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["/api/drafts"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/movements"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/items"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/inventory/category"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/field/items"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/wire-reels"] }),
+                  ]);
+                  toast({ title: t.movementUndone });
+                } catch (err: any) {
+                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              <RotateCcw style={{ width: 10, height: 10, flexShrink: 0 }} />
+              {t.undoMovement}
+            </button>
+          </div>
+        ) : t.draftConfirmedDesc,
+      });
+      dismissRef.fn = dismiss;
     } catch (err: any) {
       toast({ title: t.confirmFailed, description: err.message, variant: "destructive" });
     } finally {
@@ -441,7 +452,7 @@ export default function DraftMovementsList() {
               {t.undoMovement}
             </button>
           </div>
-        ) as any : undefined,
+        ) : undefined,
       });
       dismissRef.fn = dismiss;
     } catch (err: any) {

@@ -61,6 +61,16 @@ const requireManager = (req: any, res: any, next: any) => requireRole(["admin", 
 // Field operations (movements, transactions, drafts)
 const requireStaff   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
 
+// ─── Route param helpers ──────────────────────────────────────────────────────
+function parseIntParam(val: any, name: string, res: any): number | null {
+  const n = Number(val);
+  if (!Number.isInteger(n) || n <= 0) {
+    res.status(400).json({ message: `${name}은(는) 양의 정수여야 합니다` });
+    return null;
+  }
+  return n;
+}
+
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -355,7 +365,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/items/:id", isAuthenticated, async (req, res) => {
-    const data = await storage.getItem(Number(req.params.id));
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    const data = await storage.getItem(id);
     if (!data) return res.status(404).json({ message: "Not found" });
     res.json(data);
   });
@@ -479,21 +491,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.put("/api/items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
       const body = {
         ...req.body,
         categoryId: req.body.categoryId ? Number(req.body.categoryId) : undefined,
         primaryLocationId: req.body.primaryLocationId ? Number(req.body.primaryLocationId) : undefined,
         supplierId: req.body.supplierId ? Number(req.body.supplierId) : undefined,
       };
-      res.json(await storage.updateItem(Number(req.params.id), body));
+      res.json(await storage.updateItem(id, body));
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
   });
 
   app.delete("/api/items/:id", isAuthenticated, requireManager, async (req, res) => {
-    await storage.deleteItem(Number(req.params.id));
-    res.status(204).end();
+    try {
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
+      await storage.deleteItem(id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
   });
 
   app.post("/api/items/restore-batch", isAuthenticated, requireManager, async (req, res) => {
@@ -688,7 +708,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const movementType = req.body.movementType;
 
       if (movementType === 'receive' || movementType === 'return') newQty += qty;
-      else if (movementType === 'issue') newQty -= qty;
+      else if (movementType === 'issue') {
+        if (item.quantityOnHand < qty) {
+          return res.status(400).json({ message: `Insufficient stock. Available: ${item.quantityOnHand} ${item.unitOfMeasure}` });
+        }
+        newQty -= qty;
+      }
       else if (movementType === 'adjust') newQty = qty;
 
       const movement = await storage.createInventoryMovement({
@@ -710,7 +735,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.put("/api/movements/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
       const { movementType, quantity, sourceLocationId, destinationLocationId, projectId, note, reason, itemId, transactionDate } = req.body;
       if (!movementType || !quantity) return res.status(400).json({ message: "movementType and quantity are required" });
       const editedBy = (req as any).user?.id ?? null;
@@ -733,7 +759,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/movements/:id/undo", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const id = Number(req.params.id);
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
       const reverted = await storage.undoMovementEdit(id);
       res.json(reverted);
     } catch (err: any) {
@@ -743,7 +770,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/movements/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
-      await storage.deleteMovement(Number(req.params.id));
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
+      await storage.deleteMovement(id);
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
@@ -926,7 +955,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/drafts/:id", isAuthenticated, requireStaff, async (req, res) => {
     try {
-      await storage.deleteDraft(Number(req.params.id));
+      const id = parseIntParam(req.params.id, "id", res);
+      if (id === null) return;
+      await storage.deleteDraft(id);
       res.json({ ok: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -935,7 +966,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/drafts/:id/confirm", isAuthenticated, requireStaff, async (req, res) => {
     try {
-      const draftId = Number(req.params.id);
+      const draftId = parseIntParam(req.params.id, "draftId", res);
+      if (draftId === null) return;
       const draft = await storage.getDraft(draftId);
       if (!draft) return res.status(404).json({ message: "Draft not found" });
 

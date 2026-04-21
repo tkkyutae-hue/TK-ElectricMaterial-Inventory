@@ -70,7 +70,7 @@ export interface IStorage {
   bulkSoftDeleteItems(itemIds: number[]): Promise<void>;
 
   getInventoryMovements(filters?: { itemId?: number; projectId?: number; movementType?: string; locationId?: number }): Promise<InventoryMovementWithRelations[]>;
-  createInventoryMovement(movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }): Promise<InventoryMovement>;
+  createInventoryMovement(movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }, txClient?: any): Promise<InventoryMovement>;
   getLocationBalances(locationId?: number): Promise<(InventoryLocationBalance & { item?: Item; location?: Location })[]>;
 
   getPurchaseRecommendations(): Promise<PurchaseRecommendationWithRelations[]>;
@@ -84,7 +84,7 @@ export interface IStorage {
   undoMovementEdit(id: number): Promise<InventoryMovement>;
   deleteMovement(id: number): Promise<void>;
   bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }>;
-  bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[] }>;
+  bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[]; errors: { id: number; message: string }[] }>;
   getDashboardStats(): Promise<any>;
   getDashboardMonthlyTrend(): Promise<Array<{ label: string; value: number }>>;
   getReportLowStock(): Promise<any>;
@@ -614,226 +614,251 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInventoryMovement(
-    movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null }
+    movement: CreateInventoryMovementRequest & { previousQuantity: number; newQuantity: number; createdBy?: string | null },
+    txClient?: any
   ): Promise<InventoryMovement> {
-    const [created] = await db.insert(inventoryMovements).values({
-      itemId: movement.itemId,
-      movementType: movement.movementType,
-      quantity: movement.quantity,
-      previousQuantity: movement.previousQuantity,
-      newQuantity: movement.newQuantity,
-      sourceLocationId: movement.sourceLocationId ?? null,
-      destinationLocationId: movement.destinationLocationId ?? null,
-      projectId: movement.projectId ?? null,
-      unitCostSnapshot: movement.unitCostSnapshot ?? null,
-      note: movement.note ?? null,
-      reason: movement.reason ?? null,
-      referenceType: movement.referenceType ?? null,
-      referenceId: movement.referenceId ?? null,
-      createdBy: movement.createdBy ?? null,
-    }).returning();
-
-    // Update item's total quantity_on_hand
-    await db.update(items)
-      .set({ quantityOnHand: movement.newQuantity, updatedAt: new Date() })
-      .where(eq(items.id, movement.itemId));
-
-    // Update location balances
-    // receive/issue/return: external locations (supplier / jobsite), no internal balance update
-    // transfer: moves between internal warehouse locations
-    if (movement.movementType === 'transfer') {
-      if (movement.sourceLocationId) {
-        await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity);
-      }
-      if (movement.destinationLocationId) {
-        await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity);
-      }
-    } else if (movement.movementType === 'adjust') {
-      const locId = movement.destinationLocationId ?? movement.sourceLocationId;
-      if (locId) {
-        const delta = movement.newQuantity - movement.previousQuantity;
-        await this._adjustLocationBalance(movement.itemId, locId, delta);
-      }
-    }
-
-    // Log project material transaction if project is linked
-    if (movement.projectId && (movement.movementType === 'issue' || movement.movementType === 'return')) {
-      await db.insert(projectMaterialTransactions).values({
-        projectId: movement.projectId,
+    const run = async (client: any): Promise<InventoryMovement> => {
+      const [created] = await client.insert(inventoryMovements).values({
         itemId: movement.itemId,
-        movementId: created.id,
-        transactionType: movement.movementType,
+        movementType: movement.movementType,
         quantity: movement.quantity,
+        previousQuantity: movement.previousQuantity,
+        newQuantity: movement.newQuantity,
+        sourceLocationId: movement.sourceLocationId ?? null,
+        destinationLocationId: movement.destinationLocationId ?? null,
+        projectId: movement.projectId ?? null,
+        unitCostSnapshot: movement.unitCostSnapshot ?? null,
         note: movement.note ?? null,
-      });
-    }
+        reason: movement.reason ?? null,
+        referenceType: movement.referenceType ?? null,
+        referenceId: movement.referenceId ?? null,
+        createdBy: movement.createdBy ?? null,
+      }).returning();
 
-    return created;
+      // Update item's total quantity_on_hand
+      await client.update(items)
+        .set({ quantityOnHand: movement.newQuantity, updatedAt: new Date() })
+        .where(eq(items.id, movement.itemId));
+
+      // Update location balances
+      // receive/issue/return: external locations (supplier / jobsite), no internal balance update
+      // transfer: moves between internal warehouse locations
+      if (movement.movementType === 'transfer') {
+        if (movement.sourceLocationId) {
+          await this._adjustLocationBalance(movement.itemId, movement.sourceLocationId, -movement.quantity, client);
+        }
+        if (movement.destinationLocationId) {
+          await this._adjustLocationBalance(movement.itemId, movement.destinationLocationId, movement.quantity, client);
+        }
+      } else if (movement.movementType === 'adjust') {
+        const locId = movement.destinationLocationId ?? movement.sourceLocationId;
+        if (locId) {
+          const delta = movement.newQuantity - movement.previousQuantity;
+          await this._adjustLocationBalance(movement.itemId, locId, delta, client);
+        }
+      }
+
+      // Log project material transaction if project is linked
+      if (movement.projectId && (movement.movementType === 'issue' || movement.movementType === 'return')) {
+        await client.insert(projectMaterialTransactions).values({
+          projectId: movement.projectId,
+          itemId: movement.itemId,
+          movementId: created.id,
+          transactionType: movement.movementType,
+          quantity: movement.quantity,
+          note: movement.note ?? null,
+        });
+      }
+
+      return created;
+    };
+
+    if (txClient) {
+      return run(txClient);
+    }
+    return db.transaction(run);
   }
 
   async updateInventoryMovement(id: number, changes: { movementType: string; quantity: number; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; note?: string | null; reason?: string | null; itemId?: number; transactionDate?: Date | null; editedBy?: string | null; editHistory?: any[] }): Promise<InventoryMovement> {
-    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
-    if (!orig) throw new Error("Movement not found");
+    return db.transaction(async (tx) => {
+      const [orig] = await tx.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+      if (!orig) throw new Error("Movement not found");
 
-    const effectiveItemId = changes.itemId ?? orig.itemId;
+      const effectiveItemId = changes.itemId ?? orig.itemId;
 
-    // Get current item quantity
-    const [itemRow] = await db.select().from(items).where(eq(items.id, effectiveItemId));
-    if (!itemRow) throw new Error("Item not found");
+      // Get current item quantity
+      const [itemRow] = await tx.select().from(items).where(eq(items.id, effectiveItemId));
+      if (!itemRow) throw new Error("Item not found");
 
-    // Calculate old delta (what was applied to stock)
-    let oldDelta = 0;
-    if (orig.movementType === "receive" || orig.movementType === "return") oldDelta = orig.quantity;
-    else if (orig.movementType === "issue") oldDelta = -orig.quantity;
+      // Calculate old delta (what was applied to stock)
+      let oldDelta = 0;
+      if (orig.movementType === "receive" || orig.movementType === "return") oldDelta = orig.quantity;
+      else if (orig.movementType === "issue") oldDelta = -orig.quantity;
 
-    // Calculate new delta (what we want to apply)
-    let newDelta = 0;
-    if (changes.movementType === "receive" || changes.movementType === "return") newDelta = changes.quantity;
-    else if (changes.movementType === "issue") newDelta = -changes.quantity;
+      // Calculate new delta (what we want to apply)
+      let newDelta = 0;
+      if (changes.movementType === "receive" || changes.movementType === "return") newDelta = changes.quantity;
+      else if (changes.movementType === "issue") newDelta = -changes.quantity;
 
-    const netChange = newDelta - oldDelta;
-    const updatedQty = itemRow.quantityOnHand + netChange;
-    if (updatedQty < 0) throw new Error(`Insufficient stock. Cannot edit: would result in ${updatedQty} units.`);
+      const netChange = newDelta - oldDelta;
+      const updatedQty = itemRow.quantityOnHand + netChange;
+      if (updatedQty < 0) throw new Error(`Insufficient stock. Cannot edit: would result in ${updatedQty} units.`);
 
-    // Reverse old location balance impacts (transfer only; receive/issue/return are external)
-    if (orig.movementType === "transfer") {
-      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
-      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
-    }
+      // Reverse old location balance impacts (transfer only; receive/issue/return are external)
+      if (orig.movementType === "transfer") {
+        if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity, tx);
+        if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity, tx);
+      }
 
-    // Apply new location balance impacts (transfer only)
-    const newSrc = changes.sourceLocationId !== undefined ? changes.sourceLocationId : orig.sourceLocationId;
-    const newDst = changes.destinationLocationId !== undefined ? changes.destinationLocationId : orig.destinationLocationId;
-    if (changes.movementType === "transfer") {
-      if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity);
-      if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity);
-    }
+      // Apply new location balance impacts (transfer only)
+      const newSrc = changes.sourceLocationId !== undefined ? changes.sourceLocationId : orig.sourceLocationId;
+      const newDst = changes.destinationLocationId !== undefined ? changes.destinationLocationId : orig.destinationLocationId;
+      if (changes.movementType === "transfer") {
+        if (newSrc) await this._adjustLocationBalance(effectiveItemId, newSrc, -changes.quantity, tx);
+        if (newDst) await this._adjustLocationBalance(effectiveItemId, newDst, changes.quantity, tx);
+      }
 
-    // Update item quantity
-    await db.update(items).set({ quantityOnHand: updatedQty, updatedAt: new Date() }).where(eq(items.id, effectiveItemId));
+      // Update item quantity
+      await tx.update(items).set({ quantityOnHand: updatedQty, updatedAt: new Date() }).where(eq(items.id, effectiveItemId));
 
-    // Build edit history entry
-    const now = new Date();
-    const prevHistory: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
-    const changedFields: Record<string, { old: any; new: any }> = {};
-    if (changes.movementType !== orig.movementType) changedFields.movementType = { old: orig.movementType, new: changes.movementType };
-    if (changes.quantity !== orig.quantity) changedFields.quantity = { old: orig.quantity, new: changes.quantity };
-    if (changes.sourceLocationId !== undefined && changes.sourceLocationId !== orig.sourceLocationId) changedFields.sourceLocationId = { old: orig.sourceLocationId, new: changes.sourceLocationId };
-    if (changes.destinationLocationId !== undefined && changes.destinationLocationId !== orig.destinationLocationId) changedFields.destinationLocationId = { old: orig.destinationLocationId, new: changes.destinationLocationId };
-    if (changes.projectId !== undefined && changes.projectId !== orig.projectId) changedFields.projectId = { old: orig.projectId, new: changes.projectId };
-    if (changes.note !== undefined && changes.note !== orig.note) changedFields.note = { old: orig.note, new: changes.note };
-    if (changes.transactionDate !== undefined && String(changes.transactionDate) !== String(orig.transactionDate)) changedFields.transactionDate = { old: orig.transactionDate, new: changes.transactionDate };
+      // Build edit history entry
+      const now = new Date();
+      const prevHistory: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
+      const changedFields: Record<string, { old: any; new: any }> = {};
+      if (changes.movementType !== orig.movementType) changedFields.movementType = { old: orig.movementType, new: changes.movementType };
+      if (changes.quantity !== orig.quantity) changedFields.quantity = { old: orig.quantity, new: changes.quantity };
+      if (changes.sourceLocationId !== undefined && changes.sourceLocationId !== orig.sourceLocationId) changedFields.sourceLocationId = { old: orig.sourceLocationId, new: changes.sourceLocationId };
+      if (changes.destinationLocationId !== undefined && changes.destinationLocationId !== orig.destinationLocationId) changedFields.destinationLocationId = { old: orig.destinationLocationId, new: changes.destinationLocationId };
+      if (changes.projectId !== undefined && changes.projectId !== orig.projectId) changedFields.projectId = { old: orig.projectId, new: changes.projectId };
+      if (changes.note !== undefined && changes.note !== orig.note) changedFields.note = { old: orig.note, new: changes.note };
+      if (changes.transactionDate !== undefined && String(changes.transactionDate) !== String(orig.transactionDate)) changedFields.transactionDate = { old: orig.transactionDate, new: changes.transactionDate };
 
-    const newHistoryEntry = {
-      editedBy: changes.editedBy ?? null,
-      editedAt: now.toISOString(),
-      changedFields,
-      previousValues: {
-        movementType: orig.movementType,
-        quantity: orig.quantity,
-        sourceLocationId: orig.sourceLocationId,
-        destinationLocationId: orig.destinationLocationId,
-        projectId: orig.projectId,
-        note: orig.note,
-        transactionDate: orig.transactionDate,
-      },
-    };
+      const newHistoryEntry = {
+        editedBy: changes.editedBy ?? null,
+        editedAt: now.toISOString(),
+        changedFields,
+        previousValues: {
+          movementType: orig.movementType,
+          quantity: orig.quantity,
+          sourceLocationId: orig.sourceLocationId,
+          destinationLocationId: orig.destinationLocationId,
+          projectId: orig.projectId,
+          note: orig.note,
+          transactionDate: orig.transactionDate,
+        },
+      };
 
-    const newHistory = [...prevHistory, newHistoryEntry];
+      const newHistory = [...prevHistory, newHistoryEntry];
 
-    // Update movement record
-    const [updated] = await db.update(inventoryMovements).set({
-      movementType: changes.movementType,
-      itemId: effectiveItemId,
-      quantity: changes.quantity,
-      newQuantity: updatedQty,
-      previousQuantity: itemRow.quantityOnHand,
-      sourceLocationId: newSrc ?? null,
-      destinationLocationId: newDst ?? null,
-      projectId: changes.projectId !== undefined ? changes.projectId : orig.projectId,
-      note: changes.note !== undefined ? changes.note : orig.note,
-      reason: changes.reason !== undefined ? changes.reason : orig.reason,
-      transactionDate: changes.transactionDate !== undefined ? changes.transactionDate : orig.transactionDate,
-      editedBy: changes.editedBy ?? orig.editedBy,
-      editedAt: now,
-      editHistory: newHistory as any,
-    }).where(eq(inventoryMovements.id, id)).returning();
+      // Update movement record
+      const [updated] = await tx.update(inventoryMovements).set({
+        movementType: changes.movementType,
+        itemId: effectiveItemId,
+        quantity: changes.quantity,
+        newQuantity: updatedQty,
+        previousQuantity: itemRow.quantityOnHand,
+        sourceLocationId: newSrc ?? null,
+        destinationLocationId: newDst ?? null,
+        projectId: changes.projectId !== undefined ? changes.projectId : orig.projectId,
+        note: changes.note !== undefined ? changes.note : orig.note,
+        reason: changes.reason !== undefined ? changes.reason : orig.reason,
+        transactionDate: changes.transactionDate !== undefined ? changes.transactionDate : orig.transactionDate,
+        editedBy: changes.editedBy ?? orig.editedBy,
+        editedAt: now,
+        editHistory: newHistory as any,
+      }).where(eq(inventoryMovements.id, id)).returning();
 
-    return updated;
+      return updated;
+    });
   }
 
   async undoMovementEdit(id: number): Promise<InventoryMovement> {
-    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
-    if (!orig) throw new Error("Movement not found");
-    const history: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
-    if (history.length === 0) throw new Error("No edit history to undo");
+    return db.transaction(async (tx) => {
+      const [orig] = await tx.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+      if (!orig) throw new Error("Movement not found");
+      const history: any[] = Array.isArray(orig.editHistory) ? (orig.editHistory as any[]) : [];
+      if (history.length === 0) throw new Error("No edit history to undo");
 
-    const lastEntry = history[history.length - 1];
-    const prev = lastEntry.previousValues;
+      const lastEntry = history[history.length - 1];
+      const prev = lastEntry.previousValues;
 
-    // Revert the stock using the same logic as updateInventoryMovement
-    const [itemRow] = await db.select().from(items).where(eq(items.id, orig.itemId));
-    if (!itemRow) throw new Error("Item not found");
+      // Revert the stock using the same logic as updateInventoryMovement
+      const [itemRow] = await tx.select().from(items).where(eq(items.id, orig.itemId));
+      if (!itemRow) throw new Error("Item not found");
 
-    let curDelta = 0;
-    if (orig.movementType === "receive" || orig.movementType === "return") curDelta = orig.quantity;
-    else if (orig.movementType === "issue") curDelta = -orig.quantity;
+      let curDelta = 0;
+      if (orig.movementType === "receive" || orig.movementType === "return") curDelta = orig.quantity;
+      else if (orig.movementType === "issue") curDelta = -orig.quantity;
 
-    let prevDelta = 0;
-    if (prev.movementType === "receive" || prev.movementType === "return") prevDelta = prev.quantity;
-    else if (prev.movementType === "issue") prevDelta = -prev.quantity;
+      let prevDelta = 0;
+      if (prev.movementType === "receive" || prev.movementType === "return") prevDelta = prev.quantity;
+      else if (prev.movementType === "issue") prevDelta = -prev.quantity;
 
-    const netChange = prevDelta - curDelta;
-    const revertedQty = itemRow.quantityOnHand + netChange;
+      const netChange = prevDelta - curDelta;
+      const revertedQty = itemRow.quantityOnHand + netChange;
 
-    await db.update(items).set({ quantityOnHand: revertedQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
+      // Reverse current transfer location balance impacts (if current state is transfer)
+      if (orig.movementType === "transfer") {
+        if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity, tx);
+        if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity, tx);
+      }
+      // Re-apply previous transfer location balance impacts (if previous state was transfer)
+      if (prev.movementType === "transfer") {
+        if (prev.sourceLocationId) await this._adjustLocationBalance(orig.itemId, prev.sourceLocationId, -(prev.quantity), tx);
+        if (prev.destinationLocationId) await this._adjustLocationBalance(orig.itemId, prev.destinationLocationId, prev.quantity, tx);
+      }
 
-    const newHistory = history.slice(0, -1);
-    const [updated] = await db.update(inventoryMovements).set({
-      movementType: prev.movementType ?? orig.movementType,
-      quantity: prev.quantity ?? orig.quantity,
-      sourceLocationId: prev.sourceLocationId ?? null,
-      destinationLocationId: prev.destinationLocationId ?? null,
-      projectId: prev.projectId ?? null,
-      note: prev.note ?? null,
-      transactionDate: prev.transactionDate ?? null,
-      newQuantity: revertedQty,
-      previousQuantity: itemRow.quantityOnHand,
-      editedAt: newHistory.length > 0 ? new Date(newHistory[newHistory.length - 1].editedAt) : null,
-      editedBy: newHistory.length > 0 ? newHistory[newHistory.length - 1].editedBy : null,
-      editHistory: newHistory.length > 0 ? (newHistory as any) : null,
-    }).where(eq(inventoryMovements.id, id)).returning();
+      await tx.update(items).set({ quantityOnHand: revertedQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
 
-    return updated;
+      const newHistory = history.slice(0, -1);
+      const [updated] = await tx.update(inventoryMovements).set({
+        movementType: prev.movementType ?? orig.movementType,
+        quantity: prev.quantity ?? orig.quantity,
+        sourceLocationId: prev.sourceLocationId ?? null,
+        destinationLocationId: prev.destinationLocationId ?? null,
+        projectId: prev.projectId ?? null,
+        note: prev.note ?? null,
+        transactionDate: prev.transactionDate ?? null,
+        newQuantity: revertedQty,
+        previousQuantity: itemRow.quantityOnHand,
+        editedAt: newHistory.length > 0 ? new Date(newHistory[newHistory.length - 1].editedAt) : null,
+        editedBy: newHistory.length > 0 ? newHistory[newHistory.length - 1].editedBy : null,
+        editHistory: newHistory.length > 0 ? (newHistory as any) : null,
+      }).where(eq(inventoryMovements.id, id)).returning();
+
+      return updated;
+    });
   }
 
   async deleteMovement(id: number): Promise<void> {
-    const [orig] = await db.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
-    if (!orig) throw new Error("Movement not found");
+    return db.transaction(async (tx) => {
+      const [orig] = await tx.select().from(inventoryMovements).where(eq(inventoryMovements.id, id));
+      if (!orig) throw new Error("Movement not found");
 
-    // Reverse the stock impact on the item
-    const [itemRow] = await db.select().from(items).where(eq(items.id, orig.itemId));
-    if (!itemRow) throw new Error("Item not found");
+      // Reverse the stock impact on the item
+      const [itemRow] = await tx.select().from(items).where(eq(items.id, orig.itemId));
+      if (!itemRow) throw new Error("Item not found");
 
-    let delta = 0;
-    if (orig.movementType === "receive" || orig.movementType === "return") delta = -orig.quantity;
-    else if (orig.movementType === "issue") delta = orig.quantity;
+      let delta = 0;
+      if (orig.movementType === "receive" || orig.movementType === "return") delta = -orig.quantity;
+      else if (orig.movementType === "issue") delta = orig.quantity;
 
-    const newQty = itemRow.quantityOnHand + delta;
-    if (newQty < 0) throw new Error(`Cannot delete: would result in negative stock (${newQty}).`);
+      const newQty = itemRow.quantityOnHand + delta;
+      if (newQty < 0) throw new Error(`Cannot delete: would result in negative stock (${newQty}).`);
 
-    // Reverse location balance impacts (transfer only; receive/issue/return are external)
-    if (orig.movementType === "transfer") {
-      if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity);
-      if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity);
-    }
+      // Reverse location balance impacts (transfer only; receive/issue/return are external)
+      if (orig.movementType === "transfer") {
+        if (orig.sourceLocationId) await this._adjustLocationBalance(orig.itemId, orig.sourceLocationId, orig.quantity, tx);
+        if (orig.destinationLocationId) await this._adjustLocationBalance(orig.itemId, orig.destinationLocationId, -orig.quantity, tx);
+      }
 
-    // Update item quantity
-    await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
+      // Update item quantity
+      await tx.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, orig.itemId));
 
-    // Delete dependent project_material_transactions first (FK constraint), then the movement
-    await db.delete(projectMaterialTransactions).where(eq(projectMaterialTransactions.movementId, id));
-    await db.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
+      // Delete dependent project_material_transactions first (FK constraint), then the movement
+      await tx.delete(projectMaterialTransactions).where(eq(projectMaterialTransactions.movementId, id));
+      await tx.delete(inventoryMovements).where(eq(inventoryMovements.id, id));
+    });
   }
 
   async bulkDeleteMovements(ids: number[]): Promise<{ deleted: number[]; errors: { id: number; message: string }[] }> {
@@ -850,74 +875,92 @@ export class DatabaseStorage implements IStorage {
     return { deleted, errors };
   }
 
-  async bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[] }> {
+  async bulkRestoreMovements(snapshots: any[]): Promise<{ restored: number[]; errors: { id: number; message: string }[] }> {
     const restored: number[] = [];
+    const errors: { id: number; message: string }[] = [];
     for (const snap of snapshots) {
-      // Re-apply inventory delta
-      let delta = 0;
-      if (snap.movementType === "receive" || snap.movementType === "return") delta = snap.quantity;
-      else if (snap.movementType === "issue") delta = -snap.quantity;
+      try {
+        // Re-apply inventory delta
+        let delta = 0;
+        if (snap.movementType === "receive" || snap.movementType === "return") delta = snap.quantity;
+        else if (snap.movementType === "issue") delta = -snap.quantity;
 
-      const [itemRow] = await db.select().from(items).where(eq(items.id, snap.itemId));
-      if (itemRow) {
-        const newQty = Math.max(0, itemRow.quantityOnHand + delta);
+        const [itemRow] = await db.select().from(items).where(eq(items.id, snap.itemId));
+        if (!itemRow) {
+          errors.push({ id: snap.id ?? 0, message: `아이템 ${snap.itemId} 없음 — 복원 건너뜀` });
+          continue;
+        }
+
+        const newQty = itemRow.quantityOnHand + delta;
+        if (newQty < 0) {
+          errors.push({ id: snap.id ?? 0, message: `아이템 ${snap.itemId} 재고 부족 — 복원 시 ${newQty}가 됨` });
+          continue;
+        }
+
         await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, snap.itemId));
+
+        // Re-apply location balances for transfers
+        if (snap.movementType === "transfer") {
+          if (snap.sourceLocationId) await this._adjustLocationBalance(snap.itemId, snap.sourceLocationId, -snap.quantity);
+          if (snap.destinationLocationId) await this._adjustLocationBalance(snap.itemId, snap.destinationLocationId, snap.quantity);
+        }
+
+        // Re-insert movement with original data
+        const [inserted] = await db.insert(inventoryMovements).values({
+          itemId: snap.itemId,
+          movementType: snap.movementType,
+          quantity: snap.quantity,
+          previousQuantity: snap.previousQuantity ?? 0,
+          newQuantity: snap.newQuantity ?? 0,
+          sourceLocationId: snap.sourceLocationId ?? null,
+          destinationLocationId: snap.destinationLocationId ?? null,
+          projectId: snap.projectId ?? null,
+          unitCostSnapshot: snap.unitCostSnapshot ?? null,
+          referenceType: snap.referenceType ?? null,
+          referenceId: snap.referenceId ?? null,
+          note: snap.note ?? null,
+          reason: snap.reason ?? null,
+          createdBy: snap.createdBy ?? null,
+          createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
+        }).returning();
+
+        restored.push(inserted.id);
+      } catch (err: any) {
+        errors.push({ id: snap.id ?? 0, message: err.message });
       }
-
-      // Re-apply location balances for transfers
-      if (snap.movementType === "transfer") {
-        if (snap.sourceLocationId) await this._adjustLocationBalance(snap.itemId, snap.sourceLocationId, -snap.quantity);
-        if (snap.destinationLocationId) await this._adjustLocationBalance(snap.itemId, snap.destinationLocationId, snap.quantity);
-      }
-
-      // Re-insert movement with original data
-      const [inserted] = await db.insert(inventoryMovements).values({
-        itemId: snap.itemId,
-        movementType: snap.movementType,
-        quantity: snap.quantity,
-        previousQuantity: snap.previousQuantity ?? 0,
-        newQuantity: snap.newQuantity ?? 0,
-        sourceLocationId: snap.sourceLocationId ?? null,
-        destinationLocationId: snap.destinationLocationId ?? null,
-        projectId: snap.projectId ?? null,
-        unitCostSnapshot: snap.unitCostSnapshot ?? null,
-        referenceType: snap.referenceType ?? null,
-        referenceId: snap.referenceId ?? null,
-        note: snap.note ?? null,
-        reason: snap.reason ?? null,
-        createdBy: snap.createdBy ?? null,
-        createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
-      }).returning();
-
-      restored.push(inserted.id);
     }
-    return { restored };
+    return { restored, errors };
   }
 
-  private async _upsertLocationBalance(itemId: number, locationId: number, qty: number) {
-    const [existing] = await db.select().from(inventoryLocationBalances)
+  private async _upsertLocationBalance(itemId: number, locationId: number, qty: number, client: any = db) {
+    const [existing] = await client.select().from(inventoryLocationBalances)
       .where(and(eq(inventoryLocationBalances.itemId, itemId), eq(inventoryLocationBalances.locationId, locationId)));
 
     if (existing) {
-      await db.update(inventoryLocationBalances)
+      await client.update(inventoryLocationBalances)
         .set({ quantityOnHand: qty, updatedAt: new Date() })
         .where(eq(inventoryLocationBalances.id, existing.id));
     } else {
-      await db.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: qty });
+      await client.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: qty });
     }
   }
 
-  private async _adjustLocationBalance(itemId: number, locationId: number, delta: number) {
-    const [existing] = await db.select().from(inventoryLocationBalances)
+  private async _adjustLocationBalance(itemId: number, locationId: number, delta: number, client: any = db) {
+    const [existing] = await client.select().from(inventoryLocationBalances)
       .where(and(eq(inventoryLocationBalances.itemId, itemId), eq(inventoryLocationBalances.locationId, locationId)));
 
     if (existing) {
-      const newQty = Math.max(0, existing.quantityOnHand + delta);
-      await db.update(inventoryLocationBalances)
+      const newQty = existing.quantityOnHand + delta;
+      if (newQty < 0) {
+        throw new Error(`위치 잔량 음수 오류: 아이템 ${itemId}, 위치 ${locationId} — 현재 ${existing.quantityOnHand}, 변화량 ${delta} = ${newQty}`);
+      }
+      await client.update(inventoryLocationBalances)
         .set({ quantityOnHand: newQty, updatedAt: new Date() })
         .where(eq(inventoryLocationBalances.id, existing.id));
     } else if (delta > 0) {
-      await db.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: delta });
+      await client.insert(inventoryLocationBalances).values({ itemId, locationId, quantityOnHand: delta });
+    } else if (delta < 0) {
+      throw new Error(`위치 잔량 오류: 아이템 ${itemId}, 위치 ${locationId} — 잔량 없음에서 차감 시도 (delta=${delta})`);
     }
   }
 
@@ -1916,52 +1959,57 @@ export class DatabaseStorage implements IStorage {
 
     const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number> }> = JSON.parse(draft.itemsJson || "[]");
 
-    for (const di of draftItems) {
-      const item = await this.getItem(di.itemId);
-      if (!item) continue;
+    await db.transaction(async (tx) => {
+      for (const di of draftItems) {
+        const item = await this.getItem(di.itemId);
+        if (!item) throw new Error(`아이템 ${di.itemId}을(를) 찾을 수 없습니다 — 출고 확정 취소`);
 
-      const qty = di.qty;
-      const movementType = draft.movementType;
-      let newQty = item.quantityOnHand;
+        const qty = di.qty;
+        const movementType = draft.movementType;
+        let newQty = item.quantityOnHand;
 
-      if (movementType === "receive" || movementType === "return") newQty += qty;
-      else if (movementType === "issue") newQty = Math.max(0, newQty - qty);
-      else if (movementType === "adjust") newQty = qty;
+        if (movementType === "receive" || movementType === "return") newQty += qty;
+        else if (movementType === "issue") {
+          newQty -= qty;
+          if (newQty < 0) throw new Error(`재고 부족: ${item.name} (현재 ${item.quantityOnHand}, 요청 ${qty}) — 출고 확정 취소`);
+        }
+        else if (movementType === "adjust") newQty = qty;
 
-      await this.createInventoryMovement({
-        itemId: item.id,
-        movementType,
-        quantity: qty,
-        previousQuantity: item.quantityOnHand,
-        newQuantity: newQty,
-        sourceLocationId: draft.sourceLocationId ?? null,
-        destinationLocationId: draft.destinationLocationId ?? null,
-        projectId: draft.projectId ?? null,
-        unitCostSnapshot: item.unitCost,
-        note: draft.note ?? null,
-        reason: null,
-        referenceType: "draft",
-        referenceId: String(id),
-        createdBy: performedBy,
-      });
+        await this.createInventoryMovement({
+          itemId: item.id,
+          movementType,
+          quantity: qty,
+          previousQuantity: item.quantityOnHand,
+          newQuantity: newQty,
+          sourceLocationId: draft.sourceLocationId ?? null,
+          destinationLocationId: draft.destinationLocationId ?? null,
+          projectId: draft.projectId ?? null,
+          unitCostSnapshot: item.unitCost,
+          note: draft.note ?? null,
+          reason: null,
+          referenceType: "draft",
+          referenceId: String(id),
+          createdBy: performedBy,
+        }, tx);
 
-      if (di.reelSelections) {
-        for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
-          if (!ftUsed) continue;
-          const reelId = Number(reelIdStr);
-          const [reelRow] = await db.select().from(wireReels).where(eq(wireReels.id, reelId)).limit(1);
-          if (!reelRow) continue;
-          const newLength = reelRow.lengthFt - ftUsed;
-          if (newLength <= 0) {
-            await this.deleteWireReel(reelId);
-          } else {
-            await this.updateWireReel(reelId, { lengthFt: newLength, status: "used" });
+        if (di.reelSelections) {
+          for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
+            if (!ftUsed) continue;
+            const reelId = Number(reelIdStr);
+            const [reelRow] = await tx.select().from(wireReels).where(eq(wireReels.id, reelId)).limit(1);
+            if (!reelRow) continue;
+            const newLength = reelRow.lengthFt - ftUsed;
+            if (newLength <= 0) {
+              await tx.delete(wireReels).where(eq(wireReels.id, reelId));
+            } else {
+              await tx.update(wireReels).set({ lengthFt: newLength, status: "used", updatedAt: new Date() }).where(eq(wireReels.id, reelId));
+            }
           }
         }
       }
-    }
 
-    await db.delete(movementDrafts).where(eq(movementDrafts.id, id));
+      await tx.delete(movementDrafts).where(eq(movementDrafts.id, id));
+    });
   }
 
   // ─── Daily Reports ───────────────────────────────────────────────────────────

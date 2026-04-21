@@ -124,7 +124,7 @@ export interface IStorage {
   getDraft(id: number): Promise<MovementDraftWithRelations | undefined>;
   createDraft(data: { movementType: string; sourceLocationId?: number | null; destinationLocationId?: number | null; projectId?: number | null; itemsJson: string; note?: string | null; savedBy?: string | null; savedByName?: string | null }): Promise<MovementDraft>;
   deleteDraft(id: number): Promise<void>;
-  confirmDraft(id: number, performedBy: string | null): Promise<void>;
+  confirmDraft(id: number, performedBy: string | null): Promise<number[]>;
 
   getDailyReports(projectId: number): Promise<DailyReport[]>;
   getDailyReportSummary(): Promise<{ projectId: number; total: number; draft: number; submitted: number; lastDate: string | null }[]>;
@@ -1957,11 +1957,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(movementDrafts).where(eq(movementDrafts.id, id));
   }
 
-  async confirmDraft(id: number, performedBy: string | null): Promise<void> {
+  async confirmDraft(id: number, performedBy: string | null): Promise<number[]> {
     const draft = await this.getDraft(id);
     if (!draft) throw new Error("Draft not found");
 
     const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number> }> = JSON.parse(draft.itemsJson || "[]");
+
+    const createdMovementIds: number[] = [];
 
     await db.transaction(async (tx) => {
       for (const di of draftItems) {
@@ -1984,7 +1986,7 @@ export class DatabaseStorage implements IStorage {
         }
         else if (movementType === "adjust") newQty = qty;
 
-        await this.createInventoryMovement({
+        const created = await this.createInventoryMovement({
           itemId: itemRow.id,
           movementType,
           quantity: qty,
@@ -2000,6 +2002,7 @@ export class DatabaseStorage implements IStorage {
           referenceId: String(id),
           createdBy: performedBy,
         }, tx);
+        createdMovementIds.push(created.id);
 
         if (di.reelSelections) {
           for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
@@ -2019,6 +2022,8 @@ export class DatabaseStorage implements IStorage {
 
       await tx.delete(movementDrafts).where(eq(movementDrafts.id, id));
     });
+
+    return createdMovementIds;
   }
 
   // ─── Daily Reports ───────────────────────────────────────────────────────────

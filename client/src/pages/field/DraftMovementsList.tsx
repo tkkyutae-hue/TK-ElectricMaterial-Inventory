@@ -332,14 +332,63 @@ export default function DraftMovementsList() {
     try {
       const res = await fetch(`/api/drafts/${confirmingDraft.id}/confirm`, { method: "POST", credentials: "include" });
       if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Failed to confirm draft"); }
+      const data = await res.json();
+      const createdIds: number[] = data.movementIds ?? [];
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["/api/drafts"] }),
         qc.invalidateQueries({ queryKey: ["/api/movements"] }),
         qc.invalidateQueries({ queryKey: ["/api/items"] }),
+        qc.invalidateQueries({ queryKey: ["/api/inventory/category"] }),
+        qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] }),
+        qc.invalidateQueries({ queryKey: ["/api/field/items"] }),
+        qc.invalidateQueries({ queryKey: ["/api/wire-reels"] }),
       ]);
       setConfirmingDraft(null);
-      toast({ title: t.draftConfirmed, description: t.draftConfirmedDesc });
       navigate("/field/transactions");
+      if (createdIds.length > 0) {
+        const dismissRef = { fn: () => {} };
+        const { dismiss } = toast({
+          title: t.draftConfirmed,
+          description: (
+            <div style={{ marginTop: 4 }}>
+              <button
+                type="button"
+                data-testid="toast-undo-draft-confirm"
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 2 }}
+                onClick={async () => {
+                  dismissRef.fn();
+                  try {
+                    const r = await fetch("/api/movements/bulk-delete", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ ids: createdIds }),
+                    });
+                    if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Undo failed"); }
+                    await Promise.all([
+                      qc.invalidateQueries({ queryKey: ["/api/movements"] }),
+                      qc.invalidateQueries({ queryKey: ["/api/items"] }),
+                      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] }),
+                      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] }),
+                      qc.invalidateQueries({ queryKey: ["/api/field/items"] }),
+                      qc.invalidateQueries({ queryKey: ["/api/wire-reels"] }),
+                    ]);
+                    toast({ title: t.movementUndone });
+                  } catch (err: any) {
+                    toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                  }
+                }}
+              >
+                <RotateCcw style={{ width: 10, height: 10, flexShrink: 0 }} />
+                {t.undoMovement}
+              </button>
+            </div>
+          ) as any,
+        });
+        dismissRef.fn = dismiss;
+      } else {
+        toast({ title: t.draftConfirmed, description: t.draftConfirmedDesc });
+      }
     } catch (err: any) {
       toast({ title: t.confirmFailed, description: err.message, variant: "destructive" });
     } finally {
@@ -348,12 +397,53 @@ export default function DraftMovementsList() {
   }
 
   async function handleDelete(id: number) {
+    const draftToRestore = (drafts as any[]).find((d: any) => d.id === id);
     setDeleteLoading(true);
     try {
-      await fetch(`/api/drafts/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`/api/drafts/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || "Delete failed"); }
       await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
       setDeletingId(null);
-      toast({ title: t.draftDeleted });
+      const dismissRef = { fn: () => {} };
+      const { dismiss } = toast({
+        title: t.draftDeleted,
+        description: draftToRestore ? (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              data-testid="toast-undo-draft-delete"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 2 }}
+              onClick={async () => {
+                dismissRef.fn();
+                try {
+                  const r = await fetch("/api/drafts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      movementType: draftToRestore.movementType,
+                      sourceLocationId: draftToRestore.sourceLocationId ?? null,
+                      destinationLocationId: draftToRestore.destinationLocationId ?? null,
+                      projectId: draftToRestore.projectId ?? null,
+                      itemsJson: draftToRestore.itemsJson,
+                      note: draftToRestore.note ?? null,
+                    }),
+                  });
+                  if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Restore failed"); }
+                  await qc.invalidateQueries({ queryKey: ["/api/drafts"] });
+                  toast({ title: t.movementUndone });
+                } catch (err: any) {
+                  toast({ title: t.undoFailed, description: err.message, variant: "destructive" });
+                }
+              }}
+            >
+              <RotateCcw style={{ width: 10, height: 10, flexShrink: 0 }} />
+              {t.undoMovement}
+            </button>
+          </div>
+        ) as any : undefined,
+      });
+      dismissRef.fn = dismiss;
     } catch (err: any) {
       toast({ title: t.deleteFailed, description: err.message, variant: "destructive" });
     } finally {

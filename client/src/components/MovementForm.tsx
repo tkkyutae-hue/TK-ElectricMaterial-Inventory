@@ -507,12 +507,13 @@ export function MovementForm({
                   onClick={async () => {
                     dismissRef.fn();
                     try {
-                      await fetch("/api/movements/bulk-delete", {
+                      const r = await fetch("/api/movements/bulk-delete", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         credentials: "include",
                         body: JSON.stringify({ ids: createdIds }),
                       });
+                      if (!r.ok) { const e = await r.json(); throw new Error(e.message || "Undo failed"); }
                       await qc.invalidateQueries({ queryKey: [api.movements.list.path] });
                       await qc.invalidateQueries({ queryKey: [api.items.list.path] });
                       await qc.invalidateQueries({ queryKey: [api.dashboard.stats.path] });

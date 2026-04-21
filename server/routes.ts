@@ -997,8 +997,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ message: "Validation failed", errors: confirmErrors });
       }
 
-      await storage.confirmDraft(draftId, getUserId(req));
-      res.json({ ok: true });
+      const movementIds = await storage.confirmDraft(draftId, getUserId(req));
+      res.json({ ok: true, movementIds });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }

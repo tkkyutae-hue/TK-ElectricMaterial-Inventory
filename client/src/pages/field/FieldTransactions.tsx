@@ -296,8 +296,11 @@ export default function FieldTransactions() {
       clearSelection();
       setConfirmOpen(false);
 
+      const txDeletedTitle  = count === 1 ? t.txDeletedOne  : t.txDeleted.replace("{n}", String(count));
+      const txRestoredTitle = count === 1 ? t.txRestoredOne : t.txRestored.replace("{n}", String(count));
+
       const { dismiss } = toast({
-        title: t.txDeleted.replace("{n}", String(count)),
+        title: txDeletedTitle,
         duration: 8000,
         description: (
           <div style={{ marginTop: 4 }}>
@@ -309,7 +312,7 @@ export default function FieldTransactions() {
                 dismiss();
                 try {
                   await bulkRestore.mutateAsync(snapshots);
-                  toast({ title: t.txRestored.replace("{n}", String(count)) });
+                  toast({ title: txRestoredTitle });
                 } catch (err: any) {
                   toast({ title: t.restoreFailed, description: err.message, variant: "destructive" });
                 }

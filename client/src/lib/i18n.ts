@@ -296,7 +296,9 @@ const en = {
   draftDeleted:       "Draft deleted",
   confirmFailed:      "Confirm failed",
   deleteFailed:       "Delete failed",
+  txDeletedOne:       "1 transaction deleted",
   txDeleted:          "{n} transactions deleted",
+  txRestoredOne:      "1 transaction restored",
   txRestored:         "{n} transactions restored",
   restoreFailed:      "Restore failed",
 
@@ -597,8 +599,10 @@ const ko: Translations = {
   draftDeleted:       "임시저장 삭제됨",
   confirmFailed:      "확정 실패",
   deleteFailed:       "삭제 실패",
-  txDeleted:          "{n}건 삭제됨",
-  txRestored:         "{n}건 복원됨",
+  txDeletedOne:       "이동 기록 1건 삭제됨",
+  txDeleted:          "이동 기록 {n}건 삭제됨",
+  txRestoredOne:      "이동 기록 1건 복원됨",
+  txRestored:         "이동 기록 {n}건 복원됨",
   restoreFailed:      "복원 실패",
 
   navMain:            "메인",
@@ -897,7 +901,9 @@ const es: Translations = {
   draftDeleted:       "Borrador eliminado",
   confirmFailed:      "Error al confirmar",
   deleteFailed:       "Error al eliminar",
+  txDeletedOne:       "1 transacción eliminada",
   txDeleted:          "{n} transacciones eliminadas",
+  txRestoredOne:      "1 transacción restaurada",
   txRestored:         "{n} transacciones restauradas",
   restoreFailed:      "Error al restaurar",
 

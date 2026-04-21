@@ -1,0 +1,82 @@
+Do NOT rebuild the Projects page.
+Do NOT touch ProjectDetail, project tabs, routing, or backend project APIs broadly.
+Focus ONLY on fixing the Projects list row interaction/layout issues in:
+- client/src/pages/Projects.tsx
+
+TASK GOAL
+Fix the Admin Projects board/list so:
+1. the delete icon is in its own proper action area, not visually inside the Status column
+2. the delete icon hover behavior is stable and does not appear/disappear incorrectly
+3. the Status control remains clickable and actually updates correctly
+4. column resize behavior does not interfere with row actions or status editing
+5. the inline Add Project row does NOT overlap Timeline / Status / Open columns
+
+CURRENT SYMPTOMS
+- the delete icon appears inside the Status column
+- on row hover it appears briefly and disappears
+- status dropdown/list opens, but the status still does not change reliably
+- when clicking Add Project, the inline new-project row causes Status and Open columns to overlap the Timeline column
+
+REQUIRED FIXES
+
+PART 1 — SEPARATE ACTION AREA FROM STATUS COLUMN
+- create a dedicated rightmost Action/Open/Delete area
+- do NOT place the delete icon inside the Status cell layout
+- keep Status as its own clean interactive column
+- make sure the action area has its own width and alignment
+
+PART 2 — FIX HOVER TARGET STABILITY
+- make the row hover target stable across the full row
+- ensure the delete icon visibility is controlled by a stable row-level hover state
+- remove any layout/absolute positioning that causes the icon to briefly appear then disappear
+- if group/group-hover is used, ensure the hovered wrapper includes the icon area itself
+
+PART 3 — PREVENT COLUMN RESIZE FROM BREAKING INTERACTIONS
+- make sure resize handles only affect column resizing
+- resize handles must not overlap the clickable Status control or delete button area
+- interactive cells (especially Status) must remain fully clickable
+- if needed, reduce the resize handle hit-area so it does not steal pointer events from cell controls
+
+PART 4 — FIX STATUS UPDATE BEHAVIOR
+- verify that clicking a status option actually calls the existing update mutation
+- verify that the selected status value is persisted and the projects list refreshes or updates correctly
+- keep status change quiet (no toast needed)
+- if the current issue is caused by event/overlay interference, fix the layout instead of adding extra UI
+
+PART 5 — FIX INLINE ADD PROJECT ROW COLUMN ALIGNMENT
+The inline Add Project row must use the exact same column grid structure and width logic as normal project rows.
+
+Required:
+- make sure the Add Project row aligns with:
+  - PO / Code
+  - Project Name
+  - Customer
+  - Location
+  - Timeline
+  - Status
+  - Open / Action
+- Timeline must remain a single clean column
+- Status and Open must not overlap Timeline
+- do NOT allow inline inputs/popovers to spill into adjacent columns
+- if the add row currently uses a different grid template or missing width constraints, unify it with the normal row layout
+
+Important:
+- keep Add Project inline
+- do NOT move it back to a modal
+- keep desktop-first board layout
+- preserve resizable columns if already implemented
+
+PART 6 — KEEP THE PAGE STRUCTURE
+- keep customer grouping
+- keep inline editing
+- keep resizable columns
+- keep the current admin board/list style
+- no broad redesign
+
+OUTPUT
+1. Summary of the row/action/status layout fix
+2. Summary of the hover stability fix
+3. Summary of the status update fix
+4. Summary of the Add Project row alignment fix
+5. Files modified
+6. Anything intentionally left unchanged

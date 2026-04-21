@@ -880,7 +880,7 @@ export class DatabaseStorage implements IStorage {
     const errors: { id: number; message: string }[] = [];
     for (const snap of snapshots) {
       try {
-        // Re-apply inventory delta
+        // Pre-validate before entering transaction
         let delta = 0;
         if (snap.movementType === "receive" || snap.movementType === "return") delta = snap.quantity;
         else if (snap.movementType === "issue") delta = -snap.quantity;
@@ -897,34 +897,38 @@ export class DatabaseStorage implements IStorage {
           continue;
         }
 
-        await db.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, snap.itemId));
+        // Wrap all writes for this snapshot in a single transaction
+        const insertedId = await db.transaction(async (tx) => {
+          await tx.update(items).set({ quantityOnHand: newQty, updatedAt: new Date() }).where(eq(items.id, snap.itemId));
 
-        // Re-apply location balances for transfers
-        if (snap.movementType === "transfer") {
-          if (snap.sourceLocationId) await this._adjustLocationBalance(snap.itemId, snap.sourceLocationId, -snap.quantity);
-          if (snap.destinationLocationId) await this._adjustLocationBalance(snap.itemId, snap.destinationLocationId, snap.quantity);
-        }
+          // Re-apply location balances for transfers
+          if (snap.movementType === "transfer") {
+            if (snap.sourceLocationId) await this._adjustLocationBalance(snap.itemId, snap.sourceLocationId, -snap.quantity, tx);
+            if (snap.destinationLocationId) await this._adjustLocationBalance(snap.itemId, snap.destinationLocationId, snap.quantity, tx);
+          }
 
-        // Re-insert movement with original data
-        const [inserted] = await db.insert(inventoryMovements).values({
-          itemId: snap.itemId,
-          movementType: snap.movementType,
-          quantity: snap.quantity,
-          previousQuantity: snap.previousQuantity ?? 0,
-          newQuantity: snap.newQuantity ?? 0,
-          sourceLocationId: snap.sourceLocationId ?? null,
-          destinationLocationId: snap.destinationLocationId ?? null,
-          projectId: snap.projectId ?? null,
-          unitCostSnapshot: snap.unitCostSnapshot ?? null,
-          referenceType: snap.referenceType ?? null,
-          referenceId: snap.referenceId ?? null,
-          note: snap.note ?? null,
-          reason: snap.reason ?? null,
-          createdBy: snap.createdBy ?? null,
-          createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
-        }).returning();
+          // Re-insert movement with original data
+          const [inserted] = await tx.insert(inventoryMovements).values({
+            itemId: snap.itemId,
+            movementType: snap.movementType,
+            quantity: snap.quantity,
+            previousQuantity: snap.previousQuantity ?? 0,
+            newQuantity: snap.newQuantity ?? 0,
+            sourceLocationId: snap.sourceLocationId ?? null,
+            destinationLocationId: snap.destinationLocationId ?? null,
+            projectId: snap.projectId ?? null,
+            unitCostSnapshot: snap.unitCostSnapshot ?? null,
+            referenceType: snap.referenceType ?? null,
+            referenceId: snap.referenceId ?? null,
+            note: snap.note ?? null,
+            reason: snap.reason ?? null,
+            createdBy: snap.createdBy ?? null,
+            createdAt: snap.createdAt ? new Date(snap.createdAt) : new Date(),
+          }).returning();
+          return inserted.id;
+        });
 
-        restored.push(inserted.id);
+        restored.push(insertedId);
       } catch (err: any) {
         errors.push({ id: snap.id ?? 0, message: err.message });
       }

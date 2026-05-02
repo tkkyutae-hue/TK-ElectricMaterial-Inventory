@@ -1,0 +1,90 @@
+Do NOT rebuild the Admin Inventory page.
+Do NOT redesign the category detail page structure broadly.
+Focus ONLY on making the category inventory cards more useful for inline admin editing inside:
+- client/src/pages/CategoryDetail.tsx
+- tiny directly related components/helpers only if truly needed
+
+TASK GOAL
+When an admin opens an inventory category, each family card should show the most important stock/planning values directly in the card table, and clicking Edit should allow inline editing without navigating away.
+
+IMPORTANT DIRECTION
+- SKU must remain read-only in Edit mode
+- On Hand should be visible, but should remain read-only for now
+- Reorder Pt, Reorder Qty, and Min Stock should be editable in Edit mode
+- Do NOT require navigation into a deeper detail screen for these common edits
+
+REQUIRED CHANGES
+
+PART 1 — SHOW KEY COLUMNS DIRECTLY IN THE FAMILY CARD TABLE
+In the inventory category view, make sure each item row visibly shows:
+- On Hand (current stock quantity)
+- Reorder Pt
+- Reorder Qty
+- Min Stock
+
+These should be visible in the family card table without opening another page.
+
+IMPORTANT
+- Keep SKU visible but read-only
+- Keep the table compact and admin-friendly
+- Do NOT turn this into a modal workflow
+
+PART 2 — EDIT MODE SHOULD ALLOW INLINE EDITING OF STOCK SETTINGS
+When the admin clicks Edit on a family card:
+- allow inline editing for:
+  - Reorder Pt
+  - Reorder Qty
+  - Min Stock
+- keep SKU read-only
+- keep On Hand read-only for this step
+
+If the current Edit mode already supports row editing, extend that mode rather than creating a second editing system.
+
+PART 3 — DO NOT MAKE ON HAND DIRECTLY EDITABLE
+On Hand should be shown clearly, but for now it must remain read-only in this edit flow.
+
+Reason:
+- direct stock quantity edits should not silently bypass inventory adjustment logic
+- inventory quantity changes should remain tied to proper movement/adjust flows unless a separate admin reconciliation flow exists
+
+So in this task:
+- show On Hand
+- do NOT allow direct inline editing of On Hand
+
+PART 4 — SAVE / CANCEL BEHAVIOR
+Keep editing card-based:
+- Edit opens the family card into editable mode
+- Save Changes saves the modified rows
+- Cancel discards unsaved changes
+
+Do NOT make each cell save individually one-by-one if the current card-based save flow already exists.
+
+PART 5 — VALIDATION / UX RULES
+For editable numeric fields:
+- Reorder Pt
+- Reorder Qty
+- Min Stock
+
+Requirements:
+- numeric input only
+- no negative values
+- handle blank/null consistently with current schema rules
+- do NOT silently accept invalid values
+
+If useful, show lightweight validation feedback before save.
+
+PART 6 — KEEP THE PAGE STRUCTURE
+- keep the family card layout
+- keep Settings / Move / Edit actions
+- keep Add Row / Delete Row behavior if already present
+- do NOT add SKU editing
+- do NOT add direct stock quantity editing
+- do NOT redesign the page into a spreadsheet or modal
+
+OUTPUT
+1. Summary of the new visible columns added to the family card table
+2. Summary of what became editable in Edit mode
+3. Confirmation that SKU stayed read-only
+4. Confirmation that On Hand stayed visible but read-only
+5. Files modified
+6. Anything intentionally left unchanged

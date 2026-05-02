@@ -1,0 +1,68 @@
+Do NOT rebuild the Reorder page.
+Do NOT change reorder recommendation business logic broadly.
+
+Focus ONLY on fixing the filter labels and improving the visual status/usage chips in:
+- client/src/pages/Reorder.tsx
+- tiny directly related badge/render helper only if truly needed
+
+TASK GOAL
+Clean up the Reorder filter bar and make Status / Usage easier to scan visually.
+
+CURRENT ISSUES
+1. the top filter bar shows "All Statuses" twice
+2. one of those filters is actually the Usage/Frequency filter and is labeled incorrectly
+3. Status and Usage values are too visually flat
+4. both Status and Usage should have a small colored dot to the left of the label
+
+REQUIRED CHANGES
+
+PART 1 — FIX THE FILTER LABELS
+Correct the top filters so they clearly read as:
+- All Categories
+- All Statuses
+- All Usage
+
+Do NOT leave two filters labeled "All Statuses".
+
+The third filter must clearly represent usage frequency, not status.
+
+PART 2 — ADD DOT INDICATORS TO STATUS
+Update the Status badge/chip rendering so each visible status has a small colored dot on the left side of the text.
+
+Examples:
+- Out of Stock -> red dot
+- Low Stock -> orange/yellow dot
+- In Stock -> green dot
+
+Keep the badge compact and clean.
+
+PART 3 — ADD DOT INDICATORS TO USAGE
+Update the Usage badge/chip rendering so each visible usage value also has a small colored dot on the left side of the text.
+
+Use a consistent visual system with Status, but lighter/subtler if needed.
+
+Examples:
+- Frequent / 잦음 -> stronger dot
+- Normal / 보통 -> medium dot
+- None / 없음 -> muted/gray dot
+
+If the current displayed values are still English, keep them consistent for now unless a safe localized mapping already exists in the page.
+
+PART 4 — KEEP THE TABLE STRUCTURE
+- keep the flat table layout
+- keep the photo column
+- keep supplier out of the main table
+- do NOT redesign the page into cards
+- do NOT change recommendation logic in this step
+
+PART 5 — KEEP IT VISUALLY CLEAN
+- badges should stay compact
+- dots should help quick scanning, not overpower the row
+- keep the admin table readable and desktop-friendly
+
+OUTPUT
+1. Summary of filter label fixes
+2. Summary of status chip visual updates
+3. Summary of usage chip visual updates
+4. Files modified
+5. Anything intentionally left unchanged

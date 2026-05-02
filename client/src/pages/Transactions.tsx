@@ -33,7 +33,6 @@ export default function Transactions() {
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [selectionMode, setSelectionMode] = useState(false);
 
   // Inline editing
   interface EditDraft {
@@ -195,7 +194,6 @@ export default function Transactions() {
     setEditingIds(new Set());
     setEditDrafts({});
     clearSelection();
-    setSelectionMode(false);
   }
 
   const CHECKBOX_SIZE = 15;
@@ -326,6 +324,24 @@ export default function Transactions() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">
+                {/* Leftmost selection checkbox col */}
+                <TableHead className="text-center" style={{ width: 36, minWidth: 36, padding: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div
+                      role="checkbox"
+                      aria-checked={allSelected}
+                      onClick={toggleAll}
+                      data-testid="checkbox-select-all"
+                      style={checkboxStyle(allSelected)}
+                    >
+                      {allSelected && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                </TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txDate}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">{t.txAdminColType}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txAdminColSize}</TableHead>
@@ -336,35 +352,6 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">{t.txAdminColTo}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">{t.txAdminColProject}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txAdminColNote}</TableHead>
-                {/* Select / Edit-action col */}
-                <TableHead className="text-center border-l border-slate-100" style={{ width: 90, minWidth: 90, background: selectionMode ? "#f0fdf4" : undefined }}>
-                  {selectionMode ? (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <div
-                        role="checkbox"
-                        aria-checked={allSelected}
-                        onClick={toggleAll}
-                        data-testid="checkbox-select-all"
-                        style={checkboxStyle(allSelected)}
-                      >
-                        {allSelected && (
-                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                      data-testid="btn-selection-mode-toggle"
-                      style={{ background: "none", border: "none", padding: "2px 6px", color: "#94a3b8", fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1 }}
-                    >
-                      {t.txAdminSelectCol}
-                    </button>
-                  )}
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -413,6 +400,72 @@ export default function Transactions() {
                       }}
                       className={isEditing ? "" : "hover:bg-slate-50/50"}
                     >
+                      {/* Leftmost: select checkbox or Save/Cancel when editing */}
+                      <TableCell
+                        className="text-center"
+                        style={{ verticalAlign: "middle", width: 36, minWidth: 36, padding: 0 }}
+                        onClick={(e) => { if (!isEditing) { e.stopPropagation(); toggleRow(tx.id); } }}
+                      >
+                        {isEditing ? (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
+                            <button
+                              type="button"
+                              onClick={() => saveRow(tx.id)}
+                              disabled={isSaving}
+                              data-testid={`btn-save-row-${tx.id}`}
+                              title={t.txAdminTooltipSave}
+                              style={{
+                                width: 22, height: 22, borderRadius: 4,
+                                background: isSaving ? "#f1f5f9" : "rgba(22,163,74,0.10)",
+                                border: "1px solid rgba(22,163,74,0.30)",
+                                color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: isSaving ? "default" : "pointer",
+                              }}
+                            >
+                              {isSaving ? (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                                  <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3"/>
+                                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"/>
+                                </svg>
+                              ) : (
+                                <Check style={{ width: 10, height: 10 }} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cancelRow(tx.id)}
+                              disabled={isSaving}
+                              data-testid={`btn-cancel-row-${tx.id}`}
+                              title={t.txAdminTooltipCancel}
+                              style={{
+                                width: 22, height: 22, borderRadius: 4,
+                                background: "rgba(100,116,139,0.08)",
+                                border: "1px solid rgba(100,116,139,0.20)",
+                                color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: isSaving ? "default" : "pointer",
+                              }}
+                            >
+                              <X style={{ width: 10, height: 10 }} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <div
+                              style={checkboxStyle(isSelected)}
+                              data-testid={`checkbox-tx-${tx.id}`}
+                              role="checkbox"
+                              aria-checked={isSelected}
+                            >
+                              {isSelected && (
+                                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                                  <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </TableCell>
+
                       {/* Date */}
                       <TableCell className="text-xs text-slate-500 whitespace-nowrap" style={{ verticalAlign: "middle" }}>
                         {isEditing ? (
@@ -615,71 +668,6 @@ export default function Transactions() {
                         )}
                       </TableCell>
 
-                      {/* Select / Save-Cancel col */}
-                      <TableCell
-                        className="text-center border-l border-slate-100"
-                        style={{ verticalAlign: "middle", width: 90, minWidth: 90, background: isEditing ? "rgba(234,179,8,0.05)" : (selectionMode && isSelected ? "rgba(22,163,74,0.05)" : undefined) }}
-                        onClick={(e) => { if (selectionMode && !isEditing) { e.stopPropagation(); toggleRow(tx.id); } }}
-                      >
-                        {isEditing ? (
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                            <button
-                              type="button"
-                              onClick={() => saveRow(tx.id)}
-                              disabled={isSaving}
-                              data-testid={`btn-save-row-${tx.id}`}
-                              title={t.txAdminTooltipSave}
-                              style={{
-                                width: 26, height: 26, borderRadius: 5,
-                                background: isSaving ? "#f1f5f9" : "rgba(22,163,74,0.10)",
-                                border: "1px solid rgba(22,163,74,0.30)",
-                                color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center",
-                                cursor: isSaving ? "default" : "pointer",
-                              }}
-                            >
-                              {isSaving ? (
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="animate-spin">
-                                  <circle cx="12" cy="12" r="10" stroke="#cbd5e1" strokeWidth="3"/>
-                                  <path d="M12 2a10 10 0 0 1 10 10" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"/>
-                                </svg>
-                              ) : (
-                                <Check style={{ width: 11, height: 11 }} />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => cancelRow(tx.id)}
-                              disabled={isSaving}
-                              data-testid={`btn-cancel-row-${tx.id}`}
-                              title={t.txAdminTooltipCancel}
-                              style={{
-                                width: 26, height: 26, borderRadius: 5,
-                                background: "rgba(100,116,139,0.08)",
-                                border: "1px solid rgba(100,116,139,0.20)",
-                                color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center",
-                                cursor: isSaving ? "default" : "pointer",
-                              }}
-                            >
-                              <X style={{ width: 11, height: 11 }} />
-                            </button>
-                          </div>
-                        ) : selectionMode ? (
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <div
-                              style={checkboxStyle(isSelected)}
-                              data-testid={`checkbox-tx-${tx.id}`}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                            >
-                              {isSelected && (
-                                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                                  <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              )}
-                            </div>
-                          </div>
-                        ) : null}
-                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -837,9 +825,9 @@ export default function Transactions() {
                 padding: "4px 11px", borderRadius: 7,
                 background: "white",
                 border: "1px solid #e2e8f0",
-                color: (selectionMode || editingIds.size > 0) ? "#475569" : "#cbd5e1",
+                color: (selCount > 0 || editingIds.size > 0) ? "#475569" : "#cbd5e1",
                 fontSize: 11, fontWeight: 700,
-                cursor: (selectionMode || editingIds.size > 0) ? "pointer" : "default",
+                cursor: (selCount > 0 || editingIds.size > 0) ? "pointer" : "default",
               }}
             >
               <X style={{ width: 10, height: 10 }} /> {t.txAdminCancelBtn}

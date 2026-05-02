@@ -110,6 +110,7 @@ export default function CategoryDetail() {
     setEditNewRows([{
       tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
+      reorderPoint: 0, reorderQuantity: 0, minimumStock: 0,
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
       skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
       subcategoryOverride: null, detailTypeOverride: null,
@@ -169,6 +170,7 @@ export default function CategoryDetail() {
     setEditNewRows(prev => [...prev, {
       tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
+      reorderPoint: 0, reorderQuantity: 0, minimumStock: 0,
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
       skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
       subcategoryOverride: null, detailTypeOverride: null,

@@ -346,7 +346,23 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
       <TableCell className="py-2 align-top text-center">
         <input type="number" min="0" value={draft.quantityOnHand}
           onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
-          className="w-16 text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
+        <span className={`block text-[9px] font-medium mt-0.5 px-1 py-0.5 rounded ${stCls}`} data-testid={`status-new-item-${draft.tmpId}`}>{stLabel}</span>
+      </TableCell>
+      <TableCell className="py-2 align-top text-center">
+        <input type="number" min="0" step="1" value={draft.reorderPoint}
+          onChange={e => onChange({ reorderPoint: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-reorder-pt-${draft.tmpId}`} />
+      </TableCell>
+      <TableCell className="py-2 align-top text-center">
+        <input type="number" min="0" step="1" value={draft.reorderQuantity}
+          onChange={e => onChange({ reorderQuantity: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-reorder-qty-${draft.tmpId}`} />
+      </TableCell>
+      <TableCell className="py-2 align-top text-center">
+        <input type="number" min="0" step="1" value={draft.minimumStock}
+          onChange={e => onChange({ minimumStock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-min-stock-${draft.tmpId}`} />
       </TableCell>
       <TableCell className="py-2 align-top text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
@@ -358,8 +374,7 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
         <LocationCombobox value={draft.primaryLocationId} onChange={id => onChange({ primaryLocationId: id })} locations={locations} />
       </TableCell>
       <TableCell className="py-2 pr-5 align-top">
-        <div className="flex flex-col items-center gap-1">
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${stCls}`} data-testid={`status-new-item-${draft.tmpId}`}>{stLabel}</span>
+        <div className="flex items-center justify-center">
           <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Remove row" data-testid={`btn-remove-new-row-${draft.tmpId}`}>
             <XIcon className="w-3.5 h-3.5" />
           </button>

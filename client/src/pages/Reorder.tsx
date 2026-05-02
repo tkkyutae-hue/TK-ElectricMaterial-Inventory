@@ -46,6 +46,7 @@ export default function Reorder() {
   const [statusFilter, setStatusFilter]           = useState(DEFAULTS.status);
   const [usageFilter, setUsageFilter]             = useState(DEFAULTS.usage);
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
+  const [selectedIds, setSelectedIds]             = useState<Set<number>>(new Set());
 
   const resetFilters = () => {
     setSearch(DEFAULTS.search);
@@ -261,7 +262,32 @@ export default function Reorder() {
         <Table>
           <TableHeader className="bg-slate-50/80">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-8 px-2" aria-label="select" />
+              <TableHead className="w-8 px-2">
+                <Checkbox
+                  className="h-4 w-4"
+                  aria-label="select all"
+                  data-testid="checkbox-select-all"
+                  checked={
+                    filtered.length > 0 && filtered.every((r: any) => selectedIds.has(r.id))
+                      ? true
+                      : filtered.some((r: any) => selectedIds.has(r.id))
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(v) => {
+                    setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      if (v === true) {
+                        filtered.forEach((r: any) => next.add(r.id));
+                      } else {
+                        filtered.forEach((r: any) => next.delete(r.id));
+                      }
+                      return next;
+                    });
+                  }}
+                  disabled={filtered.length === 0}
+                />
+              </TableHead>
               <TableHead className="font-semibold text-slate-600">{t.invStatus}</TableHead>
               <TableHead className="font-semibold text-slate-600 w-12 text-center">{t.reorderColPhoto}</TableHead>
               <TableHead className="font-semibold text-slate-600">{t.reorderColItem}</TableHead>
@@ -310,6 +336,14 @@ export default function Reorder() {
                       className="h-4 w-4"
                       aria-label="select row"
                       data-testid={`checkbox-rec-${rec.id}`}
+                      checked={selectedIds.has(rec.id)}
+                      onCheckedChange={(v) => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (v) next.add(rec.id); else next.delete(rec.id);
+                          return next;
+                        });
+                      }}
                     />
                   </TableCell>
                   <TableCell><ItemStatusBadge status={computeItemStockStatus(rec.item)} /></TableCell>

@@ -1,0 +1,73 @@
+Do NOT rebuild the Admin Inventory category page.
+Do NOT redesign the family card structure broadly.
+Focus ONLY on improving the column layout/readability inside:
+- client/src/pages/CategoryDetail.tsx
+- tiny directly related components/helpers only if truly needed
+
+TASK GOAL
+Fix the family card table layout so the stock-setting columns are readable and not visually jammed together.
+
+CURRENT ISSUE
+The stock-related headers are too cramped and visually overlap/jam together:
+- ON HAND
+- REORDER PT
+- REORDER QTY
+- MIN STOCK
+
+At the same time, the ITEM column is currently too wide and is taking more space than needed.
+
+REQUIRED CHANGES
+
+PART 1 — REDUCE ITEM COLUMN WIDTH
+- Reduce the width of the ITEM column to free up horizontal space
+- Keep item names readable
+- Use clean truncation/ellipsis only if necessary
+- Do NOT make item names unreadable
+- If helpful, allow hover title/tooltip for the full item name
+
+PART 2 — GIVE MORE SPACE TO STOCK COLUMNS
+Use the freed space to improve the stock-related columns:
+- ON HAND
+- REORDER PT
+- REORDER QTY
+- MIN STOCK
+
+These columns must feel clearly separated and readable.
+
+PART 3 — SHORTEN STOCK COLUMN LABELS
+To reduce header crowding, shorten the labels like this:
+- REORDER PT -> ROP
+- REORDER QTY -> ROQ
+- MIN STOCK -> MIN
+
+You may keep ON HAND as-is.
+
+If possible, add lightweight title/tooltip support on the abbreviated headers:
+- ROP = Reorder Point
+- ROQ = Reorder Quantity
+- MIN = Minimum Stock
+
+PART 4 — KEEP TABLE CLEAN AND ADMIN-FRIENDLY
+- Keep the current family-card table layout
+- Keep SKU visible
+- Keep PHOTO / SIZE / ITEM structure
+- Keep the stock columns aligned cleanly
+- Keep STATUS readable
+- Do NOT turn this into a different page design
+
+PART 5 — DO NOT CHANGE EDITING RULES
+This task is layout/readability only.
+Do NOT change:
+- which fields are editable
+- SKU read-only behavior
+- On Hand read-only behavior
+- Save/Cancel flow
+- data logic
+
+OUTPUT
+1. Summary of column layout changes
+2. Confirmation that ITEM width was reduced
+3. Confirmation that stock columns were given more space
+4. Confirmation that header labels were shortened to ROP / ROQ / MIN
+5. Files modified
+6. Anything intentionally left unchanged

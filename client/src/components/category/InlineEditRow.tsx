@@ -99,7 +99,7 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
         <input value={draft.sizeLabel} onChange={e => onChange({ sizeLabel: e.target.value })} className={inputCls} data-testid={`input-edit-size-${item.id}`} />
       </TableCell>
       <TableCell className="py-2">
-        <input value={draft.name} onChange={e => onChange({ name: e.target.value })} className={`${inputCls} min-w-[140px]`} data-testid={`input-edit-name-${item.id}`} />
+        <input value={draft.name} onChange={e => onChange({ name: e.target.value })} className={`${inputCls} w-full`} title={draft.name} data-testid={`input-edit-name-${item.id}`} />
         <TrackingModePills
           value={(draft.trackingMode ?? null) as TrackingModeValue}
           reelAllowed={isReelEligible({ name: draft.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: draft.unitOfMeasure })}
@@ -265,9 +265,9 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
         <input value={draft.sizeLabel} placeholder='e.g. 3/4"' onChange={e => handleSizeChange(e.target.value)}
           className={inputCls()} data-testid={`input-new-size-${draft.tmpId}`} />
       </TableCell>
-      <TableCell className="py-2 align-top" style={{ minWidth: 180 }}>
+      <TableCell className="py-2 align-top">
         <input value={draft.name} placeholder="Item name *" onChange={e => handleNameChange(e.target.value)}
-          className={`${inputCls()} min-w-[140px]`} data-testid={`input-new-name-${draft.tmpId}`} />
+          className={`${inputCls()} w-full`} title={draft.name} data-testid={`input-new-name-${draft.tmpId}`} />
         {!draft.nameManuallyEdited && draft.sizeLabel.trim() && !hasPreview && (
           <p className="text-[10px] text-brand-500 mt-0.5">Auto-suggested</p>
         )}

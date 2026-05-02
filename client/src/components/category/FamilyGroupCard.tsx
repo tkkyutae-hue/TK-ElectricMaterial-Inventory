@@ -224,6 +224,7 @@ export function FamilyGroupCard({
         <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>
           <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "970px" }}>
             <colgroup>
+              <col style={{ width: "100px" }} />
               <col style={{ width: "110px" }} />
               <col style={{ width: "50px" }} />
               <col style={{ width: "80px" }} />
@@ -233,10 +234,10 @@ export function FamilyGroupCard({
               <col style={{ width: "76px" }} />
               <col style={{ width: "76px" }} />
               <col style={{ width: "90px" }} />
-              <col style={{ width: "100px" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
+                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2 text-center">Status</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2">SKU</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
                 <TableHead className="h-9 pl-2 pr-3">
@@ -258,7 +259,6 @@ export function FamilyGroupCard({
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsage}</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -268,6 +268,9 @@ export function FamilyGroupCard({
                   className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
                   data-testid={`row-item-${item.id}`}
                 >
+                  <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
+                    <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
+                  </TableCell>
                   <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
                     <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
                   </TableCell>
@@ -323,9 +326,6 @@ export function FamilyGroupCard({
                         testId={`badge-usage-${item.id}`}
                       />
                     </div>
-                  </TableCell>
-                  <TableCell className="h-10 px-3 overflow-hidden">
-                    <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
                   </TableCell>
                 </TableRow>
               ))}

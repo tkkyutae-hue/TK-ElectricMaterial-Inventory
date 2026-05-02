@@ -380,6 +380,7 @@ export default function Inventory() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 1000 }}>
             <colgroup>
+              <col style={{ width: "110px" }} /> {/* Status — moved to leftmost */}
               <col style={{ width: "120px" }} /> {/* SKU */}
               <col style={{ width: "52px" }} />  {/* Photo */}
               <col style={{ width: "80px" }} />  {/* Size */}
@@ -387,11 +388,11 @@ export default function Inventory() {
               <col style={{ width: "140px" }} /> {/* Category */}
               <col style={{ width: "110px" }} /> {/* Qty/Unit */}
               <col style={{ width: "100px" }} /> {/* Usage */}
-              <col style={{ width: "110px" }} /> {/* Status */}
               <col style={{ width: "32px" }} />  {/* Row affordance */}
             </colgroup>
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
+                <SortableHeader label={t.invStatusCol}   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
                 <SortableHeader label="SKU"      sortKey="sku"            active={sortKey === "sku"}           dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invPhotoCol}</th>
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invSizeCol}</th>
@@ -399,7 +400,6 @@ export default function Inventory() {
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invCategoryCol}</th>
                 <SortableHeader label={t.invQtyUnitCol} sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-center">{t.reorderColUsage}</th>
-                <SortableHeader label={t.invStatusCol}   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
                 <th aria-hidden />
               </tr>
             </thead>
@@ -430,6 +430,12 @@ export default function Inventory() {
                     data-testid={`row-item-${item.id}`}
                     onClick={() => setPreviewItem(item)}
                   >
+                    {/* Status (moved to leftmost) */}
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center">
+                        <ItemStatusBadge status={item.status} />
+                      </div>
+                    </td>
                     {/* SKU */}
                     <td className="px-3 py-3 align-middle">
                       <span className="font-mono text-[11px] text-slate-500 whitespace-nowrap">{item.sku}</span>
@@ -475,12 +481,6 @@ export default function Inventory() {
                           count={item.last30dIssueCount ?? 0}
                           testId={`badge-usage-${item.id}`}
                         />
-                      </div>
-                    </td>
-                    {/* Status */}
-                    <td className="px-3 py-3 align-middle">
-                      <div className="flex items-center justify-center">
-                        <ItemStatusBadge status={item.status} />
                       </div>
                     </td>
                     {/* Row affordance */}

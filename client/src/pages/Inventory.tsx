@@ -92,7 +92,7 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
   );
 }
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const PAGE_SIZE_OPTIONS = [5, 10, 15];
 
 type SortKey = "name" | "sku" | "quantityOnHand" | "status";
 type SortDir = "asc" | "desc";
@@ -135,7 +135,7 @@ export default function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [exporting, setExporting] = useState(false);

@@ -280,17 +280,17 @@ export default function Inventory() {
         <div className="flex flex-wrap gap-3">
           {totalOutOfStock > 0 && (
             <Link href="/reorder">
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-red-100 transition-colors whitespace-nowrap">
-                <XCircle className="w-4 h-4 flex-shrink-0" />
-                {totalOutOfStock} {totalOutOfStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsOutBanner}
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-red-100 transition-colors break-words">
+                <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{totalOutOfStock} {totalOutOfStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsOutBanner}</span>
               </div>
             </Link>
           )}
           {totalLowStock > 0 && (
             <Link href="/reorder">
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-amber-100 transition-colors whitespace-nowrap">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                {totalLowStock} {totalLowStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsLowBanner}
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-amber-100 transition-colors break-words">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{totalLowStock} {totalLowStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsLowBanner}</span>
               </div>
             </Link>
           )}
@@ -338,7 +338,7 @@ export default function Inventory() {
               />
             </div>
             <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-status-filter">
+              <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-status-filter">
                 <SelectValue placeholder={t.invStatus} />
               </SelectTrigger>
               <SelectContent>
@@ -349,7 +349,7 @@ export default function Inventory() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
-              <SelectTrigger className="w-[160px] h-9 bg-white text-sm" data-testid="select-category-filter">
+              <SelectTrigger className="min-w-[160px] w-auto h-9 bg-white text-sm" data-testid="select-category-filter">
                 <SelectValue placeholder={t.invCategory} />
               </SelectTrigger>
               <SelectContent>
@@ -358,7 +358,7 @@ export default function Inventory() {
               </SelectContent>
             </Select>
             <Select value={locationFilter} onValueChange={handleFilterChange(setLocationFilter)}>
-              <SelectTrigger className="w-[150px] h-9 bg-white text-sm" data-testid="select-location-filter">
+              <SelectTrigger className="min-w-[150px] w-auto h-9 bg-white text-sm" data-testid="select-location-filter">
                 <SelectValue placeholder={t.invLocation} />
               </SelectTrigger>
               <SelectContent>
@@ -367,7 +367,7 @@ export default function Inventory() {
               </SelectContent>
             </Select>
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-              <SelectTrigger className="w-[110px] h-9 bg-white text-sm" data-testid="select-page-size">
+              <SelectTrigger className="min-w-[110px] w-auto h-9 bg-white text-sm" data-testid="select-page-size">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

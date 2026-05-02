@@ -205,7 +205,7 @@ export default function Reorder() {
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[160px] h-9 bg-white text-sm" data-testid="select-category-filter">
+              <SelectTrigger className="min-w-[160px] w-auto h-9 bg-white text-sm" data-testid="select-category-filter">
                 <SelectValue placeholder={t.invCategory} />
               </SelectTrigger>
               <SelectContent>
@@ -216,7 +216,7 @@ export default function Reorder() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-status-filter">
+              <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-status-filter">
                 <SelectValue placeholder={t.invStatus} />
               </SelectTrigger>
               <SelectContent>
@@ -228,7 +228,7 @@ export default function Reorder() {
               </SelectContent>
             </Select>
             <Select value={usageFilter} onValueChange={setUsageFilter}>
-              <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-usage-filter">
+              <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-usage-filter">
                 <SelectValue placeholder={t.reorderColUsage} />
               </SelectTrigger>
               <SelectContent>

@@ -1,0 +1,94 @@
+Do NOT rebuild the Reorder page.
+Do NOT change reorder recommendation business logic or backend routes broadly.
+
+Focus ONLY on:
+- client/src/pages/Reorder.tsx
+- tiny directly related backend/helper support only if truly needed
+
+TASK GOAL
+Add a usage-frequency column and matching filter to the Reorder table so admins can quickly identify which items are actively consumed.
+
+IMPORTANT DIRECTION
+Do NOT add a raw numeric frequency column first.
+Use a compact status-style label instead.
+
+REQUIRED CHANGES
+
+PART 1 — ADD A NEW COLUMN
+Add a new column:
+- 사용빈도
+
+This column must show exactly one of:
+- 잦음
+- 보통
+- 없음
+
+PART 2 — DEFINE THE FREQUENCY RULE
+Base usage frequency on recent transaction usage.
+
+Use this rule:
+- calculate from the number of `issue` transactions in the last 30 days for that item
+- classify as:
+  - 잦음 = 8 or more issue transactions in the last 30 days
+  - 보통 = 1 to 7 issue transactions in the last 30 days
+  - 없음 = 0 issue transactions in the last 30 days
+
+Do NOT include:
+- receive
+- return
+- adjust
+- internal transfer
+unless the current backend already has a clearly defined safer consumption-specific rule that is equivalent
+
+PART 3 — DISPLAY STYLE
+Render 사용빈도 as a compact badge/chip, not long plain text.
+
+Requirements:
+- visually lightweight
+- admin-friendly
+- do not overpower priority/status colors
+
+If easy and low-risk, add hover/title support:
+- 잦음 → 최근 30일 N회 출고
+- 보통 → 최근 30일 N회 출고
+- 없음 → 최근 30일 출고 없음
+
+PART 4 — ADD A MATCHING FILTER
+Add a new filter control for usage frequency with these options:
+- All
+- 잦음
+- 보통
+- 없음
+
+Requirements:
+- default value = All
+- it must work together with existing:
+  - Search
+  - Category
+  - Priority
+  - Status
+  - Needs Reorder Only
+- keep the main list flat, not grouped by category
+
+PART 5 — KEEP PAGE STRUCTURE STABLE
+- keep the table/list layout
+- keep the photo column
+- keep supplier out of the main table
+- keep the search/filter structure
+- do NOT redesign into cards
+- do NOT add grouped-by-category rendering
+
+PART 6 — DATA / IMPLEMENTATION SCOPE
+If the reorder API already returns enough transaction-derived data safely, use it.
+If not, add only the smallest safe backend support needed to provide the 30-day issue-count per item.
+
+Do NOT do a broad backend rewrite.
+Keep changes narrow and practical.
+
+OUTPUT
+1. Summary of the new 사용빈도 column
+2. Exact classification rule used
+3. Summary of the new 사용빈도 filter
+4. Whether any backend support was added
+5. Files modified
+6. Anything intentionally left unchanged

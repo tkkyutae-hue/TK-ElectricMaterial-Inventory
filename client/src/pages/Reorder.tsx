@@ -37,6 +37,7 @@ const DEFAULTS = {
   search: "",
   category: "all",
   status: "all",
+  usage: "all",
   needsReorderOnly: true,
 };
 
@@ -48,12 +49,14 @@ export default function Reorder() {
   const [search, setSearch]                       = useState(DEFAULTS.search);
   const [categoryFilter, setCategoryFilter]       = useState(DEFAULTS.category);
   const [statusFilter, setStatusFilter]           = useState(DEFAULTS.status);
+  const [usageFilter, setUsageFilter]             = useState(DEFAULTS.usage);
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
 
   const resetFilters = () => {
     setSearch(DEFAULTS.search);
     setCategoryFilter(DEFAULTS.category);
     setStatusFilter(DEFAULTS.status);
+    setUsageFilter(DEFAULTS.usage);
     setNeedsReorderOnly(DEFAULTS.needsReorderOnly);
   };
 
@@ -135,6 +138,12 @@ export default function Reorder() {
       const stockStatus = computeItemStockStatus(item);
       if (statusFilter !== "all" && stockStatus !== statusFilter) return false;
 
+      // Usage frequency filter (high / mid / none, derived from last30dIssueCount)
+      if (usageFilter !== "all") {
+        const tier = classifyUsage(rec.last30dIssueCount ?? 0);
+        if (tier !== usageFilter) return false;
+      }
+
       // "Needs Reorder Only" — hides items whose stock status is "ordered"
       // (already on order, no further action needed).
       if (needsReorderOnly && stockStatus === "ordered") return false;
@@ -154,7 +163,7 @@ export default function Reorder() {
 
       return true;
     });
-  }, [recommendations, search, categoryFilter, statusFilter, needsReorderOnly, categoryMap]);
+  }, [recommendations, search, categoryFilter, statusFilter, usageFilter, needsReorderOnly, categoryMap]);
 
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
   const showFilteredEmpty  = hasRecommendations && filtered.length === 0;
@@ -216,6 +225,17 @@ export default function Reorder() {
                 <SelectItem value="low_stock">{t.invStatusLowStock}</SelectItem>
                 <SelectItem value="out_of_stock">{t.invStatusOutOfStock}</SelectItem>
                 <SelectItem value="ordered">{t.invStatusOrdered}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={usageFilter} onValueChange={setUsageFilter}>
+              <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-usage-filter">
+                <SelectValue placeholder={t.reorderColUsage} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.invAllStatuses}</SelectItem>
+                <SelectItem value="high">{t.reorderUsageHigh}</SelectItem>
+                <SelectItem value="mid">{t.reorderUsageMid}</SelectItem>
+                <SelectItem value="none">{t.reorderUsageNone}</SelectItem>
               </SelectContent>
             </Select>
             <label className="flex items-center gap-2 px-3 h-9 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer select-none">

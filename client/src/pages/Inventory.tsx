@@ -494,12 +494,12 @@ export default function Inventory() {
           </table>
         </div>
 
-        {/* Footer: count + page-size + pagination (3-column layout) */}
+        {/* Footer: count (left) + page-size & pagination grouped together (center) */}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 grid grid-cols-1 sm:grid-cols-3 items-center gap-3">
           <p className="text-xs text-slate-400 sm:justify-self-start">
             {totalItems === 0 ? t.invNoItemsLabel : `${t.invShowing} ${startItem}–${endItem} ${t.invOf} ${totalItems} ${totalItems !== 1 ? t.invItemsSuffix : t.invItemSingular}`}
           </p>
-          <div className="sm:justify-self-center">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-self-center">
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
               <SelectTrigger className="min-w-[110px] w-auto h-8 bg-white text-xs" data-testid="select-page-size">
                 <SelectValue />
@@ -510,9 +510,8 @@ export default function Inventory() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          {totalPages > 1 ? (
-            <div className="flex items-center gap-1 sm:justify-self-end">
+            {totalPages > 1 && (
+            <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="sm"
@@ -563,9 +562,9 @@ export default function Inventory() {
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             </div>
-          ) : (
-            <div className="sm:justify-self-end" />
-          )}
+            )}
+          </div>
+          <div className="hidden sm:block sm:justify-self-end" aria-hidden />
         </div>
       </div>
 

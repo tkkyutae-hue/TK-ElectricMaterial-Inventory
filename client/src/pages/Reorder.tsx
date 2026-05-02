@@ -282,7 +282,6 @@ export default function Reorder() {
                   <TableCell>
                     <Link href={`/inventory/${rec.item?.id}`}>
                       <p className="font-medium text-slate-900 hover:text-brand-600">{rec.item?.name}</p>
-                      <p className="text-xs font-mono text-slate-400">{rec.item?.sku}</p>
                     </Link>
                   </TableCell>
                   <TableCell className="text-right">

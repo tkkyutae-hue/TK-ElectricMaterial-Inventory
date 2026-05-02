@@ -137,6 +137,7 @@ export default function Inventory() {
   const [usageFilter, setUsageFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [exporting, setExporting] = useState(false);
@@ -499,76 +500,84 @@ export default function Inventory() {
           <p className="text-xs text-slate-400">
             {totalItems === 0 ? t.invNoItemsLabel : `${t.invShowing} ${startItem}–${endItem} ${t.invOf} ${totalItems} ${totalItems !== 1 ? t.invItemsSuffix : t.invItemSingular}`}
           </p>
-          <div className="flex items-center gap-2 ml-auto">
-            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-              <SelectTrigger
-                className="w-auto h-7 px-2 gap-1 bg-white text-xs [&>svg:last-child]:hidden"
-                data-testid="select-page-size"
+          <div className="flex items-center gap-2 ml-auto" style={{ fontFamily: "inherit" }}>
+            {/* Compact page-size button (popover) */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setPageSizeOpen(o => !o)}
+                data-testid="btn-page-size-toggle"
                 aria-label={t.invPerPageSuffix}
                 title={`${pageSize} ${t.invPerPageSuffix}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 9px", borderRadius: 7,
+                  background: pageSizeOpen ? "rgba(22,163,74,0.08)" : "white",
+                  border: `1px solid ${pageSizeOpen ? "rgba(22,163,74,0.30)" : "#e2e8f0"}`,
+                  color: pageSizeOpen ? "#16a34a" : "#64748b",
+                  fontSize: 11, fontWeight: 700, cursor: "pointer",
+                }}
               >
-                <Rows3 className="w-3.5 h-3.5 text-slate-500" />
-                <span className="tabular-nums font-medium">{pageSize}</span>
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map(n => (
-                  <SelectItem key={n} value={String(n)}>{n} {t.invPerPageSuffix}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {totalPages > 1 && (
-            <div className="flex items-center gap-1 flex-wrap justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                data-testid="button-prev-page"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                {t.invPrevBtn}
-              </Button>
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                let pageNum: number;
-                if (totalPages <= 7) {
-                  pageNum = i + 1;
-                } else if (safePage <= 4) {
-                  pageNum = i + 1;
-                  if (i === 6) pageNum = totalPages;
-                } else if (safePage >= totalPages - 3) {
-                  pageNum = totalPages - 6 + i;
-                } else {
-                  const mid = [safePage - 2, safePage - 1, safePage, safePage + 1, safePage + 2];
-                  const pages = [1, ...mid, totalPages];
-                  pageNum = pages[i];
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={safePage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    className={`h-7 w-7 p-0 text-xs ${safePage === pageNum ? "bg-brand-700 hover:bg-brand-800 text-white" : ""}`}
-                    onClick={() => setPage(pageNum)}
-                    data-testid={`button-page-${pageNum}`}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                data-testid="button-next-page"
-              >
-                {t.invNextBtn}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.6 }}>
+                  <rect x="1" y="2" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="5.25" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                  <rect x="1" y="8.5" width="10" height="1.5" rx="0.75" fill="currentColor"/>
+                </svg>
+                {pageSize}
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.5 }}>
+                  <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {pageSizeOpen && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+                  background: "white", border: "1px solid #e2e8f0", borderRadius: 9,
+                  padding: "4px", zIndex: 50,
+                  display: "flex", flexDirection: "column", gap: 2, minWidth: 72,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                }}>
+                  {PAGE_SIZE_OPTIONS.map(n => {
+                    const active = pageSize === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => { setPageSize(n); setPage(1); setPageSizeOpen(false); }}
+                        data-testid={`btn-page-size-${n}`}
+                        style={{
+                          padding: "6px 10px", borderRadius: 6, textAlign: "center",
+                          background: active ? "rgba(22,163,74,0.08)" : "transparent",
+                          border: `1px solid ${active ? "rgba(22,163,74,0.28)" : "transparent"}`,
+                          color: active ? "#16a34a" : "#475569",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        }}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            )}
+
+            {/* Prev / page indicator / Next */}
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              data-testid="button-prev-page"
+              style={{ padding: "4px 10px", borderRadius: 7, background: "white", border: "1px solid #e2e8f0", color: safePage <= 1 ? "#cbd5e1" : "#64748b", fontSize: 13, fontWeight: 700, cursor: safePage <= 1 ? "default" : "pointer" }}
+            >‹</button>
+            <span style={{ fontSize: 11, color: "#64748b", minWidth: 52, textAlign: "center" }} data-testid="text-page-indicator">
+              {safePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              data-testid="button-next-page"
+              style={{ padding: "4px 10px", borderRadius: 7, background: "white", border: "1px solid #e2e8f0", color: safePage >= totalPages ? "#cbd5e1" : "#64748b", fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer" }}
+            >›</button>
           </div>
         </div>
       </div>

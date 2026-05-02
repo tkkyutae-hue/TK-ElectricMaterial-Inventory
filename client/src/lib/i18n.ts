@@ -491,6 +491,12 @@ const en = {
   reorderOrderedBtn:          "Ordered",
   reorderUncategorized:       "Uncategorized",
   reorderAll:                 "All",
+  reorderSearchPlaceholder:   "Search item, SKU, size…",
+  reorderFilterPriority:      "Priority",
+  reorderAllPriorities:       "All Priorities",
+  reorderNeedsReorderOnly:    "Needs Reorder Only",
+  reorderNoMatch:             "No items match your filters",
+  reorderClearFilters:        "Clear filters",
 
   // ── Admin: Suppliers ─────────────────────────────────────────────────────
   supTitle:                   "Suppliers",
@@ -1254,6 +1260,12 @@ const ko: Translations = {
   reorderOrderedBtn:          "주문 완료",
   reorderUncategorized:       "미분류",
   reorderAll:                 "전체",
+  reorderSearchPlaceholder:   "자재명, SKU, 규격으로 검색…",
+  reorderFilterPriority:      "우선순위",
+  reorderAllPriorities:       "모든 우선순위",
+  reorderNeedsReorderOnly:    "재주문 필요만",
+  reorderNoMatch:             "필터 조건에 맞는 자재가 없습니다",
+  reorderClearFilters:        "필터 초기화",
 
   // ── Admin: Suppliers ─────────────────────────────────────────────────────
   supTitle:                   "공급업체",
@@ -2017,6 +2029,12 @@ const es: Translations = {
   reorderOrderedBtn:          "Pedido",
   reorderUncategorized:       "Sin categoría",
   reorderAll:                 "Todos",
+  reorderSearchPlaceholder:   "Buscar artículo, SKU, tamaño…",
+  reorderFilterPriority:      "Prioridad",
+  reorderAllPriorities:       "Todas las prioridades",
+  reorderNeedsReorderOnly:    "Solo requieren reorden",
+  reorderNoMatch:             "Ningún artículo coincide con los filtros",
+  reorderClearFilters:        "Borrar filtros",
 
   // ── Admin: Suppliers ─────────────────────────────────────────────────────
   supTitle:                   "Proveedores",

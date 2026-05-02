@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -260,6 +261,7 @@ export default function Reorder() {
         <Table>
           <TableHeader className="bg-slate-50/80">
             <TableRow className="hover:bg-transparent">
+              <TableHead className="w-8 px-2" aria-label="select" />
               <TableHead className="font-semibold text-slate-600">{t.invStatus}</TableHead>
               <TableHead className="font-semibold text-slate-600 w-12 text-center">{t.reorderColPhoto}</TableHead>
               <TableHead className="font-semibold text-slate-600">{t.reorderColItem}</TableHead>
@@ -274,14 +276,14 @@ export default function Reorder() {
             {isLoading ? (
               [1,2,3].map(i => (
                 <TableRow key={i}>
-                  {[...Array(8)].map((_, j) => (
+                  {[...Array(9)].map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : !hasRecommendations ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={9} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-recommendations">{t.reorderNoneFound}</p>
                   <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
@@ -292,7 +294,7 @@ export default function Reorder() {
               </TableRow>
             ) : showFilteredEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={9} className="text-center py-16 text-slate-500">
                   <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-match">{t.reorderNoMatch}</p>
                   <Button variant="outline" className="mt-4" onClick={resetFilters} data-testid="button-clear-filters">
@@ -303,6 +305,13 @@ export default function Reorder() {
             ) : (
               filtered.map((rec: any) => (
                 <TableRow key={rec.id} className="hover:bg-slate-50/50" data-testid={`row-rec-${rec.id}`}>
+                  <TableCell className="w-8 px-2">
+                    <Checkbox
+                      className="h-4 w-4"
+                      aria-label="select row"
+                      data-testid={`checkbox-rec-${rec.id}`}
+                    />
+                  </TableCell>
                   <TableCell><ItemStatusBadge status={computeItemStockStatus(rec.item)} /></TableCell>
                   <TableCell className="py-2 pr-0">
                     {rec.item?.imageUrl ? (

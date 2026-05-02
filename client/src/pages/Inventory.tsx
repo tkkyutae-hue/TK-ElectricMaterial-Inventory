@@ -266,10 +266,10 @@ export default function Inventory() {
             onClick={handleExportXlsx}
             disabled={exporting}
             variant="outline"
-            className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 shrink-0"
+            className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50 shrink-0 whitespace-nowrap"
             data-testid="btn-export-inventory-xlsx"
           >
-            <FileDown className="w-4 h-4" />
+            <FileDown className="w-4 h-4 flex-shrink-0" />
             {exporting ? t.invExportGenerating : t.invExportToExcel}
           </Button>
         )}
@@ -280,7 +280,7 @@ export default function Inventory() {
         <div className="flex flex-wrap gap-3">
           {totalOutOfStock > 0 && (
             <Link href="/reorder">
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-red-100 transition-colors">
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-red-100 transition-colors whitespace-nowrap">
                 <XCircle className="w-4 h-4 flex-shrink-0" />
                 {totalOutOfStock} {totalOutOfStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsOutBanner}
               </div>
@@ -288,7 +288,7 @@ export default function Inventory() {
           )}
           {totalLowStock > 0 && (
             <Link href="/reorder">
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-amber-100 transition-colors">
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-amber-100 transition-colors whitespace-nowrap">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 {totalLowStock} {totalLowStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsLowBanner}
               </div>

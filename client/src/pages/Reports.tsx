@@ -35,11 +35,11 @@ export default function Reports() {
       </div>
 
       <Tabs defaultValue="valuation">
-        <TabsList className="bg-slate-100 p-1 rounded-xl">
-          <TabsTrigger value="valuation" className="rounded-lg gap-2"><DollarSign className="w-4 h-4" />{t.repTabValuation}</TabsTrigger>
-          <TabsTrigger value="low-stock" className="rounded-lg gap-2"><AlertTriangle className="w-4 h-4" />{t.repTabLowStock}</TabsTrigger>
-          <TabsTrigger value="by-location" className="rounded-lg gap-2"><MapPin className="w-4 h-4" />{t.repTabByLocation}</TabsTrigger>
-          <TabsTrigger value="projects" className="rounded-lg gap-2"><Briefcase className="w-4 h-4" />{t.repTabUsageByProject}</TabsTrigger>
+        <TabsList className="bg-slate-100 p-1 rounded-xl max-w-full overflow-x-auto flex-nowrap justify-start">
+          <TabsTrigger value="valuation" className="rounded-lg gap-2 whitespace-nowrap"><DollarSign className="w-4 h-4 flex-shrink-0" />{t.repTabValuation}</TabsTrigger>
+          <TabsTrigger value="low-stock" className="rounded-lg gap-2 whitespace-nowrap"><AlertTriangle className="w-4 h-4 flex-shrink-0" />{t.repTabLowStock}</TabsTrigger>
+          <TabsTrigger value="by-location" className="rounded-lg gap-2 whitespace-nowrap"><MapPin className="w-4 h-4 flex-shrink-0" />{t.repTabByLocation}</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-lg gap-2 whitespace-nowrap"><Briefcase className="w-4 h-4 flex-shrink-0" />{t.repTabUsageByProject}</TabsTrigger>
         </TabsList>
 
         {/* ── Valuation ──────────────────────────────────────────────────────── */}

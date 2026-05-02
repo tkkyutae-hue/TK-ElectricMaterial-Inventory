@@ -178,10 +178,10 @@ export default function Reorder() {
         <Button
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
-          className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm"
+          className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm whitespace-nowrap shrink-0"
           data-testid="button-refresh-recommendations"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-2 flex-shrink-0 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
           {t.reorderRefresh}
         </Button>
       </div>
@@ -238,7 +238,7 @@ export default function Reorder() {
                 <SelectItem value="none">{t.reorderUsageNone}</SelectItem>
               </SelectContent>
             </Select>
-            <label className="flex items-center gap-2 px-3 h-9 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer select-none">
+            <label className="flex items-center gap-2 px-3 h-9 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer select-none whitespace-nowrap">
               <Switch
                 checked={needsReorderOnly}
                 onCheckedChange={setNeedsReorderOnly}

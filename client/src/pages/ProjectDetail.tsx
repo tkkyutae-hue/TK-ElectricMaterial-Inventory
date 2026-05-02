@@ -76,21 +76,21 @@ export default function ProjectDetail() {
 
       {/* Main tabs */}
       <Tabs defaultValue="overview">
-        <TabsList className="bg-slate-100 p-1 rounded-xl mb-4">
-          <TabsTrigger value="overview" className="rounded-lg" data-testid="tab-overview">
-            <FileBarChart className="w-3.5 h-3.5 mr-1.5" />Overview
+        <TabsList className="bg-slate-100 p-1 rounded-xl mb-4 max-w-full overflow-x-auto flex-nowrap justify-start">
+          <TabsTrigger value="overview" className="rounded-lg whitespace-nowrap" data-testid="tab-overview">
+            <FileBarChart className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Overview
           </TabsTrigger>
-          <TabsTrigger value="scope" className="rounded-lg" data-testid="tab-scope-items">
-            <LayoutList className="w-3.5 h-3.5 mr-1.5" />Scope Items
+          <TabsTrigger value="scope" className="rounded-lg whitespace-nowrap" data-testid="tab-scope-items">
+            <LayoutList className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Scope Items
           </TabsTrigger>
-          <TabsTrigger value="material-usage" className="rounded-lg" data-testid="tab-material-usage">
-            <Package className="w-3.5 h-3.5 mr-1.5" />Material Usage
+          <TabsTrigger value="material-usage" className="rounded-lg whitespace-nowrap" data-testid="tab-material-usage">
+            <Package className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Material Usage
           </TabsTrigger>
-          <TabsTrigger value="reports" className="rounded-lg" data-testid="tab-reports">
-            <FileText className="w-3.5 h-3.5 mr-1.5" />Daily Reports
+          <TabsTrigger value="reports" className="rounded-lg whitespace-nowrap" data-testid="tab-reports">
+            <FileText className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Daily Reports
           </TabsTrigger>
-          <TabsTrigger value="progress" className="rounded-lg" data-testid="tab-progress">
-            <TrendingUp className="w-3.5 h-3.5 mr-1.5" />Progress
+          <TabsTrigger value="progress" className="rounded-lg whitespace-nowrap" data-testid="tab-progress">
+            <TrendingUp className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Progress
           </TabsTrigger>
         </TabsList>
 

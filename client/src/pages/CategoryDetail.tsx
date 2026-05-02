@@ -275,7 +275,7 @@ export default function CategoryDetail() {
             subcategory: row.subcategoryOverride || null,
             detailType: row.detailTypeOverride || null,
             trackingMode: row.trackingMode ?? null,
-            reorderPoint: 0, reorderQuantity: 0, minimumStock: 0, unitCost: "0.00",
+            reorderPoint: row.reorderPoint ?? 0, reorderQuantity: row.reorderQuantity ?? 0, minimumStock: row.minimumStock ?? 0, unitCost: "0.00",
           }),
         }));
       }

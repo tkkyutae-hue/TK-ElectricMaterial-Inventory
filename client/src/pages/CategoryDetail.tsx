@@ -136,6 +136,9 @@ export default function CategoryDetail() {
         sizeLabel: item.sizeLabel ?? "",
         name: item.name,
         quantityOnHand: item.quantityOnHand,
+        reorderPoint: item.reorderPoint ?? 0,
+        reorderQuantity: item.reorderQuantity ?? 0,
+        minimumStock: item.minimumStock ?? 0,
         unitOfMeasure: item.unitOfMeasure,
         primaryLocationId: locId,
         imageUrl: item.imageUrl ?? null,
@@ -190,6 +193,9 @@ export default function CategoryDetail() {
       if (!d) continue;
       if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${item.sku}`, variant: "destructive" }); return; }
       if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Qty must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.reorderPoint < 0 || !Number.isInteger(d.reorderPoint)) { toast({ title: "Validation error", description: `Reorder Pt must be a whole number ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.reorderQuantity < 0 || !Number.isInteger(d.reorderQuantity)) { toast({ title: "Validation error", description: `Reorder Qty must be a whole number ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
+      if (d.minimumStock < 0 || !Number.isInteger(d.minimumStock)) { toast({ title: "Validation error", description: `Min Stock must be a whole number ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
       if (d.trackingModeError) { toast({ title: "Tracking mode error", description: `${item.sku}: ${d.trackingModeError}`, variant: "destructive" }); return; }
       if (d.trackingMode === "reel" && !isReelEligible({ name: d.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: d.unitOfMeasure })) {
         toast({ title: "Tracking mode error", description: `${item.sku}: This item type is not eligible for reel tracking`, variant: "destructive" }); return;
@@ -234,11 +240,14 @@ export default function CategoryDetail() {
         const changed = d.name !== item.name || d.sizeLabel !== (item.sizeLabel ?? "") ||
           d.quantityOnHand !== item.quantityOnHand || d.unitOfMeasure !== item.unitOfMeasure ||
           d.primaryLocationId !== ((item as any).primaryLocationId ?? null) ||
-          (d.trackingMode ?? null) !== (item.trackingMode ?? null);
+          (d.trackingMode ?? null) !== (item.trackingMode ?? null) ||
+          d.reorderPoint !== (item.reorderPoint ?? 0) ||
+          d.reorderQuantity !== (item.reorderQuantity ?? 0) ||
+          d.minimumStock !== (item.minimumStock ?? 0);
         if (changed) {
           promises.push(checkedFetch(`/api/items/${item.id}`, {
             method: "PUT", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null, trackingMode: d.trackingMode ?? null }),
+            body: JSON.stringify({ name: d.name.trim(), sizeLabel: d.sizeLabel || null, quantityOnHand: d.quantityOnHand, unitOfMeasure: d.unitOfMeasure, primaryLocationId: d.primaryLocationId || null, trackingMode: d.trackingMode ?? null, reorderPoint: d.reorderPoint, reorderQuantity: d.reorderQuantity, minimumStock: d.minimumStock }),
           }));
         }
         if (d.imageUrl !== (item.imageUrl ?? null)) {

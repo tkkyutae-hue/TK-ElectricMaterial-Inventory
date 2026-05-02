@@ -11,6 +11,8 @@ export type CategoryGroupedItem = {
   detailType?: string | null;
   quantityOnHand: number;
   reorderPoint: number;
+  reorderQuantity: number;
+  minimumStock: number;
   unitOfMeasure: string;
   status: string;
   imageUrl?: string | null;
@@ -53,6 +55,9 @@ export type EditDraft = {
   sizeLabel: string;
   name: string;
   quantityOnHand: number;
+  reorderPoint: number;
+  reorderQuantity: number;
+  minimumStock: number;
   unitOfMeasure: string;
   primaryLocationId: number | null;
   imageUrl: string | null;

@@ -124,6 +124,7 @@ export default function Reorder() {
           <TableHeader className="bg-slate-50/80">
             <TableRow className="hover:bg-transparent">
               <TableHead className="font-semibold text-slate-600">Priority</TableHead>
+              <TableHead className="w-10" />
               <TableHead className="font-semibold text-slate-600">Item</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">On Hand</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">Reorder Pt</TableHead>
@@ -137,14 +138,14 @@ export default function Reorder() {
             {isLoading ? (
               [1,2,3].map(i => (
                 <TableRow key={i}>
-                  {[...Array(8)].map((_, j) => (
+                  {[...Array(9)].map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : !filtered?.length ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={9} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900">No reorder recommendations</p>
                   <p className="text-sm mt-1">All stock levels are above reorder points.</p>
@@ -157,6 +158,17 @@ export default function Reorder() {
               filtered.map((rec: any) => (
                 <TableRow key={rec.id} className="hover:bg-slate-50/50">
                   <TableCell><PriorityBadge level={rec.priorityLevel} /></TableCell>
+                  <TableCell className="py-2 pr-0">
+                    {rec.item?.imageUrl ? (
+                      <img
+                        src={rec.item.imageUrl}
+                        alt=""
+                        className="w-8 h-8 rounded object-cover bg-slate-100 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-slate-100 flex-shrink-0" />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Link href={`/inventory/${rec.item?.id}`}>
                       <p className="font-medium text-slate-900 hover:text-brand-600">{rec.item?.name}</p>

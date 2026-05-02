@@ -1,0 +1,77 @@
+Do NOT rebuild the Reorder page.
+Do NOT change reorder recommendation business logic or backend routes broadly.
+
+Focus ONLY on:
+- client/src/pages/Reorder.tsx
+- tiny directly related helpers only if truly needed
+
+TASK GOAL
+Improve the Reorder tab so admins can quickly narrow down items without endlessly scrolling.
+
+IMPORTANT DIRECTION
+- Keep the main list as a flat list
+- Do NOT create category-grouped sections in the main view
+- Category distinction must be handled through filters, not grouped rendering
+
+CURRENT STATE
+The Reorder tab already has:
+- a photo column
+- supplier removed from the main table
+
+Now add search and practical filters so the page is easier to use.
+
+REQUIRED CHANGES
+
+PART 1 — ADD ONE MAIN SEARCH BAR
+Add one search input that filters visible reorder rows by:
+- item name
+- SKU
+- size
+- category
+
+Do NOT include supplier in the main search behavior.
+
+Use a compact admin-friendly search bar.
+Placeholder example:
+- Search item, SKU, size...
+
+PART 2 — ADD FILTERS
+Add compact filters for:
+- Category
+- Priority
+- Status
+- Needs Reorder Only (toggle)
+
+Requirements:
+- Keep filters lightweight and desktop-friendly
+- Main list must remain flat, not grouped by category
+- All filters should work together with search
+
+PART 3 — DEFAULT STATE
+Use a practical default state:
+- Needs Reorder Only = ON by default
+- other filters = All
+- search empty by default
+
+The user must still be able to switch to a full list view.
+
+PART 4 — KEEP THE PAGE STRUCTURE
+- keep the table/list layout
+- keep the photo column
+- keep supplier out of the main table
+- no card redesign
+- no export changes yet
+- no bulk selection changes yet
+
+CONSTRAINTS
+- No grouped category sections
+- No reorder calculation rewrite
+- No broad backend changes
+- No pagination in this step yet
+
+OUTPUT
+1. Summary of search behavior
+2. Summary of filters added
+3. Default filter state used
+4. Files modified
+5. Anything intentionally left unchanged

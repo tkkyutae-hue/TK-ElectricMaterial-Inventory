@@ -24,6 +24,7 @@ import { MoveCategoryDialog } from "@/components/category/MoveCategoryDialog";
 import { AdjustStockDialog } from "@/components/category/AdjustStockDialog";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CategoryDetail() {
@@ -31,6 +32,7 @@ export default function CategoryDetail() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { isAdminRole } = useAuth();
+  const { t } = useLanguage();
   const { data: locations } = useLocations();
 
   const [search, setSearch] = useState("");
@@ -307,8 +309,8 @@ export default function CategoryDetail() {
       setEditDrafts({});
       setEditNewRows([]);
     } catch (err: any) {
-      const msg: string = err.message ?? '저장 중 오류가 발생했습니다';
-      toast({ title: "저장 실패", description: msg.length > 400 ? msg.slice(0, 397) + '…' : msg, variant: "destructive" });
+      const msg: string = err.message ?? t.catSaveErrorGeneric;
+      toast({ title: t.cmnSaveFailed, description: msg.length > 400 ? msg.slice(0, 397) + '…' : msg, variant: "destructive" });
     } finally {
       setSavingInline(false);
     }

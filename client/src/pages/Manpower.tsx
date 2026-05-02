@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Worker } from "@shared/schema";
+import { useLanguage } from "@/hooks/use-language";
 
 // ─── Trade options — bilingual, consistent Korean — English format ────────────
 export const TRADE_OPTIONS = [
@@ -58,6 +59,7 @@ function AddWorkerRow({
   onSaved: () => void; onCancel: () => void; autoFocus?: boolean;
 }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [fullName, setFullName]   = useState("");
   const [trade, setTrade]         = useState("");
   const [photoUrl, setPhotoUrl]   = useState<string | null>(null);
@@ -87,7 +89,7 @@ function AddWorkerRow({
       onSaved();
     },
     onError: (err: any) => {
-      toast({ title: "Failed to register worker", description: err.message, variant: "destructive" });
+      toast({ title: t.eqRegisterFailed, description: err.message, variant: "destructive" });
     },
   });
 
@@ -109,7 +111,7 @@ function AddWorkerRow({
           <div
             className="w-9 h-9 rounded-full shrink-0 border border-dashed border-slate-300 bg-white flex items-center justify-center cursor-pointer hover:border-blue-400 overflow-hidden transition-colors"
             onClick={() => fileRef.current?.click()}
-            title="Click to upload photo"
+            title={t.mpUploadPhoto}
           >
             {photoUrl
               ? <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -121,7 +123,7 @@ function AddWorkerRow({
           <Input
             ref={nameRef}
             data-testid="input-inline-name"
-            placeholder="Full Name"
+            placeholder={t.mpFullName}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -134,10 +136,10 @@ function AddWorkerRow({
         <Select value={trade} onValueChange={(v) => setTrade(v === "__none__" ? "" : v)}>
           <SelectTrigger data-testid="select-inline-trade"
             className="h-8 text-sm max-w-[240px] bg-white">
-            <SelectValue placeholder="Select trade…" />
+            <SelectValue placeholder={t.mpSelectTradePh} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">— None —</SelectItem>
+            <SelectItem value="__none__">{t.cmnNoneDash}</SelectItem>
             {TRADE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
@@ -147,7 +149,7 @@ function AddWorkerRow({
 
       <td className="px-5 py-2.5">
         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
-          Active
+          {t.mpActive}
         </Badge>
       </td>
 
@@ -159,7 +161,7 @@ function AddWorkerRow({
             {createMutation.isPending
               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
               : <Check className="w-3.5 h-3.5" />}
-            Save
+            {t.cmnSave}
           </Button>
           <Button data-testid="btn-inline-cancel" variant="ghost" size="sm"
             className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
@@ -176,6 +178,7 @@ function AddWorkerRow({
 export default function Manpower() {
   const [, navigate] = useLocation();
   const { toast }    = useToast();
+  const { t }        = useLanguage();
 
   const [draftKeys, setDraftKeys]     = useState<number[]>([]);
   const [sortByTrade, setSortByTrade] = useState(false);
@@ -192,10 +195,10 @@ export default function Manpower() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/workers"] });
       setConfirmDeleteId(null);
-      toast({ title: "Worker removed." });
+      toast({ title: t.mpWorkerRemoved });
     },
     onError: (err: any) => {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: t.cmnDeleteFailed, description: err.message, variant: "destructive" });
       setConfirmDeleteId(null);
     },
   });
@@ -216,7 +219,7 @@ export default function Manpower() {
     .map((o) => ({ label: o.label, count: tradeCountMap[o.value] }));
 
   if (tradeCountMap["__none__"]) {
-    tradeCounts.push({ label: "Unclassified", count: tradeCountMap["__none__"] });
+    tradeCounts.push({ label: t.mpUnclassified, count: tradeCountMap["__none__"] });
   }
 
   // ── Sorted worker list ──
@@ -242,18 +245,18 @@ export default function Manpower() {
 
       {/* ── Page header ── */}
       <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">Manpower</h1>
+        <h1 className="text-3xl font-display font-bold text-slate-900">{t.mpTitle}</h1>
         <p className="text-slate-500 mt-1">
-          Register and manage your workforce. Use Evaluate to open a worker's profile.
+          {t.mpSubtitle}
         </p>
       </div>
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Users,        label: "Total Workers", value: String(workerList.length), color: "text-blue-600",    bg: "bg-blue-50"    },
-          { icon: CheckCircle2, label: "Active",        value: String(activeCount),       color: "text-emerald-600", bg: "bg-emerald-50" },
-          { icon: XCircle,      label: "Inactive",      value: String(inactiveCount),     color: "text-slate-500",   bg: "bg-slate-100"  },
+          { icon: Users,        label: t.mpTotalWorkers, value: String(workerList.length), color: "text-blue-600",    bg: "bg-blue-50"    },
+          { icon: CheckCircle2, label: t.mpActive,       value: String(activeCount),       color: "text-emerald-600", bg: "bg-emerald-50" },
+          { icon: XCircle,      label: t.mpInactive,     value: String(inactiveCount),     color: "text-slate-500",   bg: "bg-slate-100"  },
         ].map(({ icon: Icon, label, value, color, bg }) => (
           <Card key={label}>
             <CardContent className="flex items-center gap-4 pt-5 pb-5">
@@ -274,7 +277,7 @@ export default function Manpower() {
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-              Headcount by Classification
+              {t.mpHeadcountByClass}
             </p>
             <div className="flex flex-wrap gap-2">
               {tradeCounts.map(({ label, count }) => (
@@ -300,7 +303,7 @@ export default function Manpower() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <HardHat className="w-4 h-4 text-slate-500" />
-              Worker Registry
+              {t.mpWorkerRegistry}
             </CardTitle>
             <div className="flex items-center gap-2">
               {/* Sort toggle */}
@@ -312,7 +315,7 @@ export default function Manpower() {
                 onClick={() => setSortByTrade((v) => !v)}
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                {sortByTrade ? "Sorted by Role" : "Sort by Role"}
+                {sortByTrade ? t.mpSortedByRole : t.mpSortByRole}
               </Button>
               {/* Add worker */}
               <Button
@@ -322,7 +325,7 @@ export default function Manpower() {
                 onClick={handleAddClick}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                Register Worker
+                {t.mpRegisterWorker}
               </Button>
             </div>
           </div>
@@ -332,7 +335,7 @@ export default function Manpower() {
           {isLoading ? (
             <div className="flex items-center justify-center py-16 gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
-              <p className="text-sm text-slate-400">Loading workers…</p>
+              <p className="text-sm text-slate-400">{t.mpLoadingWorkers}</p>
             </div>
 
           ) : workerList.length === 0 && draftKeys.length === 0 ? (
@@ -341,9 +344,9 @@ export default function Manpower() {
                 <HardHat className="w-7 h-7 text-slate-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-600">No workers registered yet</p>
+                <p className="text-sm font-medium text-slate-600">{t.mpNoWorkers}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Use "Register Worker" above to add your first worker
+                  {t.mpUseRegister}
                 </p>
               </div>
             </div>
@@ -354,13 +357,13 @@ export default function Manpower() {
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Worker
+                      {t.mpColWorker}
                     </th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Trade / Classification
+                      {t.mpColTrade}
                     </th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                      Status
+                      {t.mpColStatus}
                     </th>
                     <th className="px-5 py-3" />
                   </tr>
@@ -421,13 +424,13 @@ export default function Manpower() {
                             <Badge variant="outline"
                               data-testid={`badge-worker-status-${worker.id}`}
                               className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
-                              Active
+                              {t.mpActive}
                             </Badge>
                           ) : (
                             <Badge variant="outline"
                               data-testid={`badge-worker-status-${worker.id}`}
                               className="bg-slate-100 text-slate-500 border-slate-200 text-xs font-semibold">
-                              Inactive
+                              {t.mpInactive}
                             </Badge>
                           )}
                         </td>
@@ -439,7 +442,7 @@ export default function Manpower() {
                               /* ── Delete confirmation ── */
                               <>
                                 <span className="text-xs text-red-600 font-medium mr-1">
-                                  Remove worker?
+                                  {t.mpRemoveWorkerQ}
                                 </span>
                                 <Button
                                   data-testid={`btn-delete-confirm-${worker.id}`}
@@ -452,7 +455,7 @@ export default function Manpower() {
                                   {isDeleting
                                     ? <Loader2 className="w-3 h-3 animate-spin" />
                                     : <Check className="w-3 h-3" />}
-                                  Yes
+                                  {t.mpYes}
                                 </Button>
                                 <Button
                                   data-testid={`btn-delete-cancel-${worker.id}`}
@@ -477,7 +480,7 @@ export default function Manpower() {
                                   onClick={() => navigate(`/manpower/${worker.id}`)}
                                 >
                                   <ClipboardList className="w-3.5 h-3.5" />
-                                  Evaluate
+                                  {t.mpEvaluate}
                                 </Button>
                                 {/* Delete */}
                                 <Button

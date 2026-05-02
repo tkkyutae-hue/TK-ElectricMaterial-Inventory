@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { Link } from "wouter";
+import { useLanguage } from "@/hooks/use-language";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -20,6 +21,7 @@ function formatCurrency(value: string | number) {
 }
 
 export default function Reports() {
+  const { t } = useLanguage();
   const { data: lowStock } = useQuery({ queryKey: [api.reports.lowStock.path], queryFn: () => fetchJson(api.reports.lowStock.path) });
   const { data: byLocation } = useQuery({ queryKey: [api.reports.byLocation.path], queryFn: () => fetchJson(api.reports.byLocation.path) });
   const { data: valuation } = useQuery({ queryKey: [api.reports.valuation.path], queryFn: () => fetchJson(api.reports.valuation.path) });
@@ -28,31 +30,31 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">Reports</h1>
-        <p className="text-slate-500 mt-1">Inventory analytics and operational summaries.</p>
+        <h1 className="text-3xl font-display font-bold text-slate-900">{t.repTitle}</h1>
+        <p className="text-slate-500 mt-1">{t.repSubtitle}</p>
       </div>
 
       <Tabs defaultValue="valuation">
         <TabsList className="bg-slate-100 p-1 rounded-xl">
-          <TabsTrigger value="valuation" className="rounded-lg gap-2"><DollarSign className="w-4 h-4" />Valuation</TabsTrigger>
-          <TabsTrigger value="low-stock" className="rounded-lg gap-2"><AlertTriangle className="w-4 h-4" />Low Stock</TabsTrigger>
-          <TabsTrigger value="by-location" className="rounded-lg gap-2"><MapPin className="w-4 h-4" />By Location</TabsTrigger>
-          <TabsTrigger value="projects" className="rounded-lg gap-2"><Briefcase className="w-4 h-4" />Usage by Project</TabsTrigger>
+          <TabsTrigger value="valuation" className="rounded-lg gap-2"><DollarSign className="w-4 h-4" />{t.repTabValuation}</TabsTrigger>
+          <TabsTrigger value="low-stock" className="rounded-lg gap-2"><AlertTriangle className="w-4 h-4" />{t.repTabLowStock}</TabsTrigger>
+          <TabsTrigger value="by-location" className="rounded-lg gap-2"><MapPin className="w-4 h-4" />{t.repTabByLocation}</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-lg gap-2"><Briefcase className="w-4 h-4" />{t.repTabUsageByProject}</TabsTrigger>
         </TabsList>
 
         {/* ── Valuation ──────────────────────────────────────────────────────── */}
         <TabsContent value="valuation" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="premium-card bg-white p-6">
-              <p className="text-sm text-slate-500 mb-1">Total Inventory Value</p>
+              <p className="text-sm text-slate-500 mb-1">{t.repTotalInventoryValue}</p>
               <p className="text-3xl font-display font-bold text-slate-900">{formatCurrency(valuation?.totalValue || 0)}</p>
             </div>
             <div className="premium-card bg-white p-6">
-              <p className="text-sm text-slate-500 mb-1">Active SKUs</p>
+              <p className="text-sm text-slate-500 mb-1">{t.repActiveSkus}</p>
               <p className="text-3xl font-display font-bold text-slate-900">{valuation?.items?.length || 0}</p>
             </div>
             <div className="premium-card bg-white p-6">
-              <p className="text-sm text-slate-500 mb-1">Categories</p>
+              <p className="text-sm text-slate-500 mb-1">{t.repCategoriesCount}</p>
               <p className="text-3xl font-display font-bold text-slate-900">{valuation?.byCategory?.length || 0}</p>
             </div>
           </div>
@@ -61,7 +63,7 @@ export default function Reports() {
             <div className="lg:col-span-2">
               <div className="premium-card bg-white overflow-hidden">
                 <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="font-semibold text-slate-900">By Category</h3>
+                  <h3 className="font-semibold text-slate-900">{t.repByCategory}</h3>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {valuation?.byCategory?.map((cat: any, i: number) => {
@@ -88,15 +90,15 @@ export default function Reports() {
             <div className="lg:col-span-3">
               <div className="premium-card bg-white overflow-hidden">
                 <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="font-semibold text-slate-900">Top Items by Value</h3>
+                  <h3 className="font-semibold text-slate-900">{t.repTopItemsByValue}</h3>
                 </div>
                 <Table>
                   <TableHeader className="bg-slate-50/80">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="font-semibold text-slate-600">Item</TableHead>
-                      <TableHead className="font-semibold text-slate-600 text-right">Qty</TableHead>
-                      <TableHead className="font-semibold text-slate-600 text-right">Unit Cost</TableHead>
-                      <TableHead className="font-semibold text-slate-600 text-right">Total Value</TableHead>
+                      <TableHead className="font-semibold text-slate-600">{t.repColItem}</TableHead>
+                      <TableHead className="font-semibold text-slate-600 text-right">{t.repColQty}</TableHead>
+                      <TableHead className="font-semibold text-slate-600 text-right">{t.repColUnitCost}</TableHead>
+                      <TableHead className="font-semibold text-slate-600 text-right">{t.repColTotalValue}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -123,36 +125,36 @@ export default function Reports() {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
               <p className="text-2xl font-display font-bold text-rose-900">{lowStock?.outOfStock?.length || 0}</p>
-              <p className="text-rose-700 text-sm mt-1">Out of Stock</p>
+              <p className="text-rose-700 text-sm mt-1">{t.repOutOfStock}</p>
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
               <p className="text-2xl font-display font-bold text-amber-900">{lowStock?.lowStock?.length || 0}</p>
-              <p className="text-amber-700 text-sm mt-1">Below Reorder Point</p>
+              <p className="text-amber-700 text-sm mt-1">{t.repBelowReorderPoint}</p>
             </div>
           </div>
 
           {lowStock?.outOfStock?.length > 0 && (
             <div className="premium-card bg-white overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-rose-50/50">
-                <h3 className="font-semibold text-rose-900">Out of Stock</h3>
+                <h3 className="font-semibold text-rose-900">{t.repOutOfStock}</h3>
               </div>
-              <StockTable items={lowStock.outOfStock} />
+              <StockTable items={lowStock.outOfStock} t={t} />
             </div>
           )}
 
           {lowStock?.lowStock?.length > 0 && (
             <div className="premium-card bg-white overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-amber-50/50">
-                <h3 className="font-semibold text-amber-900">Below Reorder Point</h3>
+                <h3 className="font-semibold text-amber-900">{t.repBelowReorderPoint}</h3>
               </div>
-              <StockTable items={lowStock.lowStock} />
+              <StockTable items={lowStock.lowStock} t={t} />
             </div>
           )}
 
           {!lowStock?.outOfStock?.length && !lowStock?.lowStock?.length && (
             <div className="premium-card bg-white p-16 text-center">
               <TrendingUp className="w-12 h-12 mx-auto text-emerald-400 mb-3" />
-              <p className="font-semibold text-slate-900">All stock levels are healthy</p>
+              <p className="font-semibold text-slate-900">{t.repAllHealthy}</p>
             </div>
           )}
         </TabsContent>
@@ -173,11 +175,11 @@ export default function Reports() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Active SKUs</p>
+                    <p className="text-xs text-slate-400 mb-0.5">{t.repActiveSkus}</p>
                     <p className="text-xl font-display font-bold text-slate-900">{loc.itemCount}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 mb-0.5">Total Value</p>
+                    <p className="text-xs text-slate-400 mb-0.5">{t.repColTotalValue}</p>
                     <p className="text-lg font-display font-bold text-slate-900">{formatCurrency(loc.totalValue)}</p>
                   </div>
                 </div>
@@ -193,9 +195,9 @@ export default function Reports() {
               <Table>
                 <TableHeader className="bg-slate-50/80">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-semibold text-slate-600">Item</TableHead>
-                    <TableHead className="font-semibold text-slate-600 text-right">Quantity</TableHead>
-                    <TableHead className="font-semibold text-slate-600 text-right">Value</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.repColItem}</TableHead>
+                    <TableHead className="font-semibold text-slate-600 text-right">{t.repColQuantity}</TableHead>
+                    <TableHead className="font-semibold text-slate-600 text-right">{t.repColValue}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -223,13 +225,13 @@ export default function Reports() {
             <Table>
               <TableHeader className="bg-slate-50/80">
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="font-semibold text-slate-600">Project</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Customer</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Status</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Issued</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Returned</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Net Used</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Value</TableHead>
+                  <TableHead className="font-semibold text-slate-600">{t.repColProject}</TableHead>
+                  <TableHead className="font-semibold text-slate-600">{t.repColCustomer}</TableHead>
+                  <TableHead className="font-semibold text-slate-600">{t.repColStatus}</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">{t.repColIssued}</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">{t.repColReturned}</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">{t.repColNetUsed}</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">{t.repColValue}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -260,17 +262,17 @@ export default function Reports() {
   );
 }
 
-function StockTable({ items }: { items: any[] }) {
+function StockTable({ items, t }: { items: any[]; t: any }) {
   return (
     <Table>
       <TableHeader className="bg-slate-50/80">
         <TableRow className="hover:bg-transparent">
-          <TableHead className="font-semibold text-slate-600">Item</TableHead>
-          <TableHead className="font-semibold text-slate-600">Category</TableHead>
-          <TableHead className="font-semibold text-slate-600 text-right">On Hand</TableHead>
-          <TableHead className="font-semibold text-slate-600 text-right">Reorder Pt</TableHead>
-          <TableHead className="font-semibold text-slate-600">Supplier</TableHead>
-          <TableHead className="font-semibold text-slate-600">Status</TableHead>
+          <TableHead className="font-semibold text-slate-600">{t.repColItem}</TableHead>
+          <TableHead className="font-semibold text-slate-600">{t.repColCategory}</TableHead>
+          <TableHead className="font-semibold text-slate-600 text-right">{t.repColOnHand}</TableHead>
+          <TableHead className="font-semibold text-slate-600 text-right">{t.repColReorderPt}</TableHead>
+          <TableHead className="font-semibold text-slate-600">{t.repColSupplier}</TableHead>
+          <TableHead className="font-semibold text-slate-600">{t.repColStatus}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

@@ -11,8 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { Link } from "wouter";
+import { useLanguage } from "@/hooks/use-language";
 
 export default function Suppliers() {
+  const { t } = useLanguage();
   const { data: suppliers, isLoading } = useSuppliers();
   const createMutation = useCreateSupplier();
   const [search, setSearch] = useState("");
@@ -36,13 +38,13 @@ export default function Suppliers() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Suppliers</h1>
-          <p className="text-slate-500 mt-1">Manage your material and tool vendors.</p>
+          <h1 className="text-3xl font-display font-bold text-slate-900">{t.supTitle}</h1>
+          <p className="text-slate-500 mt-1">{t.supSubtitle}</p>
         </div>
         <div className="flex gap-3">
           <div className="relative">
             <Input
-              placeholder="Search suppliers..."
+              placeholder={t.supSearchPlaceholder}
               className="pl-4 bg-white w-52"
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -52,45 +54,45 @@ export default function Suppliers() {
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm">
-                <Plus className="w-4 h-4 mr-2" />Add Supplier
+                <Plus className="w-4 h-4 mr-2" />{t.supAddSupplier}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
-              <DialogHeader><DialogTitle>Add Supplier</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t.supAddSupplier}</DialogTitle></DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="name" render={({ field }) => (
-                      <FormItem className="col-span-2"><FormLabel>Company Name</FormLabel><FormControl><Input placeholder="Graybar Electric" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem className="col-span-2"><FormLabel>{t.supCompanyName}</FormLabel><FormControl><Input placeholder="Graybar Electric" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="contactName" render={({ field }) => (
-                      <FormItem><FormLabel>Contact Name</FormLabel><FormControl><Input placeholder="John Smith" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>{t.supContactName}</FormLabel><FormControl><Input placeholder="John Smith" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="leadTimeDays" render={({ field }) => (
-                      <FormItem><FormLabel>Lead Time (days)</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>{t.supLeadTimeDays}</FormLabel><FormControl><Input type="number" min="0" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="phone" render={({ field }) => (
-                      <FormItem><FormLabel>Phone</FormLabel><FormControl><Input placeholder="555-0101" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>{t.supPhone}</FormLabel><FormControl><Input placeholder="555-0101" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="sales@supplier.com" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>{t.supEmail}</FormLabel><FormControl><Input type="email" placeholder="sales@supplier.com" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="address" render={({ field }) => (
-                    <FormItem><FormLabel>Address</FormLabel><FormControl><Input placeholder="123 Industrial Blvd, Dallas TX" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>{t.supAddress}</FormLabel><FormControl><Input placeholder="123 Industrial Blvd, Dallas TX" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="notes" render={({ field }) => (
-                    <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={2} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>{t.supNotes}</FormLabel><FormControl><Textarea rows={2} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="preferredVendor" render={({ field }) => (
                     <FormItem className="flex items-center gap-3">
                       <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                      <FormLabel className="!mt-0">Preferred Vendor</FormLabel>
+                      <FormLabel className="!mt-0">{t.supPreferredVendor}</FormLabel>
                     </FormItem>
                   )} />
                   <div className="flex justify-end pt-2">
                     <Button type="submit" disabled={createMutation.isPending} className="bg-brand-700 hover:bg-brand-800">
-                      {createMutation.isPending ? "Creating..." : "Add Supplier"}
+                      {createMutation.isPending ? t.supCreating : t.supAddSupplier}
                     </Button>
                   </div>
                 </form>
@@ -107,7 +109,7 @@ export default function Suppliers() {
       ) : filtered?.length === 0 ? (
         <div className="premium-card bg-white p-16 text-center">
           <Truck className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-          <p className="font-semibold text-slate-900">No suppliers found</p>
+          <p className="font-semibold text-slate-900">{t.supNoneFound}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -127,7 +129,7 @@ export default function Suppliers() {
                     </div>
                     {supplier.preferredVendor && (
                       <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs border gap-1">
-                        <Star className="w-3 h-3" />Preferred
+                        <Star className="w-3 h-3" />{t.supPreferredBadge}
                       </Badge>
                     )}
                   </div>
@@ -146,7 +148,7 @@ export default function Suppliers() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                    <span>Lead time: {supplier.leadTimeDays != null ? `${supplier.leadTimeDays} days` : 'N/A'}</span>
+                    <span>{t.supLeadTime}: {supplier.leadTimeDays != null ? `${supplier.leadTimeDays} ${t.supDaysSuffix}` : t.supNa}</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </CardContent>

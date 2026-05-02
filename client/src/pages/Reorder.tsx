@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { useLanguage } from "@/hooks/use-language";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -14,14 +15,13 @@ async function fetchJson(url: string) {
   return res.json();
 }
 
-const priorityConfig: Record<string, { label: string; className: string; icon: any }> = {
-  critical: { label: "Critical", className: "bg-rose-100 text-rose-700 border-rose-200", icon: AlertCircle },
-  high: { label: "High", className: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertTriangle },
-  medium: { label: "Medium", className: "bg-amber-100 text-amber-700 border-amber-200", icon: Package },
-  low: { label: "Low", className: "bg-slate-100 text-slate-600 border-slate-200", icon: Package },
-};
-
-function PriorityBadge({ level }: { level: string }) {
+function PriorityBadge({ level, t }: { level: string; t: any }) {
+  const priorityConfig: Record<string, { label: string; className: string; icon: any }> = {
+    critical: { label: t.reorderPriorityCritical, className: "bg-rose-100 text-rose-700 border-rose-200", icon: AlertCircle },
+    high:     { label: t.reorderPriorityHigh,     className: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertTriangle },
+    medium:   { label: t.reorderPriorityMedium,   className: "bg-amber-100 text-amber-700 border-amber-200", icon: Package },
+    low:      { label: t.reorderPriorityLow,      className: "bg-slate-100 text-slate-600 border-slate-200", icon: Package },
+  };
   const cfg = priorityConfig[level] || priorityConfig.low;
   return (
     <Badge variant="outline" className={`${cfg.className} text-xs font-bold flex items-center gap-1 w-fit`}>
@@ -32,6 +32,7 @@ function PriorityBadge({ level }: { level: string }) {
 
 export default function Reorder() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [filter, setFilter] = useState("all");
 
@@ -55,7 +56,7 @@ export default function Reorder() {
     mutationFn: () => fetch('/api/reorder/generate', { method: 'POST', credentials: 'include' }).then(r => r.json()),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: [api.reorder.recommendations.path] });
-      toast({ title: "Recommendations generated", description: `${data.length} item${data.length !== 1 ? 's' : ''} need attention.` });
+      toast({ title: t.reorderGenerated, description: `${data.length} ${data.length !== 1 ? t.reorderItemPlural : t.reorderItemSingular} ${t.reorderNeedAttention}` });
     },
   });
 
@@ -85,16 +86,16 @@ export default function Reorder() {
       const catId = rec.item?.categoryId;
       const resolvedName = (catId != null && categoryMap[catId]) ? categoryMap[catId] : null;
       const key  = resolvedName != null ? String(catId) : "__none__";
-      const name = resolvedName ?? "Uncategorized";
+      const name = resolvedName ?? t.reorderUncategorized;
       if (!groups[key]) groups[key] = { key, name, items: [] };
       groups[key].items.push(rec);
     }
     return Object.values(groups).sort((a, b) => {
-      if (a.name === "Uncategorized") return 1;
-      if (b.name === "Uncategorized") return -1;
+      if (a.key === "__none__") return 1;
+      if (b.key === "__none__") return -1;
       return a.name.localeCompare(b.name);
     });
-  }, [filtered, categoryMap]);
+  }, [filtered, categoryMap, t]);
 
   const criticalCount = recommendations?.filter((r: any) => r.priorityLevel === 'critical').length || 0;
   const highCount = recommendations?.filter((r: any) => r.priorityLevel === 'high').length || 0;
@@ -103,8 +104,8 @@ export default function Reorder() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Reorder & Purchasing</h1>
-          <p className="text-slate-500 mt-1">Items that need to be ordered based on current stock levels.</p>
+          <h1 className="text-3xl font-display font-bold text-slate-900">{t.reorderTitle}</h1>
+          <p className="text-slate-500 mt-1">{t.reorderSubtitle}</p>
         </div>
         <Button
           onClick={() => generateMutation.mutate()}
@@ -112,7 +113,7 @@ export default function Reorder() {
           className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-          Refresh Recommendations
+          {t.reorderRefresh}
         </Button>
       </div>
 
@@ -122,8 +123,8 @@ export default function Reorder() {
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex items-center gap-4">
               <AlertCircle className="w-8 h-8 text-rose-500 flex-shrink-0" />
               <div>
-                <p className="font-bold text-rose-900 text-lg">{criticalCount} Critical</p>
-                <p className="text-rose-700 text-sm">Items completely out of stock</p>
+                <p className="font-bold text-rose-900 text-lg">{criticalCount} {t.reorderPriorityCritical}</p>
+                <p className="text-rose-700 text-sm">{t.reorderItemsOutOfStock}</p>
               </div>
             </div>
           )}
@@ -131,8 +132,8 @@ export default function Reorder() {
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex items-center gap-4">
               <AlertTriangle className="w-8 h-8 text-orange-500 flex-shrink-0" />
               <div>
-                <p className="font-bold text-orange-900 text-lg">{highCount} High Priority</p>
-                <p className="text-orange-700 text-sm">Critically low stock levels</p>
+                <p className="font-bold text-orange-900 text-lg">{highCount} {t.reorderHighPriorityCard}</p>
+                <p className="text-orange-700 text-sm">{t.reorderItemsCriticallyLow}</p>
               </div>
             </div>
           )}
@@ -141,13 +142,19 @@ export default function Reorder() {
 
       <div className="premium-card bg-white overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex gap-2">
-          {["all", "critical", "high", "medium", "low"].map(f => (
+          {([
+            ["all",      t.reorderAll],
+            ["critical", t.reorderPriorityCritical],
+            ["high",     t.reorderPriorityHigh],
+            ["medium",   t.reorderPriorityMedium],
+            ["low",      t.reorderPriorityLow],
+          ] as const).map(([f, label]) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${filter === f ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === f ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
-              {f === "all" ? "All" : f}
+              {label}
             </button>
           ))}
         </div>
@@ -155,14 +162,14 @@ export default function Reorder() {
         <Table>
           <TableHeader className="bg-slate-50/80">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="font-semibold text-slate-600">Priority</TableHead>
-              <TableHead className="font-semibold text-slate-600 w-12 text-center">Photo</TableHead>
-              <TableHead className="font-semibold text-slate-600">Item</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-right">On Hand</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-right">Reorder Pt</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-right">Order Qty</TableHead>
-              <TableHead className="font-semibold text-slate-600">Reason</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
+              <TableHead className="font-semibold text-slate-600">{t.reorderColPriority}</TableHead>
+              <TableHead className="font-semibold text-slate-600 w-12 text-center">{t.reorderColPhoto}</TableHead>
+              <TableHead className="font-semibold text-slate-600">{t.reorderColItem}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOnHand}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColReorderPt}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOrderQty}</TableHead>
+              <TableHead className="font-semibold text-slate-600">{t.reorderColReason}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColActions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,10 +185,10 @@ export default function Reorder() {
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  <p className="font-semibold text-slate-900">No reorder recommendations</p>
-                  <p className="text-sm mt-1">All stock levels are above reorder points.</p>
+                  <p className="font-semibold text-slate-900">{t.reorderNoneFound}</p>
+                  <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
                   <Button variant="outline" className="mt-4" onClick={() => generateMutation.mutate()}>
-                    Check Now
+                    {t.reorderCheckNow}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -202,7 +209,7 @@ export default function Reorder() {
                 /* Item rows */
                 ...group.items.map((rec: any) => (
                   <TableRow key={rec.id} className="hover:bg-slate-50/50">
-                    <TableCell><PriorityBadge level={rec.priorityLevel} /></TableCell>
+                    <TableCell><PriorityBadge level={rec.priorityLevel} t={t} /></TableCell>
                     <TableCell className="py-2 pr-0">
                       {rec.item?.imageUrl ? (
                         <img
@@ -237,7 +244,7 @@ export default function Reorder() {
                           className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-50 border-emerald-200"
                           onClick={() => updateStatusMutation.mutate({ id: rec.id, status: 'ordered' })}
                         >
-                          <CheckCircle className="w-3 h-3 mr-1" />Ordered
+                          <CheckCircle className="w-3 h-3 mr-1" />{t.reorderOrderedBtn}
                         </Button>
                         <Button
                           size="sm"

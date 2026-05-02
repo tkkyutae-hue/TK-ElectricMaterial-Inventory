@@ -13,7 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, startOfDay, endOfDay, subDays, formatDistanceToNow } from "date-fns";
+import { ko as dfKo, es as dfEs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
+import type { Lang } from "@/lib/i18n";
+
+const DATE_FNS_LOCALE: Record<Lang, any> = { en: undefined, ko: dfKo, es: dfEs };
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 const thirtyAgoStr = () => subDays(new Date(), 30).toISOString().split("T")[0];
@@ -56,6 +61,8 @@ export default function Transactions() {
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
 
   const { toast: shadcnToast } = useToast();
+  const { t, lang } = useLanguage();
+  const dfLocale = DATE_FNS_LOCALE[lang];
   const bulkDelete = useBulkDeleteMovements();
   const updateMovement = useUpdateMovement();
 
@@ -109,13 +116,13 @@ export default function Transactions() {
     try {
       const result = await bulkDelete.mutateAsync(ids);
       const count = result.deleted?.length ?? ids.length;
-      shadcnToast({ title: `${count} transaction${count !== 1 ? "s" : ""} deleted` });
+      shadcnToast({ title: count === 1 ? t.txDeletedOne : t.txDeleted.replace("{n}", String(count)) });
       if (result.errors?.length) {
-        shadcnToast({ title: `${result.errors.length} failed to delete`, variant: "destructive" });
+        shadcnToast({ title: `${result.errors.length} ${t.txAdminFailedDelete}`, variant: "destructive" });
       }
       setSelectedIds(new Set());
     } catch (err: any) {
-      shadcnToast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      shadcnToast({ title: t.txAdminDeleteFailed, description: err.message, variant: "destructive" });
     }
     setConfirmDelete(false);
   }
@@ -172,7 +179,7 @@ export default function Transactions() {
       setToast({ txId: id });
       cancelRow(id);
     } catch (err: any) {
-      shadcnToast({ title: "Save failed", description: err.message, variant: "destructive" });
+      shadcnToast({ title: t.txAdminSaveFailed, description: err.message, variant: "destructive" });
     } finally {
       setSavingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
@@ -218,8 +225,8 @@ export default function Transactions() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">Transaction History</h1>
-          <p className="text-slate-500 mt-1">Full log of all inventory movements.</p>
+          <h1 className="text-3xl font-display font-bold text-slate-900">{t.txAdminTitle}</h1>
+          <p className="text-slate-500 mt-1">{t.txAdminSubtitle}</p>
         </div>
         <Dialog open={logOpen} onOpenChange={setLogOpen}>
           <Button
@@ -228,11 +235,11 @@ export default function Transactions() {
             data-testid="button-log-movement"
           >
             <ArrowRightLeft className="w-4 h-4 mr-2" />
-            Log Movement
+            {t.txAdminLogMovement}
           </Button>
           <DialogContent className="sm:max-w-[760px] flex flex-col max-h-[90vh] gap-0 p-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
-              <DialogTitle>Log Inventory Movement</DialogTitle>
+              <DialogTitle>{t.txAdminLogInventoryDialog}</DialogTitle>
             </DialogHeader>
             <div className="flex-1 flex flex-col min-h-0 px-6 pt-4 pb-6 overflow-hidden">
               <MovementForm onSuccess={() => setLogOpen(false)} onCancel={() => setLogOpen(false)} />
@@ -249,7 +256,7 @@ export default function Transactions() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Search by item name or SKU…"
+                placeholder={t.txAdminSearchPh}
                 className="pl-9 bg-white border-slate-200"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -258,22 +265,22 @@ export default function Transactions() {
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[150px] bg-white" data-testid="select-tx-type">
-                <SelectValue placeholder="All types" />
+                <SelectValue placeholder={t.txAdminAllTypesPh} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="receive">Receive</SelectItem>
-                <SelectItem value="issue">Issue</SelectItem>
-                <SelectItem value="return">Return</SelectItem>
-                <SelectItem value="transfer">Transfer</SelectItem>
+                <SelectItem value="all">{t.txAdminAllTypesItem}</SelectItem>
+                <SelectItem value="receive">{t.txAdminTypeReceive}</SelectItem>
+                <SelectItem value="issue">{t.txAdminTypeIssue}</SelectItem>
+                <SelectItem value="return">{t.txAdminTypeReturn}</SelectItem>
+                <SelectItem value="transfer">{t.txAdminTypeTransfer}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={projectFilter} onValueChange={setProjectFilter}>
               <SelectTrigger className="w-[170px] bg-white">
-                <SelectValue placeholder="All projects" />
+                <SelectValue placeholder={t.txAdminAllProjectsPh} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
+                <SelectItem value="all">{t.txAdminAllProjectsItem}</SelectItem>
                 {projects?.map((p: any) => (
                   <SelectItem key={p.id} value={p.id.toString()}>{p.poNumber || p.name}</SelectItem>
                 ))}
@@ -283,7 +290,7 @@ export default function Transactions() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span className="whitespace-nowrap text-xs font-medium text-slate-500">Date range:</span>
+              <span className="whitespace-nowrap text-xs font-medium text-slate-500">{t.txAdminDateRange}</span>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -293,7 +300,7 @@ export default function Transactions() {
                 onChange={(e) => setStartDate(e.target.value)}
                 data-testid="input-tx-start-date"
               />
-              <span className="text-slate-400 text-xs">to</span>
+              <span className="text-slate-400 text-xs">–</span>
               <Input
                 type="date"
                 className="h-8 w-[140px] bg-white border-slate-200 text-sm"
@@ -308,7 +315,7 @@ export default function Transactions() {
                 className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
                 data-testid="button-reset-dates"
               >
-                Reset to 30 days
+                {t.txAdminReset30}
               </button>
             )}
           </div>
@@ -319,15 +326,15 @@ export default function Transactions() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/80">
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Date</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">Type</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">Size</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Item</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">Qty</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">From</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">To</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">Project</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Note</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txDate}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">{t.txAdminColType}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txAdminColSize}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txItem}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">{t.txAdminColQty}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">{t.txAdminColFrom}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">{t.txAdminColTo}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">{t.txAdminColProject}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txAdminColNote}</TableHead>
                 {/* Select / Edit-action col */}
                 <TableHead className="text-center border-l border-slate-100" style={{ width: 90, minWidth: 90, background: selectionMode ? "#f0fdf4" : undefined }}>
                   {selectionMode ? (
@@ -353,7 +360,7 @@ export default function Transactions() {
                       data-testid="btn-selection-mode-toggle"
                       style={{ background: "none", border: "none", padding: "2px 6px", color: "#94a3b8", fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1 }}
                     >
-                      Select
+                      {t.txAdminSelectCol}
                     </button>
                   )}
                 </TableHead>
@@ -373,8 +380,8 @@ export default function Transactions() {
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-                    <p className="font-medium text-slate-900">No transactions found</p>
-                    <p className="text-sm">Try adjusting filters or log a new movement.</p>
+                    <p className="font-medium text-slate-900">{t.txAdminNoneFound}</p>
+                    <p className="text-sm">{t.txAdminTryAdjusting}</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -386,8 +393,8 @@ export default function Transactions() {
                   const isEdited  = !!tx.editedAt;
                   const lastEditor = isEdited ? (tx.editHistory as any[])?.[((tx.editHistory as any[])?.length ?? 1) - 1] : null;
                   const editLabel = lastEditor
-                    ? `edited by ${lastEditor.editedBy?.replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEditor.editedAt), { addSuffix: true })}`
-                    : "edited";
+                    ? `${t.txAdminEditedBy} ${lastEditor.editedBy?.replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEditor.editedAt), { addSuffix: true, locale: dfLocale })}`
+                    : t.txAdminEditedTag.toLowerCase();
 
                   const cellInput: React.CSSProperties = {
                     fontSize: 11, padding: "3px 5px", height: 26, borderRadius: 4,
@@ -417,8 +424,8 @@ export default function Transactions() {
                           />
                         ) : (
                           <>
-                            {format(new Date(tx.createdAt), "MMM d, yy")}<br />
-                            <span className="text-slate-400">{format(new Date(tx.createdAt), "HH:mm")}</span>
+                            {format(new Date(tx.createdAt), "MMM d, yy", { locale: dfLocale })}<br />
+                            <span className="text-slate-400">{format(new Date(tx.createdAt), "HH:mm", { locale: dfLocale })}</span>
                             {isEdited && (
                               <TooltipProvider delayDuration={100}>
                                 <Tooltip>
@@ -437,7 +444,7 @@ export default function Transactions() {
                                         cursor: "default",
                                       }}
                                     >
-                                      ✎ EDITED
+                                      ✎ {t.txAdminEditedTag}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent side="right" className="text-xs max-w-[180px]">
@@ -459,10 +466,10 @@ export default function Transactions() {
                             style={cellSelect}
                             data-testid={`select-type-${tx.id}`}
                           >
-                            <option value="receive">Receive</option>
-                            <option value="issue">Issue</option>
-                            <option value="return">Return</option>
-                            <option value="transfer">Transfer</option>
+                            <option value="receive">{t.txAdminTypeReceive}</option>
+                            <option value="issue">{t.txAdminTypeIssue}</option>
+                            <option value="return">{t.txAdminTypeReturn}</option>
+                            <option value="transfer">{t.txAdminTypeTransfer}</option>
                           </select>
                         ) : (
                           <TransactionTypeBadge type={tx.movementType} />
@@ -476,7 +483,7 @@ export default function Transactions() {
 
                       {/* Item (read-only) */}
                       <TableCell style={{ verticalAlign: "middle" }}>
-                        <p className="font-medium text-slate-900 text-sm">{tx.item?.name || `Item #${tx.itemId}`}</p>
+                        <p className="font-medium text-slate-900 text-sm">{tx.item?.name || `${t.txItemFallback} #${tx.itemId}`}</p>
                         <p className="text-xs font-mono text-slate-400">{tx.item?.sku}</p>
                       </TableCell>
 
@@ -512,7 +519,7 @@ export default function Transactions() {
                             style={cellSelect}
                             data-testid={`select-from-${tx.id}`}
                           >
-                            <option value="">— none —</option>
+                            <option value="">{t.txAdminNoneOpt}</option>
                             {(locations ?? []).map((loc: any) => (
                               <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
                             ))}
@@ -531,7 +538,7 @@ export default function Transactions() {
                             style={cellSelect}
                             data-testid={`select-to-${tx.id}`}
                           >
-                            <option value="">— none —</option>
+                            <option value="">{t.txAdminNoneOpt}</option>
                             {(locations ?? []).map((loc: any) => (
                               <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
                             ))}
@@ -550,7 +557,7 @@ export default function Transactions() {
                             style={{ ...cellSelect, maxWidth: 150 }}
                             data-testid={`select-project-${tx.id}`}
                           >
-                            <option value="">— none —</option>
+                            <option value="">{t.txAdminNoneOpt}</option>
                             {(projects ?? []).map((p: any) => (
                               <option key={p.id} value={String(p.id)}>{p.poNumber ? `${p.poNumber} — ${p.name}` : p.name}</option>
                             ))}
@@ -584,7 +591,7 @@ export default function Transactions() {
                             type="text"
                             value={draft?.note ?? ""}
                             onChange={e => updateDraft(tx.id, "note", e.target.value)}
-                            placeholder="Add note…"
+                            placeholder={t.txAdminAddNotePh}
                             style={{ ...cellInput, minWidth: 100 }}
                             data-testid={`input-note-${tx.id}`}
                           />
@@ -606,7 +613,7 @@ export default function Transactions() {
                               onClick={() => saveRow(tx.id)}
                               disabled={isSaving}
                               data-testid={`btn-save-row-${tx.id}`}
-                              title="Save changes"
+                              title={t.txAdminTooltipSave}
                               style={{
                                 width: 26, height: 26, borderRadius: 5,
                                 background: isSaving ? "#f1f5f9" : "rgba(22,163,74,0.10)",
@@ -629,7 +636,7 @@ export default function Transactions() {
                               onClick={() => cancelRow(tx.id)}
                               disabled={isSaving}
                               data-testid={`btn-cancel-row-${tx.id}`}
-                              title="Cancel edit"
+                              title={t.txAdminTooltipCancel}
                               style={{
                                 width: 26, height: 26, borderRadius: 5,
                                 background: "rgba(100,116,139,0.08)",
@@ -674,11 +681,11 @@ export default function Transactions() {
         >
           {/* Left: showing count */}
           <span className="text-xs text-slate-400" style={{ flex: 1 }}>
-            Showing{" "}
+            {t.txAdminShowing}{" "}
             <strong className="text-slate-700">
               {(filtered?.length ?? 0) === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered?.length ?? 0)}
             </strong>
-            {" "}of{" "}
+            {" "}{t.txAdminOf}{" "}
             <strong className="text-slate-700">{filtered?.length ?? 0}</strong>
           </span>
 
@@ -765,12 +772,12 @@ export default function Transactions() {
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
             {editingIds.size > 0 && (
               <span className="text-xs font-semibold" style={{ marginRight: 2, color: "#ca8a04" }}>
-                {editingIds.size} editing
+                {editingIds.size} {t.txAdminEditing}
               </span>
             )}
             {selCount > 0 && editingIds.size === 0 && (
               <span className="text-xs text-slate-400" style={{ marginRight: 2 }}>
-                {selCount} selected
+                {selCount} {t.txAdminSelected}
               </span>
             )}
             <button
@@ -788,7 +795,7 @@ export default function Transactions() {
               }}
             >
               <Edit2 style={{ width: 10, height: 10 }} />
-              {selCount > 1 ? `Edit (${selCount})` : "Edit"}
+              {selCount > 1 ? `${t.txAdminEditBtn} (${selCount})` : t.txAdminEditBtn}
             </button>
             <button
               type="button"
@@ -804,7 +811,7 @@ export default function Transactions() {
                 cursor: canDelete ? "pointer" : "default",
               }}
             >
-              <Trash2 style={{ width: 10, height: 10 }} /> Delete
+              <Trash2 style={{ width: 10, height: 10 }} /> {t.txAdminDeleteBtn}
             </button>
             <button
               type="button"
@@ -820,7 +827,7 @@ export default function Transactions() {
                 cursor: (selectionMode || editingIds.size > 0) ? "pointer" : "default",
               }}
             >
-              <X style={{ width: 10, height: 10 }} /> Cancel
+              <X style={{ width: 10, height: 10 }} /> {t.txAdminCancelBtn}
             </button>
           </div>
         </div>
@@ -833,15 +840,15 @@ export default function Transactions() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-500" />
-              Delete {selCount} transaction{selCount !== 1 ? "s" : ""}?
+              {t.txAdminConfirmDelTitle.replace("{n}", String(selCount))}
             </DialogTitle>
             <p className="text-sm text-slate-500 mt-1">
-              This will permanently delete the selected transactions and reverse their effect on inventory. This cannot be undone.
+              {t.txAdminConfirmDelBody}
             </p>
           </DialogHeader>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={bulkDelete.isPending}>
-              Cancel
+              {t.txAdminCancelBtn}
             </Button>
             <Button
               size="sm"
@@ -851,7 +858,7 @@ export default function Transactions() {
               data-testid="button-confirm-delete"
             >
               <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-              {bulkDelete.isPending ? "Deleting…" : `Delete ${selCount}`}
+              {bulkDelete.isPending ? t.txAdminDeleting : `${t.txAdminConfirmDeleteBtn} ${selCount}`}
             </Button>
           </div>
         </DialogContent>

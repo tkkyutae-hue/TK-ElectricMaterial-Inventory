@@ -12,20 +12,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status config
 // ─────────────────────────────────────────────────────────────────────────────
-const STATUS_OPTIONS = [
-  { value: "active",    label: "Active",    dotClass: "bg-emerald-500", chipClass: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200" },
-  { value: "on_hold",   label: "On Hold",   dotClass: "bg-amber-500",   chipClass: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200" },
-  { value: "completed", label: "Completed", dotClass: "bg-slate-400",   chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" },
-  { value: "cancelled", label: "Cancelled", dotClass: "bg-rose-500",    chipClass: "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200" },
+const STATUS_OPTIONS_BASE = [
+  { value: "active",    dotClass: "bg-emerald-500", chipClass: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200" },
+  { value: "on_hold",   dotClass: "bg-amber-500",   chipClass: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200" },
+  { value: "completed", dotClass: "bg-slate-400",   chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" },
+  { value: "cancelled", dotClass: "bg-rose-500",    chipClass: "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200" },
 ];
 const STATUS_ORDER: Record<string, number> = { active: 0, on_hold: 1, completed: 2, cancelled: 3 };
-const statusMap = Object.fromEntries(STATUS_OPTIONS.map(s => [s.value, s]));
-function getStatusCfg(s: string) {
-  return statusMap[s] ?? { label: s, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
+function statusLabelOf(value: string, t: any): string {
+  switch (value) {
+    case "active":    return t.projStatusActive;
+    case "on_hold":   return t.projStatusOnHold;
+    case "completed": return t.projStatusCompleted;
+    case "cancelled": return t.projStatusCancelled;
+    default:          return value;
+  }
+}
+function getStatusCfg(s: string, t: any) {
+  const base = STATUS_OPTIONS_BASE.find(o => o.value === s);
+  return base
+    ? { ...base, label: statusLabelOf(base.value, t) }
+    : { value: s, label: s, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,7 +107,8 @@ function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPo
   onChangeStart: (id: number, s: string) => void;
   openPopoverId: number | null; setOpenPopoverId: (id: number | null) => void;
 }) {
-  const cfg = getStatusCfg(status), isOpen = openPopoverId === projectId;
+  const { t } = useLanguage();
+  const cfg = getStatusCfg(status, t), isOpen = openPopoverId === projectId;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
@@ -117,13 +130,13 @@ function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPo
       </button>
       {isOpen && (
         <div className="absolute z-[200] top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
-          {STATUS_OPTIONS.map(opt => (
+          {STATUS_OPTIONS_BASE.map(opt => (
             <button key={opt.value} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left"
               data-testid={`status-option-${opt.value}`}
               onClick={(e) => { e.stopPropagation(); setOpenPopoverId(null); if (opt.value !== status) onChangeStart(projectId, opt.value); }}
             >
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dotClass}`} />
-              <span className="flex-1 font-medium text-slate-700">{opt.label}</span>
+              <span className="flex-1 font-medium text-slate-700">{statusLabelOf(opt.value, t)}</span>
               {opt.value === status && <Check className="w-3.5 h-3.5 text-brand-600" />}
             </button>
           ))}
@@ -247,6 +260,7 @@ function TimelineCell({ projectId, startDate, endDate, onTimelineSave }: {
   projectId: number; startDate: string | null | undefined; endDate: string | null | undefined;
   onTimelineSave: (id: number, start: string | null, end: string | null) => void;
 }) {
+  const { t: tt } = useLanguage();
   const [open, setOpen] = useState(false);
   const [ds, setDs] = useState(startDate ?? "");
   const [de, setDe] = useState(endDate ?? "");
@@ -288,23 +302,23 @@ function TimelineCell({ projectId, startDate, endDate, onTimelineSave }: {
 
       {open && (
         <div className="absolute z-[200] top-full mt-1 left-0 bg-white border border-slate-200 rounded-lg shadow-xl p-3 min-w-[268px]" onClick={e => e.stopPropagation()}>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Timeline</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">{tt.projTimelineLabel}</p>
           <div className="flex items-end gap-2 mb-3">
             <div className="flex-1">
-              <label className="text-[10px] text-slate-400 font-medium block mb-1">Start</label>
+              <label className="text-[10px] text-slate-400 font-medium block mb-1">{tt.projTimelineStart}</label>
               <input type="date" className={dateCls} value={ds} onChange={e => setDs(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false); }} />
             </div>
             <span className="text-slate-400 text-sm pb-1.5">–</span>
             <div className="flex-1">
-              <label className="text-[10px] text-slate-400 font-medium block mb-1">End</label>
+              <label className="text-[10px] text-slate-400 font-medium block mb-1">{tt.projTimelineEnd}</label>
               <input type="date" className={dateCls} value={de} onChange={e => setDe(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false); }} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button className="h-6 px-3 text-xs rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors" onClick={() => setOpen(false)}>Cancel</button>
-            <button className="h-6 px-3 text-xs rounded bg-brand-600 hover:bg-brand-700 text-white font-semibold transition-colors" onClick={save} data-testid={`btn-save-timeline-${projectId}`}>Save</button>
+            <button className="h-6 px-3 text-xs rounded border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors" onClick={() => setOpen(false)}>{tt.projTimelineCancelBtn}</button>
+            <button className="h-6 px-3 text-xs rounded bg-brand-600 hover:bg-brand-700 text-white font-semibold transition-colors" onClick={save} data-testid={`btn-save-timeline-${projectId}`}>{tt.projTimelineSaveBtn}</button>
           </div>
         </div>
       )}
@@ -345,6 +359,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
   defaultCustomer: string; onCreate: (data: any) => void; onClose: () => void;
   cw: ColWidths; customerSuggestions: string[]; locationSuggestions: string[];
 }) {
+  const { t } = useLanguage();
   const [name, setName]     = useState("");
   const [po,   setPo]       = useState("");
   const [cust, setCust]     = useState(defaultCustomer);
@@ -366,26 +381,26 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
   return (
     <div className="flex items-center px-4 py-2 gap-2 bg-brand-50/40 border-t border-brand-100" onClick={e => e.stopPropagation()}>
       <div className="flex-shrink-0 hidden lg:block" style={{ width: cw.po }}>
-        <input className={inputCls} placeholder="PO / Code" value={po} onChange={e => setPo(e.target.value)} onKeyDown={kd} data-testid="add-row-po" />
+        <input className={inputCls} placeholder={t.projAddRowPoPh} value={po} onChange={e => setPo(e.target.value)} onKeyDown={kd} data-testid="add-row-po" />
       </div>
       <div className="flex-shrink-0 min-w-0" style={{ width: cw.name }}>
-        <input ref={nameRef} className={inputCls} placeholder="Project name *" value={name} onChange={e => setName(e.target.value)} onKeyDown={kd} data-testid="add-row-name" />
+        <input ref={nameRef} className={inputCls} placeholder={t.projAddRowNamePh} value={name} onChange={e => setName(e.target.value)} onKeyDown={kd} data-testid="add-row-name" />
       </div>
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.customer }}>
-        <CompactSuggestion value={cust} onChange={setCust} suggestions={customerSuggestions} placeholder="Customer" testId="add-row-customer" className="h-7" />
+        <CompactSuggestion value={cust} onChange={setCust} suggestions={customerSuggestions} placeholder={t.projAddRowCustomerPh} testId="add-row-customer" className="h-7" />
       </div>
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
-        <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder="Location" testId="add-row-location" className="h-7" />
+        <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder={t.projAddRowLocationPh} testId="add-row-location" className="h-7" />
       </div>
       <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.timeline }} />
       <div className="flex-shrink-0" style={{ width: cw.status }}>
         <select className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
           value={stat} onChange={e => setStat(e.target.value)} data-testid="add-row-status">
-          {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {STATUS_OPTIONS_BASE.map(o => <option key={o.value} value={o.value}>{statusLabelOf(o.value, t)}</option>)}
         </select>
       </div>
       <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 88 }}>
-        <button className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors" disabled={!name.trim()} onClick={submit} data-testid="add-row-save">Add</button>
+        <button className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors" disabled={!name.trim()} onClick={submit} data-testid="add-row-save">{t.projAddRowAddBtn}</button>
         <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 transition-colors" onClick={onClose} data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
       </div>
     </div>
@@ -416,6 +431,7 @@ function CustomerGroup({
   customerSuggestions: string[]; locationSuggestions: string[];
   autoOpenAdd?: boolean; onAutoAddClosed?: () => void;
 }) {
+  const { t } = useLanguage();
   const isNoCustomer = customerName === "__none__";
   const [showAdd, setShowAdd] = useState(false);
 
@@ -433,7 +449,7 @@ function CustomerGroup({
         data-testid={`group-header-${customerName}`}
       >
         <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-        <span className="font-semibold text-sm text-slate-700 flex-1 truncate">{isNoCustomer ? "No Customer" : customerName}</span>
+        <span className="font-semibold text-sm text-slate-700 flex-1 truncate">{isNoCustomer ? t.projNoCustomer : customerName}</span>
         <span className="text-[11px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full">{projects.length}</span>
         {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />}
       </button>
@@ -442,12 +458,12 @@ function CustomerGroup({
         <>
           {/* Column headers */}
           <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none">
-            <SortableHeader label="PO / Code"     col="po"       ss={ss} onSort={onSort} cw={cw} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
-            <SortableHeader label="Project Name"  col="name"     ss={ss} onSort={onSort} cw={cw} cwKey="name"     setColWidths={setColWidths} />
-            <SortableHeader label="Customer"      col="customer" ss={ss} onSort={onSort} cw={cw} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label="Location"      col="location" ss={ss} onSort={onSort} cw={cw} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label="Timeline"      col="timeline" ss={ss} onSort={onSort} cw={cw} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label="Status"        col="status"   ss={ss} onSort={onSort} cw={cw} cwKey="status"   setColWidths={setColWidths} />
+            <SortableHeader label={t.projColPo}       col="po"       ss={ss} onSort={onSort} cw={cw} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
+            <SortableHeader label={t.projColName}     col="name"     ss={ss} onSort={onSort} cw={cw} cwKey="name"     setColWidths={setColWidths} />
+            <SortableHeader label={t.projColCustomer} col="customer" ss={ss} onSort={onSort} cw={cw} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label={t.projColLocation} col="location" ss={ss} onSort={onSort} cw={cw} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label={t.projColTimeline} col="timeline" ss={ss} onSort={onSort} cw={cw} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
+            <SortableHeader label={t.projColStatus}   col="status"   ss={ss} onSort={onSort} cw={cw} cwKey="status"   setColWidths={setColWidths} />
             <div className="flex-shrink-0" style={{ width: 88 }} />
           </div>
 
@@ -500,13 +516,13 @@ function CustomerGroup({
                     onClick={e => { e.stopPropagation(); onDelete(project.id); }}
                     data-testid={`btn-delete-project-${project.id}`}
                     className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-opacity"
-                    title="Delete project"
+                    title={t.projDeleteProjectTooltip}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                   <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
                     <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors" data-testid={`link-open-project-${project.id}`}>
-                      Open <ChevronRight className="w-3.5 h-3.5" />
+                      {t.projOpen} <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </Link>
                 </div>
@@ -520,7 +536,7 @@ function CustomerGroup({
           ) : (
             <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 rounded-b-xl"
               onClick={() => setShowAdd(true)} data-testid={`btn-add-project-${customerName}`}>
-              <Plus className="w-3.5 h-3.5" /><span className="font-medium">Add project</span>
+              <Plus className="w-3.5 h-3.5" /><span className="font-medium">{t.projAddProject}</span>
             </button>
           )}
         </>
@@ -538,6 +554,7 @@ export default function Projects() {
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const [statusFilter,      setStatusFilter]      = useState("all");
   const [search,            setSearch]            = useState("");
@@ -609,9 +626,9 @@ export default function Projects() {
   }
 
   const onUpdateError = useCallback((err: unknown) => {
-    const msg = err instanceof Error ? err.message : "변경 사항을 저장하지 못했습니다.";
-    toast({ variant: "destructive", title: "저장 실패", description: msg });
-  }, [toast]);
+    const msg = err instanceof Error ? err.message : t.projSaveFailedDesc;
+    toast({ variant: "destructive", title: t.projSaveFailed, description: msg });
+  }, [toast, t]);
 
   const handleStatusChange  = useCallback((id: number, s: string)                              => { updateMutation.mutate({ id, status: s },                    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
   const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val },                 { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
@@ -624,11 +641,11 @@ export default function Projects() {
       onSuccess: () => { setDeleteConfirmId(null); },
       onError: (err: unknown) => {
         setDeleteConfirmId(null);
-        const msg = err instanceof Error ? err.message : "프로젝트를 삭제할 수 없습니다.";
-        toast({ variant: "destructive", title: "삭제 실패", description: msg });
+        const msg = err instanceof Error ? err.message : t.projDeleteFailedDesc;
+        toast({ variant: "destructive", title: t.projDeleteFailed, description: msg });
       },
     });
-  }, [deleteConfirmId, deleteMutation, toast]);
+  }, [deleteConfirmId, deleteMutation, toast, t]);
 
   function startNewCustomer() {
     const name = newCustInput.trim();
@@ -644,7 +661,7 @@ export default function Projects() {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-baseline gap-2 mr-1">
-          <h1 className="text-2xl font-display font-bold text-slate-900 leading-none">Projects</h1>
+          <h1 className="text-2xl font-display font-bold text-slate-900 leading-none">{t.projTitle}</h1>
           {!isLoading && allProjects.length > 0 && (
             <span className="text-sm font-medium text-slate-400" data-testid="text-project-count">
               {filtered.length === allProjects.length ? `${allProjects.length}` : `${filtered.length} / ${allProjects.length}`}
@@ -654,17 +671,17 @@ export default function Projects() {
 
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <Input placeholder="Search projects, customer, PO…" className="pl-9 bg-white border-slate-200 h-9 text-sm" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-project-search" />
+          <Input placeholder={t.projSearchPlaceholder} className="pl-9 bg-white border-slate-200 h-9 text-sm" value={search} onChange={e => setSearch(e.target.value)} data-testid="input-project-search" />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[138px] bg-white h-9 text-sm" data-testid="select-status-filter"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="on_hold">On Hold</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t.projAllStatuses}</SelectItem>
+            <SelectItem value="active">{t.projStatusActive}</SelectItem>
+            <SelectItem value="on_hold">{t.projStatusOnHold}</SelectItem>
+            <SelectItem value="completed">{t.projStatusCompleted}</SelectItem>
+            <SelectItem value="cancelled">{t.projStatusCancelled}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -674,15 +691,15 @@ export default function Projects() {
           onClick={() => setNewCustDialog(true)}
           data-testid="btn-new-customer"
         >
-          <UserPlus className="w-4 h-4 mr-1.5" />New Customer
+          <UserPlus className="w-4 h-4 mr-1.5" />{t.projNewCustomer}
         </Button>
       </div>
 
       {/* Clear filters */}
       {!isLoading && (search || statusFilter !== "all") && (
         <div className="flex items-center gap-2 text-sm text-slate-500 -mt-1">
-          <span>{filtered.length === allProjects.length ? `${allProjects.length} project${allProjects.length !== 1 ? "s" : ""}` : `${filtered.length} of ${allProjects.length} matching`}</span>
-          <button className="text-brand-600 hover:text-brand-800 font-medium text-xs transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }} data-testid="btn-clear-filters">Clear filters</button>
+          <span>{filtered.length === allProjects.length ? `${allProjects.length} ${allProjects.length !== 1 ? t.projUnitProjects : t.projUnitProject}` : `${filtered.length} / ${allProjects.length} ${t.projMatchingLabel}`}</span>
+          <button className="text-brand-600 hover:text-brand-800 font-medium text-xs transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }} data-testid="btn-clear-filters">{t.projClearFiltersBtn}</button>
         </div>
       )}
 
@@ -707,14 +724,14 @@ export default function Projects() {
       ) : filtered.length === 0 && !newCustomerForAdd ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
           <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><Briefcase className="w-7 h-7 text-slate-400" /></div>
-          <p className="font-semibold text-slate-900">No projects found</p>
+          <p className="font-semibold text-slate-900">{t.projNoneFound}</p>
           {search
-            ? <p className="text-sm text-slate-500 mt-1">No results for "<span className="font-medium">{search}</span>" — try different terms.</p>
+            ? <p className="text-sm text-slate-500 mt-1">{t.projNoResultsFor} "<span className="font-medium">{search}</span>" — {t.projTryDifferentTerms}</p>
             : statusFilter !== "all"
-              ? <p className="text-sm text-slate-500 mt-1">No projects match the selected status filter.</p>
-              : <p className="text-sm text-slate-500 mt-1">Projects will appear here grouped by customer.</p>}
+              ? <p className="text-sm text-slate-500 mt-1">{t.projNoMatchStatus}</p>
+              : <p className="text-sm text-slate-500 mt-1">{t.projAppearGrouped}</p>}
           {(search || statusFilter !== "all") && (
-            <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>Clear filters</button>
+            <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>{t.projClearFiltersBtn}</button>
           )}
         </div>
       ) : (
@@ -752,15 +769,15 @@ export default function Projects() {
       <Dialog open={deleteConfirmId !== null} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
         <DialogContent className="sm:max-w-[360px]">
           <DialogHeader>
-            <DialogTitle>프로젝트 삭제</DialogTitle>
-            <DialogDescription>이 프로젝트를 영구적으로 삭제하시겠습니까? 관련 이동 기록이 있으면 삭제할 수 없습니다.</DialogDescription>
+            <DialogTitle>{t.projDeleteTitle}</DialogTitle>
+            <DialogDescription>{t.projDeleteBody}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteConfirmId(null)} disabled={deleteMutation.isPending} data-testid="btn-cancel-delete-project">
-              취소
+              {t.projCancelBtn}
             </Button>
             <Button size="sm" variant="destructive" onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="btn-confirm-delete-project">
-              {deleteMutation.isPending ? "삭제 중..." : "삭제"}
+              {deleteMutation.isPending ? t.projDeletingBtn : t.projDeleteBtn}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -769,11 +786,11 @@ export default function Projects() {
       {/* New Customer Dialog */}
       <Dialog open={newCustDialog} onOpenChange={setNewCustDialog}>
         <DialogContent className="sm:max-w-[340px]">
-          <DialogHeader><DialogTitle>New Customer Group</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.projNewCustomerGroup}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-1">
-            <p className="text-sm text-slate-500">Enter a customer name to start a new project group.</p>
+            <p className="text-sm text-slate-500">{t.projEnterCustomerName}</p>
             <Input
-              placeholder="Customer name"
+              placeholder={t.projCustomerName}
               value={newCustInput}
               onChange={e => setNewCustInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && newCustInput.trim()) startNewCustomer(); }}
@@ -781,9 +798,9 @@ export default function Projects() {
               data-testid="input-new-customer-name"
             />
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={() => setNewCustDialog(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => setNewCustDialog(false)}>{t.projDialogCancelBtn}</Button>
               <Button size="sm" disabled={!newCustInput.trim()} onClick={startNewCustomer} className="bg-brand-700 hover:bg-brand-800" data-testid="btn-confirm-new-customer">
-                Start Project
+                {t.projStartProject}
               </Button>
             </div>
           </div>

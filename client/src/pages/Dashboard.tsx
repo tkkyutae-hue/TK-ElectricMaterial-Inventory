@@ -15,6 +15,7 @@ import { Link } from "wouter";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { getCategoryGradient } from "@/lib/categoryUtils";
+import { useLanguage } from "@/hooks/use-language";
 
 type CategorySummary = {
   id: number;
@@ -35,6 +36,7 @@ type LowStockReport = {
 type TimeRange = "30D" | "90D" | "12M";
 
 function MonthlyTrendChart() {
+  const { t } = useLanguage();
   const [timeRange, setTimeRange] = useState<TimeRange>("90D");
 
   const { data: trend, isLoading } = useQuery<Array<{ label: string; value: number }>>({
@@ -65,7 +67,7 @@ function MonthlyTrendChart() {
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-brand-600" />
-          <h2 className="text-base font-semibold text-slate-900">Inventory Value Trend</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t.dashInventoryValueTrend}</h2>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5" data-testid="chart-time-toggle">
@@ -93,7 +95,7 @@ function MonthlyTrendChart() {
           </div>
         ) : !filteredData.length ? (
           <div className="h-32 flex items-center justify-center text-sm text-slate-400">
-            No historical data available
+            {t.dashNoHistoricalData}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={190}>
@@ -137,10 +139,10 @@ function MonthlyTrendChart() {
   );
 }
 
-function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href, emphasis }: {
+function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href, emphasis, allClearLabel }: {
   title: string; value: string | number; icon: any;
   colorClass: string; bgClass: string; subtext?: string; href?: string;
-  emphasis?: "danger" | "warning" | "neutral";
+  emphasis?: "danger" | "warning" | "neutral"; allClearLabel: string;
 }) {
   const isAllClear = (emphasis === "danger" || emphasis === "warning") && Number(value) === 0;
 
@@ -169,7 +171,7 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href,
       </div>
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{title}</p>
       <p className={`text-3xl font-display font-bold tabular-nums ${valueCls}`}>{value}</p>
-      {subtext && <p className="text-xs text-slate-400 mt-1">{isAllClear ? "All clear" : subtext}</p>}
+      {subtext && <p className="text-xs text-slate-400 mt-1">{isAllClear ? allClearLabel : subtext}</p>}
     </div>
   );
   if (href) return <Link href={href}><div className="cursor-pointer">{inner}</div></Link>;
@@ -177,6 +179,7 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass, subtext, href,
 }
 
 export default function Dashboard() {
+  const { t } = useLanguage();
   const { data: stats, isLoading, isError: statsError } = useDashboardStats();
 
   const { data: categories } = useQuery<CategorySummary[]>({
@@ -195,7 +198,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader size="lg" title="Dashboard" subtitle="Inventory health and operational status.">
+      <PageHeader size="lg" title={t.dashTitle} subtitle={t.dashSubtitle}>
         <span className="text-xs text-slate-400 font-medium">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
       </PageHeader>
 
@@ -206,57 +209,62 @@ export default function Dashboard() {
         </div>
       ) : statsError ? (
         <ErrorState
-          title="Could not load dashboard stats"
-          description="Stats could not be fetched. Check your connection."
+          title={t.dashErrorTitle}
+          description={t.dashErrorDesc}
           onRetry={() => window.location.reload()}
         />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
-            title="Out of Stock"
+            title={t.dashKpiOutOfStock}
             value={stats?.outOfStockCount || 0}
             icon={AlertCircle}
             colorClass="text-red-600"
             bgClass="bg-red-50"
-            subtext="Immediate action needed"
+            subtext={t.dashSubImmediateAction}
             href="/reorder"
             emphasis="danger"
+            allClearLabel={t.dashAllClear}
           />
           <KpiCard
-            title="Low Stock"
+            title={t.dashKpiLowStock}
             value={stats?.lowStockCount || 0}
             icon={AlertTriangle}
             colorClass="text-amber-600"
             bgClass="bg-amber-50"
-            subtext="Below reorder point"
+            subtext={t.dashSubBelowReorderPoint}
             href="/reorder"
             emphasis="warning"
+            allClearLabel={t.dashAllClear}
           />
           <KpiCard
-            title="Pending Reorders"
+            title={t.dashKpiPendingReorders}
             value={stats?.pendingReorderCount || 0}
             icon={ShoppingCart}
             colorClass="text-slate-600"
             bgClass="bg-slate-100"
-            subtext="Awaiting order"
+            subtext={t.dashSubAwaitingOrder}
             href="/reorder"
+            allClearLabel={t.dashAllClear}
           />
           <KpiCard
-            title="Active SKUs"
+            title={t.dashKpiActiveSkus}
             value={stats?.totalSkus || 0}
             icon={PackageSearch}
             colorClass="text-indigo-600"
             bgClass="bg-indigo-50"
-            subtext="Items tracked"
+            subtext={t.dashSubItemsTracked}
             href="/inventory"
+            allClearLabel={t.dashAllClear}
           />
           <KpiCard
-            title="Inventory Value"
+            title={t.dashKpiInventoryValue}
             value={totalValue}
             icon={DollarSign}
             colorClass="text-brand-600"
             bgClass="bg-brand-50"
-            subtext={`${stats?.totalSkus || 0} active SKUs`}
+            subtext={`${stats?.totalSkus || 0} ${t.dashSubActiveSkusSuffix}`}
+            allClearLabel={t.dashAllClear}
           />
         </div>
       )}
@@ -269,10 +277,10 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
             <Activity className="w-4 h-4 text-brand-600" />
-            Category Status
+            {t.dashCategoryStatus}
           </h2>
           <Link href="/inventory" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
-            Full Inventory →
+            {t.dashFullInventory}
           </Link>
         </div>
 
@@ -320,7 +328,7 @@ export default function Dashboard() {
                     </div>
                     <div className="px-2 py-2 bg-white">
                       <p className="text-[11px] font-semibold text-slate-800 truncate leading-tight">{cat.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{cat.skuCount} SKUs</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{cat.skuCount} {t.dashSkusSuffix}</p>
                     </div>
                   </div>
                 </Link>
@@ -336,8 +344,8 @@ export default function Dashboard() {
         {/* Recent Transactions — 2 cols */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h3 className="text-base font-semibold text-slate-900">Recent Transactions</h3>
-            <Link href="/transactions" className="text-xs font-medium text-slate-400 hover:text-brand-600 transition-colors">View All →</Link>
+            <h3 className="text-base font-semibold text-slate-900">{t.dashRecentTransactions}</h3>
+            <Link href="/transactions" className="text-xs font-medium text-slate-400 hover:text-brand-600 transition-colors">{t.cmnViewAll}</Link>
           </div>
           <div className="divide-y divide-slate-50">
             {isLoading ? (
@@ -353,7 +361,7 @@ export default function Dashboard() {
               ))
             ) : stats?.recentActivity?.length === 0 ? (
               <div className="text-center py-8 text-slate-400">
-                <p className="text-sm">No transactions recorded yet.</p>
+                <p className="text-sm">{t.dashNoTransactionsYet}</p>
               </div>
             ) : (
               stats?.recentActivity?.slice(0, 5).map((tx: any) => {
@@ -369,7 +377,7 @@ export default function Dashboard() {
                         {isIn ? <ArrowDownRight className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 leading-tight">{tx.item?.name || "Unknown"}</p>
+                        <p className="text-sm font-semibold text-slate-900 leading-tight">{tx.item?.name || t.dashUnknown}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{format(new Date(tx.createdAt), "MMM d, h:mm a")}</p>
                       </div>
                     </div>
@@ -393,9 +401,9 @@ export default function Dashboard() {
             <div className="bg-white border-2 border-red-200 rounded-xl shadow-sm overflow-hidden" data-testid="card-action-required">
               <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <h3 className="text-base font-bold text-red-900">Action Required</h3>
+                <h3 className="text-base font-bold text-red-900">{t.dashActionRequired}</h3>
                 <Link href="/reorder" className="ml-auto text-xs font-semibold text-red-600 hover:text-red-700 whitespace-nowrap">
-                  Reorder →
+                  {t.dashReorderArrow}
                 </Link>
               </div>
               <div className="p-4 space-y-2">
@@ -408,7 +416,7 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-mono text-red-400 uppercase tracking-wide">{item.sku}</p>
                         <p className="text-sm font-bold text-red-900 truncate leading-tight mt-0.5">{item.name}</p>
-                        <p className="text-xs text-red-600 mt-0.5 font-medium">Out of Stock</p>
+                        <p className="text-xs text-red-600 mt-0.5 font-medium">{t.dashOutOfStockRow}</p>
                       </div>
                       <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-1 ml-2" />
                     </div>
@@ -423,7 +431,7 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-mono text-amber-500 uppercase tracking-wide">{item.sku}</p>
                         <p className="text-sm font-bold text-amber-900 truncate leading-tight mt-0.5">{item.name}</p>
-                        <p className="text-xs text-amber-700 mt-0.5">{item.quantityOnHand} {item.unitOfMeasure} · reorder at {item.reorderPoint}</p>
+                        <p className="text-xs text-amber-700 mt-0.5">{item.quantityOnHand} {item.unitOfMeasure} · {t.dashReorderAt} {item.reorderPoint}</p>
                       </div>
                       <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-1 ml-2" />
                     </div>
@@ -435,9 +443,9 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-sm font-bold text-slate-900">All Systems Clear</h3>
+                <h3 className="text-sm font-bold text-slate-900">{t.dashAllSystemsClear}</h3>
               </div>
-              <p className="text-sm text-slate-500">All items are within normal stock levels. No immediate action required.</p>
+              <p className="text-sm text-slate-500">{t.dashAllItemsHealthy}</p>
             </div>
           )}
 
@@ -446,19 +454,19 @@ export default function Dashboard() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4 text-slate-500" />
-                <h3 className="text-sm font-semibold text-slate-900">Stock Summary</h3>
+                <h3 className="text-sm font-semibold text-slate-900">{t.dashStockSummary}</h3>
               </div>
               <div className="p-4 space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600">Out of stock</span>
+                  <span className="text-slate-600">{t.dashOutOfStockRow}</span>
                   <span className="font-bold text-red-600">{lowStockReport.outOfStock.length}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600">Low stock</span>
+                  <span className="text-slate-600">{t.dashLowStockRow}</span>
                   <span className="font-bold text-amber-600">{lowStockReport.lowStock.length}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-600">Healthy</span>
+                  <span className="text-slate-600">{t.dashHealthyRow}</span>
                   <span className="font-bold text-emerald-600">
                     {(stats?.totalSkus || 0) - lowStockReport.outOfStock.length - lowStockReport.lowStock.length}
                   </span>
@@ -476,9 +484,9 @@ export default function Dashboard() {
                     <div className="bg-emerald-400 flex-1 rounded-r-full" />
                   </div>
                   <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                    <span>Out</span>
-                    <span>Low</span>
-                    <span>Healthy</span>
+                    <span>{t.dashOutShort}</span>
+                    <span>{t.dashLowShort}</span>
+                    <span>{t.dashHealthyShort}</span>
                   </div>
                 </div>
               </div>

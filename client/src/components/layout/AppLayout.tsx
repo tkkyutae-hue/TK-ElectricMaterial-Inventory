@@ -71,8 +71,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       items: [
         { href: "/admin/users", label: t.navUserApprovals, icon: Users },
         { href: "/admin/export", label: t.navExportBackup, icon: Download },
-        { href: "/admin/sku", label: "SKU 정리", icon: Tag },
-        { href: "/admin/inactive-items", label: "비활성 자재", icon: PackageX },
+        { href: "/admin/sku", label: t.navSkuCleanup, icon: Tag },
+        { href: "/admin/inactive-items", label: t.navInactiveItems, icon: PackageX },
       ],
     }] : []),
   ];

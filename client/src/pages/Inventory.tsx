@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { getCategoryGradient } from "@/lib/categoryUtils";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { useLanguage } from "@/hooks/use-language";
 
 type CategorySummary = {
   id: number;
@@ -27,6 +28,7 @@ type CategorySummary = {
 };
 
 function CategoryCard({ cat }: { cat: CategorySummary }) {
+  const { t } = useLanguage();
   const gradient = getCategoryGradient(cat.code);
   const [imgError, setImgError] = useState(false);
   const showImage = !!cat.imageUrl && !imgError;
@@ -68,20 +70,20 @@ function CategoryCard({ cat }: { cat: CategorySummary }) {
         </div>
         {/* Stock status strip */}
         <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-100">
-          <span className="text-[11px] text-slate-500">{cat.skuCount} SKUs</span>
+          <span className="text-[11px] text-slate-500">{cat.skuCount} {t.invSkusSuffix}</span>
           <div className="flex items-center gap-1">
             {cat.outOfStockCount > 0 && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 leading-none">
-                {cat.outOfStockCount} OUT
+                {cat.outOfStockCount} {t.invOutBadge}
               </span>
             )}
             {cat.lowStockCount > 0 && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 leading-none">
-                {cat.lowStockCount} LOW
+                {cat.lowStockCount} {t.invLowBadge}
               </span>
             )}
             {cat.outOfStockCount === 0 && cat.lowStockCount === 0 && (
-              <span className="text-[11px] text-slate-500">{cat.totalQuantity.toLocaleString()} units</span>
+              <span className="text-[11px] text-slate-500">{cat.totalQuantity.toLocaleString()} {t.invUnitsSuffix}</span>
             )}
           </div>
         </div>
@@ -141,26 +143,27 @@ export default function Inventory() {
 
   const { isAdminRole } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, navigate] = useLocation();
 
   async function handleExportXlsx() {
     setExporting(true);
     toast({
-      title: "Preparing Excel file…",
-      description: "Your browser will save it to your default Downloads folder.",
+      title: t.invPreparingExcel,
+      description: t.invSavedToDownloads,
     });
     try {
       // Step 1: Validate the endpoint returns a real xlsx (preflight fetch)
       const resp = await fetch("/api/admin/export/inventory-xlsx", { credentials: "include" });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ message: `Server error ${resp.status}` }));
+        const err = await resp.json().catch(() => ({ message: `${t.invServerError} ${resp.status}` }));
         throw new Error(err.message);
       }
 
       const contentType = resp.headers.get("content-type") ?? "";
       if (!contentType.includes("spreadsheetml") && !contentType.includes("octet-stream")) {
-        throw new Error(`Unexpected response type: ${contentType || "unknown"}`);
+        throw new Error(`${t.invUnexpectedResponse}: ${contentType || "unknown"}`);
       }
 
       // Read filename from server Content-Disposition header
@@ -201,11 +204,11 @@ export default function Inventory() {
       }, 2000);
 
       toast({
-        title: "Export complete",
-        description: `${filename} saved to your Downloads folder.`,
+        title: t.invExportComplete,
+        description: `${filename} ${t.invExportSavedSuffix}`,
       });
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: t.invExportFailed, description: err.message, variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -257,7 +260,7 @@ export default function Inventory() {
 
   return (
     <div className="space-y-6">
-      <PageHeader size="lg" title="Inventory" subtitle="Browse by category or search for specific materials and equipment." className="flex-col sm:flex-row sm:items-center">
+      <PageHeader size="lg" title={t.invTitle} subtitle={t.invSubtitle} className="flex-col sm:flex-row sm:items-center">
         {isAdminRole && (
           <Button
             onClick={handleExportXlsx}
@@ -267,7 +270,7 @@ export default function Inventory() {
             data-testid="btn-export-inventory-xlsx"
           >
             <FileDown className="w-4 h-4" />
-            {exporting ? "Generating…" : "Export to Excel"}
+            {exporting ? t.invExportGenerating : t.invExportToExcel}
           </Button>
         )}
       </PageHeader>
@@ -279,7 +282,7 @@ export default function Inventory() {
             <Link href="/reorder">
               <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-red-100 transition-colors">
                 <XCircle className="w-4 h-4 flex-shrink-0" />
-                {totalOutOfStock} item{totalOutOfStock > 1 ? "s" : ""} out of stock — action needed
+                {totalOutOfStock} {totalOutOfStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsOutBanner}
               </div>
             </Link>
           )}
@@ -287,7 +290,7 @@ export default function Inventory() {
             <Link href="/reorder">
               <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2.5 text-sm font-medium cursor-pointer hover:bg-amber-100 transition-colors">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                {totalLowStock} item{totalLowStock > 1 ? "s" : ""} below reorder point
+                {totalLowStock} {totalLowStock > 1 ? t.invItemsPlural : t.invItemSingular} {t.invItemsLowBanner}
               </div>
             </Link>
           )}
@@ -297,8 +300,8 @@ export default function Inventory() {
       {/* Category card grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-slate-700">Browse by Category</h2>
-          <span className="text-sm text-slate-400">{categorySummary?.length ?? 0} categories</span>
+          <h2 className="text-base font-semibold text-slate-700">{t.invBrowseByCategory}</h2>
+          <span className="text-sm text-slate-400">{categorySummary?.length ?? 0} {t.invCategoriesCount}</span>
         </div>
         {!categorySummary ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -321,13 +324,13 @@ export default function Inventory() {
         <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 bg-slate-50/60">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
             <Filter className="w-4 h-4 text-slate-400" />
-            <span>Filter Items</span>
+            <span>{t.invFilterItems}</span>
           </div>
           <div className="flex flex-wrap gap-2 flex-1">
             <div className="relative flex-1 min-w-[180px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <Input
-                placeholder="Search by name, SKU, size…"
+                placeholder={t.invSearchPlaceholder}
                 className="pl-8 h-9 bg-white border-slate-200 text-sm"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -336,30 +339,30 @@ export default function Inventory() {
             </div>
             <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
               <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-status-filter">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t.invStatus} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="in_stock">In Stock</SelectItem>
-                <SelectItem value="low_stock">Low Stock</SelectItem>
-                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                <SelectItem value="all">{t.invAllStatuses}</SelectItem>
+                <SelectItem value="in_stock">{t.invInStockOpt}</SelectItem>
+                <SelectItem value="low_stock">{t.invLowStockOpt}</SelectItem>
+                <SelectItem value="out_of_stock">{t.invOutOfStockOpt}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
               <SelectTrigger className="w-[160px] h-9 bg-white text-sm" data-testid="select-category-filter">
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder={t.invCategory} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">{t.invAllCategories}</SelectItem>
                 {categories?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={locationFilter} onValueChange={handleFilterChange(setLocationFilter)}>
               <SelectTrigger className="w-[150px] h-9 bg-white text-sm" data-testid="select-location-filter">
-                <SelectValue placeholder="Location" />
+                <SelectValue placeholder={t.invLocation} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
+                <SelectItem value="all">{t.invAllLocations}</SelectItem>
                 {locations?.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -369,7 +372,7 @@ export default function Inventory() {
               </SelectTrigger>
               <SelectContent>
                 {PAGE_SIZE_OPTIONS.map(n => (
-                  <SelectItem key={n} value={String(n)}>{n} per page</SelectItem>
+                  <SelectItem key={n} value={String(n)}>{n} {t.invPerPageSuffix}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -392,13 +395,13 @@ export default function Inventory() {
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">
                 <SortableHeader label="SKU"      sortKey="sku"            active={sortKey === "sku"}           dir={sortDir} onSort={handleSort} />
-                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Photo</th>
-                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Size</th>
-                <SortableHeader label="Item"     sortKey="name"           active={sortKey === "name"}          dir={sortDir} onSort={handleSort} />
-                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Category</th>
-                <SortableHeader label="Qty / Unit" sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
-                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">Location</th>
-                <SortableHeader label="Status"   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invPhotoCol}</th>
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invSizeCol}</th>
+                <SortableHeader label={t.invItemCol}     sortKey="name"           active={sortKey === "name"}          dir={sortDir} onSort={handleSort} />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invCategoryCol}</th>
+                <SortableHeader label={t.invQtyUnitCol} sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invLocationCol}</th>
+                <SortableHeader label={t.invStatusCol}   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
                 <th aria-hidden />
               </tr>
             </thead>
@@ -417,8 +420,8 @@ export default function Inventory() {
                 <tr>
                   <td colSpan={9} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                    <p className="text-base font-semibold text-slate-900">No items found</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filters.</p>
+                    <p className="text-base font-semibold text-slate-900">{t.invNoItemsFound}</p>
+                    <p className="text-sm mt-1">{t.invTryAdjustingFilters}</p>
                   </td>
                 </tr>
               ) : (
@@ -490,7 +493,7 @@ export default function Inventory() {
         {/* Footer: count + pagination */}
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-xs text-slate-400">
-            {totalItems === 0 ? "No items" : `Showing ${startItem}–${endItem} of ${totalItems} item${totalItems !== 1 ? "s" : ""}`}
+            {totalItems === 0 ? t.invNoItemsLabel : `${t.invShowing} ${startItem}–${endItem} ${t.invOf} ${totalItems} ${totalItems !== 1 ? t.invItemsSuffix : t.invItemSingular}`}
           </p>
           {totalPages > 1 && (
             <div className="flex items-center gap-1">
@@ -503,7 +506,7 @@ export default function Inventory() {
                 data-testid="button-prev-page"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                Prev
+                {t.invPrevBtn}
               </Button>
               {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                 let pageNum: number;
@@ -540,7 +543,7 @@ export default function Inventory() {
                 disabled={safePage >= totalPages}
                 data-testid="button-next-page"
               >
-                Next
+                {t.invNextBtn}
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -586,12 +589,12 @@ export default function Inventory() {
               {/* 2×3 stat grid */}
               <div className="px-5 mt-4 grid grid-cols-2 gap-2.5">
                 {[
-                  { label: "Qty on Hand",     value: previewItem.quantityOnHand?.toLocaleString() ?? "—", testid: "drawer-qty" },
-                  { label: "Unit of Measure", value: previewItem.unitOfMeasure || "—",                    testid: "drawer-uom" },
-                  { label: "Size",            value: previewItem.sizeLabel || "—",                        testid: "drawer-size" },
-                  { label: "Category",        value: previewItem.category?.name || "—",                   testid: "drawer-category" },
-                  { label: "Location",        value: previewItem.location?.name || "—",                   testid: "drawer-location" },
-                  { label: "Supplier",        value: previewItem.supplier?.name || "—",                   testid: "drawer-supplier" },
+                  { label: t.invQtyOnHandLabel,     value: previewItem.quantityOnHand?.toLocaleString() ?? "—", testid: "drawer-qty" },
+                  { label: t.invUnitOfMeasureLabel, value: previewItem.unitOfMeasure || "—",                    testid: "drawer-uom" },
+                  { label: t.invSizeLabel,          value: previewItem.sizeLabel || "—",                        testid: "drawer-size" },
+                  { label: t.invCategory,           value: previewItem.category?.name || "—",                   testid: "drawer-category" },
+                  { label: t.invLocation,           value: previewItem.location?.name || "—",                   testid: "drawer-location" },
+                  { label: t.invSupplierLabel,      value: previewItem.supplier?.name || "—",                   testid: "drawer-supplier" },
                 ].map(({ label, value, testid }) => (
                   <div key={label} className="bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5">
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
@@ -603,8 +606,8 @@ export default function Inventory() {
               {/* Reorder section */}
               <div className="px-5 mt-3 grid grid-cols-2 gap-2.5">
                 {[
-                  { label: "Reorder Point", value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-reorder" },
-                  { label: "Min Stock",     value: previewItem.minimumStock != null ? `${previewItem.minimumStock} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-minstock" },
+                  { label: t.invReorderPointLabel, value: previewItem.reorderPoint != null ? `${previewItem.reorderPoint} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-reorder" },
+                  { label: t.invMinStockLabel,     value: previewItem.minimumStock != null ? `${previewItem.minimumStock} ${previewItem.unitOfMeasure}` : "—", testid: "drawer-minstock" },
                 ].map(({ label, value, testid }) => (
                   <div key={label} className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
                     <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-1">{label}</p>
@@ -620,7 +623,7 @@ export default function Inventory() {
                   onClick={() => navigate(`/inventory/${previewItem.id}`)}
                   data-testid="drawer-btn-edit-item"
                 >
-                  Edit Item
+                  {t.invEditItemBtn}
                 </Button>
                 <Button
                   variant="outline"
@@ -628,7 +631,7 @@ export default function Inventory() {
                   onClick={() => { setPreviewItem(null); navigate("/transactions"); }}
                   data-testid="drawer-btn-log-movement"
                 >
-                  Log Movement
+                  {t.invLogMovementBtn}
                 </Button>
               </div>
             </>

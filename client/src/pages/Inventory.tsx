@@ -494,12 +494,12 @@ export default function Inventory() {
           </table>
         </div>
 
-        {/* Footer: count (left) + page-size & pagination grouped together (center) */}
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 grid grid-cols-1 sm:grid-cols-3 items-center gap-3">
-          <p className="text-xs text-slate-400 sm:justify-self-start">
+        {/* Footer: count (left) + [page-size · pagination] inline group (right). Select sits to the left of the pagination buttons on the same line. */}
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p className="text-xs text-slate-400">
             {totalItems === 0 ? t.invNoItemsLabel : `${t.invShowing} ${startItem}–${endItem} ${t.invOf} ${totalItems} ${totalItems !== 1 ? t.invItemsSuffix : t.invItemSingular}`}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-self-center">
+          <div className="flex items-center gap-2 ml-auto">
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
               <SelectTrigger
                 className="w-auto h-7 px-2 gap-1 bg-white text-xs [&>svg:last-child]:hidden"
@@ -517,7 +517,7 @@ export default function Inventory() {
               </SelectContent>
             </Select>
             {totalPages > 1 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -570,7 +570,6 @@ export default function Inventory() {
             </div>
             )}
           </div>
-          <div className="hidden sm:block sm:justify-self-end" aria-hidden />
         </div>
       </div>
 

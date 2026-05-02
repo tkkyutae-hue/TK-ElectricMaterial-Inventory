@@ -493,7 +493,7 @@ export class DatabaseStorage implements IStorage {
     // ── Usage filter (high ≥8, mid 1–7, none 0) ───────────────────────────
     if (filters?.usage) {
       mapped = mapped.filter(i => {
-        const n = (i as any).last30dIssueCount ?? 0;
+        const n = i.last30dIssueCount ?? 0;
         if (filters.usage === 'high') return n >= 8;
         if (filters.usage === 'mid')  return n >= 1 && n < 8;
         if (filters.usage === 'none') return n === 0;

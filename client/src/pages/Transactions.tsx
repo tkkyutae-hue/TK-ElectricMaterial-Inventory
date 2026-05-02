@@ -348,7 +348,7 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-12 text-center">{t.colPhoto}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txItem}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">{t.txAdminColQty}</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[220px]">{t.txAdminColFrom} → {t.txAdminColTo}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[170px]">{t.txAdminColFrom} → {t.txAdminColTo}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">{t.txAdminColProject}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txAdminColNote}</TableHead>
               </TableRow>
@@ -576,14 +576,14 @@ export default function Transactions() {
                         )}
                       </TableCell>
 
-                      {/* From → To (merged) */}
+                      {/* From → To (merged, stacked) */}
                       <TableCell className="text-xs text-slate-500" style={{ verticalAlign: "middle" }}>
                         {isEditing ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                             <select
                               value={draft?.sourceLocationId ?? ""}
                               onChange={e => updateDraft(tx.id, "sourceLocationId", e.target.value)}
-                              style={{ ...cellSelect, flex: 1, minWidth: 0 }}
+                              style={{ ...cellSelect, width: "100%" }}
                               data-testid={`select-from-${tx.id}`}
                             >
                               <option value="">{t.txAdminNoneOpt}</option>
@@ -591,25 +591,29 @@ export default function Transactions() {
                                 <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
                               ))}
                             </select>
-                            <span className="text-slate-400" style={{ fontSize: 11 }}>→</span>
-                            <select
-                              value={draft?.destinationLocationId ?? ""}
-                              onChange={e => updateDraft(tx.id, "destinationLocationId", e.target.value)}
-                              style={{ ...cellSelect, flex: 1, minWidth: 0 }}
-                              data-testid={`select-to-${tx.id}`}
-                            >
-                              <option value="">{t.txAdminNoneOpt}</option>
-                              {(locations ?? []).map((loc: any) => (
-                                <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
-                              ))}
-                            </select>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <span className="text-slate-400" style={{ fontSize: 11, lineHeight: 1 }}>→</span>
+                              <select
+                                value={draft?.destinationLocationId ?? ""}
+                                onChange={e => updateDraft(tx.id, "destinationLocationId", e.target.value)}
+                                style={{ ...cellSelect, flex: 1, minWidth: 0 }}
+                                data-testid={`select-to-${tx.id}`}
+                              >
+                                <option value="">{t.txAdminNoneOpt}</option>
+                                {(locations ?? []).map((loc: any) => (
+                                  <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <div className="flex flex-col items-start gap-0.5 leading-tight">
                             <span>{tx.sourceLocation?.name || "—"}</span>
-                            <span className="text-slate-300">→</span>
-                            <span>{tx.destinationLocation?.name || "—"}</span>
-                          </span>
+                            <span>
+                              <span className="text-slate-300 mr-1">→</span>
+                              {tx.destinationLocation?.name || "—"}
+                            </span>
+                          </div>
                         )}
                       </TableCell>
 

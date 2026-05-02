@@ -221,10 +221,18 @@ export default function Reorder() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t.invAllStatuses}</SelectItem>
-                <SelectItem value="in_stock">{t.invStatusInStock}</SelectItem>
-                <SelectItem value="low_stock">{t.invStatusLowStock}</SelectItem>
-                <SelectItem value="out_of_stock">{t.invStatusOutOfStock}</SelectItem>
-                <SelectItem value="ordered">{t.invStatusOrdered}</SelectItem>
+                <SelectItem value="in_stock">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.invStatusInStock}</span>
+                </SelectItem>
+                <SelectItem value="low_stock">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-amber-500" aria-hidden="true" />{t.invStatusLowStock}</span>
+                </SelectItem>
+                <SelectItem value="out_of_stock">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-rose-500" aria-hidden="true" />{t.invStatusOutOfStock}</span>
+                </SelectItem>
+                <SelectItem value="ordered">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-sky-500" aria-hidden="true" />{t.invStatusOrdered}</span>
+                </SelectItem>
               </SelectContent>
             </Select>
             <Select value={usageFilter} onValueChange={setUsageFilter}>
@@ -233,9 +241,15 @@ export default function Reorder() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t.reorderAllUsage}</SelectItem>
-                <SelectItem value="high">{t.reorderUsageHigh}</SelectItem>
-                <SelectItem value="mid">{t.reorderUsageMid}</SelectItem>
-                <SelectItem value="none">{t.reorderUsageNone}</SelectItem>
+                <SelectItem value="high">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.reorderUsageHigh}</span>
+                </SelectItem>
+                <SelectItem value="mid">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-400" aria-hidden="true" />{t.reorderUsageMid}</span>
+                </SelectItem>
+                <SelectItem value="none">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-300" aria-hidden="true" />{t.reorderUsageNone}</span>
+                </SelectItem>
               </SelectContent>
             </Select>
             <label className="flex items-center gap-2 px-3 h-9 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer select-none whitespace-nowrap">

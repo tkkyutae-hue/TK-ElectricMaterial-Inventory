@@ -329,6 +329,7 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txDate}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[100px]">{t.txAdminColType}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[90px]">{t.txAdminColSize}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-12 text-center">{t.colPhoto}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txItem}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">{t.txAdminColQty}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[130px]">{t.txAdminColFrom}</TableHead>
@@ -370,7 +371,7 @@ export default function Transactions() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    {[...Array(10)].map((__, j) => (
+                    {[...Array(11)].map((__, j) => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                     ))}
                   </TableRow>
@@ -378,7 +379,7 @@ export default function Transactions() {
 
               ) : !filtered?.length ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={11} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                     <p className="font-medium text-slate-900">{t.txAdminNoneFound}</p>
                     <p className="text-sm">{t.txAdminTryAdjusting}</p>
@@ -479,6 +480,20 @@ export default function Transactions() {
                       {/* Size (read-only) */}
                       <TableCell className="text-xs text-slate-600 font-medium whitespace-nowrap" style={{ verticalAlign: "middle" }}>
                         {tx.item?.sizeLabel || <span className="text-slate-300">—</span>}
+                      </TableCell>
+
+                      {/* Photo (read-only) */}
+                      <TableCell className="py-2 pr-0" style={{ verticalAlign: "middle" }}>
+                        {tx.item?.imageUrl ? (
+                          <img
+                            src={tx.item.imageUrl}
+                            alt=""
+                            className="w-8 h-8 rounded object-cover bg-slate-100 flex-shrink-0"
+                            data-testid={`img-tx-item-${tx.id}`}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-slate-100 flex-shrink-0" />
+                        )}
                       </TableCell>
 
                       {/* Item (read-only) */}

@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
+import { useLanguage } from "@/hooks/use-language";
 import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, DraftFamily, CategoryGroupedDetail } from "./types";
 import { sortItems } from "./types";
 import { InlineEditRow, InlineNewRow } from "./InlineEditRow";
@@ -40,6 +42,7 @@ export function FamilyGroupCard({
   onUpdateDraft, onDeleteRow, onUpdateNewRow, onRemoveNewRow,
   onToggleSort, onOpenSettings, onMoveCategory, onAdjustStock, isAdmin,
 }: FamilyGroupCardProps) {
+  const { t } = useLanguage();
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === group.baseItemName;
   const sortDir = familySortDir[group.baseItemName] ?? "asc";
@@ -196,7 +199,7 @@ export function FamilyGroupCard({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "880px" }}>
+          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "970px" }}>
             <colgroup>
               <col style={{ width: "110px" }} />
               <col style={{ width: "50px" }} />
@@ -207,6 +210,7 @@ export function FamilyGroupCard({
               <col style={{ width: "76px" }} />
               <col style={{ width: "76px" }} />
               <col style={{ width: "100px" }} />
+              <col style={{ width: "90px" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
@@ -231,6 +235,7 @@ export function FamilyGroupCard({
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsage}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,11 +295,20 @@ export function FamilyGroupCard({
                   <TableCell className="h-10 px-3 overflow-hidden">
                     <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
                   </TableCell>
+                  <TableCell className="h-10 px-3 overflow-hidden">
+                    <div className="flex items-center justify-center">
+                      <UsageBadge
+                        tier={classifyUsage(item.last30dIssueCount ?? 0)}
+                        count={item.last30dIssueCount ?? 0}
+                        testId={`badge-usage-${item.id}`}
+                      />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {group.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-6 text-slate-400 text-sm">
+                  <TableCell colSpan={10} className="text-center py-6 text-slate-400 text-sm">
                     No items yet.{" "}
                     <button className="text-brand-600 hover:underline" onClick={() => onEnterEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
                       Click Edit to add items.

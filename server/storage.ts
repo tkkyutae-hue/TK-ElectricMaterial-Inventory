@@ -1174,6 +1174,25 @@ export class DatabaseStorage implements IStorage {
     // Override quantityOnHand with live reel sum for reel-tracked items
     const reelMap = await this.liveReelQtyMap(itemIds);
 
+    // 30-day "issue" usage counts per item (mirrors getItems).
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const usageRows = itemIds.length > 0
+      ? await db.select({
+          itemId: inventoryMovements.itemId,
+          cnt: sql<string>`COUNT(*)`,
+        })
+        .from(inventoryMovements)
+        .where(and(
+          inArray(inventoryMovements.itemId, itemIds),
+          eq(inventoryMovements.movementType, 'issue'),
+          gte(inventoryMovements.createdAt, since),
+        ))
+        .groupBy(inventoryMovements.itemId)
+      : [];
+    const usageMap = new Map<number, number>(
+      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    );
+
     const enriched = rows.map(r => {
       const i = r.item;
       const firstImage = allImages.find(img => img.itemId === i.id);
@@ -1181,7 +1200,15 @@ export class DatabaseStorage implements IStorage {
       let status = "in_stock";
       if (liveQty === 0) status = "out_of_stock";
       else if (liveQty <= i.minimumStock) status = "low_stock";
-      return { ...i, quantityOnHand: liveQty, location: r.location, supplier: r.supplier, status, imageUrl: firstImage?.imageUrl || null };
+      return {
+        ...i,
+        quantityOnHand: liveQty,
+        location: r.location,
+        supplier: r.supplier,
+        status,
+        imageUrl: firstImage?.imageUrl || null,
+        last30dIssueCount: usageMap.get(i.id) ?? 0,
+      };
     });
 
     // Group by baseItemName (fall back to name if not set)

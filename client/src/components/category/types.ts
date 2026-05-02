@@ -20,6 +20,7 @@ export type CategoryGroupedItem = {
   primaryLocationId?: number | null;
   supplier?: { name: string } | null;
   trackingMode?: "standard" | "reel" | null;
+  last30dIssueCount?: number;
 };
 
 export type ItemClassDraft = {

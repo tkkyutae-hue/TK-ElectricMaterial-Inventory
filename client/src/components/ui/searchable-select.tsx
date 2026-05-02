@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -43,6 +42,17 @@ export function SearchableSelect({
   ...props
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) setQuery("");
+  }, [open]);
+
+  const filteredOptions = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query]);
 
   const allOptions = React.useMemo(
     () => (resetOption ? [resetOption, ...options] : options),
@@ -75,15 +85,13 @@ export function SearchableSelect({
         align="start"
         className={cn("w-[var(--radix-popover-trigger-width)] p-0", contentClassName)}
       >
-        <Command
-          filter={(itemValue, search) => {
-            if (itemValue === "__reset__") return 1;
-            return itemValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-          }}
-        >
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
             {resetOption && (
               <CommandGroup>
                 <CommandItem
@@ -103,26 +111,32 @@ export function SearchableSelect({
                 </CommandItem>
               </CommandGroup>
             )}
-            <CommandGroup>
-              {options.map((opt) => (
-                <CommandItem
-                  key={opt.value}
-                  value={opt.label}
-                  onSelect={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === opt.value ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  {opt.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filteredOptions.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground" data-testid="searchable-select-empty">
+                {emptyText}
+              </div>
+            ) : (
+              <CommandGroup>
+                {filteredOptions.map((opt) => (
+                  <CommandItem
+                    key={opt.value}
+                    value={opt.value}
+                    onSelect={() => {
+                      onChange(opt.value);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === opt.value ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {opt.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

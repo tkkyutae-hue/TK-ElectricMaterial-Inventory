@@ -209,8 +209,8 @@ export function FamilyGroupCard({
               <col style={{ width: "76px" }} />
               <col style={{ width: "76px" }} />
               <col style={{ width: "76px" }} />
-              <col style={{ width: "100px" }} />
               <col style={{ width: "90px" }} />
+              <col style={{ width: "100px" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
@@ -234,8 +234,8 @@ export function FamilyGroupCard({
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROP — Reorder Point">ROP</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsage}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -293,9 +293,6 @@ export function FamilyGroupCard({
                     <span className="text-slate-600 text-sm">{item.minimumStock}</span>
                   </TableCell>
                   <TableCell className="h-10 px-3 overflow-hidden">
-                    <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
-                  </TableCell>
-                  <TableCell className="h-10 px-3 overflow-hidden">
                     <div className="flex items-center justify-center">
                       <UsageBadge
                         tier={classifyUsage(item.last30dIssueCount ?? 0)}
@@ -303,6 +300,9 @@ export function FamilyGroupCard({
                         testId={`badge-usage-${item.id}`}
                       />
                     </div>
+                  </TableCell>
+                  <TableCell className="h-10 px-3 overflow-hidden">
+                    <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
                   </TableCell>
                 </TableRow>
               ))}

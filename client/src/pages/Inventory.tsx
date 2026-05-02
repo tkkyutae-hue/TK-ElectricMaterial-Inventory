@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
-import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -501,8 +501,14 @@ export default function Inventory() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-self-center">
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
-              <SelectTrigger className="min-w-[110px] w-auto h-8 bg-white text-xs" data-testid="select-page-size">
-                <SelectValue />
+              <SelectTrigger
+                className="w-auto h-7 px-2 gap-1 bg-white text-xs [&>svg:last-child]:hidden"
+                data-testid="select-page-size"
+                aria-label={t.invPerPageSuffix}
+                title={`${pageSize} ${t.invPerPageSuffix}`}
+              >
+                <Rows3 className="w-3.5 h-3.5 text-slate-500" />
+                <span className="tabular-nums font-medium">{pageSize}</span>
               </SelectTrigger>
               <SelectContent>
                 {PAGE_SIZE_OPTIONS.map(n => (

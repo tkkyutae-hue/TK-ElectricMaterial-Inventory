@@ -3,6 +3,7 @@ import { useItems } from "@/hooks/use-items";
 import { useQuery } from "@tanstack/react-query";
 import { useCategories, useLocations } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
 import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +135,7 @@ export default function Inventory() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [usageFilter, setUsageFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -219,6 +221,7 @@ export default function Inventory() {
     status: statusFilter !== "all" ? statusFilter : undefined,
     categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
     locationId: locationFilter !== "all" ? locationFilter : undefined,
+    usage: usageFilter !== "all" ? (usageFilter as "high" | "mid" | "none") : undefined,
     page,
     perPage: pageSize,
     sort: sortKey,
@@ -366,6 +369,23 @@ export default function Inventory() {
                 {locations?.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={usageFilter} onValueChange={handleFilterChange(setUsageFilter)}>
+              <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-usage-filter">
+                <SelectValue placeholder={t.reorderColUsage} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.reorderAllUsage}</SelectItem>
+                <SelectItem value="high">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.reorderUsageHigh}</span>
+                </SelectItem>
+                <SelectItem value="mid">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-400" aria-hidden="true" />{t.reorderUsageMid}</span>
+                </SelectItem>
+                <SelectItem value="none">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-300" aria-hidden="true" />{t.reorderUsageNone}</span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
               <SelectTrigger className="min-w-[110px] w-auto h-9 bg-white text-sm" data-testid="select-page-size">
                 <SelectValue />
@@ -380,7 +400,7 @@ export default function Inventory() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 900 }}>
+          <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 1000 }}>
             <colgroup>
               <col style={{ width: "120px" }} /> {/* SKU */}
               <col style={{ width: "52px" }} />  {/* Photo */}
@@ -389,6 +409,7 @@ export default function Inventory() {
               <col style={{ width: "140px" }} /> {/* Category */}
               <col style={{ width: "110px" }} /> {/* Qty/Unit */}
               <col style={{ width: "130px" }} /> {/* Location */}
+              <col style={{ width: "100px" }} /> {/* Usage */}
               <col style={{ width: "110px" }} /> {/* Status */}
               <col style={{ width: "32px" }} />  {/* Row affordance */}
             </colgroup>
@@ -401,6 +422,7 @@ export default function Inventory() {
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invCategoryCol}</th>
                 <SortableHeader label={t.invQtyUnitCol} sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invLocationCol}</th>
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-center">{t.reorderColUsage}</th>
                 <SortableHeader label={t.invStatusCol}   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
                 <th aria-hidden />
               </tr>
@@ -409,7 +431,7 @@ export default function Inventory() {
               {isLoading ? (
                 Array.from({ length: 7 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
-                    {[1,2,3,4,5,6,7,8,9].map(j => (
+                    {[1,2,3,4,5,6,7,8,9,10].map(j => (
                       <td key={j} className="px-3 py-3 align-middle">
                         <div className="h-4 bg-slate-100 animate-pulse rounded" />
                       </td>
@@ -418,7 +440,7 @@ export default function Inventory() {
                 ))
               ) : pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-16 text-slate-500">
+                  <td colSpan={10} className="text-center py-16 text-slate-500">
                     <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-900">{t.invNoItemsFound}</p>
                     <p className="text-sm mt-1">{t.invTryAdjustingFilters}</p>
@@ -472,6 +494,16 @@ export default function Inventory() {
                     {/* Location */}
                     <td className="px-3 py-3 align-middle">
                       <span className="text-xs text-slate-500 whitespace-nowrap">{item.location?.name || "—"}</span>
+                    </td>
+                    {/* Usage */}
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center">
+                        <UsageBadge
+                          tier={classifyUsage(item.last30dIssueCount ?? 0)}
+                          count={item.last30dIssueCount ?? 0}
+                          testId={`badge-usage-${item.id}`}
+                        />
+                      </div>
                     </td>
                     {/* Status */}
                     <td className="px-3 py-3 align-middle">

@@ -52,6 +52,7 @@ export interface IStorage {
     categoryId?: number;
     locationId?: number;
     status?: string;
+    usage?: "high" | "mid" | "none";
     sort?: "name" | "sku" | "quantityOnHand" | "status";
     dir?: "asc" | "desc";
     page?: number;
@@ -355,6 +356,7 @@ export class DatabaseStorage implements IStorage {
     categoryId?: number;
     locationId?: number;
     status?: string;
+    usage?: "high" | "mid" | "none";
     sort?: "name" | "sku" | "quantityOnHand" | "status";
     dir?: "asc" | "desc";
     page?: number;
@@ -393,6 +395,25 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
+    // 30-day "issue" usage counts per item (mirrors getPurchaseRecommendations).
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const usageRows = itemIds.length > 0
+      ? await db.select({
+          itemId: inventoryMovements.itemId,
+          cnt: sql<string>`COUNT(*)`,
+        })
+        .from(inventoryMovements)
+        .where(and(
+          inArray(inventoryMovements.itemId, itemIds),
+          eq(inventoryMovements.movementType, 'issue'),
+          gte(inventoryMovements.createdAt, since),
+        ))
+        .groupBy(inventoryMovements.itemId)
+      : [];
+    const usageMap = new Map<number, number>(
+      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    );
+
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
       return {
@@ -401,6 +422,7 @@ export class DatabaseStorage implements IStorage {
         location: row.location,
         supplier: row.supplier,
         imageUrl: firstImage?.imageUrl || null,
+        last30dIssueCount: usageMap.get(row.item.id) ?? 0,
       };
     });
 
@@ -466,6 +488,17 @@ export class DatabaseStorage implements IStorage {
       } else if (filters.status === 'ordered') {
         mapped = mapped.filter(i => i.status === 'ordered');
       }
+    }
+
+    // ── Usage filter (high ≥8, mid 1–7, none 0) ───────────────────────────
+    if (filters?.usage) {
+      mapped = mapped.filter(i => {
+        const n = (i as any).last30dIssueCount ?? 0;
+        if (filters.usage === 'high') return n >= 8;
+        if (filters.usage === 'mid')  return n >= 1 && n < 8;
+        if (filters.usage === 'none') return n === 0;
+        return true;
+      });
     }
 
     // ── In-memory sort for status column (computed field) ─────────────────

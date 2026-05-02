@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
@@ -24,13 +25,6 @@ function computeItemStockStatus(item: any): "in_stock" | "low_stock" | "out_of_s
   if ((item?.quantityOnHand ?? 0) === 0) return "out_of_stock";
   if ((item?.quantityOnHand ?? 0) <= (item?.minimumStock ?? 0)) return "low_stock";
   return "in_stock";
-}
-
-// Bucketize last-30-day "issue" transaction count into a 3-tier label.
-function classifyUsage(count: number): "high" | "mid" | "none" {
-  if (count >= 8) return "high";
-  if (count >= 1) return "mid";
-  return "none";
 }
 
 const DEFAULTS = {
@@ -335,35 +329,11 @@ export default function Reorder() {
                   <TableCell className="text-right text-slate-600">{rec.item?.reorderPoint}</TableCell>
                   <TableCell className="text-right font-semibold text-brand-700">{rec.recommendedQuantity}</TableCell>
                   <TableCell className="text-center">
-                    {(() => {
-                      const n = rec.last30dIssueCount ?? 0;
-                      const tier = classifyUsage(n);
-                      const cls =
-                        tier === "high" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" :
-                        tier === "mid"  ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200" :
-                                          "bg-slate-50 text-slate-400 ring-1 ring-slate-200";
-                      const dotCls =
-                        tier === "high" ? "bg-emerald-500" :
-                        tier === "mid"  ? "bg-slate-400"   :
-                                          "bg-slate-300";
-                      const label =
-                        tier === "high" ? t.reorderUsageHigh :
-                        tier === "mid"  ? t.reorderUsageMid  :
-                                          t.reorderUsageNone;
-                      const tooltip = n === 0
-                        ? t.reorderUsageTooltipNone
-                        : t.reorderUsageTooltip.replace("{n}", String(n));
-                      return (
-                        <span
-                          title={tooltip}
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}
-                          data-testid={`badge-usage-${rec.id}`}
-                        >
-                          <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${dotCls}`} aria-hidden="true" />
-                          {label}
-                        </span>
-                      );
-                    })()}
+                    <UsageBadge
+                      tier={classifyUsage(rec.last30dIssueCount ?? 0)}
+                      count={rec.last30dIssueCount ?? 0}
+                      testId={`badge-usage-${rec.id}`}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">

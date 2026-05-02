@@ -339,6 +339,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;
     const status     = req.query.status as string | undefined;
 
+    const VALID_USAGES = ["high", "mid", "none"] as const;
+    type UsageTier = typeof VALID_USAGES[number];
+    const rawUsage = req.query.usage as string | undefined;
+    const usage: UsageTier | undefined = VALID_USAGES.includes(rawUsage as UsageTier)
+      ? (rawUsage as UsageTier)
+      : undefined;
+
     const pageParam = req.query.page !== undefined ? Math.max(1, Number(req.query.page)) : undefined;
     const perPage   = req.query.perPage ? Math.max(1, Number(req.query.perPage)) : 25;
 
@@ -352,7 +359,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const dir:  Dir     = VALID_DIRS.includes(rawDir   as Dir)     ? (rawDir   as Dir)     : "asc";
 
     const result = await storage.getItems({
-      search, categoryId, locationId, status,
+      search, categoryId, locationId, status, usage,
       sort, dir,
       ...(pageParam !== undefined ? { page: pageParam, perPage } : {}),
     });

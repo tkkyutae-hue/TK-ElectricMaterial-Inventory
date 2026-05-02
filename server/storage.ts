@@ -1003,7 +1003,19 @@ export class DatabaseStorage implements IStorage {
       sql`CASE ${purchaseRecommendations.priorityLevel} WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`
     );
 
-    return rows.map(r => ({ ...r.rec, item: r.item, supplier: r.supplier }));
+    const itemIds = rows.map(r => r.item?.id).filter((id): id is number => id != null);
+    const allImages = itemIds.length > 0
+      ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
+      : [];
+
+    return rows.map(r => {
+      const firstImage = r.item ? allImages.find(img => img.itemId === r.item!.id) : undefined;
+      return {
+        ...r.rec,
+        item: r.item ? { ...r.item, imageUrl: firstImage?.imageUrl || null } : null,
+        supplier: r.supplier,
+      };
+    });
   }
 
   async generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]> {

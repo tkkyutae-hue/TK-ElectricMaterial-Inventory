@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
+import type { Translations } from "@/lib/i18n";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -18,7 +19,7 @@ async function fetchJson(url: string) {
   return res.json();
 }
 
-function PriorityBadge({ level, t }: { level: string; t: any }) {
+function PriorityBadge({ level, t }: { level: string; t: Translations }) {
   const priorityConfig: Record<string, { label: string; className: string; icon: any }> = {
     critical: { label: t.reorderPriorityCritical, className: "bg-rose-100 text-rose-700 border-rose-200", icon: AlertCircle },
     high:     { label: t.reorderPriorityHigh,     className: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertTriangle },

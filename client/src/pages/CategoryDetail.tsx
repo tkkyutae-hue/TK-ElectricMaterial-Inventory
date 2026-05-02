@@ -21,6 +21,7 @@ import type {
 import { FamilyEditDialog } from "@/components/category/FamilyEditDialog";
 import { FamilyGroupCard } from "@/components/category/FamilyGroupCard";
 import { MoveCategoryDialog } from "@/components/category/MoveCategoryDialog";
+import { AdjustStockDialog } from "@/components/category/AdjustStockDialog";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -38,6 +39,7 @@ export default function CategoryDetail() {
   const [locationFilter, setLocationFilter] = useState("all");
   const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
   const [moveCategoryGroup, setMoveCategoryGroup] = useState<CategoryItemGroup | null>(null);
+  const [adjustingItem, setAdjustingItem] = useState<CategoryGroupedItem | null>(null);
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
@@ -517,6 +519,7 @@ export default function CategoryDetail() {
               onToggleSort={toggleFamilySort}
               onOpenSettings={setEditingGroup}
               onMoveCategory={setMoveCategoryGroup}
+              onAdjustStock={setAdjustingItem}
               isAdmin={isAdminRole}
             />
           ))}
@@ -536,6 +539,20 @@ export default function CategoryDetail() {
           categoryId={data.category.id}
           categoryName={data.category.name}
           group={moveCategoryGroup}
+        />
+      )}
+
+      {/* Adjust Stock dialog (admin-only) */}
+      {isAdminRole && (
+        <AdjustStockDialog
+          open={!!adjustingItem}
+          onClose={() => setAdjustingItem(null)}
+          item={adjustingItem}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["/api/inventory/category", id, "grouped"] });
+            qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+            qc.invalidateQueries({ queryKey: ["/api/movements"] });
+          }}
         />
       )}
     </div>

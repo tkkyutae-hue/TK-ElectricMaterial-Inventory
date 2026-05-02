@@ -574,7 +574,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!item) return res.status(404).json({ message: "Item not found" });
 
       const qty = Number(body.quantity);
-      if (isNaN(qty) || qty <= 0) return res.status(400).json({ message: "quantity must be a positive number" });
+      if (isNaN(qty)) return res.status(400).json({ message: "quantity must be a number" });
+      if (movementType !== 'adjust' && qty <= 0) return res.status(400).json({ message: "quantity must be a positive number" });
+      if (movementType === 'adjust' && qty < 0) return res.status(400).json({ message: "quantity must be zero or greater" });
 
       let newQty = item.quantityOnHand;
 

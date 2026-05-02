@@ -1,4 +1,4 @@
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput } from "lucide-react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -29,6 +29,7 @@ interface FamilyGroupCardProps {
   onToggleSort: (familyName: string) => void;
   onOpenSettings: (group: CategoryItemGroup) => void;
   onMoveCategory?: (group: CategoryItemGroup) => void;
+  onAdjustStock?: (item: CategoryGroupedItem) => void;
   isAdmin?: boolean;
 }
 
@@ -37,7 +38,7 @@ export function FamilyGroupCard({
   familySortDir, locations, allSkus, data,
   onEnterEdit, onCancelEdit, onSaveEdit, onAddRow,
   onUpdateDraft, onDeleteRow, onUpdateNewRow, onRemoveNewRow,
-  onToggleSort, onOpenSettings, onMoveCategory, isAdmin,
+  onToggleSort, onOpenSettings, onMoveCategory, onAdjustStock, isAdmin,
 }: FamilyGroupCardProps) {
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === group.baseItemName;
@@ -260,8 +261,22 @@ export function FamilyGroupCard({
                     <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
                   </TableCell>
                   <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden">
-                    <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
-                    <span className="text-slate-400 font-normal text-[11px] ml-0.5">{item.unitOfMeasure}</span>
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
+                      <span className="text-slate-400 font-normal text-[11px]">{item.unitOfMeasure}</span>
+                      {isAdmin && onAdjustStock && (
+                        <button
+                          type="button"
+                          onClick={() => onAdjustStock(item)}
+                          disabled={!!inlineEditFamily}
+                          className="ml-1 p-1 rounded text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Adjust on-hand stock"
+                          data-testid={`button-adjust-stock-${item.id}`}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden" data-testid={`text-reorder-pt-${item.id}`}>
                     <span className="text-slate-600 text-sm">{item.reorderPoint}</span>

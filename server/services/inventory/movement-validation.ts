@@ -44,15 +44,21 @@ export function validateNewMovement(input: NewMovementInput): MovementValidation
   }
 
   const qty = Number(input.quantity);
+  const type = input.movementType?.toLowerCase();
   if (input.quantity === undefined || input.quantity === null || isNaN(qty)) {
     errors.quantity = "Quantity must be a number.";
+  } else if (type === "adjust") {
+    // For "adjust", quantity is the FINAL on-hand value (absolute), so 0 is valid.
+    if (qty < 0) {
+      errors.quantity = "Quantity must be zero or greater.";
+    } else if (!Number.isInteger(qty)) {
+      errors.quantity = "Quantity must be a whole number.";
+    }
   } else if (qty <= 0) {
     errors.quantity = "Quantity must be greater than zero.";
   } else if (!Number.isInteger(qty)) {
     errors.quantity = "Quantity must be a whole number.";
   }
-
-  const type = input.movementType?.toLowerCase();
 
   if (type === "transfer") {
     if (!input.sourceLocationId) {

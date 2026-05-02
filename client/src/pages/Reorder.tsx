@@ -232,7 +232,7 @@ export default function Reorder() {
                 <SelectValue placeholder={t.reorderColUsage} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t.invAllStatuses}</SelectItem>
+                <SelectItem value="all">{t.reorderAllUsage}</SelectItem>
                 <SelectItem value="high">{t.reorderUsageHigh}</SelectItem>
                 <SelectItem value="mid">{t.reorderUsageMid}</SelectItem>
                 <SelectItem value="none">{t.reorderUsageNone}</SelectItem>
@@ -328,6 +328,10 @@ export default function Reorder() {
                         tier === "high" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" :
                         tier === "mid"  ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200" :
                                           "bg-slate-50 text-slate-400 ring-1 ring-slate-200";
+                      const dotCls =
+                        tier === "high" ? "bg-emerald-500" :
+                        tier === "mid"  ? "bg-slate-400"   :
+                                          "bg-slate-300";
                       const label =
                         tier === "high" ? t.reorderUsageHigh :
                         tier === "mid"  ? t.reorderUsageMid  :
@@ -341,6 +345,7 @@ export default function Reorder() {
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}
                           data-testid={`badge-usage-${rec.id}`}
                         >
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${dotCls}`} aria-hidden="true" />
                           {label}
                         </span>
                       );

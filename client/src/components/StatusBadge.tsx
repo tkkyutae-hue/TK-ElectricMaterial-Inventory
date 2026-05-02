@@ -12,17 +12,18 @@ import { useLanguage } from "@/hooks/use-language";
 
 export function ItemStatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
-  const config: Record<string, { label: string; className: string }> = {
-    in_stock:    { label: t.invStatusInStock,    className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-    low_stock:   { label: t.invStatusLowStock,   className: "bg-amber-100 text-amber-700 border-amber-200" },
-    out_of_stock:{ label: t.invStatusOutOfStock, className: "bg-rose-100 text-rose-700 border-rose-200" },
-    ordered:     { label: t.invStatusOrdered,    className: "bg-sky-100 text-sky-700 border-sky-200" },
+  const config: Record<string, { label: string; className: string; dotClass: string }> = {
+    in_stock:    { label: t.invStatusInStock,    className: "bg-emerald-100 text-emerald-700 border-emerald-200", dotClass: "bg-emerald-500" },
+    low_stock:   { label: t.invStatusLowStock,   className: "bg-amber-100 text-amber-700 border-amber-200",       dotClass: "bg-amber-500"   },
+    out_of_stock:{ label: t.invStatusOutOfStock, className: "bg-rose-100 text-rose-700 border-rose-200",          dotClass: "bg-rose-500"    },
+    ordered:     { label: t.invStatusOrdered,    className: "bg-sky-100 text-sky-700 border-sky-200",             dotClass: "bg-sky-500"     },
   };
 
-  const { label, className } = config[status] || { label: status, className: "bg-slate-100 text-slate-700" };
+  const { label, className, dotClass } = config[status] || { label: status, className: "bg-slate-100 text-slate-700", dotClass: "bg-slate-400" };
 
   return (
-    <Badge variant="outline" className={`${className} font-medium text-[11px] px-2 py-0 rounded-full border leading-5 whitespace-nowrap`}>
+    <Badge variant="outline" className={`${className} font-medium text-[11px] px-2 py-0 rounded-full border leading-5 whitespace-nowrap inline-flex items-center`}>
+      <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${dotClass}`} aria-hidden="true" />
       {label}
     </Badge>
   );

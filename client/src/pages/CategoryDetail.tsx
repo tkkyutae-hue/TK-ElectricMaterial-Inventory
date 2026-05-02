@@ -45,6 +45,16 @@ export default function CategoryDetail() {
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
+  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
+
+  const toggleFamilyCollapsed = useCallback((familyName: string) => {
+    setCollapsedFamilies(prev => {
+      const next = new Set(prev);
+      if (next.has(familyName)) next.delete(familyName);
+      else next.add(familyName);
+      return next;
+    });
+  }, []);
 
   const [inlineEditFamily, setInlineEditFamily] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<number, EditDraft>>({});
@@ -523,6 +533,8 @@ export default function CategoryDetail() {
               onMoveCategory={setMoveCategoryGroup}
               onAdjustStock={setAdjustingItem}
               isAdmin={isAdminRole}
+              isCollapsed={collapsedFamilies.has(group.baseItemName)}
+              onToggleCollapsed={toggleFamilyCollapsed}
             />
           ))}
         </div>

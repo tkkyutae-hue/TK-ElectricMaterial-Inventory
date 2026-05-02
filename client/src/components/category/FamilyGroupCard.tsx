@@ -1,4 +1,4 @@
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal } from "lucide-react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,6 +33,8 @@ interface FamilyGroupCardProps {
   onMoveCategory?: (group: CategoryItemGroup) => void;
   onAdjustStock?: (item: CategoryGroupedItem) => void;
   isAdmin?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapsed?: (familyName: string) => void;
 }
 
 export function FamilyGroupCard({
@@ -41,12 +43,20 @@ export function FamilyGroupCard({
   onEnterEdit, onCancelEdit, onSaveEdit, onAddRow,
   onUpdateDraft, onDeleteRow, onUpdateNewRow, onRemoveNewRow,
   onToggleSort, onOpenSettings, onMoveCategory, onAdjustStock, isAdmin,
+  isCollapsed, onToggleCollapsed,
 }: FamilyGroupCardProps) {
   const { t } = useLanguage();
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === group.baseItemName;
   const sortDir = familySortDir[group.baseItemName] ?? "asc";
   const sortedItems = sortItems(group.items, sortDir);
+
+  const collapseDisabled = isEditingThis || !!isDraftConfirmed;
+  const effectivelyCollapsed = !collapseDisabled && !!isCollapsed;
+  const handleToggleCollapsed = () => {
+    if (collapseDisabled) return;
+    onToggleCollapsed?.(group.baseItemName);
+  };
 
   const groupLowStock = group.items.filter(i => i.status === "low_stock").length;
   const groupOutOfStock = group.items.filter(i => i.status === "out_of_stock").length;
@@ -60,8 +70,21 @@ export function FamilyGroupCard({
       data-testid={`family-card-${group.baseItemName.replace(/\s+/g, "-")}`}
     >
       {/* Family card header */}
-      <div className={`flex items-center justify-between px-5 border-b min-h-[60px] ${isEditingThis ? "bg-amber-50/60 border-amber-200" : "border-slate-200 bg-slate-50/80"}`}>
-        <div className="flex items-center gap-3 py-3 flex-1 min-w-0">
+      <div className={`flex items-center justify-between px-5 border-b ${effectivelyCollapsed ? "border-b-0" : ""} min-h-[60px] ${isEditingThis ? "bg-amber-50/60 border-amber-200" : "border-slate-200 bg-slate-50/80"}`}>
+        <button
+          type="button"
+          onClick={handleToggleCollapsed}
+          disabled={collapseDisabled}
+          aria-expanded={!effectivelyCollapsed}
+          aria-controls={!effectivelyCollapsed && !isEditingThis ? `family-table-${group.baseItemName.replace(/\s+/g, "-")}` : undefined}
+          className={`flex items-center gap-3 py-3 flex-1 min-w-0 text-left ${collapseDisabled ? "cursor-default" : "cursor-pointer hover:opacity-90"}`}
+          data-testid={`button-toggle-collapse-${group.baseItemName.replace(/\s+/g, "-")}`}
+          title={collapseDisabled ? undefined : (effectivelyCollapsed ? "Click to expand" : "Click to collapse")}
+        >
+          <ChevronRight
+            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${effectivelyCollapsed ? "" : "rotate-90"} ${collapseDisabled ? "opacity-30" : ""}`}
+            aria-hidden="true"
+          />
           <div className="w-11 h-11 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
             {group.representativeImage ? <img src={group.representativeImage} alt={group.baseItemName} className="w-full h-full object-cover" /> : <Package className="w-5 h-5 text-slate-300" />}
           </div>
@@ -76,7 +99,7 @@ export function FamilyGroupCard({
               {isEditingThis && <span className="ml-2 text-amber-600 normal-case tracking-normal font-semibold">● Editing</span>}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Header buttons */}
         <div className="flex items-center gap-2 shrink-0 pl-3">
@@ -129,7 +152,7 @@ export function FamilyGroupCard({
       </div>
 
       {/* Items — edit mode table or view mode table */}
-      {isEditingThis ? (
+      {effectivelyCollapsed ? null : isEditingThis ? (
         <div className="overflow-x-auto">
           <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "1000px" }}>
             <colgroup>
@@ -198,7 +221,7 @@ export function FamilyGroupCard({
           </Table>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>
           <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "970px" }}>
             <colgroup>
               <col style={{ width: "110px" }} />

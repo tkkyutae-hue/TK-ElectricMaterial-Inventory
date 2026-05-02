@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocations } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
@@ -424,21 +425,25 @@ export default function CategoryDetail() {
             <SelectItem value="out_of_stock">Out of Stock</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={familyFilter} onValueChange={setFamilyFilter}>
-          <SelectTrigger className="w-[200px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-family-filter"><SelectValue placeholder="Family" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Families</SelectItem>
-            {groups.map(g => <SelectItem key={g.baseItemName} value={g.baseItemName}>{g.baseItemName}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={familyFilter}
+          onChange={setFamilyFilter}
+          options={groups.map(g => ({ value: g.baseItemName, label: g.baseItemName }))}
+          resetOption={{ value: "all", label: "All Families" }}
+          placeholder="Family"
+          className="w-[200px] bg-slate-50 border-slate-200"
+          data-testid="select-family-filter"
+        />
         {uniqueLocationNames.length > 0 && (
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-[180px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-location-filter"><SelectValue placeholder="Location" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {uniqueLocationNames.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={locationFilter}
+            onChange={setLocationFilter}
+            options={uniqueLocationNames.map(loc => ({ value: loc, label: loc }))}
+            resetOption={{ value: "all", label: "All Locations" }}
+            placeholder="Location"
+            className="w-[180px] bg-slate-50 border-slate-200"
+            data-testid="select-location-filter"
+          />
         )}
         {hasActiveFilters && (
           <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); setLocationFilter("all"); }} className="text-xs text-slate-500 hover:text-brand-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">

@@ -8,6 +8,7 @@ import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRi
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -338,15 +339,15 @@ export default function Inventory() {
                 data-testid="input-search"
               />
             </div>
-            <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
-              <SelectTrigger className="min-w-[160px] w-auto h-9 bg-white text-sm" data-testid="select-category-filter">
-                <SelectValue placeholder={t.invCategory} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.invAllCategories}</SelectItem>
-                {categories?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={categoryFilter}
+              onChange={handleFilterChange(setCategoryFilter)}
+              options={((categories ?? []) as Array<{ id: number; name: string }>).map(c => ({ value: c.id.toString(), label: c.name }))}
+              resetOption={{ value: "all", label: t.invAllCategories }}
+              placeholder={t.invCategory}
+              className="min-w-[160px] w-auto bg-white"
+              data-testid="select-category-filter"
+            />
             <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
               <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-status-filter">
                 <SelectValue placeholder={t.invStatus} />

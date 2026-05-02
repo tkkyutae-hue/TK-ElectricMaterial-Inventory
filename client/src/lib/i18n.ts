@@ -798,6 +798,8 @@ const en = {
   eqAllSavedToast:            "All changes saved.",
   eqSaveFailedToast:          "Save failed",
   eqSaveBtn:                  "Save",
+  comboboxSearchPlaceholder:  "Search…",
+  comboboxNoResults:          "No results",
 };
 
 const ko: Translations = {
@@ -1574,6 +1576,8 @@ const ko: Translations = {
   eqAllSavedToast:            "모든 변경 사항이 저장되었습니다.",
   eqSaveFailedToast:          "저장 실패",
   eqSaveBtn:                  "저장",
+  comboboxSearchPlaceholder:  "검색…",
+  comboboxNoResults:          "결과 없음",
 };
 
 const es: Translations = {
@@ -2350,6 +2354,8 @@ const es: Translations = {
   eqAllSavedToast:            "Todos los cambios guardados.",
   eqSaveFailedToast:          "Error al guardar",
   eqSaveBtn:                  "Guardar",
+  comboboxSearchPlaceholder:  "Buscar…",
+  comboboxNoResults:          "Sin resultados",
 };
 
 export const TRANSLATIONS: Record<Lang, Translations> = { en, ko, es };

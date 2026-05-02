@@ -345,6 +345,8 @@ export default function Inventory() {
               options={((categories ?? []) as Array<{ id: number; name: string }>).map(c => ({ value: c.id.toString(), label: c.name }))}
               resetOption={{ value: "all", label: t.invAllCategories }}
               placeholder={t.invCategory}
+              searchPlaceholder={t.comboboxSearchPlaceholder}
+              emptyText={t.comboboxNoResults}
               className="min-w-[160px] w-auto bg-white"
               data-testid="select-category-filter"
             />

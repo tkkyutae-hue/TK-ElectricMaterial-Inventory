@@ -431,6 +431,8 @@ export default function CategoryDetail() {
           options={groups.map(g => ({ value: g.baseItemName, label: g.baseItemName }))}
           resetOption={{ value: "all", label: "All Families" }}
           placeholder="Family"
+          searchPlaceholder={t.comboboxSearchPlaceholder}
+          emptyText={t.comboboxNoResults}
           className="w-[200px] bg-slate-50 border-slate-200"
           data-testid="select-family-filter"
         />
@@ -441,6 +443,8 @@ export default function CategoryDetail() {
             options={uniqueLocationNames.map(loc => ({ value: loc, label: loc }))}
             resetOption={{ value: "all", label: "All Locations" }}
             placeholder="Location"
+            searchPlaceholder={t.comboboxSearchPlaceholder}
+            emptyText={t.comboboxNoResults}
             className="w-[180px] bg-slate-50 border-slate-200"
             data-testid="select-location-filter"
           />

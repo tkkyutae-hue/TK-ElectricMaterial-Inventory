@@ -1008,12 +1008,33 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
+    // 30-day "issue" usage counts per item (used by Reorder UI to render 사용빈도 chip)
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const usageRows = itemIds.length > 0
+      ? await db.select({
+          itemId: inventoryMovements.itemId,
+          cnt: sql<string>`COUNT(*)`,
+        })
+        .from(inventoryMovements)
+        .where(and(
+          inArray(inventoryMovements.itemId, itemIds),
+          eq(inventoryMovements.movementType, 'issue'),
+          gte(inventoryMovements.createdAt, since),
+        ))
+        .groupBy(inventoryMovements.itemId)
+      : [];
+    const usageMap = new Map<number, number>(
+      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    );
+
     return rows.map(r => {
       const firstImage = r.item ? allImages.find(img => img.itemId === r.item!.id) : undefined;
+      const usage = r.item ? (usageMap.get(r.item.id) ?? 0) : 0;
       return {
         ...r.rec,
         item: r.item ? { ...r.item, imageUrl: firstImage?.imageUrl || null } : null,
         supplier: r.supplier,
+        last30dIssueCount: usage,
       };
     });
   }

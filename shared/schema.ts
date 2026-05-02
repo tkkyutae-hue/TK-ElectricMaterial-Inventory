@@ -314,6 +314,7 @@ export type SupplierWithStats = Supplier & {
 export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {
   item?: Item | null;
   supplier?: Supplier | null;
+  last30dIssueCount?: number;
 };
 
 export type CategorySummary = Category & {

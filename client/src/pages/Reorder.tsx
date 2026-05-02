@@ -26,6 +26,13 @@ function computeItemStockStatus(item: any): "in_stock" | "low_stock" | "out_of_s
   return "in_stock";
 }
 
+// Bucketize last-30-day "issue" transaction count into a 3-tier label.
+function classifyUsage(count: number): "high" | "mid" | "none" {
+  if (count >= 8) return "high";
+  if (count >= 1) return "mid";
+  return "none";
+}
+
 const DEFAULTS = {
   search: "",
   category: "all",
@@ -231,6 +238,7 @@ export default function Reorder() {
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOnHand}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColReorderPt}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOrderQty}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-center">{t.reorderColUsage}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColActions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -238,14 +246,14 @@ export default function Reorder() {
             {isLoading ? (
               [1,2,3].map(i => (
                 <TableRow key={i}>
-                  {[...Array(7)].map((_, j) => (
+                  {[...Array(8)].map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : !hasRecommendations ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-recommendations">{t.reorderNoneFound}</p>
                   <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
@@ -256,7 +264,7 @@ export default function Reorder() {
               </TableRow>
             ) : showFilteredEmpty ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                   <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-match">{t.reorderNoMatch}</p>
                   <Button variant="outline" className="mt-4" onClick={resetFilters} data-testid="button-clear-filters">
@@ -292,6 +300,32 @@ export default function Reorder() {
                   </TableCell>
                   <TableCell className="text-right text-slate-600">{rec.item?.reorderPoint}</TableCell>
                   <TableCell className="text-right font-semibold text-brand-700">{rec.recommendedQuantity}</TableCell>
+                  <TableCell className="text-center">
+                    {(() => {
+                      const n = rec.last30dIssueCount ?? 0;
+                      const tier = classifyUsage(n);
+                      const cls =
+                        tier === "high" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" :
+                        tier === "mid"  ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200" :
+                                          "bg-slate-50 text-slate-400 ring-1 ring-slate-200";
+                      const label =
+                        tier === "high" ? t.reorderUsageHigh :
+                        tier === "mid"  ? t.reorderUsageMid  :
+                                          t.reorderUsageNone;
+                      const tooltip = n === 0
+                        ? t.reorderUsageTooltipNone
+                        : t.reorderUsageTooltip.replace("{n}", String(n));
+                      return (
+                        <span
+                          title={tooltip}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}
+                          data-testid={`badge-usage-${rec.id}`}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button

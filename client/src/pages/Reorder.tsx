@@ -1,37 +1,21 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { ShoppingCart, RefreshCw, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, Search, Filter } from "lucide-react";
+import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ItemStatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
-import type { Translations } from "@/lib/i18n";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Failed");
   return res.json();
-}
-
-function PriorityBadge({ level, t }: { level: string; t: Translations }) {
-  const priorityConfig: Record<string, { label: string; className: string; icon: any }> = {
-    critical: { label: t.reorderPriorityCritical, className: "bg-rose-100 text-rose-700 border-rose-200", icon: AlertCircle },
-    high:     { label: t.reorderPriorityHigh,     className: "bg-orange-100 text-orange-700 border-orange-200", icon: AlertTriangle },
-    medium:   { label: t.reorderPriorityMedium,   className: "bg-amber-100 text-amber-700 border-amber-200", icon: Package },
-    low:      { label: t.reorderPriorityLow,      className: "bg-slate-100 text-slate-600 border-slate-200", icon: Package },
-  };
-  const cfg = priorityConfig[level] || priorityConfig.low;
-  return (
-    <Badge variant="outline" className={`${cfg.className} text-xs font-bold flex items-center gap-1 w-fit`}>
-      <cfg.icon className="w-3 h-3" />{cfg.label}
-    </Badge>
-  );
 }
 
 // Mirror backend item-status computation (server/storage.ts).
@@ -45,7 +29,6 @@ function computeItemStockStatus(item: any): "in_stock" | "low_stock" | "out_of_s
 const DEFAULTS = {
   search: "",
   category: "all",
-  priority: "all",
   status: "all",
   needsReorderOnly: true,
 };
@@ -57,14 +40,12 @@ export default function Reorder() {
 
   const [search, setSearch]                       = useState(DEFAULTS.search);
   const [categoryFilter, setCategoryFilter]       = useState(DEFAULTS.category);
-  const [priorityFilter, setPriorityFilter]       = useState(DEFAULTS.priority);
   const [statusFilter, setStatusFilter]           = useState(DEFAULTS.status);
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
 
   const resetFilters = () => {
     setSearch(DEFAULTS.search);
     setCategoryFilter(DEFAULTS.category);
-    setPriorityFilter(DEFAULTS.priority);
     setStatusFilter(DEFAULTS.status);
     setNeedsReorderOnly(DEFAULTS.needsReorderOnly);
   };
@@ -143,9 +124,6 @@ export default function Reorder() {
         if (key !== categoryFilter) return false;
       }
 
-      // Priority filter
-      if (priorityFilter !== "all" && rec.priorityLevel !== priorityFilter) return false;
-
       // Item stock status filter
       const stockStatus = computeItemStockStatus(item);
       if (statusFilter !== "all" && stockStatus !== statusFilter) return false;
@@ -169,10 +147,7 @@ export default function Reorder() {
 
       return true;
     });
-  }, [recommendations, search, categoryFilter, priorityFilter, statusFilter, needsReorderOnly, categoryMap]);
-
-  const criticalCount = (recommendations as any[] | undefined)?.filter((r: any) => r.priorityLevel === 'critical').length || 0;
-  const highCount     = (recommendations as any[] | undefined)?.filter((r: any) => r.priorityLevel === 'high').length || 0;
+  }, [recommendations, search, categoryFilter, statusFilter, needsReorderOnly, categoryMap]);
 
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
   const showFilteredEmpty  = hasRecommendations && filtered.length === 0;
@@ -194,29 +169,6 @@ export default function Reorder() {
           {t.reorderRefresh}
         </Button>
       </div>
-
-      {(criticalCount > 0 || highCount > 0) && (
-        <div className="grid grid-cols-2 gap-4">
-          {criticalCount > 0 && (
-            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex items-center gap-4">
-              <AlertCircle className="w-8 h-8 text-rose-500 flex-shrink-0" />
-              <div>
-                <p className="font-bold text-rose-900 text-lg">{criticalCount} {t.reorderPriorityCritical}</p>
-                <p className="text-rose-700 text-sm">{t.reorderItemsOutOfStock}</p>
-              </div>
-            </div>
-          )}
-          {highCount > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex items-center gap-4">
-              <AlertTriangle className="w-8 h-8 text-orange-500 flex-shrink-0" />
-              <div>
-                <p className="font-bold text-orange-900 text-lg">{highCount} {t.reorderHighPriorityCard}</p>
-                <p className="text-orange-700 text-sm">{t.reorderItemsCriticallyLow}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="premium-card bg-white overflow-hidden">
         {/* Search + filter toolbar */}
@@ -247,18 +199,6 @@ export default function Reorder() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[150px] h-9 bg-white text-sm" data-testid="select-priority-filter">
-                <SelectValue placeholder={t.reorderFilterPriority} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.reorderAllPriorities}</SelectItem>
-                <SelectItem value="critical">{t.reorderPriorityCritical}</SelectItem>
-                <SelectItem value="high">{t.reorderPriorityHigh}</SelectItem>
-                <SelectItem value="medium">{t.reorderPriorityMedium}</SelectItem>
-                <SelectItem value="low">{t.reorderPriorityLow}</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px] h-9 bg-white text-sm" data-testid="select-status-filter">
                 <SelectValue placeholder={t.invStatus} />
@@ -285,13 +225,12 @@ export default function Reorder() {
         <Table>
           <TableHeader className="bg-slate-50/80">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="font-semibold text-slate-600">{t.reorderColPriority}</TableHead>
+              <TableHead className="font-semibold text-slate-600">{t.invStatus}</TableHead>
               <TableHead className="font-semibold text-slate-600 w-12 text-center">{t.reorderColPhoto}</TableHead>
               <TableHead className="font-semibold text-slate-600">{t.reorderColItem}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOnHand}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColReorderPt}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOrderQty}</TableHead>
-              <TableHead className="font-semibold text-slate-600">{t.reorderColReason}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColActions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -299,14 +238,14 @@ export default function Reorder() {
             {isLoading ? (
               [1,2,3].map(i => (
                 <TableRow key={i}>
-                  {[...Array(8)].map((_, j) => (
+                  {[...Array(7)].map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : !hasRecommendations ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={7} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-recommendations">{t.reorderNoneFound}</p>
                   <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
@@ -317,7 +256,7 @@ export default function Reorder() {
               </TableRow>
             ) : showFilteredEmpty ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={7} className="text-center py-16 text-slate-500">
                   <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-match">{t.reorderNoMatch}</p>
                   <Button variant="outline" className="mt-4" onClick={resetFilters} data-testid="button-clear-filters">
@@ -328,7 +267,7 @@ export default function Reorder() {
             ) : (
               filtered.map((rec: any) => (
                 <TableRow key={rec.id} className="hover:bg-slate-50/50" data-testid={`row-rec-${rec.id}`}>
-                  <TableCell><PriorityBadge level={rec.priorityLevel} t={t} /></TableCell>
+                  <TableCell><ItemStatusBadge status={computeItemStockStatus(rec.item)} /></TableCell>
                   <TableCell className="py-2 pr-0">
                     {rec.item?.imageUrl ? (
                       <img
@@ -354,7 +293,6 @@ export default function Reorder() {
                   </TableCell>
                   <TableCell className="text-right text-slate-600">{rec.item?.reorderPoint}</TableCell>
                   <TableCell className="text-right font-semibold text-brand-700">{rec.recommendedQuantity}</TableCell>
-                  <TableCell className="text-xs text-slate-500 max-w-[120px] truncate">{rec.reason}</TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button

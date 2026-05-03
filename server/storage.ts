@@ -52,7 +52,7 @@ export interface IStorage {
     categoryId?: number;
     locationId?: number;
     status?: string;
-    usage?: "high" | "mid" | "none";
+    usagePattern?: "core" | "normal" | "low" | "none";
     sort?: "name" | "sku" | "quantityOnHand" | "status";
     dir?: "asc" | "desc";
     page?: number;
@@ -356,7 +356,7 @@ export class DatabaseStorage implements IStorage {
     categoryId?: number;
     locationId?: number;
     status?: string;
-    usage?: "high" | "mid" | "none";
+    usagePattern?: "core" | "normal" | "low" | "none";
     sort?: "name" | "sku" | "quantityOnHand" | "status";
     dir?: "asc" | "desc";
     page?: number;
@@ -395,34 +395,51 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
-    // 30-day "issue" usage counts per item (mirrors getPurchaseRecommendations).
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Issue usage counts per item over 30/90-day windows. Single 90-day scan
+    // with conditional aggregation, plus MAX(createdAt) for last-issue date.
+    // Mirrors getPurchaseRecommendations() so /api/items can render the
+    // 사용패턴 chip and support the usagePattern filter.
+    const now = Date.now();
+    const since90 = new Date(now - 90 * 24 * 60 * 60 * 1000);
+    const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
     const usageRows = itemIds.length > 0
       ? await db.select({
           itemId: inventoryMovements.itemId,
-          cnt: sql<string>`COUNT(*)`,
+          cnt30: sql<string>`SUM(CASE WHEN ${inventoryMovements.createdAt} >= ${since30} THEN 1 ELSE 0 END)`,
+          cnt90: sql<string>`COUNT(*)`,
+          lastAt: sql<Date | string | null>`MAX(${inventoryMovements.createdAt})`,
         })
         .from(inventoryMovements)
         .where(and(
           inArray(inventoryMovements.itemId, itemIds),
           eq(inventoryMovements.movementType, 'issue'),
-          gte(inventoryMovements.createdAt, since),
+          gte(inventoryMovements.createdAt, since90),
         ))
         .groupBy(inventoryMovements.itemId)
       : [];
-    const usageMap = new Map<number, number>(
-      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    const usageMap = new Map<number, { c30: number; c90: number; last: Date | null }>(
+      usageRows.map(r => [r.itemId, {
+        c30: Number(r.cnt30) || 0,
+        c90: Number(r.cnt90) || 0,
+        last: r.lastAt ? new Date(r.lastAt) : null,
+      }])
     );
 
     let mapped = results.map(row => {
       const firstImage = allImages.find(img => img.itemId === row.item.id);
+      const u = usageMap.get(row.item.id);
+      const c30 = u?.c30 ?? 0;
+      const c90 = u?.c90 ?? 0;
+      const last = u?.last ?? null;
       return {
         ...row.item,
         category: row.category,
         location: row.location,
         supplier: row.supplier,
         imageUrl: firstImage?.imageUrl || null,
-        last30dIssueCount: usageMap.get(row.item.id) ?? 0,
+        issueCount30d: c30,
+        issueCount90d: c90,
+        lastIssueAt: last ? last.toISOString() : null,
       };
     });
 
@@ -490,14 +507,17 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // ── Usage filter (high ≥8, mid 1–7, none 0) ───────────────────────────
-    if (filters?.usage) {
+    // ── Usage pattern filter (core ≥8/30d, normal ≥1/30d, low ≥1/90d, none 0)
+    if (filters?.usagePattern) {
       mapped = mapped.filter(i => {
-        const n = i.last30dIssueCount ?? 0;
-        if (filters.usage === 'high') return n >= 8;
-        if (filters.usage === 'mid')  return n >= 1 && n < 8;
-        if (filters.usage === 'none') return n === 0;
-        return true;
+        const c30 = (i as any).issueCount30d ?? 0;
+        const c90 = (i as any).issueCount90d ?? c30;
+        const pattern =
+          c30 >= 8 ? 'core'   :
+          c30 >= 1 ? 'normal' :
+          c90 >= 1 ? 'low'    :
+                     'none';
+        return pattern === filters.usagePattern;
       });
     }
 
@@ -1080,7 +1100,6 @@ export class DatabaseStorage implements IStorage {
         ...r.rec,
         item: r.item ? { ...r.item, imageUrl: firstImage?.imageUrl || null } : null,
         supplier: r.supplier,
-        last30dIssueCount: c30,
         issueCount30d: c30,
         issueCount90d: c90,
         lastIssueAt: last ? last.toISOString() : null,
@@ -1190,23 +1209,33 @@ export class DatabaseStorage implements IStorage {
     // Override quantityOnHand with live reel sum for reel-tracked items
     const reelMap = await this.liveReelQtyMap(itemIds);
 
-    // 30-day "issue" usage counts per item (mirrors getItems).
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Issue usage counts per item over 30/90-day windows (mirrors getItems
+    // and getPurchaseRecommendations). Single 90-day scan with conditional
+    // aggregation + MAX(createdAt) for last-issue date.
+    const now = Date.now();
+    const since90 = new Date(now - 90 * 24 * 60 * 60 * 1000);
+    const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
     const usageRows = itemIds.length > 0
       ? await db.select({
           itemId: inventoryMovements.itemId,
-          cnt: sql<string>`COUNT(*)`,
+          cnt30: sql<string>`SUM(CASE WHEN ${inventoryMovements.createdAt} >= ${since30} THEN 1 ELSE 0 END)`,
+          cnt90: sql<string>`COUNT(*)`,
+          lastAt: sql<Date | string | null>`MAX(${inventoryMovements.createdAt})`,
         })
         .from(inventoryMovements)
         .where(and(
           inArray(inventoryMovements.itemId, itemIds),
           eq(inventoryMovements.movementType, 'issue'),
-          gte(inventoryMovements.createdAt, since),
+          gte(inventoryMovements.createdAt, since90),
         ))
         .groupBy(inventoryMovements.itemId)
       : [];
-    const usageMap = new Map<number, number>(
-      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    const usageMap = new Map<number, { c30: number; c90: number; last: Date | null }>(
+      usageRows.map(r => [r.itemId, {
+        c30: Number(r.cnt30) || 0,
+        c90: Number(r.cnt90) || 0,
+        last: r.lastAt ? new Date(r.lastAt) : null,
+      }])
     );
 
     const enriched = rows.map(r => {
@@ -1216,6 +1245,10 @@ export class DatabaseStorage implements IStorage {
       let status = "in_stock";
       if (liveQty === 0) status = "out_of_stock";
       else if (liveQty <= i.minimumStock) status = "low_stock";
+      const u = usageMap.get(i.id);
+      const c30 = u?.c30 ?? 0;
+      const c90 = u?.c90 ?? 0;
+      const last = u?.last ?? null;
       return {
         ...i,
         quantityOnHand: liveQty,
@@ -1223,7 +1256,9 @@ export class DatabaseStorage implements IStorage {
         supplier: r.supplier,
         status,
         imageUrl: firstImage?.imageUrl || null,
-        last30dIssueCount: usageMap.get(i.id) ?? 0,
+        issueCount30d: c30,
+        issueCount90d: c90,
+        lastIssueAt: last ? last.toISOString() : null,
       };
     });
 

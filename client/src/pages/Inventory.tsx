@@ -3,7 +3,7 @@ import { useItems } from "@/hooks/use-items";
 import { useQuery } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
-import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
+import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,7 +135,7 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [usageFilter, setUsageFilter] = useState<string>("all");
+  const [usagePatternFilter, setUsagePatternFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
@@ -221,7 +221,7 @@ export default function Inventory() {
     search: search || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
     categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
-    usage: usageFilter !== "all" ? (usageFilter as "high" | "mid" | "none") : undefined,
+    usagePattern: usagePatternFilter !== "all" ? (usagePatternFilter as "core" | "normal" | "low" | "none") : undefined,
     page,
     perPage: pageSize,
     sort: sortKey,
@@ -361,20 +361,23 @@ export default function Inventory() {
                 <SelectItem value="out_of_stock">{t.invOutOfStockOpt}</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={usageFilter} onValueChange={handleFilterChange(setUsageFilter)}>
-              <SelectTrigger className="min-w-[140px] w-auto h-9 bg-white text-sm" data-testid="select-usage-filter">
-                <SelectValue placeholder={t.reorderColUsage} />
+            <Select value={usagePatternFilter} onValueChange={handleFilterChange(setUsagePatternFilter)}>
+              <SelectTrigger className="min-w-[160px] w-auto h-9 bg-white text-sm" data-testid="select-usage-pattern-filter">
+                <SelectValue placeholder={t.reorderColUsagePattern} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t.reorderAllUsage}</SelectItem>
-                <SelectItem value="high">
-                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.reorderUsageHigh}</span>
+                <SelectItem value="all">{t.reorderUsagePatternAll}</SelectItem>
+                <SelectItem value="core">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.reorderUsagePatternCore}</span>
                 </SelectItem>
-                <SelectItem value="mid">
-                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-400" aria-hidden="true" />{t.reorderUsageMid}</span>
+                <SelectItem value="normal">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-sky-500" aria-hidden="true" />{t.reorderUsagePatternNormal}</span>
+                </SelectItem>
+                <SelectItem value="low">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-amber-500" aria-hidden="true" />{t.reorderUsagePatternLow}</span>
                 </SelectItem>
                 <SelectItem value="none">
-                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-300" aria-hidden="true" />{t.reorderUsageNone}</span>
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-300" aria-hidden="true" />{t.reorderUsagePatternNone}</span>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -390,7 +393,7 @@ export default function Inventory() {
               <col />                             {/* Item — widest */}
               <col style={{ width: "140px" }} /> {/* Category */}
               <col style={{ width: "110px" }} /> {/* Qty/Unit */}
-              <col style={{ width: "100px" }} /> {/* Usage */}
+              <col style={{ width: "112px" }} /> {/* Usage Pattern */}
               <col style={{ width: "110px" }} /> {/* Status */}
               <col style={{ width: "32px" }} />  {/* Row affordance */}
             </colgroup>
@@ -402,7 +405,7 @@ export default function Inventory() {
                 <SortableHeader label={t.invItemCol}     sortKey="name"           active={sortKey === "name"}          dir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-left">{t.invCategoryCol}</th>
                 <SortableHeader label={t.invQtyUnitCol} sortKey="quantityOnHand" active={sortKey === "quantityOnHand"} dir={sortDir} onSort={handleSort} align="right" />
-                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-center">{t.reorderColUsage}</th>
+                <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide align-middle whitespace-nowrap text-center" data-testid="header-usage-pattern">{t.reorderColUsagePattern}</th>
                 <SortableHeader label={t.invStatusCol}   sortKey="status"         active={sortKey === "status"}        dir={sortDir} onSort={handleSort} align="center" />
                 <th aria-hidden />
               </tr>
@@ -471,13 +474,14 @@ export default function Inventory() {
                       <span className="font-semibold text-sm text-slate-900 tabular-nums">{item.quantityOnHand.toLocaleString()}</span>
                       <span className="ml-1 text-xs font-normal text-slate-400">{item.unitOfMeasure}</span>
                     </td>
-                    {/* Usage */}
+                    {/* Usage Pattern */}
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center justify-center">
-                        <UsageBadge
-                          tier={classifyUsage(item.last30dIssueCount ?? 0)}
-                          count={item.last30dIssueCount ?? 0}
-                          testId={`badge-usage-${item.id}`}
+                        <UsagePatternBadge
+                          issueCount30d={item.issueCount30d ?? 0}
+                          issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
+                          lastIssueAt={item.lastIssueAt}
+                          testId={`chip-usage-pattern-${item.id}`}
                         />
                       </div>
                     </td>

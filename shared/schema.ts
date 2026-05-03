@@ -290,7 +290,9 @@ export type ItemWithRelations = Item & {
   movements?: InventoryMovement[];
   status?: string;
   imageUrl?: string | null;
-  last30dIssueCount?: number;
+  issueCount30d?: number;
+  issueCount90d?: number;
+  lastIssueAt?: string | null;
 };
 
 export type InventoryMovementWithRelations = InventoryMovement & {
@@ -315,7 +317,6 @@ export type SupplierWithStats = Supplier & {
 export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {
   item?: Item | null;
   supplier?: Supplier | null;
-  last30dIssueCount?: number;
   issueCount30d?: number;
   issueCount90d?: number;
   lastIssueAt?: string | null;

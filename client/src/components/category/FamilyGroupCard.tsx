@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ItemStatusBadge } from "@/components/StatusBadge";
-import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
+import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { useLanguage } from "@/hooks/use-language";
 import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, DraftFamily, CategoryGroupedDetail } from "./types";
 import { sortItems } from "./types";
@@ -257,7 +257,7 @@ export function FamilyGroupCard({
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROP — Reorder Point">ROP</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsage}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsagePattern}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -317,10 +317,11 @@ export function FamilyGroupCard({
                   </TableCell>
                   <TableCell className="h-10 px-3 overflow-hidden">
                     <div className="flex items-center justify-center">
-                      <UsageBadge
-                        tier={classifyUsage(item.last30dIssueCount ?? 0)}
-                        count={item.last30dIssueCount ?? 0}
-                        testId={`badge-usage-${item.id}`}
+                      <UsagePatternBadge
+                        issueCount30d={item.issueCount30d ?? 0}
+                        issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
+                        lastIssueAt={item.lastIssueAt}
+                        testId={`chip-usage-pattern-${item.id}`}
                       />
                     </div>
                   </TableCell>

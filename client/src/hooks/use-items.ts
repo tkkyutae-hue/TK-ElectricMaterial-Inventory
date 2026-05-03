@@ -11,7 +11,7 @@ export function useItems(filters?: {
   categoryId?: string;
   locationId?: string;
   status?: string;
-  usage?: "high" | "mid" | "none";
+  usagePattern?: "core" | "normal" | "low" | "none";
   search?: string;
   page?: number;
   perPage?: number;
@@ -22,7 +22,7 @@ export function useItems(filters?: {
   if (filters?.categoryId) params.append("categoryId", filters.categoryId);
   if (filters?.locationId) params.append("locationId", filters.locationId);
   if (filters?.status) params.append("status", filters.status);
-  if (filters?.usage) params.append("usage", filters.usage);
+  if (filters?.usagePattern) params.append("usagePattern", filters.usagePattern);
   if (filters?.search) params.append("search", filters.search);
   if (filters?.page != null) params.append("page", String(filters.page));
   if (filters?.perPage != null) params.append("perPage", String(filters.perPage));

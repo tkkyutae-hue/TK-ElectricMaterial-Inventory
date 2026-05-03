@@ -157,7 +157,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.reorderRmsHeaderSection}</h3>
             <div className="space-y-1 mb-3">
-              <Label htmlFor="rms-project-picker" className="text-xs text-slate-600">
+              <Label className="text-xs text-slate-600">
                 {t.reorderRmsProjectPickerLabel}
               </Label>
               <SearchableSelect

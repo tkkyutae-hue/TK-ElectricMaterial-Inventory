@@ -252,6 +252,17 @@ export default function Reorder() {
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
   const showFilteredEmpty  = hasRecommendations && filtered.length === 0;
 
+  // Global select-all across every currently visible (filtered) row,
+  // independent of which categories/families are expanded.
+  const filteredIds = useMemo(() => filtered.map((r: any) => r.id), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const someFilteredSelected = !allFilteredSelected && filteredIds.some(id => selectedIds.has(id));
+  const toggleAllFiltered = (on: boolean) => setSelectedIds(prev => {
+    const n = new Set(prev);
+    filteredIds.forEach(id => { if (on) n.add(id); else n.delete(id); });
+    return n;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -382,6 +393,21 @@ export default function Reorder() {
           </div>
         ) : (
           <div className="p-3 space-y-3">
+            <div className="flex items-center gap-3 px-3 py-2 bg-slate-50/80 border border-slate-200 rounded-md">
+              <Checkbox
+                className="h-4 w-4"
+                aria-label="select all visible"
+                checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                onCheckedChange={(v) => toggleAllFiltered(v === true)}
+                data-testid="checkbox-select-all-visible"
+              />
+              <span className="text-sm text-slate-600">
+                {selectedIds.size > 0
+                  ? `${Array.from(selectedIds).filter(id => filteredIds.includes(id)).length} / ${filteredIds.length}`
+                  : `${filteredIds.length}`}{" "}
+                {t.stockPricingItemCountSuffix}
+              </span>
+            </div>
             {grouped.map(cat => {
               const catOpen = openCats[cat.key] ?? false;
               const totalItems = cat.families.reduce((s, f) => s + f.items.length, 0);

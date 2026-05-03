@@ -371,6 +371,8 @@ const en = {
   backToHome:         "Back to Home",
   signOut:            "Sign Out",
   adminModeChip:      "Admin Mode",
+  adminHideSidebar:   "Hide sidebar",
+  adminShowSidebar:   "Show sidebar",
 
   // ── Admin: Common ────────────────────────────────────────────────────────
   cmnSave:            "Save",
@@ -1192,6 +1194,8 @@ const ko: Translations = {
   backToHome:         "홈으로",
   signOut:            "로그아웃",
   adminModeChip:      "관리자 모드",
+  adminHideSidebar:   "사이드바 숨기기",
+  adminShowSidebar:   "사이드바 보이기",
 
   // ── Admin: Common ────────────────────────────────────────────────────────
   cmnSave:            "저장",
@@ -2013,6 +2017,8 @@ const es: Translations = {
   backToHome:         "Ir al inicio",
   signOut:            "Cerrar sesión",
   adminModeChip:      "Modo Admin",
+  adminHideSidebar:   "Ocultar barra lateral",
+  adminShowSidebar:   "Mostrar barra lateral",
 
   // ── Admin: Common ────────────────────────────────────────────────────────
   cmnSave:            "Guardar",

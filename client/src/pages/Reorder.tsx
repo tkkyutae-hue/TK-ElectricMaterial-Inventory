@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package } from "lucide-react";
+import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -254,6 +254,27 @@ export default function Reorder() {
   const toggleCat = (key: string) => setOpenCats(s => ({ ...s, [key]: !s[key] }));
   const toggleFam = (key: string) => setOpenFamilies(s => ({ ...s, [key]: !s[key] }));
 
+  const expandAll = () => {
+    const co: Record<string, boolean> = {};
+    const fo: Record<string, boolean> = {};
+    grouped.forEach(c => {
+      co[c.key] = true;
+      c.families.forEach(f => { fo[`${c.key}::${f.name}`] = true; });
+    });
+    setOpenCats(prev => ({ ...prev, ...co }));
+    setOpenFamilies(prev => ({ ...prev, ...fo }));
+  };
+  const collapseAll = () => {
+    const co: Record<string, boolean> = {};
+    const fo: Record<string, boolean> = {};
+    grouped.forEach(c => {
+      co[c.key] = false;
+      c.families.forEach(f => { fo[`${c.key}::${f.name}`] = false; });
+    });
+    setOpenCats(prev => ({ ...prev, ...co }));
+    setOpenFamilies(prev => ({ ...prev, ...fo }));
+  };
+
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
   const showFilteredEmpty  = hasRecommendations && filtered.length === 0;
 
@@ -363,6 +384,32 @@ export default function Reorder() {
               />
               <span>{t.reorderNeedsReorderOnly}</span>
             </label>
+            <div className="flex items-center gap-1 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 bg-white text-sm whitespace-nowrap"
+                onClick={expandAll}
+                disabled={grouped.length === 0}
+                data-testid="button-expand-all"
+              >
+                <ChevronsUpDown className="w-4 h-4 mr-1.5" />
+                {t.reorderExpandAll}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 bg-white text-sm whitespace-nowrap"
+                onClick={collapseAll}
+                disabled={grouped.length === 0}
+                data-testid="button-collapse-all"
+              >
+                <ChevronsDownUp className="w-4 h-4 mr-1.5" />
+                {t.reorderCollapseAll}
+              </Button>
+            </div>
           </div>
         </div>
 

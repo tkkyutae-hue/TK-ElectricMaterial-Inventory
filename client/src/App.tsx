@@ -27,6 +27,7 @@ import Manpower from "@/pages/Manpower";
 import WorkerDetail from "@/pages/WorkerDetail";
 import Equipment from "@/pages/Equipment";
 import Reorder from "@/pages/Reorder";
+import ReorderArea from "@/pages/ReorderArea";
 import Reports from "@/pages/Reports";
 import DailyReport from "@/pages/DailyReport";
 import DailyReportWorkspace from "@/pages/DailyReportWorkspace";
@@ -190,7 +191,7 @@ function AdminRouter() {
           <Route path="/manpower/:id" component={WorkerDetail} />
           <Route path="/manpower" component={Manpower} />
           <Route path="/equipment" component={Equipment} />
-          <Route path="/reorder" component={Reorder} />
+          <Route path="/reorder" component={ReorderArea} />
           <Route path="/reports" component={Reports} />
           <Route path="/admin/users" component={() => <AdminToolsGuard><UserApprovals /></AdminToolsGuard>} />
           <Route path="/admin/export" component={() => <AdminToolsGuard><Export /></AdminToolsGuard>} />

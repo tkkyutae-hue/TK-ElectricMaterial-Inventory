@@ -112,7 +112,9 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
             completionDate,
             deliveryTo,
           },
+          projectId: selectedProjectId ? Number(selectedProjectId) : undefined,
           items: rows.map(r => ({
+            itemId: r.id,
             name: r.name,
             size: r.size,
             unit: r.unit,

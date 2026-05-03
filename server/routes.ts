@@ -907,6 +907,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       deliveryTo:     z.string().optional().default(""),
     }),
     items: z.array(z.object({
+      itemId: z.number().int().positive().optional(),
       name: z.string().default(""),
       size: z.string().optional().default(""),
       qty:  z.union([z.number(), z.string()]).transform(v => {
@@ -916,6 +917,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       unit: z.string().optional().default(""),
       remarks: z.string().optional().default(""),
     })).min(1),
+    projectId: z.number().int().positive().optional(),
   });
 
   app.post("/api/reorder/export-rms", isAuthenticated, requireManager, async (req, res) => {
@@ -976,6 +978,59 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const buf = await wb.xlsx.writeBuffer();
+
+      // Best-effort: persist export history snapshot. Failures are logged but
+      // do not interrupt the download response.
+      try {
+        const currentUser = (req as any).currentUser;
+        const itemIds = itemsToWrite
+          .map(i => (i as any).itemId)
+          .filter((v: any): v is number => typeof v === "number" && v > 0);
+        const itemMap = new Map<number, any>();
+        if (itemIds.length > 0) {
+          const { db } = await import("./db");
+          const { items: itemsTable } = await import("../shared/schema");
+          const { inArray } = await import("drizzle-orm");
+          const rows = await db.select().from(itemsTable).where(inArray(itemsTable.id, itemIds));
+          for (const r of rows) itemMap.set(r.id, r);
+        }
+        const lines = itemsToWrite.map((it, idx) => {
+          const dbItem = (it as any).itemId ? itemMap.get((it as any).itemId) : undefined;
+          return {
+            itemId: (it as any).itemId ?? null,
+            skuSnapshot: dbItem?.sku ?? null,
+            nameSnapshot: it.name || dbItem?.name || null,
+            sizeSnapshot: it.size || dbItem?.sizeLabel || null,
+            unitSnapshot: it.unit || dbItem?.unitOfMeasure || null,
+            qty: it.qty || 0,
+            remarksSnapshot: it.remarks || null,
+            onHandSnapshot: dbItem?.quantityOnHand ?? null,
+            reorderPointSnapshot: dbItem?.reorderPoint ?? null,
+            reorderQuantitySnapshot: dbItem?.reorderQuantity ?? null,
+            minimumStockSnapshot: dbItem?.minimumStock ?? null,
+            sortOrder: idx,
+          };
+        });
+        await storage.createRmsExportHistory(
+          {
+            exportType: "rms",
+            exportedBy: currentUser?.id ?? null,
+            exportedByName: currentUser?.name ?? currentUser?.email ?? null,
+            requestFrom: parsed.header.requester || null,
+            poNumber: parsed.header.poNumber || null,
+            projectId: parsed.projectId ?? null,
+            projectName: parsed.header.projectName || null,
+            completionDate: parsed.header.completionDate || null,
+            deliveryTo: parsed.header.deliveryTo || null,
+            itemCount: itemsToWrite.length,
+            status: "exported",
+          } as any,
+          lines as any,
+        );
+      } catch (histErr: any) {
+        console.error("[rms-export] failed to persist history:", histErr?.message || histErr);
+      }
+
       const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
       const poPart = safe(parsed.header.poNumber) || "RMS";
       const filename = `${poPart}.xlsx`;
@@ -986,6 +1041,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       if (err?.issues) return res.status(400).json({ message: "Invalid export payload", issues: err.issues });
       res.status(500).json({ message: err.message || "Failed to export RMS" });
+    }
+  });
+
+  // ─── Reorder: RMS export history ────────────────────────────────────────────
+  app.get("/api/reorder/history", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const rows = await storage.listRmsExportHistory(200);
+      res.json(rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to load export history" });
+    }
+  });
+
+  app.get("/api/reorder/history/:id", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    try {
+      const detail = await storage.getRmsExportHistoryDetail(id);
+      if (!detail) return res.status(404).json({ message: "Not found" });
+      res.json(detail);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to load export history detail" });
     }
   });
 

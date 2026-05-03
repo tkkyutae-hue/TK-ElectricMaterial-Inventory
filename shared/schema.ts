@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -554,3 +554,52 @@ export type MaterialRequest = typeof materialRequests.$inferSelect;
 export type InsertMaterialRequest = typeof materialRequests.$inferInsert;
 export type CreateEquipmentRequest = z.infer<typeof insertEquipmentSchema>;
 export type UpdateEquipmentRequest = Partial<CreateEquipmentRequest>;
+
+// ─── RMS Export History ──────────────────────────────────────────────────────
+// Snapshot of every successful RMS Excel export. Header row + line items.
+
+export const rmsExportHistory = pgTable("rms_export_history", {
+  id: serial("id").primaryKey(),
+  exportType: text("export_type").notNull().default("rms"),
+  exportedAt: timestamp("exported_at").defaultNow(),
+  exportedBy: varchar("exported_by").references(() => users.id),
+  exportedByName: text("exported_by_name"),
+  requestFrom: text("request_from"),
+  poNumber: text("po_number"),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  projectName: text("project_name"),
+  completionDate: text("completion_date"),
+  deliveryTo: text("delivery_to"),
+  itemCount: integer("item_count").notNull().default(0),
+  status: text("status").notNull().default("exported"),
+});
+
+export const rmsExportHistoryItems = pgTable("rms_export_history_items", {
+  id: serial("id").primaryKey(),
+  historyId: integer("history_id").notNull().references(() => rmsExportHistory.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => items.id, { onDelete: "set null" }),
+  skuSnapshot: text("sku_snapshot"),
+  nameSnapshot: text("name_snapshot"),
+  sizeSnapshot: text("size_snapshot"),
+  unitSnapshot: text("unit_snapshot"),
+  qty: integer("qty").notNull().default(0),
+  remarksSnapshot: text("remarks_snapshot"),
+  onHandSnapshot: integer("on_hand_snapshot"),
+  reorderPointSnapshot: integer("reorder_point_snapshot"),
+  reorderQuantitySnapshot: integer("reorder_quantity_snapshot"),
+  minimumStockSnapshot: integer("minimum_stock_snapshot"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertRmsExportHistorySchema = createInsertSchema(rmsExportHistory).omit({
+  id: true, exportedAt: true,
+});
+export const insertRmsExportHistoryItemSchema = createInsertSchema(rmsExportHistoryItems).omit({
+  id: true,
+});
+
+export type RmsExportHistory = typeof rmsExportHistory.$inferSelect;
+export type RmsExportHistoryItem = typeof rmsExportHistoryItems.$inferSelect;
+export type CreateRmsExportHistory = z.infer<typeof insertRmsExportHistorySchema>;
+export type CreateRmsExportHistoryItem = z.infer<typeof insertRmsExportHistoryItemSchema>;
+export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHistoryItem[] };

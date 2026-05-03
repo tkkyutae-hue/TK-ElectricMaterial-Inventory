@@ -24,6 +24,9 @@ import {
   workerEvaluations, type WorkerEvaluation, type CreateWorkerEvaluationRequest,
   equipment, type Equipment, type EquipmentWithProject, type CreateEquipmentRequest, type UpdateEquipmentRequest,
   materialRequests, type MaterialRequest,
+  rmsExportHistory, rmsExportHistoryItems,
+  type RmsExportHistory, type RmsExportHistoryItem, type RmsExportHistoryWithLines,
+  type CreateRmsExportHistory, type CreateRmsExportHistoryItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -173,6 +176,10 @@ export interface IStorage {
   deleteMaterialRequest(id: number): Promise<void>;
   getMovementsByReference(referenceType: string, referenceId: string): Promise<InventoryMovement[]>;
   undoMaterialRequestCompletion(id: number): Promise<MaterialRequest>;
+
+  createRmsExportHistory(header: CreateRmsExportHistory, lines: Omit<CreateRmsExportHistoryItem, "historyId">[]): Promise<RmsExportHistory>;
+  listRmsExportHistory(limit?: number): Promise<RmsExportHistory[]>;
+  getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3038,5 +3045,34 @@ export function extractSubcategory(
 
   return '';
 }
+
+// ─── RMS Export History ──────────────────────────────────────────────────────
+DatabaseStorage.prototype.createRmsExportHistory = async function (
+  header: CreateRmsExportHistory,
+  lines: Omit<CreateRmsExportHistoryItem, "historyId">[],
+): Promise<RmsExportHistory> {
+  return await db.transaction(async (tx) => {
+    const [created] = await tx.insert(rmsExportHistory).values(header).returning();
+    if (lines.length > 0) {
+      await tx.insert(rmsExportHistoryItems).values(
+        lines.map((l, i) => ({ ...l, historyId: created.id, sortOrder: l.sortOrder ?? i })),
+      );
+    }
+    return created;
+  });
+};
+
+DatabaseStorage.prototype.listRmsExportHistory = async function (limit = 200): Promise<RmsExportHistory[]> {
+  return await db.select().from(rmsExportHistory).orderBy(desc(rmsExportHistory.exportedAt)).limit(limit);
+};
+
+DatabaseStorage.prototype.getRmsExportHistoryDetail = async function (id: number): Promise<RmsExportHistoryWithLines | undefined> {
+  const [header] = await db.select().from(rmsExportHistory).where(eq(rmsExportHistory.id, id));
+  if (!header) return undefined;
+  const lines = await db.select().from(rmsExportHistoryItems)
+    .where(eq(rmsExportHistoryItems.historyId, id))
+    .orderBy(asc(rmsExportHistoryItems.sortOrder), asc(rmsExportHistoryItems.id));
+  return { ...header, lines };
+};
 
 export const storage = new DatabaseStorage();

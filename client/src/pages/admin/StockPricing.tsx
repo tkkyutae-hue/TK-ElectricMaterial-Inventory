@@ -285,12 +285,13 @@ function FamilyTable({
   const { t } = useLanguage();
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "1080px" }}>
+      <Table style={{ minWidth: "1160px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-8" />
-            <TableHead className="w-12" />
             <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColSku}</TableHead>
+            <TableHead className="w-12" />
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-24">{t.stockPricingColSize}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColName}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColOnHand}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColReorderPoint}</TableHead>
@@ -407,6 +408,7 @@ function ItemRow({
             )}
           </div>
         </TableCell>
+        <TableCell className="font-mono text-xs text-slate-500" data-testid={`text-sku-${item.id}`}>{item.sku}</TableCell>
         <TableCell className="w-12 px-2">
           {item.imageUrl ? (
             <img
@@ -422,10 +424,11 @@ function ItemRow({
             </div>
           )}
         </TableCell>
-        <TableCell className="font-mono text-xs text-slate-500" data-testid={`text-sku-${item.id}`}>{item.sku}</TableCell>
+        <TableCell className="w-24 text-xs text-slate-500 tabular-nums" data-testid={`text-size-${item.id}`}>
+          {item.sizeLabel || ""}
+        </TableCell>
         <TableCell>
           <div className="text-sm font-medium text-slate-800" data-testid={`text-name-${item.id}`}>{item.name}</div>
-          {item.sizeLabel && <div className="text-xs text-slate-400" data-testid={`text-size-${item.id}`}>{item.sizeLabel}</div>}
         </TableCell>
         <TableCell className="text-right tabular-nums">
           <span className="font-semibold text-slate-900 text-sm" data-testid={`text-on-hand-${item.id}`}>{item.quantityOnHand.toLocaleString()}</span>
@@ -515,7 +518,7 @@ function ItemRow({
       </TableRow>
       {expanded && (
         <TableRow className="bg-slate-50/60 border-b border-slate-200" data-testid={`row-suppliers-${item.id}`}>
-          <TableCell colSpan={12} className="p-0">
+          <TableCell colSpan={13} className="p-0">
             <SupplierPanel itemId={item.id} suppliers={suppliers} />
           </TableCell>
         </TableRow>

@@ -1314,6 +1314,17 @@ export class DatabaseStorage implements IStorage {
     const itemIds = allItems.map(i => i.id);
     const reelMap = await this.liveReelQtyMap(itemIds);
 
+    const imgRows = itemIds.length > 0
+      ? await db.select({ itemId: itemImages.itemId, imageUrl: itemImages.imageUrl, sortOrder: itemImages.sortOrder })
+          .from(itemImages)
+          .where(inArray(itemImages.itemId, itemIds))
+          .orderBy(asc(itemImages.sortOrder))
+      : [];
+    const imgMap = new Map<number, string>();
+    for (const r of imgRows) {
+      if (!imgMap.has(r.itemId)) imgMap.set(r.itemId, r.imageUrl);
+    }
+
     const aggRows = itemIds.length > 0
       ? await db.select({
           itemId: supplierItems.itemId,
@@ -1356,7 +1367,7 @@ export class DatabaseStorage implements IStorage {
         name: it.name,
         sizeLabel: it.sizeLabel,
         unitOfMeasure: it.unitOfMeasure,
-        imageUrl: it.imageUrl ?? null,
+        imageUrl: imgMap.get(it.id) ?? it.imageUrl ?? null,
         quantityOnHand: liveQty,
         reorderPoint: it.reorderPoint,
         reorderQuantity: it.reorderQuantity,

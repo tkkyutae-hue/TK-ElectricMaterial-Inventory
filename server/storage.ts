@@ -509,15 +509,16 @@ export class DatabaseStorage implements IStorage {
 
     // ── Usage pattern filter (core ≥8/30d, normal ≥1/30d, low ≥1/90d, none 0)
     if (filters?.usagePattern) {
+      const target = filters.usagePattern;
       mapped = mapped.filter(i => {
-        const c30 = (i as any).issueCount30d ?? 0;
-        const c90 = (i as any).issueCount90d ?? c30;
-        const pattern =
+        const c30 = i.issueCount30d ?? 0;
+        const c90 = i.issueCount90d ?? c30;
+        const pattern: "core" | "normal" | "low" | "none" =
           c30 >= 8 ? 'core'   :
           c30 >= 1 ? 'normal' :
           c90 >= 1 ? 'low'    :
                      'none';
-        return pattern === filters.usagePattern;
+        return pattern === target;
       });
     }
 

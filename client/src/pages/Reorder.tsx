@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsageBadge, classifyUsage } from "@/components/UsageBadge";
+import { classifyUsagePattern, USAGE_PATTERN_STYLES, type UsagePattern } from "@/lib/usagePattern";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
@@ -33,6 +34,7 @@ const DEFAULTS = {
   category: "all",
   status: "all",
   usage: "all",
+  usagePattern: "all",
   needsReorderOnly: true,
 };
 
@@ -45,6 +47,7 @@ export default function Reorder() {
   const [categoryFilter, setCategoryFilter]       = useState(DEFAULTS.category);
   const [statusFilter, setStatusFilter]           = useState(DEFAULTS.status);
   const [usageFilter, setUsageFilter]             = useState(DEFAULTS.usage);
+  const [usagePatternFilter, setUsagePatternFilter] = useState(DEFAULTS.usagePattern);
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
   const [selectedIds, setSelectedIds]             = useState<Set<number>>(new Set());
 
@@ -53,6 +56,7 @@ export default function Reorder() {
     setCategoryFilter(DEFAULTS.category);
     setStatusFilter(DEFAULTS.status);
     setUsageFilter(DEFAULTS.usage);
+    setUsagePatternFilter(DEFAULTS.usagePattern);
     setNeedsReorderOnly(DEFAULTS.needsReorderOnly);
   };
 
@@ -140,6 +144,15 @@ export default function Reorder() {
         if (tier !== usageFilter) return false;
       }
 
+      // Usage pattern filter (core / normal / low / none) — based on
+      // recent issue counts over 30d + 90d windows.
+      if (usagePatternFilter !== "all") {
+        const c30 = rec.issueCount30d ?? rec.last30dIssueCount ?? 0;
+        const c90 = rec.issueCount90d ?? c30;
+        const pattern = classifyUsagePattern(c30, c90);
+        if (pattern !== usagePatternFilter) return false;
+      }
+
       // "Needs Reorder Only" — hides items whose stock status is "ordered"
       // (already on order, no further action needed).
       if (needsReorderOnly && stockStatus === "ordered") return false;
@@ -159,7 +172,7 @@ export default function Reorder() {
 
       return true;
     });
-  }, [recommendations, search, categoryFilter, statusFilter, usageFilter, needsReorderOnly, categoryMap]);
+  }, [recommendations, search, categoryFilter, statusFilter, usageFilter, usagePatternFilter, needsReorderOnly, categoryMap]);
 
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
   const showFilteredEmpty  = hasRecommendations && filtered.length === 0;
@@ -248,6 +261,26 @@ export default function Reorder() {
                 </SelectItem>
               </SelectContent>
             </Select>
+            <Select value={usagePatternFilter} onValueChange={setUsagePatternFilter}>
+              <SelectTrigger className="min-w-[160px] w-auto h-9 bg-white text-sm" data-testid="select-usage-pattern-filter">
+                <SelectValue placeholder={t.reorderColUsagePattern} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t.reorderUsagePatternAll}</SelectItem>
+                <SelectItem value="core">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-emerald-500" aria-hidden="true" />{t.reorderUsagePatternCore}</span>
+                </SelectItem>
+                <SelectItem value="normal">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-sky-500" aria-hidden="true" />{t.reorderUsagePatternNormal}</span>
+                </SelectItem>
+                <SelectItem value="low">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-amber-500" aria-hidden="true" />{t.reorderUsagePatternLow}</span>
+                </SelectItem>
+                <SelectItem value="none">
+                  <span className="inline-flex items-center"><span className="inline-block w-1.5 h-1.5 rounded-full mr-2 bg-slate-300" aria-hidden="true" />{t.reorderUsagePatternNone}</span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <label className="flex items-center gap-2 px-3 h-9 rounded-md border border-slate-200 bg-white text-sm text-slate-700 cursor-pointer select-none whitespace-nowrap">
               <Switch
                 checked={needsReorderOnly}
@@ -294,7 +327,8 @@ export default function Reorder() {
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOnHand}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColReorderPt}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOrderQty}</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-center">{t.reorderColUsage}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-center" data-testid="header-usage">{t.reorderColUsage}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-center" data-testid="header-usage-pattern">{t.reorderColUsagePattern}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColActions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -302,14 +336,14 @@ export default function Reorder() {
             {isLoading ? (
               [1,2,3].map(i => (
                 <TableRow key={i}>
-                  {[...Array(9)].map((_, j) => (
+                  {[...Array(10)].map((_, j) => (
                     <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : !hasRecommendations ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={10} className="text-center py-16 text-slate-500">
                   <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-recommendations">{t.reorderNoneFound}</p>
                   <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
@@ -320,7 +354,7 @@ export default function Reorder() {
               </TableRow>
             ) : showFilteredEmpty ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-16 text-slate-500">
+                <TableCell colSpan={10} className="text-center py-16 text-slate-500">
                   <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   <p className="font-semibold text-slate-900" data-testid="text-no-match">{t.reorderNoMatch}</p>
                   <Button variant="outline" className="mt-4" onClick={resetFilters} data-testid="button-clear-filters">
@@ -377,6 +411,40 @@ export default function Reorder() {
                       count={rec.last30dIssueCount ?? 0}
                       testId={`badge-usage-${rec.id}`}
                     />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {(() => {
+                      const c30 = rec.issueCount30d ?? rec.last30dIssueCount ?? 0;
+                      const c90 = rec.issueCount90d ?? c30;
+                      const pattern: UsagePattern = classifyUsagePattern(c30, c90);
+                      const styles = USAGE_PATTERN_STYLES[pattern];
+                      const label =
+                        pattern === "core"   ? t.reorderUsagePatternCore   :
+                        pattern === "normal" ? t.reorderUsagePatternNormal :
+                        pattern === "low"    ? t.reorderUsagePatternLow    :
+                                               t.reorderUsagePatternNone;
+                      const lastLine = rec.lastIssueAt
+                        ? "\n" + t.reorderUsagePatternLastUsed.replace(
+                            "{date}",
+                            new Date(rec.lastIssueAt).toLocaleDateString(),
+                          )
+                        : c90 === 0
+                          ? "\n" + t.reorderUsagePatternNoRecent
+                          : "";
+                      const tooltip = t.reorderUsagePatternTooltip
+                        .replace("{n30}", String(c30))
+                        .replace("{n90}", String(c90)) + lastLine;
+                      return (
+                        <span
+                          title={tooltip}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles.chip}`}
+                          data-testid={`chip-usage-pattern-${rec.id}`}
+                        >
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${styles.dot}`} aria-hidden="true" />
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">

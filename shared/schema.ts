@@ -316,6 +316,9 @@ export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {
   item?: Item | null;
   supplier?: Supplier | null;
   last30dIssueCount?: number;
+  issueCount30d?: number;
+  issueCount90d?: number;
+  lastIssueAt?: string | null;
 };
 
 export type CategorySummary = Category & {

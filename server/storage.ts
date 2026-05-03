@@ -1041,33 +1041,49 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
-    // 30-day "issue" usage counts per item (used by Reorder UI to render 사용빈도 chip)
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Issue usage counts per item over 30/90-day windows (used by Reorder UI
+    // to render 사용빈도 chip and the new 사용패턴 chip/filter). Single 90-day
+    // scan with conditional aggregation, plus MAX(createdAt) for last-issue.
+    const now = Date.now();
+    const since90 = new Date(now - 90 * 24 * 60 * 60 * 1000);
+    const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
     const usageRows = itemIds.length > 0
       ? await db.select({
           itemId: inventoryMovements.itemId,
-          cnt: sql<string>`COUNT(*)`,
+          cnt30: sql<string>`SUM(CASE WHEN ${inventoryMovements.createdAt} >= ${since30} THEN 1 ELSE 0 END)`,
+          cnt90: sql<string>`COUNT(*)`,
+          lastAt: sql<Date | null>`MAX(${inventoryMovements.createdAt})`,
         })
         .from(inventoryMovements)
         .where(and(
           inArray(inventoryMovements.itemId, itemIds),
           eq(inventoryMovements.movementType, 'issue'),
-          gte(inventoryMovements.createdAt, since),
+          gte(inventoryMovements.createdAt, since90),
         ))
         .groupBy(inventoryMovements.itemId)
       : [];
-    const usageMap = new Map<number, number>(
-      usageRows.map(r => [r.itemId, Number(r.cnt) || 0])
+    const usageMap = new Map<number, { c30: number; c90: number; last: Date | null }>(
+      usageRows.map(r => [r.itemId, {
+        c30: Number(r.cnt30) || 0,
+        c90: Number(r.cnt90) || 0,
+        last: r.lastAt ? new Date(r.lastAt as any) : null,
+      }])
     );
 
     return rows.map(r => {
       const firstImage = r.item ? allImages.find(img => img.itemId === r.item!.id) : undefined;
-      const usage = r.item ? (usageMap.get(r.item.id) ?? 0) : 0;
+      const u = r.item ? usageMap.get(r.item.id) : undefined;
+      const c30 = u?.c30 ?? 0;
+      const c90 = u?.c90 ?? 0;
+      const last = u?.last ?? null;
       return {
         ...r.rec,
         item: r.item ? { ...r.item, imageUrl: firstImage?.imageUrl || null } : null,
         supplier: r.supplier,
-        last30dIssueCount: usage,
+        last30dIssueCount: c30,
+        issueCount30d: c30,
+        issueCount90d: c90,
+        lastIssueAt: last ? last.toISOString() : null,
       };
     });
   }

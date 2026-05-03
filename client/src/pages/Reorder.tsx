@@ -290,6 +290,7 @@ export default function Reorder() {
       .filter((r: any) => selectedIds.has(r.id))
       .map((r: any) => ({
         id: r.id,
+        itemId: typeof r.item?.id === "number" ? r.item.id : null,
         name: r.item?.name ?? "",
         size: r.item?.sizeLabel ?? "",
         unit: r.item?.unitOfMeasure ?? "",

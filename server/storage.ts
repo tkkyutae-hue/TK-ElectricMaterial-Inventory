@@ -2688,6 +2688,35 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updated;
   }
+
+  // ─── RMS Export History ────────────────────────────────────────────────────
+  async createRmsExportHistory(
+    header: CreateRmsExportHistory,
+    lines: Omit<CreateRmsExportHistoryItem, "historyId">[],
+  ): Promise<RmsExportHistory> {
+    return await db.transaction(async (tx) => {
+      const [created] = await tx.insert(rmsExportHistory).values(header).returning();
+      if (lines.length > 0) {
+        await tx.insert(rmsExportHistoryItems).values(
+          lines.map((l, i) => ({ ...l, historyId: created.id, sortOrder: l.sortOrder ?? i })),
+        );
+      }
+      return created;
+    });
+  }
+
+  async listRmsExportHistory(limit = 200): Promise<RmsExportHistory[]> {
+    return await db.select().from(rmsExportHistory).orderBy(desc(rmsExportHistory.exportedAt)).limit(limit);
+  }
+
+  async getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined> {
+    const [header] = await db.select().from(rmsExportHistory).where(eq(rmsExportHistory.id, id));
+    if (!header) return undefined;
+    const lines = await db.select().from(rmsExportHistoryItems)
+      .where(eq(rmsExportHistoryItems.historyId, id))
+      .orderBy(asc(rmsExportHistoryItems.sortOrder), asc(rmsExportHistoryItems.id));
+    return { ...header, lines };
+  }
 }
 
 // ─── Field data extraction helpers ───────────────────────────────────────────
@@ -3045,34 +3074,5 @@ export function extractSubcategory(
 
   return '';
 }
-
-// ─── RMS Export History ──────────────────────────────────────────────────────
-DatabaseStorage.prototype.createRmsExportHistory = async function (
-  header: CreateRmsExportHistory,
-  lines: Omit<CreateRmsExportHistoryItem, "historyId">[],
-): Promise<RmsExportHistory> {
-  return await db.transaction(async (tx) => {
-    const [created] = await tx.insert(rmsExportHistory).values(header).returning();
-    if (lines.length > 0) {
-      await tx.insert(rmsExportHistoryItems).values(
-        lines.map((l, i) => ({ ...l, historyId: created.id, sortOrder: l.sortOrder ?? i })),
-      );
-    }
-    return created;
-  });
-};
-
-DatabaseStorage.prototype.listRmsExportHistory = async function (limit = 200): Promise<RmsExportHistory[]> {
-  return await db.select().from(rmsExportHistory).orderBy(desc(rmsExportHistory.exportedAt)).limit(limit);
-};
-
-DatabaseStorage.prototype.getRmsExportHistoryDetail = async function (id: number): Promise<RmsExportHistoryWithLines | undefined> {
-  const [header] = await db.select().from(rmsExportHistory).where(eq(rmsExportHistory.id, id));
-  if (!header) return undefined;
-  const lines = await db.select().from(rmsExportHistoryItems)
-    .where(eq(rmsExportHistoryItems.historyId, id))
-    .orderBy(asc(rmsExportHistoryItems.sortOrder), asc(rmsExportHistoryItems.id));
-  return { ...header, lines };
-};
 
 export const storage = new DatabaseStorage();

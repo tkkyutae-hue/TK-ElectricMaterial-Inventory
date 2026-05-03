@@ -999,9 +999,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           for (const r of rows) itemMap.set(r.id, r);
         }
         const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = itemsToWrite.map((it, idx) => {
-          const dbItem = it.itemId ? itemMap.get(it.itemId) : undefined;
+          const dbItem = typeof it.itemId === "number" ? itemMap.get(it.itemId) : undefined;
+          // Defensive: if the client sent an itemId that no longer resolves to
+          // an existing items row, null the FK so the history insert can't
+          // fail on a foreign-key violation.
+          const safeItemId = dbItem ? dbItem.id : null;
           return {
-            itemId: it.itemId ?? null,
+            itemId: safeItemId,
             skuSnapshot: dbItem?.sku ?? null,
             nameSnapshot: it.name || dbItem?.name || null,
             sizeSnapshot: it.size || dbItem?.sizeLabel || null,

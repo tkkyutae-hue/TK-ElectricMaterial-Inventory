@@ -14,9 +14,9 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
-function formatDateTime(iso?: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
+function formatDateTime(value?: string | Date | null): string {
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -85,7 +85,7 @@ export default function ReorderHistory() {
         <TableBody>
           {rows.map((r) => (
             <TableRow key={r.id} data-testid={`row-history-${r.id}`}>
-              <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt as any)}</TableCell>
+              <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
               <TableCell>{r.exportedByName || "—"}</TableCell>
               <TableCell>{r.projectName || "—"}</TableCell>
               <TableCell>{r.poNumber || "—"}</TableCell>
@@ -127,7 +127,7 @@ export default function ReorderHistory() {
           {detailQuery.data && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                <Field label={t.reorderHistoryColExportedAt} value={formatDateTime(detailQuery.data.exportedAt as any)} />
+                <Field label={t.reorderHistoryColExportedAt} value={formatDateTime(detailQuery.data.exportedAt)} />
                 <Field label={t.reorderHistoryColExportedBy} value={detailQuery.data.exportedByName || "—"} />
                 <Field label={t.reorderRmsRequester} value={detailQuery.data.requestFrom || "—"} />
                 <Field label={t.reorderHistoryColPo} value={detailQuery.data.poNumber || "—"} />
@@ -138,32 +138,67 @@ export default function ReorderHistory() {
                 <Field label={t.reorderHistoryColItemCount} value={String(detailQuery.data.itemCount)} />
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t.reorderHistoryColSku}</TableHead>
-                      <TableHead>{t.reorderRmsItem}</TableHead>
-                      <TableHead>{t.reorderRmsSize}</TableHead>
-                      <TableHead className="text-right">{t.reorderRmsQty}</TableHead>
-                      <TableHead>{t.reorderRmsUnit}</TableHead>
-                      <TableHead>{t.reorderHistoryColRemarks}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {detailQuery.data.lines.map((l) => (
-                      <TableRow key={l.id} data-testid={`row-history-line-${l.id}`}>
-                        <TableCell className="font-mono text-xs">{l.skuSnapshot || "—"}</TableCell>
-                        <TableCell>{l.nameSnapshot || "—"}</TableCell>
-                        <TableCell>{l.sizeSnapshot || "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums">{l.qty}</TableCell>
-                        <TableCell>{l.unitSnapshot || "—"}</TableCell>
-                        <TableCell className="text-xs text-slate-500">{l.remarksSnapshot || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              {(() => {
+                const showStock = detailQuery.data.lines.some(
+                  (l) =>
+                    l.onHandSnapshot != null ||
+                    l.reorderPointSnapshot != null ||
+                    l.reorderQuantitySnapshot != null ||
+                    l.minimumStockSnapshot != null,
+                );
+                return (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t.reorderHistoryColSku}</TableHead>
+                          <TableHead>{t.reorderRmsItem}</TableHead>
+                          <TableHead>{t.reorderRmsSize}</TableHead>
+                          <TableHead className="text-right">{t.reorderRmsQty}</TableHead>
+                          <TableHead>{t.reorderRmsUnit}</TableHead>
+                          {showStock && (
+                            <>
+                              <TableHead className="text-right">{t.reorderHistoryColOnHand}</TableHead>
+                              <TableHead className="text-right">{t.reorderHistoryColReorderPoint}</TableHead>
+                              <TableHead className="text-right">{t.reorderHistoryColReorderQty}</TableHead>
+                              <TableHead className="text-right">{t.reorderHistoryColMinStock}</TableHead>
+                            </>
+                          )}
+                          <TableHead>{t.reorderHistoryColRemarks}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailQuery.data.lines.map((l) => (
+                          <TableRow key={l.id} data-testid={`row-history-line-${l.id}`}>
+                            <TableCell className="font-mono text-xs">{l.skuSnapshot || "—"}</TableCell>
+                            <TableCell>{l.nameSnapshot || "—"}</TableCell>
+                            <TableCell>{l.sizeSnapshot || "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.qty}</TableCell>
+                            <TableCell>{l.unitSnapshot || "—"}</TableCell>
+                            {showStock && (
+                              <>
+                                <TableCell className="text-right tabular-nums" data-testid={`text-history-onhand-${l.id}`}>
+                                  {l.onHandSnapshot ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums" data-testid={`text-history-rop-${l.id}`}>
+                                  {l.reorderPointSnapshot ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums" data-testid={`text-history-roq-${l.id}`}>
+                                  {l.reorderQuantitySnapshot ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums" data-testid={`text-history-min-${l.id}`}>
+                                  {l.minimumStockSnapshot ?? "—"}
+                                </TableCell>
+                              </>
+                            )}
+                            <TableCell className="text-xs text-slate-500">{l.remarksSnapshot || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </DialogContent>

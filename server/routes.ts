@@ -4,7 +4,11 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem } from "../shared/schema";
+import type { Request } from "express";
+import type { User } from "@shared/models/auth";
+
+type RequestWithUser = Request & { currentUser?: User };
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
@@ -982,11 +986,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Best-effort: persist export history snapshot. Failures are logged but
       // do not interrupt the download response.
       try {
-        const currentUser = (req as any).currentUser;
+        const currentUser = (req as RequestWithUser).currentUser;
         const itemIds = itemsToWrite
-          .map(i => (i as any).itemId)
-          .filter((v: any): v is number => typeof v === "number" && v > 0);
-        const itemMap = new Map<number, any>();
+          .map(i => i.itemId)
+          .filter((v): v is number => typeof v === "number" && v > 0);
+        const itemMap = new Map<number, Item>();
         if (itemIds.length > 0) {
           const { db } = await import("./db");
           const { items: itemsTable } = await import("../shared/schema");
@@ -994,10 +998,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const rows = await db.select().from(itemsTable).where(inArray(itemsTable.id, itemIds));
           for (const r of rows) itemMap.set(r.id, r);
         }
-        const lines = itemsToWrite.map((it, idx) => {
-          const dbItem = (it as any).itemId ? itemMap.get((it as any).itemId) : undefined;
+        const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = itemsToWrite.map((it, idx) => {
+          const dbItem = it.itemId ? itemMap.get(it.itemId) : undefined;
           return {
-            itemId: (it as any).itemId ?? null,
+            itemId: it.itemId ?? null,
             skuSnapshot: dbItem?.sku ?? null,
             nameSnapshot: it.name || dbItem?.name || null,
             sizeSnapshot: it.size || dbItem?.sizeLabel || null,
@@ -1011,24 +1015,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             sortOrder: idx,
           };
         });
-        await storage.createRmsExportHistory(
-          {
-            exportType: "rms",
-            exportedBy: currentUser?.id ?? null,
-            exportedByName: currentUser?.name ?? currentUser?.email ?? null,
-            requestFrom: parsed.header.requester || null,
-            poNumber: parsed.header.poNumber || null,
-            projectId: parsed.projectId ?? null,
-            projectName: parsed.header.projectName || null,
-            completionDate: parsed.header.completionDate || null,
-            deliveryTo: parsed.header.deliveryTo || null,
-            itemCount: itemsToWrite.length,
-            status: "exported",
-          } as any,
-          lines as any,
-        );
-      } catch (histErr: any) {
-        console.error("[rms-export] failed to persist history:", histErr?.message || histErr);
+        const headerInsert: CreateRmsExportHistory = {
+          exportType: "rms",
+          exportedBy: currentUser?.id ?? null,
+          exportedByName: currentUser?.name ?? currentUser?.email ?? null,
+          requestFrom: parsed.header.requester || null,
+          poNumber: parsed.header.poNumber || null,
+          projectId: parsed.projectId ?? null,
+          projectName: parsed.header.projectName || null,
+          completionDate: parsed.header.completionDate || null,
+          deliveryTo: parsed.header.deliveryTo || null,
+          itemCount: itemsToWrite.length,
+          status: "exported",
+        };
+        await storage.createRmsExportHistory(headerInsert, lines);
+      } catch (histErr) {
+        const msg = histErr instanceof Error ? histErr.message : String(histErr);
+        console.error("[rms-export] failed to persist history:", msg);
       }
 
       const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();

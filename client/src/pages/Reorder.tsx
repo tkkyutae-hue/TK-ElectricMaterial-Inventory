@@ -504,10 +504,22 @@ function FamilyTable({
 
   return (
     <div className="overflow-x-auto bg-white border-t border-slate-200">
-      <Table>
+      <Table className="table-fixed">
+        <colgroup>
+          <col style={{ width: "40px" }} />
+          <col style={{ width: "110px" }} />
+          <col style={{ width: "56px" }} />
+          <col style={{ width: "100px" }} />
+          <col />
+          <col style={{ width: "100px" }} />
+          <col style={{ width: "100px" }} />
+          <col style={{ width: "100px" }} />
+          <col style={{ width: "112px" }} />
+          <col style={{ width: "150px" }} />
+        </colgroup>
         <TableHeader className="bg-slate-50/80">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-8 px-2">
+            <TableHead className="px-2">
               <Checkbox
                 className="h-4 w-4"
                 aria-label="select all"
@@ -517,19 +529,20 @@ function FamilyTable({
               />
             </TableHead>
             <TableHead className="font-semibold text-slate-600 whitespace-nowrap">{t.invStatus}</TableHead>
-            <TableHead className="font-semibold text-slate-600 w-12 text-center whitespace-nowrap">{t.reorderColPhoto}</TableHead>
+            <TableHead className="font-semibold text-slate-600 text-center whitespace-nowrap">{t.reorderColPhoto}</TableHead>
+            <TableHead className="font-semibold text-slate-600 whitespace-nowrap">{t.reorderColSize}</TableHead>
             <TableHead className="font-semibold text-slate-600 whitespace-nowrap">{t.reorderColItem}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColOnHand}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColReorderPt}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColOrderQty}</TableHead>
-            <TableHead className="font-semibold text-slate-600 text-center w-[112px] whitespace-nowrap">{t.reorderColUsagePattern}</TableHead>
+            <TableHead className="font-semibold text-slate-600 text-center whitespace-nowrap">{t.reorderColUsagePattern}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColActions}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((rec: any) => (
             <TableRow key={rec.id} className="hover:bg-slate-50/50" data-testid={`row-rec-${rec.id}`}>
-              <TableCell className="w-8 px-2">
+              <TableCell className="px-2">
                 <Checkbox
                   className="h-4 w-4"
                   aria-label="select row"
@@ -550,14 +563,14 @@ function FamilyTable({
                   <div className="w-8 h-8 rounded bg-slate-100 flex-shrink-0" />
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="text-sm text-slate-600 truncate">
+                {rec.item?.sizeLabel || <span className="text-slate-300">—</span>}
+              </TableCell>
+              <TableCell className="truncate">
                 <Link href={`/inventory/${rec.item?.id}`}>
-                  <p className="font-medium text-slate-900 hover:text-brand-600">
+                  <p className="font-medium text-slate-900 hover:text-brand-600 truncate">
                     {rec.item?.name}
                   </p>
-                  {rec.item?.sizeLabel && (
-                    <p className="text-xs text-slate-400">{rec.item.sizeLabel}</p>
-                  )}
                 </Link>
               </TableCell>
               <TableCell className="text-right">

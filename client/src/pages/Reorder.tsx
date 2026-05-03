@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown, FileSpreadsheet, X } from "lucide-react";
+import ExportRmsDialog, { type RmsExportItem } from "@/components/ExportRmsDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -67,6 +68,7 @@ export default function Reorder() {
   const [usagePatternFilter, setUsagePatternFilter] = useState(DEFAULTS.usagePattern);
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
   const [selectedIds, setSelectedIds]             = useState<Set<number>>(new Set());
+  const [rmsOpen, setRmsOpen]                     = useState(false);
 
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => loadSession(SS_OPEN_CATS, {}));
   const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>(() => loadSession(SS_OPEN_FAMS, {}));
@@ -288,6 +290,23 @@ export default function Reorder() {
     filteredIds.forEach(id => { if (on) n.add(id); else n.delete(id); });
     return n;
   });
+
+  // Build selected-item payload for the RMS export dialog from the FULL
+  // recommendations list (not the filtered view) so that switching filters
+  // after selecting rows never silently drops items from the export.
+  const selectedRmsItems: RmsExportItem[] = useMemo(() => {
+    const all = (recommendations as any[] | undefined) ?? [];
+    return all
+      .filter((r: any) => selectedIds.has(r.id))
+      .map((r: any) => ({
+        id: r.id,
+        name: r.item?.name ?? "",
+        size: r.item?.sizeLabel ?? "",
+        unit: r.item?.unitOfMeasure ?? "",
+        qty: Number(r.recommendedQuantity ?? r.item?.reorderQuantity ?? 0),
+      }));
+  }, [recommendations, selectedIds]);
+  const selectedTotalCount = selectedRmsItems.length;
 
   return (
     <div className="space-y-6">
@@ -529,6 +548,47 @@ export default function Reorder() {
           </div>
         )}
       </div>
+
+      {/* Floating bottom action bar — appears when ≥1 visible row is selected */}
+      {selectedTotalCount > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4">
+          <div
+            className="flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2"
+            data-testid="bar-reorder-selection"
+          >
+            <span className="text-sm">
+              <span className="font-semibold" data-testid="text-selected-count">{selectedTotalCount}</span>{" "}
+              {t.reorderRmsSelected}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-white hover:bg-white/10 rounded-full"
+              onClick={() => setSelectedIds(new Set())}
+              data-testid="button-clear-selection"
+            >
+              <X className="w-4 h-4 mr-1" />
+              {t.reorderRmsClearSelection}
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 bg-brand-600 hover:bg-brand-700 text-white rounded-full"
+              onClick={() => setRmsOpen(true)}
+              disabled={selectedTotalCount === 0}
+              data-testid="button-export-rms"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+              {t.reorderExportRms}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ExportRmsDialog
+        open={rmsOpen}
+        onOpenChange={setRmsOpen}
+        initialItems={selectedRmsItems}
+      />
     </div>
   );
 }

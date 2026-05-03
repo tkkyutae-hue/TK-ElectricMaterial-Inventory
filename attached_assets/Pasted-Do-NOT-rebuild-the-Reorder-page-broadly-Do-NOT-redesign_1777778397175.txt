@@ -1,0 +1,150 @@
+Do NOT rebuild the Reorder page broadly.
+Do NOT redesign inventory/reorder business logic.
+Do NOT redesign the company RMS format.
+
+Focus ONLY on implementing the first practical RMS export workflow from the Reorder tab using selected rows.
+
+TARGET GOAL
+Allow admins to:
+1. select desired reorder items with checkboxes
+2. click Export to RMS
+3. enter required RMS header information
+4. generate an Excel file where the selected items are automatically filled into the company RMS template
+
+IMPORTANT
+Use the existing company RMS Excel template as the source layout.
+Do NOT recreate the RMS from scratch with a new layout if the existing template can be filled safely.
+
+==================================================
+PART 1 — ROW SELECTION IN REORDER TAB
+==================================================
+
+Add checkbox-based row selection to the Reorder tab.
+
+Requirements:
+- each reorder row can be selected
+- selected count must be visible
+- support select / unselect cleanly
+- keep selection compatible with the current flat table layout
+- do NOT redesign the page into cards
+
+If helpful, show a bottom floating action bar when one or more rows are selected.
+
+At minimum the action bar/button area should support:
+- selected count
+- Export to RMS
+
+==================================================
+PART 2 — RMS EXPORT ENTRY FLOW
+==================================================
+
+Before generating the RMS file, show a compact export form/modal/panel where the admin can enter the RMS header fields.
+
+Required header inputs:
+- Date
+- Request From
+- TK PO Number
+- Project Name
+- Completion Date
+- Delivery To
+
+Keep this first version simple and admin-friendly.
+
+==================================================
+PART 3 — SELECTED ITEM PREVIEW BEFORE EXPORT
+==================================================
+
+Before final export, show the selected items clearly in the export flow.
+
+For each selected item, show at minimum:
+- item name
+- size
+- unit
+- export quantity
+
+IMPORTANT
+Default export quantity should come from the item’s Reorder Qty.
+
+But the admin must be able to adjust export quantity before generating the RMS file.
+
+This adjustment is for the RMS export only.
+Do NOT silently overwrite the item’s saved Reorder Qty unless explicitly intended and safely supported.
+
+==================================================
+PART 4 — RMS FIELD MAPPING
+==================================================
+
+Map selected reorder items into the RMS body rows like this:
+
+- NO. -> sequential row number starting from 1
+- SIZE -> item size
+- MATERIAL DESCRIPTION -> item name
+- QTY -> export quantity chosen in the RMS export flow
+- UNIT -> item unit
+- REMARKS -> leave blank for now unless a safe note field already exists
+
+Use the RMS header inputs to fill the top/header section of the template.
+
+==================================================
+PART 5 — USE THE EXISTING RMS EXCEL TEMPLATE
+==================================================
+
+Use the company RMS Excel template file as the basis for export.
+
+Implementation direction:
+- load the existing RMS template workbook
+- fill the known header cells
+- fill the line-item rows
+- preserve the template’s original layout/styling as much as possible
+- then return the generated file for download
+
+Do NOT create a brand-new generic spreadsheet layout unless absolutely necessary.
+
+==================================================
+PART 6 — BACKEND EXPORT SUPPORT
+==================================================
+
+Add only the smallest safe backend support needed to:
+- receive selected reorder item payload
+- receive RMS header input values
+- fill the RMS template
+- return the generated .xlsx file
+
+Do NOT do a broad backend rewrite.
+
+==================================================
+PART 7 — KEEP THE FIRST VERSION SAFE
+==================================================
+
+Do NOT add in this first version:
+- supplier-based export logic
+- quote comparison inside the export modal
+- automatic PO generation
+- multi-template support
+- broad reorder logic changes
+- grouped-by-category export sections unless required by the template
+
+Keep this version focused on:
+selected reorder rows -> RMS template filled -> download
+
+==================================================
+PART 8 — UX RULES
+==================================================
+
+- Export to RMS should be disabled when no rows are selected
+- selected count should be clear
+- quantity editing in the export flow should be easy and compact
+- do NOT silently export zero rows
+- do NOT lose the current Reorder table structure
+
+==================================================
+OUTPUT
+==================================================
+
+When done, report:
+1. How row selection works in the Reorder tab
+2. How the RMS export flow works
+3. Which RMS header fields are collected before export
+4. How selected items are mapped into the RMS rows
+5. Which files were modified
+6. Anything intentionally left unchanged

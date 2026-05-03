@@ -896,6 +896,99 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Reorder: Export selected items into the company RMS Excel template ──────
+  const exportRmsSchema = z.object({
+    header: z.object({
+      date:           z.string().optional().default(""),
+      requester:      z.string().optional().default(""),
+      poNumber:       z.string().optional().default(""),
+      projectName:    z.string().optional().default(""),
+      completionDate: z.string().optional().default(""),
+      deliveryTo:     z.string().optional().default(""),
+    }),
+    items: z.array(z.object({
+      name: z.string().default(""),
+      size: z.string().optional().default(""),
+      qty:  z.union([z.number(), z.string()]).transform(v => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+      }),
+      unit: z.string().optional().default(""),
+      remarks: z.string().optional().default(""),
+    })).min(1),
+  });
+
+  app.post("/api/reorder/export-rms", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const parsed = exportRmsSchema.parse(req.body);
+      const ExcelJS = (await import("exceljs")).default;
+      const templatePath = path.resolve(process.cwd(), "server/templates/rms-template.xlsx");
+      if (!fs.existsSync(templatePath)) {
+        return res.status(500).json({ message: "RMS template file is missing on server." });
+      }
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(templatePath);
+      const ws = wb.getWorksheet("RMS") || wb.worksheets[0];
+      if (!ws) return res.status(500).json({ message: "RMS template sheet not found." });
+
+      // Header cells (column C in the template).
+      const setCell = (addr: string, val: string) => {
+        const cell = ws.getCell(addr);
+        cell.value = val;
+      };
+      setCell("C1", parsed.header.date);
+      setCell("C2", parsed.header.requester);
+      setCell("C3", parsed.header.poNumber);
+      setCell("C4", parsed.header.projectName);
+      setCell("C5", parsed.header.completionDate);
+      setCell("C6", parsed.header.deliveryTo);
+
+      // Body rows.  Template has two sections of 25 lines each:
+      //   Section 1: rows 9-33  (NO. 1-25)
+      //   Section 2: rows 39-63 (NO. 26-50)
+      // Rows 34-37 and 64-67 are merged page-break / footer ranges; do not touch.
+      const rowForIndex = (i: number): number | null => {
+        if (i < 25) return 9 + i;
+        if (i < 50) return 39 + (i - 25);
+        return null;
+      };
+      const truncated = parsed.items.length > 50;
+      const itemsToWrite = parsed.items.slice(0, 50);
+
+      for (let i = 0; i < 50; i++) {
+        const row = rowForIndex(i);
+        if (row == null) break;
+        const item = itemsToWrite[i];
+        ws.getCell(`A${row}`).value = i + 1;
+        if (item) {
+          ws.getCell(`B${row}`).value = item.size || "";
+          ws.getCell(`C${row}`).value = item.name || "";
+          ws.getCell(`D${row}`).value = item.qty || 0;
+          ws.getCell(`E${row}`).value = item.unit || "";
+          ws.getCell(`F${row}`).value = item.remarks || "";
+        } else {
+          ws.getCell(`B${row}`).value = "";
+          ws.getCell(`C${row}`).value = "";
+          ws.getCell(`D${row}`).value = "";
+          ws.getCell(`E${row}`).value = "";
+          ws.getCell(`F${row}`).value = "";
+        }
+      }
+
+      const buf = await wb.xlsx.writeBuffer();
+      const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+      const poPart = safe(parsed.header.poNumber) || "RMS";
+      const filename = `${poPart}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      if (truncated) res.setHeader("X-RMS-Truncated", "50");
+      res.send(Buffer.from(buf));
+    } catch (err: any) {
+      if (err?.issues) return res.status(400).json({ message: "Invalid export payload", issues: err.issues });
+      res.status(500).json({ message: err.message || "Failed to export RMS" });
+    }
+  });
+
   // ─── Reports ─────────────────────────────────────────────────────────────────
   app.get("/api/reports/low-stock", isAuthenticated, async (_req, res) => {
     res.json(await storage.getReportLowStock());

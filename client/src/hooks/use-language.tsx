@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Lang, LANGUAGES, TRANSLATIONS, Translations } from "@/lib/i18n";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +56,7 @@ interface SwitcherProps {
 
 export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherProps) {
   const { lang, setLang } = useLanguage();
+  const isMobile = useIsMobile();
   const isDark = theme === "dark";
 
   const current = LANGUAGES.find(l => l.code === lang) ?? LANGUAGES[0];
@@ -107,7 +109,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
           <span style={{ fontSize: 13, lineHeight: 1 }} aria-hidden="true">
             {current.flag}
           </span>
-          <span>{current.code.toUpperCase()}</span>
+          <span>{isMobile ? current.country : current.code.toUpperCase()}</span>
           <ChevronDown
             style={{ width: 11, height: 11, color: chevronColor, flexShrink: 0 }}
             aria-hidden="true"
@@ -136,7 +138,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
               key={l.code}
               data-testid={`lang-option-${l.code}`}
               onSelect={() => setLang(l.code)}
-              className="flex items-center gap-2 cursor-pointer focus:bg-transparent"
+              className="flex items-center gap-2 cursor-pointer"
               style={{
                 background: isActive ? itemActiveBg : undefined,
                 color: isActive ? itemActiveColor : (isDark ? "#c8deca" : undefined),

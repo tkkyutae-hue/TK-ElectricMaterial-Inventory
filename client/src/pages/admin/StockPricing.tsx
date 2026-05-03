@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronRight, ChevronDown, Plus, Trash2, Search, AlertTriangle, Package, DollarSign, Star, Check, X } from "lucide-react";
+import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Plus, Trash2, Search, AlertTriangle, Package, DollarSign, Star, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -122,56 +123,21 @@ export default function StockPricing() {
   const toggleCat = (id: number) => setOpenCats(s => ({ ...s, [id]: !s[id] }));
   const toggleFam = (key: string) => setOpenFamilies(s => ({ ...s, [key]: !s[key] }));
 
+  // Expand/collapse every family within a single category in one click.
+  const toggleCatFamilies = (catId: number, families: { name: string }[], open: boolean) => {
+    setOpenFamilies(prev => {
+      const next = { ...prev };
+      families.forEach(f => { next[`${catId}::${f.name}`] = open; });
+      return next;
+    });
+  };
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 pb-40 max-w-7xl mx-auto">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900" data-testid="text-page-title">{t.stockPricingTitle}</h1>
         <p className="text-sm text-slate-500 mt-1">{t.stockPricingSubtitle}</p>
       </header>
-
-      <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 space-y-3 sticky top-0 z-10 shadow-sm" data-testid="toolbar-stock-pricing">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[220px]">
-            <label className="block text-xs font-semibold text-slate-500 mb-1">{t.stockPricingSearchLabel}</label>
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t.stockPricingSearchPlaceholder}
-                className="pl-8"
-                data-testid="input-search"
-              />
-            </div>
-          </div>
-          <div className="min-w-[200px]">
-            <label className="block text-xs font-semibold text-slate-500 mb-1">{t.stockPricingCategoryLabel}</label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger data-testid="select-category"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t.stockPricingAllCategories}</SelectItem>
-                {data?.categories.map(c => (
-                  <SelectItem key={c.id} value={String(c.id)} data-testid={`select-cat-${c.id}`}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <Switch checked={missingPrice} onCheckedChange={setMissingPrice} data-testid="switch-missing-price" />
-            {t.stockPricingFilterMissingPrice}
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <Switch checked={missingReorder} onCheckedChange={setMissingReorder} data-testid="switch-missing-reorder" />
-            {t.stockPricingFilterMissingReorder}
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <Switch checked={lowStockOnly} onCheckedChange={setLowStockOnly} data-testid="switch-low-stock-only" />
-            {t.stockPricingFilterLowStock}
-          </label>
-        </div>
-      </div>
 
       {isLoading && (
         <div className="space-y-3" data-testid="text-loading">
@@ -205,12 +171,24 @@ export default function StockPricing() {
         {filtered.map(cat => {
           const catOpen = openCats[cat.id] ?? false;
           const totalItems = cat.families.reduce((s, f) => s + f.items.length, 0);
+          const hasFamilies = cat.families.length > 0;
+          const allFamiliesOpen = hasFamilies && cat.families.every(
+            f => openFamilies[`${cat.id}::${f.name}`] ?? false
+          );
           return (
             <div key={cat.id} className="bg-white border border-slate-200 rounded-lg overflow-hidden" data-testid={`cat-${cat.id}`}>
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => toggleCat(cat.id)}
-                className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleCat(cat.id);
+                  }
+                }}
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
                 data-testid={`button-toggle-cat-${cat.id}`}
               >
                 <div className="flex items-center gap-3">
@@ -218,7 +196,32 @@ export default function StockPricing() {
                   <h2 className="font-semibold text-slate-900 text-base">{cat.name}</h2>
                   <Badge variant="secondary" className="text-xs">{totalItems} {t.stockPricingItemCountSuffix}</Badge>
                 </div>
-              </button>
+                {hasFamilies && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 bg-white text-xs whitespace-nowrap"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCatFamilies(cat.id, cat.families, !allFamiliesOpen);
+                    }}
+                    data-testid={`button-toggle-cat-families-${cat.id}`}
+                  >
+                    {allFamiliesOpen ? (
+                      <>
+                        <ChevronsDownUp className="w-3.5 h-3.5 mr-1.5" />
+                        {t.reorderCollapseAll}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronsUpDown className="w-3.5 h-3.5 mr-1.5" />
+                        {t.reorderExpandAll}
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
 
               {catOpen && (
                 <div className="px-3 pb-3 space-y-2">
@@ -268,6 +271,56 @@ export default function StockPricing() {
           );
         })}
       </div>
+
+      {typeof document !== "undefined" && createPortal(
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-3xl pointer-events-none">
+          <div
+            className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2 shadow-xl pointer-events-auto"
+            data-testid="toolbar-stock-pricing"
+          >
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder={t.stockPricingSearchPlaceholder}
+                  className="pl-8 h-9"
+                  data-testid="input-search"
+                />
+              </div>
+              <div className="min-w-[180px]">
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-9" data-testid="select-category">
+                    <SelectValue placeholder={t.stockPricingCategoryLabel} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.stockPricingAllCategories}</SelectItem>
+                    {data?.categories.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)} data-testid={`select-cat-${c.id}`}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-1">
+              <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <Switch checked={missingPrice} onCheckedChange={setMissingPrice} data-testid="switch-missing-price" />
+                {t.stockPricingFilterMissingPrice}
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <Switch checked={missingReorder} onCheckedChange={setMissingReorder} data-testid="switch-missing-reorder" />
+                {t.stockPricingFilterMissingReorder}
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <Switch checked={lowStockOnly} onCheckedChange={setLowStockOnly} data-testid="switch-low-stock-only" />
+                {t.stockPricingFilterLowStock}
+              </label>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

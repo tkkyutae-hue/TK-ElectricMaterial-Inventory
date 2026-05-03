@@ -222,7 +222,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                       <th className="text-left font-medium px-3 py-2 w-14">{t.reorderRmsPhoto}</th>
                       <th className="text-left font-medium px-3 py-2 w-28">{t.reorderRmsSize}</th>
                       <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
-                      <th className="text-right font-medium px-3 py-2 w-28">{t.reorderRmsQty}</th>
+                      <th className="text-right font-medium px-3 py-2 w-24">{t.reorderRmsQty}</th>
                       <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
                     </tr>
                   </thead>

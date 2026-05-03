@@ -328,7 +328,7 @@ export default function Reorder() {
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColReorderPt}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColOrderQty}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-center" data-testid="header-usage">{t.reorderColUsage}</TableHead>
-              <TableHead className="font-semibold text-slate-600 text-center" data-testid="header-usage-pattern">{t.reorderColUsagePattern}</TableHead>
+              <TableHead className="font-semibold text-slate-600 text-center w-[112px]" data-testid="header-usage-pattern">{t.reorderColUsagePattern}</TableHead>
               <TableHead className="font-semibold text-slate-600 text-right">{t.reorderColActions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -426,7 +426,7 @@ export default function Reorder() {
                       const lastLine = rec.lastIssueAt
                         ? "\n" + t.reorderUsagePatternLastUsed.replace(
                             "{date}",
-                            new Date(rec.lastIssueAt).toLocaleDateString(),
+                            new Date(rec.lastIssueAt).toISOString().slice(0, 10),
                           )
                         : c90 === 0
                           ? "\n" + t.reorderUsagePatternNoRecent

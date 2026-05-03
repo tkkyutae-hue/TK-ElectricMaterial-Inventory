@@ -1354,6 +1354,7 @@ export class DatabaseStorage implements IStorage {
         name: it.name,
         sizeLabel: it.sizeLabel,
         unitOfMeasure: it.unitOfMeasure,
+        imageUrl: it.imageUrl ?? null,
         quantityOnHand: liveQty,
         reorderPoint: it.reorderPoint,
         reorderQuantity: it.reorderQuantity,
@@ -1419,8 +1420,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateSupplierItem(id: number, data: Partial<{ supplierId: number; supplierSku: string | null; leadTimeDays: number | null; preferredSupplier: boolean; lastUnitCost: string | number | null }>): Promise<SupplierItem | undefined> {
-    const patch: any = { updatedAt: new Date() };
+  async updateSupplierItem(id: number, data: {
+    supplierId?: number;
+    supplierSku?: string | null;
+    leadTimeDays?: number | null;
+    preferredSupplier?: boolean;
+    lastUnitCost?: string | number | null;
+  }): Promise<SupplierItem | undefined> {
+    const patch: Partial<typeof supplierItems.$inferInsert> & { updatedAt: Date } = { updatedAt: new Date() };
     if (data.supplierId !== undefined) patch.supplierId = data.supplierId;
     if (data.supplierSku !== undefined) patch.supplierSku = data.supplierSku;
     if (data.leadTimeDays !== undefined) patch.leadTimeDays = data.leadTimeDays;

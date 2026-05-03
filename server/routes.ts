@@ -2115,7 +2115,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   const supplierItemPatchSchema = supplierItemBodySchema.partial();
 
-  app.patch("/api/admin/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+  app.patch("/api/admin/items/:itemId/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+    const itemId = parseIntParam(req.params.itemId, "itemId", res);
+    if (itemId === null) return;
     const id = parseIntParam(req.params.id, "id", res);
     if (id === null) return;
     const parsed = supplierItemPatchSchema.safeParse(req.body);
@@ -2125,19 +2127,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const existing = await storage.getSupplierItemById(id);
       if (!existing) return res.status(404).json({ message: "Supplier item not found" });
-      const updated = await storage.updateSupplierItem(id, parsed.data as any);
+      if (existing.itemId !== itemId) return res.status(404).json({ message: "Supplier item not found" });
+      const updated = await storage.updateSupplierItem(id, parsed.data);
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.delete("/api/admin/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+  app.delete("/api/admin/items/:itemId/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+    const itemId = parseIntParam(req.params.itemId, "itemId", res);
+    if (itemId === null) return;
     const id = parseIntParam(req.params.id, "id", res);
     if (id === null) return;
     try {
       const existing = await storage.getSupplierItemById(id);
       if (!existing) return res.status(404).json({ message: "Supplier item not found" });
+      if (existing.itemId !== itemId) return res.status(404).json({ message: "Supplier item not found" });
       await storage.deleteSupplierItem(id);
       res.status(204).end();
     } catch (err: any) {

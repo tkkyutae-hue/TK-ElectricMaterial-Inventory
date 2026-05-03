@@ -17,6 +17,7 @@ type StockItem = {
   name: string;
   sizeLabel: string | null;
   unitOfMeasure: string;
+  imageUrl: string | null;
   quantityOnHand: number;
   reorderPoint: number;
   reorderQuantity: number;
@@ -38,6 +39,7 @@ type SupplierItem = {
   leadTimeDays: number | null;
   preferredSupplier: boolean;
   lastUnitCost: number | null;
+  updatedAt: string | null;
   supplier: { id: number; name: string } | null;
 };
 
@@ -61,7 +63,7 @@ export default function StockPricing() {
   const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>({});
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
-  const { data, isLoading } = useQuery<Overview>({ queryKey: QK_OVERVIEW });
+  const { data, isLoading, isError, error, refetch } = useQuery<Overview>({ queryKey: QK_OVERVIEW });
   const { data: suppliersData } = useQuery<Supplier[]>({ queryKey: ["/api/suppliers"] });
   const suppliers = suppliersData ?? [];
 
@@ -109,7 +111,7 @@ export default function StockPricing() {
         <p className="text-sm text-slate-500 mt-1">{t.stockPricingSubtitle}</p>
       </header>
 
-      <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 space-y-3">
+      <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 space-y-3 sticky top-0 z-10 shadow-sm" data-testid="toolbar-stock-pricing">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[220px]">
             <label className="block text-xs font-semibold text-slate-500 mb-1">{t.stockPricingSearchLabel}</label>
@@ -154,10 +156,28 @@ export default function StockPricing() {
       </div>
 
       {isLoading && (
-        <div className="text-center py-12 text-slate-400" data-testid="text-loading">{t.cmnLoading}</div>
+        <div className="space-y-3" data-testid="text-loading">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="bg-white border border-slate-200 rounded-lg p-4 animate-pulse">
+              <div className="h-4 w-48 bg-slate-200 rounded mb-3" />
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-slate-100 rounded" />
+                <div className="h-3 w-5/6 bg-slate-100 rounded" />
+                <div className="h-3 w-4/6 bg-slate-100 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {!isLoading && filtered.length === 0 && (
+      {isError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700 flex items-center justify-between" data-testid="text-error">
+          <span>{(error as Error)?.message ?? t.stockPricingSaveFailed}</span>
+          <Button size="sm" variant="outline" onClick={() => refetch()} data-testid="button-retry">{t.stockPricingRetry}</Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && filtered.length === 0 && (
         <div className="text-center py-12 text-slate-400" data-testid="text-empty">
           {t.stockPricingEmpty}
         </div>
@@ -251,6 +271,7 @@ function FamilyTable({
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-8" />
+            <TableHead className="w-12" />
             <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColSku}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColName}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColOnHand}</TableHead>
@@ -334,20 +355,44 @@ function ItemRow({
     <>
       <TableRow className={`${statusCls} border-b border-slate-100`} data-testid={`row-item-${item.id}`}>
         <TableCell className="w-8 px-2">
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
-            data-testid={`button-expand-${item.id}`}
-            aria-label={expanded ? t.stockPricingHideSuppliers : t.stockPricingShowSuppliers}
-          >
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+              data-testid={`button-expand-${item.id}`}
+              aria-label={expanded ? t.stockPricingHideSuppliers : t.stockPricingShowSuppliers}
+            >
+              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            {(item.status === "low_stock" || item.status === "out_of_stock") && (
+              <span
+                className={`w-2 h-2 rounded-full ${item.status === "out_of_stock" ? "bg-red-500" : "bg-amber-500"}`}
+                data-testid={`dot-low-stock-${item.id}`}
+                title={t.stockPricingFilterLowStock}
+              />
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="w-12 px-2">
+          {item.imageUrl ? (
+            <img
+              src={item.imageUrl}
+              alt=""
+              className="w-9 h-9 rounded object-cover border border-slate-200 bg-slate-50"
+              data-testid={`img-item-${item.id}`}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300">
+              <Package className="w-4 h-4" />
+            </div>
+          )}
         </TableCell>
         <TableCell className="font-mono text-xs text-slate-500" data-testid={`text-sku-${item.id}`}>{item.sku}</TableCell>
         <TableCell>
           <div className="text-sm font-medium text-slate-800" data-testid={`text-name-${item.id}`}>{item.name}</div>
-          {item.sizeLabel && <div className="text-xs text-slate-400">{item.sizeLabel}</div>}
+          {item.sizeLabel && <div className="text-xs text-slate-400" data-testid={`text-size-${item.id}`}>{item.sizeLabel}</div>}
         </TableCell>
         <TableCell className="text-right tabular-nums">
           <span className="font-semibold text-slate-900 text-sm" data-testid={`text-on-hand-${item.id}`}>{item.quantityOnHand.toLocaleString()}</span>
@@ -395,7 +440,7 @@ function ItemRow({
       </TableRow>
       {expanded && (
         <TableRow className="bg-slate-50/60 border-b border-slate-200" data-testid={`row-suppliers-${item.id}`}>
-          <TableCell colSpan={9} className="p-0">
+          <TableCell colSpan={10} className="p-0">
             <SupplierPanel itemId={item.id} suppliers={suppliers} />
           </TableCell>
         </TableRow>
@@ -465,7 +510,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
 
   const patchMut = useMutation({
     mutationFn: async ({ id, body }: { id: number; body: any }) => {
-      const res = await apiRequest("PATCH", `/api/admin/supplier-items/${id}`, body);
+      const res = await apiRequest("PATCH", `/api/admin/items/${itemId}/supplier-items/${id}`, body);
       return res.json();
     },
     onSuccess: () => { toast({ title: t.stockPricingSaved }); invalidate(); },
@@ -473,7 +518,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
   });
 
   const deleteMut = useMutation({
-    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/admin/supplier-items/${id}`); },
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/admin/items/${itemId}/supplier-items/${id}`); },
     onSuccess: () => { toast({ title: t.stockPricingSupplierDeleted }); invalidate(); },
     onError: (err: any) => toast({ title: t.stockPricingSaveFailed, description: err?.message ?? "", variant: "destructive" }),
   });
@@ -526,6 +571,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
               <TableHead className="text-xs text-slate-500 text-right">{t.stockPricingUnitCost}</TableHead>
               <TableHead className="text-xs text-slate-500 text-center">{t.stockPricingLeadTime}</TableHead>
               <TableHead className="text-xs text-slate-500 text-center">{t.stockPricingPreferred}</TableHead>
+              <TableHead className="text-xs text-slate-500 text-right whitespace-nowrap">{t.stockPricingUpdated}</TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -565,6 +611,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
                 <TableCell className="text-center">
                   <Switch checked={newRow.preferredSupplier} onCheckedChange={v => setNewRow(r => ({ ...r, preferredSupplier: v }))} data-testid={`switch-new-preferred-${itemId}`} />
                 </TableCell>
+                <TableCell />
                 <TableCell>
                   <div className="flex items-center gap-1 justify-end">
                     <Button size="sm" variant="ghost" onClick={() => { setAdding(false); }} data-testid={`button-cancel-add-${itemId}`}>{t.cmnCancel}</Button>
@@ -664,6 +711,9 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
           onCheckedChange={v => onPatch({ preferredSupplier: v })}
           data-testid={`switch-preferred-${row.id}`}
         />
+      </TableCell>
+      <TableCell className="text-right text-xs text-slate-400 whitespace-nowrap" data-testid={`text-supplier-updated-${row.id}`}>
+        {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "—"}
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end">

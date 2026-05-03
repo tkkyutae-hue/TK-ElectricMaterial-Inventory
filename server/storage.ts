@@ -1052,7 +1052,7 @@ export class DatabaseStorage implements IStorage {
           itemId: inventoryMovements.itemId,
           cnt30: sql<string>`SUM(CASE WHEN ${inventoryMovements.createdAt} >= ${since30} THEN 1 ELSE 0 END)`,
           cnt90: sql<string>`COUNT(*)`,
-          lastAt: sql<Date | null>`MAX(${inventoryMovements.createdAt})`,
+          lastAt: sql<Date | string | null>`MAX(${inventoryMovements.createdAt})`,
         })
         .from(inventoryMovements)
         .where(and(
@@ -1066,7 +1066,7 @@ export class DatabaseStorage implements IStorage {
       usageRows.map(r => [r.itemId, {
         c30: Number(r.cnt30) || 0,
         c90: Number(r.cnt90) || 0,
-        last: r.lastAt ? new Date(r.lastAt as any) : null,
+        last: r.lastAt ? new Date(r.lastAt) : null,
       }])
     );
 

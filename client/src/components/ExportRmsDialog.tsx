@@ -4,10 +4,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown, Download, Loader2 } from "lucide-react";
 
 type ProjectLite = {
   id: number;
@@ -50,6 +52,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [completionDate, setCompletionDate] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
   const [projectId, setProjectId] = useState<string>("");
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,6 +61,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     queryKey: ["/api/projects"],
     enabled: open,
     refetchOnMount: "always",
+    staleTime: 0,
   });
   const activeProjects = useMemo(
     () => (projects ?? []).filter(p => p.status === "active"),
@@ -66,10 +70,19 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
 
   const handleProjectChange = (id: string) => {
     setProjectId(id);
+    setProjectPickerOpen(false);
     const p = activeProjects.find(p => String(p.id) === id);
     if (!p) return;
     setPoNumber(p.poNumber ?? "");
     setProjectName(p.name ?? "");
+  };
+
+  const selectedProject = activeProjects.find(p => String(p.id) === projectId);
+  const projectLabel = (p: ProjectLite) => {
+    const po = (p.poNumber ?? "").trim();
+    return po
+      ? `${p.name} — ${po} (${p.code})`
+      : `${p.name} — ${t.reorderRmsNoPo} (${p.code})`;
   };
 
   // When dialog opens, refresh row list from incoming selection.
@@ -153,33 +166,54 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.reorderRmsHeaderSection}</h3>
 
-            {/* Project picker — auto-fills PO Number + Project Name */}
+            {/* Project picker — searchable combobox; auto-fills PO Number + Project Name */}
             <div className="space-y-1 mb-3">
               <Label htmlFor="rms-project-picker" className="text-xs text-slate-600">{t.reorderRmsProject}</Label>
-              <Select value={projectId} onValueChange={handleProjectChange} disabled={projectsLoading}>
-                <SelectTrigger id="rms-project-picker" data-testid="select-rms-project">
-                  <SelectValue placeholder={t.reorderRmsProjectPlaceholder} />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeProjects.length === 0 ? (
-                    <div className="px-2 py-1.5 text-xs text-slate-400">
-                      {projectsLoading ? t.cmnLoading : t.reorderRmsProjectPlaceholder}
-                    </div>
-                  ) : (
-                    activeProjects.map(p => {
-                      const po = (p.poNumber ?? "").trim();
-                      const label = po
-                        ? `${p.name} — ${po} (${p.code})`
-                        : `${p.name} — ${t.reorderRmsNoPo} (${p.code})`;
-                      return (
-                        <SelectItem key={p.id} value={String(p.id)} data-testid={`select-rms-project-${p.id}`}>
-                          {label}
-                        </SelectItem>
-                      );
-                    })
-                  )}
-                </SelectContent>
-              </Select>
+              <Popover open={projectPickerOpen} onOpenChange={setProjectPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="rms-project-picker"
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={projectPickerOpen}
+                    disabled={projectsLoading}
+                    className="w-full justify-between font-normal"
+                    data-testid="select-rms-project"
+                  >
+                    <span className={cn("truncate text-left", !selectedProject && "text-slate-400")}>
+                      {selectedProject ? projectLabel(selectedProject) : t.reorderRmsProjectPlaceholder}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                  <Command>
+                    <CommandInput placeholder={t.reorderRmsProjectPlaceholder} data-testid="input-rms-project-search" />
+                    <CommandList>
+                      <CommandEmpty>
+                        {projectsLoading ? t.cmnLoading : t.reorderRmsProjectPlaceholder}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {activeProjects.map(p => {
+                          const label = projectLabel(p);
+                          return (
+                            <CommandItem
+                              key={p.id}
+                              value={`${p.name} ${p.poNumber ?? ""} ${p.code}`}
+                              onSelect={() => handleProjectChange(String(p.id))}
+                              data-testid={`select-rms-project-${p.id}`}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", projectId === String(p.id) ? "opacity-100" : "opacity-0")} />
+                              <span className="truncate">{label}</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -154,18 +154,15 @@ export function FamilyGroupCard({
       {/* Items — edit mode table or view mode table */}
       {effectivelyCollapsed ? null : isEditingThis ? (
         <div className="overflow-x-auto">
-          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "1000px" }}>
+          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "780px" }}>
             <colgroup>
-              <col style={{ width: "90px" }} />
-              <col style={{ width: "46px" }} />
-              <col style={{ width: "90px" }} />
-              <col style={{ width: "200px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "50px" }} />
+              <col style={{ width: "100px" }} />
+              <col style={{ width: "240px" }} />
+              <col style={{ width: "84px" }} />
               <col style={{ width: "78px" }} />
-              <col style={{ width: "72px" }} />
-              <col style={{ width: "72px" }} />
-              <col style={{ width: "72px" }} />
-              <col style={{ width: "72px" }} />
-              <col style={{ width: "130px" }} />
+              <col style={{ width: "140px" }} />
               <col style={{ width: "70px" }} />
             </colgroup>
             <TableHeader>
@@ -177,9 +174,6 @@ export function FamilyGroupCard({
                 </TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Item Name</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center whitespace-nowrap" title="On Hand — current stock quantity">On Hand</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center whitespace-nowrap" title="ROP — Reorder Point">ROP</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Unit</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 text-center">Location</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide py-2 pr-5 text-center">Delete</TableHead>
@@ -212,7 +206,7 @@ export function FamilyGroupCard({
               ))}
               {group.items.length === 0 && editNewRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-6 text-slate-400 text-sm">
+                  <TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">
                     Click <strong>Add Row</strong> above to add items to this family.
                   </TableCell>
                 </TableRow>
@@ -222,18 +216,15 @@ export function FamilyGroupCard({
         </div>
       ) : (
         <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>
-          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "970px" }}>
+          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "750px" }}>
             <colgroup>
-              <col style={{ width: "110px" }} />
-              <col style={{ width: "50px" }} />
-              <col style={{ width: "80px" }} />
-              <col style={{ width: "210px" }} />
-              <col style={{ width: "84px" }} />
-              <col style={{ width: "76px" }} />
-              <col style={{ width: "76px" }} />
-              <col style={{ width: "76px" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "55px" }} />
               <col style={{ width: "90px" }} />
+              <col style={{ width: "260px" }} />
               <col style={{ width: "100px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "120px" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
@@ -254,9 +245,6 @@ export function FamilyGroupCard({
                 </TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-3">Item</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="On Hand — current stock quantity">On Hand</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROP — Reorder Point">ROP</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="ROQ — Reorder Quantity">ROQ</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="MIN — Minimum Stock">MIN</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsagePattern}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
               </TableRow>
@@ -306,15 +294,6 @@ export function FamilyGroupCard({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden" data-testid={`text-reorder-pt-${item.id}`}>
-                    <span className="text-slate-600 text-sm">{item.reorderPoint}</span>
-                  </TableCell>
-                  <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden" data-testid={`text-reorder-qty-${item.id}`}>
-                    <span className="text-slate-600 text-sm">{item.reorderQuantity}</span>
-                  </TableCell>
-                  <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden" data-testid={`text-min-stock-${item.id}`}>
-                    <span className="text-slate-600 text-sm">{item.minimumStock}</span>
-                  </TableCell>
                   <TableCell className="h-10 px-3 overflow-hidden">
                     <div className="flex items-center justify-center">
                       <UsagePatternBadge
@@ -332,7 +311,7 @@ export function FamilyGroupCard({
               ))}
               {group.items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-6 text-slate-400 text-sm">
+                  <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
                     No items yet.{" "}
                     <button className="text-brand-600 hover:underline" onClick={() => onEnterEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
                       Click Edit to add items.

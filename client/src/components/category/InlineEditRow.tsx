@@ -113,18 +113,6 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
         </div>
       </TableCell>
       <TableCell className="py-2 text-center">
-        <input type="number" min="0" step="1" value={draft.reorderPoint} onChange={e => onChange({ reorderPoint: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-reorder-pt-${item.id}`} />
-      </TableCell>
-      <TableCell className="py-2 text-center">
-        <input type="number" min="0" step="1" value={draft.reorderQuantity} onChange={e => onChange({ reorderQuantity: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-reorder-qty-${item.id}`} />
-      </TableCell>
-      <TableCell className="py-2 text-center">
-        <input type="number" min="0" step="1" value={draft.minimumStock} onChange={e => onChange({ minimumStock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400" data-testid={`input-edit-min-stock-${item.id}`} />
-      </TableCell>
-      <TableCell className="py-2 text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}
           className="w-full text-xs text-center bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`select-edit-unit-${item.id}`}>
           {UOM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -348,21 +336,6 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
           onChange={e => onChange({ quantityOnHand: Number(e.target.value) })}
           className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-qty-${draft.tmpId}`} />
         <span className={`block text-[9px] font-medium mt-0.5 px-1 py-0.5 rounded ${stCls}`} data-testid={`status-new-item-${draft.tmpId}`}>{stLabel}</span>
-      </TableCell>
-      <TableCell className="py-2 align-top text-center">
-        <input type="number" min="0" step="1" value={draft.reorderPoint}
-          onChange={e => onChange({ reorderPoint: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-reorder-pt-${draft.tmpId}`} />
-      </TableCell>
-      <TableCell className="py-2 align-top text-center">
-        <input type="number" min="0" step="1" value={draft.reorderQuantity}
-          onChange={e => onChange({ reorderQuantity: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-reorder-qty-${draft.tmpId}`} />
-      </TableCell>
-      <TableCell className="py-2 align-top text-center">
-        <input type="number" min="0" step="1" value={draft.minimumStock}
-          onChange={e => onChange({ minimumStock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-          className="w-full text-xs text-center bg-white border border-slate-300 rounded px-1 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-new-min-stock-${draft.tmpId}`} />
       </TableCell>
       <TableCell className="py-2 align-top text-center">
         <select value={draft.unitOfMeasure} onChange={e => onChange({ unitOfMeasure: e.target.value })}

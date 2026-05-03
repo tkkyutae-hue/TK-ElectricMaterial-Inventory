@@ -58,9 +58,6 @@ export type EditDraft = {
   sizeLabel: string;
   name: string;
   quantityOnHand: number;
-  reorderPoint: number;
-  reorderQuantity: number;
-  minimumStock: number;
   unitOfMeasure: string;
   primaryLocationId: number | null;
   imageUrl: string | null;
@@ -75,9 +72,6 @@ export type NewRowDraft = {
   sizeLabel: string;
   name: string;
   quantityOnHand: number;
-  reorderPoint: number;
-  reorderQuantity: number;
-  minimumStock: number;
   unitOfMeasure: string;
   primaryLocationId: number | null;
   imageUrl: string | null;

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown, FileSpreadsheet, X } from "lucide-react";
+
 import ExportRmsDialog, { type RmsExportItem } from "@/components/ExportRmsDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,25 +258,13 @@ export default function Reorder() {
   const toggleCat = (key: string) => setOpenCats(s => ({ ...s, [key]: !s[key] }));
   const toggleFam = (key: string) => setOpenFamilies(s => ({ ...s, [key]: !s[key] }));
 
-  const expandAll = () => {
-    const co: Record<string, boolean> = {};
-    const fo: Record<string, boolean> = {};
-    grouped.forEach(c => {
-      co[c.key] = true;
-      c.families.forEach(f => { fo[`${c.key}::${f.name}`] = true; });
+  // Expand/collapse every family within a single category in one click.
+  const toggleCatFamilies = (cat: { key: string; families: { name: string }[] }, open: boolean) => {
+    setOpenFamilies(prev => {
+      const next = { ...prev };
+      cat.families.forEach(f => { next[`${cat.key}::${f.name}`] = open; });
+      return next;
     });
-    setOpenCats(prev => ({ ...prev, ...co }));
-    setOpenFamilies(prev => ({ ...prev, ...fo }));
-  };
-  const collapseAll = () => {
-    const co: Record<string, boolean> = {};
-    const fo: Record<string, boolean> = {};
-    grouped.forEach(c => {
-      co[c.key] = false;
-      c.families.forEach(f => { fo[`${c.key}::${f.name}`] = false; });
-    });
-    setOpenCats(prev => ({ ...prev, ...co }));
-    setOpenFamilies(prev => ({ ...prev, ...fo }));
   };
 
   const hasRecommendations = (recommendations?.length ?? 0) > 0;
@@ -429,32 +418,6 @@ export default function Reorder() {
               />
               <span>{t.reorderNeedsReorderOnly}</span>
             </label>
-            <div className="flex items-center gap-1 ml-auto">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 bg-white text-sm whitespace-nowrap"
-                onClick={expandAll}
-                disabled={grouped.length === 0}
-                data-testid="button-expand-all"
-              >
-                <ChevronsUpDown className="w-4 h-4 mr-1.5" />
-                {t.reorderExpandAll}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 bg-white text-sm whitespace-nowrap"
-                onClick={collapseAll}
-                disabled={grouped.length === 0}
-                data-testid="button-collapse-all"
-              >
-                <ChevronsDownUp className="w-4 h-4 mr-1.5" />
-                {t.reorderCollapseAll}
-              </Button>
-            </div>
           </div>
         </div>
 
@@ -508,12 +471,23 @@ export default function Reorder() {
             {grouped.map(cat => {
               const catOpen = openCats[cat.key] ?? false;
               const totalItems = cat.families.reduce((s, f) => s + f.items.length, 0);
+              const hasFamilies = cat.families.length > 0;
+              const allFamiliesOpen = hasFamilies && cat.families.every(
+                f => openFamilies[`${cat.key}::${f.name}`] ?? false
+              );
               return (
                 <div key={cat.key} className="bg-white border border-slate-200 rounded-lg overflow-hidden" data-testid={`cat-${cat.key}`}>
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleCat(cat.key)}
-                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleCat(cat.key);
+                      }
+                    }}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
                     data-testid={`button-toggle-cat-${cat.key}`}
                   >
                     <div className="flex items-center gap-3">
@@ -521,7 +495,32 @@ export default function Reorder() {
                       <h2 className="font-semibold text-slate-900 text-base">{cat.name}</h2>
                       <Badge variant="secondary" className="text-xs">{totalItems} {t.stockPricingItemCountSuffix}</Badge>
                     </div>
-                  </button>
+                    {hasFamilies && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 bg-white text-xs whitespace-nowrap"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCatFamilies(cat, !allFamiliesOpen);
+                        }}
+                        data-testid={`button-toggle-cat-families-${cat.key}`}
+                      >
+                        {allFamiliesOpen ? (
+                          <>
+                            <ChevronsDownUp className="w-3.5 h-3.5 mr-1.5" />
+                            {t.reorderCollapseAll}
+                          </>
+                        ) : (
+                          <>
+                            <ChevronsUpDown className="w-3.5 h-3.5 mr-1.5" />
+                            {t.reorderExpandAll}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
 
                   {catOpen && (
                     <div className="px-3 pb-3 space-y-2">

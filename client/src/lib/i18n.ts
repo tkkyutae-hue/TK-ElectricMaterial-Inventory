@@ -508,7 +508,7 @@ const en = {
   // ── Admin: Reorder ───────────────────────────────────────────────────────
   reorderTitle:               "Purchasing & Reorder",
   reorderSubtitle:            "Items that need to be ordered based on current stock levels.",
-  reorderRefresh:             "Refresh Recommendations",
+  reorderRefresh:             "Refresh",
   reorderExpandAll:           "Expand all",
   reorderCollapseAll:         "Collapse all",
   reorderExportRms:           "Export to RMS",
@@ -2630,7 +2630,7 @@ const ko: Translations = {
   // ── Admin: Reorder ───────────────────────────────────────────────────────
   reorderTitle:               "구매 및 재주문",
   reorderSubtitle:            "현재 재고 수준에 따라 주문이 필요한 자재입니다.",
-  reorderRefresh:             "추천 새로고침",
+  reorderRefresh:             "새로고침",
   reorderExpandAll:           "모두 펼치기",
   reorderCollapseAll:         "모두 접기",
   reorderExportRms:           "RMS로 내보내기",
@@ -4752,7 +4752,7 @@ const es: Translations = {
   // ── Admin: Reorder ───────────────────────────────────────────────────────
   reorderTitle:               "Compras y reorden",
   reorderSubtitle:            "Artículos que deben pedirse según los niveles actuales de stock.",
-  reorderRefresh:             "Actualizar recomendaciones",
+  reorderRefresh:             "Actualizar",
   reorderExpandAll:           "Expandir todo",
   reorderCollapseAll:         "Contraer todo",
   reorderExportRms:           "Exportar a RMS",

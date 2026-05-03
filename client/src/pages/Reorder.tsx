@@ -325,20 +325,9 @@ export default function Reorder() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">{t.reorderTitle}</h1>
-          <p className="text-slate-500 mt-1">{t.reorderSubtitle}</p>
-        </div>
-        <Button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm whitespace-nowrap shrink-0"
-          data-testid="button-refresh-recommendations"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 flex-shrink-0 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-          {t.reorderRefresh}
-        </Button>
+      <div>
+        <h1 className="text-3xl font-display font-bold text-slate-900">{t.reorderTitle}</h1>
+        <p className="text-slate-500 mt-1">{t.reorderSubtitle}</p>
       </div>
 
       <div className="premium-card bg-white overflow-hidden">
@@ -418,6 +407,15 @@ export default function Reorder() {
               />
               <span>{t.reorderNeedsReorderOnly}</span>
             </label>
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="ml-auto h-9 bg-brand-700 hover:bg-brand-800 text-white shadow-sm whitespace-nowrap shrink-0"
+              data-testid="button-refresh-recommendations"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 flex-shrink-0 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+              {t.reorderRefresh}
+            </Button>
           </div>
         </div>
 

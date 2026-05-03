@@ -126,7 +126,9 @@ export default function Reorder() {
     for (const rec of recommendations as any[]) {
       const catId = rec.item?.categoryId;
       const key  = catId != null ? String(catId) : "__none__";
-      const name = (catId != null && categoryMap[catId]) ? categoryMap[catId] : t.reorderUncategorized;
+      const name = catId == null
+        ? t.reorderUncategorized
+        : (categoryMap[catId] ?? `${t.reorderUncategorized} #${catId}`);
       if (!seen.has(key)) seen.set(key, name);
     }
     return Array.from(seen.entries())
@@ -192,7 +194,9 @@ export default function Reorder() {
       const item = rec.item;
       const catId = item?.categoryId ?? null;
       const key  = catId != null ? String(catId) : "__none__";
-      const name = (catId != null && categoryMap[catId]) ? categoryMap[catId] : t.reorderUncategorized;
+      const name = catId == null
+        ? t.reorderUncategorized
+        : (categoryMap[catId] ?? `${t.reorderUncategorized} #${catId}`);
       let cat = cats.get(key);
       if (!cat) {
         cat = { id: catId, name, fams: new Map() };
@@ -233,7 +237,8 @@ export default function Reorder() {
     !!search.trim() ||
     statusFilter !== DEFAULTS.status ||
     usagePatternFilter !== DEFAULTS.usagePattern ||
-    categoryFilter !== DEFAULTS.category;
+    categoryFilter !== DEFAULTS.category ||
+    needsReorderOnly !== DEFAULTS.needsReorderOnly;
   useEffect(() => {
     if (!filtersActive) return;
     const co: Record<string, boolean> = {};
@@ -548,8 +553,11 @@ function FamilyTable({
               <TableCell>
                 <Link href={`/inventory/${rec.item?.id}`}>
                   <p className="font-medium text-slate-900 hover:text-brand-600">
-                    {rec.item?.sizeLabel ? `${rec.item.sizeLabel} ` : ""}{rec.item?.name}
+                    {rec.item?.name}
                   </p>
+                  {rec.item?.sizeLabel && (
+                    <p className="text-xs text-slate-400">{rec.item.sizeLabel}</p>
+                  )}
                 </Link>
               </TableCell>
               <TableCell className="text-right">

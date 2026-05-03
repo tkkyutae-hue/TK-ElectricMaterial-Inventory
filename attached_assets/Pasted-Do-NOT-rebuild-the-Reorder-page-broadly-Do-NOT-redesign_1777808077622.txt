@@ -1,0 +1,162 @@
+Do NOT rebuild the Reorder page broadly.
+Do NOT redesign reorder recommendation logic or RMS export flow from scratch.
+Focus ONLY on adding a history subpage inside the Reorder area so export/order records can be tracked cleanly.
+
+TARGET GOAL
+Split the Reorder area into two clear subpages/tabs:
+
+1. Reorder
+- current action page
+- recommendation list
+- item selection
+- RMS export
+
+2. History
+- export/order record tracking page
+- document-level history
+- line-item detail drilldown
+
+IMPORTANT
+The Reorder main page should remain focused on action.
+The new History subpage should handle traceability and past export records.
+
+==================================================
+PART 1 — ADD A HISTORY SUBPAGE UNDER REORDER
+==================================================
+
+Inside the Reorder section, add a second subpage/tab such as:
+- Reorder
+- History
+
+Keep this structure lightweight and admin-friendly.
+Do NOT turn this into a completely separate disconnected area if the current routing/layout already supports a clean nested tab/subpage pattern.
+
+==================================================
+PART 2 — CREATE EXPORT HISTORY RECORDS
+==================================================
+
+When RMS export is successfully generated from selected reorder items, persist a history record.
+
+At minimum, create a document-level export history record that stores:
+- exportedAt
+- exportedBy
+- export type (RMS export)
+- requestFrom
+- TK PO Number
+- projectName
+- completionDate
+- deliveryTo
+
+This should represent one exported RMS document.
+
+==================================================
+PART 3 — STORE LINE ITEM SNAPSHOTS
+==================================================
+
+For each exported document, store line-item records for the selected reorder items.
+
+Each line item should store at minimum:
+- itemId
+- SKU snapshot
+- item name snapshot
+- size snapshot
+- export quantity
+- unit snapshot
+- remarks snapshot if applicable
+- optional stock-setting snapshot if low-risk:
+  - onHand
+  - reorderPoint
+  - reorderQty
+  - minStock
+
+IMPORTANT
+Do NOT rely only on live current item fields.
+Store export-time snapshots so history remains trustworthy even after later edits.
+
+==================================================
+PART 4 — HISTORY PAGE LIST VIEW
+==================================================
+
+The new History page should show document-level records in a clean list/table.
+
+Recommended columns:
+- Export Date
+- Exported By
+- Project Name
+- TK PO Number
+- Delivery To
+- Item Count
+- Status
+
+Status can start simple.
+At minimum, support:
+- Exported
+
+If safe and low-risk, structure it so later statuses like Ordered / Received / Cancelled can be added.
+
+==================================================
+PART 5 — HISTORY DETAIL VIEW
+==================================================
+
+Each history record should allow drilldown/expand/detail view showing the exported line items.
+
+For each line item, show:
+- SKU
+- Item
+- Size
+- Qty
+- Unit
+- optional snapshot fields if stored
+
+This detail view should make it easy to see exactly what was exported in that RMS document.
+
+==================================================
+PART 6 — KEEP FIRST VERSION PRACTICAL
+==================================================
+
+Do NOT add too much workflow complexity yet.
+
+Do NOT add in this first version:
+- full procurement approval workflow
+- supplier quote comparison inside history
+- automatic PO sync
+- received-stock reconciliation logic
+- cancellation workflow if it requires broad redesign
+
+This first version is for export traceability.
+
+==================================================
+PART 7 — KEEP THE MAIN REORDER PAGE CLEAN
+==================================================
+
+Do NOT overload the main Reorder page with history tables.
+The main Reorder page should remain focused on:
+- filtering
+- usage pattern
+- selecting rows
+- exporting to RMS
+
+The new History subpage is where past exports are tracked.
+
+==================================================
+PART 8 — SAFE DATA / UX RULES
+==================================================
+
+- Only create a history record after a successful RMS export generation
+- Do NOT create false history records on failed export
+- History should reflect what was actually exported
+- Keep the UI desktop-admin friendly
+- Keep the current Reorder table structure intact
+
+==================================================
+OUTPUT
+==================================================
+
+When done, report:
+1. How the Reorder area was split into Reorder + History
+2. What export header fields are persisted in history
+3. What line-item snapshot fields are persisted
+4. How the History list view works
+5. How the History detail/drilldown works
+6. Files modified
+7. Anything intentionally left unchanged

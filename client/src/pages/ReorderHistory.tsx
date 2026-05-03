@@ -436,7 +436,7 @@ export default function ReorderHistory() {
 
       {/* Detail dialog */}
       <Dialog open={openId != null} onOpenChange={(o) => !o && setOpenId(null)}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t.reorderHistoryDetailTitle}</DialogTitle>
           </DialogHeader>
@@ -468,37 +468,52 @@ export default function ReorderHistory() {
                     l.minimumStockSnapshot != null,
                 );
                 return (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-hidden overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>{t.reorderHistoryColSku}</TableHead>
-                          <TableHead>{t.reorderRmsItem}</TableHead>
-                          <TableHead>{t.reorderRmsSize}</TableHead>
-                          <TableHead className="text-right">{t.reorderRmsQty}</TableHead>
-                          <TableHead>{t.reorderRmsUnit}</TableHead>
+                          <TableHead className="whitespace-nowrap text-right w-12">{t.reorderHistoryColRowNum}</TableHead>
+                          <TableHead className="whitespace-nowrap w-16">{t.colPhoto}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t.reorderRmsSize}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t.reorderRmsItem}</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">{t.reorderRmsQty}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t.reorderRmsUnit}</TableHead>
                           {showStock && (
                             <>
-                              <TableHead className="text-right">{t.reorderHistoryColOnHand}</TableHead>
-                              <TableHead className="text-right">{t.reorderHistoryColReorderPoint}</TableHead>
-                              <TableHead className="text-right">{t.reorderHistoryColReorderQty}</TableHead>
-                              <TableHead className="text-right">{t.reorderHistoryColMinStock}</TableHead>
+                              <TableHead className="whitespace-nowrap text-right font-semibold text-slate-900">{t.reorderHistoryColOnHand}</TableHead>
+                              <TableHead className="whitespace-nowrap text-right">{t.reorderHistoryColReorderPoint}</TableHead>
+                              <TableHead className="whitespace-nowrap text-right">{t.reorderHistoryColReorderQty}</TableHead>
+                              <TableHead className="whitespace-nowrap text-right">{t.reorderHistoryColMinStock}</TableHead>
                             </>
                           )}
-                          <TableHead>{t.reorderHistoryColRemarks}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t.reorderHistoryColRemarks}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {detailQuery.data.lines.map((l) => (
+                        {detailQuery.data.lines.map((l, i) => (
                           <TableRow key={l.id} data-testid={`row-history-line-${l.id}`}>
-                            <TableCell className="font-mono text-xs">{l.skuSnapshot || "—"}</TableCell>
-                            <TableCell>{l.nameSnapshot || "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums text-slate-500" data-testid={`text-history-line-num-${l.id}`}>
+                              {i + 1}
+                            </TableCell>
+                            <TableCell>
+                              {l.itemImageUrl ? (
+                                <img
+                                  src={l.itemImageUrl}
+                                  alt={l.nameSnapshot ?? ""}
+                                  className="w-10 h-10 rounded object-cover border border-slate-200"
+                                  data-testid={`img-history-line-photo-${l.id}`}
+                                />
+                              ) : (
+                                <span className="text-slate-300" data-testid={`img-history-line-photo-${l.id}`}>—</span>
+                              )}
+                            </TableCell>
                             <TableCell>{l.sizeSnapshot || "—"}</TableCell>
+                            <TableCell>{l.nameSnapshot || "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.qty}</TableCell>
                             <TableCell>{l.unitSnapshot || "—"}</TableCell>
                             {showStock && (
                               <>
-                                <TableCell className="text-right tabular-nums" data-testid={`text-history-onhand-${l.id}`}>
+                                <TableCell className="text-right tabular-nums font-semibold text-slate-900" data-testid={`text-history-onhand-${l.id}`}>
                                   {l.onHandSnapshot ?? "—"}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums" data-testid={`text-history-rop-${l.id}`}>

@@ -602,4 +602,5 @@ export type RmsExportHistory = typeof rmsExportHistory.$inferSelect;
 export type RmsExportHistoryItem = typeof rmsExportHistoryItems.$inferSelect;
 export type CreateRmsExportHistory = z.infer<typeof insertRmsExportHistorySchema>;
 export type CreateRmsExportHistoryItem = z.infer<typeof insertRmsExportHistoryItemSchema>;
-export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHistoryItem[] };
+export type RmsExportHistoryLineWithImage = RmsExportHistoryItem & { itemImageUrl: string | null };
+export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHistoryLineWithImage[] };

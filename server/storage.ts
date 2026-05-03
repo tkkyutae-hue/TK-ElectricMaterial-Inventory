@@ -2714,9 +2714,24 @@ export class DatabaseStorage implements IStorage {
   async getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined> {
     const [header] = await db.select().from(rmsExportHistory).where(eq(rmsExportHistory.id, id));
     if (!header) return undefined;
-    const lines = await db.select().from(rmsExportHistoryItems)
+    const rawLines = await db.select().from(rmsExportHistoryItems)
       .where(eq(rmsExportHistoryItems.historyId, id))
       .orderBy(asc(rmsExportHistoryItems.sortOrder), asc(rmsExportHistoryItems.id));
+    const itemIds = Array.from(new Set(rawLines.map((l) => l.itemId).filter((v): v is number => v != null)));
+    const imageRows = itemIds.length
+      ? await db.select({ itemId: itemImages.itemId, imageUrl: itemImages.imageUrl, sortOrder: itemImages.sortOrder })
+          .from(itemImages)
+          .where(inArray(itemImages.itemId, itemIds))
+          .orderBy(asc(itemImages.sortOrder), asc(itemImages.id))
+      : [];
+    const firstImageByItem = new Map<number, string>();
+    for (const img of imageRows) {
+      if (!firstImageByItem.has(img.itemId)) firstImageByItem.set(img.itemId, img.imageUrl);
+    }
+    const lines = rawLines.map((l) => ({
+      ...l,
+      itemImageUrl: l.itemId != null ? firstImageByItem.get(l.itemId) ?? null : null,
+    }));
     return { ...header, lines };
   }
 

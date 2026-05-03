@@ -1,0 +1,133 @@
+Do NOT rebuild the Reorder page.
+Do NOT redesign reorder business logic broadly.
+Do NOT change supplier logic or grouped rendering.
+
+Focus ONLY on adding a transaction-based usage pattern indicator to the Reorder tab in:
+- client/src/pages/Reorder.tsx
+- server/storage.ts
+- tiny directly related types/helpers only if truly needed
+
+TASK GOAL
+Add a practical usage-pattern indicator to the Reorder tab so reorder recommendations are easier to judge by actual recent consumption activity.
+
+IMPORTANT
+Base usage pattern on recent `issue` transaction frequency only.
+Do NOT use receive / return / adjust / internal transfer for this first version.
+
+==================================================
+PART 1 — ADD BACKEND USAGE SUMMARY TO REORDER DATA
+==================================================
+
+Extend the reorder recommendation data so each item can include these usage stats:
+- issueCount30d
+- issueCount90d
+- lastIssueAt
+
+Definition:
+- count only `issue` inventory movements
+- 30d = last 30 days
+- 90d = last 90 days
+
+Do NOT do a broad rewrite.
+Add only the smallest safe backend support needed so Reorder rows can classify recent usage.
+
+==================================================
+PART 2 — DEFINE USAGE PATTERN CLASSIFICATION
+==================================================
+
+Map the usage stats into exactly these four labels:
+
+- 핵심 사용
+- 일반 사용
+- 저사용
+- 미사용
+
+Use this rule:
+
+- 핵심 사용
+  = issueCount30d >= 8
+
+- 일반 사용
+  = issueCount30d between 1 and 7
+
+- 저사용
+  = issueCount30d == 0
+    AND issueCount90d >= 1
+
+- 미사용
+  = issueCount90d == 0
+
+This is the required first version.
+Do NOT add a more complicated scoring system yet.
+
+==================================================
+PART 3 — ADD A NEW COLUMN TO REORDER
+==================================================
+
+Add a new visible table column:
+- 사용패턴
+
+Render it as a compact badge/chip.
+
+Requirements:
+- keep it visually lightweight
+- admin-friendly
+- do not overpower priority/status colors
+- the table must remain readable
+
+If easy and low-risk, add hover/title support with the underlying facts:
+- 최근 30일 N회 출고
+- 최근 90일 N회 출고
+- 마지막 사용일 YYYY-MM-DD
+If lastIssueAt is missing, show no recent usage.
+
+==================================================
+PART 4 — ADD A MATCHING FILTER
+==================================================
+
+Add a new filter for usage pattern with these options:
+- All
+- 핵심 사용
+- 일반 사용
+- 저사용
+- 미사용
+
+Requirements:
+- default = All
+- it must work together with existing search/filter behavior
+- keep the main list flat, not grouped by category
+
+==================================================
+PART 5 — KEEP CURRENT PAGE STRUCTURE
+==================================================
+
+- keep the photo column
+- keep supplier out of the main table
+- keep the flat table/list structure
+- do NOT redesign into cards
+- do NOT change reorder recommendation thresholds in this task
+- do NOT change RMS/export flow in this task
+
+==================================================
+PART 6 — KEEP THIS FIRST VERSION SIMPLE
+==================================================
+
+Do NOT add:
+- quantity-based usage scoring
+- weighted recency scoring
+- complicated reorder suppression logic
+- inactive/dead-stock automatic hiding
+
+This step is only to expose usage pattern clearly and safely.
+
+==================================================
+OUTPUT
+==================================================
+
+When done, report:
+1. Summary of backend usage stats added
+2. Exact classification rule used
+3. Summary of the new 사용패턴 column
+4. Summary of the new usage-pattern filter
+5. Files modified
+6. Anything intentionally left unchanged

@@ -1,0 +1,201 @@
+Do NOT rebuild the Admin tool broadly.
+Do NOT redesign the existing Inventory category pages.
+Focus ONLY on adding a new admin tab/page for stock-setting and supplier-price management.
+
+TARGET GOAL
+Create a new admin management tab where items are organized by:
+1. Category
+2. Family within each category
+
+This tab is for managing stock settings and supplier price comparison in one place.
+
+IMPORTANT LABEL RULE
+Do NOT use short labels like:
+- ROP
+- ROQ
+- MIN
+
+Use full readable labels instead:
+- Reorder Point
+- Reorder Qty
+- Min Stock
+
+Also use full readable labels for similar fields where possible.
+This page should be admin-friendly and immediately understandable without abbreviations.
+
+==================================================
+PRIMARY PURPOSE OF THIS NEW TAB
+==================================================
+
+This new tab/page should let admins manage:
+- Reorder Point
+- Reorder Qty
+- Min Stock
+- supplier-based price data and comparison
+
+This is NOT a stock movement page.
+This is NOT for changing live quantity through normal editing.
+
+On Hand should be visible for reference, but stock quantity itself should stay read-only here.
+
+==================================================
+STRUCTURE
+==================================================
+
+The page must be organized like this:
+
+- Category section
+  - Family section within category
+    - item rows within family
+
+Do NOT make this a single flat table for the whole inventory.
+The hierarchy should be:
+
+Category
+→ Family
+→ Item rows
+
+This grouped structure is required because admins need to compare settings and prices within related item families.
+
+==================================================
+PAGE LAYOUT REQUIREMENTS
+==================================================
+
+Each item row should show at minimum:
+- Photo
+- SKU
+- Size
+- Item
+- On Hand
+- Reorder Point
+- Reorder Qty
+- Min Stock
+- Best Price
+- Supplier Count
+
+Optional additional fields only if low-risk:
+- 주요 자재 / key item
+- low stock indicator
+
+Keep the page desktop-admin friendly.
+
+==================================================
+EDITING RULES
+==================================================
+
+Editable in this new tab:
+- Reorder Point
+- Reorder Qty
+- Min Stock
+
+Read-only in this new tab:
+- SKU
+- On Hand
+- Item name unless already safely supported
+- category/family structure unless already safely supported
+
+IMPORTANT
+Do NOT allow direct inline editing of On Hand in this tab.
+
+==================================================
+SUPPLIER PRICE MODEL
+==================================================
+
+Do NOT use only one single price field per item.
+
+Price handling must support multiple supplier prices per item, so admins can accumulate and compare supplier quotes/prices over time.
+
+The page should support this model:
+
+For each item:
+- multiple supplier price records
+- each record tied to a supplier
+- price records can be compared
+
+At minimum, the UI should expose:
+- Best Price
+- Supplier Count
+
+If safe and practical, allow a row expand / popover / side panel / detail section to view supplier-level prices such as:
+- Supplier name
+- Unit Price
+- Updated date
+- optional note
+
+Do NOT force all supplier prices into the main row columns if that makes the table too wide.
+Main table should stay compact.
+
+==================================================
+FILTER / SEARCH REQUIREMENTS
+==================================================
+
+Because this is a grouped admin management page, filters/search are still needed.
+
+Add practical controls such as:
+- Search
+- Category filter
+- Missing Price filter
+- Missing Reorder Settings filter
+- Low Stock Only filter
+- Key Item Only filter if already supported safely
+
+Filtering should reduce the visible grouped results, but the grouped structure must remain.
+
+==================================================
+FAMILY / CATEGORY DISPLAY
+==================================================
+
+For each Family section, it is helpful to show lightweight summary info if easy to derive, such as:
+- item count
+- low stock count
+- missing price count
+
+For each Category section, keep the grouping visually clear.
+
+Do NOT turn this into a modal workflow.
+Do NOT remove the grouped structure.
+
+==================================================
+PRICE COMPARISON UX
+==================================================
+
+Main row should show:
+- Best Price
+- Supplier Count
+
+Detailed supplier-by-supplier prices should be shown through a secondary interaction if needed:
+- expand row
+- popover
+- side panel
+- lightweight detail section
+
+This is preferred over adding many supplier columns to the main table.
+
+==================================================
+KEEP SCOPE SAFE
+==================================================
+
+Do NOT do a broad backend rewrite unless truly necessary.
+Keep this as a narrow, practical admin-tool addition.
+
+Do NOT:
+- redesign reorder logic
+- redesign inventory movement logic
+- add stock adjustment editing here
+- change existing inventory category screens broadly
+- replace current admin inventory pages
+
+This is a new admin management surface, not a full inventory rewrite.
+
+==================================================
+OUTPUT
+==================================================
+
+When done, report:
+1. Summary of the new admin tab/page added
+2. How Category -> Family -> Item grouping is rendered
+3. Which fields are editable vs read-only
+4. How supplier price comparison is exposed
+5. Which full labels were used instead of abbreviations
+6. Files modified
+7. Anything intentionally left unchanged

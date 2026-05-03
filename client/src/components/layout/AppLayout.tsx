@@ -192,7 +192,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         aria-label={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
         title={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
         data-testid="btn-toggle-sidebar"
-        className={`hidden md:flex absolute top-20 z-20 -translate-x-1/2 items-center justify-center w-6 h-6 rounded-full bg-white border border-border shadow-sm text-slate-500 hover:text-brand-700 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${sidebarHidden ? "left-0" : "left-64"}`}
+        className={`hidden md:flex absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center w-6 h-6 rounded-full bg-white border border-border shadow-sm text-slate-500 hover:text-brand-700 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${sidebarHidden ? "left-0" : "left-64"}`}
       >
         {sidebarHidden
           ? <PanelLeftOpen className="w-3.5 h-3.5" />

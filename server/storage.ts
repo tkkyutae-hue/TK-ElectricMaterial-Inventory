@@ -180,6 +180,8 @@ export interface IStorage {
   createRmsExportHistory(header: CreateRmsExportHistory, lines: Omit<CreateRmsExportHistoryItem, "historyId">[]): Promise<RmsExportHistory>;
   listRmsExportHistory(limit?: number): Promise<RmsExportHistory[]>;
   getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined>;
+  updateRmsExportHistory(id: number, patch: Partial<Pick<CreateRmsExportHistory, "requestFrom" | "poNumber" | "projectName" | "completionDate" | "deliveryTo">>): Promise<RmsExportHistory | undefined>;
+  deleteRmsExportHistory(ids: number[]): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2716,6 +2718,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rmsExportHistoryItems.historyId, id))
       .orderBy(asc(rmsExportHistoryItems.sortOrder), asc(rmsExportHistoryItems.id));
     return { ...header, lines };
+  }
+
+  async updateRmsExportHistory(
+    id: number,
+    patch: Partial<Pick<CreateRmsExportHistory, "requestFrom" | "poNumber" | "projectName" | "completionDate" | "deliveryTo">>,
+  ): Promise<RmsExportHistory | undefined> {
+    if (Object.keys(patch).length === 0) {
+      const [existing] = await db.select().from(rmsExportHistory).where(eq(rmsExportHistory.id, id));
+      return existing;
+    }
+    const [updated] = await db.update(rmsExportHistory)
+      .set(patch)
+      .where(eq(rmsExportHistory.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRmsExportHistory(ids: number[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const deleted = await db.delete(rmsExportHistory)
+      .where(inArray(rmsExportHistory.id, ids))
+      .returning({ id: rmsExportHistory.id });
+    return deleted.length;
   }
 }
 

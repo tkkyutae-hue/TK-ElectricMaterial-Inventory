@@ -1073,6 +1073,59 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  const updateRmsHistorySchema = z.object({
+    requestFrom: z.string().trim().max(255).nullable().optional(),
+    poNumber: z.string().trim().max(255).nullable().optional(),
+    projectName: z.string().trim().max(255).nullable().optional(),
+    completionDate: z.string().trim().max(64).nullable().optional(),
+    deliveryTo: z.string().trim().max(255).nullable().optional(),
+  });
+
+  app.patch("/api/reorder/history/:id", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    const parsed = updateRmsHistorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+    try {
+      const updated = await storage.updateRmsExportHistory(id, parsed.data);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to update export history" });
+    }
+  });
+
+  const deleteRmsHistorySchema = z.object({
+    ids: z.array(z.number().int().positive()).min(1).max(200),
+  });
+
+  app.delete("/api/reorder/history", isAuthenticated, requireManager, async (req, res) => {
+    const parsed = deleteRmsHistorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+    try {
+      const count = await storage.deleteRmsExportHistory(parsed.data.ids);
+      res.json({ deleted: count });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to delete export history" });
+    }
+  });
+
+  app.delete("/api/reorder/history/:id", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    try {
+      const count = await storage.deleteRmsExportHistory([id]);
+      if (count === 0) return res.status(404).json({ message: "Not found" });
+      res.json({ deleted: count });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to delete export history" });
+    }
+  });
+
   // ─── Reports ─────────────────────────────────────────────────────────────────
   app.get("/api/reports/low-stock", isAuthenticated, async (_req, res) => {
     res.json(await storage.getReportLowStock());

@@ -57,11 +57,12 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch active projects for the picker. Only enabled while the dialog is open.
-  const { data: projects, isLoading: projectsLoading } = useQuery<ProjectLite[]>({
+  const { data: projects, isLoading: projectsLoading, isError: projectsError, isFetching: projectsFetching, refetch: refetchProjects } = useQuery<ProjectLite[]>({
     queryKey: ["/api/projects"],
     enabled: open,
     refetchOnMount: "always",
     staleTime: 0,
+    retry: false,
   });
   const activeProjects = useMemo(
     () => (projects ?? []).filter(p => p.status === "active"),
@@ -188,6 +189,26 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                  {projectsError ? (
+                    <div className="p-3 space-y-2" data-testid="status-rms-project-error">
+                      <p className="text-sm text-rose-600">{t.reorderRmsProjectLoadError}</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => refetchProjects()}
+                        disabled={projectsFetching}
+                        className="w-full"
+                        data-testid="button-rms-project-retry"
+                      >
+                        {projectsFetching ? (
+                          <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />{t.cmnLoading}</>
+                        ) : (
+                          t.reorderRmsProjectRetry
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
                   <Command>
                     <CommandInput placeholder={t.reorderRmsProjectPlaceholder} data-testid="input-rms-project-search" />
                     <CommandList>
@@ -212,6 +233,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                       </CommandGroup>
                     </CommandList>
                   </Command>
+                  )}
                 </PopoverContent>
               </Popover>
             </div>

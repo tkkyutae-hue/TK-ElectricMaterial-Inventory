@@ -327,11 +327,6 @@ export default function Reorder() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">{t.reorderTitle}</h1>
-        <p className="text-slate-500 mt-1">{t.reorderSubtitle}</p>
-      </div>
-
       <div className="premium-card bg-white overflow-hidden">
         {/* Search + filter toolbar */}
         <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex flex-col lg:flex-row gap-3 lg:items-center">

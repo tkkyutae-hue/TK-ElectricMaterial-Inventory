@@ -31,12 +31,19 @@ export default function ReorderArea() {
   };
 
   return (
-    <div className="space-y-4">
-      <Tabs value={tab} onValueChange={handleChange}>
-        <TabsList className="bg-slate-100 p-1 rounded-xl">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-display font-bold text-slate-900">{t.reorderTitle}</h1>
+        <p className="text-slate-500 mt-1">{t.reorderSubtitle}</p>
+      </div>
+
+      <Tabs value={tab} onValueChange={handleChange} className="space-y-0">
+        <TabsList
+          className="bg-transparent p-0 h-auto rounded-none border-b border-slate-200 w-full justify-start gap-1"
+        >
           <TabsTrigger
             value="recommendations"
-            className="rounded-lg gap-2 whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent bg-transparent shadow-none px-4 pb-2.5 -mb-px gap-2 whitespace-nowrap text-slate-500 hover:text-slate-700 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-slate-900 data-[state=active]:text-slate-900"
             data-testid="tab-reorder-recommendations"
           >
             <ShoppingCart className="w-4 h-4 flex-shrink-0" />
@@ -44,7 +51,7 @@ export default function ReorderArea() {
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="rounded-lg gap-2 whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent bg-transparent shadow-none px-4 pb-2.5 -mb-px gap-2 whitespace-nowrap text-slate-500 hover:text-slate-700 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-slate-900 data-[state=active]:text-slate-900"
             data-testid="tab-reorder-history"
           >
             <History className="w-4 h-4 flex-shrink-0" />

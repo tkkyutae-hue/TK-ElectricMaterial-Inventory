@@ -4,6 +4,25 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
+import type { Translations } from "@/lib/i18n";
+
+const TASK_STATUS_LABEL_KEY: Record<string, keyof Translations> = {
+  "not-started": "newReportTaskNotStarted",
+  "in-progress": "newReportTaskInProgress",
+  "completed":   "newReportTaskCompleted",
+  "delayed":     "newReportTaskDelayed",
+  "blocked":     "newReportTaskBlocked",
+};
+const taskStatusLabel = (val: string, t: Translations): string =>
+  t[TASK_STATUS_LABEL_KEY[val] ?? "newReportTaskNotStarted"] as string;
+
+const EQ_TAG_LABEL_KEY: Record<string, keyof Translations> = {
+  repair:  "newReportEqRepairTag",
+  return:  "newReportEqReturnTag",
+  pending: "newReportEqPendingTag",
+};
+const eqTagLabel = (tag: string, t: Translations): string =>
+  t[EQ_TAG_LABEL_KEY[tag]] as string;
 import {
   Calendar, Users, Package, Truck, FileText, ChevronDown, ChevronRight,
   Plus, Trash2, Save, Send, AlertTriangle, CheckCircle2,
@@ -450,7 +469,7 @@ function PreparedByCombobox({
       <Input
         data-testid="input-prepared-by"
         value={query}
-        placeholder={foremanPlus.length > 0 ? "Select or type Foreman name…" : "Enter name…"}
+        placeholder={foremanPlus.length > 0 ? t.newReportSelectForeman : t.newReportEnterName}
         disabled={disabled}
         className={`h-9 text-sm ${!value && !disabled ? "border-slate-300" : ""}`}
         onChange={(e) => {
@@ -1511,7 +1530,7 @@ export function NewReportTab({
           )}
         </div>
 
-        <AddRow testId="btn-add-manpower" label="Add Worker"
+        <AddRow testId="btn-add-manpower" label={t.newReportAddWorker}
           onClick={() => setManpower([...manpower, {
             id: uid(), workerId: null, workerName: "", trade: "",
             attendanceStatus: "ATTEND",
@@ -1524,7 +1543,7 @@ export function NewReportTab({
         {activeWorkers.length === 0 && (
           <p className="mt-2 text-[11px] text-amber-600 flex items-center gap-1.5">
             <Info className="w-3 h-3 shrink-0" />
-            No registered workers found. You can still enter names manually.
+            {t.newReportNoRegisteredWorkers}
           </p>
         )}
       </Section>
@@ -1916,7 +1935,7 @@ export function NewReportTab({
                           <SelectItem key={val} value={val}>
                             <span className="flex items-center gap-2">
                               <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.dotColor, display: "inline-block", flexShrink: 0 }} />
-                              {c.label}
+                              {taskStatusLabel(val, t)}
                             </span>
                           </SelectItem>
                         ))}
@@ -2168,7 +2187,7 @@ export function NewReportTab({
           })}
         </div>
 
-        <AddRow testId="btn-add-task" label="Add Task"
+        <AddRow testId="btn-add-task" label={t.newReportAddTask}
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
             expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], linkedPinId: null,
@@ -2503,7 +2522,7 @@ export function NewReportTab({
                                   fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
                                   cursor: "pointer",
                                 }}>
-                                {tc.label}
+                                {eqTagLabel(tag, t)}
                               </button>
                             );
                           })}
@@ -2602,7 +2621,7 @@ export function NewReportTab({
                 ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               }
-              {isSubmitted ? "Submitted" : "Submit Report"}
+              {isSubmitted ? t.newReportSubmitted : t.newReportSubmit}
             </button>
             {isManagerOrAbove && reportId && (
               <Button data-testid="btn-delete-report-bottom"

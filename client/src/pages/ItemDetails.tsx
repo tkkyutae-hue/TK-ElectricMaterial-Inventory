@@ -24,14 +24,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import type { Translations } from "@/lib/i18n";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import { MovementForm } from "@/components/MovementForm";
 
-const editSchema = z.object({
-  sku:               z.string().min(1, "SKU is required"),
-  name:              z.string().min(1, "Name is required"),
+const makeEditSchema = (t: Translations) => z.object({
+  sku:               z.string().min(1, t.itemDetailSkuRequired),
+  name:              z.string().min(1, t.itemDetailNameRequired),
   baseItemName:      z.string().optional(),
   sizeLabel:         z.string().optional(),
   categoryId:        z.coerce.number().min(1, "Category is required"),
@@ -50,7 +51,7 @@ const editSchema = z.object({
   brand:             z.string().optional(),
 });
 
-type EditFormData = z.infer<typeof editSchema>;
+type EditFormData = z.infer<ReturnType<typeof makeEditSchema>>;
 
 function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
   });
 
   const form = useForm<EditFormData>({
-    resolver: zodResolver(editSchema),
+    resolver: zodResolver(makeEditSchema(t)),
     defaultValues: makeDefaults(item),
   });
 
@@ -1271,7 +1272,7 @@ export default function ItemDetails() {
                   )}
                 </dd>
               </div>
-              <InfoRow label="Size" value={item.sizeLabel} icon={Tag} />
+              <InfoRow label={t.itemDetailSize} value={item.sizeLabel} icon={Tag} />
               <div className="flex flex-col gap-0.5">
                 <dt className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                   <DollarSign className="w-3 h-3" />Unit Cost

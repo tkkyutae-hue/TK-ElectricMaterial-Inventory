@@ -530,6 +530,7 @@ function PersonCardCombobox({
   onChange: (name: string, id: number | null, trade?: string) => void;
   disabled?: boolean; variant: "reporter" | "pm"; testId?: string;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(() =>
@@ -566,7 +567,7 @@ function PersonCardCombobox({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayWorker.fullName}</div>
-          <div style={{ fontSize: 10, color: vs.subColor }}>{displayWorker.trade || (isReporter ? "Reporter" : "Project Manager")}</div>
+          <div style={{ fontSize: 10, color: vs.subColor }}>{displayWorker.trade || (isReporter ? t.newReportReporter : t.newReportProjectManager)}</div>
         </div>
         {!disabled && (
           <button type="button" data-testid={testId ? `${testId}-clear` : undefined}
@@ -592,13 +593,13 @@ function PersonCardCombobox({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <input data-testid={testId} value={query}
-            placeholder={isReporter ? "Select reporter…" : "Select project manager…"}
+            placeholder={isReporter ? t.newReportSelectReporter : t.newReportSelectPM}
             disabled={disabled}
             onChange={e => { setQuery(e.target.value); setOpen(true); onChange(e.target.value, null); }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#374151", fontWeight: 400, width: "100%" }} />
-          <div style={{ fontSize: 10, color: "#d1d5db" }}>{isReporter ? "Required to submit" : "Optional"}</div>
+          <div style={{ fontSize: 10, color: "#d1d5db" }}>{isReporter ? t.newReportRequiredToSubmit : t.newReportOptional}</div>
         </div>
       </div>
       {open && filtered.length > 0 && (
@@ -1469,7 +1470,7 @@ export function NewReportTab({
                     <td className="py-1.5 px-2.5" style={{ textAlign: "center", verticalAlign: "middle" }}>
                       <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
                         onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className={cellInputCls} placeholder="Optional"
+                        className={cellInputCls} placeholder={t.newReportOptional}
                         style={{ textAlign: "center", fontSize: 12, color: row.notes ? "#1a1a1a" : "#bbb" }} />
                     </td>
                     <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">

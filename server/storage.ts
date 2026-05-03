@@ -1300,6 +1300,145 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // ─── Stock & Pricing (admin overview) ────────────────────────────────────────
+
+  async getStockPricingOverview(): Promise<any> {
+    const allCats = await db.select().from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(asc(categories.sortOrder), asc(categories.name));
+
+    const allItems = await db.select().from(items)
+      .where(eq(items.isActive, true))
+      .orderBy(asc(items.baseItemName), asc(items.sizeSortValue), asc(items.name));
+
+    const itemIds = allItems.map(i => i.id);
+    const reelMap = await this.liveReelQtyMap(itemIds);
+
+    const aggRows = itemIds.length > 0
+      ? await db.select({
+          itemId: supplierItems.itemId,
+          cnt: sql<string>`COUNT(*)`,
+          best: sql<string | null>`MIN(${supplierItems.lastUnitCost})`,
+        })
+        .from(supplierItems)
+        .where(inArray(supplierItems.itemId, itemIds))
+        .groupBy(supplierItems.itemId)
+      : [];
+    const aggMap = new Map<number, { count: number; bestPrice: number | null }>(
+      aggRows.map(r => [r.itemId, {
+        count: Number(r.cnt) || 0,
+        bestPrice: r.best != null ? Number(r.best) : null,
+      }])
+    );
+
+    type FamilyAcc = { name: string; items: any[] };
+    type CatAcc = { category: any; families: Map<string, FamilyAcc>; itemCount: number };
+    const catMap = new Map<number, CatAcc>();
+    for (const c of allCats) catMap.set(c.id, { category: c, families: new Map(), itemCount: 0 });
+
+    for (const it of allItems) {
+      if (it.categoryId == null) continue;
+      const cat = catMap.get(it.categoryId);
+      if (!cat) continue;
+      const famKey = it.baseItemName || it.name;
+      let fam = cat.families.get(famKey);
+      if (!fam) { fam = { name: famKey, items: [] }; cat.families.set(famKey, fam); }
+      const liveQty = reelMap.has(it.id) ? reelMap.get(it.id)! : it.quantityOnHand;
+      let status = "in_stock";
+      if (liveQty === 0) status = "out_of_stock";
+      else if (liveQty <= it.minimumStock) status = "low_stock";
+      const agg = aggMap.get(it.id);
+      fam.items.push({
+        id: it.id,
+        sku: it.sku,
+        name: it.name,
+        sizeLabel: it.sizeLabel,
+        unitOfMeasure: it.unitOfMeasure,
+        quantityOnHand: liveQty,
+        reorderPoint: it.reorderPoint,
+        reorderQuantity: it.reorderQuantity,
+        minimumStock: it.minimumStock,
+        status,
+        supplierCount: agg?.count ?? 0,
+        bestPrice: agg?.bestPrice ?? null,
+      });
+      cat.itemCount++;
+    }
+
+    const result = Array.from(catMap.values())
+      .filter(c => c.itemCount > 0)
+      .map(c => ({
+        id: c.category.id,
+        name: c.category.name,
+        code: c.category.code ?? null,
+        itemCount: c.itemCount,
+        families: Array.from(c.families.values()).sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+
+    return { categories: result };
+  }
+
+  async updateItemStockSettings(id: number, data: { reorderPoint: number; reorderQuantity: number; minimumStock: number }): Promise<Item> {
+    const [updated] = await db.update(items)
+      .set({
+        reorderPoint: data.reorderPoint,
+        reorderQuantity: data.reorderQuantity,
+        minimumStock: data.minimumStock,
+        updatedAt: new Date(),
+      })
+      .where(eq(items.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getSupplierItemsForItem(itemId: number): Promise<any[]> {
+    const rows = await db.select({
+      si: supplierItems,
+      supplier: suppliers,
+    })
+    .from(supplierItems)
+    .leftJoin(suppliers, eq(supplierItems.supplierId, suppliers.id))
+    .where(eq(supplierItems.itemId, itemId))
+    .orderBy(desc(supplierItems.preferredSupplier), asc(supplierItems.lastUnitCost));
+    return rows.map(r => ({
+      ...r.si,
+      lastUnitCost: r.si.lastUnitCost != null ? Number(r.si.lastUnitCost) : null,
+      supplier: r.supplier ? { id: r.supplier.id, name: r.supplier.name } : null,
+    }));
+  }
+
+  async createSupplierItem(data: { itemId: number; supplierId: number; supplierSku?: string | null; leadTimeDays?: number | null; preferredSupplier?: boolean; lastUnitCost?: string | number | null }): Promise<SupplierItem> {
+    const [created] = await db.insert(supplierItems).values({
+      itemId: data.itemId,
+      supplierId: data.supplierId,
+      supplierSku: data.supplierSku ?? null,
+      leadTimeDays: data.leadTimeDays ?? null,
+      preferredSupplier: data.preferredSupplier ?? false,
+      lastUnitCost: data.lastUnitCost != null ? String(data.lastUnitCost) : null,
+    }).returning();
+    return created;
+  }
+
+  async updateSupplierItem(id: number, data: Partial<{ supplierId: number; supplierSku: string | null; leadTimeDays: number | null; preferredSupplier: boolean; lastUnitCost: string | number | null }>): Promise<SupplierItem | undefined> {
+    const patch: any = { updatedAt: new Date() };
+    if (data.supplierId !== undefined) patch.supplierId = data.supplierId;
+    if (data.supplierSku !== undefined) patch.supplierSku = data.supplierSku;
+    if (data.leadTimeDays !== undefined) patch.leadTimeDays = data.leadTimeDays;
+    if (data.preferredSupplier !== undefined) patch.preferredSupplier = data.preferredSupplier;
+    if (data.lastUnitCost !== undefined) patch.lastUnitCost = data.lastUnitCost != null ? String(data.lastUnitCost) : null;
+    const [updated] = await db.update(supplierItems).set(patch).where(eq(supplierItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteSupplierItem(id: number): Promise<void> {
+    await db.delete(supplierItems).where(eq(supplierItems.id, id));
+  }
+
+  async getSupplierItemById(id: number): Promise<SupplierItem | undefined> {
+    const [row] = await db.select().from(supplierItems).where(eq(supplierItems.id, id));
+    return row;
+  }
+
   // ─── Item Groups (family metadata) ────────────────────────────────────────────
 
   async upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup> {

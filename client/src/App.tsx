@@ -34,6 +34,7 @@ import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
 import SkuCleanup from "@/pages/admin/SkuCleanup";
 import InactiveItems from "@/pages/admin/InactiveItems";
+import StockPricing from "@/pages/admin/StockPricing";
 
 import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
@@ -195,6 +196,7 @@ function AdminRouter() {
           <Route path="/admin/export" component={() => <AdminToolsGuard><Export /></AdminToolsGuard>} />
           <Route path="/admin/sku" component={() => <AdminToolsGuard><SkuCleanup /></AdminToolsGuard>} />
           <Route path="/admin/inactive-items" component={() => <AdminToolsGuard><InactiveItems /></AdminToolsGuard>} />
+          <Route path="/admin/stock-pricing" component={() => <AdminToolsGuard><StockPricing /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

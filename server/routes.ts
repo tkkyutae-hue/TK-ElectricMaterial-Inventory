@@ -2038,6 +2038,113 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin Stock & Pricing ────────────────────────────────────────────────────
+
+  app.get("/api/admin/stock-pricing", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const data = await storage.getStockPricingOverview();
+      res.json(data);
+    } catch (err: any) {
+      console.error("[stock-pricing]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  const stockSettingsSchema = z.object({
+    reorderPoint: z.number().int().min(0),
+    reorderQuantity: z.number().int().min(0),
+    minimumStock: z.number().int().min(0),
+  });
+
+  app.patch("/api/admin/items/:id/stock-settings", isAuthenticated, requireAdmin, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    const parsed = stockSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid stock settings", errors: parsed.error.errors });
+    }
+    try {
+      const updated = await storage.updateItemStockSettings(id, parsed.data);
+      if (!updated) return res.status(404).json({ message: "Item not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/items/:id/supplier-items", isAuthenticated, requireAdmin, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    try {
+      const rows = await storage.getSupplierItemsForItem(id);
+      res.json({ items: rows });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  const supplierItemBodySchema = z.object({
+    supplierId: z.number().int().positive(),
+    supplierSku: z.string().trim().max(100).optional().nullable(),
+    leadTimeDays: z.number().int().min(0).max(3650).optional().nullable(),
+    preferredSupplier: z.boolean().optional(),
+    lastUnitCost: z.union([z.number(), z.string()]).optional().nullable().transform(v => v === null || v === undefined || v === "" ? null : Number(v)),
+  });
+
+  app.post("/api/admin/items/:id/supplier-items", isAuthenticated, requireAdmin, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    const parsed = supplierItemBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid supplier item", errors: parsed.error.errors });
+    }
+    try {
+      const created = await storage.createSupplierItem({
+        itemId: id,
+        supplierId: parsed.data.supplierId,
+        supplierSku: parsed.data.supplierSku ?? null,
+        leadTimeDays: parsed.data.leadTimeDays ?? null,
+        preferredSupplier: parsed.data.preferredSupplier ?? false,
+        lastUnitCost: parsed.data.lastUnitCost ?? null,
+      });
+      res.status(201).json(created);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  const supplierItemPatchSchema = supplierItemBodySchema.partial();
+
+  app.patch("/api/admin/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    const parsed = supplierItemPatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid supplier item", errors: parsed.error.errors });
+    }
+    try {
+      const existing = await storage.getSupplierItemById(id);
+      if (!existing) return res.status(404).json({ message: "Supplier item not found" });
+      const updated = await storage.updateSupplierItem(id, parsed.data as any);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/supplier-items/:id", isAuthenticated, requireAdmin, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id === null) return;
+    try {
+      const existing = await storage.getSupplierItemById(id);
+      if (!existing) return res.status(404).json({ message: "Supplier item not found" });
+      await storage.deleteSupplierItem(id);
+      res.status(204).end();
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Inactive Items ─────────────────────────────────────────────────────
 
   // Returns all inactive (isActive = false) items with movement/transaction counts.

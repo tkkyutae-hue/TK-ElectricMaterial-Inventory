@@ -19,6 +19,7 @@ import {
   Wrench,
   Tag,
   PackageX,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -73,6 +74,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/admin/export", label: t.navExportBackup, icon: Download },
         { href: "/admin/sku", label: t.navSkuCleanup, icon: Tag },
         { href: "/admin/inactive-items", label: t.navInactiveItems, icon: PackageX },
+        { href: "/admin/stock-pricing", label: t.navStockPricing, icon: DollarSign },
       ],
     }] : []),
   ];

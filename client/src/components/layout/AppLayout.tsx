@@ -179,12 +179,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex h-screen bg-background font-sans">
+    <div className="relative flex h-screen bg-background font-sans">
       {!sidebarHidden && (
         <div className="hidden md:block flex-shrink-0">
           <SidebarContent />
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setSidebarHidden(s => !s)}
+        aria-label={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
+        title={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
+        data-testid="btn-toggle-sidebar"
+        className={`hidden md:flex absolute top-20 z-20 -translate-x-1/2 items-center justify-center w-6 h-6 rounded-full bg-white border border-border shadow-sm text-slate-500 hover:text-brand-700 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${sidebarHidden ? "left-0" : "left-64"}`}
+      >
+        {sidebarHidden
+          ? <PanelLeftOpen className="w-3.5 h-3.5" />
+          : <PanelLeftClose className="w-3.5 h-3.5" />}
+      </button>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-[76px] bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 z-10 flex-shrink-0">
@@ -206,19 +219,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="hidden md:flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-slate-500 hover:bg-brand-50 w-9 h-9 flex-shrink-0"
-              onClick={() => setSidebarHidden(s => !s)}
-              aria-label={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
-              title={sidebarHidden ? t.adminShowSidebar : t.adminHideSidebar}
-              data-testid="btn-toggle-sidebar"
-            >
-              {sidebarHidden
-                ? <PanelLeftOpen className="w-4 h-4" />
-                : <PanelLeftClose className="w-4 h-4" />}
-            </Button>
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1 whitespace-nowrap flex-shrink-0">
               <Shield className="w-3 h-3 flex-shrink-0" /> {t.adminModeChip}
             </span>

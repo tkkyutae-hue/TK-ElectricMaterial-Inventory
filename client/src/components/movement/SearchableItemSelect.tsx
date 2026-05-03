@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Search, X, ChevronDown, ImageOff } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -16,10 +17,10 @@ function useIsMobileInline() {
 
 export function SearchableItemSelect({
   value, onChange, items, dark = false, isLoading = false, errorMessage = null,
-  searchPlaceholder = "Search by name, SKU, or size…",
-  loadingText = "Loading items…",
-  noResultsText = "No items found",
-  closeText = "Done",
+  searchPlaceholder,
+  loadingText,
+  noResultsText,
+  closeText,
 }: {
   value?: number | null;
   onChange: (id: number) => void;
@@ -32,6 +33,11 @@ export function SearchableItemSelect({
   noResultsText?: string;
   closeText?: string;
 }) {
+  const { t } = useLanguage();
+  searchPlaceholder = searchPlaceholder ?? t.movSearchItemPlaceholder;
+  loadingText = loadingText ?? t.movSearchItemLoading;
+  noResultsText = noResultsText ?? t.movSearchItemNoResults;
+  closeText = closeText ?? t.movSearchItemDone;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);

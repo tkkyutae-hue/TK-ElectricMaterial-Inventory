@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { ToastAction } from "@/components/ui/toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
@@ -171,6 +172,7 @@ function FamilyRow({
   selectedIds: Set<number>;
   onToggleSelect: (id: number, checked: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(true);
   const collisionCount = family.items.filter(i => i.isCollision).length;
   const changedCount = family.items.filter(i => {
@@ -198,16 +200,16 @@ function FamilyRow({
         {open ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />}
         <span className="font-medium text-slate-800 flex-1 text-sm">{family.baseItemName}</span>
         <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50">
-          충돌 {collisionCount}개
+          {t.adminSkuFamilyCollisionBadge} {collisionCount}
         </Badge>
         {changedCount > 0 && (
           <Badge variant="outline" className="text-xs text-brand-700 border-brand-300 bg-brand-50">
-            변경 {changedCount}개
+            {t.adminSkuFamilyChangedBadge} {changedCount}
           </Badge>
         )}
         {familySelectedCount > 0 && (
           <Badge variant="outline" className="text-xs text-red-700 border-red-300 bg-red-50">
-            {familySelectedCount}개 선택
+            {familySelectedCount} {t.adminSkuFamilySelectedBadge}
           </Badge>
         )}
       </button>
@@ -220,13 +222,13 @@ function FamilyRow({
                 checked={allFamilySelected || (someFamilySelected ? "indeterminate" : false)}
                 onCheckedChange={(v) => handleFamilyCheckbox(v === true)}
                 data-testid={`chk-family-${family.baseItemName}`}
-                aria-label="패밀리 전체 선택"
+                aria-label={t.adminSkuFamilySelectAria}
               />
             </div>
-            <div className="col-span-2">현재 SKU</div>
-            <div className="col-span-4">새 SKU (직접 편집 가능)</div>
-            <div className="col-span-3">아이템명</div>
-            <div className="col-span-2 text-center">인벤토리</div>
+            <div className="col-span-2">{t.adminSkuColCurrentSku}</div>
+            <div className="col-span-4">{t.adminSkuColNewSku}</div>
+            <div className="col-span-3">{t.adminSkuColItem}</div>
+            <div className="col-span-2 text-center">{t.adminSkuColInventory}</div>
           </div>
           {family.items.map(item => {
             const proposed = editMap.get(item.id) ?? item.sku;
@@ -249,7 +251,7 @@ function FamilyRow({
                     checked={isSelected}
                     onCheckedChange={(v) => onToggleSelect(item.id, v === true)}
                     data-testid={`chk-item-${item.id}`}
-                    aria-label={`${item.sku} 선택`}
+                    aria-label={`${item.sku} ${t.adminSkuItemSelectAria}`}
                   />
                 </div>
 
@@ -283,7 +285,7 @@ function FamilyRow({
                     <button
                       onClick={() => onReset(item.id)}
                       className="p-1 text-slate-400 hover:text-slate-600 flex-shrink-0"
-                      title="원래대로"
+                      title={t.adminSkuRevertTitle}
                       data-testid={`btn-reset-sku-${item.id}`}
                     >
                       <RotateCcw className="w-3 h-3" />
@@ -309,7 +311,7 @@ function FamilyRow({
                       className="text-[10px] text-green-700 border-green-300 bg-green-50"
                       data-testid={`badge-active-${item.id}`}
                     >
-                      활성
+                      {t.adminSkuActive}
                     </Badge>
                   ) : (
                     <Badge
@@ -317,7 +319,7 @@ function FamilyRow({
                       className="text-[10px] text-slate-500 border-slate-300 bg-slate-100"
                       data-testid={`badge-inactive-${item.id}`}
                     >
-                      비활성
+                      {t.adminSkuInactive}
                     </Badge>
                   )}
                 </div>
@@ -351,6 +353,7 @@ function CategorySection({
   selectedIds: Set<number>;
   onToggleSelect: (id: number, checked: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(true);
   const totalCollisions = category.families.reduce((s, f) => s + f.items.filter(i => i.isCollision).length, 0);
 
@@ -364,7 +367,7 @@ function CategorySection({
         {open ? <ChevronDown className="w-5 h-5 text-slate-500 group-hover:text-slate-700" /> : <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-slate-700" />}
         <span className="font-semibold text-slate-900">{category.name}</span>
         <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
-          {totalCollisions}개 수정 필요
+          {totalCollisions} {t.adminSkuCatNeedsFix}
         </Badge>
         <code className="text-xs text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
           {category.code}
@@ -382,7 +385,7 @@ function CategorySection({
               data-testid={`btn-autofix-cat-${category.id}`}
             >
               <Wand2 className="w-3 h-3" />
-              이 카테고리 자동 수정
+              {t.adminSkuCatAutoFix}
             </Button>
           </div>
           {category.families.map(family => (
@@ -406,6 +409,7 @@ function CategorySection({
 // ── Cable SKU Standardize Panel ───────────────────────────────────────────
 
 function CableSkuPanel() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [showOnlyChanged, setShowOnlyChanged] = useState(true);
   const [cableEditMap, setCableEditMap] = useState<Map<number, string>>(new Map());
@@ -494,8 +498,8 @@ function CableSkuPanel() {
     },
     onSuccess: (result) => {
       toast({
-        title: "케이블 SKU 업데이트 완료",
-        description: `${result.updated}개 아이템의 SKU가 표준 형식으로 변경되었습니다.`,
+        title: t.adminSkuToastCableUpdateOk,
+        description: `${result.updated} ${t.adminSkuToastCableUpdateOkDesc}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cable-sku-preview"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/sku-issues"] });
@@ -506,8 +510,8 @@ function CableSkuPanel() {
     },
     onError: (err: Error) => {
       toast({
-        title: "업데이트 실패",
-        description: err.message ?? "오류가 발생했습니다.",
+        title: t.adminSkuToastUpdateFail,
+        description: err.message ?? t.adminSkuToastUpdateFailDesc,
         variant: "destructive",
       });
     },
@@ -518,15 +522,15 @@ function CableSkuPanel() {
       const conflictSelected = selectedChanges.some(u => cableConflictIds.has(u.id));
       if (conflictSelected) {
         toast({
-          title: "충돌 SKU가 있습니다",
-          description: "빨간색으로 표시된 충돌 SKU를 먼저 해결해주세요.",
+          title: t.adminSkuToastConflicts,
+          description: t.adminSkuToastConflictsDesc,
           variant: "destructive",
         });
         return;
       }
     }
     if (selectedChanges.length === 0) {
-      toast({ title: "선택된 변경사항 없음", description: "변경할 아이템을 먼저 선택하세요." });
+      toast({ title: t.adminSkuToastNoSelection, description: t.adminSkuToastNoSelectionDesc });
       return;
     }
     cableSkuMutation.mutate(selectedChanges);
@@ -551,7 +555,7 @@ function CableSkuPanel() {
       <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl mb-5">
         <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
         <div className="text-xs text-blue-800 space-y-1">
-          <p className="font-semibold">표기 규칙 — /0 사이즈는 대문자 O 접두사 사용</p>
+          <p className="font-semibold">{t.adminSkuLegendTitle}</p>
           <p className="font-mono">
             <span className="bg-blue-100 px-1 rounded">O1</span> = 1/0 &nbsp;·&nbsp;
             <span className="bg-blue-100 px-1 rounded">O2</span> = 2/0 &nbsp;·&nbsp;
@@ -559,7 +563,7 @@ function CableSkuPanel() {
             <span className="bg-blue-100 px-1 rounded">O4</span> = 4/0
           </p>
           <p className="text-blue-700">
-            형식: &nbsp;
+            {t.adminSkuLegendFormat} &nbsp;
             <span className="font-mono">WIRE-{"{size}"}[-{"{color}"}]</span> &nbsp;·&nbsp;
             <span className="font-mono">CABLE-{"{size}"}-{"{config}"}</span> &nbsp;·&nbsp;
             <span className="font-mono">GW-{"{size}"}</span>
@@ -572,16 +576,16 @@ function CableSkuPanel() {
         <Cable className="w-5 h-5 text-slate-600 flex-shrink-0" />
         <div className="flex-1 text-sm text-slate-700 space-y-0.5">
           <div>
-            전체 <span className="font-semibold">{totalItems}개</span> 케이블/전선 아이템 &nbsp;·&nbsp;
-            변경 필요 <span className="font-semibold text-amber-700">{needsChangeCount}개</span>
+            <span className="font-semibold">{totalItems}</span> {t.adminSkuTotalCableItems} &nbsp;·&nbsp;
+            <span className="font-semibold text-amber-700">{needsChangeCount}</span> {t.adminSkuNeedsChange}
             {conflictCount > 0 && (
               <span className="ml-2 text-red-600 font-medium">
-                · 충돌 {conflictCount}개
+                · {conflictCount} {t.adminSkuConflicts}
               </span>
             )}
             {cannotParseCount > 0 && (
               <span className="ml-2 text-slate-400">
-                · 파싱 불가 {cannotParseCount}개
+                · {cannotParseCount} {t.adminSkuCannotParse}
               </span>
             )}
           </div>
@@ -594,7 +598,7 @@ function CableSkuPanel() {
             data-testid="toggle-show-changed"
           />
           <Label htmlFor="show-only-changed" className="text-xs text-slate-600 cursor-pointer">
-            변경 필요만 표시
+            {t.adminSkuShowChangedOnly}
           </Label>
         </div>
       </div>
@@ -604,9 +608,9 @@ function CableSkuPanel() {
         <div className="flex items-center gap-3 p-3 bg-brand-50 border border-brand-200 rounded-xl mb-4">
           <CheckCircle2 className="w-4 h-4 text-brand-600 flex-shrink-0" />
           <span className="text-sm text-brand-800 flex-1">
-            <span className="font-semibold">{cableSelectedIds.size}개</span> 아이템 선택됨
+            <span className="font-semibold">{cableSelectedIds.size}</span> {t.adminSkuItemsSelected}
             {selectedChanges.length > 0 && (
-              <span className="ml-1 text-brand-600">({selectedChanges.length}개 변경 예정)</span>
+              <span className="ml-1 text-brand-600">({selectedChanges.length} {t.adminSkuChangePending})</span>
             )}
           </span>
           <Button
@@ -616,7 +620,7 @@ function CableSkuPanel() {
             className="text-xs h-7 border-brand-200 text-brand-700 hover:bg-brand-100"
             data-testid="btn-cable-clear-selection"
           >
-            선택 해제
+            {t.adminSkuClearSelection}
           </Button>
           <Button
             size="sm"
@@ -630,7 +634,7 @@ function CableSkuPanel() {
             ) : (
               <CheckCircle2 className="w-3.5 h-3.5" />
             )}
-            선택 항목 적용
+            {t.adminSkuApplySelected}
           </Button>
         </div>
       )}
@@ -646,7 +650,7 @@ function CableSkuPanel() {
             data-testid="btn-cable-select-all-changed"
           >
             <Wand2 className="w-3 h-3" />
-            변경 필요 전체 선택 ({needsChangeCount}개)
+            {t.adminSkuSelectAllChanged} ({needsChangeCount})
           </Button>
         </div>
       )}
@@ -655,8 +659,8 @@ function CableSkuPanel() {
       {displayItems.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
-          <p className="font-medium text-slate-700">모든 케이블 SKU가 표준 형식입니다</p>
-          <p className="text-sm mt-1">변경이 필요한 아이템이 없습니다.</p>
+          <p className="font-medium text-slate-700">{t.adminSkuAllStandard}</p>
+          <p className="text-sm mt-1">{t.adminSkuAllStandardDesc}</p>
         </div>
       ) : (
         <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -676,13 +680,13 @@ function CableSkuPanel() {
                   displayItems.filter(i => !i.alreadyClean).forEach(i => handleToggleCableSelect(i.id, v === true));
                 }}
                 data-testid="chk-cable-all"
-                aria-label="전체 선택"
+                aria-label={t.adminSkuSelectAllAria}
               />
             </div>
-            <div className="col-span-3">현재 SKU</div>
-            <div className="col-span-3">표준 SKU (편집 가능)</div>
-            <div className="col-span-3">아이템명</div>
-            <div className="col-span-2 text-center">상태</div>
+            <div className="col-span-3">{t.adminSkuColCurrentSku}</div>
+            <div className="col-span-3">{t.adminSkuColStandardSku}</div>
+            <div className="col-span-3">{t.adminSkuColItem}</div>
+            <div className="col-span-2 text-center">{t.adminSkuColStatus}</div>
           </div>
 
           {/* Rows */}
@@ -711,7 +715,7 @@ function CableSkuPanel() {
                       onCheckedChange={(v) => handleToggleCableSelect(item.id, v === true)}
                       disabled={item.alreadyClean && !isEdited}
                       data-testid={`chk-cable-${item.id}`}
-                      aria-label={`${item.currentSku} 선택`}
+                      aria-label={`${item.currentSku} ${t.adminSkuItemSelectAria}`}
                     />
                   </div>
 
@@ -742,7 +746,7 @@ function CableSkuPanel() {
                       <button
                         onClick={() => handleCableReset(item.id)}
                         className="p-1 text-slate-400 hover:text-slate-600 flex-shrink-0"
-                        title="자동 제안으로 초기화"
+                        title={t.adminSkuTooltipResetAuto}
                         data-testid={`btn-cable-reset-${item.id}`}
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -757,20 +761,20 @@ function CableSkuPanel() {
                   <div className="col-span-2 flex justify-center">
                     {item.cannotParse ? (
                       <Badge variant="outline" className="text-[10px] text-slate-500 border-slate-300">
-                        파싱 불가
+                        {t.adminSkuStatusCannotParse}
                       </Badge>
                     ) : hasConflict ? (
                       <Badge variant="outline" className="text-[10px] text-red-700 border-red-300 bg-red-50 flex items-center gap-1">
                         <AlertTriangle className="w-2.5 h-2.5" />
-                        충돌
+                        {t.adminSkuStatusConflict}
                       </Badge>
                     ) : item.alreadyClean ? (
                       <Badge variant="outline" className="text-[10px] text-green-700 border-green-300 bg-green-50">
-                        표준
+                        {t.adminSkuStatusStandard}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 bg-amber-50">
-                        변경 필요
+                        {t.adminSkuStatusNeedsChange}
                       </Badge>
                     )}
                   </div>

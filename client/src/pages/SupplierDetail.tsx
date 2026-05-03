@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 
 function computeStatus(item: any): string {
   if (item.quantityOnHand === 0) return "out_of_stock";
@@ -38,6 +39,7 @@ type EditFormData = z.infer<typeof editSchema>;
 
 function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const updateMutation = useUpdateSupplier();
   const deleteMutation = useDeleteSupplier();
   const [, navigate] = useLocation();
@@ -76,21 +78,21 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
   async function onSubmit(data: EditFormData) {
     try {
       await updateMutation.mutateAsync({ id: supplier.id, ...data });
-      toast({ title: "Supplier updated", description: `${data.name} has been saved.` });
+      toast({ title: t.supplierDetailUpdatedToast, description: `${data.name} ${t.supplierDetailSavedDesc}` });
       onClose();
     } catch (err: any) {
-      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+      toast({ title: t.supplierDetailUpdateFailedToast, description: err.message, variant: "destructive" });
     }
   }
 
   async function handleDelete() {
     try {
       await deleteMutation.mutateAsync(supplier.id);
-      toast({ title: "Supplier deleted", description: `${supplier.name} has been removed.` });
+      toast({ title: t.supplierDetailDeletedToast, description: `${supplier.name} ${t.supplierDetailRemovedDesc}` });
       onClose();
       navigate("/suppliers");
     } catch (err: any) {
-      toast({ title: "Cannot delete", description: err.message, variant: "destructive" });
+      toast({ title: t.supplierDetailCannotDeleteToast, description: err.message, variant: "destructive" });
       setShowDeleteConfirm(false);
     }
   }
@@ -99,13 +101,13 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Supplier — {supplier.name}</DialogTitle>
+          <DialogTitle>{t.supplierDetailEditTitlePrefix} {supplier.name}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel>Supplier Name <span className="text-red-500">*</span></FormLabel>
+                <FormLabel>{t.supplierDetailNameLabel} <span className="text-red-500">*</span></FormLabel>
                 <FormControl><Input data-testid="edit-supplier-name" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -114,14 +116,14 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="contactName" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Person</FormLabel>
+                  <FormLabel>{t.supplierDetailContactPerson}</FormLabel>
                   <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="leadTimeDays" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Lead Time (days)</FormLabel>
+                  <FormLabel>{t.supplierDetailLeadTimeLbl}</FormLabel>
                   <FormControl><Input type="number" min={0} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -131,14 +133,14 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="phone" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>{t.supplierDetailPhone}</FormLabel>
                   <FormControl><Input placeholder="555-0101" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t.supplierDetailEmail}</FormLabel>
                   <FormControl><Input type="email" placeholder="sales@supplier.com" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -147,7 +149,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
 
             <FormField control={form.control} name="address" render={({ field }) => (
               <FormItem>
-                <FormLabel>Address</FormLabel>
+                <FormLabel>{t.supplierDetailAddress}</FormLabel>
                 <FormControl><Input placeholder="123 Main St, City, ST 00000" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -164,8 +166,8 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
                     data-testid="checkbox-preferred-vendor"
                   />
                   <div>
-                    <p className="text-sm font-semibold text-amber-900">Preferred Vendor</p>
-                    <p className="text-xs text-amber-700">Mark this supplier as preferred for purchasing decisions.</p>
+                    <p className="text-sm font-semibold text-amber-900">{t.supplierDetailPreferred}</p>
+                    <p className="text-xs text-amber-700">{t.supplierDetailPreferredDesc}</p>
                   </div>
                   <Star className="w-4 h-4 text-amber-500 ml-auto" />
                 </div>
@@ -175,8 +177,8 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
 
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl><Textarea rows={2} className="resize-none" placeholder="Any relevant notes…" {...field} /></FormControl>
+                <FormLabel>{t.supplierDetailNotes}</FormLabel>
+                <FormControl><Textarea rows={2} className="resize-none" placeholder={t.supplierDetailNotesPh} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -191,21 +193,21 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
                 data-testid="button-delete-supplier"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete
+                {t.cmnDelete}
               </Button>
               <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending || deleteMutation.isPending}>{t.cmnCancel}</Button>
                 <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending || deleteMutation.isPending} data-testid="button-save-supplier">
-                  {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                  {updateMutation.isPending ? t.cmnSaving : t.supplierDetailSaveChanges}
                 </Button>
               </div>
             </div>
 
             {showDeleteConfirm && (
               <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-semibold text-red-900 mb-1">Delete "{supplier.name}"?</p>
+                <p className="text-sm font-semibold text-red-900 mb-1">{t.supplierDetailDeleteConfirmPre}{supplier.name}{t.supplierDetailDeleteConfirmSuf}</p>
                 <p className="text-xs text-red-700 mb-3">
-                  This action cannot be undone. If items reference this supplier, deletion will be blocked.
+                  {t.supplierDetailDeleteWarning}
                 </p>
                 <div className="flex gap-2 justify-end">
                   <Button
@@ -215,7 +217,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
                     onClick={() => setShowDeleteConfirm(false)}
                     disabled={deleteMutation.isPending}
                   >
-                    Cancel
+                    {t.cmnCancel}
                   </Button>
                   <Button
                     type="button"
@@ -225,7 +227,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
                     disabled={deleteMutation.isPending}
                     data-testid="button-confirm-delete-supplier"
                   >
-                    {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+                    {deleteMutation.isPending ? t.supplierDetailDeleting : t.supplierDetailYesDelete}
                   </Button>
                 </div>
               </div>
@@ -242,6 +244,7 @@ export default function SupplierDetail() {
   const id = Number(params?.id || "0");
   const { data: supplier, isLoading } = useSupplier(id);
   const [editOpen, setEditOpen] = useState(false);
+  const { t } = useLanguage();
 
   if (isLoading) return (
     <div className="space-y-4 animate-pulse">
@@ -249,7 +252,7 @@ export default function SupplierDetail() {
       <div className="h-48 bg-slate-200 rounded-2xl" />
     </div>
   );
-  if (!supplier) return <div className="p-8 text-center text-slate-500">Supplier not found.</div>;
+  if (!supplier) return <div className="p-8 text-center text-slate-500">{t.supplierDetailNotFound}</div>;
 
   const lowStockItems = supplier.items?.filter((i: any) => computeStatus(i) !== 'in_stock') || [];
 
@@ -270,7 +273,7 @@ export default function SupplierDetail() {
                   <h1 className="text-3xl font-display font-bold text-slate-900">{supplier.name}</h1>
                   {supplier.preferredVendor && (
                     <Badge className="bg-amber-100 text-amber-700 border-amber-200 border gap-1 text-xs">
-                      <Star className="w-3 h-3" />Preferred Vendor
+                      <Star className="w-3 h-3" />{t.supplierDetailPreferredBadge}
                     </Badge>
                   )}
                 </div>
@@ -285,7 +288,7 @@ export default function SupplierDetail() {
               data-testid="button-edit-supplier"
             >
               <Pencil className="w-3.5 h-3.5" />
-              Edit
+              {t.cmnEdit}
             </Button>
           </div>
         </div>
@@ -297,13 +300,13 @@ export default function SupplierDetail() {
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
-                <p className="font-semibold text-amber-900">{lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} need reorder from this supplier</p>
+                <p className="font-semibold text-amber-900">{lowStockItems.length} {lowStockItems.length === 1 ? t.supplierDetailNeedReorderS : t.supplierDetailNeedReorderP}</p>
               </div>
               <div className="space-y-2">
                 {lowStockItems.slice(0, 5).map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center text-sm">
                     <Link href={`/inventory/${item.id}`} className="text-amber-800 font-medium hover:underline">{item.name}</Link>
-                    <span className="text-amber-700">{item.quantityOnHand} {item.unitOfMeasure} remaining</span>
+                    <span className="text-amber-700">{item.quantityOnHand} {item.unitOfMeasure} {t.supplierDetailRemainingSuf}</span>
                   </div>
                 ))}
               </div>
@@ -315,7 +318,7 @@ export default function SupplierDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-slate-900">
                   <Package className="w-4 h-4 inline mr-2 text-slate-400" />
-                  Stocked Items ({supplier.items?.length || 0})
+                  {t.supplierDetailStockedItems} ({supplier.items?.length || 0})
                 </CardTitle>
               </div>
             </CardHeader>
@@ -323,17 +326,17 @@ export default function SupplierDetail() {
               <Table>
                 <TableHeader className="bg-slate-50/80">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-semibold text-slate-600">SKU</TableHead>
-                    <TableHead className="font-semibold text-slate-600">Name</TableHead>
-                    <TableHead className="font-semibold text-slate-600 text-right">On Hand</TableHead>
-                    <TableHead className="font-semibold text-slate-600 text-right">Unit Cost</TableHead>
-                    <TableHead className="font-semibold text-slate-600">Status</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailColSku}</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailColName}</TableHead>
+                    <TableHead className="font-semibold text-slate-600 text-right">{t.supplierDetailColOnHand}</TableHead>
+                    <TableHead className="font-semibold text-slate-600 text-right">{t.supplierDetailColUnitCost}</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailColStatus}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {!supplier.items?.length ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">No items linked to this supplier.</TableCell>
+                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">{t.supplierDetailNoItems}</TableCell>
                     </TableRow>
                   ) : supplier.items.map((item: any) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50">
@@ -355,7 +358,7 @@ export default function SupplierDetail() {
         <div>
           <Card className="premium-card border-none">
             <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
-              <CardTitle className="text-sm font-semibold text-slate-700">Contact Information</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-700">{t.supplierDetailContactInfo}</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-4 text-sm">
               {supplier.phone && (
@@ -380,17 +383,17 @@ export default function SupplierDetail() {
               )}
               {supplier.accountNumber && (
                 <div className="pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-1">Account Number</p>
+                  <p className="text-xs text-slate-400 mb-1">{t.supplierDetailAccountNumber}</p>
                   <p className="font-mono text-slate-700">{supplier.accountNumber}</p>
                 </div>
               )}
               <div className="pt-3 border-t border-slate-100">
-                <p className="text-xs text-slate-400 mb-1">Lead Time</p>
-                <p className="font-semibold text-slate-900">{supplier.leadTimeDays != null ? `${supplier.leadTimeDays} days` : 'Unknown'}</p>
+                <p className="text-xs text-slate-400 mb-1">{t.supplierDetailLeadTimeLabel}</p>
+                <p className="font-semibold text-slate-900">{supplier.leadTimeDays != null ? `${supplier.leadTimeDays} ${t.supplierDetailDays}` : t.supplierDetailUnknown}</p>
               </div>
               {supplier.notes && (
                 <div className="pt-3 border-t border-slate-100">
-                  <p className="text-xs text-slate-400 mb-1">Notes</p>
+                  <p className="text-xs text-slate-400 mb-1">{t.supplierDetailNotes}</p>
                   <p className="text-slate-600">{supplier.notes}</p>
                 </div>
               )}

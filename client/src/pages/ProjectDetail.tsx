@@ -14,8 +14,10 @@ import { EditProjectDialog } from "@/components/project/EditProjectDialog";
 import { ScopeItemsTab } from "@/components/project/ScopeItemsTab";
 import { ProgressTab } from "@/components/project/ProgressTab";
 import { OverviewTab, MaterialUsageTab, DailyReportsTab } from "@/components/project/OverviewTab";
+import { useLanguage } from "@/hooks/use-language";
 
 export default function ProjectDetail() {
+  const { t } = useLanguage();
   const [, params] = useRoute("/projects/:id");
   const id = Number(params?.id || "0");
   const { data: project, isLoading } = useProject(id);
@@ -29,7 +31,7 @@ export default function ProjectDetail() {
       <div className="h-48 bg-slate-200 rounded-2xl" />
     </div>
   );
-  if (!project) return <div className="p-8 text-center text-slate-500">Project not found.</div>;
+  if (!project) return <div className="p-8 text-center text-slate-500">{t.projDetailNotFound}</div>;
 
   const statusCfg = statusConfig[project.status] || { label: project.status, className: "" };
 
@@ -45,7 +47,7 @@ export default function ProjectDetail() {
             <Badge variant="outline" className={`${statusCfg.className} text-xs font-semibold`}>{statusCfg.label}</Badge>
             {project.poNumber && (
               <span className="text-sm font-mono font-bold text-brand-700 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-lg">
-                PO: {project.poNumber}
+                {t.projDetailPoLabel} {project.poNumber}
               </span>
             )}
           </div>
@@ -54,15 +56,15 @@ export default function ProjectDetail() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="bg-white" onClick={() => setEditOpen(true)} data-testid="button-edit-project">
-            <Edit className="w-4 h-4 mr-2" /> Edit
+            <Edit className="w-4 h-4 mr-2" /> {t.projDetailEditBtn}
           </Button>
           <Dialog open={logOpen} onOpenChange={setLogOpen}>
             <Button className="bg-brand-700 hover:bg-brand-800 text-white shadow-sm" onClick={() => setLogOpen(true)}>
-              <ArrowUpRight className="w-4 h-4 mr-2" />Log Material
+              <ArrowUpRight className="w-4 h-4 mr-2" />{t.projDetailLogMaterial}
             </Button>
             <DialogContent className="sm:max-w-[760px] flex flex-col max-h-[90vh] gap-0 p-0">
               <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
-                <DialogTitle>Log Material for {project.code}</DialogTitle>
+                <DialogTitle>{t.projDetailLogMaterialFor} {project.code}</DialogTitle>
               </DialogHeader>
               <div className="flex-1 flex flex-col min-h-0 px-6 pt-4 pb-6 overflow-hidden">
                 <MovementForm defaultType="issue" onSuccess={() => setLogOpen(false)} onCancel={() => setLogOpen(false)} />
@@ -78,19 +80,19 @@ export default function ProjectDetail() {
       <Tabs defaultValue="overview">
         <TabsList className="bg-slate-100 p-1 rounded-xl mb-4 max-w-full overflow-x-auto flex-nowrap justify-start">
           <TabsTrigger value="overview" className="rounded-lg whitespace-nowrap" data-testid="tab-overview">
-            <FileBarChart className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Overview
+            <FileBarChart className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabOverview}
           </TabsTrigger>
           <TabsTrigger value="scope" className="rounded-lg whitespace-nowrap" data-testid="tab-scope-items">
-            <LayoutList className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Scope Items
+            <LayoutList className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabScope}
           </TabsTrigger>
           <TabsTrigger value="material-usage" className="rounded-lg whitespace-nowrap" data-testid="tab-material-usage">
-            <Package className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Material Usage
+            <Package className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabMaterialUsage}
           </TabsTrigger>
           <TabsTrigger value="reports" className="rounded-lg whitespace-nowrap" data-testid="tab-reports">
-            <FileText className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Daily Reports
+            <FileText className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabReports}
           </TabsTrigger>
           <TabsTrigger value="progress" className="rounded-lg whitespace-nowrap" data-testid="tab-progress">
-            <TrendingUp className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Progress
+            <TrendingUp className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabProgress}
           </TabsTrigger>
         </TabsList>
 

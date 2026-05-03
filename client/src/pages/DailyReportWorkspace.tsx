@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { NewReportTab } from "@/pages/daily-report/NewReportTab";
 import { useToast } from "@/hooks/use-toast";
 import type { Project } from "@shared/schema";
+import { useLanguage } from "@/hooks/use-language";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function ProjectStatusBadge({ status }: { status: string }) {
@@ -32,24 +33,28 @@ function ProjectStatusBadge({ status }: { status: string }) {
 // ─── Tab definition ───────────────────────────────────────────────────────────
 type Tab = "new-report" | "history" | "progress";
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "new-report", label: "New Report",     icon: <PlusCircle className="w-4 h-4" /> },
-  { id: "history",    label: "Report History", icon: <ClipboardList className="w-4 h-4" /> },
-  { id: "progress",   label: "Progress",       icon: <BarChart3 className="w-4 h-4" /> },
-];
+function useTabs(): { id: Tab; label: string; icon: React.ReactNode }[] {
+  const { t } = useLanguage();
+  return [
+    { id: "new-report", label: t.dailyWorkspaceTabNew,      icon: <PlusCircle className="w-4 h-4" /> },
+    { id: "history",    label: t.dailyWorkspaceTabHistory,  icon: <ClipboardList className="w-4 h-4" /> },
+    { id: "progress",   label: t.dailyWorkspaceTabProgress, icon: <BarChart3 className="w-4 h-4" /> },
+  ];
+}
 
 // ─── Status badge helper ─────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   if (status === "submitted") {
     return (
       <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 px-1.5 py-0 font-semibold">
-        Submitted
+        {t.dailyWorkspaceStatusSubmitted}
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-1.5 py-0 font-semibold">
-      Draft
+      {t.dailyWorkspaceStatusDraft}
     </Badge>
   );
 }
@@ -135,6 +140,7 @@ function HistoryTab({
   onOpen: (report: any) => void;
 }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const { data: reports = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
@@ -158,8 +164,8 @@ function HistoryTab({
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
             <ClipboardList className="w-7 h-7 text-slate-400" />
           </div>
-          <p className="text-sm font-medium text-slate-600">No reports yet</p>
-          <p className="text-xs text-slate-400">Submit the first daily report using the New Report tab.</p>
+          <p className="text-sm font-medium text-slate-600">{t.dailyWorkspaceNoReportsYet}</p>
+          <p className="text-xs text-slate-400">{t.dailyWorkspaceNoReportsHint}</p>
         </CardContent>
       </Card>
     );
@@ -177,15 +183,15 @@ function HistoryTab({
       {/* Summary bar */}
       <div className="flex items-center gap-4 px-1 pb-1">
         <span className="text-xs text-slate-400">
-          {reports.length} report{reports.length !== 1 ? "s" : ""} total
+          {reports.length} {reports.length !== 1 ? t.dailyWorkspaceReportPlural : t.dailyWorkspaceReportSingular} {t.dailyWorkspaceTotalSuffix}
         </span>
         <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-          {reports.filter((r) => r.status === "draft").length} draft
+          {reports.filter((r) => r.status === "draft").length} {t.dailyWorkspaceDraftSuffix}
         </span>
         <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-          {reports.filter((r) => r.status === "submitted").length} submitted
+          {reports.filter((r) => r.status === "submitted").length} {t.dailyWorkspaceSubmittedSuffix}
         </span>
       </div>
 
@@ -250,7 +256,7 @@ function HistoryTab({
                     <StatusBadge status={r.status} />
                     {fd.preparedBy && (
                       <span className="text-xs text-slate-400">
-                        by {fd.preparedBy}
+                        {t.dailyWorkspaceByPrefix} {fd.preparedBy}
                       </span>
                     )}
                   </div>
@@ -263,7 +269,7 @@ function HistoryTab({
                         className="flex items-center gap-1 text-xs text-slate-500"
                       >
                         <Users className="w-3 h-3 text-slate-400 shrink-0" />
-                        {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                        {workerCount} {workerCount !== 1 ? t.dailyWorkspaceWorkerPlural : t.dailyWorkspaceWorkerSingular}
                       </span>
                     )}
                     {totalHours > 0 && (
@@ -272,24 +278,24 @@ function HistoryTab({
                         className="flex items-center gap-1 text-xs text-slate-500"
                       >
                         <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                        {totalHours.toFixed(1)} man-hrs
+                        {totalHours.toFixed(1)} {t.dailyWorkspaceManHrs}
                       </span>
                     )}
                     {taskCount > 0 && (
                       <span className="flex items-center gap-1 text-xs text-slate-500">
                         <ListTodo className="w-3 h-3 text-slate-400 shrink-0" />
-                        {taskCount} task{taskCount !== 1 ? "s" : ""}
+                        {taskCount} {taskCount !== 1 ? t.dailyWorkspaceTaskPlural : t.dailyWorkspaceTaskSingular}
                       </span>
                     )}
                     {workerCount === 0 && taskCount === 0 && (
-                      <span className="text-xs text-slate-300 italic">No data recorded</span>
+                      <span className="text-xs text-slate-300 italic">{t.dailyWorkspaceNoData}</span>
                     )}
                   </div>
 
                   {/* Row 3: Last updated */}
                   {updatedAt && (
                     <p className="text-[11px] text-slate-400">
-                      Last updated {updatedAt.toLocaleString("en-US", {
+                      {t.dailyWorkspaceLastUpdated} {updatedAt.toLocaleString("en-US", {
                         month: "short", day: "numeric",
                         hour: "2-digit", minute: "2-digit",
                       })}
@@ -308,7 +314,7 @@ function HistoryTab({
                     onClick={() => onOpen(r)}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                    {submitted ? "View" : "Edit"}
+                    {submitted ? t.dailyWorkspaceView : t.dailyWorkspaceEdit}
                   </Button>
                   {submitted && (
                     <Button
@@ -318,11 +324,11 @@ function HistoryTab({
                       className="text-xs gap-1.5 h-8 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
                       onClick={() => {
                         exportReportToExcel(r, projectName);
-                        toast({ title: "Exported", description: `Report #${r.reportNumber ?? r.id} downloaded as CSV.` });
+                        toast({ title: t.dailyWorkspaceExportedToast, description: t.dailyWorkspaceExportedDesc.replace("{n}", String(r.reportNumber ?? r.id)) });
                       }}
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Export
+                      {t.dailyWorkspaceExport}
                     </Button>
                   )}
                 </div>
@@ -337,6 +343,7 @@ function HistoryTab({
 }
 
 function ProgressTab({ projectId }: { projectId: number }) {
+  const { t } = useLanguage();
   const { data, isLoading } = useQuery<{
     scopeItems: any[];
     progress: Record<number, { cumulative: number; remaining: number; pct: number }>;
@@ -368,8 +375,8 @@ function ProgressTab({ projectId }: { projectId: number }) {
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
             <BarChart3 className="w-7 h-7 text-slate-400" />
           </div>
-          <p className="text-sm font-medium text-slate-600">No scope items yet</p>
-          <p className="text-xs text-slate-400">The project manager will add scope items to enable progress tracking.</p>
+          <p className="text-sm font-medium text-slate-600">{t.dailyWorkspaceNoScope}</p>
+          <p className="text-xs text-slate-400">{t.dailyWorkspaceNoScopeHint}</p>
         </CardContent>
       </Card>
     );
@@ -384,10 +391,10 @@ function ProgressTab({ projectId }: { projectId: number }) {
       {/* Summary stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Overall Progress", value: `${overall.toFixed(1)}%`, sub: "weighted by est. qty",    color: "text-blue-700",    bg: "bg-blue-50"    },
-          { label: "Est. Total",       value: summary.estTotal.toLocaleString(),    sub: "units to install",   color: "text-slate-700",   bg: "bg-slate-100"  },
-          { label: "Cumul. Actual",    value: summary.installed.toLocaleString(),   sub: "cumulative actual",  color: "text-emerald-700", bg: "bg-emerald-50" },
-          { label: "Remaining",        value: summary.remaining.toLocaleString(),   sub: "units left",         color: "text-amber-700",   bg: "bg-amber-50"   },
+          { label: t.dailyWorkspaceOverallProgress, value: `${overall.toFixed(1)}%`, sub: t.dailyWorkspaceWeightedHint,   color: "text-blue-700",    bg: "bg-blue-50"    },
+          { label: t.dailyWorkspaceEstTotal,        value: summary.estTotal.toLocaleString(),    sub: t.dailyWorkspaceUnitsToInstall, color: "text-slate-700",   bg: "bg-slate-100"  },
+          { label: t.dailyWorkspaceCumulActual,     value: summary.installed.toLocaleString(),   sub: t.dailyWorkspaceCumulActualSub, color: "text-emerald-700", bg: "bg-emerald-50" },
+          { label: t.dailyWorkspaceRemaining,       value: summary.remaining.toLocaleString(),   sub: t.dailyWorkspaceUnitsLeft,      color: "text-amber-700",   bg: "bg-amber-50"   },
         ].map(({ label, value, sub, color, bg }) => (
           <Card key={label}>
             <CardContent className="pt-4 pb-4">
@@ -406,7 +413,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
       <Card>
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Overall Completion</p>
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t.dailyWorkspaceOverallCompletion}</p>
             <p className="text-sm font-bold text-blue-700">{overall.toFixed(1)}%</p>
           </div>
           <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
@@ -416,7 +423,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
             />
           </div>
           <p className="text-[11px] text-slate-400 mt-2">
-            Weighted by estimated quantities — updates automatically when daily reports are submitted.
+            {t.dailyWorkspaceWeightedNote}
           </p>
         </CardContent>
       </Card>
@@ -426,8 +433,8 @@ function ProgressTab({ projectId }: { projectId: number }) {
         <CardHeader className="pb-2 flex-row items-center gap-2">
           <BarChart3 className="w-4 h-4 text-slate-500 shrink-0" />
           <div className="flex-1">
-            <CardTitle className="text-sm font-semibold text-slate-700">Quantity-Based Progress</CardTitle>
-            <p className="text-[11px] text-slate-400 mt-0.5">Cumulative actuals from all submitted reports to date</p>
+            <CardTitle className="text-sm font-semibold text-slate-700">{t.dailyWorkspaceQtyProgress}</CardTitle>
+            <p className="text-[11px] text-slate-400 mt-0.5">{t.dailyWorkspaceQtyProgressSub}</p>
           </div>
         </CardHeader>
         <CardContent className="px-0 pb-0">
@@ -435,7 +442,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
             <table className="w-full text-sm" data-testid="table-progress-summary">
               <thead>
                 <tr className="border-y border-slate-200 bg-slate-50">
-                  {["Work Item / Description", "Unit", "Est. Qty", "Cumul. Actual", "Remaining", "Progress"].map((h) => (
+                  {[t.dailyWorkspaceColWorkItem, t.dailyWorkspaceColUnit, t.dailyWorkspaceColEstQty, t.dailyWorkspaceColCumulActual, t.dailyWorkspaceColRemaining, t.dailyWorkspaceColProgress].map((h) => (
                     <th key={h} className="py-2 px-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wide text-left whitespace-nowrap">
                       {h}
                     </th>
@@ -487,7 +494,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 bg-slate-50">
-                  <td colSpan={2} className="py-2.5 px-4 text-xs font-semibold text-slate-600">Total</td>
+                  <td colSpan={2} className="py-2.5 px-4 text-xs font-semibold text-slate-600">{t.dailyWorkspaceTotalRow}</td>
                   <td className="py-2.5 px-4 text-xs font-bold text-slate-700 tabular-nums">{summary.estTotal.toLocaleString()}</td>
                   <td className="py-2.5 px-4 text-xs font-bold text-emerald-700 tabular-nums">{summary.installed.toLocaleString()}</td>
                   <td className="py-2.5 px-4 text-xs font-bold text-slate-700 tabular-nums">{summary.remaining.toLocaleString()}</td>
@@ -503,8 +510,7 @@ function ProgressTab({ projectId }: { projectId: number }) {
       <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200">
         <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
         <p className="text-xs text-slate-500">
-          Estimated quantities are configured at the project scope level.
-          Today's quantities entered in the New Report tab will be added to the cumulative total when the report is submitted.
+          {t.dailyWorkspaceProgressFootnote}
         </p>
       </div>
 
@@ -521,6 +527,8 @@ function projectLocation(p: Project): string {
 
 // ─── Main workspace page ──────────────────────────────────────────────────────
 export default function DailyReportWorkspace() {
+  const { t } = useLanguage();
+  const TABS = useTabs();
   const { projectId } = useParams<{ projectId: string }>();
   const searchStr     = useSearch();
   const searchParams  = new URLSearchParams(searchStr);
@@ -561,7 +569,7 @@ export default function DailyReportWorkspace() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
-        <p className="text-sm text-slate-400">Loading project…</p>
+        <p className="text-sm text-slate-400">{t.dailyWorkspaceLoadingProject}</p>
       </div>
     );
   }
@@ -572,8 +580,8 @@ export default function DailyReportWorkspace() {
         <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100">
           <AlertCircle className="w-8 h-8 text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-slate-600">Project not found</p>
-        <p className="text-xs text-slate-400">ID: {projectId}</p>
+        <p className="text-sm font-medium text-slate-600">{t.dailyWorkspaceProjectNotFound}</p>
+        <p className="text-xs text-slate-400">{t.dailyWorkspaceIdLabel} {projectId}</p>
       </div>
     );
   }
@@ -600,7 +608,7 @@ export default function DailyReportWorkspace() {
                 className="flex items-center gap-0.5 text-xs text-slate-400 font-medium shrink-0"
               >
                 <Hash className="w-3 h-3" />
-                {project.poNumber ? `PO: ${project.poNumber}` : "No PO"}
+                {project.poNumber ? `${t.dailyWorkspacePoPrefix} ${project.poNumber}` : t.dailyWorkspaceNoPo}
               </span>
               <ProjectStatusBadge status={project.status} />
             </div>
@@ -617,7 +625,7 @@ export default function DailyReportWorkspace() {
               {project.startDate && (
                 <span className="flex items-center gap-1 text-xs text-slate-400">
                   <Calendar className="w-3 h-3" />
-                  Started: {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {t.dailyWorkspaceStarted} {new Date(project.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </span>
               )}
             </div>
@@ -664,7 +672,7 @@ export default function DailyReportWorkspace() {
                 <div className="flex items-center gap-2">
                   <Edit2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <p className="text-xs text-blue-800 font-medium">
-                    Editing report #{editingReport.reportNumber || editingReport.id} — {editingReport.status === "submitted" ? "Submitted" : "Draft"}
+                    {t.dailyWorkspaceEditingPrefix} #{editingReport.reportNumber || editingReport.id} — {editingReport.status === "submitted" ? t.dailyWorkspaceStatusSubmitted : t.dailyWorkspaceStatusDraft}
                   </p>
                 </div>
                 <Button
@@ -674,7 +682,7 @@ export default function DailyReportWorkspace() {
                   className="text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 h-7 px-2"
                   onClick={() => setEditingReport(null)}
                 >
-                  + New Report
+                  {t.dailyWorkspaceNewReportBtn}
                 </Button>
               </div>
             )}

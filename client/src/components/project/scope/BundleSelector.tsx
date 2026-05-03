@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Trash2, Plus, Save, CheckCircle2, AlertCircle, Layers, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/hooks/use-language";
 import type { BundleRow } from "../types";
 import { newBundleRow, flexMatch } from "../types";
 import { CATEGORY_ORDER } from "../categoryConfig";
@@ -23,6 +24,7 @@ function BundleScopeRow({
   bundleSize?: string;
   isDuplicate?: boolean;
 }) {
+  const { t } = useLanguage();
   const [invSearch, setInvSearch] = useState(
     row.linkedInventoryItemId
       ? (invItems.find(it => it.id === row.linkedInventoryItemId)?.name ?? row.itemName)
@@ -117,7 +119,7 @@ function BundleScopeRow({
             <Input
               ref={inputRef}
               value={invSearch}
-              placeholder="Search inventory…"
+              placeholder={t.projScopeBundleSearchInv}
               disabled={!row.checked}
               onChange={e => {
                 const val = e.target.value;
@@ -145,7 +147,7 @@ function BundleScopeRow({
           </div>
           {row.checked && row.linkedInventoryItemId && (
             <p className="text-[9px] text-emerald-600 mt-0.5 flex items-center gap-0.5">
-              <CheckCircle2 className="w-2 h-2" /> linked
+              <CheckCircle2 className="w-2 h-2" /> {t.projScopeBundleLinkedTag}
             </p>
           )}
         </td>
@@ -177,8 +179,8 @@ function BundleScopeRow({
             onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
             className="h-7 text-[11px] border border-slate-200 rounded px-1 bg-white w-20"
             data-testid={`bundle-row-type-${rowIndex}`}>
-            <option value="primary">Primary</option>
-            <option value="support">Support</option>
+            <option value="primary">{t.projScopeTypePrimary}</option>
+            <option value="support">{t.projScopeTypeSupport}</option>
           </select>
         </td>
         <td className="px-2 py-2 w-8">
@@ -201,6 +203,7 @@ export function BundleSelector({
   onClose: () => void;
   invItems: any[];
 }) {
+  const { t } = useLanguage();
   const [phase, setPhase] = useState<"select" | "configure">("select");
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -319,11 +322,11 @@ export function BundleSelector({
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-brand-50/40">
           <div>
             <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-brand-600" /> Add by Bundle
+              <Boxes className="w-4 h-4 text-brand-600" /> {t.projScopeBundleAddByBundle}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Select a bundle template — then pick a size and confirm items</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t.projScopeBundleSelectDesc}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">Cancel</Button>
+          <Button size="sm" variant="outline" onClick={onClose} data-testid="button-cancel-bundle">{t.projScopeCancelBtn}</Button>
         </div>
         <div className="p-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
@@ -346,7 +349,7 @@ export function BundleSelector({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-800 leading-snug">{name}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{count} items · click to configure</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{count} {t.projScopeBundleItemsConfigSuffix}</p>
                 </div>
               </div>
             </button>
@@ -363,17 +366,17 @@ export function BundleSelector({
           <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
             <Layers className="w-4 h-4 text-brand-600" /> {selectedBundle}
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">Check items to include · search inventory · fill quantities</p>
+          <p className="text-xs text-slate-400 mt-0.5">{t.projScopeBundleConfigDesc}</p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setPhase("select")} className="text-xs">← Back</Button>
-          <Button size="sm" variant="outline" onClick={onClose} className="text-xs">Cancel</Button>
+          <Button size="sm" variant="outline" onClick={() => setPhase("select")} className="text-xs">{t.projScopeBundleBack}</Button>
+          <Button size="sm" variant="outline" onClick={onClose} className="text-xs">{t.projScopeCancelBtn}</Button>
         </div>
       </div>
 
       {selectedBundle === "Flexible Conduit Bundle" && (
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-600 shrink-0">Flexible Type</span>
+          <span className="text-xs font-semibold text-slate-600 shrink-0">{t.projScopeBundleFlexType}</span>
           <div className="flex gap-1.5">
             {["Metal Flexible", "Liquidtight Flexible"].map(ft => (
               <button
@@ -395,7 +398,7 @@ export function BundleSelector({
 
       {availableSizes.length > 0 && (
         <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-600 shrink-0">Size</span>
+          <span className="text-xs font-semibold text-slate-600 shrink-0">{t.projScopeBundleSizeLabel}</span>
           <div className="flex flex-wrap gap-1.5">
             {availableSizes.map(sz => (
               <button
@@ -412,7 +415,7 @@ export function BundleSelector({
               </button>
             ))}
           </div>
-          <span className="text-[10px] text-slate-400 ml-1">Applies to item names automatically</span>
+          <span className="text-[10px] text-slate-400 ml-1">{t.projScopeBundleSizeHint}</span>
         </div>
       )}
 
@@ -421,11 +424,11 @@ export function BundleSelector({
           <thead className="bg-slate-50/80">
             <tr>
               <th className="px-3 py-2.5 w-8"></th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs">Item (search inventory)</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-14">Unit</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Est. Qty</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-28">Category</th>
-              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">Type</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs">{t.projScopeBundleColItem}</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-14">{t.projScopeBundleColUnit}</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">{t.projScopeBundleColEstQty}</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-28">{t.projScopeBundleColCategory}</th>
+              <th className="text-left px-2 py-2.5 font-semibold text-slate-600 text-xs w-20">{t.projScopeBundleColType}</th>
               <th className="w-8"></th>
             </tr>
           </thead>
@@ -451,23 +454,23 @@ export function BundleSelector({
         <div className="px-5 py-2.5 bg-red-50 border-t border-red-200">
           <p className="text-xs text-red-700 font-medium flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-            Duplicate inventory items detected — highlighted rows share the same item. Remove duplicates before saving.
+            {t.projScopeBundleDupWarning}
           </p>
         </div>
       )}
 
       <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/50">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">{checkedCount} item{checkedCount !== 1 ? "s" : ""} will be added</span>
+          <span className="text-xs text-slate-500">{checkedCount} {t.projScopeBundleItems} {t.projScopeBundleWillBeAdded}</span>
           <Button size="sm" variant="outline" className="text-xs border-slate-200 text-slate-600 hover:bg-slate-50" onClick={addManualRow}
             data-testid="button-bundle-add-row">
-            <Plus className="w-3 h-3 mr-1" /> Add Row
+            <Plus className="w-3 h-3 mr-1" /> {t.projScopeBundleAddRow}
           </Button>
         </div>
         <Button className="bg-brand-700 hover:bg-brand-800 text-white" onClick={handleSave}
           disabled={checkedCount === 0 || hasDuplicates} data-testid="button-save-bundle">
           <Save className="w-4 h-4 mr-1.5" />
-          Add {checkedCount} Item{checkedCount !== 1 ? "s" : ""} to Scope
+          {t.projScopeBundleAddPrefix} {checkedCount} {t.projScopeBundleItems} {t.projScopeBundleAddSuffix}
         </Button>
       </div>
     </div>

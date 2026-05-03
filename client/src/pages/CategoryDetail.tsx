@@ -116,7 +116,7 @@ export default function CategoryDetail() {
     if (!draftFamily?.name.trim()) return;
     const trimmed = draftFamily.name.trim();
     if (data?.groups.some(g => g.baseItemName === trimmed)) {
-      toast({ title: "Family already exists", description: `"${trimmed}" already exists. Click Edit in that family to add items.`, variant: "destructive" });
+      toast({ title: t.catFamilyAlreadyExists, description: `"${trimmed}" ${t.catFamilyExistsDesc}`, variant: "destructive" });
       return;
     }
     setDraftFamily(prev => prev ? { ...prev, name: trimmed, confirmed: true } : null);
@@ -203,24 +203,24 @@ export default function CategoryDetail() {
     for (const item of activeItems) {
       const d = editDrafts[item.id];
       if (!d) continue;
-      if (!d.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${item.sku}`, variant: "destructive" }); return; }
-      if (d.quantityOnHand < 0) { toast({ title: "Validation error", description: `Qty must be ≥ 0 for ${item.sku}`, variant: "destructive" }); return; }
-      if (d.trackingModeError) { toast({ title: "Tracking mode error", description: `${item.sku}: ${d.trackingModeError}`, variant: "destructive" }); return; }
+      if (!d.name.trim()) { toast({ title: t.catDetailValidationError, description: `${t.catItemNameRequired} ${item.sku}`, variant: "destructive" }); return; }
+      if (d.quantityOnHand < 0) { toast({ title: t.catDetailValidationError, description: `${t.catQtyMustBe} ${item.sku}`, variant: "destructive" }); return; }
+      if (d.trackingModeError) { toast({ title: t.catTrackingModeError, description: `${item.sku}: ${d.trackingModeError}`, variant: "destructive" }); return; }
       if (d.trackingMode === "reel" && !isReelEligible({ name: d.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: d.unitOfMeasure })) {
-        toast({ title: "Tracking mode error", description: `${item.sku}: This item type is not eligible for reel tracking`, variant: "destructive" }); return;
+        toast({ title: t.catTrackingModeError, description: `${item.sku}: ${t.catNotEligibleReel}`, variant: "destructive" }); return;
       }
     }
 
     const newSkusSeen = new Set<string>();
     for (const row of editNewRows) {
       const sku = row.sku.trim().toUpperCase();
-      if (!sku) { toast({ title: "Validation error", description: "SKU is required for all new items", variant: "destructive" }); return; }
-      if (!row.name.trim()) { toast({ title: "Validation error", description: `Item name required for ${sku}`, variant: "destructive" }); return; }
-      if (!row.sizeLabel.trim()) { toast({ title: "Validation error", description: `Size required for ${sku}`, variant: "destructive" }); return; }
-      if (allCurrentSkus.has(sku) || newSkusSeen.has(sku)) { toast({ title: "Duplicate SKU", description: `${sku} already exists`, variant: "destructive" }); return; }
-      if (row.trackingModeError) { toast({ title: "Tracking mode error", description: `${sku}: ${row.trackingModeError}`, variant: "destructive" }); return; }
+      if (!sku) { toast({ title: t.catDetailValidationError, description: t.catSkuRequiredForNew, variant: "destructive" }); return; }
+      if (!row.name.trim()) { toast({ title: t.catDetailValidationError, description: `${t.catItemNameRequired} ${sku}`, variant: "destructive" }); return; }
+      if (!row.sizeLabel.trim()) { toast({ title: t.catDetailValidationError, description: `${t.catSizeRequiredFor} ${sku}`, variant: "destructive" }); return; }
+      if (allCurrentSkus.has(sku) || newSkusSeen.has(sku)) { toast({ title: t.catInlineEditDuplicateSku, description: `${sku} ${t.catSkuAlreadyExists}`, variant: "destructive" }); return; }
+      if (row.trackingModeError) { toast({ title: t.catTrackingModeError, description: `${sku}: ${row.trackingModeError}`, variant: "destructive" }); return; }
       if (row.trackingMode === "reel" && !isReelEligible({ name: row.name, subcategory: row.subcategoryOverride || null, detailType: row.detailTypeOverride || null, unitOfMeasure: row.unitOfMeasure })) {
-        toast({ title: "Tracking mode error", description: `${sku}: This item type is not eligible for reel tracking`, variant: "destructive" }); return;
+        toast({ title: t.catTrackingModeError, description: `${sku}: ${t.catNotEligibleReel}`, variant: "destructive" }); return;
       }
       newSkusSeen.add(sku);
     }
@@ -297,11 +297,11 @@ export default function CategoryDetail() {
       const updatedCount = group.items.length - deletedCount;
       const createdCount = editNewRows.length;
       toast({
-        title: "Changes saved",
+        title: t.catDetailChangesSaved,
         description: [
-          updatedCount > 0 && `${updatedCount} updated`,
-          createdCount > 0 && `${createdCount} added`,
-          deletedCount > 0 && `${deletedCount} removed`,
+          updatedCount > 0 && `${updatedCount} ${t.catUpdated}`,
+          createdCount > 0 && `${createdCount} ${t.catAdded}`,
+          deletedCount > 0 && `${deletedCount} ${t.catRemoved}`,
         ].filter(Boolean).join(", ") + ".",
       });
 
@@ -334,9 +334,9 @@ export default function CategoryDetail() {
   if (isError || !data) {
     return (
       <ErrorState
-        title="Category not found"
-        description="This category may have been removed or you may not have access to it."
-        retryLabel="Try again"
+        title={t.catDetailCategoryNotFound}
+        description={t.catDetailCategoryNotFoundDesc}
+        retryLabel={t.catTryAgain}
         onRetry={() => refetch()}
       />
     );
@@ -354,7 +354,7 @@ export default function CategoryDetail() {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-500">
-        <Link href="/inventory" className="hover:text-brand-600 transition-colors">Inventory</Link>
+        <Link href="/inventory" className="hover:text-brand-600 transition-colors">{t.catDetailBreadcrumbInventory}</Link>
         <ChevronRight className="w-4 h-4" />
         <span className="text-slate-900 font-medium">{category.name}</span>
       </div>
@@ -386,10 +386,10 @@ export default function CategoryDetail() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: <Package className="w-4 h-4 text-brand-600" />, label: "SKUs", value: skuCount, cls: "text-slate-900", testid: "stat-sku-count" },
-          { icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, label: "Total Qty", value: totalQuantity.toLocaleString(), cls: "text-slate-900", testid: "stat-total-qty" },
-          { icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, label: "Low Stock", value: lowStockCount, cls: "text-amber-600", testid: "stat-low-stock" },
-          { icon: <XCircle className="w-4 h-4 text-red-500" />, label: "Out of Stock", value: outOfStockCount, cls: "text-red-600", testid: "stat-out-of-stock" },
+          { icon: <Package className="w-4 h-4 text-brand-600" />, label: t.catKpiSkus, value: skuCount, cls: "text-slate-900", testid: "stat-sku-count" },
+          { icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, label: t.catKpiTotalQty, value: totalQuantity.toLocaleString(), cls: "text-slate-900", testid: "stat-total-qty" },
+          { icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, label: t.catKpiLowStock, value: lowStockCount, cls: "text-amber-600", testid: "stat-low-stock" },
+          { icon: <XCircle className="w-4 h-4 text-red-500" />, label: t.catKpiOutOfStock, value: outOfStockCount, cls: "text-red-600", testid: "stat-out-of-stock" },
         ].map(card => (
           <div key={card.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-1">{card.icon}<span className="text-xs text-slate-500 font-medium uppercase tracking-wide">{card.label}</span></div>
@@ -402,24 +402,24 @@ export default function CategoryDetail() {
       <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <Input placeholder="Search by SKU, name, size, or family…" className="pl-8 h-9 bg-slate-50 border-slate-200 text-sm focus:bg-white"
+          <Input placeholder={t.catSearchPlaceholder} className="pl-8 h-9 bg-slate-50 border-slate-200 text-sm focus:bg-white"
             value={search} onChange={e => setSearch(e.target.value)} data-testid="input-category-search" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-status-filter"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9 text-sm bg-slate-50 border-slate-200" data-testid="select-status-filter"><SelectValue placeholder={t.catDetailFilterStatus} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="in_stock">In Stock</SelectItem>
-            <SelectItem value="low_stock">Low Stock</SelectItem>
-            <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+            <SelectItem value="all">{t.catDetailFilterAllStatuses}</SelectItem>
+            <SelectItem value="in_stock">{t.catDetailFilterInStock}</SelectItem>
+            <SelectItem value="low_stock">{t.catDetailFilterLowStock}</SelectItem>
+            <SelectItem value="out_of_stock">{t.catDetailFilterOutOfStock}</SelectItem>
           </SelectContent>
         </Select>
         <SearchableSelect
           value={familyFilter}
           onChange={setFamilyFilter}
           options={groups.map(g => ({ value: g.baseItemName, label: g.baseItemName }))}
-          resetOption={{ value: "all", label: "All Families" }}
-          placeholder="Family"
+          resetOption={{ value: "all", label: t.catAllFamilies }}
+          placeholder={t.catDetailFilterFamilyPh}
           searchPlaceholder={t.comboboxSearchPlaceholder}
           emptyText={t.comboboxNoResults}
           className="w-[200px] bg-slate-50 border-slate-200"
@@ -430,8 +430,8 @@ export default function CategoryDetail() {
             value={locationFilter}
             onChange={setLocationFilter}
             options={uniqueLocationNames.map(loc => ({ value: loc, label: loc }))}
-            resetOption={{ value: "all", label: "All Locations" }}
-            placeholder="Location"
+            resetOption={{ value: "all", label: t.catDetailFilterAllLocations }}
+            placeholder={t.catDetailFilterLocationPh}
             searchPlaceholder={t.comboboxSearchPlaceholder}
             emptyText={t.comboboxNoResults}
             className="w-[180px] bg-slate-50 border-slate-200"
@@ -440,11 +440,11 @@ export default function CategoryDetail() {
         )}
         {hasActiveFilters && (
           <button onClick={() => { setSearch(""); setStatusFilter("all"); setFamilyFilter("all"); setLocationFilter("all"); }} className="text-xs text-slate-500 hover:text-brand-600 transition-colors whitespace-nowrap" data-testid="button-clear-filters">
-            Clear filters
+            {t.catDetailClearFilters}
           </button>
         )}
         <span className="text-xs text-slate-400 whitespace-nowrap">
-          {filteredGroups.reduce((n, g) => n + g.items.length, 0)} items{hasActiveFilters ? " matching" : ""}
+          {filteredGroups.reduce((n, g) => n + g.items.length, 0)} {t.catDetailItemsLabel}{hasActiveFilters ? ` ${t.catDetailMatchingSuffix}` : ""}
         </span>
         <Button
           onClick={() => { if (!draftFamily) setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false }); }}
@@ -452,7 +452,7 @@ export default function CategoryDetail() {
           disabled={!!draftFamily && !draftFamily.confirmed}
           data-testid="button-new-family"
         >
-          <Plus className="w-3.5 h-3.5 mr-1.5" />New Family
+          <Plus className="w-3.5 h-3.5 mr-1.5" />{t.catNewFamily}
         </Button>
       </div>
 
@@ -466,26 +466,26 @@ export default function CategoryDetail() {
             <div className="flex-1 min-w-0 space-y-1.5">
               <input autoFocus value={draftFamily.name}
                 onChange={e => setDraftFamily(prev => prev ? { ...prev, name: e.target.value } : null)}
-                placeholder="Enter family name…"
+                placeholder={t.catDetailEnterFamilyName}
                 className="w-full font-semibold text-slate-900 bg-transparent border-b-2 border-brand-300 focus:border-brand-500 focus:outline-none py-0.5 text-sm placeholder-slate-400"
                 data-testid="input-draft-family-name"
                 onKeyDown={e => { if (e.key === "Enter") handleConfirmDraftFamily(); if (e.key === "Escape") setDraftFamily(null); }}
               />
               {!draftFamily.showImageInput ? (
                 <button className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-700 transition-colors" onClick={() => setDraftFamily(prev => prev ? { ...prev, showImageInput: true } : null)} data-testid="button-add-image-link">
-                  <ImageIcon className="w-3 h-3" />Add image link
+                  <ImageIcon className="w-3 h-3" />{t.catDetailAddImageLink}
                 </button>
               ) : (
                 <input autoFocus value={draftFamily.imageUrl} onChange={e => setDraftFamily(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
-                  placeholder="https://… (image URL)" className="w-full text-xs bg-white border border-brand-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid="input-draft-family-image" />
+                  placeholder={t.catDetailImageUrlPh} className="w-full text-xs bg-white border border-brand-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid="input-draft-family-image" />
               )}
             </div>
             <div className="flex gap-2 shrink-0 mt-0.5">
               <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white h-7 text-xs gap-1" onClick={handleConfirmDraftFamily} disabled={!draftFamily.name.trim()} data-testid="button-confirm-draft-family">
-                <Check className="w-3 h-3" />Confirm
+                <Check className="w-3 h-3" />{t.cmnConfirm}
               </Button>
               <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-500 hover:text-slate-800" onClick={() => setDraftFamily(null)} data-testid="button-cancel-draft-family">
-                <XIcon className="w-3 h-3 mr-1" />Cancel
+                <XIcon className="w-3 h-3 mr-1" />{t.cmnCancel}
               </Button>
             </div>
           </div>
@@ -507,10 +507,10 @@ export default function CategoryDetail() {
         <div className="text-center py-16 text-slate-500 bg-white border border-slate-200 rounded-xl">
           <Package className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           {hasActiveFilters ? (
-            <><p className="text-base font-semibold text-slate-900">No items match your search</p><p className="text-sm mt-1">Try different keywords or clear the filters.</p></>
+            <><p className="text-base font-semibold text-slate-900">{t.catDetailNoItemsMatch}</p><p className="text-sm mt-1">{t.catDetailNoItemsMatchHint}</p></>
           ) : (
-            <><p className="text-base font-semibold text-slate-900">No items in this category</p>
-              <p className="text-sm mt-1"><button onClick={() => setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false })} className="text-brand-600 hover:underline">Create the first family</button></p></>
+            <><p className="text-base font-semibold text-slate-900">{t.catDetailNoItemsCategory}</p>
+              <p className="text-sm mt-1"><button onClick={() => setDraftFamily({ name: "", imageUrl: "", showImageInput: false, confirmed: false })} className="text-brand-600 hover:underline">{t.catDetailCreateFirstFamily}</button></p></>
           )}
         </div>
       ) : (

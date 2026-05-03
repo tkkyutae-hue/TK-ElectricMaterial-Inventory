@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Trash2, PackageX, History, AlertTriangle } from "lucide-react";
 
@@ -29,6 +30,7 @@ type InactiveItem = {
 };
 
 export default function InactiveItems() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -70,8 +72,8 @@ export default function InactiveItems() {
     },
     onSuccess: (result) => {
       toast({
-        title: "영구 삭제 완료",
-        description: `${result.deleted}개 아이템이 데이터베이스에서 완전히 제거되었습니다.`,
+        title: t.adminInactiveToastSuccess,
+        description: `${result.deleted} ${t.adminInactiveToastSuccessDesc}`,
       });
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ["/api/admin/inactive-items"] });
@@ -80,8 +82,8 @@ export default function InactiveItems() {
     },
     onError: (err: Error) => {
       toast({
-        title: "삭제 실패",
-        description: err.message ?? "오류가 발생했습니다.",
+        title: t.adminInactiveToastFail,
+        description: err.message ?? t.adminInactiveToastFailDesc,
         variant: "destructive",
       });
     },
@@ -94,7 +96,7 @@ export default function InactiveItems() {
 
   function formatDate(s: string) {
     const d = new Date(s);
-    return d.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
   }
 
   return (
@@ -102,37 +104,37 @@ export default function InactiveItems() {
       <div>
         <h1 className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
           <PackageX className="w-6 h-6 text-slate-500" />
-          비활성 자재 관리
+          {t.adminInactiveTitle}
         </h1>
         <p className="text-slate-500 text-sm mt-1">
-          인벤토리에서 제외된 자재 목록입니다. 이동 기록이 없는 자재는 영구 삭제할 수 있습니다.
+          {t.adminInactiveSubtitle}
         </p>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-700 mr-3" />
-          불러오는 중…
+          {t.adminInactiveLoading}
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
           <PackageX className="w-10 h-10 opacity-30" />
-          <p className="text-sm">비활성 자재가 없습니다.</p>
+          <p className="text-sm">{t.adminInactiveEmpty}</p>
         </div>
       ) : (
         <>
           {/* Summary bar */}
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="outline" className="text-xs text-slate-600 border-slate-300">
-              총 {items.length}개
+              {t.adminInactiveTotal} {items.length}{t.adminInactiveCountUnit}
             </Badge>
             <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
-              삭제 가능 {purgeable.length}개
+              {t.adminInactiveCanPurge} {purgeable.length}{t.adminInactiveCountUnit}
             </Badge>
             {blocked.length > 0 && (
               <Badge variant="outline" className="text-xs text-amber-700 border-amber-300 bg-amber-50">
                 <History className="w-3 h-3 mr-1" />
-                기록 있음 {blocked.length}개
+                {t.adminInactiveHasHistory} {blocked.length}{t.adminInactiveCountUnit}
               </Badge>
             )}
           </div>
@@ -144,10 +146,10 @@ export default function InactiveItems() {
               data-testid="inactive-action-bar"
             >
               <span className="text-sm font-medium text-red-800 flex-1">
-                {selectedCount}개 선택됨
+                {selectedCount}{t.adminInactiveCountUnit} {t.adminInactiveSelected}
                 {selectedQty > 0 && (
                   <span className="ml-1 text-red-600 font-normal">
-                    (재고 {selectedQty}개 포함 — 완전히 제거됩니다)
+                    ({selectedQty} {t.adminInactiveStockSuffix})
                   </span>
                 )}
               </span>
@@ -160,7 +162,7 @@ export default function InactiveItems() {
                 data-testid="btn-purge-selected"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                영구 삭제
+                {t.adminInactivePurgeBtn}
               </Button>
               <Button
                 variant="ghost"
@@ -168,7 +170,7 @@ export default function InactiveItems() {
                 onClick={() => setSelectedIds(new Set())}
                 data-testid="btn-purge-deselect-all"
               >
-                선택 해제
+                {t.adminInactiveDeselect}
               </Button>
             </div>
           )}
@@ -183,16 +185,16 @@ export default function InactiveItems() {
                     checked={allPurgeableSelected || (somePurgeableSelected ? "indeterminate" : false)}
                     onCheckedChange={v => handleToggleAll(v === true)}
                     data-testid="chk-select-all-purgeable"
-                    aria-label="삭제 가능한 아이템 전체 선택"
+                    aria-label={t.adminInactiveSelectAllAria}
                   />
                 )}
               </div>
               <div className="col-span-2">SKU</div>
-              <div className="col-span-3">아이템명</div>
-              <div className="col-span-1 text-right">재고</div>
-              <div className="col-span-2 text-center">이동내역</div>
-              <div className="col-span-2 text-center">상태</div>
-              <div className="col-span-1 text-right">비활성화</div>
+              <div className="col-span-3">{t.adminInactiveColName}</div>
+              <div className="col-span-1 text-right">{t.adminInactiveColStock}</div>
+              <div className="col-span-2 text-center">{t.adminInactiveColMovements}</div>
+              <div className="col-span-2 text-center">{t.adminInactiveColStatus}</div>
+              <div className="col-span-1 text-right">{t.adminInactiveColDeactivated}</div>
             </div>
 
             {/* Rows */}
@@ -215,7 +217,7 @@ export default function InactiveItems() {
                         onCheckedChange={v => handleToggle(item.id, v === true)}
                         disabled={!canSelect}
                         data-testid={`chk-inactive-${item.id}`}
-                        aria-label={`${item.sku} 선택`}
+                        aria-label={`${item.sku} ${t.adminInactiveSelectAria}`}
                       />
                     </div>
 
@@ -226,7 +228,7 @@ export default function InactiveItems() {
                     </div>
 
                     <div className="col-span-3 text-slate-700 truncate text-xs" title={item.name}>
-                      {item.name || <span className="text-slate-400 italic">(이름 없음)</span>}
+                      {item.name || <span className="text-slate-400 italic">{t.adminInactiveNoName}</span>}
                     </div>
 
                     <div className="col-span-1 text-right">
@@ -244,7 +246,7 @@ export default function InactiveItems() {
                       {item.movementCount > 0 || item.txCount > 0 ? (
                         <span className="text-xs text-amber-700 flex items-center gap-1">
                           <History className="w-3 h-3" />
-                          {item.movementCount + item.txCount}건
+                          {item.movementCount + item.txCount} {t.adminInactiveMovementsCount}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
@@ -259,7 +261,7 @@ export default function InactiveItems() {
                           data-testid={`badge-history-${item.id}`}
                         >
                           <History className="w-2.5 h-2.5" />
-                          기록 있음
+                          {t.adminInactiveStatusHasHistory}
                         </Badge>
                       ) : (
                         <Badge
@@ -267,7 +269,7 @@ export default function InactiveItems() {
                           className="text-[10px] text-green-700 border-green-300 bg-green-50"
                           data-testid={`badge-safe-${item.id}`}
                         >
-                          삭제 가능
+                          {t.adminInactiveStatusCanPurge}
                         </Badge>
                       )}
                     </div>
@@ -284,8 +286,7 @@ export default function InactiveItems() {
           {blocked.length > 0 && (
             <p className="text-xs text-slate-400 flex items-start gap-1.5">
               <History className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-              "기록 있음" 아이템은 이동/프로젝트 거래 내역이 있어 영구 삭제할 수 없습니다.
-              이력 보존을 위해 비활성 상태로만 유지됩니다.
+              {t.adminInactiveBlockedNote}
             </p>
           )}
         </>
@@ -297,29 +298,27 @@ export default function InactiveItems() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-700">
               <Trash2 className="w-5 h-5" />
-              영구 삭제 확인
+              {t.adminInactiveConfirmTitle}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                선택한 <strong>{selectedCount}개</strong> 아이템을 데이터베이스에서 완전히 삭제합니다.
-                이 작업은 되돌릴 수 없습니다.
+                {t.adminInactiveConfirmDescPrefix} <strong>{selectedCount}</strong> {t.adminInactiveConfirmDescSuffix}
               </span>
               {selectedQty > 0 && (
                 <span className="block text-amber-700 font-medium">
-                  ⚠ 선택된 아이템에 총 {selectedQty}개의 재고가 포함되어 있습니다.
-                  삭제 시 해당 재고 정보도 함께 제거됩니다.
+                  {t.adminInactiveConfirmStockWarn} {selectedQty} {t.adminInactiveConfirmStockWarn2}
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="btn-purge-cancel">취소</AlertDialogCancel>
+            <AlertDialogCancel data-testid="btn-purge-cancel">{t.cmnCancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={() => purgeMutation.mutate([...selectedIds])}
               data-testid="btn-purge-confirm"
             >
-              영구 삭제
+              {t.adminInactivePurgeBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

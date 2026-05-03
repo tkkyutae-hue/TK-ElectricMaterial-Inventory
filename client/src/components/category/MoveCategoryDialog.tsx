@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest } from "@/lib/queryClient";
 import type { CategoryItemGroup, CategoryGroupedDetail } from "./types";
 
@@ -24,6 +25,7 @@ interface MoveCategoryDialogProps {
 
 export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, group }: MoveCategoryDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [targetCategoryId, setTargetCategoryId] = useState<string>("");
 
@@ -52,14 +54,14 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? "이동 실패");
+        throw new Error(body.message ?? t.catMoveFailedFallback);
       }
       return res.json();
     },
     onSuccess: (data: { moved: number }) => {
       toast({
-        title: "패밀리 이동 완료",
-        description: `"${group.baseItemName}" (${data.moved}개 아이템) → ${selectedCategory?.name}`,
+        title: t.catMoveSuccessTitle,
+        description: `"${group.baseItemName}" (${data.moved} ${t.catMoveItemsCountSuffix}) → ${selectedCategory?.name}`,
       });
       qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
@@ -70,8 +72,8 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
       onClose();
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "이동 실패";
-      toast({ title: "이동 실패", description: msg, variant: "destructive" });
+      const msg = err instanceof Error ? err.message : t.catMoveFailedFallback;
+      toast({ title: t.catMoveFailedTitle, description: msg, variant: "destructive" });
     },
   });
 
@@ -91,34 +93,34 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderInput className="w-4 h-4 text-brand-600" />
-            패밀리 카테고리 이동
+            {t.catMoveTitle}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">패밀리</span>
+              <span className="text-slate-500 font-medium">{t.catMoveFamilyLabel}</span>
               <span className="font-semibold text-slate-900">{group.baseItemName}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">아이템 수</span>
-              <span className="font-semibold text-slate-900">{group.items.length}개</span>
+              <span className="text-slate-500 font-medium">{t.catMoveItemCountLbl}</span>
+              <span className="font-semibold text-slate-900">{group.items.length} {t.catMoveItemsCountSuffix}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-medium">현재 카테고리</span>
+              <span className="text-slate-500 font-medium">{t.catMoveCurrent}</span>
               <span className="font-semibold text-slate-900">{categoryName}</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">이동할 카테고리</label>
+            <label className="text-sm font-medium text-slate-700">{t.catMoveTarget}</label>
             <Select
               value={targetCategoryId}
               onValueChange={(val) => { setTargetCategoryId(val); moveMutation.reset(); }}
             >
               <SelectTrigger className="w-full" data-testid="select-target-category">
-                <SelectValue placeholder="카테고리 선택…" />
+                <SelectValue placeholder={t.catMoveSelectPh} />
               </SelectTrigger>
               <SelectContent>
                 {otherCategories.map(c => (
@@ -131,26 +133,26 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
           </div>
 
           {targetCategoryId && checkingConflict && (
-            <p className="text-xs text-slate-400">충돌 여부 확인 중…</p>
+            <p className="text-xs text-slate-400">{t.catMoveCheckingConflict}</p>
           )}
 
           {targetCategoryId && !checkingConflict && hasConflict && (
             <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800" data-testid="alert-move-conflict">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
               <span>
-                <strong>{selectedCategory?.name}</strong> 카테고리에 이미 <strong>"{group.baseItemName}"</strong> 패밀리가 존재합니다. 다른 카테고리를 선택해 주세요.
+                <strong>{selectedCategory?.name}</strong> {t.catMoveConflictPrefix} <strong>"{group.baseItemName}"</strong> {t.catMoveConflictSuffix}
               </span>
             </div>
           )}
 
           <p className="text-xs text-slate-500">
-            이 패밀리의 모든 아이템(ID, 이동 이력, 프로젝트 연결 포함)이 선택한 카테고리로 이동됩니다.
+            {t.catMoveDescription}
           </p>
 
           <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={handleClose} disabled={moveMutation.isPending}
               data-testid="button-cancel-move-category">
-              취소
+              {t.cmnCancel}
             </Button>
             <Button
               type="button"
@@ -159,7 +161,7 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
               disabled={!canMove}
               data-testid="button-confirm-move-category"
             >
-              {moveMutation.isPending ? "이동 중…" : "이동"}
+              {moveMutation.isPending ? t.catMoveInProgress : t.catMoveAction}
             </Button>
           </div>
         </div>

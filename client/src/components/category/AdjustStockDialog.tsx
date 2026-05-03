@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage } from "@/hooks/use-language";
 import type { CategoryGroupedItem } from "./types";
 
 type AdjustMode = "absolute" | "delta";
@@ -21,6 +22,7 @@ interface AdjustStockDialogProps {
 
 export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<AdjustMode>("absolute");
   const [absoluteValue, setAbsoluteValue] = useState<string>("");
   const [deltaValue, setDeltaValue] = useState<string>("");
@@ -56,7 +58,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!item || newQty == null) throw new Error("No item selected");
+      if (!item || newQty == null) throw new Error(t.adjustNoItemSelected);
       const res = await apiRequest("POST", "/api/movements/adjust", {
         itemId: item.id,
         quantity: newQty,
@@ -67,7 +69,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
     },
     onSuccess: () => {
       toast({
-        title: "Stock adjusted",
+        title: t.catAdjustSuccessToast,
         description: item
           ? `${item.sku}: ${currentQty} → ${newQty} ${item.unitOfMeasure}`
           : undefined,
@@ -77,8 +79,8 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
     },
     onError: (err: any) => {
       toast({
-        title: "Adjustment failed",
-        description: err?.message ?? "Unable to save adjustment",
+        title: t.catAdjustFailedToast,
+        description: err?.message ?? t.catAdjustUnable,
         variant: "destructive",
       });
     },
@@ -106,7 +108,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md" data-testid="dialog-adjust-stock">
         <DialogHeader>
-          <DialogTitle>Adjust On Hand Stock</DialogTitle>
+          <DialogTitle>{t.catAdjustTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -117,7 +119,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
             </p>
             <p className="text-xs text-slate-500 font-mono mt-0.5" data-testid="text-adjust-item-sku">{item.sku}</p>
             <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-xs text-slate-500 uppercase tracking-wide">Current</span>
+              <span className="text-xs text-slate-500 uppercase tracking-wide">{t.catAdjustCurrent}</span>
               <span className="text-lg font-bold text-slate-900 tabular-nums" data-testid="text-adjust-current-qty">
                 {currentQty.toLocaleString()}
               </span>
@@ -135,7 +137,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
               }`}
               data-testid="button-adjust-mode-absolute"
             >
-              Set to value
+              {t.catAdjustSetTo}
             </button>
             <button
               type="button"
@@ -145,14 +147,14 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
               }`}
               data-testid="button-adjust-mode-delta"
             >
-              Apply +/−
+              {t.catAdjustApplyDelta}
             </button>
           </div>
 
           {/* Value input */}
           <div>
             <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              {mode === "absolute" ? "New on-hand quantity" : "Adjustment (+/−)"}
+              {mode === "absolute" ? t.catAdjustNewQty : t.catAdjustDelta}
             </Label>
             <div className="flex items-center gap-1.5 mt-1.5">
               <Button
@@ -183,7 +185,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
                   step="1"
                   value={deltaValue}
                   onChange={(e) => setDeltaValue(e.target.value)}
-                  placeholder="e.g. -3 or 5"
+                  placeholder={t.catAdjustDeltaPh}
                   className="text-center text-lg font-semibold tabular-nums h-9"
                   data-testid="input-adjust-delta"
                 />
@@ -204,10 +206,10 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
           {/* Preview */}
           <div className="bg-brand-50/60 border border-brand-200 rounded-lg p-3 text-sm" data-testid="text-adjust-preview">
             {newQty == null || isInvalid ? (
-              <span className="text-red-600">Enter a valid whole number ≥ 0.</span>
+              <span className="text-red-600">{t.catAdjustValidNumber}</span>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-600">After save</span>
+                <span className="text-slate-600">{t.catAdjustAfterSave}</span>
                 <span className="font-semibold text-slate-900 tabular-nums">
                   {currentQty.toLocaleString()} → {newQty.toLocaleString()} {item.unitOfMeasure}
                   {delta !== 0 && delta != null && (
@@ -223,13 +225,13 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
           {/* Reason (required) */}
           <div>
             <Label htmlFor="adjust-reason" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              Reason <span className="text-red-500">*</span>
+              {t.catAdjustReason} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="adjust-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Cycle count correction, damaged units, found stock"
+              placeholder={t.catAdjustReasonPh}
               className="mt-1.5"
               data-testid="input-adjust-reason"
             />
@@ -238,13 +240,13 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
           {/* Optional note */}
           <div>
             <Label htmlFor="adjust-note" className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              Note (optional)
+              {t.catAdjustNoteOpt}
             </Label>
             <Textarea
               id="adjust-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Additional context…"
+              placeholder={t.catAdjustNotePh}
               className="mt-1.5 min-h-[60px]"
               data-testid="input-adjust-note"
             />
@@ -253,7 +255,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending} data-testid="button-adjust-cancel">
-            Cancel
+            {t.cmnCancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -261,7 +263,7 @@ export function AdjustStockDialog({ open, onClose, item, onSaved }: AdjustStockD
             className="bg-brand-700 hover:bg-brand-800"
             data-testid="button-adjust-save"
           >
-            {mutation.isPending ? "Saving…" : "Save adjustment"}
+            {mutation.isPending ? t.cmnSaving : t.catAdjustSaveBtn}
           </Button>
         </DialogFooter>
       </DialogContent>

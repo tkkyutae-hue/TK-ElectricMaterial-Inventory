@@ -4,6 +4,7 @@ import { generateReelId } from "@/lib/reel-utils";
 import { shouldShowReelUI } from "@/lib/reelEligibility";
 import { ChevronLeft, ChevronRight, ChevronDown, Trash2, Plus, X, Search } from "lucide-react";
 import { SearchableItemSelect } from "./SearchableItemSelect";
+import { useLanguage } from "@/hooks/use-language";
 import type { ItemRow, NewReel } from "./types";
 
 function useIsNarrow() {
@@ -47,6 +48,7 @@ function BrandCombobox({
   allBrands: string[];
   idx: number;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -85,7 +87,7 @@ function BrandCombobox({
       <input
         type="text"
         value={query}
-        placeholder="Southwire"
+        placeholder={t.brandPlaceholderExample}
         autoComplete="off"
         onFocus={() => setOpen(true)}
         onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
@@ -97,7 +99,7 @@ function BrandCombobox({
         <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, background: "#111d14", border: "1px solid #2a4030", borderRadius: 7, zIndex: 200, maxHeight: 150, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
           {filtered.length === 0 ? (
             <div style={{ padding: "7px 10px", fontSize: 11, color: "#4a7052", fontStyle: "italic" }}>
-              Press Tab/Enter to use "{query}"
+              {t.movItemPressTabEnter.replace("{q}", query)}
             </div>
           ) : (
             filtered.map(brand => (
@@ -125,6 +127,7 @@ function ReelLocationSelect({
   locations: any[];
   idx: number;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -164,7 +167,7 @@ function ReelLocationSelect({
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button type="button" onClick={() => setOpen(o => !o)} style={BTN} data-testid={`bulk-reel-location-${idx}`}>
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {selected ? selected.name : "Default"}
+          {selected ? selected.name : t.movItemDefault}
         </span>
         <ChevronDown style={{ width: 12, height: 12, color: "#527856", flexShrink: 0, marginLeft: 4 }} />
       </button>
@@ -180,7 +183,7 @@ function ReelLocationSelect({
             <input
               ref={inputRef}
               type="text"
-              placeholder="Filter…"
+              placeholder={t.movItemFilter}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ flex: 1, fontSize: 12, outline: "none", background: "transparent", color: "#c8deca", border: "none" }}
@@ -192,7 +195,7 @@ function ReelLocationSelect({
               onMouseDown={() => { onChange(""); setOpen(false); setSearch(""); }}
               style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: !value ? "#2ddb6f" : "#7aab82", background: "none", border: "none", borderBottom: "1px solid #0e1810", cursor: "pointer" }}
             >
-              Default
+              {t.movItemDefault}
             </button>
             {filtered.map(loc => (
               <button
@@ -233,6 +236,7 @@ function BulkReelEntry({
   onAddAll: (reels: NewReel[]) => void;
   locations: any[];
 }) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<BulkReelRow[]>([makeBulkRow()]);
   const [nextSeq, setNextSeq] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -276,8 +280,8 @@ function BulkReelEntry({
   function handleAddAll() {
     const validated = rows.map((row, idx) => {
       const ft = typeof row.lengthFt === "number" ? row.lengthFt : parseInt(String(row.lengthFt), 10);
-      if (isNaN(ft) || ft <= 0) return { ...row, error: "Length required (> 0)" };
-      if (!getReelId(row.brand, idx)) return { ...row, error: "Reel ID not ready" };
+      if (isNaN(ft) || ft <= 0) return { ...row, error: t.movItemLengthRequired };
+      if (!getReelId(row.brand, idx)) return { ...row, error: t.movItemReelIdNotReady };
       return { ...row, error: null };
     });
     setRows(validated);
@@ -310,7 +314,7 @@ function BulkReelEntry({
     <button
       type="button"
       onClick={() => removeRow(tempId)}
-      title="Remove row"
+      title={t.movItemRemoveRow}
       style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#ff5050", opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
@@ -323,17 +327,17 @@ function BulkReelEntry({
   return (
     <div style={{ marginTop: 10, padding: "10px 12px", background: "#0f1a12", border: "1px solid rgba(45,219,111,0.2)", borderRadius: 9 }} data-testid="bulk-reel-entry">
       <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
-        New Reels
+        {t.movItemNewReels}
       </div>
 
       {/* ── Desktop header row ── */}
       {!narrow && (
         <div style={{ ...GRID, marginBottom: 4 }}>
-          <div style={LBL}>Reel ID</div>
-          <div style={LBL}>Length FT</div>
-          <div style={LBL}>Brand</div>
-          <div style={LBL}>Location</div>
-          <div style={LBL}>Status</div>
+          <div style={LBL}>{t.movItemReelId}</div>
+          <div style={LBL}>{t.movItemLengthFt}</div>
+          <div style={LBL}>{t.movItemBrand}</div>
+          <div style={LBL}>{t.movItemLocation}</div>
+          <div style={LBL}>{t.movItemStatus}</div>
           <div />
         </div>
       )}
@@ -348,7 +352,7 @@ function BulkReelEntry({
               {/* Row 1: Reel ID + Length FT */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
                 <div>
-                  <div style={{ ...LBL, marginBottom: 3 }}>Reel ID</div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemReelId}</div>
                   <div style={{ height: 32, display: "flex", alignItems: "center", background: "#080f09", border: "1px solid #1a2c1e", borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? "#4a7052" : reelId ? "#2ddb6f" : "#4a7052", fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis" }} data-testid={`bulk-reel-id-${idx}`}>
                       {fetching ? "…" : reelId ?? "—"}
@@ -356,7 +360,7 @@ function BulkReelEntry({
                   </div>
                 </div>
                 <div>
-                  <div style={{ ...LBL, marginBottom: 3 }}>Length FT</div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemLengthFt}</div>
                   <input
                     type="number" min={1} value={row.lengthFt}
                     onChange={e => { const v = parseInt(e.target.value, 10); updateRow(row.tempId, { lengthFt: isNaN(v) ? "" : v }); }}
@@ -369,7 +373,7 @@ function BulkReelEntry({
               {/* Row 2: Brand + Location + Status + Remove */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 72px 26px", gap: 6, alignItems: "end" }}>
                 <div>
-                  <div style={{ ...LBL, marginBottom: 3 }}>Brand</div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemBrand}</div>
                   <BrandCombobox
                     value={row.brand}
                     onChange={v => updateRow(row.tempId, { brand: v })}
@@ -378,7 +382,7 @@ function BulkReelEntry({
                   />
                 </div>
                 <div>
-                  <div style={{ ...LBL, marginBottom: 3 }}>Location</div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemLocation}</div>
                   <ReelLocationSelect
                     value={row.locationId}
                     onChange={v => updateRow(row.tempId, { locationId: v })}
@@ -387,15 +391,15 @@ function BulkReelEntry({
                   />
                 </div>
                 <div>
-                  <div style={{ ...LBL, marginBottom: 3 }}>Status</div>
+                  <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemStatus}</div>
                   <select
                     value={row.status}
                     onChange={e => updateRow(row.tempId, { status: e.target.value })}
                     style={INPUT}
                     data-testid={`bulk-reel-status-${idx}`}
                   >
-                    <option value="new">New</option>
-                    <option value="used">Used</option>
+                    <option value="new">{t.movItemNew}</option>
+                    <option value="used">{t.movItemUsed}</option>
                   </select>
                 </div>
                 <div style={{ paddingBottom: 1 }}>
@@ -443,8 +447,8 @@ function BulkReelEntry({
                 style={INPUT}
                 data-testid={`bulk-reel-status-${idx}`}
               >
-                <option value="new">New</option>
-                <option value="used">Used</option>
+                <option value="new">{t.movItemNew}</option>
+                <option value="used">{t.movItemUsed}</option>
               </select>
               <RemoveBtn tempId={row.tempId} idx={idx} />
             </div>
@@ -463,7 +467,7 @@ function BulkReelEntry({
           data-testid="btn-add-reel-row"
         >
           <Plus style={{ width: 12, height: 12 }} />
-          Add Reel Row
+          {t.movItemAddReelRow}
         </button>
         <div style={{ display: "flex", gap: 6 }}>
           <button
@@ -472,7 +476,7 @@ function BulkReelEntry({
             style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }}
             data-testid="btn-bulk-reel-clear"
           >
-            Clear
+            {t.movItemClear}
           </button>
           <button
             type="button"
@@ -481,7 +485,7 @@ function BulkReelEntry({
             style={{ padding: "5px 16px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (!nextSeq || fetching) ? 0.5 : 1, fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
             data-testid="btn-add-all-reels"
           >
-            Add All Reels
+            {t.movItemAddAllReels}
           </button>
         </div>
       </div>
@@ -493,8 +497,8 @@ function BulkReelEntry({
 export function ItemRowField({
   row, idx, itemCount, items, locations, onUpdate, onRemove, movementType,
   isLoading = false, errorMessage = null,
-  searchPlaceholder = "Search by name, SKU, or size…",
-  closeText = "Done",
+  searchPlaceholder,
+  closeText,
 }: {
   row: ItemRow;
   idx: number;
@@ -509,6 +513,9 @@ export function ItemRowField({
   searchPlaceholder?: string;
   closeText?: string;
 }) {
+  const { t } = useLanguage();
+  const sp = searchPlaceholder ?? t.movSearchByNameSkuSize;
+  const ct = closeText ?? t.movSearchDone;
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
 
   const { data: reelsRaw = [] } = useQuery<any[]>({
@@ -604,8 +611,8 @@ export function ItemRowField({
             dark={true}
             isLoading={isLoading}
             errorMessage={errorMessage}
-            searchPlaceholder={searchPlaceholder}
-            closeText={closeText}
+            searchPlaceholder={sp}
+            closeText={ct}
           />
           {row.errors.itemId && (
             <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
@@ -647,7 +654,7 @@ export function ItemRowField({
             onMouseEnter={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; } : undefined}
             onMouseLeave={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.65"; (e.currentTarget as HTMLButtonElement).style.background = "none"; } : undefined}
             data-testid={`btn-remove-row-${idx}`}
-            title="Remove item"
+            title={t.movItemRemoveItem}
           >
             <Trash2 style={{ width: 16, height: 16 }} />
           </button>
@@ -658,10 +665,10 @@ export function ItemRowField({
       {showReceiveReelUI && (
         <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontFamily: "Barlow Condensed, sans-serif" }}>
-            Active Reels on Hand
+            {t.movItemActiveReels}
           </div>
           {reels.length === 0 ? (
-            <div style={{ fontSize: 11, color: "#4a7052", padding: "4px 0 8px", fontStyle: "italic" }}>No active reels — all stock will come from new reels added below.</div>
+            <div style={{ fontSize: 11, color: "#4a7052", padding: "4px 0 8px", fontStyle: "italic" }}>{t.movItemNoActiveReels}</div>
           ) : (
             reels.map((reel: any) => {
               const isNew = reel.status === "new" || reel.status === "full";
@@ -672,7 +679,7 @@ export function ItemRowField({
                   {reel.brand && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.brand}</span>}
                   {reel.location && <span style={{ fontSize: 11, color: "#527856" }}>{reel.location.name}</span>}
                   <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.1)" : "rgba(245,166,35,0.1)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
-                    {isNew ? "New" : "Used"}
+                    {isNew ? t.movItemNew : t.movItemUsed}
                   </span>
                 </div>
               );
@@ -682,7 +689,7 @@ export function ItemRowField({
           {newReels.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "Barlow Condensed, sans-serif" }}>
-                Adding
+                {t.movItemAdding}
               </div>
               {newReels.map(nr => (
                 <div key={nr.tempId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: "rgba(45,219,111,0.06)", border: "1px solid rgba(45,219,111,0.2)" }} data-testid={`new-reel-pending-${nr.tempId}`}>
@@ -701,7 +708,7 @@ export function ItemRowField({
 
           {newReels.length > 0 && (
             <div style={{ textAlign: "right", marginTop: 6, fontSize: 12, color: "#7aab82" }}>
-              {newReels.length} new reel{newReels.length !== 1 ? "s" : ""} · <span style={{ color: "#2ddb6f", fontWeight: 700 }}>{newReelsTotalFt.toLocaleString()} FT</span>
+              {t.movItemNewReelsCountFt.replace("{n}", String(newReels.length)).replace("{ft}", newReelsTotalFt.toLocaleString())}
             </div>
           )}
           {row.errors.quantity && (
@@ -732,7 +739,7 @@ export function ItemRowField({
                     <span style={{ fontWeight: 600, fontSize: 12, color: "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif" }}>{reel.reelId}</span>
                     <span style={{ fontSize: 15, color: "#2ddb6f", fontFamily: "Barlow Condensed, sans-serif", fontWeight: 500 }}>{reel.lengthFt} FT</span>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.15)" : "rgba(245,166,35,0.15)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
-                      {isNew ? "New" : "Used"}
+                      {isNew ? t.movItemNew : t.movItemUsed}
                     </span>
                     {reel.location && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.location.name}</span>}
                   </div>
@@ -756,7 +763,7 @@ export function ItemRowField({
           )}
           {selectedCount > 0 && (
             <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: "#7aab82" }}>
-              {selectedCount} reel{selectedCount !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT
+              {t.movItemReelsCountFt.replace("{n}", String(selectedCount)).replace("{ft}", totalFt.toLocaleString())}
             </div>
           )}
         </div>

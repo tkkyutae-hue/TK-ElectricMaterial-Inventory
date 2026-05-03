@@ -14,6 +14,7 @@ import {
   STATUS_CFG, type ProjectStatus,
 } from "@/lib/mock-daily-report";
 import type { Project } from "@shared/schema";
+import { useLanguage } from "@/hooks/use-language";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ReportSummary {
@@ -31,8 +32,8 @@ function projectLocation(p: Project): string {
   return parts.length > 0 ? parts.join(", ") : "—";
 }
 
-function formatLastDate(date: string | null): string {
-  if (!date) return "No reports";
+function formatLastDate(date: string | null, noReportsLabel: string): string {
+  if (!date) return noReportsLabel;
   return new Date(date).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
@@ -84,6 +85,7 @@ function KpiCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
 
@@ -127,9 +129,9 @@ export default function DailyReport() {
 
       {/* ── Page header ── */}
       <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">Daily Report Mode</h1>
+        <h1 className="text-3xl font-display font-bold text-slate-900">{t.dailyReportTitle}</h1>
         <p className="text-slate-500 mt-1">
-          Log project-based daily field reports, track manpower, and record progress by jobsite.
+          {t.dailyReportSubtitle}
         </p>
       </div>
 
@@ -137,7 +139,7 @@ export default function DailyReport() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
           icon={BarChart3}
-          label="Total Projects"
+          label={t.dailyReportTotalProjects}
           value={String(totalCount)}
           accent="bg-gradient-to-r from-slate-400 to-slate-500"
           iconBg="bg-slate-100"
@@ -146,7 +148,7 @@ export default function DailyReport() {
         />
         <KpiCard
           icon={Briefcase}
-          label="Active Projects"
+          label={t.dailyReportActiveProjects}
           value={String(activeCount)}
           accent="bg-gradient-to-r from-emerald-400 to-green-500"
           iconBg="bg-emerald-50"
@@ -155,7 +157,7 @@ export default function DailyReport() {
         />
         <KpiCard
           icon={CheckCircle2}
-          label="Completed Projects"
+          label={t.dailyReportCompletedProjects}
           value={String(completedCount)}
           accent="bg-gradient-to-r from-teal-400 to-blue-500"
           iconBg="bg-teal-50"
@@ -174,12 +176,12 @@ export default function DailyReport() {
               <Briefcase className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800 leading-tight">Project List</h2>
-              <p className="text-xs text-slate-400">Select a project to file or view a daily report</p>
+              <h2 className="text-base font-semibold text-slate-800 leading-tight">{t.dailyReportProjectList}</h2>
+              <p className="text-xs text-slate-400">{t.dailyReportProjectListHint}</p>
             </div>
           </div>
           <span className="text-xs text-slate-400">
-            {isLoading ? "Loading…" : `${filtered.length} project${filtered.length !== 1 ? "s" : ""}`}
+            {isLoading ? t.dailyReportLoading : `${filtered.length} ${filtered.length !== 1 ? t.dailyReportProjectPlural : t.dailyReportProjectSingular}`}
           </span>
         </div>
 
@@ -189,7 +191,7 @@ export default function DailyReport() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input
               data-testid="input-project-search"
-              placeholder="Search by name, PO number, or location…"
+              placeholder={t.dailyReportSearchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9 text-sm"
@@ -204,7 +206,7 @@ export default function DailyReport() {
               className="h-9 text-xs"
               onClick={() => setStatusFilter(s)}
             >
-              {s === "all" ? "All" : STATUS_CFG[s as ProjectStatus].label}
+              {s === "all" ? t.dailyReportAll : STATUS_CFG[s as ProjectStatus].label}
             </Button>
           ))}
         </div>
@@ -214,7 +216,7 @@ export default function DailyReport() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 className="w-8 h-8 text-slate-300 animate-spin" />
-              <p className="text-sm text-slate-400">Loading projects…</p>
+              <p className="text-sm text-slate-400">{t.dailyReportLoadingProjects}</p>
             </CardContent>
           </Card>
 
@@ -226,8 +228,8 @@ export default function DailyReport() {
                 <Briefcase className="w-7 h-7 text-slate-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-600">No projects yet</p>
-                <p className="text-xs text-slate-400 mt-0.5">Create projects in Admin Mode to get started</p>
+                <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsYet}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportNoProjectsHint}</p>
               </div>
             </CardContent>
           </Card>
@@ -238,8 +240,8 @@ export default function DailyReport() {
                 <FileText className="w-7 h-7 text-slate-400" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-600">No projects found</p>
-                <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search or filter</p>
+                <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsFound}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportTryAdjusting}</p>
               </div>
             </CardContent>
           </Card>
@@ -294,7 +296,7 @@ export default function DailyReport() {
                           className="flex items-center gap-1 text-xs text-slate-400 font-medium shrink-0"
                         >
                           <Hash className="w-3 h-3" />
-                          {project.poNumber ? `PO: ${project.poNumber}` : "No PO"}
+                          {project.poNumber ? `${t.dailyReportPoPrefix} ${project.poNumber}` : t.dailyReportNoPo}
                         </span>
                         <ProjectStatusBadge status={project.status} />
                       </div>
@@ -323,27 +325,27 @@ export default function DailyReport() {
                       <div className="flex items-center gap-4 pt-1 border-t border-slate-100 flex-wrap">
                         <div className="flex items-center gap-1">
                           <ClipboardList className="w-3 h-3 text-slate-300 shrink-0" />
-                          <span className="text-xs text-slate-400">Total</span>
+                          <span className="text-xs text-slate-400">{t.dailyReportTotal}</span>
                           <span className="text-xs font-semibold text-slate-700 ml-0.5">{summary.total}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                          <span className="text-xs text-slate-400">Draft</span>
+                          <span className="text-xs text-slate-400">{t.dailyReportDraft}</span>
                           <span className="text-xs font-semibold text-amber-600 ml-0.5">{summary.draft}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                          <span className="text-xs text-slate-400">Submitted</span>
+                          <span className="text-xs text-slate-400">{t.dailyReportSubmitted}</span>
                           <span className="text-xs font-semibold text-emerald-700 ml-0.5">{summary.submitted}</span>
                         </div>
                         <div className="flex items-center gap-1 ml-auto">
                           <Calendar className="w-3 h-3 text-slate-300 shrink-0" />
-                          <span className="text-xs text-slate-400">Last</span>
+                          <span className="text-xs text-slate-400">{t.dailyReportLast}</span>
                           <span
                             data-testid={`text-project-last-report-${project.id}`}
                             className="text-xs font-medium text-slate-600 ml-0.5"
                           >
-                            {formatLastDate(summary.lastDate)}
+                            {formatLastDate(summary.lastDate, t.dailyReportNoReports)}
                           </span>
                         </div>
                       </div>
@@ -359,7 +361,7 @@ export default function DailyReport() {
                         className="gap-1 text-xs group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors"
                         onClick={(e) => { e.stopPropagation(); navigate(`/daily-report/${project.id}`); }}
                       >
-                        Open
+                        {t.dailyReportOpen}
                         <ChevronRight className="w-3.5 h-3.5" />
                       </Button>
                     </div>

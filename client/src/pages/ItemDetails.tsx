@@ -23,6 +23,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { api } from "@shared/routes";
@@ -53,6 +54,7 @@ type EditFormData = z.infer<typeof editSchema>;
 
 function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const updateMutation = useUpdateItem();
   const { data: categories } = useCategories();
   const { data: locations } = useLocations();
@@ -103,10 +105,10 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
         brand:             data.brand || null,
         sizeLabel:         data.sizeLabel || null,
       });
-      toast({ title: "Item updated", description: `${data.name} has been saved.` });
+      toast({ title: t.itemDetailUpdatedToast, description: `${data.name} ${t.itemDetailSavedSuffix}` });
       onClose();
     } catch (err: any) {
-      toast({ title: "Error saving item", description: err.message, variant: "destructive" });
+      toast({ title: t.itemDetailErrorSavingItem, description: err.message, variant: "destructive" });
     }
   }
 
@@ -114,21 +116,21 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg">Edit — {item.name}</DialogTitle>
+          <DialogTitle className="text-lg">{t.itemDetailEditPrefix} — {item.name}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-1">
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="sku" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>SKU</FormLabel>
+                  <FormLabel>{t.itemDetailFieldSku}</FormLabel>
                   <FormControl><Input {...field} data-testid="edit-sku" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Name</FormLabel>
+                  <FormLabel>{t.itemDetailFieldName}</FormLabel>
                   <FormControl><Input {...field} data-testid="edit-name" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,30 +138,30 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             </div>
             <FormField control={form.control} name="baseItemName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Base Item Name <span className="text-xs font-normal text-muted-foreground">(for grouping)</span></FormLabel>
-                <FormControl><Input placeholder="e.g. EMT Set Screw Connector" {...field} data-testid="edit-base-item-name" /></FormControl>
+                <FormLabel>{t.itemDetailFieldBaseName} <span className="text-xs font-normal text-muted-foreground">{t.itemDetailFieldBaseNameHint}</span></FormLabel>
+                <FormControl><Input placeholder={t.itemDetailBaseNamePh} {...field} data-testid="edit-base-item-name" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <div className="grid grid-cols-3 gap-4">
               <FormField control={form.control} name="subcategory" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Subcategory</FormLabel>
-                  <FormControl><Input placeholder="e.g. EMT Conduit" {...field} data-testid="edit-subcategory" /></FormControl>
+                  <FormLabel>{t.itemDetailFieldSubcat}</FormLabel>
+                  <FormControl><Input placeholder={t.itemDetailSubcatPh} {...field} data-testid="edit-subcategory" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="detailType" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Detail Type</FormLabel>
-                  <FormControl><Input placeholder="e.g. Connector" {...field} data-testid="edit-detail-type" /></FormControl>
+                  <FormLabel>{t.itemDetailFieldDetailType}</FormLabel>
+                  <FormControl><Input placeholder={t.itemDetailDetailTypePh} {...field} data-testid="edit-detail-type" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="sizeLabel" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Size Label</FormLabel>
-                  <FormControl><Input placeholder='e.g. 3/4", #12' {...field} /></FormControl>
+                  <FormLabel>{t.itemDetailFieldSizeLabel}</FormLabel>
+                  <FormControl><Input placeholder={t.itemDetailSizeLabelPh} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -167,8 +169,8 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="brand" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Brand</FormLabel>
-                  <FormControl><Input placeholder="e.g. Allied, Southwire" {...field} /></FormControl>
+                  <FormLabel>{t.itemDetailFieldBrand}</FormLabel>
+                  <FormControl><Input placeholder={t.itemDetailBrandPh} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -176,9 +178,9 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="categoryId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{t.itemDetailFieldCategory}</FormLabel>
                   <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl><SelectTrigger data-testid="edit-category"><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger data-testid="edit-category"><SelectValue placeholder={t.itemDetailSelectPh} /></SelectTrigger></FormControl>
                     <SelectContent>
                       {categories?.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                     </SelectContent>
@@ -188,9 +190,9 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
               )} />
               <FormField control={form.control} name="supplierId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Supplier</FormLabel>
+                  <FormLabel>{t.itemDetailFieldSupplier}</FormLabel>
                   <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger><SelectValue placeholder={t.itemDetailSelectPh} /></SelectTrigger></FormControl>
                     <SelectContent>
                       {suppliers?.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                     </SelectContent>
@@ -202,9 +204,9 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="primaryLocationId" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>{t.itemDetailFieldLocation}</FormLabel>
                   <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger><SelectValue placeholder={t.itemDetailSelectPh} /></SelectTrigger></FormControl>
                     <SelectContent>
                       {locations?.map((l: any) => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
                     </SelectContent>
@@ -214,7 +216,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
               )} />
               <FormField control={form.control} name="unitOfMeasure" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit of Measure</FormLabel>
+                  <FormLabel>{t.itemDetailFieldUOM}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
@@ -230,15 +232,15 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="quantityOnHand" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity on Hand</FormLabel>
+                  <FormLabel>{t.itemDetailFieldQty}</FormLabel>
                   <FormControl><Input type="number" min={0} {...field} data-testid="edit-qty" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="unitCost" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit Cost ($)</FormLabel>
-                  <FormControl><Input type="number" step="0.01" min={0} placeholder="0.00" {...field} /></FormControl>
+                  <FormLabel>{t.itemDetailFieldUnitCostUsd}</FormLabel>
+                  <FormControl><Input type="number" step="0.01" min={0} placeholder={t.itemDetailUnitCostPh} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -246,21 +248,21 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             <div className="grid grid-cols-3 gap-4">
               <FormField control={form.control} name="minimumStock" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Min Stock</FormLabel>
+                  <FormLabel>{t.itemDetailMinStock}</FormLabel>
                   <FormControl><Input type="number" min={0} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="reorderPoint" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reorder Point</FormLabel>
+                  <FormLabel>{t.itemDetailReorderPoint}</FormLabel>
                   <FormControl><Input type="number" min={0} {...field} data-testid="edit-reorder-point" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="reorderQuantity" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reorder Qty</FormLabel>
+                  <FormLabel>{t.itemDetailReorderQty}</FormLabel>
                   <FormControl><Input type="number" min={0} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -268,14 +270,14 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             </div>
             <FormField control={form.control} name="statusOverride" render={({ field }) => (
               <FormItem>
-                <FormLabel>Status Override</FormLabel>
+                <FormLabel>{t.itemDetailFieldStatusOverride}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || "auto"}>
-                  <FormControl><SelectTrigger data-testid="edit-status"><SelectValue placeholder="Auto (based on stock)" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger data-testid="edit-status"><SelectValue placeholder={t.itemDetailStatusAutoPh} /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="auto">Auto (based on stock level)</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="discontinued">Discontinued</SelectItem>
-                    <SelectItem value="on_order">On Order</SelectItem>
+                    <SelectItem value="auto">{t.itemDetailStatusAuto}</SelectItem>
+                    <SelectItem value="active">{t.itemDetailStatusActive}</SelectItem>
+                    <SelectItem value="discontinued">{t.itemDetailStatusDiscontinued}</SelectItem>
+                    <SelectItem value="on_order">{t.itemDetailStatusOnOrder}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -283,18 +285,18 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
             )} />
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl><Textarea placeholder="Internal notes…" rows={2} className="resize-none" {...field} /></FormControl>
+                <FormLabel>{t.itemDetailNotes}</FormLabel>
+                <FormControl><Textarea placeholder={t.itemDetailNotesPh} rows={2} className="resize-none" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={updateMutation.isPending}>
-                <XIcon className="w-4 h-4 mr-1" /> Cancel
+                <XIcon className="w-4 h-4 mr-1" /> {t.cmnCancel}
               </Button>
               <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={updateMutation.isPending} data-testid="button-save-item">
                 <Save className="w-4 h-4 mr-1" />
-                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+                {updateMutation.isPending ? t.itemDetailSavingDots : t.itemDetailSaveChanges}
               </Button>
             </DialogFooter>
           </form>
@@ -306,6 +308,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
 
 function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -322,20 +325,20 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
       qc.invalidateQueries({ queryKey: [api.items.get.path, itemId] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-      toast({ title: "Image updated" });
+      toast({ title: t.itemDetailImageUpdated });
     },
     onError: (err: any) =>
-      toast({ title: "Failed to update image", description: err.message, variant: "destructive" }),
+      toast({ title: t.itemDetailImageUpdateFailed, description: err.message, variant: "destructive" }),
   });
 
   async function uploadFile(file: File) {
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
-      toast({ title: "Unsupported file type", description: "Please use JPG, PNG, or WEBP.", variant: "destructive" });
+      toast({ title: t.itemDetailUnsupportedType, description: t.itemDetailUnsupportedTypeDesc, variant: "destructive" });
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 8 MB.", variant: "destructive" });
+      toast({ title: t.itemDetailFileTooLarge, description: t.itemDetailFileTooLargeDesc, variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -345,12 +348,12 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
       const res = await fetch("/api/upload/item-image", { method: "POST", body: formData });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Upload failed");
+        throw new Error(err.message || t.itemDetailUploadFailed);
       }
       const { url } = await res.json();
       await updateImageMutation.mutateAsync(url);
     } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -400,7 +403,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm">
             <div className="w-9 h-9 border-[3px] border-brand-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-slate-500 mt-3 font-medium">
-              {uploading ? "Uploading…" : "Saving…"}
+              {uploading ? t.itemDetailUploadingDots : t.itemDetailSavingDots}
             </p>
           </div>
         ) : currentImage ? (
@@ -416,11 +419,11 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
             />
             <div className="hidden absolute inset-0 flex-col items-center justify-center text-slate-300">
               <ImageIcon className="w-14 h-14" />
-              <p className="text-sm mt-2 text-slate-400">Image unavailable</p>
+              <p className="text-sm mt-2 text-slate-400">{t.itemDetailImageUnavailable}</p>
             </div>
             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 rounded-2xl">
               <UploadCloud className="w-8 h-8 text-white mb-1.5" />
-              <span className="text-white text-sm font-medium">Replace image</span>
+              <span className="text-white text-sm font-medium">{t.itemDetailReplaceImage}</span>
             </div>
           </>
         ) : (
@@ -428,14 +431,14 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
             {dragOver ? (
               <>
                 <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
-                <p className="text-sm font-semibold text-brand-500">Drop to upload</p>
+                <p className="text-sm font-semibold text-brand-500">{t.itemDetailDropToUpload}</p>
               </>
             ) : (
               <>
                 <ImageIcon className="w-14 h-14 text-slate-300 mb-2" />
-                <p className="text-sm font-medium text-slate-500">Drop image here</p>
-                <p className="text-xs text-slate-400 mt-0.5">or click to upload</p>
-                <p className="text-[11px] text-slate-300 mt-2">JPG · PNG · WEBP · max 8 MB</p>
+                <p className="text-sm font-medium text-slate-500">{t.itemDetailDropImageHere}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{t.itemDetailOrClickToUpload}</p>
+                <p className="text-[11px] text-slate-300 mt-2">{t.itemDetailImageHint}</p>
               </>
             )}
           </div>
@@ -456,7 +459,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
           <Input
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="https://… image URL"
+            placeholder={t.itemDetailImageUrlPh}
             className="text-xs h-8"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleUrlSet();
@@ -471,7 +474,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
             onClick={handleUrlSet}
             disabled={!urlInput.trim() || busy}
           >
-            Set
+            {t.itemDetailSetBtn}
           </Button>
           <Button
             size="sm"
@@ -489,7 +492,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
             onClick={() => setShowUrlInput(true)}
             data-testid="button-set-image-url"
           >
-            {currentImage ? "Change URL" : "Paste image URL"}
+            {currentImage ? t.itemDetailChangeUrl : t.itemDetailPasteImageUrl}
           </button>
           {currentImage && (
             <button
@@ -498,7 +501,7 @@ function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
               disabled={busy}
               data-testid="button-clear-image"
             >
-              Clear
+              {t.itemDetailClear}
             </button>
           )}
         </div>
@@ -572,6 +575,7 @@ function WireReelInlineInner(
   ref: Ref<WireReelInlineHandle>
 ) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
   const [showAdd, setShowAdd] = useState(false);
@@ -613,9 +617,9 @@ function WireReelInlineInner(
       invalidateAll();
       setShowAdd(false);
       setRows([{ ...BLANK_REEL_DRAFT }]);
-      toast({ title: `${rows.length} reel${rows.length > 1 ? "s" : ""} added` });
+      toast({ title: `${rows.length} ${rows.length > 1 ? t.itemDetailReelsAddedSuffix2 : t.itemDetailReelAddedSuffix}` });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.itemDetailErrorSaving, description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -624,7 +628,7 @@ function WireReelInlineInner(
       invalidateAll();
       const dismissRef = { fn: () => {} };
       const { dismiss } = toast({
-        title: "Reel removed",
+        title: t.itemDetailReelRemoved,
         description: (
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm text-muted-foreground">{deletedReel.reelId} · {deletedReel.lengthFt.toLocaleString()} FT</span>
@@ -636,20 +640,20 @@ function WireReelInlineInner(
                 try {
                   await apiRequest("POST", `/api/wire-reels/${deletedReel.id}/restore`);
                   invalidateAll();
-                  toast({ title: "Undo successful", description: `${deletedReel.reelId} restored.` });
+                  toast({ title: t.itemDetailUndoSuccess, description: `${deletedReel.reelId} ${t.itemDetailRestoredSuffix}` });
                 } catch (err: any) {
-                  toast({ title: "Undo failed", description: err.message, variant: "destructive" });
+                  toast({ title: t.itemDetailUndoFailed, description: err.message, variant: "destructive" });
                 }
               }}
             >
-              Undo
+              {t.itemDetailUndo}
             </button>
           </div>
         ),
       });
       dismissRef.fn = dismiss;
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.itemDetailErrorSaving, description: err.message, variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -663,9 +667,9 @@ function WireReelInlineInner(
     onSuccess: () => {
       invalidateAll();
       setEditingId(null);
-      toast({ title: "Reel updated" });
+      toast({ title: t.itemDetailReelUpdated });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.itemDetailErrorSaving, description: err.message, variant: "destructive" }),
   });
 
   const startEdit = (reel: WireReelLocal) => {
@@ -742,10 +746,10 @@ function WireReelInlineInner(
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-brand-600" />
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Reel Inventory</span>
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t.itemDetailReelInventory}</span>
           {!isLoading && reels.length > 0 && (
             <span className="text-xs text-slate-400 font-normal">
-              {reels.length} reel{reels.length !== 1 ? "s" : ""} · {totalFt.toLocaleString()} FT total
+              {reels.length} {reels.length !== 1 ? t.itemDetailReels : t.itemDetailReel} · {totalFt.toLocaleString()} {t.itemDetailFtTotal}
             </span>
           )}
         </div>
@@ -754,7 +758,7 @@ function WireReelInlineInner(
           onClick={() => { setShowAdd(v => !v); setRows([{ ...BLANK_REEL_DRAFT }]); }}
           data-testid={`button-add-reel-${item.id}`}
         >
-          <Plus className="w-3.5 h-3.5" />{showAdd ? "Cancel" : "Add Reel"}
+          <Plus className="w-3.5 h-3.5" />{showAdd ? t.cmnCancel : t.itemDetailAddReel}
         </button>
       </div>
 
@@ -764,11 +768,11 @@ function WireReelInlineInner(
           <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
             {/* Column headers */}
             <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Reel ID</span>
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Length (FT)</span>
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Brand</span>
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Location</span>
-              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Status</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailReelHeader}</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailLengthFt}</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailBrand}</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailLocation}</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailStatusCol}</span>
               <span />
             </div>
 
@@ -783,22 +787,22 @@ function WireReelInlineInner(
                 <Input
                   type="number" min={0} value={row.lengthFt}
                   onChange={e => setRows(rs => rs.map((r, j) => j === i ? { ...r, lengthFt: e.target.value } : r))}
-                  placeholder="500" className="h-8 text-sm"
+                  placeholder={t.itemDetailReelLengthPh} className="h-8 text-sm"
                   data-testid={`input-reel-length-${item.id}-${i}`}
                 />
                 <Input
                   value={row.brand}
                   onChange={e => setRows(rs => rs.map((r, j) => j === i ? { ...r, brand: e.target.value } : r))}
-                  placeholder="Southwire" className="h-8 text-sm"
+                  placeholder={t.itemDetailReelBrandPh} className="h-8 text-sm"
                   data-testid={`input-reel-brand-${item.id}-${i}`}
                 />
                 <Select
                   value={row.locationId || "__none__"}
                   onValueChange={v => setRows(rs => rs.map((r, j) => j === i ? { ...r, locationId: v === "__none__" ? "" : v } : r))}
                 >
-                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}-${i}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-location-${item.id}-${i}`}><SelectValue placeholder={t.itemDetailNoneDash} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">— None —</SelectItem>
+                    <SelectItem value="__none__">{t.itemDetailNoneDash}</SelectItem>
                     {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -808,15 +812,15 @@ function WireReelInlineInner(
                 >
                   <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-status-${item.id}-${i}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="used">Used</SelectItem>
+                    <SelectItem value="new">{t.itemDetailStatusNew}</SelectItem>
+                    <SelectItem value="used">{t.itemDetailStatusUsed}</SelectItem>
                   </SelectContent>
                 </Select>
                 <button
                   onClick={() => setRows(rs => rs.length > 1 ? rs.filter((_, j) => j !== i) : rs)}
                   className="text-slate-300 hover:text-red-400 transition-colors disabled:opacity-30"
                   disabled={rows.length === 1}
-                  title="Remove row"
+                  title={t.itemDetailRemoveRow}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -829,16 +833,16 @@ function WireReelInlineInner(
                 className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors"
                 data-testid={`button-add-reel-row-${item.id}`}
               >
-                <Plus className="w-3.5 h-3.5" /> Add Row
+                <Plus className="w-3.5 h-3.5" /> {t.itemDetailAddRow}
               </button>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setRows([{ ...BLANK_REEL_DRAFT }]); }}>Cancel</Button>
+                <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setRows([{ ...BLANK_REEL_DRAFT }]); }}>{t.cmnCancel}</Button>
                 <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
                   disabled={rows.every(r => !r.lengthFt) || addMutation.isPending}
                   onClick={() => addMutation.mutate()}
                   data-testid={`button-save-reel-${item.id}`}
                 >
-                  {addMutation.isPending ? "Saving…" : `Save ${rows.length > 1 ? `${rows.length} Reels` : "Reel"}`}
+                  {addMutation.isPending ? t.itemDetailSavingDots : `${t.itemDetailSavePrefix} ${rows.length > 1 ? `${rows.length} ${t.itemDetailReelsCapital}` : t.itemDetailReelCapital}`}
                 </Button>
               </div>
             </div>
@@ -847,14 +851,14 @@ function WireReelInlineInner(
 
         {/* Reel table or empty state */}
         {isLoading ? (
-          <div className="text-sm text-slate-400 py-2">Loading reels…</div>
+          <div className="text-sm text-slate-400 py-2">{t.itemDetailLoadingReels}</div>
         ) : reels.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 gap-2 text-slate-400">
             <Layers className="w-8 h-8 text-slate-200" />
-            <p className="text-sm">No reels recorded yet.</p>
+            <p className="text-sm">{t.itemDetailNoReels}</p>
             {!showAdd && (
               <button className="text-sm text-brand-600 hover:text-brand-800 font-medium mt-1" onClick={() => setShowAdd(true)}>
-                + Add the first reel
+                {t.itemDetailAddFirstReel}
               </button>
             )}
           </div>
@@ -863,8 +867,8 @@ function WireReelInlineInner(
             <table className="w-full text-sm" style={{ tableLayout: "auto" }}>
               <thead>
                 <tr className="bg-white border-b border-slate-100">
-                  {["Reel ID", "Length (FT)", "Brand", "Location", "Status", ""].map(h => (
-                    <th key={h} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${h === "Length (FT)" ? "text-right" : h === "Status" ? "text-center" : h === "" ? "" : "text-left"}`}>{h}</th>
+                  {[t.itemDetailReelHeader, t.itemDetailLengthFt, t.itemDetailBrand, t.itemDetailLocation, t.itemDetailStatusCol, ""].map((h, idx) => (
+                    <th key={idx} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${idx === 1 ? "text-right" : idx === 4 ? "text-center" : idx === 5 ? "" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -882,13 +886,13 @@ function WireReelInlineInner(
                             <Input type="number" min={0} value={draft.lengthFt} onChange={e => updateRowDraft(reel.id, "lengthFt", e.target.value)} className="h-7 text-xs text-right w-20" data-testid={`input-bulk-reel-length-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
-                            <Input value={draft.brand} onChange={e => updateRowDraft(reel.id, "brand", e.target.value)} placeholder="Brand" className="h-7 text-xs w-24" data-testid={`input-bulk-reel-brand-${reel.id}`} />
+                            <Input value={draft.brand} onChange={e => updateRowDraft(reel.id, "brand", e.target.value)} placeholder={t.itemDetailBrandColPh} className="h-7 text-xs w-24" data-testid={`input-bulk-reel-brand-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
                             <Select value={draft.locationId || "__none__"} onValueChange={v => updateRowDraft(reel.id, "locationId", v === "__none__" ? "" : v)}>
-                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-bulk-reel-location-${reel.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-bulk-reel-location-${reel.id}`}><SelectValue placeholder={t.itemDetailNoneDash} /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__none__">— None —</SelectItem>
+                                <SelectItem value="__none__">{t.itemDetailNoneDash}</SelectItem>
                                 {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                               </SelectContent>
                             </Select>
@@ -897,8 +901,8 @@ function WireReelInlineInner(
                             <Select value={draft.status} onValueChange={v => updateRowDraft(reel.id, "status", v)}>
                               <SelectTrigger className="h-7 text-xs w-20" data-testid={`select-bulk-reel-status-${reel.id}`}><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="used">Used</SelectItem>
+                                <SelectItem value="new">{t.itemDetailStatusNew}</SelectItem>
+                                <SelectItem value="used">{t.itemDetailStatusUsed}</SelectItem>
                               </SelectContent>
                             </Select>
                           </td>
@@ -910,7 +914,7 @@ function WireReelInlineInner(
                               onMouseEnter={e => (e.currentTarget.style.color = "#ff5050")}
                               onMouseLeave={e => (e.currentTarget.style.color = "#527856")}
                               className="transition-colors disabled:opacity-40"
-                              title="Remove reel"
+                              title={t.itemDetailRemoveReel}
                               data-testid={`button-delete-reel-${reel.id}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -926,7 +930,7 @@ function WireReelInlineInner(
                             <Input type="number" min={0} value={editDraft.lengthFt} onChange={e => setEditDraft(d => ({ ...d, lengthFt: e.target.value }))} className="h-7 text-xs text-right w-20" data-testid={`input-edit-reel-length-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
-                            <Input value={editDraft.brand} onChange={e => setEditDraft(d => ({ ...d, brand: e.target.value }))} placeholder="Brand" className="h-7 text-xs w-24" data-testid={`input-edit-reel-brand-${reel.id}`} />
+                            <Input value={editDraft.brand} onChange={e => setEditDraft(d => ({ ...d, brand: e.target.value }))} placeholder={t.itemDetailBrandColPh} className="h-7 text-xs w-24" data-testid={`input-edit-reel-brand-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
                             <Select value={editDraft.locationId || "__none__"} onValueChange={v => setEditDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}>

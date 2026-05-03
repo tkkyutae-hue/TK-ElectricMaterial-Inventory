@@ -16,8 +16,10 @@ import { InlineScopeRow } from "./scope/InlineScopeRow";
 import { ScopeCategorySection } from "./scope/ScopeCategorySection";
 import { useScopeActions } from "./scope/useScopeActions";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useLanguage } from "@/hooks/use-language";
 
 export function ScopeItemsTab({ projectId }: { projectId: number }) {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -51,10 +53,10 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
-      toast({ title: "Scope item deleted" });
+      toast({ title: t.projScopeDeletedToast });
       setDeleteTarget(null);
     },
-    onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.projScopeDeleteFailedToast, description: err.message, variant: "destructive" }),
   });
 
   const patchMutation = useMutation({
@@ -63,7 +65,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
     },
-    onError: (err: any) => toast({ title: "Update failed", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.projScopeUpdateFailedToast, description: err.message, variant: "destructive" }),
   });
 
   // ── Stats ──
@@ -124,9 +126,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
       {/* ── KPI Stats Strip ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Scope Items", value: totalItems, icon: LayoutList, color: "text-brand-600", bg: "bg-brand-50" },
-          { label: "Total Est. Qty", value: totalQty.toLocaleString(), icon: Hash, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "Primary Items", value: primaryCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: t.projScopeKpiTotal, value: totalItems, icon: LayoutList, color: "text-brand-600", bg: "bg-brand-50" },
+          { label: t.projScopeKpiTotalEst, value: totalQty.toLocaleString(), icon: Hash, color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: t.projScopeKpiPrimary, value: primaryCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
         ].map((s, i) => (
           <div key={i} className="premium-card bg-white p-4 flex items-center gap-3" data-testid={`scope-kpi-${i}`}>
             <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
@@ -143,8 +145,8 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
         {/* ── Toolbar ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
-            <h3 className="font-semibold text-slate-900 text-sm">Scope Items</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Grouped by category — click headers to collapse</p>
+            <h3 className="font-semibold text-slate-900 text-sm">{t.projScopeTableTitle}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">{t.projScopeTableSubtitle}</p>
           </div>
           <div className="relative">
             <div className="flex">
@@ -152,7 +154,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                 className="bg-brand-700 hover:bg-brand-800 text-white rounded-r-none border-r border-brand-500/40"
                 onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); setShowAddMenu(false); }}
                 data-testid="button-add-scope-multiple">
-                <Plus className="w-4 h-4 mr-1" /> Add Item
+                <Plus className="w-4 h-4 mr-1" /> {t.projScopeAddItemBtn}
               </Button>
               <button
                 className="bg-brand-700 hover:bg-brand-800 text-white px-2 rounded-r-lg flex items-center transition-colors"
@@ -167,7 +169,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   onClick={() => { setAddMode("bundle"); setShowAddMenu(false); }}
                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-2.5"
                   data-testid="menu-scope-add-by-bundle">
-                  <Boxes className="w-3.5 h-3.5 text-brand-600 shrink-0" /> Add by Bundle
+                  <Boxes className="w-3.5 h-3.5 text-brand-600 shrink-0" /> {t.projScopeAddByBundleBtn}
                 </button>
               </div>
             )}
@@ -178,23 +180,23 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 border-b border-slate-200">
             <span className="text-xs font-semibold text-slate-700" data-testid="bulk-selected-count">
-              {selectedIds.size} selected
+              {selectedIds.size} {t.projScopeSelectedSuffix}
             </span>
             <div className="flex items-center gap-1.5 ml-auto">
               <button type="button" onClick={selectAllVisible}
                 className="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
                 data-testid="button-select-visible">
-                Select Visible
+                {t.projScopeSelectVisible}
               </button>
               <button type="button" onClick={() => setSelectedIds(new Set())}
                 className="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
                 data-testid="button-clear-selection">
-                Clear
+                {t.projScopeClearBtn}
               </button>
               <button type="button" onClick={deleteSelected}
                 className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-100 transition-colors"
                 data-testid="button-bulk-delete-scope">
-                <Trash2 className="w-3 h-3" /> Delete Selected
+                <Trash2 className="w-3 h-3" /> {t.projScopeDeleteSelected}
               </button>
             </div>
           </div>
@@ -205,14 +207,14 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           <div className="border-b border-slate-100">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-brand-50/40">
               <div>
-                <h3 className="font-semibold text-slate-900 text-sm">Add Multiple Items</h3>
+                <h3 className="font-semibold text-slate-900 text-sm">{t.projScopeAddMultipleTitle}</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {pendingRows.length} row{pendingRows.length !== 1 ? "s" : ""} — fill in details and save
+                  {pendingRows.length} {pendingRows.length !== 1 ? t.projScopeRowsLabel : t.projScopeRowSingular} — {t.projScopeAddMultipleDesc}
                 </p>
               </div>
               <Button size="sm" variant="outline" className="border-brand-200 text-brand-700 hover:bg-brand-50"
                 onClick={addRow} data-testid="button-add-more-scope-row">
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Row
+                <Plus className="w-3.5 h-3.5 mr-1" /> {t.projScopeAddRowBtn}
               </Button>
             </div>
             <div className="p-5 space-y-3">
@@ -229,12 +231,12 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                 onClick={() => { setPendingRows([]); setAddMode("none"); }}
                 className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
                 data-testid="button-cancel-inline-scope">
-                Cancel
+                {t.projScopeCancelBtn}
               </button>
               <Button className="bg-brand-700 hover:bg-brand-800 text-white"
                 onClick={saveMultiple} disabled={isSaving} data-testid="button-save-scope-items">
                 <Save className="w-4 h-4 mr-1.5" />
-                {isSaving ? "Saving…" : `Save ${pendingRows.length} Item${pendingRows.length !== 1 ? "s" : ""}`}
+                {isSaving ? t.projScopeSavingBtn : `${t.projScopeSaveBtnPrefix} ${pendingRows.length} ${pendingRows.length !== 1 ? t.projScopeItemsSuffix : t.projScopeItemSingular}`}
               </Button>
             </div>
           </div>
@@ -249,18 +251,18 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
 
         {/* ── Main table ── */}
         {isLoading ? (
-          <div className="p-8 text-center text-slate-400">Loading…</div>
+          <div className="p-8 text-center text-slate-400">{t.projScopeLoading}</div>
 
         ) : scopeItems.length === 0 && addMode === "none" ? (
           <EmptyState
             icon={<LayoutList className="w-10 h-10" />}
-            title="No scope items yet"
-            description="Add items to define the project's estimated work quantities."
+            title={t.projScopeEmptyTitle}
+            description={t.projScopeEmptyDesc}
             action={
               <Button size="sm" variant="outline"
                 onClick={() => { setAddMode("multiple"); setPendingRows([newPendingRow()]); }}
                 data-testid="button-add-scope-item-empty">
-                <Plus className="w-4 h-4 mr-1" /> Add First Item
+                <Plus className="w-4 h-4 mr-1" /> {t.projScopeAddFirstBtn}
               </Button>
             }
             className="py-12"
@@ -271,11 +273,11 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
-                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[38%]">Item</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Est. Qty</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">Category</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">Actions</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[38%]">{t.projScopeColItem}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.projScopeColUnit}</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.projScopeColEstQty}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">{t.projScopeColCategory}</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">{t.projScopeColActions}</th>
                 </tr>
               </thead>
               {grouped.map(({ cat, items }) => (

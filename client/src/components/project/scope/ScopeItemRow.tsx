@@ -5,15 +5,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/hooks/use-language";
 import type { ProjectScopeItem } from "@shared/schema";
 import { CATEGORY_ORDER, resolveDisplayCategory } from "../categoryConfig";
 import { flexMatch } from "../types";
 
 export function ScopeTypeChip({ scopeType }: { scopeType: string | null | undefined }) {
+  const { t } = useLanguage();
   if (!scopeType || scopeType === "primary") return null;
   return (
     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-slate-100 text-slate-400 border border-slate-200 whitespace-nowrap ml-1.5">
-      sup
+      {t.projScopeChipSup}
     </span>
   );
 }
@@ -26,6 +28,7 @@ function VariantArea({
   onSave: (ids: number[]) => void;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const existing: number[] = (item as any).acceptedVariants ?? [];
   const [selected, setSelected] = useState<number[]>(existing);
   const [search, setSearch] = useState("");
@@ -43,8 +46,8 @@ function VariantArea({
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-indigo-800">Accepted Variants — "{item.itemName}"</p>
-              <p className="text-[10px] text-indigo-500 mt-0.5">Inventory items accepted as substitutes for this scope item</p>
+              <p className="text-xs font-semibold text-indigo-800">{t.projScopeVariantsTitle} "{item.itemName}"</p>
+              <p className="text-[10px] text-indigo-500 mt-0.5">{t.projScopeVariantsDesc}</p>
             </div>
             <button type="button" onClick={onClose} className="text-indigo-400 hover:text-indigo-600 p-1">
               <X className="w-3.5 h-3.5" />
@@ -65,14 +68,14 @@ function VariantArea({
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search inventory items to add as variants…"
+            placeholder={t.projScopeVariantsSearchPh}
             className="h-8 text-xs"
             data-testid={`variant-search-${item.id}`}
           />
           {search && (
             <div className="bg-white border border-slate-200 rounded-lg max-h-40 overflow-y-auto">
               {filtered.length === 0
-                ? <p className="text-xs text-slate-400 px-3 py-2 italic">No matches</p>
+                ? <p className="text-xs text-slate-400 px-3 py-2 italic">{t.projScopeVariantsNoMatches}</p>
                 : filtered.map(it => (
                   <button key={it.id} type="button" onClick={() => toggle(it.id)}
                     className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors ${selected.includes(it.id) ? "bg-indigo-50 text-indigo-800 font-medium" : "text-slate-700"}`}
@@ -85,12 +88,12 @@ function VariantArea({
             </div>
           )}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[10px] text-indigo-600">{selected.length} variant{selected.length !== 1 ? "s" : ""} selected</span>
+            <span className="text-[10px] text-indigo-600">{selected.length} {t.projScopeVariantsLabel} {t.projScopeVariantsSelectedSuffix}</span>
             <div className="flex gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={onClose} className="h-7 text-xs">Cancel</Button>
+              <Button type="button" size="sm" variant="outline" onClick={onClose} className="h-7 text-xs">{t.projScopeCancelBtn}</Button>
               <Button type="button" size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
                 onClick={() => onSave(selected)} data-testid={`button-save-variants-${item.id}`}>
-                Save Variants
+                {t.projScopeVariantsSaveBtn}
               </Button>
             </div>
           </div>
@@ -126,6 +129,7 @@ export function ScopeItemRow({
   onMoveOpen, onMoveClose, onMoveCategory,
   onEdit, onDelete, onDuplicate, onSelect,
 }: ScopeItemRowProps) {
+  const { t } = useLanguage();
   const invLinked = (item as any).linkedInventoryItemId
     ? allInvItems.find(it => it.id === (item as any).linkedInventoryItemId)
     : null;
@@ -196,38 +200,38 @@ export function ScopeItemRow({
             <Button size="sm" variant="ghost"
               className="h-7 px-2 text-[10px] text-slate-400 hover:text-violet-600 hover:bg-violet-50 gap-1"
               onClick={onVariantOpen}
-              title="Add / Edit Variants" data-testid={`button-variant-scope-${item.id}`}>
+              title={t.projScopeBtnVariantsTooltip} data-testid={`button-variant-scope-${item.id}`}>
               <Zap className="w-3 h-3" />
-              <span className="hidden xl:inline">Variants</span>
+              <span className="hidden xl:inline">{t.projScopeBtnVariants}</span>
             </Button>
             <Button size="sm" variant="ghost"
               className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-              onClick={onDuplicate} title="Duplicate"
+              onClick={onDuplicate} title={t.projScopeBtnDuplicateTooltip}
               data-testid={`button-duplicate-scope-${item.id}`}>
               <Copy className="w-3.5 h-3.5" />
             </Button>
             <Button size="sm" variant="ghost"
               className="h-7 w-7 p-0 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
               onClick={onMoveOpen}
-              title="Move to Category" data-testid={`button-move-scope-${item.id}`}>
+              title={t.projScopeBtnMoveTooltip} data-testid={`button-move-scope-${item.id}`}>
               <FolderOpen className="w-3.5 h-3.5" />
             </Button>
             <Button size="sm" variant="ghost"
               className="h-7 w-7 p-0 text-slate-400 hover:text-brand-700 hover:bg-brand-50"
-              onClick={onEdit} title="Edit"
+              onClick={onEdit} title={t.projScopeBtnEditTooltip}
               data-testid={`button-edit-scope-${item.id}`}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
             <Button size="sm" variant="ghost"
               className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-              onClick={onDelete} title="Delete"
+              onClick={onDelete} title={t.projScopeBtnDeleteTooltip}
               data-testid={`button-delete-scope-${item.id}`}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
             <Button size="sm" variant="ghost"
               className={`h-7 w-7 p-0 transition-colors ${isSelected ? "text-brand-600 bg-brand-50 hover:bg-brand-100" : "text-slate-300 hover:text-slate-500 hover:bg-slate-50"}`}
               onClick={onSelect}
-              title={isSelected ? "Deselect" : "Select for bulk action"}
+              title={isSelected ? t.projScopeBtnDeselectTooltip : t.projScopeBtnSelectTooltip}
               data-testid={`button-select-scope-${item.id}`}>
               {isSelected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
             </Button>

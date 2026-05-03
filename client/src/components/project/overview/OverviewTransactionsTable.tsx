@@ -2,10 +2,12 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { MovementTypeBadge } from "@/components/StatusBadge";
+import { useLanguage } from "@/hooks/use-language";
 
 const TXN_PAGE_SIZE = 10;
 
 export function OverviewTransactionsTable({ sortedMovements }: { sortedMovements: any[] }) {
+  const { t } = useLanguage();
   const [txnPage, setTxnPage] = useState(0);
 
   const totalTxnPages = Math.ceil(sortedMovements.length / TXN_PAGE_SIZE);
@@ -16,10 +18,10 @@ export function OverviewTransactionsTable({ sortedMovements }: { sortedMovements
       {/* Table header */}
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
         <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
-          <ArrowUpRight className="w-3.5 h-3.5 text-brand-500" />Recent Material Transactions
+          <ArrowUpRight className="w-3.5 h-3.5 text-brand-500" />{t.projOverviewRecentTxnTitle}
         </p>
         <span className="text-[10px] text-slate-400">
-          {sortedMovements.length} total — newest first
+          {sortedMovements.length} {t.projOverviewTxnNewestFirst}
         </span>
       </div>
 
@@ -28,12 +30,12 @@ export function OverviewTransactionsTable({ sortedMovements }: { sortedMovements
         <table className="w-full text-xs">
           <thead className="bg-slate-50/60">
             <tr>
-              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[90px]">Date</th>
-              <th className="text-left px-4 py-2 font-semibold text-slate-500">Item</th>
-              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[80px]">Type</th>
-              <th className="text-right px-4 py-2 font-semibold text-slate-500 w-[70px]">Qty</th>
-              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[50px]">Unit</th>
-              <th className="text-left px-4 py-2 font-semibold text-slate-500">By</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[90px]">{t.projOverviewTxnColDate}</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-500">{t.projOverviewTxnColItem}</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[80px]">{t.projOverviewTxnColType}</th>
+              <th className="text-right px-4 py-2 font-semibold text-slate-500 w-[70px]">{t.projOverviewTxnColQty}</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-500 w-[50px]">{t.projOverviewTxnColUnit}</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-500">{t.projOverviewTxnColBy}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">

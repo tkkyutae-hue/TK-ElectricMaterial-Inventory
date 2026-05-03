@@ -2,6 +2,7 @@ import { useState, Fragment } from "react";
 import { format } from "date-fns";
 import { ChevronRight, Hash, CheckCircle2, TrendingUp, AlertCircle, ListTodo } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useLanguage } from "@/hooks/use-language";
 import { EmptyState } from "@/components/shared/EmptyState";
 
 function DrillDownRows({
@@ -11,13 +12,14 @@ function DrillDownRows({
   unit: string;
   estQty: number;
 }) {
+  const { t } = useLanguage();
   if (entries.length === 0) {
     return (
       <tr>
         <td />
         <td colSpan={6} className="px-4 pb-3 pt-0">
           <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs text-slate-400 italic">
-            No submitted reports have logged quantities for this item yet.
+            {t.projProgressDdEmpty}
           </div>
         </td>
       </tr>
@@ -29,11 +31,11 @@ function DrillDownRows({
       <td colSpan={6} className="px-4 pb-4 pt-0">
         <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
           <div className="grid grid-cols-[90px_110px_1fr_90px_110px] gap-0 bg-slate-100/80 border-b border-slate-200 px-4 py-2">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Report #</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Date</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Prepared By</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">Qty</span>
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">Running Total</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t.projProgressDdReportNo}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t.projProgressDdDate}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t.projProgressDdPreparedBy}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">{t.projProgressDdQty}</span>
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-right">{t.projProgressDdRunningTotal}</span>
           </div>
           {entries.map((e, i) => {
             const pct = estQty > 0 ? Math.min(100, Math.round((e.runningTotal / estQty) * 1000) / 10) : 0;
@@ -60,9 +62,9 @@ function DrillDownRows({
             );
           })}
           <div className="px-4 py-2 bg-slate-100/60 border-t border-slate-200 flex items-center justify-between">
-            <span className="text-[10px] text-slate-400">{entries.length} submitted report{entries.length !== 1 ? "s" : ""} contributed</span>
+            <span className="text-[10px] text-slate-400">{entries.length} {t.projProgressDdContributed}</span>
             <span className="text-xs font-bold text-emerald-700">
-              Total: {entries[entries.length - 1]?.runningTotal?.toLocaleString() ?? 0} / {estQty.toLocaleString()} {unit}
+              {t.projProgressDdTotalLabel} {entries[entries.length - 1]?.runningTotal?.toLocaleString() ?? 0} / {estQty.toLocaleString()} {unit}
             </span>
           </div>
         </div>
@@ -72,6 +74,7 @@ function DrillDownRows({
 }
 
 export function ProgressTab({ projectId }: { projectId: number }) {
+  const { t } = useLanguage();
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   const { data, isLoading } = useQuery<{
@@ -84,7 +87,7 @@ export function ProgressTab({ projectId }: { projectId: number }) {
     queryFn: () => fetch(`/api/projects/${projectId}/progress`, { credentials: "include" }).then(r => r.json()),
   });
 
-  if (isLoading) return <div className="p-8 text-center text-slate-400">Loading progress…</div>;
+  if (isLoading) return <div className="p-8 text-center text-slate-400">{t.projProgressLoading}</div>;
 
   const scopeItems = data?.scopeItems ?? [];
   const progress   = data?.progress ?? {};
@@ -111,8 +114,8 @@ export function ProgressTab({ projectId }: { projectId: number }) {
         <div className="premium-card bg-white">
           <EmptyState
             icon={<TrendingUp className="w-10 h-10" />}
-            title="No scope items defined"
-            description="Add scope items in the Scope Items tab to enable progress tracking."
+            title={t.projProgressNoScopeTitle}
+            description={t.projProgressNoScopeDesc}
             className="py-12"
           />
         </div>
@@ -122,7 +125,7 @@ export function ProgressTab({ projectId }: { projectId: number }) {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="premium-card bg-white p-4 col-span-2 sm:col-span-1 lg:col-span-2 flex flex-col items-center justify-center gap-1" data-testid="progress-overall">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Overall Progress</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">{t.projProgressOverall}</p>
               <p className={`text-4xl font-display font-bold ${summaryPctColor}`}>{summary.overallPct.toFixed(1)}%</p>
               {(() => {
                 const prevInstalled = Math.max(0, summary.installed - summary.todayAdded);
@@ -137,17 +140,17 @@ export function ProgressTab({ projectId }: { projectId: number }) {
               })()}
               {summary.todayAdded > 0 && (
                 <div className="flex gap-3 mt-1">
-                  <span className="flex items-center gap-1 text-[9px] text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Prev</span>
-                  <span className="flex items-center gap-1 text-[9px] text-brand-600"><span className="w-2 h-2 rounded-full bg-brand-400 inline-block" />Today</span>
+                  <span className="flex items-center gap-1 text-[9px] text-emerald-600"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />{t.projProgressLegendPrev}</span>
+                  <span className="flex items-center gap-1 text-[9px] text-brand-600"><span className="w-2 h-2 rounded-full bg-brand-400 inline-block" />{t.projProgressLegendToday}</span>
                 </div>
               )}
             </div>
             {[
-              { label: "Est. Total",      value: summary.estTotal.toLocaleString(),                             icon: Hash,          color: "text-slate-600",   bg: "bg-slate-50"   },
-              { label: "Installed",       value: summary.installed.toLocaleString(),                            icon: CheckCircle2,  color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Today Added",     value: summary.todayAdded > 0 ? `+${summary.todayAdded.toLocaleString()}` : "0",   icon: TrendingUp,    color: "text-brand-600",   bg: "bg-brand-50"   },
-              { label: "Remaining",       value: summary.remaining.toLocaleString(),                            icon: AlertCircle,   color: "text-amber-600",   bg: "bg-amber-50"   },
-              { label: "Scope Items",     value: scopeItems.length.toLocaleString(),                            icon: ListTodo,      color: "text-indigo-600",  bg: "bg-indigo-50"  },
+              { label: t.projProgressKpiEstTotal,    value: summary.estTotal.toLocaleString(),                             icon: Hash,          color: "text-slate-600",   bg: "bg-slate-50"   },
+              { label: t.projProgressKpiInstalled,   value: summary.installed.toLocaleString(),                            icon: CheckCircle2,  color: "text-emerald-600", bg: "bg-emerald-50" },
+              { label: t.projProgressKpiTodayAdded,  value: summary.todayAdded > 0 ? `+${summary.todayAdded.toLocaleString()}` : "0",   icon: TrendingUp,    color: "text-brand-600",   bg: "bg-brand-50"   },
+              { label: t.projProgressKpiRemaining,   value: summary.remaining.toLocaleString(),                            icon: AlertCircle,   color: "text-amber-600",   bg: "bg-amber-50"   },
+              { label: t.projProgressKpiScopeItems,  value: scopeItems.length.toLocaleString(),                            icon: ListTodo,      color: "text-indigo-600",  bg: "bg-indigo-50"  },
             ].map((s, i) => (
               <div key={i} className="premium-card bg-white p-4 flex items-start gap-3" data-testid={`progress-kpi-${i}`}>
                 <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`w-4 h-4 ${s.color}`} /></div>
@@ -162,22 +165,22 @@ export function ProgressTab({ projectId }: { projectId: number }) {
           {summary.installed === 0 && (
             <div className="premium-card bg-white px-5 py-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50/40 border border-amber-100">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>No submitted daily reports yet — submit a report with linked scope items to see progress update.</span>
+              <span>{t.projProgressNoReportsYet}</span>
             </div>
           )}
 
           <div className="premium-card bg-white overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between">
               <div>
-                <h3 className="font-semibold text-slate-900 text-sm">Progress by Scope Item</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Click any row to see which submitted reports contributed to that item's total</p>
+                <h3 className="font-semibold text-slate-900 text-sm">{t.projProgressByScopeTitle}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{t.projProgressByScopeDesc}</p>
               </div>
               {expandedRows.size > 0 && (
                 <button
                   onClick={() => setExpandedRows(new Set())}
                   className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
                 >
-                  Collapse all
+                  {t.projProgressCollapseAll}
                 </button>
               )}
             </div>
@@ -186,14 +189,14 @@ export function ProgressTab({ projectId }: { projectId: number }) {
                 <thead className="bg-slate-50/80">
                   <tr>
                     <th className="w-9 px-2" />
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[24%]">Item</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">Unit</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Est. Qty</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%] text-emerald-600">Before Today</th>
-                    <th className="text-right px-4 py-3 font-semibold text-brand-600 w-[10%]">Today</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Total</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">Remaining</th>
-                    <th className="px-4 py-3 font-semibold text-slate-600">Progress</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[24%]">{t.progItem}</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.progUnit}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.progEstQty}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%] text-emerald-600">{t.progBeforeToday}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-brand-600 w-[10%]">{t.progToday}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.progTotal}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.progRemaining}</th>
+                    <th className="px-4 py-3 font-semibold text-slate-600">{t.progProgressCol}</th>
                   </tr>
                 </thead>
                 <tbody>

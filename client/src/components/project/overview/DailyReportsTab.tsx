@@ -10,53 +10,55 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useLanguage } from "@/hooks/use-language";
+import type { Translations } from "@/lib/i18n";
 
-function ReportStatusBadge({ status }: { status: string }) {
+function ReportStatusBadge({ status, t }: { status: string; t: Translations }) {
   if (status === "submitted") return (
     <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 px-2 py-0.5 font-semibold">
-      Submitted
+      {t.projDailyStatusSubmitted}
     </Badge>
   );
   return (
     <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 px-2 py-0.5 font-semibold">
-      Draft
+      {t.projDailyStatusDraft}
     </Badge>
   );
 }
 
-function exportReportCsv(report: any, projectName: string) {
+function exportReportCsv(report: any, projectName: string, t: any) {
   const fd = report.formData ?? {};
   const rows: string[][] = [];
-  rows.push(["VoltStock — Daily Report Export"]);
-  rows.push(["Project:", projectName]);
-  rows.push(["Report No.:", report.reportNumber ?? "—"]);
-  rows.push(["Report Date:", report.reportDate ?? "—"]);
-  rows.push(["Prepared By:", fd.preparedBy ?? "—"]);
-  rows.push(["Shift:", fd.shift ?? "—"]);
-  rows.push(["Weather:", fd.weather ?? "—"]);
+  rows.push([t.csvTitle]);
+  rows.push([t.csvProject, projectName]);
+  rows.push([t.csvReportNo, report.reportNumber ?? "—"]);
+  rows.push([t.csvReportDate, report.reportDate ?? "—"]);
+  rows.push([t.csvPreparedBy, fd.preparedBy ?? "—"]);
+  rows.push([t.csvShift, fd.shift ?? "—"]);
+  rows.push([t.csvWeather, fd.weather ?? "—"]);
   rows.push([]);
-  rows.push(["── MANPOWER ──"]);
-  rows.push(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
+  rows.push([t.csvManpowerHdr]);
+  rows.push([t.csvWorker, t.csvTrade, t.csvStatus, t.csvStart, t.csvEnd, t.csvHours, t.csvNotes]);
   (fd.manpower ?? []).forEach((r: any) =>
     rows.push([r.workerName ?? "", r.trade ?? "", r.attendanceStatus ?? "", r.startTime ?? "", r.endTime ?? "", String(r.hoursWorked ?? 0), r.notes ?? ""])
   );
   const totalHrs = (fd.manpower ?? []).reduce((s: number, r: any) => s + Number(r.hoursWorked ?? 0), 0);
-  rows.push(["", "", "", "", "TOTAL HOURS", String(totalHrs)]);
+  rows.push(["", "", "", "", t.csvTotalHours, String(totalHrs)]);
   rows.push([]);
-  rows.push(["── WORK TASKS ──"]);
-  rows.push(["#", "Description", "Location", "Qty", "Unit", "Notes"]);
-  (fd.tasks ?? []).forEach((t: any, i: number) =>
-    rows.push([String(i + 1), t.description ?? "", t.location ?? "", String(t.qty ?? ""), t.unit ?? "", t.notes ?? ""])
+  rows.push([t.csvTasksHdr]);
+  rows.push([t.csvTaskNum, t.csvDescription, t.csvLocation, t.csvQty, t.csvUnitCol, t.csvNotes]);
+  (fd.tasks ?? []).forEach((task: any, i: number) =>
+    rows.push([String(i + 1), task.description ?? "", task.location ?? "", String(task.qty ?? ""), task.unit ?? "", task.notes ?? ""])
   );
   rows.push([]);
-  rows.push(["── MATERIALS ──"]);
-  rows.push(["Material", "Unit", "Qty Used", "Notes"]);
+  rows.push([t.csvMaterialsHdr]);
+  rows.push([t.csvMaterial, t.csvUnitCol, t.csvQtyUsed, t.csvNotes]);
   (fd.materials ?? []).forEach((m: any) =>
     rows.push([m.description ?? "", m.unit ?? "", String(m.qty ?? ""), m.notes ?? ""])
   );
   rows.push([]);
-  rows.push(["── EQUIPMENT ──"]);
-  rows.push(["Equipment", "Qty", "Hours", "Notes"]);
+  rows.push([t.csvEquipmentHdr]);
+  rows.push([t.csvEquipment, t.csvQty, t.csvEquipHours, t.csvNotes]);
   (fd.equipment ?? []).forEach((e: any) =>
     rows.push([e.description ?? "", String(e.qty ?? ""), String(e.hours ?? ""), e.notes ?? ""])
   );
@@ -71,6 +73,7 @@ function exportReportCsv(report: any, projectName: string) {
 export function DailyReportsTab({ projectId, project }: { projectId: number; project: any }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<"all" | "draft" | "submitted">("all");
 
   const { data: me } = useQuery<{ role: string; username: string }>({
@@ -112,10 +115,10 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
             ].join(" ")}
           >
             {f === "all"
-              ? `All (${reports.length})`
+              ? `${t.projDailyFilterAll} (${reports.length})`
               : f === "submitted"
-              ? `Submitted (${reports.filter(r => r.status === "submitted").length})`
-              : `Draft (${reports.filter(r => r.status === "draft").length})`}
+              ? `${t.projDailyStatusSubmitted} (${reports.filter(r => r.status === "submitted").length})`
+              : `${t.projDailyStatusDraft} (${reports.filter(r => r.status === "draft").length})`}
           </button>
         ))}
         <div className="flex-1" />
@@ -125,19 +128,19 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
           onClick={() => navigate(`/daily-report/${projectId}`)}
           data-testid="btn-goto-workspace"
         >
-          <Plus className="w-3.5 h-3.5" />New Report
+          <Plus className="w-3.5 h-3.5" />{t.projDailyNewReport}
         </Button>
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <div className="premium-card bg-white p-12 text-center text-slate-400 text-sm">Loading reports…</div>
+        <div className="premium-card bg-white p-12 text-center text-slate-400 text-sm">{t.projDailyLoading}</div>
       ) : filtered.length === 0 ? (
         <div className="premium-card bg-white">
           <EmptyState
             icon={<FileText className="w-10 h-10" />}
-            title="No reports found"
-            description={filter === "all" ? "No daily reports yet for this project." : `No ${filter} reports.`}
+            title={t.projDailyEmptyTitle}
+            description={filter === "all" ? t.projDailyEmptyAll : t.projDailyEmptyFiltered}
             className="py-12"
           />
         </div>
@@ -147,16 +150,16 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
             <table className="w-full text-sm" data-testid="table-daily-reports">
               <thead className="bg-slate-50/80 border-b border-slate-100">
                 <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">Report #</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">Date</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Prepared By</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">Status</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[70px]">Workers</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">Man-hrs</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[65px]">Tasks</th>
-                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[75px]">Materials</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">Last Updated</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[130px]">Actions</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">{t.projDailyColReportNo}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">{t.projDailyColDate}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">{t.projDailyColPreparedBy}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs w-[90px]">{t.projDailyColStatus}</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[70px]">{t.projDailyColWorkers}</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[80px]">{t.projDailyColManHrs}</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[65px]">{t.projDailyColTasks}</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-600 text-xs w-[75px]">{t.projDailyColMaterials}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 text-xs">{t.projDailyColLastUpdated}</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-600 text-xs w-[130px]">{t.projDailyColActions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -192,7 +195,7 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
                         {fd.preparedBy || <span className="text-slate-300 italic">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <ReportStatusBadge status={r.status} />
+                        <ReportStatusBadge status={r.status} t={t} />
                       </td>
                       <td className="px-4 py-3 text-center">
                         {workers > 0 ? (
@@ -237,7 +240,7 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
                             }}
                           >
                             {submitted && canForceEdit ? <Pencil className="w-3 h-3" /> : submitted ? <Eye className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
-                            {submitted && canForceEdit ? "Edit" : submitted ? "View" : "Edit"}
+                            {submitted && canForceEdit ? t.projDailyBtnEdit : submitted ? t.projDailyBtnView : t.projDailyBtnEdit}
                           </Button>
                           {submitted && (
                             <Button
@@ -245,11 +248,11 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
                               className="text-xs h-7 px-2.5 gap-1 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
                               data-testid={`btn-export-report-${r.id}`}
                               onClick={() => {
-                                exportReportCsv(r, project.name);
-                                toast({ title: "Exported", description: `Report #${r.reportNumber ?? r.id} downloaded as CSV.` });
+                                exportReportCsv(r, project.name, t);
+                                toast({ title: t.projDailyExportedToast, description: `${t.projDailyExportedDescPrefix} #${r.reportNumber ?? r.id} CSV` });
                               }}
                             >
-                              <Download className="w-3 h-3" />CSV
+                              <Download className="w-3 h-3" />{t.projDailyBtnCsv}
                             </Button>
                           )}
                         </div>

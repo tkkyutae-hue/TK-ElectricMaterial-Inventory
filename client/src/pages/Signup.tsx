@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 
 const CSS = `
 @keyframes vs-fadeDown {
@@ -135,10 +136,11 @@ function getPasswordStrength(pw: string): number {
 }
 
 const STRENGTH_COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#2ddb6f"];
-const STRENGTH_LABELS = ["Weak", "Fair", "Strong", "Very Strong"];
 
 export default function Signup() {
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
+  const STRENGTH_LABELS = [t.signupStrengthWeak, t.signupStrengthFair, t.signupStrengthStrong, t.signupStrengthVeryStrong];
   const [name, setName]           = useState("");
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
@@ -155,14 +157,14 @@ export default function Signup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (password !== confirmPw) { setError("Passwords do not match"); return; }
-    if (password.length < 6)    { setError("Password must be at least 6 characters"); return; }
+    if (password !== confirmPw) { setError(t.signupPasswordsMismatch); return; }
+    if (password.length < 6)    { setError(t.signupPasswordTooShort); return; }
     setLoading(true);
     try {
       await apiRequest("POST", "/api/auth/signup", { name, email, password });
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.message ?? "Signup failed");
+      setError(err?.message ?? t.signupFailed);
     } finally {
       setLoading(false);
     }
@@ -175,6 +177,9 @@ export default function Signup() {
         <div style={GLOW_STYLE} />
         <div style={GRID_STYLE} />
         <div style={DIAGONAL_STYLE} />
+        <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20 }}>
+          <LanguageSwitcher theme="dark" />
+        </div>
         <div className="vs-card" style={{
           width: "100%", maxWidth: 380, margin: "0 24px",
           background: "#0b100d", border: "1px solid #203023",
@@ -192,17 +197,17 @@ export default function Signup() {
               <CheckCircle2 style={{ width: 28, height: 28, color: "#2ddb6f" }} />
             </div>
             <h2 style={{ color: "#c8deca", fontSize: 20, fontWeight: 700, margin: "0 0 8px", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
-              Request Submitted
+              {t.signupRequestSubmitted}
             </h2>
             <p style={{ color: "#527856", fontSize: 13, margin: "0 0 24px", lineHeight: 1.6 }}>
-              Your account is pending admin approval. You'll receive an email once your access is granted.
+              {t.signupApprovalPending}
             </p>
             <button
               onClick={() => navigate("/login")}
               className="vs-btn"
               data-testid="btn-back-login"
             >
-              Back to Sign In
+              {t.signupBackToSignIn}
             </button>
           </div>
         </div>
@@ -220,6 +225,10 @@ export default function Signup() {
       <div style={GLOW_STYLE} />
       <div style={GRID_STYLE} />
       <div style={DIAGONAL_STYLE} />
+
+      <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20 }}>
+        <LanguageSwitcher theme="dark" />
+      </div>
 
       <div style={{ width: "100%", maxWidth: 380, padding: "0 24px", position: "relative", zIndex: 1 }}>
 
@@ -257,7 +266,7 @@ export default function Signup() {
             <span style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 11, letterSpacing: 2, color: "rgba(45,219,111,0.7)", textTransform: "uppercase",
-            }}>Material Inventory System</span>
+            }}>{t.materialInventorySystem}</span>
           </div>
         </div>
 
@@ -276,7 +285,7 @@ export default function Signup() {
               borderRadius: 10, padding: "11px 14px", marginBottom: 20,
               fontSize: 12, color: "#d4a04a", lineHeight: 1.55,
             }}>
-              🔒 Admin approval required. Your request will be reviewed and you'll receive an email once access is granted.
+              {t.signupAdminApprovalNotice}
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -287,7 +296,7 @@ export default function Signup() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Full Name</label>
+                }}>{t.signupFullName}</label>
                 <input
                   type="text"
                   className="vs-input"
@@ -306,7 +315,7 @@ export default function Signup() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Email</label>
+                }}>{t.email}</label>
                 <input
                   type="email"
                   className="vs-input"
@@ -325,14 +334,14 @@ export default function Signup() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Password</label>
+                }}>{t.password}</label>
                 <div style={{ position: "relative" }}>
                   <input
                     type={showPw ? "text" : "password"}
                     className="vs-input"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder={t.signupPasswordPlaceholder}
                     required
                     style={{ paddingRight: 42 }}
                     data-testid="input-password"
@@ -384,20 +393,20 @@ export default function Signup() {
                   display: "block", marginBottom: 6,
                   fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                }}>Confirm Password</label>
+                }}>{t.signupConfirmPassword}</label>
                 <input
                   type="password"
                   className={`vs-input${pwMismatch ? " vs-input-error" : ""}`}
                   value={confirmPw}
                   onChange={e => setConfirmPw(e.target.value)}
-                  placeholder="Repeat your password"
+                  placeholder={t.signupConfirmPasswordPlaceholder}
                   required
                   data-testid="input-confirm-password"
                 />
                 {pwMismatch && (
                   <div style={{ fontSize: 11, color: "#ef4444", marginTop: 5, display: "flex", alignItems: "center", gap: 5 }}>
                     <AlertCircle style={{ width: 12, height: 12, flexShrink: 0 }} />
-                    Passwords do not match
+                    {t.signupPasswordsMismatch}
                   </div>
                 )}
               </div>
@@ -422,9 +431,9 @@ export default function Signup() {
                 className="vs-btn"
                 data-testid="btn-signup"
               >
-                {loading ? "Submitting…" : (
+                {loading ? t.signupSubmitting : (
                   <>
-                    <span>Request Access</span>
+                    <span>{t.requestAccess}</span>
                     <span className="vs-arrow" style={{ fontSize: 18, lineHeight: 1 }}>→</span>
                   </>
                 )}
@@ -433,7 +442,7 @@ export default function Signup() {
 
             {/* Link */}
             <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#2b3f2e" }}>
-              Already have an account?{" "}
+              {t.signupAlreadyHaveAccount}{" "}
               <button
                 onClick={() => navigate("/login")}
                 style={{
@@ -444,7 +453,7 @@ export default function Signup() {
                 }}
                 data-testid="link-login"
               >
-                Sign In
+                {t.signIn}
               </button>
             </p>
           </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Trash2, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/hooks/use-language";
 import { type PendingRow, COMMON_UNITS, flexMatch } from "../types";
 import { CATEGORY_ORDER } from "../categoryConfig";
 
@@ -13,6 +14,7 @@ export function InlineScopeRow({
   onRemove: () => void;
   rowIndex: number;
 }) {
+  const { t } = useLanguage();
   const [invSearch, setInvSearch] = useState(
     row.linkedInventoryItemId
       ? (invItems.find(it => it.id === row.linkedInventoryItemId)?.name ?? row.itemName)
@@ -40,11 +42,11 @@ export function InlineScopeRow({
 
         {/* Item / inventory search */}
         <div className="flex-1 min-w-0 space-y-1">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Item / Description *</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeInlineItemLabel}</label>
           <div className="relative">
             <Input
               value={invSearch}
-              placeholder="Search inventory or enter name…"
+              placeholder={t.projScopeInlineSearchPh}
               onChange={(e) => {
                 const val = e.target.value;
                 setInvSearch(val);
@@ -83,17 +85,17 @@ export function InlineScopeRow({
           </div>
           {row.linkedInventoryItemId && (
             <p className="text-[10px] text-emerald-700 flex items-center gap-1">
-              <CheckCircle2 className="w-2.5 h-2.5" /> Inventory item linked
+              <CheckCircle2 className="w-2.5 h-2.5" /> {t.projScopeInlineLinked}
             </p>
           )}
         </div>
 
         {/* Unit */}
         <div className="w-20 space-y-1 shrink-0">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Unit *</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeInlineUnitLabel}</label>
           <Input
             value={row.unit}
-            placeholder="EA"
+            placeholder={t.projScopeInlineUnitPh}
             onChange={e => onChange({ ...row, unit: e.target.value })}
             className="h-8 text-sm"
             list={`units-list-${rowIndex}`}
@@ -106,7 +108,7 @@ export function InlineScopeRow({
 
         {/* Est. Qty */}
         <div className="w-24 space-y-1 shrink-0">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Est. Qty *</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeInlineEstQtyLabel}</label>
           <Input
             type="number" min="0" step="any"
             value={row.estimatedQty} placeholder="0"
@@ -118,10 +120,10 @@ export function InlineScopeRow({
 
         {/* Category */}
         <div className="w-32 space-y-1 shrink-0">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Category</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeInlineCategoryLabel}</label>
           <Input
             value={row.category}
-            placeholder="e.g. Conduit"
+            placeholder={t.projScopeInlineCategoryPh}
             onChange={e => onChange({ ...row, category: e.target.value })}
             className="h-8 text-sm"
             list={`cat-list-${rowIndex}`}
@@ -134,15 +136,15 @@ export function InlineScopeRow({
 
         {/* Scope type */}
         <div className="w-28 space-y-1 shrink-0">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Scope Type</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{t.projScopeInlineScopeTypeLabel}</label>
           <select
             value={row.scopeType}
             onChange={e => onChange({ ...row, scopeType: e.target.value as "primary" | "support" })}
             className="h-8 w-full text-xs border border-slate-200 rounded-md px-2 bg-white text-slate-700"
             data-testid={`inline-scope-type-${rowIndex}`}
           >
-            <option value="primary">Primary</option>
-            <option value="support">Support</option>
+            <option value="primary">{t.projScopeTypePrimary}</option>
+            <option value="support">{t.projScopeTypeSupport}</option>
           </select>
         </div>
 
@@ -159,7 +161,7 @@ export function InlineScopeRow({
       {/* Remarks */}
       <Input
         value={row.remarks}
-        placeholder="Remarks (optional)"
+        placeholder={t.projScopeInlineRemarksPh}
         onChange={e => onChange({ ...row, remarks: e.target.value })}
         className="h-7 text-xs text-slate-500 bg-white"
         data-testid={`inline-scope-remarks-${rowIndex}`}

@@ -469,13 +469,13 @@ function EditRequestPanel({
 
           {/* Requester */}
           <div style={{ marginBottom: 14 }}>
-            <span style={labelStyle}>REQUESTER</span>
+            <span style={labelStyle}>{t.fieldReqRequesterLabel.toUpperCase()}</span>
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="text"
                 value={requesterName}
                 onChange={e => setRequesterName(e.target.value)}
-                placeholder="Name"
+                placeholder={t.fieldReqNamePlaceholder}
                 data-testid="input-edit-requester-name"
                 style={{ ...inputStyle, flex: 1 }}
               />
@@ -483,7 +483,7 @@ function EditRequestPanel({
                 type="text"
                 value={requesterRole}
                 onChange={e => setRequesterRole(e.target.value)}
-                placeholder="Role"
+                placeholder={t.fieldReqRolePlaceholder}
                 data-testid="input-edit-requester-role"
                 style={{ ...inputStyle, width: 90, flex: "none" }}
               />

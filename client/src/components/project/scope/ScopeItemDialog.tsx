@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ProjectScopeItem } from "@shared/schema";
@@ -25,6 +26,7 @@ export function ScopeItemDialog({
 }) {
   const isEdit = !!item;
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
 
   const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
@@ -81,10 +83,10 @@ export function ScopeItemDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
-      toast({ title: isEdit ? "Scope item updated" : "Scope item added" });
+      toast({ title: isEdit ? t.projScopeUpdatedToast : t.projScopeAddedToast });
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.projScopeSaveFailedToast, description: err.message, variant: "destructive" }),
   });
 
   function onSubmit(data: ScopeItemFormData) {
@@ -95,13 +97,13 @@ export function ScopeItemDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Scope Item" : "Add Scope Item"}</DialogTitle>
+          <DialogTitle>{isEdit ? t.projScopeDialogEditTitle : t.projScopeDialogAddTitle}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <FormField control={form.control} name="itemName" render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Name *</FormLabel>
+                <FormLabel>{t.projScopeFldItemName}</FormLabel>
                 <FormControl><Input {...field} data-testid="input-scope-item-name" /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -109,7 +111,7 @@ export function ScopeItemDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="unit" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unit *</FormLabel>
+                  <FormLabel>{t.projScopeFldUnit}</FormLabel>
                   <FormControl><Input {...field} list="dlg-units-list" data-testid="select-scope-unit" /></FormControl>
                   <datalist id="dlg-units-list">{COMMON_UNITS.map(u => <option key={u} value={u} />)}</datalist>
                   <FormMessage />
@@ -117,7 +119,7 @@ export function ScopeItemDialog({
               )} />
               <FormField control={form.control} name="estimatedQty" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Est. Qty *</FormLabel>
+                  <FormLabel>{t.projScopeFldEstQty}</FormLabel>
                   <FormControl><Input type="number" min="0" step="any" placeholder="0" {...field} data-testid="input-scope-qty" /></FormControl>
                   <FormMessage />
                 </FormItem>
@@ -126,20 +128,20 @@ export function ScopeItemDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="category" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                  <FormControl><Input placeholder="e.g. Conduit" {...field} list="dlg-cat-list" data-testid="input-scope-category" /></FormControl>
+                  <FormLabel>{t.projScopeFldCategory} <span className="text-slate-400 font-normal">{t.projScopeFldOptional}</span></FormLabel>
+                  <FormControl><Input placeholder={t.projScopeCategoryPlaceholder} {...field} list="dlg-cat-list" data-testid="input-scope-category" /></FormControl>
                   <datalist id="dlg-cat-list">{CATEGORY_ORDER.map(c => <option key={c} value={c} />)}</datalist>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="scopeType" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Scope Type</FormLabel>
+                  <FormLabel>{t.projScopeFldScopeType}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger data-testid="select-scope-type"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="primary">Primary</SelectItem>
-                      <SelectItem value="support">Support</SelectItem>
+                      <SelectItem value="primary">{t.projScopeTypePrimary}</SelectItem>
+                      <SelectItem value="support">{t.projScopeTypeSupport}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -148,13 +150,13 @@ export function ScopeItemDialog({
             </div>
             <FormField control={form.control} name="progressCountingMode" render={({ field }) => (
               <FormItem>
-                <FormLabel>Progress Counting Mode</FormLabel>
+                <FormLabel>{t.projScopeFldCountingMode}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger data-testid="select-scope-counting-mode"><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="exact">Exact Match Only</SelectItem>
-                    <SelectItem value="family">Family Match (same category)</SelectItem>
-                    <SelectItem value="manual">Manual Mapping</SelectItem>
+                    <SelectItem value="exact">{t.projScopeCountExact}</SelectItem>
+                    <SelectItem value="family">{t.projScopeCountFamily}</SelectItem>
+                    <SelectItem value="manual">{t.projScopeCountManual}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -162,11 +164,11 @@ export function ScopeItemDialog({
             )} />
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
-                Inventory Item Link <span className="text-slate-400 font-normal text-xs">(optional)</span>
+                {t.projScopeFldInvLink} <span className="text-slate-400 font-normal text-xs">{t.projScopeFldOptional}</span>
               </label>
               <div className="relative">
                 <Input
-                  placeholder="Search inventory items to link…"
+                  placeholder={t.projScopeInvLinkPlaceholder}
                   value={invSearch}
                   data-testid="input-scope-inv-link"
                   onChange={(e) => { setInvSearch(e.target.value); setInvOpen(true); if (!e.target.value) setLinkedInvId(null); }}
@@ -194,24 +196,24 @@ export function ScopeItemDialog({
                   </div>
                 )}
               </div>
-              {linkedInvId && <p className="text-[11px] text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Linked: {linkedInvName}</p>}
+              {linkedInvId && <p className="text-[11px] text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {t.projScopeLinkedLabel} {linkedInvName}</p>}
             </div>
             <FormField control={form.control} name="remarks" render={({ field }) => (
               <FormItem>
-                <FormLabel>Remarks <span className="text-slate-400 font-normal">(optional)</span></FormLabel>
-                <FormControl><Textarea rows={2} className="resize-none" placeholder="Any notes…" {...field} data-testid="input-scope-remarks" /></FormControl>
+                <FormLabel>{t.projScopeFldRemarks} <span className="text-slate-400 font-normal">{t.projScopeFldOptional}</span></FormLabel>
+                <FormControl><Textarea rows={2} className="resize-none" placeholder={t.projScopeRemarksPlaceholder} {...field} data-testid="input-scope-remarks" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             {isEdit && (
               <FormField control={form.control} name="isActive" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t.projScopeFldStatus}</FormLabel>
                   <Select onValueChange={(v) => field.onChange(v === "true")} value={String(field.value)}>
                     <FormControl><SelectTrigger data-testid="select-scope-status"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
+                      <SelectItem value="true">{t.projScopeStatusActive}</SelectItem>
+                      <SelectItem value="false">{t.projScopeStatusInactive}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -219,10 +221,10 @@ export function ScopeItemDialog({
               )} />
             )}
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={onClose} disabled={saveMutation.isPending}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={onClose} disabled={saveMutation.isPending}>{t.projScopeCancelBtn}</Button>
               <Button type="submit" className="bg-brand-700 hover:bg-brand-800" disabled={saveMutation.isPending} data-testid="button-save-scope-item">
                 <Save className="w-4 h-4 mr-1" />
-                {saveMutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Add Item"}
+                {saveMutation.isPending ? t.projScopeSavingBtn : isEdit ? t.projScopeSaveChanges : t.projScopeAddItemSubmit}
               </Button>
             </div>
           </form>

@@ -136,11 +136,11 @@ function DraftCard({ draft, onResume, onConfirm, onDelete, t }: DraftCardProps) 
         {/* Row 3: Item pills */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
           {previewItems.map((di: any, idx: number) => (
-            <ItemPill key={idx} name={di.itemName || `Item #${di.itemId}`} qty={di.qty} unit={di.unit} />
+            <ItemPill key={idx} name={di.itemName || `${t.fieldDraftItemFallback} #${di.itemId}`} qty={di.qty} unit={di.unit} />
           ))}
           {extraCount > 0 && (
             <span style={{ fontSize: 10, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 5, padding: "3px 8px", color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif" }}>
-              +{extraCount} more
+              +{extraCount} {t.fieldDraftMore}
             </span>
           )}
           {draftItems.length === 0 && (
@@ -218,10 +218,10 @@ function ConfirmDraftModal({ draft, onClose, onConfirm, loading, t }: {
               </span>
             </div>
             {draft.project?.name && (
-              <span style={{ fontSize: 11, color: "#5b9cf6" }}>Project: {draft.project.name}</span>
+              <span style={{ fontSize: 11, color: "#5b9cf6" }}>{t.fieldDraftProjectLabel}: {draft.project.name}</span>
             )}
             {draft.note && (
-              <span style={{ fontSize: 11, color: "#7aab82" }}>Note: {draft.note}</span>
+              <span style={{ fontSize: 11, color: "#7aab82" }}>{t.fieldDraftNoteLabel}: {draft.note}</span>
             )}
           </div>
 

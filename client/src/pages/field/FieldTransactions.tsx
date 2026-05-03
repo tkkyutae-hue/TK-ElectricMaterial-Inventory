@@ -569,7 +569,7 @@ export default function FieldTransactions() {
                         data-testid="field-tx-date-clear"
                         style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, width: "fit-content" }}
                       >
-                        <X style={{ width: 11, height: 11 }} /> Clear all
+                        <X style={{ width: 11, height: 11 }} /> {t.fieldTxnClearAll}
                       </button>
                     )}
                   </div>
@@ -667,7 +667,7 @@ export default function FieldTransactions() {
                         data-testid="field-tx-date-clear"
                         style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}
                       >
-                        <X style={{ width: 11, height: 11 }} /> Clear all
+                        <X style={{ width: 11, height: 11 }} /> {t.fieldTxnClearAll}
                       </button>
                     )}
                   </div>
@@ -695,7 +695,7 @@ export default function FieldTransactions() {
                     {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif", flex: 1 }}>
-                    {selCount > 0 ? `${selCount} ${t.selected}` : "Select all"}
+                    {selCount > 0 ? `${selCount} ${t.selected}` : t.fieldTxnSelectAll}
                   </span>
                   {selCount > 0 && (
                     <button
@@ -752,7 +752,7 @@ export default function FieldTransactions() {
                               data-testid={`field-edited-tag-${m.id}`}
                               style={{ display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}
                             >
-                              ✎ EDITED
+                              ✎ {t.fieldTxnEditedTag}
                             </span>
                           )}
                         </div>
@@ -1017,7 +1017,7 @@ export default function FieldTransactions() {
                                   data-testid={`field-edited-tag-${m.id}`}
                                   style={{ marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default" }}
                                 >
-                                  ✎ EDITED
+                                  ✎ {t.fieldTxnEditedTag}
                                 </span>
                               )}
                             </div>
@@ -1042,11 +1042,11 @@ export default function FieldTransactions() {
                 {/* Row 1: Showing count (left) + page-size selector (right) */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px 7px" }}>
                   <span style={{ fontSize: 11, color: F.textMuted }}>
-                    Showing{" "}
+                    {t.fieldTxnShowing}{" "}
                     <strong style={{ color: F.text }}>
                       {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
                     </strong>
-                    {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
+                    {" "}{t.fieldTxnOf} <strong style={{ color: F.text }}>{filtered.length}</strong>
                   </span>
                   <div style={{ position: "relative" }}>
                     <button
@@ -1091,12 +1091,12 @@ export default function FieldTransactions() {
                     {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim }}>{selCount} {t.selected}</span>}
                     {canEdit && hasDeletePerm && (
                       <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                        <Pencil style={{ width: 10, height: 10 }} /> Edit
+                        <Pencil style={{ width: 10, height: 10 }} /> {t.fieldTxnEditBtn}
                       </button>
                     )}
                     {canDelete && hasDeletePerm && (
                       <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                        <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
+                        <Trash2 style={{ width: 10, height: 10 }} /> {t.fieldTxnDeleteBtn} ({selCount})
                       </button>
                     )}
                   </div>
@@ -1107,11 +1107,11 @@ export default function FieldTransactions() {
               <div style={{ borderTop: `1px solid ${F.borderStrong}`, background: F.bg, padding: "10px 16px", display: "flex", alignItems: "center", fontFamily: "'Barlow Condensed', sans-serif" }}>
                 {/* Left: showing count */}
                 <span style={{ fontSize: 11, color: F.textMuted, flex: 1 }}>
-                  Showing{" "}
+                  {t.fieldTxnShowing}{" "}
                   <strong style={{ color: F.text }}>
                     {filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
                   </strong>
-                  {" "}of <strong style={{ color: F.text }}>{filtered.length}</strong>
+                  {" "}{t.fieldTxnOf} <strong style={{ color: F.text }}>{filtered.length}</strong>
                 </span>
 
                 {/* Center: page-size + pagination */}
@@ -1159,12 +1159,12 @@ export default function FieldTransactions() {
                       </button>
                       {canEdit && hasDeletePerm && (
                         <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                          <Pencil style={{ width: 10, height: 10 }} /> Edit
+                          <Pencil style={{ width: 10, height: 10 }} /> {t.fieldTxnEditBtn}
                         </button>
                       )}
                       {canDelete && hasDeletePerm && (
                         <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                          <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
+                          <Trash2 style={{ width: 10, height: 10 }} /> {t.fieldTxnDeleteBtn} ({selCount})
                         </button>
                       )}
                     </>
@@ -1206,12 +1206,12 @@ export default function FieldTransactions() {
           <DialogHeader>
             <DialogTitle style={{ color: F.text, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
               <AlertTriangle style={{ width: 18, height: 18, color: "#ff5050" }} />
-              Delete {selectedIds.size} Transaction{selectedIds.size !== 1 ? "s" : ""}?
+              {t.fieldTxnConfirmTitle.replace("{n}", String(selectedIds.size))}
             </DialogTitle>
           </DialogHeader>
           <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
             <p style={{ fontSize: 13, color: F.textMuted, lineHeight: 1.55 }}>
-              Inventory counts will be reversed for all selected transactions. You can undo this within 8 seconds after deletion.
+              {t.fieldTxnConfirmBody}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={() => setConfirmOpen(false)} style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: F.textMuted, cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif" }}>
@@ -1219,7 +1219,7 @@ export default function FieldTransactions() {
               </button>
               <button type="button" onClick={handleDelete} disabled={bulkDelete.isPending} data-testid="button-confirm-delete" style={{ background: "rgba(255,80,80,0.15)", border: "1px solid rgba(255,80,80,0.35)", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, color: "#ff5050", cursor: bulkDelete.isPending ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed', sans-serif", opacity: bulkDelete.isPending ? 0.7 : 1, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Trash2 style={{ width: 13, height: 13 }} />
-                {bulkDelete.isPending ? "Deleting…" : `Delete ${selectedIds.size}`}
+                {bulkDelete.isPending ? t.fieldTxnDeleting : `${t.fieldTxnDeleteN} ${selectedIds.size}`}
               </button>
             </div>
           </div>

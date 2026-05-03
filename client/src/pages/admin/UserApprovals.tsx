@@ -6,22 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, XCircle, Users, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import type { User } from "@shared/models/auth";
 
 type Tab = "pending" | "active" | "rejected";
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  staff: "Staff",
-  viewer: "Viewer",
-};
-
 export default function UserApprovals() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("pending");
   const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const ROLE_LABELS: Record<string, string> = {
+    admin: t.adminUserApprovRoleAdmin,
+    manager: t.adminUserApprovRoleManager,
+    staff: t.adminUserApprovRoleStaff,
+    viewer: t.adminUserApprovRoleViewer,
+  };
+
+  const TAB_LABELS: Record<Tab, string> = {
+    pending: t.adminUserApprovTabPending,
+    active: t.adminUserApprovTabActive,
+    rejected: t.adminUserApprovTabRejected,
+  };
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -33,7 +41,7 @@ export default function UserApprovals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.cmnError, description: err.message, variant: "destructive" }),
   });
 
   const approveMutation = useMutation({
@@ -41,18 +49,18 @@ export default function UserApprovals() {
       apiRequest("POST", `/api/admin/users/${id}/approve`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "User approved", description: "The user can now sign in." });
+      toast({ title: t.adminUserApprovToastApproved, description: t.adminUserApprovToastApprovedDesc });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.cmnError, description: err.message, variant: "destructive" }),
   });
 
   const rejectMutation = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/admin/users/${id}/reject`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      toast({ title: "User rejected" });
+      toast({ title: t.adminUserApprovToastRejected });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => toast({ title: t.cmnError, description: err.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -60,11 +68,11 @@ export default function UserApprovals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setConfirmDeleteId(null);
-      toast({ title: "User deleted", description: "The account has been permanently removed." });
+      toast({ title: t.adminUserApprovToastDeleted, description: t.adminUserApprovToastDeletedDesc });
     },
     onError: (err: any) => {
       setConfirmDeleteId(null);
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t.cmnError, description: err.message, variant: "destructive" });
     },
   });
 
@@ -76,9 +84,9 @@ export default function UserApprovals() {
   };
 
   function statusBadge(status: string | null | undefined) {
-    if (status === "active") return <Badge className="bg-green-100 text-green-700 border-green-200">Active</Badge>;
-    if (status === "pending") return <Badge className="bg-amber-100 text-amber-700 border-amber-200">Pending</Badge>;
-    return <Badge className="bg-red-100 text-red-600 border-red-200">Rejected</Badge>;
+    if (status === "active") return <Badge className="bg-green-100 text-green-700 border-green-200">{t.adminUserApprovBadgeActive}</Badge>;
+    if (status === "pending") return <Badge className="bg-amber-100 text-amber-700 border-amber-200">{t.adminUserApprovBadgePending}</Badge>;
+    return <Badge className="bg-red-100 text-red-600 border-red-200">{t.adminUserApprovBadgeRejected}</Badge>;
   }
 
   function roleBadge(role: string | null | undefined) {
@@ -103,32 +111,32 @@ export default function UserApprovals() {
       <div>
         <h1 className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
           <Users className="w-6 h-6 text-brand-700" />
-          User Approvals
+          {t.adminUserApprovTitle}
         </h1>
-        <p className="text-slate-500 text-sm mt-1">Manage user access requests and account statuses.</p>
+        <p className="text-slate-500 text-sm mt-1">{t.adminUserApprovSubtitle}</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        {(["pending", "active", "rejected"] as Tab[]).map(t => (
+        {(["pending", "active", "rejected"] as Tab[]).map(tk => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            data-testid={`tab-${t}`}
+            key={tk}
+            onClick={() => setTab(tk)}
+            data-testid={`tab-${tk}`}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              tab === t
+              tab === tk
                 ? "bg-white shadow-sm text-slate-900"
                 : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-            {counts[t] > 0 && (
+            {TAB_LABELS[tk]}
+            {counts[tk] > 0 && (
               <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                t === "pending" ? "bg-amber-100 text-amber-700"
-                : t === "active" ? "bg-green-100 text-green-700"
+                tk === "pending" ? "bg-amber-100 text-amber-700"
+                : tk === "active" ? "bg-green-100 text-green-700"
                 : "bg-red-100 text-red-600"
               }`}>
-                {counts[t]}
+                {counts[tk]}
               </span>
             )}
           </button>
@@ -138,7 +146,7 @@ export default function UserApprovals() {
       {/* Content */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-400 text-sm">
-          No {tab} users
+          {t.adminUserApprovEmptyPrefix} {TAB_LABELS[tab]} {t.adminUserApprovEmptySuffix}
         </div>
       ) : (
         <div className="space-y-2">
@@ -160,7 +168,7 @@ export default function UserApprovals() {
                   <p className="text-sm text-slate-500">{u.email}</p>
                   {u.createdAt && (
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Joined {new Date(u.createdAt).toLocaleDateString()}
+                      {t.adminUserApprovJoined} {new Date(u.createdAt).toLocaleDateString()}
                     </p>
                   )}
                 </div>
@@ -177,10 +185,10 @@ export default function UserApprovals() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="viewer">{t.adminUserApprovRoleViewer}</SelectItem>
+                          <SelectItem value="staff">{t.adminUserApprovRoleStaff}</SelectItem>
+                          <SelectItem value="manager">{t.adminUserApprovRoleManager}</SelectItem>
+                          <SelectItem value="admin">{t.adminUserApprovRoleAdmin}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
@@ -191,7 +199,7 @@ export default function UserApprovals() {
                         data-testid={`btn-approve-${u.id}`}
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approve
+                        {t.adminUserApprovApprove}
                       </Button>
                       <Button
                         size="sm"
@@ -202,7 +210,7 @@ export default function UserApprovals() {
                         data-testid={`btn-reject-${u.id}`}
                       >
                         <XCircle className="w-3.5 h-3.5" />
-                        Reject
+                        {t.adminUserApprovReject}
                       </Button>
                     </>
                   )}
@@ -218,10 +226,10 @@ export default function UserApprovals() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="viewer">{t.adminUserApprovRoleViewer}</SelectItem>
+                          <SelectItem value="staff">{t.adminUserApprovRoleStaff}</SelectItem>
+                          <SelectItem value="manager">{t.adminUserApprovRoleManager}</SelectItem>
+                          <SelectItem value="admin">{t.adminUserApprovRoleAdmin}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button
@@ -232,7 +240,7 @@ export default function UserApprovals() {
                         className="text-red-600 border-red-200 hover:bg-red-50 h-8"
                         data-testid={`btn-deactivate-${u.id}`}
                       >
-                        Deactivate
+                        {t.adminUserApprovDeactivate}
                       </Button>
                     </>
                   )}
@@ -248,7 +256,7 @@ export default function UserApprovals() {
                         className="text-green-600 border-green-200 hover:bg-green-50 h-8"
                         data-testid={`btn-reactivate-${u.id}`}
                       >
-                        Re-activate
+                        {t.adminUserApprovReactivate}
                       </Button>
                       {confirmDeleteId === u.id ? (
                         <div className="flex items-center gap-1">
@@ -259,14 +267,14 @@ export default function UserApprovals() {
                             className="text-[11px] font-semibold text-red-600 hover:text-red-800 whitespace-nowrap"
                             data-testid={`btn-confirm-delete-${u.id}`}
                           >
-                            Confirm
+                            {t.adminUserApprovConfirm}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteId(null)}
                             className="text-[11px] text-slate-400 hover:text-slate-600"
                           >
-                            Cancel
+                            {t.cmnCancel}
                           </button>
                         </div>
                       ) : (
@@ -276,7 +284,7 @@ export default function UserApprovals() {
                           onClick={() => setConfirmDeleteId(u.id)}
                           className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 p-0"
                           data-testid={`btn-delete-${u.id}`}
-                          title="Delete user permanently"
+                          title={t.adminUserApprovDeleteTitle}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>

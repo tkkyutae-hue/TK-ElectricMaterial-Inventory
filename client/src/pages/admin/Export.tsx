@@ -1,30 +1,32 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const TABLES = [
-  { key: "categories",                  label: "Categories" },
-  { key: "locations",                   label: "Locations" },
-  { key: "suppliers",                   label: "Suppliers" },
-  { key: "projects",                    label: "Projects" },
-  { key: "items",                       label: "Items" },
-  { key: "item_groups",                 label: "Item Groups (Families)" },
-  { key: "inventory_movements",         label: "Inventory Movements" },
-  { key: "inventory_location_balances", label: "Location Balances" },
-  { key: "users",                       label: "Users" },
-];
+import { useLanguage } from "@/hooks/use-language";
 
 export default function Export() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [downloading, setDownloading] = useState<string | null>(null);
+
+  const TABLES = useMemo(() => [
+    { key: "categories",                  label: t.adminExportTableCategories },
+    { key: "locations",                   label: t.adminExportTableLocations },
+    { key: "suppliers",                   label: t.adminExportTableSuppliers },
+    { key: "projects",                    label: t.adminExportTableProjects },
+    { key: "items",                       label: t.adminExportTableItems },
+    { key: "item_groups",                 label: t.adminExportTableItemGroups },
+    { key: "inventory_movements",         label: t.adminExportTableMovements },
+    { key: "inventory_location_balances", label: t.adminExportTableLocationBalances },
+    { key: "users",                       label: t.adminExportTableUsers },
+  ], [t]);
 
   async function downloadCsv(tableKey: string, label: string) {
     setDownloading(tableKey);
     try {
       const resp = await fetch(`/api/admin/export/${tableKey}`, { credentials: "include" });
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ message: "Download failed" }));
+        const err = await resp.json().catch(() => ({ message: t.adminExportDownloadFailed }));
         throw new Error(err.message);
       }
       const blob = await resp.blob();
@@ -36,17 +38,17 @@ export default function Export() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: `${label} exported`, description: `${tableKey}.csv downloaded.` });
+      toast({ title: `${label} ${t.adminExportExported}`, description: `${tableKey}.csv ${t.adminExportDownloadedSuffix}` });
     } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+      toast({ title: t.adminExportFailed, description: err.message, variant: "destructive" });
     } finally {
       setDownloading(null);
     }
   }
 
   async function downloadAll() {
-    for (const t of TABLES) {
-      await downloadCsv(t.key, t.label);
+    for (const tbl of TABLES) {
+      await downloadCsv(tbl.key, tbl.label);
     }
   }
 
@@ -55,10 +57,10 @@ export default function Export() {
       <div>
         <h1 className="text-2xl font-display font-bold text-slate-900 flex items-center gap-2">
           <Download className="w-6 h-6 text-brand-700" />
-          Export Backup (CSV)
+          {t.adminExportTitle}
         </h1>
         <p className="text-slate-500 text-sm mt-1">
-          Download individual tables as CSV files for backup or reporting.
+          {t.adminExportSubtitle}
         </p>
       </div>
 
@@ -69,35 +71,35 @@ export default function Export() {
         data-testid="btn-export-all"
       >
         <Download className="w-4 h-4" />
-        {downloading ? `Downloading ${downloading}…` : "Download All Tables"}
+        {downloading ? `${t.adminExportDownloading} ${downloading}…` : t.adminExportAll}
       </Button>
 
       <div className="space-y-2">
-        {TABLES.map(t => (
+        {TABLES.map(tbl => (
           <div
-            key={t.key}
+            key={tbl.key}
             className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex items-center justify-between gap-4"
-            data-testid={`row-export-${t.key}`}
+            data-testid={`row-export-${tbl.key}`}
           >
             <div className="flex items-center gap-3">
               <FileText className="w-4 h-4 text-slate-400" />
               <div>
-                <p className="font-medium text-slate-900 text-sm">{t.label}</p>
-                <p className="text-xs text-slate-400">{t.key}.csv</p>
+                <p className="font-medium text-slate-900 text-sm">{tbl.label}</p>
+                <p className="text-xs text-slate-400">{tbl.key}.csv</p>
               </div>
             </div>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => downloadCsv(t.key, t.label)}
+              onClick={() => downloadCsv(tbl.key, tbl.label)}
               disabled={!!downloading}
               className="gap-1.5 text-slate-600"
-              data-testid={`btn-export-${t.key}`}
+              data-testid={`btn-export-${tbl.key}`}
             >
-              {downloading === t.key ? (
-                <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> Downloading…</>
+              {downloading === tbl.key ? (
+                <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> {t.adminExportDownloadingShort}</>
               ) : (
-                <><Download className="w-3.5 h-3.5" /> Download</>
+                <><Download className="w-3.5 h-3.5" /> {t.adminExportDownload}</>
               )}
             </Button>
           </div>

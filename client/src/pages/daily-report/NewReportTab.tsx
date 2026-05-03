@@ -3,6 +3,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import {
   Calendar, Users, Package, Truck, FileText, ChevronDown, ChevronRight,
   Plus, Trash2, Save, Send, AlertTriangle, CheckCircle2,
@@ -288,6 +289,7 @@ function WorkerCombobox({
   row: ManpowerRow; allWorkers: Worker[]; takenIds: Set<number | null>;
   testId: string; onChange: (patch: Partial<ManpowerRow>) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen]       = useState(false);
   const [query, setQuery]     = useState(row.workerName);
   const [focused, setFocused] = useState(false);
@@ -316,7 +318,7 @@ function WorkerCombobox({
         <input
           data-testid={testId}
           value={query}
-          placeholder="Type name or search…"
+          placeholder={t.newReportTypeNameSearch}
           style={{
             flex: 1, minWidth: 0,
             border: "none", outline: "none",
@@ -386,6 +388,7 @@ function PreparedByCombobox({
   onChange: (name: string, id: number | null, trade?: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(() =>
@@ -423,7 +426,7 @@ function PreparedByCombobox({
         {!disabled && (
           <button type="button"
             data-testid="btn-clear-prepared-by"
-            title="Clear selection"
+            title={t.newReportClearSelection}
             onClick={() => { setSelectedWorker(null); setQuery(""); onChange("", null, ""); }}
             style={{
               position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
@@ -642,6 +645,7 @@ function MaterialSearch({
   row: MaterialRow; inventoryItems: any[]; testId: string;
   onChange: (patch: Partial<MaterialRow>) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const initQuery = row.inventoryItemId
     ? (extractSize(row.description).rest || row.description)
@@ -662,7 +666,7 @@ function MaterialSearch({
   return (
     <div className="relative">
       <Input data-testid={testId} value={query}
-        placeholder="Search inventory or enter manually…"
+        placeholder={t.newReportSearchInventory}
         className={cellInputCls}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -733,6 +737,7 @@ export function NewReportTab({
   forceEdit?: boolean;
 }) {
   const { toast }   = useToast();
+  const { t }       = useLanguage();
   const queryClient = useQueryClient();
   const { isManagerOrAbove } = useAuth();
   const fd          = initialData?.formData ?? null;
@@ -876,9 +881,9 @@ export function NewReportTab({
         const done    = tasks.filter(t => t.status === "completed").length;
         const blocked = tasks.filter(t => t.status === "blocked").length;
         return (<>
-          {inProg  > 0 && <span style={taskChipStyle("#eff6ff","#bfdbfe","#1d4ed8")}>{inProg} In Progress</span>}
-          {done    > 0 && <span style={taskChipStyle("#f0fdf4","#86efac","#15803d")}>{done} Completed</span>}
-          {blocked > 0 && <span style={taskChipStyle("#fff1f2","#fecdd3","#e11d48")}>{blocked} Blocked</span>}
+          {inProg  > 0 && <span style={taskChipStyle("#eff6ff","#bfdbfe","#1d4ed8")}>{inProg} {t.newReportTaskInProgress}</span>}
+          {done    > 0 && <span style={taskChipStyle("#f0fdf4","#86efac","#15803d")}>{done} {t.newReportTaskCompleted}</span>}
+          {blocked > 0 && <span style={taskChipStyle("#fff1f2","#fecdd3","#e11d48")}>{blocked} {t.newReportTaskBlocked}</span>}
         </>);
       })()}
     </span>
@@ -953,15 +958,15 @@ export function NewReportTab({
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({
-        title: status === "submitted" ? "Report submitted" : "Draft saved",
+        title: status === "submitted" ? t.newReportReportSubmitted : t.newReportDraftSaved,
         description: status === "submitted"
-          ? "The daily report has been submitted successfully."
-          : "Your progress has been saved as a draft.",
+          ? t.newReportReportSubmittedDesc
+          : t.newReportDraftSavedDesc,
       });
       onSaved?.(saved.id, status);
     },
     onError: (err: any) => {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+      toast({ title: t.newReportSaveFailed, description: err.message, variant: "destructive" });
     },
   });
 
@@ -973,11 +978,11 @@ export function NewReportTab({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports", projectId] });
       queryClient.invalidateQueries({ queryKey: ["/api/daily-reports-summary"] });
-      toast({ title: "Report deleted", description: "The daily report has been permanently deleted." });
+      toast({ title: t.newReportReportDeleted, description: t.newReportReportDeletedDesc });
       onSaved?.(-1, "deleted");
     },
     onError: (err: any) => {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: t.newReportDeleteFailed, description: err.message, variant: "destructive" });
     },
   });
 
@@ -994,16 +999,16 @@ export function NewReportTab({
                 <Trash2 className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">Delete Report</h3>
-                <p className="text-xs text-slate-500 mt-0.5">This action cannot be undone.</p>
+                <h3 className="text-sm font-semibold text-slate-900">{t.newReportDeleteReport}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{t.newReportActionUndone}</p>
               </div>
             </div>
-            <p className="text-sm text-slate-700 mb-5">Are you sure you want to delete this report?</p>
+            <p className="text-sm text-slate-700 mb-5">{t.newReportConfirmDelete}</p>
             <div className="flex items-center gap-2 justify-end">
               <Button variant="outline" size="sm" className="h-9"
                 onClick={() => setShowDeleteConfirm(false)}
                 data-testid="btn-delete-cancel">
-                Cancel
+                {t.newReportCancel}
               </Button>
               <Button size="sm"
                 className="h-9 gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold"
@@ -1011,7 +1016,7 @@ export function NewReportTab({
                 onClick={() => { deleteMutation.mutate(); setShowDeleteConfirm(false); }}
                 data-testid="btn-delete-confirm">
                 {deleteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                Delete
+                {t.newReportDelete}
               </Button>
             </div>
           </div>
@@ -1030,7 +1035,7 @@ export function NewReportTab({
               disabled={saveMutation.isPending || isSubmitted}
               onClick={() => saveMutation.mutate("draft")}>
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Draft
+              {t.newReportSaveDraft}
             </Button>
 
             <button data-testid="btn-submit-report"
@@ -1060,7 +1065,7 @@ export function NewReportTab({
                 ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12"/></svg>
                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               }
-              {isSubmitted ? "Submitted" : "Submit Report"}
+              {isSubmitted ? t.newReportSubmitted : t.newReportSubmit}
             </button>
 
             {isManagerOrAbove && reportId && (
@@ -1070,7 +1075,7 @@ export function NewReportTab({
                 disabled={deleteMutation.isPending}
                 onClick={() => setShowDeleteConfirm(true)}>
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete Report
+                {t.newReportDeleteReport}
               </Button>
             )}
           </div>
@@ -1089,10 +1094,10 @@ export function NewReportTab({
                   ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200 py-0.5 px-2.5"
                   : "text-[11px] text-slate-400 border-slate-200 bg-white py-0.5 px-2.5"
               }>
-                {isSubmitted ? "✓ Submitted" : savedStatus === "draft" ? "Draft" : "Unsaved"}
+                {isSubmitted ? t.newReportSubmittedTag : savedStatus === "draft" ? t.newReportDraft : t.newReportUnsaved}
               </Badge>
               {lastSaved && (
-                <span className="text-[10px] text-slate-400 mt-0.5">Last saved: {fmtTime(lastSaved)}</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t.newReportLastSaved} {fmtTime(lastSaved)}</span>
               )}
             </div>
           </div>
@@ -1106,7 +1111,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
-      <Section num={1} title="General Info" icon={<Calendar className="w-4 h-4" />}>
+      <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}>
         <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}
@@ -1114,7 +1119,7 @@ export function NewReportTab({
 
             {/* Col 1: Report No */}
             <div>
-              <FL>Report No.</FL>
+              <FL>{t.newReportReportNo}</FL>
               <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
                 {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}
               </div>
@@ -1122,27 +1127,27 @@ export function NewReportTab({
 
             {/* Col 2: Shift */}
             <div>
-              <FL>Shift</FL>
+              <FL>{t.newReportShift}</FL>
               <select data-testid="select-shift" value={shift} onChange={e => setShift(e.target.value)}
                 style={{ width: 130, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
-                <option value="day">Day Shift</option>
-                <option value="night">Night Shift</option>
-                <option value="both">Both Shifts</option>
+                <option value="day">{t.newReportDayShift}</option>
+                <option value="night">{t.newReportNightShift}</option>
+                <option value="both">{t.newReportBothShifts}</option>
               </select>
             </div>
 
             {/* Col 3: Weather + Temperature combined */}
             <div>
-              <FL>Weather &amp; Temperature</FL>
+              <FL>{t.newReportWeatherTemp}</FL>
               <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
                 <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
                   style={{ flex: 1, border: "none", padding: "0 10px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
-                  <option value="clear">☀️ Clear</option>
-                  <option value="partly-cloudy">⛅ Partly Cloudy</option>
-                  <option value="overcast">☁️ Overcast</option>
-                  <option value="rain">🌧️ Rain</option>
-                  <option value="wind">💨 Windy</option>
-                  <option value="heat">🌡️ Extreme Heat</option>
+                  <option value="clear">{t.newReportWClear}</option>
+                  <option value="partly-cloudy">{t.newReportWPartlyCloudy}</option>
+                  <option value="overcast">{t.newReportWOvercast}</option>
+                  <option value="rain">{t.newReportWRain}</option>
+                  <option value="wind">{t.newReportWWind}</option>
+                  <option value="heat">{t.newReportWHeat}</option>
                 </select>
                 <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px 0 8px", flexShrink: 0 }}>
@@ -1159,7 +1164,7 @@ export function NewReportTab({
 
             {/* Col 4: Report Date */}
             <div>
-              <FL>Report Date</FL>
+              <FL>{t.newReportReportDate}</FL>
               <input data-testid="input-report-date" type="date" value={reportDate}
                 onChange={e => setReportDate(e.target.value)}
                 style={{ width: 148, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
@@ -1170,8 +1175,8 @@ export function NewReportTab({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
               <FL>
-                Reporter
-                <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>* Required</span>
+                {t.newReportReporter}
+                <span style={{ fontSize: 9, color: "#dc2626", fontWeight: 500, marginLeft: 6, textTransform: "none", letterSpacing: 0 }}>* {t.newReportRequired}</span>
               </FL>
               <PersonCardCombobox
                 variant="reporter"
@@ -1183,7 +1188,7 @@ export function NewReportTab({
               />
             </div>
             <div>
-              <FL>Project Manager</FL>
+              <FL>{t.newReportProjectManager}</FL>
               <PersonCardCombobox
                 variant="pm"
                 value={projectManager}
@@ -1204,7 +1209,7 @@ export function NewReportTab({
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>Project Location</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportProjectLocation}</div>
                 <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
               </div>
             </div>
@@ -1215,7 +1220,7 @@ export function NewReportTab({
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>Owner / Manager</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportOwnerManager}</div>
                 <div data-testid="field-project-owner" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.ownerName || "—"}</div>
               </div>
             </div>
@@ -1227,7 +1232,7 @@ export function NewReportTab({
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>PO Number</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportPONumber}</div>
                 <div data-testid="field-project-po" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.poNumber || "—"}</div>
               </div>
             </div>
@@ -1239,12 +1244,12 @@ export function NewReportTab({
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: preparedBy.trim() ? "#10b981" : "#f59e0b", flexShrink: 0 }} />
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: preparedBy.trim() ? "#065f46" : "#92400e" }}>
-                  {preparedBy.trim() ? "Ready to Submit" : "Not Ready to Submit"}
+                  {preparedBy.trim() ? t.newReportReadyToSubmit : t.newReportNotReady}
                 </div>
                 <div style={{ fontSize: 10, color: preparedBy.trim() ? "#6ee7b7" : "#fbbf24" }}>
                   {preparedBy.trim()
                     ? `${preparedBy}${preparedByTrade ? ` · ${preparedByTrade}` : ""}`
-                    : "Add Reporter to enable submission"}
+                    : t.newReportAddReporterHint}
                 </div>
               </div>
             </div>
@@ -1264,20 +1269,20 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
-      <Section num={2} title="Manpower" icon={<Users className="w-4 h-4" />} summary={mpSummary}>
+      <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}>
 
         {/* Section-level defaults */}
         <div className="flex items-center gap-4 flex-wrap mb-4 pb-4 border-b border-slate-100">
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest shrink-0 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" /> Row defaults
+            <Clock className="w-3 h-3" /> {t.newReportRowDefaults}
           </span>
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">Start</label>
+            <label className="text-[11px] text-slate-500">{t.newReportStart}</label>
             <Input type="time" value={defStart} onChange={(e) => setDefStart(e.target.value)}
               data-testid="input-def-start" className="h-7 text-xs w-28" />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">End</label>
+            <label className="text-[11px] text-slate-500">{t.newReportEnd}</label>
             <Input type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)}
               data-testid="input-def-end" className="h-7 text-xs w-28" />
           </div>
@@ -1296,27 +1301,27 @@ export function NewReportTab({
                 : "border-slate-200 text-slate-400 bg-white"
             }`}>
             <span className="text-[13px] leading-none">☕</span>
-            Lunch Break {defLunchBreak ? "ON (−1h)" : "OFF"}
+            {defLunchBreak ? t.newReportLunchBreakOn : t.newReportLunchBreakOff}
           </button>
-          <span className="text-[10px] text-slate-300 italic">applies to all rows</span>
+          <span className="text-[10px] text-slate-300 italic">{t.newReportAppliesAllRows}</span>
         </div>
 
         {/* Manpower table — no overflow-x-auto so dropdown panels are not clipped */}
         <div>
           <table className="text-sm w-full" data-testid="table-manpower">
             <TH cols={[
-              { label: "Worker Name", cls: "w-[280px]" },
-              { label: "Status",      cls: "w-[130px]" },
-              { label: "Start",       cls: "w-[76px]" },
-              { label: "End",         cls: "w-[76px]" },
-              { label: "Break",       cls: "w-[46px] text-center" },
-              { label: "Hrs",         cls: "w-[48px] text-center" },
-              { label: "Notes",       cls: "w-[130px] text-center" },
+              { label: t.newReportColWorkerName, cls: "w-[280px]" },
+              { label: t.newReportColStatusH,    cls: "w-[130px]" },
+              { label: t.newReportStart,         cls: "w-[76px]" },
+              { label: t.newReportEnd,           cls: "w-[76px]" },
+              { label: t.newReportColBreak,      cls: "w-[46px] text-center" },
+              { label: t.newReportColHrs,        cls: "w-[48px] text-center" },
+              { label: t.newReportColNotes,      cls: "w-[130px] text-center" },
             ]} />
             <tbody>
               {manpower.length === 0 && (
                 <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
-                  No workers added — click Add Worker below
+                  {t.newReportNoWorkers}
                 </td></tr>
               )}
               {manpower.map((row, i) => {
@@ -1425,7 +1430,7 @@ export function NewReportTab({
                             const hrs = calcHours(row.startTime, row.endTime, row.attendanceStatus, nb);
                             setManpower(manpower.map((r) => r.id === row.id ? { ...r, lunchBreak: nb, hoursWorked: hrs } : r));
                           }}
-                          title={row.lunchBreak ? "Lunch break applied (−1h) — click to disable" : "No break deduction — click to enable"}
+                          title={row.lunchBreak ? t.newReportLunchTitleOn : t.newReportLunchTitleOff}
                           className={`h-6 w-8 rounded text-[9px] font-bold border transition-colors ${
                             row.lunchBreak && hoursActive
                               ? "bg-amber-50 border-amber-200 text-amber-600"
@@ -1527,7 +1532,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
-      <Section num={3} title="Work Tasks" icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
+      <Section num={3} title={t.newReportWorkTasks} icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
 
         {/* ── Drawing Board ── */}
         <div style={{ border: "1px solid #d0dbd2", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
@@ -1535,7 +1540,7 @@ export function NewReportTab({
           {/* Header */}
           <div style={{ padding: "9px 14px", background: "#f4f7f5", borderBottom: drawingUrl ? "1px solid #e2e8e4" : undefined, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ flex: 1, fontSize: 10.5, fontWeight: 700, color: "#3d5c45" }}>
-              📐 Project Drawing Board{drawingFilename ? ` · ${drawingFilename}` : ""}
+              {t.newReportProjectDrawingBoard}{drawingFilename ? ` · ${drawingFilename}` : ""}
             </span>
             {drawingUrl ? (
               <>
@@ -1547,20 +1552,20 @@ export function NewReportTab({
                     border: addPinMode ? "1px solid #a78bfa" : "1px solid #d0dbd2",
                     background: addPinMode ? "#ede9fe" : "white",
                     color: addPinMode ? "#7c3aed" : "#3d5c45", cursor: "pointer", fontWeight: addPinMode ? 700 : 400,
-                  }}>📍 Add Pin</button>
+                  }}>{t.newReportAddPin}</button>
                 <button type="button" onClick={() => drawingInputRef.current?.click()}
                   style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
-                  Replace
+                  {t.newReportReplace}
                 </button>
                 <button type="button" onClick={() => { setDrawingCollapsed(c => !c); setAddPinMode(false); setSelectedPinId(null); }}
                   style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
-                  {drawingCollapsed ? "▼ Expand" : "▲ Collapse"}
+                  {drawingCollapsed ? t.newReportExpand : t.newReportCollapse}
                 </button>
               </>
             ) : (
               <button type="button" onClick={() => drawingInputRef.current?.click()}
                 style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #4ade80", borderRadius: 5, background: "white", color: "#16a34a", cursor: "pointer", fontWeight: 600 }}>
-                + Upload Drawing
+                {t.newReportUploadDrawing}
               </button>
             )}
           </div>
@@ -1576,8 +1581,8 @@ export function NewReportTab({
                 gap: 6, cursor: "pointer", padding: 20,
               }}>
                 <span style={{ fontSize: 32, lineHeight: 1 }}>📐</span>
-                <p style={{ fontSize: 11, color: "#9db8a2", textAlign: "center" }}>Upload a project drawing to mark work areas</p>
-                <p style={{ fontSize: 9.5, color: "#b8cebe", textAlign: "center" }}>PDF, DWG, JPG, PNG — drag & drop or click</p>
+                <p style={{ fontSize: 11, color: "#9db8a2", textAlign: "center" }}>{t.newReportUploadHint1}</p>
+                <p style={{ fontSize: 9.5, color: "#b8cebe", textAlign: "center" }}>{t.newReportUploadHint2}</p>
               </div>
             </div>
           ) : drawingCollapsed ? (
@@ -1590,7 +1595,7 @@ export function NewReportTab({
               </span>
               <button type="button" onClick={() => setDrawingCollapsed(false)}
                 style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                ▼ Expand drawing
+                {t.newReportExpandDrawing}
               </button>
             </div>
           ) : (
@@ -1646,15 +1651,15 @@ export function NewReportTab({
                           minWidth: 190, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", fontSize: 11, zIndex: 50,
                           color: "#1c2b1f", cursor: "default", textAlign: "left",
                         }} onClick={e => e.stopPropagation()}>
-                          <p style={{ fontWeight: 700, marginBottom: 4 }}>Pin {pin.id}</p>
+                          <p style={{ fontWeight: 700, marginBottom: 4 }}>{t.newReportPin} {pin.id}</p>
                           <p style={{ color: "#6b8a70", fontSize: 10, marginBottom: 8 }}>
-                            {linkedTask ? `→ ${linkedTask.description || `Task ${tasks.indexOf(linkedTask) + 1}`}` : "Not linked"}
+                            {linkedTask ? `→ ${linkedTask.description || `${t.newReportTask} ${tasks.indexOf(linkedTask) + 1}`}` : t.newReportNotLinked}
                           </p>
                           <div style={{ position: "relative", display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <button type="button"
                               onClick={() => setPinLinkOpen(pinLinkOpen === pin.id ? null : pin.id)}
                               style={{ fontSize: 10, color: "#4338ca", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                              Link to task ▾
+                              {t.newReportLinkToTask}
                             </button>
                             <button type="button"
                               onClick={() => {
@@ -1666,7 +1671,7 @@ export function NewReportTab({
                                 setSelectedPinId(null); setPinLinkOpen(null);
                               }}
                               style={{ fontSize: 10, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                              Delete pin
+                              {t.newReportDeletePin}
                             </button>
                             {pinLinkOpen === pin.id && (
                               <div style={{
@@ -1675,9 +1680,9 @@ export function NewReportTab({
                                 boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200,
                               }}>
                                 {tasks.length === 0 ? (
-                                  <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>No tasks yet</p>
-                                ) : tasks.map((t, ti) => (
-                                  <button key={t.id} type="button"
+                                  <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>{t.newReportNoTasksYet}</p>
+                                ) : tasks.map((task, ti) => (
+                                  <button key={task.id} type="button"
                                     style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
                                     className="hover:bg-slate-50"
                                     onClick={() => {
@@ -1686,16 +1691,16 @@ export function NewReportTab({
                                         setTasks(prev => prev.map(t2 => t2.id === pin.linkedTaskId ? { ...t2, linkedPinId: null } : t2));
                                       }
                                       // Unlink any other pin that was linked to this task
-                                      const existingPin = pins.find(p => p.id !== pin.id && p.linkedTaskId === t.id);
+                                      const existingPin = pins.find(p => p.id !== pin.id && p.linkedTaskId === task.id);
                                       if (existingPin) {
                                         setPins(prev => prev.map(p => p.id === existingPin.id ? { ...p, linkedTaskId: null } : p));
-                                        setTasks(prev => prev.map(t2 => t2.id === t.id ? { ...t2, linkedPinId: null } : t2));
+                                        setTasks(prev => prev.map(t2 => t2.id === task.id ? { ...t2, linkedPinId: null } : t2));
                                       }
-                                      setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: t.id } : p));
-                                      setTasks(prev => prev.map(t2 => t2.id === t.id ? { ...t2, linkedPinId: pin.id } : t2));
+                                      setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: task.id } : p));
+                                      setTasks(prev => prev.map(t2 => t2.id === task.id ? { ...t2, linkedPinId: pin.id } : t2));
                                       setPinLinkOpen(null); setSelectedPinId(null);
                                     }}>
-                                    {t.description || `Task ${ti + 1}`}
+                                    {task.description || `${t.newReportTask} ${ti + 1}`}
                                   </button>
                                 ))}
                               </div>
@@ -1711,13 +1716,13 @@ export function NewReportTab({
               <div style={{ background: "#f4f7f5", borderTop: "1px solid #e2e8e4", padding: "7px 12px", display: "flex", alignItems: "center", fontSize: 9, color: "#6b8a70" }}>
                 <span style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> Linked to task
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> {t.newReportLinkedToTask}
                   </span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1d6ecc", display: "inline-block" }} /> Not yet linked
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1d6ecc", display: "inline-block" }} /> {t.newReportNotYetLinked}
                   </span>
                 </span>
-                <span>Click drawing to add pin · Click pin to link or rename</span>
+                <span>{t.newReportPinHint}</span>
               </div>
             </>
           )}
@@ -1748,7 +1753,7 @@ export function NewReportTab({
 
         {/* Empty state */}
         {tasks.length === 0 && (
-          <p className="py-7 text-center text-xs text-slate-300 italic">No tasks yet — click Add Task below</p>
+          <p className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoTasksClickAdd}</p>
         )}
 
         {/* Task cards */}
@@ -1798,7 +1803,7 @@ export function NewReportTab({
                           borderRadius: 4, padding: "2px 7px", fontSize: 9.5, fontWeight: 700,
                           cursor: "pointer", whiteSpace: "nowrap",
                         }}>
-                        — No pin
+                        {t.newReportNoPin}
                       </button>
                       {taskPinOpen === row.id && (
                         <div style={{
@@ -1808,7 +1813,7 @@ export function NewReportTab({
                         }}>
                           {pins.filter(p => p.linkedTaskId === null).length === 0 ? (
                             <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>
-                              {pins.length === 0 ? "No pins on drawing yet" : "All pins are linked"}
+                              {pins.length === 0 ? t.newReportNoPinsOnDrawing : t.newReportAllPinsLinked}
                             </p>
                           ) : pins.filter(p => p.linkedTaskId === null).map(pin => (
                             <button key={pin.id} type="button"
@@ -1836,14 +1841,14 @@ export function NewReportTab({
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
                       className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#ccc] truncate w-full p-0"
                       style={{ fontSize: 13, color: "#1a1a1a" }}
-                      placeholder="Task description…" />
+                      placeholder={t.newReportTaskDescPh} />
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                       <Input data-testid={`input-task-area-${i}`} value={row.area}
                         onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
                         className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent placeholder:text-[#ccc] truncate p-0 w-full"
                         style={{ fontSize: 12, color: "#555", fontWeight: 500 }}
-                        placeholder="Area / Location" />
+                        placeholder={t.newReportAreaLocationPh} />
                     </div>
                   </div>
 
@@ -1853,7 +1858,7 @@ export function NewReportTab({
                   {/* Worker display */}
                   <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     {row.workers.length === 0 ? (
-                      <span style={{ fontSize: 12, color: "#ddd" }}>No workers assigned</span>
+                      <span style={{ fontSize: 12, color: "#ddd" }}>{t.newReportNoWorkersAssigned}</span>
                     ) : (
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {mainWorker && (
@@ -1872,7 +1877,7 @@ export function NewReportTab({
                                 })()}
                               </span>
                               <span style={{ fontSize: 10, color: "#aaa", whiteSpace: "nowrap" }}>
-                                {mainWorker.trade || "Worker"} · Main
+                                {mainWorker.trade || t.newReportWorker} · {t.newReportMain}
                               </span>
                             </div>
                           </div>
@@ -1934,17 +1939,17 @@ export function NewReportTab({
                 {deleteConfirm === row.id && (
                   <div style={{ background: "#fee2e2", borderTop: "1px solid #fecaca", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "#dc2626" }}
                     onClick={e => e.stopPropagation()}>
-                    <span style={{ flex: 1 }}>Delete this task?</span>
+                    <span style={{ flex: 1 }}>{t.newReportDeleteThisTask}</span>
                     <button type="button"
                       onClick={() => setDeleteConfirm(null)}
                       className="px-2.5 py-1 text-slate-600 border border-slate-200 rounded text-[11px] bg-white hover:bg-slate-50 transition-colors">
-                      Cancel
+                      {t.newReportCancel}
                     </button>
                     <button type="button"
                       onClick={() => handleDeleteTask(row, i)}
                       className="px-2.5 py-1 text-white rounded text-[11px] hover:bg-red-700 transition-colors"
                       style={{ background: "#dc2626" }}>
-                      Delete
+                      {t.newReportDelete}
                     </button>
                   </div>
                 )}
@@ -1956,7 +1961,7 @@ export function NewReportTab({
 
                       {/* Col A: Worker Assignment */}
                       <div style={{ paddingRight: 16, borderRight: "1px solid #f5f5f5" }}>
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Worker Assignment</p>
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>{t.newReportWorkerAssignment}</p>
 
                         {/* Assigned list */}
                         {row.workers.length > 0 && (
@@ -1975,7 +1980,7 @@ export function NewReportTab({
                                 {tradeBadge(w.trade)}
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                                   w.role === "main" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                                }`}>{w.role === "main" ? "Main" : "Assist"}</span>
+                                }`}>{w.role === "main" ? t.newReportMain : t.newReportAssist}</span>
                                 <button type="button"
                                   onClick={() => setTasks(tasks.map(r => r.id === row.id
                                     ? { ...r, workers: r.workers.filter((_, idx) => idx !== wi) } : r))}
@@ -1990,16 +1995,16 @@ export function NewReportTab({
                         {/* Assign dropdown */}
                         {manpower.length === 0 ? (
                           <button type="button" disabled
-                            title="Add workers in the Manpower section first"
+                            title={t.newReportAddWorkersFirst}
                             className="w-full text-left text-[11px] text-slate-300 border border-dashed border-slate-200 rounded-md px-3 py-2 cursor-not-allowed">
-                            + Assign worker from Manpower
+                            {t.newReportAssignWorker}
                           </button>
                         ) : (
                           <div className="relative">
                             <button type="button"
                               onClick={e => { e.stopPropagation(); setAssignOpen(assignOpen === row.id ? null : row.id); }}
                               className="w-full text-left text-[11px] text-blue-600 border border-dashed border-blue-200 rounded-md px-3 py-2 hover:bg-blue-50 transition-colors">
-                              + Assign worker from Manpower
+                              {t.newReportAssignWorker}
                             </button>
                             {assignOpen === row.id && (
                               <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[200px]">
@@ -2025,12 +2030,12 @@ export function NewReportTab({
                                       <span className="flex-1 truncate">{mp.workerName}</span>
                                       {tradeBadge(mp.trade)}
                                       {row.workers.length === 0
-                                        ? <span className="text-[9px] text-green-600 shrink-0">→ Main</span>
-                                        : <span className="text-[9px] text-slate-400 shrink-0">Assist</span>}
+                                        ? <span className="text-[9px] text-green-600 shrink-0">{t.newReportToMain}</span>
+                                        : <span className="text-[9px] text-slate-400 shrink-0">{t.newReportAssist}</span>}
                                     </button>
                                   ))}
                                 {manpower.filter(mp => mp.workerName && !row.workers.some(w => w.name === mp.workerName)).length === 0 && (
-                                  <p className="px-3 py-2 text-[11px] text-slate-400 italic">All workers assigned</p>
+                                  <p className="px-3 py-2 text-[11px] text-slate-400 italic">{t.newReportAllAssigned}</p>
                                 )}
                               </div>
                             )}
@@ -2041,7 +2046,7 @@ export function NewReportTab({
                       {/* Col B: 작업사진 — 2×2 photo grid */}
                       <div style={{ padding: "0 16px", borderRight: "1px solid #f5f5f5" }}>
                         <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-                          작업사진{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
+                          {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
                         </p>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           {[0, 1, 2, 3].map(slotIdx => {
@@ -2088,7 +2093,7 @@ export function NewReportTab({
                                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#818cf8"; (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
                                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLElement).style.background = "#fafafa"; }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
-                                <span style={{ fontSize: 11, color: "#ccc" }}>사진 추가</span>
+                                <span style={{ fontSize: 11, color: "#ccc" }}>{t.newReportAddPhoto}</span>
                               </button>
                             );
                           })}
@@ -2098,7 +2103,7 @@ export function NewReportTab({
                       {/* Col C: Drawing Reference (compact) + Notes */}
                       <div style={{ paddingLeft: 16 }}>
                         {/* Drawing Reference — compact */}
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Drawing Ref</p>
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportDrawingRef}</p>
                         {row.linkedPinId ? (
                           <div
                             style={{
@@ -2116,9 +2121,9 @@ export function NewReportTab({
                             }}>{row.linkedPinId}</div>
                             <div>
                               <p style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", lineHeight: 1.3 }}>
-                                Pin {row.linkedPinId}
+                                {t.newReportPin} {row.linkedPinId}
                               </p>
-                              <p style={{ fontSize: 10, color: "#a78bfa", lineHeight: 1.3 }}>Jump to drawing ↑</p>
+                              <p style={{ fontSize: 10, color: "#a78bfa", lineHeight: 1.3 }}>{t.newReportJumpToDrawing}</p>
                             </div>
                           </div>
                         ) : (
@@ -2136,17 +2141,17 @@ export function NewReportTab({
                               fontWeight: 700, flexShrink: 0,
                             }}>—</div>
                             <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", lineHeight: 1.3 }}>No pin linked</p>
-                              <p style={{ fontSize: 10, color: "#ccc", lineHeight: 1.3 }}>Click to link ↑</p>
+                              <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", lineHeight: 1.3 }}>{t.newReportNoPinLinked}</p>
+                              <p style={{ fontSize: 10, color: "#ccc", lineHeight: 1.3 }}>{t.newReportClickToLink}</p>
                             </div>
                           </div>
                         )}
 
                         {/* Notes */}
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Notes</p>
+                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportNotes}</p>
                         <Textarea value={row.detailNotes}
                           onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
-                          placeholder="Issues encountered, corrective actions..."
+                          placeholder={t.newReportTaskNotesPh}
                           style={{
                             border: "1px solid #ebebeb", borderRadius: 8,
                             padding: "8px 10px", fontSize: 12, width: "100%",
@@ -2178,10 +2183,10 @@ export function NewReportTab({
             minWidth: 240, overflow: "hidden",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 18px" }}>
-              <span style={{ flex: 1, fontSize: 11.5 }}>Task deleted</span>
+              <span style={{ flex: 1, fontSize: 11.5 }}>{t.newReportTaskDeleted}</span>
               <button type="button" onClick={handleUndo}
                 style={{ color: "#86efac", fontWeight: 700, fontSize: 11.5, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                Undo
+                {t.newReportUndo}
               </button>
             </div>
             <div style={{ height: 3, background: "#374151" }}>
@@ -2194,7 +2199,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
-      <Section num={4} title="Materials" icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
+      <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <colgroup>
@@ -2208,17 +2213,17 @@ export function NewReportTab({
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {(["Photo","Size","Material Name"] as const).map((lbl, ci) => (
+              {([t.newReportPhoto, t.newReportSize, t.newReportMaterialName] as const).map((lbl, ci) => (
                 <th key={lbl} className={`py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? "px-2 text-center" : ci === 1 ? "pl-2 pr-1 text-right" : "px-2 text-left"}`}>{lbl}</th>
               ))}
-              <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">Qty / Unit</th>
-              {scopeItems.length > 0 && <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left">Scope Link</th>}
+              <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
+              {scopeItems.length > 0 && <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left">{t.newReportScopeLink}</th>}
               <th className="py-2 px-1" />
             </tr>
           </thead>
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">No materials logged yet</td></tr>
+              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
             )}
             {materials.map((row, i) => {
               const { size } = extractSize(row.description);
@@ -2276,7 +2281,7 @@ export function NewReportTab({
                           color: "#2e7d32", background: "#e8f5e9",
                           border: "1px solid #a5d6a7", borderRadius: 4,
                           padding: "1px 5px", whiteSpace: "nowrap",
-                        }}>Inv</span>
+                        }}>{t.newReportInv}</span>
                       )}
                     </div>
                   </td>
@@ -2298,7 +2303,7 @@ export function NewReportTab({
                     ) : (
                       <input data-testid={`input-mat-unit-${i}`} value={row.unit}
                         onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                        placeholder="EA"
+                        placeholder={t.newReportUnitEAPh}
                         style={{
                           width: "100%", fontSize: 13, fontWeight: 600, textAlign: "center",
                           border: "none", background: "transparent",
@@ -2324,7 +2329,7 @@ export function NewReportTab({
                           setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                         }}
                         className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600">
-                        <option value="">— No link</option>
+                        <option value="">{t.newReportNoLink}</option>
                         {scopeItems.filter((s: any) => s.isActive).map((s: any) => (
                           <option key={s.id} value={s.id}>{s.itemName} ({s.unit})</option>
                         ))}
@@ -2348,14 +2353,14 @@ export function NewReportTab({
         </table>
 
         </div>
-        <AddRow testId="btn-add-material" label="Add Material"
+        <AddRow testId="btn-add-material" label={t.newReportAddMaterial}
           onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
-            {inventoryItems.length} inventory items available — type to search
+            {t.newReportInvAvailable.replace("{n}", String(inventoryItems.length))}
             {scopeItems.length > 0 && (
-              <> · Scope Link auto-fills when an inventory item is linked to a scope item</>
+              <> · {t.newReportScopeAutoFill}</>
             )}
           </p>
         )}
@@ -2364,12 +2369,12 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
-      <Section num={5} title="Equipment" icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
+      <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
         <div className="mb-4">
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-            <Wrench className="w-3 h-3" /> Quick Add
+            <Wrench className="w-3 h-3" /> {t.newReportQuickAdd}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {EQUIPMENT_PRESETS.map((name) => (
@@ -2386,18 +2391,18 @@ export function NewReportTab({
         <div className="overflow-x-auto">
         <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: 900 }} data-testid="table-equipment">
           <TH cols={[
-            { label: "Size",           cls: "w-[80px] text-center" },
-            { label: "Equipment Name", cls: "w-[200px]" },
-            { label: "Brand",          cls: "w-[100px]" },
-            { label: "Qty",            cls: "w-[64px] text-center" },
-            { label: "Unit",           cls: "w-[64px] text-center" },
-            { label: "Hours Used",     cls: "w-[96px] text-center" },
-            { label: "Status",         cls: "w-[180px]" },
-            { label: "Notes",          cls: "w-[120px]" },
+            { label: t.newReportSize,        cls: "w-[80px] text-center" },
+            { label: t.newReportEqColName,   cls: "w-[200px]" },
+            { label: t.newReportBrand,       cls: "w-[100px]" },
+            { label: t.newReportEqColQty,    cls: "w-[64px] text-center" },
+            { label: t.newReportEqColUnit,   cls: "w-[64px] text-center" },
+            { label: t.newReportEqColHours,  cls: "w-[96px] text-center" },
+            { label: t.newReportStatus,      cls: "w-[180px]" },
+            { label: t.newReportColNotes,    cls: "w-[120px]" },
           ]} />
           <tbody>
             {equipment.length === 0 && (
-              <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">No equipment logged yet — use Quick Add above or add manually</td></tr>
+              <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoEquipment}</td></tr>
             )}
             {equipment.map((row, i) => {
               const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
@@ -2413,19 +2418,19 @@ export function NewReportTab({
                   <td className="py-1.5 px-2.5">
                     <Input data-testid={`input-eq-size-${i}`} value={row.size}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
-                      className="h-8 text-xs text-center w-full" placeholder='e.g. 40T' />
+                      className="h-8 text-xs text-center w-full" placeholder={t.newReportSizePh} />
                   </td>
                   {/* EQUIPMENT NAME */}
                   <td className="py-1.5 px-2.5">
                     <Input data-testid={`input-eq-name-${i}`} value={row.name}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                      className={cellInputCls} placeholder="Equipment name…" />
+                      className={cellInputCls} placeholder={t.newReportEqNamePh} />
                   </td>
                   {/* BRAND */}
                   <td className="py-1.5 px-2.5">
                     <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
-                      className={cellInputCls} placeholder="Brand…" />
+                      className={cellInputCls} placeholder={t.newReportEqBrandPh} />
                   </td>
                   {/* QTY */}
                   <td className="py-1.5 px-2">
@@ -2437,7 +2442,7 @@ export function NewReportTab({
                   <td className="py-1.5 px-2">
                     <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center w-full" placeholder="EA" />
+                      className="h-8 text-xs text-center w-full" placeholder={t.newReportUnitEAPh} />
                   </td>
                   {/* HOURS USED */}
                   <td className="py-1.5 px-2">
@@ -2470,9 +2475,9 @@ export function NewReportTab({
                             appearance: "none", width: "100%", cursor: "pointer",
                             fontWeight: 500, outline: "none",
                           }}>
-                          <option value="operational">✓  Operational</option>
-                          <option value="partial">⚠  Partial Issue</option>
-                          <option value="broken">✕  Broken Down</option>
+                          <option value="operational">{t.newReportEqOperational}</option>
+                          <option value="partial">{t.newReportEqPartial}</option>
+                          <option value="broken">{t.newReportEqBroken}</option>
                         </select>
                         <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>
                       </div>
@@ -2510,7 +2515,7 @@ export function NewReportTab({
                   <td className="py-1.5 px-2.5">
                     <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className={cellInputCls} placeholder="Optional" />
+                      className={cellInputCls} placeholder={t.newReportOptional} />
                   </td>
                   {/* DELETE */}
                   <td className="py-1.5 px-1 w-[32px] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -2522,36 +2527,36 @@ export function NewReportTab({
           </tbody>
         </table>
         </div>
-        <AddRow testId="btn-add-equipment" label="Add Custom"
+        <AddRow testId="btn-add-equipment" label={t.newReportAddCustom}
           onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════
           §6 — Notes / Remarks
       ══════════════════════════════════════════════════════ */}
-      <Section num={6} title="Notes / Remarks" icon={<FileText className="w-4 h-4" />}
+      <Section num={6} title={t.newReportNotesRemarks} icon={<FileText className="w-4 h-4" />}
         summary={generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : undefined}
         defaultOpen={false}>
         <div className="space-y-4">
           <div>
-            <FL>General Notes</FL>
+            <FL>{t.newReportGeneralNotes}</FL>
             <Textarea data-testid="input-general-notes" value={generalNotes}
               onChange={(e) => setGeneralNotes(e.target.value)}
-              placeholder="Any general observations, site conditions, or notes for the record…"
+              placeholder={t.newReportGeneralNotesPh}
               className="text-sm min-h-[88px] resize-y" />
           </div>
           <div>
-            <FL>Safety Observations</FL>
+            <FL>{t.newReportSafetyObs}</FL>
             <Textarea data-testid="input-safety-notes" value={safetyNotes}
               onChange={(e) => setSafetyNotes(e.target.value)}
-              placeholder="Safety incidents, near misses, toolbox talk topics, PPE compliance, hazard observations…"
+              placeholder={t.newReportSafetyNotesPh}
               className="text-sm min-h-[80px] resize-y" />
           </div>
           <div>
-            <FL>Inspector / Visitor on Site</FL>
+            <FL>{t.newReportInspector}</FL>
             <Input data-testid="input-inspector-visitor" value={inspectorVisitor}
               onChange={(e) => setInspectorVisitor(e.target.value)}
-              placeholder="Name and affiliation of any inspector or visitor present today"
+              placeholder={t.newReportInspectorPh}
               className="h-9 text-sm" />
           </div>
         </div>

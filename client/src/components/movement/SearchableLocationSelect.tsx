@@ -4,6 +4,7 @@ import { Search, X, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateLocation, useDeleteLocation } from "@/hooks/use-reference-data";
+import { useLanguage } from "@/hooks/use-language";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -21,7 +22,7 @@ export function SearchableLocationSelect({
   value,
   onChange,
   locations,
-  placeholder = "Search or type to create…",
+  placeholder,
   testId = "location-select",
   dark = false,
 }: {
@@ -32,6 +33,8 @@ export function SearchableLocationSelect({
   testId?: string;
   dark?: boolean;
 }) {
+  const { t } = useLanguage();
+  const ph = placeholder ?? t.movSearchTypeToFilter;
   const { toast } = useToast();
   const qc = useQueryClient();
   const createLocation = useCreateLocation();
@@ -113,9 +116,9 @@ export function SearchableLocationSelect({
       onChange(loc.id);
       setSearch("");
       setOpen(false);
-      toast({ title: "Location created", description: `"${loc.name}" added and selected.` });
+      toast({ title: t.movSearchLocCreated, description: t.movSearchLocCreatedDesc.replace("{name}", loc.name) });
     } catch (err: any) {
-      toast({ title: "Failed to create location", description: err.message, variant: "destructive" });
+      toast({ title: t.movSearchLocCreateFail, description: err.message, variant: "destructive" });
     }
   }
 
@@ -127,10 +130,10 @@ export function SearchableLocationSelect({
 
       const dismissRef = { fn: () => {} };
       const { dismiss } = toast({
-        title: "Location removed",
+        title: t.movSearchLocRemoved,
         description: (
           <div className="flex items-center justify-between gap-3 mt-0.5">
-            <span className="text-sm">"{loc.name}" has been deleted.</span>
+            <span className="text-sm">{t.movSearchLocRemovedDesc.replace("{name}", loc.name)}</span>
             <button
               type="button"
               className="text-xs font-semibold text-brand-700 hover:text-brand-900 underline underline-offset-2 shrink-0"
@@ -139,20 +142,20 @@ export function SearchableLocationSelect({
                 try {
                   await fetch(`/api/locations/${loc.id}/restore`, { method: "POST", credentials: "include" });
                   await qc.invalidateQueries({ queryKey: ["/api/locations"] });
-                  toast({ title: "Undone", description: `"${loc.name}" has been restored.` });
+                  toast({ title: t.movSearchUndone, description: t.movSearchRestoredDesc.replace("{name}", loc.name) });
                 } catch {
-                  toast({ title: "Undo failed", variant: "destructive" });
+                  toast({ title: t.movSearchUndoFail, variant: "destructive" });
                 }
               }}
             >
-              Undo
+              {t.movSearchUndo}
             </button>
           </div>
         ) as any,
       });
       dismissRef.fn = dismiss;
     } catch (err: any) {
-      toast({ title: "Failed to delete location", description: err.message, variant: "destructive" });
+      toast({ title: t.movSearchLocDeleteFail, description: err.message, variant: "destructive" });
     }
   }
 
@@ -189,14 +192,14 @@ export function SearchableLocationSelect({
             style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: "#527856", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
             className={D ? "group-hover:opacity-100" : "opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"}
             data-testid={`${testId}-delete-${loc.id}`}
-            title="Delete location"
+            title={t.movSearchDeleteLocation}
           >
             <Trash2 style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
           </button>
         </div>
       ))}
       {filtered.length === 0 && !showCreate && (
-        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>No locations found</p>
+        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchNoLocations}</p>
       )}
       {showCreate && (
         <button
@@ -208,7 +211,7 @@ export function SearchableLocationSelect({
           data-testid={`${testId}-create`}
         >
           <Plus style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
-          {createLocation.isPending ? "Creating…" : `Create location "${search.trim()}"`}
+          {createLocation.isPending ? t.movSearchCreating : t.movSearchCreateLocation.replace("{name}", search.trim())}
         </button>
       )}
     </div>
@@ -263,7 +266,7 @@ export function SearchableLocationSelect({
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder={placeholder}
+                  placeholder={ph}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   style={{
@@ -296,7 +299,7 @@ export function SearchableLocationSelect({
                   }}
                   data-testid={`${testId}-close`}
                 >
-                  Done
+                  {t.movDoneBtn}
                 </button>
               </div>
               {/* Results */}
@@ -325,7 +328,7 @@ export function SearchableLocationSelect({
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Type to filter or create…"
+                placeholder={t.movTypeToFilterCreate}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca", border: "none" } : undefined}

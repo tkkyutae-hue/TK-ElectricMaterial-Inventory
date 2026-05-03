@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Search, X, ChevronDown, Plus } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -20,7 +21,7 @@ export function SearchableProjectSelect({
   projects,
   hideCreate = false,
   dark = false,
-  placeholder = "Select project…",
+  placeholder,
 }: {
   value?: number | null;
   onChange: (id: number | undefined) => void;
@@ -29,6 +30,8 @@ export function SearchableProjectSelect({
   dark?: boolean;
   placeholder?: string;
 }) {
+  const { t } = useLanguage();
+  placeholder = placeholder ?? t.movSearchProjPlaceholder;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -112,7 +115,7 @@ export function SearchableProjectSelect({
           className={D ? undefined : "w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"}
           data-testid="project-clear"
         >
-          Clear selection
+          {t.movSearchProjClear}
         </button>
       )}
       {filtered.map(p => (
@@ -133,7 +136,7 @@ export function SearchableProjectSelect({
         </button>
       ))}
       {filtered.length === 0 && (
-        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>No active projects found</p>
+        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchProjNone}</p>
       )}
       {!hideCreate && (
         <div style={D ? { borderTop: "1px solid #203023", padding: "8px 12px" } : undefined} className={D ? undefined : "border-t border-slate-100 px-3 py-2"}>
@@ -145,7 +148,7 @@ export function SearchableProjectSelect({
             data-testid="project-create-link"
           >
             <Plus style={{ width: 12, height: 12 }} className={D ? undefined : "w-3 h-3"} />
-            Create new project
+            {t.movSearchProjCreate}
           </a>
         </div>
       )}
@@ -201,7 +204,7 @@ export function SearchableProjectSelect({
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Search by PO or project name…"
+                  placeholder={t.movSearchProjSearchPh}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   style={{
@@ -234,7 +237,7 @@ export function SearchableProjectSelect({
                   }}
                   data-testid="project-picker-close"
                 >
-                  Done
+                  {t.movSearchProjDone}
                 </button>
               </div>
               {/* Results */}
@@ -261,7 +264,7 @@ export function SearchableProjectSelect({
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search by PO or project name…"
+                placeholder={t.movSearchProjSearchPh}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca", border: "none" } : undefined}

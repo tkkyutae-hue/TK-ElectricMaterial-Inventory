@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
+import { useLanguage } from "@/hooks/use-language";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -14,6 +15,7 @@ interface PdfViewerProps {
 }
 
 export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfViewerProps) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,25 +71,25 @@ export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfVi
         border: "1px dashed #e2e8e4", borderRadius: 6, padding: 24, textAlign: "center",
       }}>
         <span style={{ fontSize: 28 }}>📄</span>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0 }}>Preview unavailable</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", margin: 0 }}>{t.pdfViewerPreviewUnavailable}</p>
         <p style={{ fontSize: 10.5, color: "#9ca3af", margin: 0, maxWidth: 260 }}>
           {error.includes("PDF") || error.includes("worker")
-            ? "Unable to render this PDF in the browser."
+            ? t.pdfViewerRenderError
             : error}
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
           <a href={url} target="_blank" rel="noreferrer"
             style={{ fontSize: 11, padding: "5px 12px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#1d6ecc", textDecoration: "none", fontWeight: 500 }}>
-            ↗ Open in new tab
+            {t.pdfViewerOpenNewTab}
           </a>
           <a href={url} download={filename}
             style={{ fontSize: 11, padding: "5px 12px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#374151", textDecoration: "none", fontWeight: 500 }}>
-            ⬇ Download PDF
+            {t.pdfViewerDownload}
           </a>
           {onReplaceClick && (
             <button type="button" onClick={onReplaceClick}
               style={{ fontSize: 11, padding: "5px 12px", border: "1px solid #fca5a5", borderRadius: 5, background: "#fff1f2", color: "#dc2626", cursor: "pointer", fontWeight: 500 }}>
-              ↺ Replace file
+              {t.pdfViewerReplaceFile}
             </button>
           )}
         </div>
@@ -102,7 +104,7 @@ export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfVi
           position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
           background: "#f1f5f2", zIndex: 5, minHeight: 80,
         }}>
-          <span style={{ fontSize: 11, color: "#6b8a70", animation: "pulse 1.2s infinite" }}>Loading PDF…</span>
+          <span style={{ fontSize: 11, color: "#6b8a70", animation: "pulse 1.2s infinite" }}>{t.pdfViewerLoading}</span>
         </div>
       )}
       <canvas
@@ -120,7 +122,7 @@ export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfVi
             style={{ background: "none", border: "none", cursor: currentPage <= 1 ? "default" : "pointer", color: currentPage <= 1 ? "#c8d9cb" : "#3d5c45", fontSize: 13 }}>
             ‹
           </button>
-          <span>Page {currentPage} of {pageCount}</span>
+          <span>{t.pdfViewerPageOf.replace("{current}", String(currentPage)).replace("{total}", String(pageCount))}</span>
           <button type="button" disabled={currentPage >= pageCount}
             onClick={() => setCurrentPage(p => p + 1)}
             style={{ background: "none", border: "none", cursor: currentPage >= pageCount ? "default" : "pointer", color: currentPage >= pageCount ? "#c8d9cb" : "#3d5c45", fontSize: 13 }}>

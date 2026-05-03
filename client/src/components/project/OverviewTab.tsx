@@ -5,6 +5,7 @@ import {
   LayoutList, Hash, Clock,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useLanguage } from "@/hooks/use-language";
 import { statusConfig } from "./types";
 import { ProjectSummaryCard } from "./overview/ProjectSummaryCard";
 import { ReportsSummaryCard } from "./overview/ReportsSummaryCard";
@@ -20,6 +21,7 @@ function fmtMoney(v: number) {
 }
 
 export function OverviewTab({ project, projectId }: { project: any; projectId: number }) {
+  const { t } = useLanguage();
   // ── Data ──
   const { data: reports = [] } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
@@ -76,19 +78,19 @@ export function OverviewTab({ project, projectId }: { project: any; projectId: n
 
   // ── KPI definitions ──
   const scopeKpis = [
-    { label: "Scope Items",           value: totalScopeItems,                                   icon: LayoutList, color: "text-indigo-600", bg: "bg-indigo-50",  testId: "overview-scope-count"    },
-    { label: "Total Est. Qty",        value: totalEstQty.toLocaleString(),                       icon: Hash,       color: "text-brand-600",  bg: "bg-brand-50",   testId: "overview-est-qty"        },
-    { label: "Last Submitted Report", value: lastSubmittedDate
+    { label: t.projOverviewScopeItems,    value: totalScopeItems,                                   icon: LayoutList, color: "text-indigo-600", bg: "bg-indigo-50",  testId: "overview-scope-count"    },
+    { label: t.projOverviewTotalEstQty,   value: totalEstQty.toLocaleString(),                       icon: Hash,       color: "text-brand-600",  bg: "bg-brand-50",   testId: "overview-est-qty"        },
+    { label: t.projOverviewLastSubmitted, value: lastSubmittedDate
         ? format(new Date(lastSubmittedDate + "T00:00:00"), "MMM d, yyyy")
         : null,
       icon: Clock, color: "text-slate-500", bg: "bg-slate-50", testId: "overview-last-submitted", span: true },
   ];
 
   const matKpis = [
-    { label: "Total Issued",   value: matIssued.toLocaleString(),   icon: ArrowUpRight,  color: "text-brand-600",   bg: "bg-brand-50"   },
-    { label: "Total Returned", value: matReturned.toLocaleString(), icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Net Used",       value: matNetUsed.toLocaleString(),  icon: Package,       color: "text-slate-600",   bg: "bg-slate-50"   },
-    { label: "Est. Value",     value: fmtMoney(matValue),           icon: DollarSign,    color: "text-indigo-600",  bg: "bg-indigo-50"  },
+    { label: t.projOverviewTotalIssued,   value: matIssued.toLocaleString(),   icon: ArrowUpRight,  color: "text-brand-600",   bg: "bg-brand-50"   },
+    { label: t.projOverviewTotalReturned, value: matReturned.toLocaleString(), icon: ArrowDownRight, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: t.projOverviewNetUsed,       value: matNetUsed.toLocaleString(),  icon: Package,       color: "text-slate-600",   bg: "bg-slate-50"   },
+    { label: t.projOverviewEstValue,      value: fmtMoney(matValue),           icon: DollarSign,    color: "text-indigo-600",  bg: "bg-indigo-50"  },
   ];
 
   return (
@@ -122,7 +124,7 @@ export function OverviewTab({ project, projectId }: { project: any; projectId: n
               <p className="text-xs text-slate-400">{s.label}</p>
               {s.value != null
                 ? <p className="text-2xl font-display font-bold text-slate-900">{s.value}</p>
-                : <p className="text-sm font-semibold text-slate-800 mt-0.5"><span className="text-slate-400 font-normal text-xs">No submitted reports yet</span></p>
+                : <p className="text-sm font-semibold text-slate-800 mt-0.5"><span className="text-slate-400 font-normal text-xs">{t.projOverviewNoSubmittedYet}</span></p>
               }
             </div>
           </div>

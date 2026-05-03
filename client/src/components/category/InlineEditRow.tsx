@@ -5,6 +5,7 @@ import type { CategoryGroupedItem, EditDraft, NewRowDraft, ClassifyPreview } fro
 import { UOM_OPTIONS, generateAutoSku } from "./types";
 import { LocationCombobox } from "./LocationCombobox";
 import { isReelEligible } from "@/lib/reelEligibility";
+import { useLanguage } from "@/hooks/use-language";
 
 // ── Tracking Mode Pills ───────────────────────────────────────────────────────
 type TrackingModeValue = "standard" | "reel" | null;
@@ -20,15 +21,16 @@ function TrackingModePills({
   error?: string;
   onChange: (mode: TrackingModeValue, err: string) => void;
 }) {
+  const { t } = useLanguage();
   const options: { mode: TrackingModeValue; label: string }[] = [
-    { mode: null,       label: "Auto"  },
-    { mode: "standard", label: "Std"   },
-    { mode: "reel",     label: "Reel"  },
+    { mode: null,       label: t.catInlineEditAuto  },
+    { mode: "standard", label: t.catInlineEditStd   },
+    { mode: "reel",     label: t.catInlineEditReel  },
   ];
   return (
     <div className="mt-1.5">
       <div className="flex items-center gap-1">
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mr-0.5">Mode</span>
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mr-0.5">{t.catInlineEditMode}</span>
         {options.map(({ mode, label }) => {
           const isActive = (value ?? null) === mode;
           const isInvalid = mode === "reel" && !reelAllowed;
@@ -38,7 +40,7 @@ function TrackingModePills({
               type="button"
               onClick={() => {
                 const err = mode === "reel" && !reelAllowed
-                  ? "This item type is not eligible for reel tracking"
+                  ? t.catNotEligibleReel
                   : "";
                 onChange(mode, err);
               }}
@@ -68,6 +70,7 @@ interface InlineEditRowProps {
 }
 
 export function InlineEditRow({ item, draft, locations, onChange, onDelete }: InlineEditRowProps) {
+  const { t } = useLanguage();
   const [showImageInput, setShowImageInput] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const inputCls = "w-full text-xs bg-white border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400";
@@ -87,10 +90,10 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
             </div>
           )}
           <button type="button" onClick={() => setShowImageInput(v => !v)} className="text-[9px] text-brand-600 hover:text-brand-800 leading-none" data-testid={`btn-edit-photo-${item.id}`}>
-            {showImageInput ? "hide" : "edit"}
+            {showImageInput ? t.catInlineEditHide : t.catInlineEditEdit}
           </button>
           {showImageInput && (
-            <input type="text" value={draft.imageUrl ?? ""} onChange={e => onChange({ imageUrl: e.target.value || null })} placeholder="Image URL…"
+            <input type="text" value={draft.imageUrl ?? ""} onChange={e => onChange({ imageUrl: e.target.value || null })} placeholder={t.catInlineEditPhotoUrlPh}
               className="w-20 text-[10px] border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-brand-500" data-testid={`input-edit-photo-${item.id}`} />
           )}
         </div>
@@ -108,7 +111,7 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
         />
       </TableCell>
       <TableCell className="py-2 text-center">
-        <div className="text-sm font-semibold text-slate-500 tabular-nums" data-testid={`text-edit-on-hand-${item.id}`} title="Read-only — adjust via inventory movements">
+        <div className="text-sm font-semibold text-slate-500 tabular-nums" data-testid={`text-edit-on-hand-${item.id}`} title={t.catInlineEditReadOnly}>
           {item.quantityOnHand.toLocaleString()}
         </div>
       </TableCell>
@@ -125,14 +128,14 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
         <div className="flex items-center justify-center">
           {confirmDelete ? (
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[10px] text-red-600 font-medium whitespace-nowrap leading-tight">정말 삭제하시겠습니까?</span>
+              <span className="text-[10px] text-red-600 font-medium whitespace-nowrap leading-tight">{t.catInlineEditConfirmDelete}</span>
               <div className="flex gap-1 items-center">
-                <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>확인</button>
-                <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600" data-testid={`btn-cancel-delete-${item.id}`}>취소</button>
+                <button type="button" onClick={onDelete} className="text-[10px] text-red-600 font-semibold hover:text-red-800 whitespace-nowrap" data-testid={`btn-confirm-delete-${item.id}`}>{t.catInlineEditConfirm}</button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="text-[10px] text-slate-400 hover:text-slate-600" data-testid={`btn-cancel-delete-${item.id}`}>{t.cmnCancel}</button>
               </div>
             </div>
           ) : (
-            <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Delete item" data-testid={`btn-delete-row-${item.id}`}>
+            <button type="button" onClick={() => setConfirmDelete(true)} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title={t.catInlineEditDeleteItem} data-testid={`btn-delete-row-${item.id}`}>
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
@@ -156,6 +159,7 @@ interface InlineNewRowProps {
 }
 
 export function InlineNewRow({ draft, familyName, categoryId, existingItems, existingSkus, locations, onChange, onRemove }: InlineNewRowProps) {
+  const { t } = useLanguage();
   const [preview, setPreview] = useState<ClassifyPreview | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,8 +214,8 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
 
   function validateSku(value: string): boolean {
     const up = value.trim().toUpperCase();
-    if (!up) { onChange({ skuError: "Required" }); return false; }
-    if (existingSkus.has(up)) { onChange({ skuError: "Duplicate SKU" }); return false; }
+    if (!up) { onChange({ skuError: t.catInlineEditRequired }); return false; }
+    if (existingSkus.has(up)) { onChange({ skuError: t.catInlineEditDuplicateSku }); return false; }
     onChange({ skuError: "" }); return true;
   }
 
@@ -219,8 +223,8 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
   const hasPreview = preview && (preview.family || preview.type);
 
   function statusLabel(qty: number): { label: string; cls: string } {
-    if (qty === 0) return { label: "Out of Stock", cls: "text-red-600 bg-red-50" };
-    return { label: "In Stock", cls: "text-green-700 bg-green-50" };
+    if (qty === 0) return { label: t.catInlineEditOutOfStock, cls: "text-red-600 bg-red-50" };
+    return { label: t.catInlineEditInStock, cls: "text-green-700 bg-green-50" };
   }
   const { label: stLabel, cls: stCls } = statusLabel(draft.quantityOnHand);
 
@@ -235,13 +239,13 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
   return (
     <TableRow className="bg-brand-50/40 border-b border-brand-100" data-testid={`row-new-item-${draft.tmpId}`}>
       <TableCell className="pl-5 py-2 align-top">
-        <input value={draft.sku} placeholder="SKU (auto)"
+        <input value={draft.sku} placeholder={t.catInlineEditSkuPh}
           onChange={e => handleSkuChange(e.target.value)}
           onBlur={e => validateSku(e.target.value)}
           className={inputCls(draft.skuError)} data-testid={`input-new-sku-${draft.tmpId}`} />
         {draft.skuError
           ? <p className="text-red-500 text-[10px] mt-0.5 font-medium">{draft.skuError}</p>
-          : skuIsAutoGenerated && <p className="text-[10px] text-brand-500 mt-0.5">Auto-generated</p>
+          : skuIsAutoGenerated && <p className="text-[10px] text-brand-500 mt-0.5">{t.catInlineEditAutoGen}</p>
         }
       </TableCell>
       <TableCell className="py-2 align-middle">
@@ -250,14 +254,14 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
         </div>
       </TableCell>
       <TableCell className="py-2 align-top">
-        <input value={draft.sizeLabel} placeholder='e.g. 3/4"' onChange={e => handleSizeChange(e.target.value)}
+        <input value={draft.sizeLabel} placeholder={t.catInlineEditSizePh} onChange={e => handleSizeChange(e.target.value)}
           className={inputCls()} data-testid={`input-new-size-${draft.tmpId}`} />
       </TableCell>
       <TableCell className="py-2 align-top">
-        <input value={draft.name} placeholder="Item name *" onChange={e => handleNameChange(e.target.value)}
+        <input value={draft.name} placeholder={t.catInlineEditNamePh} onChange={e => handleNameChange(e.target.value)}
           className={`${inputCls()} w-full`} title={draft.name} data-testid={`input-new-name-${draft.tmpId}`} />
         {!draft.nameManuallyEdited && draft.sizeLabel.trim() && !hasPreview && (
-          <p className="text-[10px] text-brand-500 mt-0.5">Auto-suggested</p>
+          <p className="text-[10px] text-brand-500 mt-0.5">{t.catInlineEditAutoSugg}</p>
         )}
         {hasPreview && (
           <div className="mt-1 space-y-0.5">
@@ -282,29 +286,29 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
                 onClick={() => setShowOverride(v => !v)}
                 className="text-[10px] text-slate-400 hover:text-brand-600 underline ml-0.5"
                 data-testid={`btn-override-classify-${draft.tmpId}`}
-                title="Override classification"
+                title={t.catInlineEditOverrideClassif}
               >
-                {showOverride ? "hide" : "override"}
+                {showOverride ? t.catInlineEditHide : t.catInlineEditOverride}
               </button>
             </div>
             {showOverride && (
               <div className="flex items-center gap-1.5 mt-1 p-1.5 bg-amber-50 border border-amber-200 rounded" data-testid={`classify-override-${draft.tmpId}`}>
                 <div className="flex-1">
-                  <p className="text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Subcategory</p>
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase mb-0.5">{t.catInlineEditSubcat}</p>
                   <input
                     value={draft.subcategoryOverride ?? preview?.subcategory ?? ''}
                     onChange={e => onChange({ subcategoryOverride: e.target.value || null })}
-                    placeholder={preview?.subcategory ?? 'e.g. EMT Conduit'}
+                    placeholder={preview?.subcategory ?? t.catInlineEditSubcatPh}
                     className="w-full text-[11px] bg-white border border-slate-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
                     data-testid={`input-override-subcategory-${draft.tmpId}`}
                   />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Detail Type</p>
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase mb-0.5">{t.catInlineEditDetailType}</p>
                   <input
                     value={draft.detailTypeOverride ?? preview?.detailType ?? ''}
                     onChange={e => onChange({ detailTypeOverride: e.target.value || null })}
-                    placeholder={preview?.detailType ?? 'e.g. Conduit'}
+                    placeholder={preview?.detailType ?? t.catInlineEditDetailTypePh}
                     className="w-full text-[11px] bg-white border border-slate-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
                     data-testid={`input-override-detailtype-${draft.tmpId}`}
                   />
@@ -314,7 +318,7 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
                     type="button"
                     onClick={() => onChange({ subcategoryOverride: null, detailTypeOverride: null })}
                     className="self-end mb-0.5 text-slate-400 hover:text-red-500"
-                    title="Reset to auto"
+                    title={t.catInlineEditResetAuto}
                     data-testid={`btn-reset-classify-${draft.tmpId}`}
                   >
                     <XIcon className="w-3 h-3" />
@@ -348,7 +352,7 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
       </TableCell>
       <TableCell className="py-2 pr-5 align-top">
         <div className="flex items-center justify-center">
-          <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title="Remove row" data-testid={`btn-remove-new-row-${draft.tmpId}`}>
+          <button type="button" onClick={onRemove} className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all" title={t.catInlineEditRemoveRow} data-testid={`btn-remove-new-row-${draft.tmpId}`}>
             <XIcon className="w-3.5 h-3.5" />
           </button>
         </div>

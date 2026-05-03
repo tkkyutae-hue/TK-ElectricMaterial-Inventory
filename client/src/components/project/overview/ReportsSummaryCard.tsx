@@ -1,4 +1,5 @@
 import { FileText } from "lucide-react";
+import { useLanguage } from "@/hooks/use-language";
 
 interface ReportsSummaryCardProps {
   totalReports: number;
@@ -7,14 +8,15 @@ interface ReportsSummaryCardProps {
 }
 
 export function ReportsSummaryCard({ totalReports, submittedCount, draftCount }: ReportsSummaryCardProps) {
+  const { t } = useLanguage();
   return (
     <div className="premium-card bg-white p-5">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-        <FileText className="w-3.5 h-3.5" />Daily Reports
+        <FileText className="w-3.5 h-3.5" />{t.projOverviewDailyReports}
       </p>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">Total Reports</span>
+          <span className="text-xs text-slate-500">{t.projOverviewTotalReports}</span>
           <span className="text-lg font-display font-bold text-slate-900">{totalReports}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -27,11 +29,11 @@ export function ReportsSummaryCard({ totalReports, submittedCount, draftCount }:
         </div>
         <div className="flex gap-3">
           <div className="flex-1 text-center px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100">
-            <p className="text-[10px] text-emerald-600 uppercase tracking-wide">Submitted</p>
+            <p className="text-[10px] text-emerald-600 uppercase tracking-wide">{t.projOverviewSubmitted}</p>
             <p className="text-xl font-bold text-emerald-700">{submittedCount}</p>
           </div>
           <div className="flex-1 text-center px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
-            <p className="text-[10px] text-amber-600 uppercase tracking-wide">Draft</p>
+            <p className="text-[10px] text-amber-600 uppercase tracking-wide">{t.projOverviewDraft}</p>
             <p className="text-xl font-bold text-amber-700">{draftCount}</p>
           </div>
         </div>

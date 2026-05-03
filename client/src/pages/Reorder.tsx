@@ -307,7 +307,32 @@ export default function Reorder() {
         qty: Number(r.recommendedQuantity ?? r.item?.reorderQuantity ?? 0),
       }));
   }, [recommendations, selectedIds]);
-  const selectedTotalCount = selectedRmsItems.length;
+  // Drive bar visibility from selectedIds directly so it appears on the very
+  // first click — independent of whether the recommendations query has
+  // re-resolved yet (otherwise the floating bar can fail to mount when the
+  // selected row's id doesn't match anything in the current data snapshot).
+  const selectedTotalCount = selectedIds.size;
+  // Number of selections that actually map to an exportable row right now;
+  // used to gate the Export CTA so users can't open the dialog with 0 rows.
+  const exportableCount = selectedRmsItems.length;
+
+  // Reconcile selectedIds against the current recommendations whenever the
+  // dataset changes (e.g. after regenerate / mark-ordered / dismiss). This
+  // keeps the bar's count, the dialog payload, and the Export CTA all in sync
+  // and prevents "phantom" selections from outliving their underlying row.
+  useEffect(() => {
+    if (!recommendations) return;
+    const validIds = new Set<number>((recommendations as any[]).map(r => r.id));
+    setSelectedIds(prev => {
+      let changed = false;
+      const next = new Set<number>();
+      prev.forEach(id => {
+        if (validIds.has(id)) next.add(id);
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [recommendations]);
 
   return (
     <div className="space-y-6">
@@ -576,7 +601,7 @@ export default function Reorder() {
               size="sm"
               className="h-8 bg-brand-600 hover:bg-brand-700 text-white rounded-full"
               onClick={() => setRmsOpen(true)}
-              disabled={selectedTotalCount === 0}
+              disabled={exportableCount === 0}
               data-testid="button-export-rms"
             >
               <FileSpreadsheet className="w-4 h-4 mr-1.5" />

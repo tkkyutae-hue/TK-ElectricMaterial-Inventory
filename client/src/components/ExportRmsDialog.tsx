@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { Download, Loader2 } from "lucide-react";
+import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
   id: number;
@@ -37,15 +40,46 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [requester, setRequester] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [projectName, setProjectName] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [completionDate, setCompletionDate] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
 
-  // When dialog opens, refresh row list from incoming selection.
+  // Load projects for the picker. Only fetched when dialog is open.
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: open,
+  });
+
+  // Project options sorted by name; label includes PO number when present.
+  const projectOptions = useMemo(() => {
+    const sorted = [...projects].sort((a, b) =>
+      String(a.name ?? "").localeCompare(String(b.name ?? "")),
+    );
+    return sorted.map((p) => ({
+      value: String(p.id),
+      label: p.poNumber ? `${p.name} (${p.poNumber})` : p.name,
+    }));
+  }, [projects]);
+
+  // When dialog opens, refresh row list from incoming selection and clear the
+  // picker so a new export starts from a clean slate.
   useEffect(() => {
-    if (open) setRows(initialItems);
+    if (open) {
+      setRows(initialItems);
+      setSelectedProjectId("");
+    }
   }, [open, initialItems]);
+
+  const handleSelectProject = (val: string) => {
+    setSelectedProjectId(val);
+    const p = projects.find((x) => String(x.id) === val);
+    if (p) {
+      setPoNumber(p.poNumber ?? "");
+      setProjectName(p.name ?? "");
+    }
+  };
 
   const truncated = rows.length > 50;
 
@@ -122,6 +156,21 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
           {/* Header inputs */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.reorderRmsHeaderSection}</h3>
+            <div className="space-y-1 mb-3">
+              <Label htmlFor="rms-project-picker" className="text-xs text-slate-600">
+                {t.reorderRmsProjectPickerLabel}
+              </Label>
+              <SearchableSelect
+                value={selectedProjectId}
+                onChange={handleSelectProject}
+                options={projectOptions}
+                placeholder={projectsLoading ? t.reorderRmsProjectPickerLoading : t.reorderRmsProjectPickerPlaceholder}
+                searchPlaceholder={t.reorderRmsProjectPickerSearch}
+                emptyText={projectsLoading ? t.reorderRmsProjectPickerLoading : t.reorderRmsProjectPickerEmpty}
+                data-testid="select-rms-project"
+              />
+              <p className="text-xs text-slate-400">{t.reorderRmsProjectPickerHint}</p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="rms-date" className="text-xs text-slate-600">{t.reorderRmsDate}</Label>

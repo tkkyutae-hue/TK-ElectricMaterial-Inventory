@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Package } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -16,6 +16,7 @@ export type RmsExportItem = {
   size: string;
   unit: string;
   qty: number;
+  imageUrl?: string | null;
 };
 
 type Props = {
@@ -218,19 +219,36 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <th className="text-left font-medium px-3 py-2 w-10">#</th>
-                      <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
+                      <th className="text-left font-medium px-3 py-2 w-14">{t.reorderRmsPhoto}</th>
                       <th className="text-left font-medium px-3 py-2 w-28">{t.reorderRmsSize}</th>
-                      <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
+                      <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
                       <th className="text-right font-medium px-3 py-2 w-28">{t.reorderRmsQty}</th>
+                      <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
                       <tr key={r.id} className="border-t border-slate-100" data-testid={`row-rms-${r.id}`}>
                         <td className="px-3 py-2 text-slate-400">{i + 1}</td>
-                        <td className="px-3 py-2 text-slate-900">{r.name}</td>
+                        <td className="px-3 py-2">
+                          {r.imageUrl ? (
+                            <img
+                              src={r.imageUrl}
+                              alt={r.name}
+                              className="w-10 h-10 rounded object-cover border border-slate-200"
+                              data-testid={`img-rms-photo-${r.id}`}
+                            />
+                          ) : (
+                            <div
+                              className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"
+                              data-testid={`img-rms-photo-${r.id}`}
+                            >
+                              <Package className="w-4 h-4" />
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-slate-600">{r.size || "—"}</td>
-                        <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
+                        <td className="px-3 py-2 text-slate-900">{r.name}</td>
                         <td className="px-3 py-2 text-right">
                           <Input
                             type="number"
@@ -241,6 +259,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                             data-testid={`input-rms-qty-${r.id}`}
                           />
                         </td>
+                        <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
                       </tr>
                     ))}
                   </tbody>

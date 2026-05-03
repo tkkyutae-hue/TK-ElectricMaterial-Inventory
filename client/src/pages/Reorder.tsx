@@ -294,6 +294,7 @@ export default function Reorder() {
         size: r.item?.sizeLabel ?? "",
         unit: r.item?.unitOfMeasure ?? "",
         qty: Number(r.recommendedQuantity ?? r.item?.reorderQuantity ?? 0),
+        imageUrl: r.item?.imageUrl ?? null,
       }));
   }, [recommendations, selectedIds]);
   // Drive bar visibility from selectedIds directly so it appears on the very

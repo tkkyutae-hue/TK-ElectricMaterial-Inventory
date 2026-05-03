@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import type { Lang, Translations } from "@/lib/i18n";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type Worker, type WorkerAttendance, type WorkerEvaluation } from "@shared/schema";
 
@@ -96,7 +97,7 @@ function getInterpretation(score: number): string {
   return "Critical / Immediate improvement needed";
 }
 
-function translateInterpretation(score: number, t: any): string {
+function translateInterpretation(score: number, t: Translations): string {
   if (score >= 9.0) return t.workerDetailExcellentInterp;
   if (score >= 7.0) return t.workerDetailStrongInterp;
   if (score >= 5.0) return t.workerDetailAvgInterp;
@@ -104,13 +105,26 @@ function translateInterpretation(score: number, t: any): string {
   return t.workerDetailCriticalInterp;
 }
 
-function translateSkillLabel(score: number, t: any): string {
+function translateSkillLabel(score: number, t: Translations): string {
   if (score >= 9.0) return t.workerDetailExcellent;
   if (score >= 7.0) return t.workerDetailStrong;
   if (score >= 5.0) return t.workerDetailAverage;
   if (score >= 3.0) return t.workerDetailWeak;
   return t.workerDetailCritical;
 }
+
+const ATT_STATUS_KEY: Record<string, keyof Translations> = {
+  ATTEND: "attStAttend", PTO: "attStPTO", SICK: "attStSick",
+  ABSENT: "attStAbsent", LATE: "attStLate", EARLY_LEAVE: "attStEarlyLeave",
+  WFH: "attStWFH", TRAINING: "attStTraining", SUSPENDED: "attStSuspended",
+  OFF: "attStOff", TERMINATED: "attStTerminated",
+};
+function attStatusLabel(value: string, t: Translations): string {
+  const k = ATT_STATUS_KEY[value];
+  return k ? (t[k] as string) : value;
+}
+
+const LANG_LOCALE: Record<Lang, string> = { en: "en-US", ko: "ko-KR", es: "es-ES" };
 
 function getPips(score: number): number {
   if (score >= 9.0) return 5;
@@ -294,7 +308,7 @@ export default function WorkerDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const workerId = parseInt(id ?? "0", 10);
 
@@ -712,7 +726,7 @@ export default function WorkerDetail() {
                   {worker.dateOfTk && (
                     <span>
                       <span className="font-medium text-slate-400">{t.workerDetailDateOfTk}</span>{" "}
-                      {new Date(worker.dateOfTk).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                      {new Date(worker.dateOfTk).toLocaleDateString(LANG_LOCALE[lang], { year: "numeric", month: "short", day: "numeric" })}
                     </span>
                   )}
                   {worker.nationality && (
@@ -744,7 +758,7 @@ export default function WorkerDetail() {
             <InfoRow label={t.workerDetailState}       value={worker.workerState} />
             <InfoRow label={t.workerDetailRegistered}  value={
               worker.createdAt
-                ? new Date(worker.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+                ? new Date(worker.createdAt).toLocaleDateString(LANG_LOCALE[lang], { year: "numeric", month: "long", day: "numeric" })
                 : undefined
             } />
           </CardContent>
@@ -1104,7 +1118,7 @@ export default function WorkerDetail() {
                   {ATTENDANCE_STATUS_OPTIONS.filter((o) => statusCounts[o.value]).map((o) => (
                     <div key={o.value}
                       className={`flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${getStatusStyle(o.value)}`}>
-                      {o.label}
+                      {attStatusLabel(o.value, t)}
                       <span className="font-bold">{statusCounts[o.value]}</span>
                     </div>
                   ))}
@@ -1144,7 +1158,7 @@ export default function WorkerDetail() {
                     </SelectTrigger>
                     <SelectContent>
                       {ATTENDANCE_STATUS_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        <SelectItem key={o.value} value={o.value}>{attStatusLabel(o.value, t)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1183,11 +1197,11 @@ export default function WorkerDetail() {
                     return (
                       <tr key={rec.id} className={`transition-colors ${isConfirming ? "bg-red-50" : "hover:bg-slate-50"}`}>
                         <td className="px-3 py-2 text-slate-600 tabular-nums text-xs">
-                          {new Date(rec.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(rec.date).toLocaleDateString(LANG_LOCALE[lang], { month: "short", day: "numeric", year: "numeric" })}
                         </td>
                         <td className="px-3 py-2">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${getStatusStyle(rec.status)}`}>
-                            {statusOpt?.label ?? rec.status}
+                            {attStatusLabel(rec.status, t)}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-xs font-medium text-slate-600">
@@ -1300,7 +1314,7 @@ export default function WorkerDetail() {
                     return (
                       <tr key={ev.id} className="hover:bg-slate-50">
                         <td className="px-3 py-2 text-xs text-slate-600 tabular-nums whitespace-nowrap">
-                          {new Date(ev.evaluationDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          {new Date(ev.evaluationDate).toLocaleDateString(LANG_LOCALE[lang], { month: "short", day: "numeric", year: "numeric" })}
                         </td>
                         <td className="px-3 py-2 text-xs text-slate-600">{ev.evaluatorName || <span className="text-slate-300">—</span>}</td>
                         <td className="px-3 py-2 text-xs text-slate-600">{ev.project || <span className="text-slate-300">—</span>}</td>

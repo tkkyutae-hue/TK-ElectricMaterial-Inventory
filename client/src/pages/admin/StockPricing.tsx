@@ -285,21 +285,20 @@ function FamilyTable({
   const { t } = useLanguage();
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "1160px" }}>
+      <Table style={{ minWidth: "1080px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-8" />
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColSku}</TableHead>
-            <TableHead className="w-12" />
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-24">{t.stockPricingColSize}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColName}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColOnHand}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColReorderPoint}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColReorderQty}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColMinStock}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColAveragePrice}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColLowestPrice}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center">{t.stockPricingColSupplierCount}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-16">{t.stockPricingColPhoto}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-24">{t.stockPricingColSize}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingColName}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColOnHand}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center w-28">{t.stockPricingColReorderPoint}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center w-28">{t.stockPricingColReorderQty}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center w-28">{t.stockPricingColMinStock}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColAveragePrice}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColLowestPrice}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center">{t.stockPricingColSupplierCount}</TableHead>
             <TableHead className="w-24" />
           </TableRow>
         </TableHeader>
@@ -408,8 +407,7 @@ function ItemRow({
             )}
           </div>
         </TableCell>
-        <TableCell className="font-mono text-xs text-slate-500" data-testid={`text-sku-${item.id}`}>{item.sku}</TableCell>
-        <TableCell className="w-12 px-2">
+        <TableCell className="w-16 px-2">
           {item.imageUrl ? (
             <img
               src={item.imageUrl}
@@ -518,7 +516,7 @@ function ItemRow({
       </TableRow>
       {expanded && (
         <TableRow className="bg-slate-50/60 border-b border-slate-200" data-testid={`row-suppliers-${item.id}`}>
-          <TableCell colSpan={13} className="p-0">
+          <TableCell colSpan={12} className="p-0">
             <SupplierPanel itemId={item.id} suppliers={suppliers} />
           </TableCell>
         </TableRow>

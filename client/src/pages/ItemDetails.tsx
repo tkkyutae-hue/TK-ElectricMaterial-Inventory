@@ -1057,6 +1057,7 @@ export default function ItemDetails() {
 
   const updateMutation = useUpdateItem();
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Invalidate inventory caches on unmount so the list always shows fresh data when
   // the user clicks Back — covers both the category grouped rows and the summary cards.
@@ -1112,9 +1113,9 @@ export default function ItemDetails() {
         brand: item.brand || null,
       });
       setInlineEdit(false);
-      toast({ title: "Saved", description: "Item updated successfully." });
+      toast({ title: t.itemDetailSavedToast, description: t.itemDetailSavedDesc });
     } catch (err: any) {
-      toast({ title: "Error saving", description: err.message, variant: "destructive" });
+      toast({ title: t.itemDetailErrorSaving, description: err.message, variant: "destructive" });
     }
   }
 
@@ -1142,8 +1143,8 @@ export default function ItemDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <PackageOpen className="w-16 h-16 text-slate-300" />
-        <p className="text-lg font-medium text-slate-500">Item not found.</p>
-        <Link href="/inventory"><Button variant="outline">← Back to Inventory</Button></Link>
+        <p className="text-lg font-medium text-slate-500">{t.itemDetailNotFound}</p>
+        <Link href="/inventory"><Button variant="outline">{t.itemDetailBackToInventory}</Button></Link>
       </div>
     );
   }
@@ -1153,7 +1154,7 @@ export default function ItemDetails() {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-500">
         <Link href="/inventory" className="hover:text-brand-600 transition-colors flex items-center gap-1">
-          <ArrowLeft className="w-3.5 h-3.5" />Inventory
+          <ArrowLeft className="w-3.5 h-3.5" />{t.itemDetailBreadcrumbInventory}
         </Link>
         {item.category && (
           <>
@@ -1437,14 +1438,14 @@ export default function ItemDetails() {
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete Item</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.itemDetailDeleteTitle}</DialogTitle></DialogHeader>
           <p className="text-slate-600 pt-4">
-            Are you sure you want to delete <strong>{item.name}</strong>? This cannot be undone.
+            {t.itemDetailDeleteConfirmPrefix} <strong>{item.name}</strong>{t.itemDetailDeleteConfirmSuffix}
           </p>
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>{t.cmnCancel}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending} data-testid="button-confirm-delete">
-              {deleteMutation.isPending ? "Deleting…" : "Yes, Delete"}
+              {deleteMutation.isPending ? t.itemDetailDeleting : t.itemDetailYesDelete}
             </Button>
           </DialogFooter>
         </DialogContent>

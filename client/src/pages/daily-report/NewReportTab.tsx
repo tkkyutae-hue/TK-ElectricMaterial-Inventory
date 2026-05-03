@@ -1471,14 +1471,14 @@ export function NewReportTab({
               {/* Left: label, Present, Exceptions */}
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "#3d5c42", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Summary
+                  {t.newReportMpSummary}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, marginRight: 0, borderRight: "1px solid #c8d9cc" }}>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>Present:</span>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>{t.newReportMpPresent}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>{presentCount}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>Exceptions:</span>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>{t.newReportMpExceptions}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8", fontVariantNumeric: "tabular-nums" }}>{exceptionsCount}</span>
                 </div>
               </div>
@@ -1486,24 +1486,24 @@ export function NewReportTab({
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
                 {defLunchBreak ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
-                    ● Break: ON
+                    {t.newReportMpBreakOn}
                   </span>
                 ) : (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", border: "1px solid #e2e8f0", fontSize: 10, fontWeight: 500, color: "#94a3b8", whiteSpace: "nowrap" }}>
-                    Break: OFF
+                    {t.newReportMpBreakOff}
                   </span>
                 )}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                  <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>Total Work Hrs:</span>
+                  <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>{t.newReportMpTotalHrs}</span>
                   <span style={{ fontSize: 17, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                     {totalManhours.toFixed(1)}
                   </span>
                 </div>
                 {exceptionsCount === 0 ? (
-                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>Issues: None</span>
+                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{t.newReportMpIssuesNone}</span>
                 ) : (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
-                    ⚠ {exceptionsCount} flagged
+                    ⚠ {exceptionsCount} {t.newReportMpFlagged}
                   </span>
                 )}
               </div>

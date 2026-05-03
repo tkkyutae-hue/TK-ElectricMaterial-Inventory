@@ -117,7 +117,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
               <FormField control={form.control} name="contactName" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.supplierDetailContactPerson}</FormLabel>
-                  <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                  <FormControl><Input placeholder={t.supplierContactNamePh} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -141,7 +141,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.supplierDetailEmail}</FormLabel>
-                  <FormControl><Input type="email" placeholder="sales@supplier.com" {...field} /></FormControl>
+                  <FormControl><Input type="email" placeholder={t.supplierEmailPh} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -150,7 +150,7 @@ function EditSupplierDialog({ supplier, open, onClose }: { supplier: any; open: 
             <FormField control={form.control} name="address" render={({ field }) => (
               <FormItem>
                 <FormLabel>{t.supplierDetailAddress}</FormLabel>
-                <FormControl><Input placeholder="123 Main St, City, ST 00000" {...field} /></FormControl>
+                <FormControl><Input placeholder={t.supplierAddressPh} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />

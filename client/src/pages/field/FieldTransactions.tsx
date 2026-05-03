@@ -837,13 +837,13 @@ export default function FieldTransactions() {
               /* ── Desktop: existing table (unchanged) ── */
               <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <colgroup>
-                  {/* Select, #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note */}
+                  {/* Select, #, Type, Photo, Size, Item, Qty, From→To, Project, Date, Note */}
                   <col style={{ width: 32 }} />
                   <col style={{ width: 36 }} />
                   <col style={{ width: 82 }} />
                   <col style={{ width: 42 }} />
-                  <col />
                   <col style={{ width: 56 }} />
+                  <col />
                   <col style={{ width: 62 }} />
                   <col style={{ width: "13%" }} />
                   <col style={{ width: "11%" }} />
@@ -867,8 +867,8 @@ export default function FieldTransactions() {
                     <th style={{ ...TH, textAlign: "center" }}>#</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
                     <th style={TH}>{t.colPhoto}</th>
-                    <th style={TH}>{t.colItem}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colSize}</th>
+                    <th style={TH}>{t.colItem}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colQtyUnit}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colFromTo}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
@@ -943,6 +943,11 @@ export default function FieldTransactions() {
                           <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
                         </td>
 
+                        {/* Size */}
+                        <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
+                          {item?.sizeLabel || <span style={{ color: F.textDim }}>—</span>}
+                        </td>
+
                         {/* Item name + subcategory (highest priority) */}
                         <td style={{ padding: "12px 8px" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: F.text, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -953,11 +958,6 @@ export default function FieldTransactions() {
                               {item.extractedSubcategory}
                             </p>
                           )}
-                        </td>
-
-                        {/* Size */}
-                        <td style={{ padding: "12px 6px", fontSize: 11, color: F.textSub, whiteSpace: "nowrap", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
-                          {item?.sizeLabel || <span style={{ color: F.textDim }}>—</span>}
                         </td>
 
                         {/* Qty + Unit (large, high-contrast) */}

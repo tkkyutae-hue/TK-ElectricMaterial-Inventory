@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { Download, Loader2 } from "lucide-react";
+
+type ProjectLite = {
+  id: number;
+  code: string;
+  name: string;
+  poNumber: string | null;
+  status: string;
+};
 
 export type RmsExportItem = {
   id: number;
@@ -39,8 +49,28 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [projectName, setProjectName] = useState("");
   const [completionDate, setCompletionDate] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
+  const [projectId, setProjectId] = useState<string>("");
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
+
+  // Fetch active projects for the picker. Only enabled while the dialog is open.
+  const { data: projects, isLoading: projectsLoading } = useQuery<ProjectLite[]>({
+    queryKey: ["/api/projects"],
+    enabled: open,
+    refetchOnMount: "always",
+  });
+  const activeProjects = useMemo(
+    () => (projects ?? []).filter(p => p.status === "active"),
+    [projects],
+  );
+
+  const handleProjectChange = (id: string) => {
+    setProjectId(id);
+    const p = activeProjects.find(p => String(p.id) === id);
+    if (!p) return;
+    setPoNumber(p.poNumber ?? "");
+    setProjectName(p.name ?? "");
+  };
 
   // When dialog opens, refresh row list from incoming selection.
   useEffect(() => {
@@ -122,6 +152,36 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
           {/* Header inputs */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.reorderRmsHeaderSection}</h3>
+
+            {/* Project picker — auto-fills PO Number + Project Name */}
+            <div className="space-y-1 mb-3">
+              <Label htmlFor="rms-project-picker" className="text-xs text-slate-600">{t.reorderRmsProject}</Label>
+              <Select value={projectId} onValueChange={handleProjectChange} disabled={projectsLoading}>
+                <SelectTrigger id="rms-project-picker" data-testid="select-rms-project">
+                  <SelectValue placeholder={t.reorderRmsProjectPlaceholder} />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeProjects.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-slate-400">
+                      {projectsLoading ? t.cmnLoading : t.reorderRmsProjectPlaceholder}
+                    </div>
+                  ) : (
+                    activeProjects.map(p => {
+                      const po = (p.poNumber ?? "").trim();
+                      const label = po
+                        ? `${p.name} — ${po} (${p.code})`
+                        : `${p.name} — ${t.reorderRmsNoPo} (${p.code})`;
+                      return (
+                        <SelectItem key={p.id} value={String(p.id)} data-testid={`select-rms-project-${p.id}`}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="rms-date" className="text-xs text-slate-600">{t.reorderRmsDate}</Label>
@@ -135,11 +195,11 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 <Label htmlFor="rms-po" className="text-xs text-slate-600">
                   {t.reorderRmsPoNumber} <span className="text-rose-500">*</span>
                 </Label>
-                <Input id="rms-po" value={poNumber} onChange={e => setPoNumber(e.target.value)} data-testid="input-rms-po" />
+                <Input id="rms-po" value={poNumber} onChange={e => { setPoNumber(e.target.value); setProjectId(""); }} data-testid="input-rms-po" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="rms-project" className="text-xs text-slate-600">{t.reorderRmsProjectName}</Label>
-                <Input id="rms-project" value={projectName} onChange={e => setProjectName(e.target.value)} data-testid="input-rms-project" />
+                <Input id="rms-project" value={projectName} onChange={e => { setProjectName(e.target.value); setProjectId(""); }} data-testid="input-rms-project" />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="rms-comp" className="text-xs text-slate-600">{t.reorderRmsCompletionDate}</Label>

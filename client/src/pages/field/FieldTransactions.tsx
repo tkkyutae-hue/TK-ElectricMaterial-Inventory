@@ -191,9 +191,8 @@ export default function FieldTransactions() {
   const [dateFrom,      setDateFrom]      = useState("");
   const [dateTo,        setDateTo]        = useState("");
 
-  // ── Selection ──
+  // ── Selection (always-on; checkbox column is the affordance) ──
   const [selectedIds,   setSelectedIds]   = useState<Set<number>>(new Set());
-  const [selectionMode, setSelectionMode] = useState(false);
   const [confirmOpen,   setConfirmOpen]   = useState(false);
   const [editTx,        setEditTx]        = useState<any | null>(null);
   const [successToast,  setSuccessToast]  = useState<{ txId: number } | null>(null);
@@ -683,31 +682,32 @@ export default function FieldTransactions() {
             {isMobile ? (
               /* ── Mobile: compact scannable card list ── */
               <>
-                {/* Selection-mode header bar */}
-                {selectionMode && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, background: F.surface }}>
-                    <div
-                      role="checkbox"
-                      aria-checked={allSelected}
-                      onClick={toggleAll}
-                      data-testid="field-checkbox-select-all-right"
-                      title="Select all"
-                      style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                    >
-                      {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif", flex: 1 }}>
-                      {selCount > 0 ? `${selCount} ${t.selected}` : "Select all"}
-                    </span>
+                {/* Always-on select-all bar */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, background: F.surface }}>
+                  <div
+                    role="checkbox"
+                    aria-checked={allSelected}
+                    onClick={toggleAll}
+                    data-testid="field-checkbox-select-all"
+                    title="Select all"
+                    style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  >
+                    {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif", flex: 1 }}>
+                    {selCount > 0 ? `${selCount} ${t.selected}` : "Select all"}
+                  </span>
+                  {selCount > 0 && (
                     <button
                       type="button"
-                      onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+                      onClick={clearSelection}
+                      data-testid="button-field-clear-select"
                       style={{ fontSize: 11, color: F.textMuted, background: "none", border: `1px solid ${F.borderStrong}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700 }}
                     >
                       {t.cancel}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Card list body */}
                 {isLoading ? (
@@ -732,13 +732,13 @@ export default function FieldTransactions() {
                     <div
                       key={m.id}
                       data-testid={`field-tx-row-${m.id}`}
-                      onClick={() => { if (selectionMode) toggleRow(m.id); }}
+                      onClick={() => toggleRow(m.id)}
                       style={{
                         padding: "10px 14px",
                         background: isSelected ? F.accentBg : idx % 2 === 0 ? F.surface2 : F.bg,
                         borderBottom: `1px solid ${F.border}`,
                         borderLeft: isSelected ? `3px solid ${F.accent}` : "3px solid transparent",
-                        cursor: selectionMode ? "pointer" : "default",
+                        cursor: "pointer",
                         transition: "background 0.1s",
                       }}
                     >
@@ -762,16 +762,14 @@ export default function FieldTransactions() {
                               {format(new Date(m.createdAt), "MMM d")} · {format(new Date(m.createdAt), "HH:mm")}
                             </span>
                           )}
-                          {selectionMode && (
-                            <div
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              data-testid={`field-checkbox-sel-${m.id}`}
-                              style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-                            >
-                              {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </div>
-                          )}
+                          <div
+                            role="checkbox"
+                            aria-checked={isSelected}
+                            data-testid={`field-checkbox-sel-${m.id}`}
+                            style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >
+                            {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
                         </div>
                       </div>
 
@@ -839,7 +837,8 @@ export default function FieldTransactions() {
               /* ── Desktop: existing table (unchanged) ── */
               <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <colgroup>
-                  {/* #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note, Select */}
+                  {/* Select, #, Type, Photo, Item, Size, Qty, From→To, Project, Date, Note */}
+                  <col style={{ width: 32 }} />
                   <col style={{ width: 36 }} />
                   <col style={{ width: 82 }} />
                   <col style={{ width: 42 }} />
@@ -850,10 +849,21 @@ export default function FieldTransactions() {
                   <col style={{ width: "11%" }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 70 }} />
-                  <col style={{ width: 68 }} />
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${F.borderStrong}` }}>
+                    <th style={{ ...TH, padding: "8px 4px", textAlign: "center" }}>
+                      <div
+                        role="checkbox"
+                        aria-checked={allSelected}
+                        onClick={toggleAll}
+                        data-testid="field-checkbox-select-all"
+                        title="Select all"
+                        style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                      >
+                        {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                    </th>
                     <th style={{ ...TH, textAlign: "center" }}>#</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colType}</th>
                     <th style={TH}>{t.colPhoto}</th>
@@ -864,31 +874,6 @@ export default function FieldTransactions() {
                     <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
-                    <th style={{ ...TH, padding: "8px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: selectionMode ? F.surface : F.surface2 }}>
-                      {selectionMode ? (
-                        <div
-                          role="checkbox"
-                          aria-checked={allSelected}
-                          onClick={toggleAll}
-                          data-testid="field-checkbox-select-all-right"
-                          title="Select all"
-                          style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${allSelected ? F.accent : F.textDim}`, background: allSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
-                        >
-                          {allSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                          data-testid="btn-selection-mode-toggle"
-                          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "rgba(45,219,111,0.16)"; el.style.borderColor = "rgba(45,219,111,0.55)"; el.style.color = F.accent; }}
-                          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = F.accentBg; el.style.borderColor = F.accentBorder; el.style.color = F.textMuted; }}
-                          style={{ display: "block", width: "100%", padding: "6px 0", background: F.accentBg, border: `1px solid ${F.accentBorder}`, borderRadius: 6, color: F.textMuted, fontSize: 10, fontWeight: 700, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.10em", textTransform: "uppercase", cursor: "pointer", lineHeight: 1, textAlign: "center" }}
-                        >
-                          {t.selectBtn}
-                        </button>
-                      )}
-                    </th>
                   </tr>
                 </thead>
 
@@ -928,6 +913,21 @@ export default function FieldTransactions() {
                         onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface; }}
                         onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface2; }}
                       >
+                        {/* Select checkbox */}
+                        <td
+                          style={{ padding: "12px 4px", textAlign: "center" }}
+                          onClick={e => { e.stopPropagation(); toggleRow(m.id); }}
+                        >
+                          <div
+                            role="checkbox"
+                            aria-checked={isSelected}
+                            data-testid={`field-checkbox-sel-${m.id}`}
+                            style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                          >
+                            {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                        </td>
+
                         {/* # */}
                         <td style={{ padding: "12px 8px", fontFamily: "monospace", fontSize: 11, color: F.textMuted, textAlign: "center" }}>
                           {(safePage - 1) * pageSize + idx + 1}
@@ -1028,25 +1028,6 @@ export default function FieldTransactions() {
                         <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {m.note || <span style={{ color: F.textDim }}>—</span>}
                         </td>
-
-                        {/* Select */}
-                        <td
-                          style={{ padding: "12px 6px", textAlign: "center", borderLeft: `1px solid ${F.borderStrong}`, background: isSelected ? F.accentBg : selectionMode ? F.surface : F.surface2 }}
-                          onClick={e => { if (selectionMode) { e.stopPropagation(); toggleRow(m.id); } }}
-                        >
-                          {selectionMode ? (
-                            <div
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              data-testid={`field-checkbox-sel-${m.id}`}
-                              style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
-                            >
-                              {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                            </div>
-                          ) : (
-                            <span style={{ color: F.textDim, fontSize: 10 }}>·</span>
-                          )}
-                        </td>
                       </tr>
                     );
                   })}
@@ -1105,30 +1086,17 @@ export default function FieldTransactions() {
                     <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
                   </div>
 
-                  {/* SELECT / selection actions */}
+                  {/* Selection actions (always visible when selCount > 0) */}
                   <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    {selectionMode ? (
-                      <>
-                        {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim }}>{selCount} {t.selected}</span>}
-                        {canEdit && hasDeletePerm && (
-                          <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                            <Pencil style={{ width: 10, height: 10 }} /> Edit
-                          </button>
-                        )}
-                        {canDelete && hasDeletePerm && (
-                          <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                            <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-                        data-testid="btn-selection-mode-toggle"
-                        style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.accentBg, border: `1px solid ${F.accentBorder}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Barlow Condensed', sans-serif", textTransform: "uppercase" }}
-                      >
-                        {t.selectBtn}
+                    {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim }}>{selCount} {t.selected}</span>}
+                    {canEdit && hasDeletePerm && (
+                      <button type="button" onClick={() => selectedTx && setEditTx(selectedTx)} disabled={selCount !== 1} data-testid="button-field-edit-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: selCount === 1 ? "rgba(91,156,246,0.12)" : F.surface2, border: `1px solid ${selCount === 1 ? "rgba(91,156,246,0.35)" : F.borderStrong}`, color: selCount === 1 ? "#5b9cf6" : F.textDim, fontSize: 11, fontWeight: 700, cursor: selCount === 1 ? "pointer" : "default", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                        <Pencil style={{ width: 10, height: 10 }} /> Edit
+                      </button>
+                    )}
+                    {canDelete && hasDeletePerm && (
+                      <button type="button" onClick={() => setConfirmOpen(true)} data-testid="button-field-delete-selected" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, background: "rgba(255,80,80,0.14)", border: "1px solid rgba(255,80,80,0.35)", color: "#ff5050", fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                        <Trash2 style={{ width: 10, height: 10 }} /> Delete ({selCount})
                       </button>
                     )}
                   </div>
@@ -1181,12 +1149,12 @@ export default function FieldTransactions() {
                   <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} data-testid="btn-page-next" style={{ padding: "5px 10px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: safePage >= totalPages ? F.borderStrong : F.textMuted, fontSize: 13, fontWeight: 700, cursor: safePage >= totalPages ? "default" : "pointer", fontFamily: "monospace" }}>›</button>
                 </div>
 
-                {/* Right: selection actions */}
+                {/* Right: selection actions (visible when selCount > 0) */}
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-                  {selectionMode ? (
+                  {selCount > 0 && (
                     <>
-                      {selCount > 0 && <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>}
-                      <button type="button" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      <span style={{ fontSize: 11, color: F.textDim, marginRight: 2 }}>{selCount} {t.selected}</span>
+                      <button type="button" onClick={clearSelection} data-testid="button-field-cancel-select" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 7, background: F.surface2, border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 11, fontWeight: 700, cursor: "pointer", letterSpacing: "0.04em", fontFamily: "'Barlow Condensed', sans-serif" }}>
                         <X style={{ width: 10, height: 10 }} /> {t.cancel}
                       </button>
                       {canEdit && hasDeletePerm && (
@@ -1200,7 +1168,7 @@ export default function FieldTransactions() {
                         </button>
                       )}
                     </>
-                  ) : null}
+                  )}
                 </div>
               </div>
             )}

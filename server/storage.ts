@@ -1112,16 +1112,16 @@ export class DatabaseStorage implements IStorage {
       // Synthesize a recommendation row for items without a pending one so the
       // frontend can render them in the same table. Synthetic id is negative to
       // stay unique vs real recommendation ids; mark/dismiss buttons hide on it.
-      const rec = (r.rec && r.rec.id != null) ? r.rec : {
+      const rec: PurchaseRecommendation = (r.rec && r.rec.id != null) ? r.rec : {
         id: r.item ? -r.item.id : 0,
         itemId: r.item?.id ?? 0,
         supplierId: r.item?.supplierId ?? null,
         recommendedQuantity: r.item?.reorderQuantity ?? 0,
-        priorityLevel: null as any,
+        priorityLevel: 'none',
         reason: null,
-        status: 'pending' as any,
-        createdAt: null as any,
-        updatedAt: null as any,
+        status: 'pending',
+        createdAt: null,
+        updatedAt: null,
       };
       return {
         ...rec,

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronRight, ChevronDown, Plus, Trash2, Search, AlertTriangle, Package, DollarSign, Star } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Trash2, Search, AlertTriangle, Package, DollarSign, Star, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -39,9 +39,24 @@ type SupplierItem = {
   leadTimeDays: number | null;
   preferredSupplier: boolean;
   lastUnitCost: number | null;
+  note: string | null;
   updatedAt: string | null;
   supplier: { id: number; name: string } | null;
 };
+
+function loadSession<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    return raw == null ? fallback : (JSON.parse(raw) as T);
+  } catch { return fallback; }
+}
+function saveSession<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+const SS_OPEN_CATS = "stockPricing.openCats.v1";
+const SS_OPEN_FAMS = "stockPricing.openFamilies.v1";
 
 const QK_OVERVIEW = ["/api/admin/stock-pricing"] as const;
 
@@ -59,8 +74,10 @@ export default function StockPricing() {
   const [missingReorder, setMissingReorder] = useState(false);
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  const [openCats, setOpenCats] = useState<Record<number, boolean>>({});
-  const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>({});
+  const [openCats, setOpenCats] = useState<Record<number, boolean>>(() => loadSession(SS_OPEN_CATS, {}));
+  const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>(() => loadSession(SS_OPEN_FAMS, {}));
+  useEffect(() => saveSession(SS_OPEN_CATS, openCats), [openCats]);
+  useEffect(() => saveSession(SS_OPEN_FAMS, openFamilies), [openFamilies]);
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery<Overview>({ queryKey: QK_OVERVIEW });
@@ -280,6 +297,7 @@ function FamilyTable({
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColMinStock}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColBestPrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center">{t.stockPricingColSupplierCount}</TableHead>
+            <TableHead className="w-24" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -339,13 +357,26 @@ function ItemRow({
     },
   });
 
-  const commit = useCallback((field: "reorderPoint" | "reorderQuantity" | "minimumStock", value: number) => {
-    const v = Math.max(0, Math.floor(Number(value) || 0));
-    if (item[field] === v) return;
-    const next = { ...draft, [field]: v };
-    setDraft(next);
-    saveMutation.mutate(next);
-  }, [draft, item, saveMutation]);
+  const setField = useCallback((field: "reorderPoint" | "reorderQuantity" | "minimumStock", raw: string) => {
+    const v = Math.max(0, Math.floor(Number(raw) || 0));
+    setDraft(prev => ({ ...prev, [field]: v }));
+  }, []);
+
+  const isDirty =
+    draft.reorderPoint !== item.reorderPoint ||
+    draft.reorderQuantity !== item.reorderQuantity ||
+    draft.minimumStock !== item.minimumStock;
+
+  const handleSaveRow = () => { if (isDirty) saveMutation.mutate(draft); };
+  const handleCancelRow = () => setDraft({
+    reorderPoint: item.reorderPoint,
+    reorderQuantity: item.reorderQuantity,
+    minimumStock: item.minimumStock,
+  });
+  const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); handleSaveRow(); }
+    else if (e.key === "Escape") { e.preventDefault(); handleCancelRow(); }
+  };
 
   const statusCls =
     item.status === "out_of_stock" ? "bg-red-50/40" :
@@ -399,27 +430,36 @@ function ItemRow({
           <span className="text-slate-400 text-[11px] ml-1">{item.unitOfMeasure}</span>
         </TableCell>
         <TableCell className="text-center">
-          <NumberCell
-            value={draft.reorderPoint}
-            onCommit={(v) => commit("reorderPoint", v)}
+          <Input
+            type="number" min="0" step="1"
+            value={String(draft.reorderPoint)}
             disabled={saveMutation.isPending}
-            testId={`input-reorder-point-${item.id}`}
+            onChange={e => setField("reorderPoint", e.target.value)}
+            onKeyDown={handleEnter}
+            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
+            data-testid={`input-reorder-point-${item.id}`}
           />
         </TableCell>
         <TableCell className="text-center">
-          <NumberCell
-            value={draft.reorderQuantity}
-            onCommit={(v) => commit("reorderQuantity", v)}
+          <Input
+            type="number" min="0" step="1"
+            value={String(draft.reorderQuantity)}
             disabled={saveMutation.isPending}
-            testId={`input-reorder-qty-${item.id}`}
+            onChange={e => setField("reorderQuantity", e.target.value)}
+            onKeyDown={handleEnter}
+            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
+            data-testid={`input-reorder-qty-${item.id}`}
           />
         </TableCell>
         <TableCell className="text-center">
-          <NumberCell
-            value={draft.minimumStock}
-            onCommit={(v) => commit("minimumStock", v)}
+          <Input
+            type="number" min="0" step="1"
+            value={String(draft.minimumStock)}
             disabled={saveMutation.isPending}
-            testId={`input-min-stock-${item.id}`}
+            onChange={e => setField("minimumStock", e.target.value)}
+            onKeyDown={handleEnter}
+            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
+            data-testid={`input-min-stock-${item.id}`}
           />
         </TableCell>
         <TableCell className="text-right tabular-nums">
@@ -437,34 +477,43 @@ function ItemRow({
             {item.supplierCount}
           </Badge>
         </TableCell>
+        <TableCell className="w-24">
+          {isDirty && (
+            <div className="flex items-center gap-1 justify-end" data-testid={`row-actions-${item.id}`}>
+              <Button
+                size="sm" variant="default"
+                className="h-7 px-2"
+                onClick={handleSaveRow}
+                disabled={saveMutation.isPending}
+                data-testid={`button-save-row-${item.id}`}
+                aria-label={t.cmnSave}
+                title={t.cmnSave}
+              >
+                {saveMutation.isPending ? <span className="text-xs">…</span> : <Check className="w-3.5 h-3.5" />}
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 px-2"
+                onClick={handleCancelRow}
+                disabled={saveMutation.isPending}
+                data-testid={`button-cancel-row-${item.id}`}
+                aria-label={t.cmnCancel}
+                title={t.cmnCancel}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+        </TableCell>
       </TableRow>
       {expanded && (
         <TableRow className="bg-slate-50/60 border-b border-slate-200" data-testid={`row-suppliers-${item.id}`}>
-          <TableCell colSpan={10} className="p-0">
+          <TableCell colSpan={11} className="p-0">
             <SupplierPanel itemId={item.id} suppliers={suppliers} />
           </TableCell>
         </TableRow>
       )}
     </>
-  );
-}
-
-function NumberCell({ value, onCommit, disabled, testId }: { value: number; onCommit: (v: number) => void; disabled?: boolean; testId: string }) {
-  const [local, setLocal] = useState(String(value));
-  useEffect(() => setLocal(String(value)), [value]);
-  return (
-    <Input
-      type="number"
-      min="0"
-      step="1"
-      value={local}
-      disabled={disabled}
-      onChange={e => setLocal(e.target.value)}
-      onBlur={() => onCommit(Number(local) || 0)}
-      onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-      className="w-20 h-8 text-center text-sm tabular-nums mx-auto"
-      data-testid={testId}
-    />
   );
 }
 
@@ -485,8 +534,8 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
   const rows = data?.items ?? [];
 
   const [adding, setAdding] = useState(false);
-  const [newRow, setNewRow] = useState<{ supplierId: string; lastUnitCost: string; supplierSku: string; leadTimeDays: string; preferredSupplier: boolean }>({
-    supplierId: "", lastUnitCost: "", supplierSku: "", leadTimeDays: "", preferredSupplier: false,
+  const [newRow, setNewRow] = useState<{ supplierId: string; lastUnitCost: string; supplierSku: string; leadTimeDays: string; preferredSupplier: boolean; note: string }>({
+    supplierId: "", lastUnitCost: "", supplierSku: "", leadTimeDays: "", preferredSupplier: false, note: "",
   });
 
   const invalidate = () => {
@@ -502,7 +551,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
     onSuccess: () => {
       toast({ title: t.stockPricingSupplierAdded });
       setAdding(false);
-      setNewRow({ supplierId: "", lastUnitCost: "", supplierSku: "", leadTimeDays: "", preferredSupplier: false });
+      setNewRow({ supplierId: "", lastUnitCost: "", supplierSku: "", leadTimeDays: "", preferredSupplier: false, note: "" });
       invalidate();
     },
     onError: (err: any) => toast({ title: t.stockPricingSaveFailed, description: err?.message ?? "", variant: "destructive" }),
@@ -537,6 +586,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
       supplierSku: newRow.supplierSku || null,
       leadTimeDays: newRow.leadTimeDays === "" ? null : Number(newRow.leadTimeDays),
       preferredSupplier: newRow.preferredSupplier,
+      note: newRow.note.trim() || null,
     });
   };
 
@@ -571,6 +621,7 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
               <TableHead className="text-xs text-slate-500 text-right">{t.stockPricingUnitCost}</TableHead>
               <TableHead className="text-xs text-slate-500 text-center">{t.stockPricingLeadTime}</TableHead>
               <TableHead className="text-xs text-slate-500 text-center">{t.stockPricingPreferred}</TableHead>
+              <TableHead className="text-xs text-slate-500">{t.stockPricingNote}</TableHead>
               <TableHead className="text-xs text-slate-500 text-right whitespace-nowrap">{t.stockPricingUpdated}</TableHead>
               <TableHead className="w-12" />
             </TableRow>
@@ -611,6 +662,9 @@ function SupplierPanel({ itemId, suppliers }: { itemId: number; suppliers: Suppl
                 <TableCell className="text-center">
                   <Switch checked={newRow.preferredSupplier} onCheckedChange={v => setNewRow(r => ({ ...r, preferredSupplier: v }))} data-testid={`switch-new-preferred-${itemId}`} />
                 </TableCell>
+                <TableCell>
+                  <Input className="h-8 text-sm" value={newRow.note} onChange={e => setNewRow(r => ({ ...r, note: e.target.value }))} placeholder={t.stockPricingNotePlaceholder} data-testid={`input-new-note-${itemId}`} />
+                </TableCell>
                 <TableCell />
                 <TableCell>
                   <div className="flex items-center gap-1 justify-end">
@@ -639,11 +693,13 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
   const [cost, setCost] = useState(row.lastUnitCost == null ? "" : String(row.lastUnitCost));
   const [sku, setSku] = useState(row.supplierSku ?? "");
   const [lead, setLead] = useState(row.leadTimeDays == null ? "" : String(row.leadTimeDays));
+  const [note, setNote] = useState(row.note ?? "");
   const [confirmDel, setConfirmDel] = useState(false);
 
   useEffect(() => { setCost(row.lastUnitCost == null ? "" : String(row.lastUnitCost)); }, [row.lastUnitCost]);
   useEffect(() => { setSku(row.supplierSku ?? ""); }, [row.supplierSku]);
   useEffect(() => { setLead(row.leadTimeDays == null ? "" : String(row.leadTimeDays)); }, [row.leadTimeDays]);
+  useEffect(() => { setNote(row.note ?? ""); }, [row.note]);
 
   const commitCost = () => {
     const v = cost === "" ? null : Number(cost);
@@ -659,6 +715,11 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
     const v = lead === "" ? null : Math.max(0, Math.floor(Number(lead) || 0));
     if ((row.leadTimeDays ?? null) === v) return;
     onPatch({ leadTimeDays: v });
+  };
+  const commitNote = () => {
+    const v = note.trim() || null;
+    if ((row.note ?? null) === v) return;
+    onPatch({ note: v });
   };
 
   return (
@@ -710,6 +771,18 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
           disabled={disabled}
           onCheckedChange={v => onPatch({ preferredSupplier: v })}
           data-testid={`switch-preferred-${row.id}`}
+        />
+      </TableCell>
+      <TableCell>
+        <Input
+          className="h-8 text-sm"
+          value={note}
+          disabled={disabled}
+          onChange={e => setNote(e.target.value)}
+          onBlur={commitNote}
+          onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          placeholder={t.stockPricingNotePlaceholder}
+          data-testid={`input-supplier-note-${row.id}`}
         />
       </TableCell>
       <TableCell className="text-right text-xs text-slate-400 whitespace-nowrap" data-testid={`text-supplier-updated-${row.id}`}>

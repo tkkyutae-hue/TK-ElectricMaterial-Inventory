@@ -179,6 +179,7 @@ export const supplierItems = pgTable("supplier_items", {
   leadTimeDays: integer("lead_time_days"),
   preferredSupplier: boolean("preferred_supplier").default(false),
   lastUnitCost: numeric("last_unit_cost", { precision: 12, scale: 2 }),
+  note: text("note"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -1346,7 +1346,7 @@ export class DatabaseStorage implements IStorage {
       const liveQty = reelMap.has(it.id) ? reelMap.get(it.id)! : it.quantityOnHand;
       let status = "in_stock";
       if (liveQty === 0) status = "out_of_stock";
-      else if (liveQty <= it.minimumStock) status = "low_stock";
+      else if (liveQty <= it.reorderPoint) status = "low_stock";
       const agg = aggMap.get(it.id);
       fam.items.push({
         id: it.id,
@@ -1408,7 +1408,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createSupplierItem(data: { itemId: number; supplierId: number; supplierSku?: string | null; leadTimeDays?: number | null; preferredSupplier?: boolean; lastUnitCost?: string | number | null }): Promise<SupplierItem> {
+  async createSupplierItem(data: { itemId: number; supplierId: number; supplierSku?: string | null; leadTimeDays?: number | null; preferredSupplier?: boolean; lastUnitCost?: string | number | null; note?: string | null }): Promise<SupplierItem> {
     const [created] = await db.insert(supplierItems).values({
       itemId: data.itemId,
       supplierId: data.supplierId,
@@ -1416,6 +1416,7 @@ export class DatabaseStorage implements IStorage {
       leadTimeDays: data.leadTimeDays ?? null,
       preferredSupplier: data.preferredSupplier ?? false,
       lastUnitCost: data.lastUnitCost != null ? String(data.lastUnitCost) : null,
+      note: data.note ?? null,
     }).returning();
     return created;
   }
@@ -1426,6 +1427,7 @@ export class DatabaseStorage implements IStorage {
     leadTimeDays?: number | null;
     preferredSupplier?: boolean;
     lastUnitCost?: string | number | null;
+    note?: string | null;
   }): Promise<SupplierItem | undefined> {
     const patch: Partial<typeof supplierItems.$inferInsert> & { updatedAt: Date } = { updatedAt: new Date() };
     if (data.supplierId !== undefined) patch.supplierId = data.supplierId;
@@ -1433,6 +1435,7 @@ export class DatabaseStorage implements IStorage {
     if (data.leadTimeDays !== undefined) patch.leadTimeDays = data.leadTimeDays;
     if (data.preferredSupplier !== undefined) patch.preferredSupplier = data.preferredSupplier;
     if (data.lastUnitCost !== undefined) patch.lastUnitCost = data.lastUnitCost != null ? String(data.lastUnitCost) : null;
+    if (data.note !== undefined) patch.note = data.note;
     const [updated] = await db.update(supplierItems).set(patch).where(eq(supplierItems.id, id)).returning();
     return updated;
   }

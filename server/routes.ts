@@ -2089,6 +2089,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     leadTimeDays: z.number().int().min(0).max(3650).optional().nullable(),
     preferredSupplier: z.boolean().optional(),
     lastUnitCost: z.union([z.number(), z.string()]).optional().nullable().transform(v => v === null || v === undefined || v === "" ? null : Number(v)),
+    note: z.string().trim().max(500).optional().nullable(),
   });
 
   app.post("/api/admin/items/:id/supplier-items", isAuthenticated, requireAdmin, async (req, res) => {
@@ -2106,6 +2107,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         leadTimeDays: parsed.data.leadTimeDays ?? null,
         preferredSupplier: parsed.data.preferredSupplier ?? false,
         lastUnitCost: parsed.data.lastUnitCost ?? null,
+        note: parsed.data.note ?? null,
       });
       res.status(201).json(created);
     } catch (err: any) {

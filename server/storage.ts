@@ -1319,15 +1319,17 @@ export class DatabaseStorage implements IStorage {
           itemId: supplierItems.itemId,
           cnt: sql<string>`COUNT(*)`,
           best: sql<string | null>`MIN(${supplierItems.lastUnitCost})`,
+          avg:  sql<string | null>`AVG(${supplierItems.lastUnitCost})`,
         })
         .from(supplierItems)
         .where(inArray(supplierItems.itemId, itemIds))
         .groupBy(supplierItems.itemId)
       : [];
-    const aggMap = new Map<number, { count: number; bestPrice: number | null }>(
+    const aggMap = new Map<number, { count: number; bestPrice: number | null; averagePrice: number | null }>(
       aggRows.map(r => [r.itemId, {
         count: Number(r.cnt) || 0,
         bestPrice: r.best != null ? Number(r.best) : null,
+        averagePrice: r.avg != null ? Math.round(Number(r.avg) * 100) / 100 : null,
       }])
     );
 
@@ -1362,6 +1364,7 @@ export class DatabaseStorage implements IStorage {
         status,
         supplierCount: agg?.count ?? 0,
         bestPrice: agg?.bestPrice ?? null,
+        averagePrice: agg?.averagePrice ?? null,
       });
       cat.itemCount++;
     }

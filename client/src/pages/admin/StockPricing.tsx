@@ -25,6 +25,7 @@ type StockItem = {
   status: string;
   supplierCount: number;
   bestPrice: number | null;
+  averagePrice: number | null;
 };
 type Family = { name: string; items: StockItem[] };
 type Cat = { id: number; name: string; code: string | null; itemCount: number; families: Family[] };
@@ -284,7 +285,7 @@ function FamilyTable({
   const { t } = useLanguage();
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "1000px" }}>
+      <Table style={{ minWidth: "1080px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-8" />
@@ -295,7 +296,8 @@ function FamilyTable({
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColReorderPoint}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColReorderQty}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-28">{t.stockPricingColMinStock}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColBestPrice}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColAveragePrice}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right">{t.stockPricingColLowestPrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center">{t.stockPricingColSupplierCount}</TableHead>
             <TableHead className="w-24" />
           </TableRow>
@@ -463,7 +465,12 @@ function ItemRow({
           />
         </TableCell>
         <TableCell className="text-right tabular-nums">
-          <span className={`text-sm font-medium ${item.bestPrice == null ? "text-slate-300" : "text-slate-800"}`} data-testid={`text-best-price-${item.id}`}>
+          <span className={`text-sm ${item.averagePrice == null ? "text-slate-300" : "text-slate-700"}`} data-testid={`text-average-price-${item.id}`}>
+            {formatPrice(item.averagePrice)}
+          </span>
+        </TableCell>
+        <TableCell className="text-right tabular-nums">
+          <span className={`text-sm font-medium ${item.bestPrice == null ? "text-slate-300" : "text-slate-800"}`} data-testid={`text-lowest-price-${item.id}`}>
             {formatPrice(item.bestPrice)}
           </span>
         </TableCell>
@@ -508,7 +515,7 @@ function ItemRow({
       </TableRow>
       {expanded && (
         <TableRow className="bg-slate-50/60 border-b border-slate-200" data-testid={`row-suppliers-${item.id}`}>
-          <TableCell colSpan={11} className="p-0">
+          <TableCell colSpan={12} className="p-0">
             <SupplierPanel itemId={item.id} suppliers={suppliers} />
           </TableCell>
         </TableRow>

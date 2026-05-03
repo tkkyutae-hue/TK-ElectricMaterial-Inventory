@@ -1,0 +1,148 @@
+Do NOT rebuild the Admin tool broadly.
+Do NOT redesign the existing Inventory or Reorder pages.
+Focus ONLY on adding the first safe version of supplier-based price registration and comparison for the new stock/pricing management page.
+
+TARGET AREA
+- existing Suppliers management surface
+- the new stock/pricing management page
+- tiny directly related backend/storage/schema support only if truly needed
+
+GOAL
+Implement a practical two-step supplier pricing workflow:
+
+1. Suppliers are managed as master records in the Suppliers area
+2. Item-specific supplier prices are managed in the stock/pricing management page by linking existing suppliers to items
+
+IMPORTANT
+Do NOT use free-text supplier names for price records.
+Supplier selection must come from existing supplier master records to avoid duplicates and naming drift.
+
+==================================================
+PART 1 — SUPPLIER MASTER AS THE SOURCE OF TRUTH
+==================================================
+
+Use the Suppliers area as the master registry for suppliers.
+
+Suppliers should be managed there first.
+At minimum, the system should support supplier master records with practical fields such as:
+- supplier name
+- active/inactive
+- basic contact fields if already supported safely
+
+Do NOT create a second disconnected supplier naming system inside the pricing page.
+
+==================================================
+PART 2 — ITEM-SUPPLIER PRICE LINKS
+==================================================
+
+Add support for item-specific supplier pricing records.
+
+Each item should be able to have multiple supplier price records.
+
+At minimum, each item-supplier price record should support:
+- item reference
+- supplier reference
+- unit price
+- updated date/time
+- optional note if low-risk
+
+Do NOT force all supplier prices into one single item.price field.
+
+==================================================
+PART 3 — STOCK/PRICING PAGE DISPLAY
+==================================================
+
+On the stock/pricing management page, keep the grouped structure:
+- Category
+  - Family
+    - Item rows
+
+For each item row, show compact summary pricing info:
+- Average Price
+- Lowest Price
+- Supplier Count
+
+Use full readable labels:
+- Reorder Point
+- Reorder Qty
+- Min Stock
+- Average Price
+- Lowest Price
+- Supplier Count
+
+Do NOT use abbreviations like ROP / ROQ / MIN on this page.
+
+==================================================
+PART 4 — SUPPLIER PRICE DETAIL INTERACTION
+==================================================
+
+Do NOT add many supplier columns to the main table.
+
+Instead, use a secondary interaction such as:
+- row expand
+- detail section
+- compact nested panel
+- or similar lightweight detail UI
+
+Inside that detail view, allow:
+- viewing existing supplier price rows
+- adding a supplier price entry
+- editing an existing supplier price entry
+- removing a supplier price entry if safe
+
+Each supplier price row should show at minimum:
+- supplier name
+- unit price
+- updated date
+- optional note if supported
+
+==================================================
+PART 5 — SUPPLIER SELECTION UX
+==================================================
+
+When adding a supplier price to an item:
+- choose supplier from existing supplier master records
+- do NOT allow arbitrary free-text supplier creation here
+- keep this first version simple and consistent
+
+If the supplier does not exist yet, the user should create it in the Suppliers area first.
+
+==================================================
+PART 6 — SUMMARY PRICE CALCULATION
+==================================================
+
+For item-row summary display:
+- Lowest Price = minimum valid supplier unit price
+- Average Price = average of valid supplier unit prices
+- Supplier Count = number of supplier price records linked to the item
+
+Ignore blank/null invalid prices in these calculations.
+
+Keep this first version simple.
+Do NOT add advanced weighted logic yet.
+
+==================================================
+PART 7 — KEEP SCOPE SAFE
+==================================================
+
+Do NOT:
+- redesign reorder logic
+- redesign movement logic
+- add direct stock quantity editing here
+- add broad supplier analytics
+- add quote approval workflows
+- add spreadsheet-style mass editing yet
+
+This is only the first practical supplier-price registration layer.
+
+==================================================
+PART 8 — OUTPUT
+==================================================
+
+When done, report:
+1. How supplier master registration is used
+2. How item-supplier price records are stored/exposed
+3. What pricing summary fields were added to item rows
+4. How supplier price details are viewed/edited
+5. Files modified
+6. Anything intentionally left unchanged

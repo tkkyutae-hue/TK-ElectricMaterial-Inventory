@@ -482,6 +482,7 @@ export default function Reorder() {
                     tabIndex={0}
                     onClick={() => toggleCat(cat.key)}
                     onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         toggleCat(cat.key);

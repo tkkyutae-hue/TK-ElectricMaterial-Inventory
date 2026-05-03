@@ -1044,17 +1044,29 @@ export class DatabaseStorage implements IStorage {
   // ─── Purchase Recommendations ─────────────────────────────────────────────────
 
   async getPurchaseRecommendations(): Promise<PurchaseRecommendationWithRelations[]> {
+    // Return one row per ACTIVE item (not just items with a pending recommendation),
+    // so the Purchasing & Reorder page can show in-stock items alongside items that
+    // need reorder. Items without a pending recommendation get a synthetic negative
+    // id (= -item.id) so the frontend Set<number> selection key stays unique and
+    // never collides with real recommendation rows.
     const rows = await db.select({
       rec: purchaseRecommendations,
       item: items,
       supplier: suppliers,
     })
-    .from(purchaseRecommendations)
-    .leftJoin(items, eq(purchaseRecommendations.itemId, items.id))
-    .leftJoin(suppliers, eq(purchaseRecommendations.supplierId, suppliers.id))
-    .where(eq(purchaseRecommendations.status, 'pending'))
+    .from(items)
+    .leftJoin(
+      purchaseRecommendations,
+      and(
+        eq(purchaseRecommendations.itemId, items.id),
+        eq(purchaseRecommendations.status, 'pending'),
+      ),
+    )
+    .leftJoin(suppliers, eq(suppliers.id, items.supplierId))
+    .where(eq(items.isActive, true))
     .orderBy(
-      sql`CASE ${purchaseRecommendations.priorityLevel} WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`
+      sql`CASE ${purchaseRecommendations.priorityLevel} WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END`,
+      asc(items.name),
     );
 
     const itemIds = rows.map(r => r.item?.id).filter((id): id is number => id != null);
@@ -1097,8 +1109,22 @@ export class DatabaseStorage implements IStorage {
       const c30 = u?.c30 ?? 0;
       const c90 = u?.c90 ?? 0;
       const last = u?.last ?? null;
+      // Synthesize a recommendation row for items without a pending one so the
+      // frontend can render them in the same table. Synthetic id is negative to
+      // stay unique vs real recommendation ids; mark/dismiss buttons hide on it.
+      const rec = (r.rec && r.rec.id != null) ? r.rec : {
+        id: r.item ? -r.item.id : 0,
+        itemId: r.item?.id ?? 0,
+        supplierId: r.item?.supplierId ?? null,
+        recommendedQuantity: r.item?.reorderQuantity ?? 0,
+        priorityLevel: null as any,
+        reason: null,
+        status: 'pending' as any,
+        createdAt: null as any,
+        updatedAt: null as any,
+      };
       return {
-        ...r.rec,
+        ...rec,
         item: r.item ? { ...r.item, imageUrl: firstImage?.imageUrl || null } : null,
         supplier: r.supplier,
         issueCount30d: c30,

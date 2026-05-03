@@ -319,7 +319,7 @@ const en = {
   navProjects:        "Projects",
   navManpower:        "Manpower",
   navEquipment:       "Equipment",
-  navReorder:         "Reorder",
+  navReorder:         "Purchasing & Reorder",
   navReports:         "Reports",
   navUserApprovals:   "User Approvals",
   navExportBackup:    "Export Backup",
@@ -506,7 +506,7 @@ const en = {
   catInventoryCrumb:          "Inventory",
 
   // ── Admin: Reorder ───────────────────────────────────────────────────────
-  reorderTitle:               "Reorder & Purchasing",
+  reorderTitle:               "Purchasing & Reorder",
   reorderSubtitle:            "Items that need to be ordered based on current stock levels.",
   reorderRefresh:             "Refresh Recommendations",
   reorderExpandAll:           "Expand all",
@@ -1169,7 +1169,7 @@ const ko: Translations = {
   navProjects:        "프로젝트",
   navManpower:        "인력 관리",
   navEquipment:       "장비 관리",
-  navReorder:         "재주문",
+  navReorder:         "구매 및 재주문",
   navReports:         "보고서",
   navUserApprovals:   "사용자 승인",
   navExportBackup:    "백업 내보내기",
@@ -1356,7 +1356,7 @@ const ko: Translations = {
   catInventoryCrumb:          "재고",
 
   // ── Admin: Reorder ───────────────────────────────────────────────────────
-  reorderTitle:               "재주문 및 구매",
+  reorderTitle:               "구매 및 재주문",
   reorderSubtitle:            "현재 재고 수준에 따라 주문이 필요한 자재입니다.",
   reorderRefresh:             "추천 새로고침",
   reorderExpandAll:           "모두 펼치기",
@@ -2019,7 +2019,7 @@ const es: Translations = {
   navProjects:        "Proyectos",
   navManpower:        "Personal",
   navEquipment:       "Equipos",
-  navReorder:         "Reordenar",
+  navReorder:         "Compras y reorden",
   navReports:         "Informes",
   navUserApprovals:   "Aprobaciones",
   navExportBackup:    "Exportar copia",
@@ -2206,7 +2206,7 @@ const es: Translations = {
   catInventoryCrumb:          "Inventario",
 
   // ── Admin: Reorder ───────────────────────────────────────────────────────
-  reorderTitle:               "Reorden y compras",
+  reorderTitle:               "Compras y reorden",
   reorderSubtitle:            "Artículos que deben pedirse según los niveles actuales de stock.",
   reorderRefresh:             "Actualizar recomendaciones",
   reorderExpandAll:           "Expandir todo",

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown, FileSpreadsheet, X } from "lucide-react";
@@ -35,7 +36,7 @@ const DEFAULTS = {
   category: "all",
   status: "all",
   usagePattern: "all",
-  needsReorderOnly: true,
+  needsReorderOnly: false,
 };
 
 const SS_OPEN_CATS = "reorder.openCats.v1";
@@ -170,7 +171,7 @@ export default function Reorder() {
         if (pattern !== usagePatternFilter) return false;
       }
 
-      if (needsReorderOnly && stockStatus === "ordered") return false;
+      if (needsReorderOnly && (stockStatus === "ordered" || stockStatus === "in_stock")) return false;
 
       if (q) {
         const catId = item.categoryId;
@@ -549,9 +550,10 @@ export default function Reorder() {
         )}
       </div>
 
-      {/* Floating bottom action bar — appears when ≥1 visible row is selected */}
-      {selectedTotalCount > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4">
+      {/* Floating bottom action bar — portal'd to body so it always appears
+          above the page's scrolling main, regardless of ancestor overflow. */}
+      {selectedTotalCount > 0 && typeof document !== "undefined" && createPortal(
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4">
           <div
             className="flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2"
             data-testid="bar-reorder-selection"
@@ -581,7 +583,8 @@ export default function Reorder() {
               {t.reorderExportRms}
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <ExportRmsDialog
@@ -698,24 +701,28 @@ function FamilyTable({
               </TableCell>
               <TableCell>
                 <div className="flex gap-1 justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-50 border-emerald-200"
-                    onClick={() => onMarkOrdered(rec.id)}
-                    data-testid={`button-mark-ordered-${rec.id}`}
-                  >
-                    <CheckCircle className="w-3 h-3 mr-1" />{t.reorderOrderedBtn}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-slate-400 hover:text-rose-500"
-                    onClick={() => onDismiss(rec.id)}
-                    data-testid={`button-dismiss-${rec.id}`}
-                  >
-                    <XCircle className="w-3 h-3" />
-                  </Button>
+                  {rec.id > 0 && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-50 border-emerald-200"
+                        onClick={() => onMarkOrdered(rec.id)}
+                        data-testid={`button-mark-ordered-${rec.id}`}
+                      >
+                        <CheckCircle className="w-3 h-3 mr-1" />{t.reorderOrderedBtn}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-slate-400 hover:text-rose-500"
+                        onClick={() => onDismiss(rec.id)}
+                        data-testid={`button-dismiss-${rec.id}`}
+                      >
+                        <XCircle className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

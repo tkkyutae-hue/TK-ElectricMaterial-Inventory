@@ -11,7 +11,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useLanguage } from "@/hooks/use-language";
-import type { Translations } from "@/lib/i18n";
+import type { Lang, Translations } from "@/lib/i18n";
+
+const LANG_LOCALE: Record<Lang, string> = { en: "en-US", ko: "ko-KR", es: "es-ES" };
 
 function ReportStatusBadge({ status, t }: { status: string; t: Translations }) {
   if (status === "submitted") return (
@@ -26,7 +28,7 @@ function ReportStatusBadge({ status, t }: { status: string; t: Translations }) {
   );
 }
 
-function exportReportCsv(report: any, projectName: string, t: any) {
+function exportReportCsv(report: any, projectName: string, t: Translations) {
   const fd = report.formData ?? {};
   const rows: string[][] = [];
   rows.push([t.csvTitle]);
@@ -73,7 +75,7 @@ function exportReportCsv(report: any, projectName: string, t: any) {
 export function DailyReportsTab({ projectId, project }: { projectId: number; project: any }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [filter, setFilter] = useState<"all" | "draft" | "submitted">("all");
 
   const { data: me } = useQuery<{ role: string; username: string }>({
@@ -226,7 +228,7 @@ export function DailyReportsTab({ projectId, project }: { projectId: number; pro
                         ) : <span className="text-slate-300 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-400">
-                        {updatedAt ? updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        {updatedAt ? updatedAt.toLocaleDateString(LANG_LOCALE[lang], { month: "short", day: "numeric", year: "numeric" }) : "—"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5">

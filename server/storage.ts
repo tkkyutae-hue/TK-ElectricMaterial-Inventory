@@ -1401,8 +1401,9 @@ export class DatabaseStorage implements IStorage {
         sku: it.sku,
         name: it.name,
         sizeLabel: it.sizeLabel,
+        sizeSortValue: it.sizeSortValue ?? 0,
         unitOfMeasure: it.unitOfMeasure,
-        imageUrl: imgMap.get(it.id) ?? it.imageUrl ?? null,
+        imageUrl: imgMap.get(it.id) ?? null,
         quantityOnHand: liveQty,
         reorderPoint: it.reorderPoint,
         reorderQuantity: it.reorderQuantity,
@@ -1426,14 +1427,14 @@ export class DatabaseStorage implements IStorage {
           .sort((a, b) => a.name.localeCompare(b.name))
           .map(f => ({
             ...f,
-            items: f.items.slice().sort((a: any, b: any) => {
-              const aDb = (a.sizeSortValue != null && a.sizeSortValue !== 0 && a.sizeSortValue !== 9999) ? a.sizeSortValue : null;
-              const bDb = (b.sizeSortValue != null && b.sizeSortValue !== 0 && b.sizeSortValue !== 9999) ? b.sizeSortValue : null;
+            items: f.items.slice().sort((a: { sizeSortValue: number; sizeLabel: string | null; name: string }, b: { sizeSortValue: number; sizeLabel: string | null; name: string }) => {
+              const aDb = (a.sizeSortValue !== 0 && a.sizeSortValue !== 9999) ? a.sizeSortValue : null;
+              const bDb = (b.sizeSortValue !== 0 && b.sizeSortValue !== 9999) ? b.sizeSortValue : null;
               if (aDb !== null && bDb !== null) return aDb - bDb;
               const aEff = aDb ?? parseSizeLabelForSort(a.sizeLabel || '');
               const bEff = bDb ?? parseSizeLabelForSort(b.sizeLabel || '');
               if (aEff !== bEff) return aEff - bEff;
-              return (a.name || '').localeCompare(b.name || '');
+              return a.name.localeCompare(b.name);
             }),
           })),
       }));

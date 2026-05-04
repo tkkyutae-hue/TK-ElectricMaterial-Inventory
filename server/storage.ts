@@ -1422,7 +1422,20 @@ export class DatabaseStorage implements IStorage {
         name: c.category.name,
         code: c.category.code ?? null,
         itemCount: c.itemCount,
-        families: Array.from(c.families.values()).sort((a, b) => a.name.localeCompare(b.name)),
+        families: Array.from(c.families.values())
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(f => ({
+            ...f,
+            items: f.items.slice().sort((a: any, b: any) => {
+              const aDb = (a.sizeSortValue != null && a.sizeSortValue !== 0 && a.sizeSortValue !== 9999) ? a.sizeSortValue : null;
+              const bDb = (b.sizeSortValue != null && b.sizeSortValue !== 0 && b.sizeSortValue !== 9999) ? b.sizeSortValue : null;
+              if (aDb !== null && bDb !== null) return aDb - bDb;
+              const aEff = aDb ?? parseSizeLabelForSort(a.sizeLabel || '');
+              const bEff = bDb ?? parseSizeLabelForSort(b.sizeLabel || '');
+              if (aEff !== bEff) return aEff - bEff;
+              return (a.name || '').localeCompare(b.name || '');
+            }),
+          })),
       }));
 
     return { categories: result };

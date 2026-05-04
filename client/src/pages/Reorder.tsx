@@ -17,6 +17,7 @@ import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
+import { parseSizeToNumber } from "@/components/category/types";
 
 async function fetchJson(url: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -221,9 +222,12 @@ export default function Reorder() {
           .map(([famName, recs]) => ({
             name: famName,
             items: recs.slice().sort((a, b) => {
-              const sa = a.item?.sizeSortValue ?? 0;
-              const sb = b.item?.sizeSortValue ?? 0;
-              if (sa !== sb) return sa - sb;
+              const aDb = (a.item?.sizeSortValue != null && a.item.sizeSortValue !== 0 && a.item.sizeSortValue !== 9999) ? a.item.sizeSortValue : null;
+              const bDb = (b.item?.sizeSortValue != null && b.item.sizeSortValue !== 0 && b.item.sizeSortValue !== 9999) ? b.item.sizeSortValue : null;
+              if (aDb !== null && bDb !== null) return aDb - bDb;
+              const aEff = aDb ?? parseSizeToNumber(a.item?.sizeLabel);
+              const bEff = bDb ?? parseSizeToNumber(b.item?.sizeLabel);
+              if (aEff !== bEff) return aEff - bEff;
               return String(a.item?.name ?? "").localeCompare(String(b.item?.name ?? ""));
             }),
           }))

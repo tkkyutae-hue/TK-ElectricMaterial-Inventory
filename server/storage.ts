@@ -601,14 +601,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createItem(item: CreateItemRequest): Promise<Item> {
-    // Auto-compute sizeSortValue from sizeLabel unless the caller already
-    // supplied a meaningful (non-zero) value.
-    const existingSort = (item as any).sizeSortValue ?? 0;
-    let sizeSortValue = existingSort;
-    if (!existingSort) {
-      const raw = parseSizeLabelForSort((item as any).sizeLabel ?? '');
-      sizeSortValue = raw < 999999 ? raw : 0;
-    }
+    // Always compute sizeSortValue from sizeLabel so new items are immediately
+    // sorted correctly. A value of 999999 (unparseable) is stored as 0.
+    const raw = parseSizeLabelForSort(item.sizeLabel ?? '');
+    const sizeSortValue = raw < 999999 ? raw : 0;
 
     const [created] = await db.insert(items).values({ ...item, sizeSortValue }).returning();
 
@@ -632,15 +628,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {
-    // If sizeLabel is being changed, recompute sizeSortValue automatically.
-    // Only act when sizeLabel key is present in the payload (explicit update).
-    const payload: UpdateItemRequest & { sizeSortValue?: number } = { ...item };
+    // If sizeLabel is explicitly included in the payload, recompute sizeSortValue.
+    // Only triggers when sizeLabel key is present (not every unrelated update).
+    const extra: { sizeSortValue?: number } = {};
     if ('sizeLabel' in item) {
-      const raw = parseSizeLabelForSort((item as any).sizeLabel ?? '');
-      payload.sizeSortValue = raw < 999999 ? raw : 0;
+      const raw = parseSizeLabelForSort(item.sizeLabel ?? '');
+      extra.sizeSortValue = raw < 999999 ? raw : 0;
     }
 
-    const [updated] = await db.update(items).set({ ...payload, updatedAt: new Date() }).where(eq(items.id, id)).returning();
+    const [updated] = await db.update(items).set({ ...item, ...extra, updatedAt: new Date() }).where(eq(items.id, id)).returning();
     return updated;
   }
 

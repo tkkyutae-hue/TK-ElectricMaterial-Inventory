@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DndContext,
@@ -169,6 +169,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -391,7 +392,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
             </div>
             <div className="border border-slate-200 rounded-md overflow-hidden">
               <div className="max-h-72 overflow-y-auto">
-                <table className="w-full text-sm">
+                <table ref={tableRef} className="w-full text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <th className="text-right font-medium px-2 py-2 w-8">#</th>
@@ -419,7 +420,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                     </SortableContext>
                     <DragOverlay>
                       {activeRow && (
-                        <table className="w-full text-sm">
+                        <table className="text-sm" style={{ width: tableRef.current?.offsetWidth }}>
                           <tbody>
                             <OverlayRow
                               row={activeRow}

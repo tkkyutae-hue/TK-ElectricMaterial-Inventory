@@ -2724,14 +2724,18 @@ export class DatabaseStorage implements IStorage {
     lines: Omit<CreateRmsExportHistoryItem, "historyId">[],
   ): Promise<RmsExportHistory> {
     return await db.transaction(async (tx) => {
+      // Serialise concurrent exports for the same PO with a pg advisory lock
+      // so poSeq is always unique per PO even under parallel requests.
+      const lockKey = header.poNumber ?? "";
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
       const poFilter = header.poNumber
         ? eq(rmsExportHistory.poNumber, header.poNumber)
         : isNull(rmsExportHistory.poNumber);
-      const [{ cnt }] = await tx
-        .select({ cnt: sql<number>`count(*)::int` })
+      const [{ maxSeq }] = await tx
+        .select({ maxSeq: sql<number | null>`max(po_seq)` })
         .from(rmsExportHistory)
         .where(poFilter);
-      const headerWithSeq = { ...header, poSeq: (cnt ?? 0) + 1 };
+      const headerWithSeq = { ...header, poSeq: (maxSeq ?? 0) + 1 };
       const [created] = await tx.insert(rmsExportHistory).values(headerWithSeq).returning();
       if (lines.length > 0) {
         await tx.insert(rmsExportHistoryItems).values(

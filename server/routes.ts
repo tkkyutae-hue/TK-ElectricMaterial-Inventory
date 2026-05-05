@@ -1036,8 +1036,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const created = await storage.createRmsExportHistory(headerInsert, lines);
         const seq = created.poSeq ?? 1;
         const safeFn = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
-        const poPart = safeFn(parsed.header.poNumber) || "RMS";
-        rmsFilename = `RMS-${poPart}-${String(seq).padStart(4, "0")}.xlsx`;
+        const poPart = safeFn(parsed.header.poNumber || "");
+        const seqStr = String(seq).padStart(4, "0");
+        rmsFilename = poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
       } catch (histErr) {
         const msg = histErr instanceof Error ? histErr.message : String(histErr);
         console.error("[rms-export] failed to persist history:", msg);

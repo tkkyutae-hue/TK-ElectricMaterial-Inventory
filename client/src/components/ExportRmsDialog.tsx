@@ -26,7 +26,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, GripVertical, Loader2, Package, X } from "lucide-react";
+import { Download, Loader2, Package, X } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -36,6 +36,7 @@ export type RmsExportItem = {
   size: string;
   unit: string;
   qty: number;
+  onHand?: number;
   imageUrl?: string | null;
 };
 
@@ -76,6 +77,9 @@ function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCell
       </td>
       <td className="px-3 py-2 text-slate-600">{r.size || "—"}</td>
       <td className="px-3 py-2 text-slate-900">{r.name}</td>
+      <td className="px-3 py-2 text-right text-slate-400 tabular-nums w-16" data-testid={`text-rms-onhand-${r.id}`}>
+        {r.onHand ?? "—"}
+      </td>
       <td className="px-3 py-2 text-right">
         <Input
           type="number"
@@ -83,6 +87,7 @@ function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCell
           className="h-8 text-right w-24 ml-auto"
           value={r.qty}
           onChange={e => onUpdateQty(r.id, Number(e.target.value))}
+          onPointerDown={e => e.stopPropagation()}
           data-testid={`input-rms-qty-${r.id}`}
         />
       </td>
@@ -105,12 +110,7 @@ function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCell
 
 function OverlayRow({ row: r, index }: { row: RmsExportItem; index: number }) {
   return (
-    <tr className="border-t border-slate-100 bg-white shadow-lg">
-      <td className="px-2 py-2 w-8">
-        <span className="text-slate-300 p-1 inline-flex">
-          <GripVertical className="w-4 h-4" />
-        </span>
-      </td>
+    <tr className="border-t border-slate-100 bg-white shadow-lg cursor-grabbing">
       <RowCells row={r} index={index} onUpdateQty={() => {}} />
     </tr>
   );
@@ -137,21 +137,11 @@ function SortableRow({ row: r, index, onUpdateQty, onRemove, removeLabel }: Sort
     <tr
       ref={setNodeRef}
       style={style}
-      className="border-t border-slate-100"
+      {...listeners}
+      {...attributes}
+      className="border-t border-slate-100 cursor-grab active:cursor-grabbing touch-none"
       data-testid={`row-rms-${r.id}`}
     >
-      <td className="px-2 py-2 w-8">
-        <button
-          {...listeners}
-          {...attributes}
-          className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 touch-none p-1 rounded"
-          tabIndex={-1}
-          data-testid={`handle-rms-${r.id}`}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
-      </td>
       <RowCells row={r} index={index} onUpdateQty={onUpdateQty} onRemove={onRemove} removeLabel={removeLabel} />
     </tr>
   );
@@ -404,12 +394,12 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
-                      <th className="w-8 px-2 py-2" />
                       <th className="text-right font-medium px-2 py-2 w-8">#</th>
                       <th className="text-left font-medium px-3 py-2 w-14">{t.reorderRmsPhoto}</th>
                       <th className="text-left font-medium px-3 py-2 w-28">{t.reorderRmsSize}</th>
                       <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
-                      <th className="text-right font-medium px-3 py-2 w-24">{t.reorderRmsQty}</th>
+                      <th className="text-right font-medium px-3 py-2 w-16">{t.reorderColOnHand}</th>
+                      <th className="text-right font-medium px-3 py-2 w-24">{t.reorderColOrderQty}</th>
                       <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
                       <th className="w-8 px-2 py-2" />
                     </tr>

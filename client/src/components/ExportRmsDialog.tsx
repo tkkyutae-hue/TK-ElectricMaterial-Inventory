@@ -229,14 +229,15 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   // Fetch predicted sequence number for the current PO
   const { data: seqData, isFetching: seqFetching } = useQuery<{ nextSeq: number }>({
     queryKey: ["/api/reorder/next-seq", debouncedPo],
-    queryFn: async () => {
-      const params = debouncedPo ? `?po=${encodeURIComponent(debouncedPo)}` : "";
+    queryFn: async ({ queryKey }) => {
+      const po = queryKey[1] as string;
+      const params = po ? `?po=${encodeURIComponent(po)}` : "";
       const res = await fetch(`/api/reorder/next-seq${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("seq fetch failed");
       return res.json();
     },
     enabled: open,
-    staleTime: 10_000,
+    staleTime: 0,
   });
 
   const predictedFilename = buildRmsFilename(poNumber, seqData?.nextSeq ?? 1);

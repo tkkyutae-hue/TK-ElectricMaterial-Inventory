@@ -1166,10 +1166,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/drafts", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
-      const all = await storage.getDrafts();
       const user = req.user;
-      if (user && !canAccessAllDrafts(user.role)) {
-        // Staff and viewer: only return their own drafts
+      if (!user) return res.status(401).json({ message: "Authentication required" });
+      const all = await storage.getDrafts();
+      if (!canAccessAllDrafts(user.role)) {
         return res.json(all.filter(d => d.savedBy === user.id));
       }
       res.json(all);
@@ -1182,10 +1182,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const id = parseIntParam(req.params.id, "id", res);
       if (id === null) return;
+      const user = req.user;
+      if (!user) return res.status(401).json({ message: "Authentication required" });
       const draft = await storage.getDraft(id);
       if (!draft) return res.status(404).json({ message: "Draft not found" });
-      const user = req.user;
-      if (user && !canAccessAllDrafts(user.role) && draft.savedBy !== user.id) {
+      if (!canAccessAllDrafts(user.role) && draft.savedBy !== user.id) {
         return res.status(403).json({ message: "Access denied" });
       }
       res.json(draft);

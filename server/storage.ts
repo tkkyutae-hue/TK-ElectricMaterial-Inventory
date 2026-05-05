@@ -182,6 +182,7 @@ export interface IStorage {
   getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined>;
   updateRmsExportHistory(id: number, patch: Partial<Pick<CreateRmsExportHistory, "requestFrom" | "poNumber" | "projectName" | "completionDate" | "deliveryTo">>): Promise<RmsExportHistory | undefined>;
   deleteRmsExportHistory(ids: number[]): Promise<number>;
+  getNextRmsSeq(poNumber: string | null | undefined): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2744,6 +2745,17 @@ export class DatabaseStorage implements IStorage {
       }
       return created;
     });
+  }
+
+  async getNextRmsSeq(poNumber: string | null | undefined): Promise<number> {
+    const poFilter = poNumber
+      ? eq(rmsExportHistory.poNumber, poNumber)
+      : isNull(rmsExportHistory.poNumber);
+    const [{ maxSeq }] = await db
+      .select({ maxSeq: sql<number | null>`max(po_seq)` })
+      .from(rmsExportHistory)
+      .where(poFilter);
+    return (maxSeq ?? 0) + 1;
   }
 
   async listRmsExportHistory(limit = 200): Promise<RmsExportHistory[]> {

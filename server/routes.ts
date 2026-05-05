@@ -1056,6 +1056,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder: RMS export history ────────────────────────────────────────────
+  app.get("/api/reorder/next-seq", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const po = (req.query.po as string | undefined) || null;
+      const seq = await storage.getNextRmsSeq(po);
+      res.json({ seq });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to get next seq" });
+    }
+  });
+
   app.get("/api/reorder/history", isAuthenticated, requireManager, async (_req, res) => {
     try {
       const rows = await storage.listRmsExportHistory(200);

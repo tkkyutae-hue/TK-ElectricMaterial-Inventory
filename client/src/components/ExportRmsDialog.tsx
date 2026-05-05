@@ -155,6 +155,13 @@ function todayIso() {
   return `${y}-${m}-${day}`;
 }
 
+function buildRmsFilename(poNumber: string, poSeq: number): string {
+  const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+  const poPart = safe(poNumber || "");
+  const seqStr = String(poSeq).padStart(4, "0");
+  return poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
+}
+
 export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Props) {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -162,6 +169,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [date, setDate] = useState(todayIso());
   const [requester, setRequester] = useState("");
   const [poNumber, setPoNumber] = useState("");
+  const [debouncedPo, setDebouncedPo] = useState("");
   const [projectName, setProjectName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [completionDate, setCompletionDate] = useState("");
@@ -210,6 +218,27 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
       label: p.poNumber ? `${p.name} (${p.poNumber})` : p.name,
     }));
   }, [projects]);
+
+  // Debounce PO number for seq lookup (400 ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedPo(poNumber.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [poNumber]);
+
+  // Fetch predicted sequence number for the current PO
+  const { data: seqData } = useQuery<{ seq: number }>({
+    queryKey: ["/api/reorder/next-seq", debouncedPo],
+    queryFn: async () => {
+      const params = debouncedPo ? `?po=${encodeURIComponent(debouncedPo)}` : "";
+      const res = await fetch(`/api/reorder/next-seq${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("seq fetch failed");
+      return res.json();
+    },
+    enabled: open,
+    staleTime: 10_000,
+  });
+
+  const predictedFilename = buildRmsFilename(poNumber, seqData?.seq ?? 1);
 
   // When dialog opens, refresh row list from incoming selection and clear the
   // picker so a new export starts from a clean slate.
@@ -363,6 +392,9 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                   {t.reorderRmsPoNumber} <span className="text-rose-500">*</span>
                 </Label>
                 <Input id="rms-po" value={poNumber} onChange={e => setPoNumber(e.target.value)} data-testid="input-rms-po" />
+                <p className="text-xs text-slate-400 font-mono" data-testid="text-rms-filename-preview">
+                  {t.reorderRmsFilenamePreview} <span className="text-slate-600">{predictedFilename}</span>
+                </p>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="rms-project" className="text-xs text-slate-600">{t.reorderRmsProjectName}</Label>

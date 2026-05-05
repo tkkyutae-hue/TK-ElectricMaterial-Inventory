@@ -1159,20 +1159,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Movement Drafts ─────────────────────────────────────────────────────────
 
-  app.get("/api/drafts", isAuthenticated, async (_req, res) => {
+  // Helper: managers and admins may access any draft; staff/viewer are limited to their own.
+  function canAccessAllDrafts(role: string | null | undefined): boolean {
+    return role === "admin" || role === "manager";
+  }
+
+  app.get("/api/drafts", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
-      res.json(await storage.getDrafts());
+      const all = await storage.getDrafts();
+      const user = req.user;
+      if (user && !canAccessAllDrafts(user.role)) {
+        // Staff and viewer: only return their own drafts
+        return res.json(all.filter(d => d.savedBy === user.id));
+      }
+      res.json(all);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.get("/api/drafts/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/drafts/:id", isAuthenticated, loadCurrentUser, async (req: any, res) => {
     try {
       const id = parseIntParam(req.params.id, "id", res);
       if (id === null) return;
       const draft = await storage.getDraft(id);
       if (!draft) return res.status(404).json({ message: "Draft not found" });
+      const user = req.user;
+      if (user && !canAccessAllDrafts(user.role) && draft.savedBy !== user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       res.json(draft);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -1208,10 +1223,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.delete("/api/drafts/:id", isAuthenticated, requireStaff, async (req, res) => {
+  app.delete("/api/drafts/:id", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const id = parseIntParam(req.params.id, "id", res);
       if (id === null) return;
+      const draft = await storage.getDraft(id);
+      if (!draft) return res.status(404).json({ message: "Draft not found" });
+      const caller = req.currentUser;
+      if (caller && !canAccessAllDrafts(caller.role) && draft.savedBy !== caller.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       await storage.deleteDraft(id);
       res.json({ ok: true });
     } catch (err: any) {
@@ -1219,12 +1240,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/drafts/:id/confirm", isAuthenticated, requireStaff, async (req, res) => {
+  app.post("/api/drafts/:id/confirm", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const draftId = parseIntParam(req.params.id, "draftId", res);
       if (draftId === null) return;
       const draft = await storage.getDraft(draftId);
       if (!draft) return res.status(404).json({ message: "Draft not found" });
+      const caller = req.currentUser;
+      if (caller && !canAccessAllDrafts(caller.role) && draft.savedBy !== caller.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
 
       // ── Validate each item in the draft before confirming ───────────────────
       let draftItems: any[] = [];

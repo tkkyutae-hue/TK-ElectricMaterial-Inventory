@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { Download, GripVertical, Loader2, Package, X } from "lucide-react";
@@ -178,6 +179,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [lastRemoved, setLastRemoved] = useState<{ row: RmsExportItem; index: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -225,6 +227,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     if (open) {
       setRows(initialItems);
       setSelectedProjectId("");
+      setLastRemoved(null);
     }
   }, [open, initialItems]);
 
@@ -244,7 +247,33 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   };
 
   const removeRow = (id: number) => {
+    const index = rows.findIndex(r => r.id === id);
+    if (index < 0) return;
+    const row = rows[index];
+    const removed = { row, index };
+    setLastRemoved(removed);
     setRows(prev => prev.filter(r => r.id !== id));
+    const { dismiss } = toast({
+      title: t.reorderRmsRowRemoved,
+      duration: 5000,
+      action: (
+        <ToastAction
+          altText={t.undoMovement}
+          data-testid="toast-undo-rms-remove"
+          onClick={() => {
+            setRows(current => {
+              const next = [...current];
+              next.splice(removed.index, 0, removed.row);
+              return next;
+            });
+            setLastRemoved(null);
+            dismiss();
+          }}
+        >
+          {t.undoMovement}
+        </ToastAction>
+      ),
+    });
   };
 
   const handleSubmit = async () => {

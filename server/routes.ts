@@ -299,11 +299,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Projects ───────────────────────────────────────────────────────────────
-  app.get("/api/projects", isAuthenticated, async (_req, res) => {
+  app.get("/api/projects", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getProjects());
   });
 
-  app.get("/api/projects/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id", isAuthenticated, requireManager, async (req, res) => {
     const data = await storage.getProject(Number(req.params.id));
     if (!data) return res.status(404).json({ message: "Not found" });
     res.json(data);
@@ -882,7 +882,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder / Purchasing ─────────────────────────────────────────────────────
-  app.get("/api/reorder/recommendations", isAuthenticated, async (_req, res) => {
+  app.get("/api/reorder/recommendations", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getPurchaseRecommendations());
   });
 
@@ -1141,19 +1141,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
-  app.get("/api/reports/low-stock", isAuthenticated, async (_req, res) => {
+  app.get("/api/reports/low-stock", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getReportLowStock());
   });
 
-  app.get("/api/reports/by-location", isAuthenticated, async (_req, res) => {
+  app.get("/api/reports/by-location", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getReportByLocation());
   });
 
-  app.get("/api/reports/valuation", isAuthenticated, async (_req, res) => {
+  app.get("/api/reports/valuation", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getReportValuation());
   });
 
-  app.get("/api/reports/usage-by-project", isAuthenticated, async (_req, res) => {
+  app.get("/api/reports/usage-by-project", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getReportUsageByProject());
   });
 
@@ -2698,7 +2698,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Daily Reports ─────────────────────────────────────────────────────────
 
-  app.get("/api/daily-reports", isAuthenticated, async (req, res) => {
+  app.get("/api/daily-reports", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.query.projectId as string);
       if (isNaN(projectId)) return res.status(400).json({ message: "projectId is required" });
@@ -2709,7 +2709,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/daily-reports-summary", isAuthenticated, async (_req, res) => {
+  app.get("/api/daily-reports-summary", isAuthenticated, requireManager, async (_req, res) => {
     try {
       const summary = await storage.getDailyReportSummary();
       res.json(summary);
@@ -2718,7 +2718,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/daily-reports/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/daily-reports/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
@@ -2786,11 +2786,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Workers ─────────────────────────────────────────────────────────────────
 
-  app.get("/api/workers", isAuthenticated, async (_req, res) => {
+  app.get("/api/workers", isAuthenticated, requireManager, async (_req, res) => {
     res.json(await storage.getWorkers());
   });
 
-  app.get("/api/workers/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/workers/:id", isAuthenticated, requireManager, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
     const worker = await storage.getWorker(id);
@@ -2830,7 +2830,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ── Worker Attendance ──────────────────────────────────────────────────────
-  app.get("/api/workers/:id/attendance", isAuthenticated, async (req, res) => {
+  app.get("/api/workers/:id/attendance", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -2864,7 +2864,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ── Worker Evaluations (History) ───────────────────────────────────────────
-  app.get("/api/workers/:id/evaluations", isAuthenticated, async (req, res) => {
+  app.get("/api/workers/:id/evaluations", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid worker ID" });
@@ -2888,7 +2888,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Project Scope Items ─────────────────────────────────────────────────────
 
-  app.get("/api/projects/:id/progress", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id/progress", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
@@ -2899,7 +2899,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/projects/:id/scope-items", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });

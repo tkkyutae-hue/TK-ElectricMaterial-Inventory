@@ -41,12 +41,34 @@ async function isSafeExportUrl(rawUrl: string): Promise<boolean> {
     if (u.port && u.port !== "443") return false;
     const hostname = u.hostname.toLowerCase();
     if (["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname)) return false;
-    const { address } = await dns.lookup(hostname, { family: 0 });
-    if (isPrivateIp(address)) return false;
+    // Resolve ALL A and AAAA records; every address must be public
+    const ips: string[] = [];
+    try { ips.push(...(await dns.resolve4(hostname))); } catch { /* no A records */ }
+    try { ips.push(...(await dns.resolve6(hostname))); } catch { /* no AAAA records */ }
+    if (ips.length === 0) return false; // cannot resolve = deny
+    if (ips.some(ip => isPrivateIp(ip))) return false;
     return true;
   } catch {
     return false;
   }
+}
+
+// ─── Upload magic-bytes validator ─────────────────────────────────────────────
+// Verifies that file content matches the declared MIME type's signature.
+function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
+  if (buf.length < 12) return false;
+  if (mimetype === "image/jpeg" || mimetype === "image/jpg") {
+    return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  }
+  if (mimetype === "image/png") {
+    return buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47
+        && buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a;
+  }
+  if (mimetype === "image/webp") {
+    return buf.slice(0, 4).toString("ascii") === "RIFF"
+        && buf.slice(8, 12).toString("ascii") === "WEBP";
+  }
+  return false;
 }
 
 // ─── RBAC middleware ─────────────────────────────────────────────────────────
@@ -1324,9 +1346,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/upload/item-image", isAuthenticated, requireManager, upload.single("file"), (req, res) => {
+  app.post("/api/upload/item-image", isAuthenticated, requireManager, upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file or unsupported file type. Allowed: jpg, jpeg, png, webp (max 8 MB)." });
+    }
+    // Validate actual file content against declared MIME type (magic bytes check)
+    try {
+      const header = Buffer.allocUnsafe(12);
+      const fd = fs.openSync(req.file.path, "r");
+      const bytesRead = fs.readSync(fd, header, 0, 12, 0);
+      fs.closeSync(fd);
+      if (bytesRead < 12 || !isImageMagicBytes(header, req.file.mimetype)) {
+        fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ message: "File content does not match the declared image type." });
+      }
+    } catch {
+      fs.unlink(req.file.path, () => {});
+      return res.status(500).json({ message: "Failed to validate uploaded file." });
     }
     res.json({ url: `/uploads/${req.file.filename}` });
   });
@@ -1814,7 +1850,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                   console.warn("[export] PHOTO: URL blocked by SSRF guard:", srcUrl.slice(0, 80));
                 } else {
                   const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB cap
-                  const resp = await fetch(srcUrl, { signal: AbortSignal.timeout(10_000) });
+                  const resp = await fetch(srcUrl, { signal: AbortSignal.timeout(10_000), redirect: "error" });
                   if (!resp.ok) {
                     console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
                   } else {

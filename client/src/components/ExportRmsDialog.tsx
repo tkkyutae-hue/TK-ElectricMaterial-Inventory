@@ -48,8 +48,8 @@ type RowCellsProps = {
   row: RmsExportItem;
   index: number;
   onUpdateQty: (id: number, qty: number) => void;
-  onRemove: (id: number) => void;
-  removeLabel: string;
+  onRemove?: (id: number) => void;
+  removeLabel?: string;
 };
 
 function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCellsProps) {
@@ -86,16 +86,18 @@ function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCell
         />
       </td>
       <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
-      <td className="px-2 py-2 w-8">
-        <button
-          onClick={() => onRemove(r.id)}
-          className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors"
-          aria-label={removeLabel}
-          data-testid={`button-rms-remove-${r.id}`}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </td>
+      {onRemove && (
+        <td className="px-2 py-2 w-8">
+          <button
+            onClick={() => onRemove(r.id)}
+            className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors"
+            aria-label={removeLabel}
+            data-testid={`button-rms-remove-${r.id}`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </td>
+      )}
     </>
   );
 }
@@ -108,7 +110,7 @@ function OverlayRow({ row: r, index }: { row: RmsExportItem; index: number }) {
           <GripVertical className="w-4 h-4" />
         </span>
       </td>
-      <RowCells row={r} index={index} onUpdateQty={() => {}} onRemove={() => {}} removeLabel="" />
+      <RowCells row={r} index={index} onUpdateQty={() => {}} />
     </tr>
   );
 }

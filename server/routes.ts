@@ -18,6 +18,36 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import crypto from "crypto";
+import dns from "dns/promises";
+
+// ─── Export SSRF guard ────────────────────────────────────────────────────────
+function isPrivateIp(ip: string): boolean {
+  if (ip === "::1" || ip === "0:0:0:0:0:0:0:1" || ip === "0.0.0.0") return true;
+  if (ip.startsWith("fc") || ip.startsWith("fd")) return true;
+  return [
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^169\.254\./,
+    /^0\./,
+  ].some(r => r.test(ip));
+}
+
+async function isSafeExportUrl(rawUrl: string): Promise<boolean> {
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== "https:") return false;
+    if (u.port && u.port !== "443") return false;
+    const hostname = u.hostname.toLowerCase();
+    if (["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname)) return false;
+    const { address } = await dns.lookup(hostname, { family: 0 });
+    if (isPrivateIp(address)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // ─── RBAC middleware ─────────────────────────────────────────────────────────
 // Roles: viewer < staff < manager < admin
@@ -78,18 +108,25 @@ function parseIntParam(val: any, name: string, res: any): number | null {
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+// Map MIME type → safe extension (never trust originalname for extension)
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/jpg":  ".jpg",
+  "image/png":  ".png",
+  "image/webp": ".webp",
+};
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: uploadsDir,
     filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
+      const ext = MIME_TO_EXT[file.mimetype] ?? ".jpg";
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
     },
   }),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    cb(null, allowed.includes(file.mimetype));
+    cb(null, Object.keys(MIME_TO_EXT).includes(file.mimetype));
   },
 });
 
@@ -100,7 +137,11 @@ function getUserId(req: any): string | null {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
 
-  app.use("/uploads", express.static(uploadsDir));
+  app.use("/uploads", (_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Disposition", "inline");
+    next();
+  }, express.static(uploadsDir));
 
   // ─── Health ─────────────────────────────────────────────────────────────────
   app.get("/api/health", async (_req, res) => {
@@ -1767,19 +1808,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                 }
               } else if (srcUrl.startsWith("https://")) {
                 // ── remote HTTPS URL ────────────────────────────────────────────
-                const resp = await fetch(srcUrl);
-                if (!resp.ok) {
-                  console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
+                // SSRF guard: block private/loopback IPs and non-standard ports
+                const safe = await isSafeExportUrl(srcUrl);
+                if (!safe) {
+                  console.warn("[export] PHOTO: URL blocked by SSRF guard:", srcUrl.slice(0, 80));
                 } else {
-                  const ct = (resp.headers.get("content-type") ?? "").toLowerCase();
-                  const rawExt = ct.includes("jpeg") || ct.includes("jpg") ? "jpeg"
-                               : ct.includes("png")  ? "png"
-                               : null;
-                  if (!rawExt) {
-                    console.warn("[export] PHOTO: unsupported content-type", ct, "for:", srcUrl);
+                  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB cap
+                  const resp = await fetch(srcUrl, { signal: AbortSignal.timeout(10_000) });
+                  if (!resp.ok) {
+                    console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
                   } else {
-                    ext = rawExt;
-                    buf = Buffer.from(await resp.arrayBuffer());
+                    const ct = (resp.headers.get("content-type") ?? "").toLowerCase();
+                    const rawExt = ct.includes("jpeg") || ct.includes("jpg") ? "jpeg"
+                                 : ct.includes("png")  ? "png"
+                                 : null;
+                    if (!rawExt) {
+                      console.warn("[export] PHOTO: unsupported content-type", ct, "for:", srcUrl);
+                    } else {
+                      const bytes = Buffer.from(await resp.arrayBuffer());
+                      if (bytes.length > MAX_IMAGE_BYTES) {
+                        console.warn("[export] PHOTO: response too large (" + bytes.length + " bytes), skipping:", srcUrl.slice(0, 80));
+                      } else {
+                        ext = rawExt;
+                        buf = bytes;
+                      }
+                    }
                   }
                 }
               } else if (srcUrl.startsWith("/uploads/")) {

@@ -601,7 +601,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createItem(item: CreateItemRequest): Promise<Item> {
-    const [created] = await db.insert(items).values(item).returning();
+    // Auto-compute sizeSortValue from sizeLabel unless the caller already
+    // supplied a meaningful (non-zero) value.
+    const existingSort = (item as any).sizeSortValue ?? 0;
+    let sizeSortValue = existingSort;
+    if (!existingSort) {
+      const raw = parseSizeLabelForSort((item as any).sizeLabel ?? '');
+      sizeSortValue = raw < 999999 ? raw : 0;
+    }
+
+    const [created] = await db.insert(items).values({ ...item, sizeSortValue }).returning();
 
     // Create initial location balance if primaryLocationId is set
     if (created.primaryLocationId && created.quantityOnHand > 0) {
@@ -623,7 +632,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {
-    const [updated] = await db.update(items).set({ ...item, updatedAt: new Date() }).where(eq(items.id, id)).returning();
+    // If sizeLabel is being changed, recompute sizeSortValue automatically.
+    // Only act when sizeLabel key is present in the payload (explicit update).
+    const payload: UpdateItemRequest & { sizeSortValue?: number } = { ...item };
+    if ('sizeLabel' in item) {
+      const raw = parseSizeLabelForSort((item as any).sizeLabel ?? '');
+      payload.sizeSortValue = raw < 999999 ? raw : 0;
+    }
+
+    const [updated] = await db.update(items).set({ ...payload, updatedAt: new Date() }).where(eq(items.id, id)).returning();
     return updated;
   }
 

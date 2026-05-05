@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -257,10 +257,9 @@ export default function ReorderHistory() {
             const collapsed = collapsedGroups.has(group.poKey);
             const label = group.poKey ? group.poKey : t.reorderHistoryNoPo;
             return (
-              <>
+              <React.Fragment key={group.poKey || "no-po"}>
                 {/* PO group header row */}
                 <TableRow
-                  key={`group-${group.poKey}`}
                   className="bg-slate-50 hover:bg-slate-100 cursor-pointer select-none"
                   onClick={() => toggleGroup(group.poKey)}
                   data-testid={`row-history-group-${group.poKey || "no-po"}`}
@@ -322,7 +321,7 @@ export default function ReorderHistory() {
                     </TableRow>
                   );
                 })}
-              </>
+              </React.Fragment>
             );
           })}
         </TableBody>

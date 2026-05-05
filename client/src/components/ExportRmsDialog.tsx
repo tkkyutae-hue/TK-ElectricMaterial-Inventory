@@ -226,7 +226,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   }, [poNumber]);
 
   // Fetch predicted sequence number for the current PO
-  const { data: seqData } = useQuery<{ seq: number }>({
+  const { data: seqData, isFetching: seqFetching } = useQuery<{ nextSeq: number }>({
     queryKey: ["/api/reorder/next-seq", debouncedPo],
     queryFn: async () => {
       const params = debouncedPo ? `?po=${encodeURIComponent(debouncedPo)}` : "";
@@ -238,7 +238,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     staleTime: 10_000,
   });
 
-  const predictedFilename = buildRmsFilename(poNumber, seqData?.seq ?? 1);
+  const predictedFilename = buildRmsFilename(poNumber, seqData?.nextSeq ?? 1);
 
   // When dialog opens, refresh row list from incoming selection and clear the
   // picker so a new export starts from a clean slate.
@@ -392,9 +392,16 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                   {t.reorderRmsPoNumber} <span className="text-rose-500">*</span>
                 </Label>
                 <Input id="rms-po" value={poNumber} onChange={e => setPoNumber(e.target.value)} data-testid="input-rms-po" />
-                <p className="text-xs text-slate-400 font-mono" data-testid="text-rms-filename-preview">
-                  {t.reorderRmsFilenamePreview} <span className="text-slate-600">{predictedFilename}</span>
-                </p>
+                {poNumber.trim().length > 0 && (
+                  <p className="text-xs text-slate-400 font-mono" data-testid="text-rms-filename-preview">
+                    {t.reorderRmsFilenamePreview}{" "}
+                    {seqFetching ? (
+                      <span className="text-slate-400">…</span>
+                    ) : (
+                      <span className="text-slate-600">{predictedFilename}</span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="rms-project" className="text-xs text-slate-600">{t.reorderRmsProjectName}</Label>

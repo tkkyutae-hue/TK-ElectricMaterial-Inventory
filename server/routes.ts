@@ -1059,8 +1059,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/reorder/next-seq", isAuthenticated, requireManager, async (req, res) => {
     try {
       const po = (req.query.po as string | undefined) || null;
-      const seq = await storage.getNextRmsSeq(po);
-      res.json({ seq });
+      const nextSeq = await storage.getNextRmsSeq(po);
+      res.json({ nextSeq });
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Failed to get next seq" });
     }

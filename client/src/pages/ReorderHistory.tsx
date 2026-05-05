@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Eye, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -75,6 +75,44 @@ export default function ReorderHistory() {
 
   const rows = data ?? [];
   const visibleIds = useMemo(() => rows.map(r => r.id), [rows]);
+
+  // Group rows by PO number; group order = most-recently-active PO first.
+  // Within each group rows are sorted by poSeq asc, then exportedAt asc.
+  const groups = useMemo(() => {
+    const orderMap = new Map<string, number>();
+    rows.forEach(r => {
+      const key = r.poNumber ?? "";
+      if (!orderMap.has(key)) orderMap.set(key, orderMap.size);
+    });
+    const buckets = new Map<string, RmsExportHistory[]>();
+    rows.forEach(r => {
+      const key = r.poNumber ?? "";
+      const bucket = buckets.get(key) ?? [];
+      bucket.push(r);
+      buckets.set(key, bucket);
+    });
+    return Array.from(orderMap.entries())
+      .sort((a, b) => a[1] - b[1])
+      .map(([key]) => ({
+        poKey: key,
+        rows: (buckets.get(key) ?? []).slice().sort((a, b) => {
+          if (a.poSeq != null && b.poSeq != null) return a.poSeq - b.poSeq;
+          if (a.poSeq != null) return -1;
+          if (b.poSeq != null) return 1;
+          const ta = a.exportedAt ? new Date(a.exportedAt).getTime() : 0;
+          const tb = b.exportedAt ? new Date(b.exportedAt).getTime() : 0;
+          return ta - tb;
+        }),
+      }));
+  }, [rows]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
 
   // Reconcile selection against current rows so deletes don't leave phantoms.
   useEffect(() => {
@@ -208,7 +246,6 @@ export default function ReorderHistory() {
             <TableHead>{t.reorderHistoryColExportedAt}</TableHead>
             <TableHead>{t.reorderHistoryColExportedBy}</TableHead>
             <TableHead>{t.reorderHistoryColProject}</TableHead>
-            <TableHead>{t.reorderHistoryColPo}</TableHead>
             <TableHead>{t.reorderHistoryColDelivery}</TableHead>
             <TableHead className="text-right">{t.reorderHistoryColItemCount}</TableHead>
             <TableHead>{t.reorderHistoryColStatus}</TableHead>
@@ -216,47 +253,76 @@ export default function ReorderHistory() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => {
-            const isSelected = selected.has(r.id);
+          {groups.map((group) => {
+            const collapsed = collapsedGroups.has(group.poKey);
+            const label = group.poKey ? group.poKey : t.reorderHistoryNoPo;
             return (
-              <TableRow
-                key={r.id}
-                data-testid={`row-history-${r.id}`}
-                data-state={isSelected ? "selected" : undefined}
-              >
-                <TableCell>
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={(v) => toggleOne(r.id, v === true)}
-                    aria-label={t.reorderHistorySelectRowAria}
-                    data-testid={`checkbox-history-row-${r.id}`}
-                  />
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-slate-400" data-testid={`text-history-seq-${r.id}`}>
-                  {r.poSeq != null ? String(r.poSeq).padStart(4, "0") : "—"}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
-                <TableCell data-testid={`text-history-requester-${r.id}`}>{r.requestFrom || "—"}</TableCell>
-                <TableCell>{r.projectName || "—"}</TableCell>
-                <TableCell>{r.poNumber || "—"}</TableCell>
-                <TableCell>{r.deliveryTo || "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.itemCount}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" data-testid={`text-history-status-${r.id}`}>
-                    {r.status === "exported" ? t.reorderHistoryStatusExported : r.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setOpenId(r.id)}
-                    data-testid={`button-history-detail-${r.id}`}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
+              <>
+                {/* PO group header row */}
+                <TableRow
+                  key={`group-${group.poKey}`}
+                  className="bg-slate-50 hover:bg-slate-100 cursor-pointer select-none"
+                  onClick={() => toggleGroup(group.poKey)}
+                  data-testid={`row-history-group-${group.poKey || "no-po"}`}
+                >
+                  <TableCell colSpan={9} className="py-2 px-4">
+                    <div className="flex items-center gap-2">
+                      {collapsed
+                        ? <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                        : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 mr-1">
+                        {t.reorderHistoryColPo}
+                      </span>
+                      <span className="font-semibold text-slate-700 text-sm">{label}</span>
+                      <span className="ml-auto text-xs text-slate-400">{group.rows.length}</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+
+                {/* Data rows */}
+                {!collapsed && group.rows.map((r) => {
+                  const isSelected = selected.has(r.id);
+                  return (
+                    <TableRow
+                      key={r.id}
+                      data-testid={`row-history-${r.id}`}
+                      data-state={isSelected ? "selected" : undefined}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(v) => toggleOne(r.id, v === true)}
+                          aria-label={t.reorderHistorySelectRowAria}
+                          data-testid={`checkbox-history-row-${r.id}`}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-slate-400" data-testid={`text-history-seq-${r.id}`}>
+                        {r.poSeq != null ? String(r.poSeq).padStart(4, "0") : "—"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
+                      <TableCell data-testid={`text-history-requester-${r.id}`}>{r.requestFrom || "—"}</TableCell>
+                      <TableCell>{r.projectName || "—"}</TableCell>
+                      <TableCell>{r.deliveryTo || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.itemCount}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" data-testid={`text-history-status-${r.id}`}>
+                          {r.status === "exported" ? t.reorderHistoryStatusExported : r.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setOpenId(r.id)}
+                          data-testid={`button-history-detail-${r.id}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </>
             );
           })}
         </TableBody>

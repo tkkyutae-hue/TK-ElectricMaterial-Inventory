@@ -44,41 +44,15 @@ type Props = {
   initialItems: RmsExportItem[];
 };
 
-type RowProps = {
+type RowCellsProps = {
   row: RmsExportItem;
   index: number;
   onUpdateQty: (id: number, qty: number) => void;
-  isDragOverlay?: boolean;
 };
 
-function SortableRow({ row: r, index, onUpdateQty, isDragOverlay = false }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-
+function RowCells({ row: r, index, onUpdateQty }: RowCellsProps) {
   return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={`border-t border-slate-100 ${isDragOverlay ? "bg-white shadow-lg rounded" : ""}`}
-      data-testid={`row-rms-${r.id}`}
-    >
-      <td className="px-2 py-2 w-8">
-        <button
-          {...listeners}
-          {...attributes}
-          className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 touch-none p-1 rounded"
-          tabIndex={-1}
-          data-testid={`handle-rms-${r.id}`}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
-      </td>
+    <>
       <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8">{index + 1}</td>
       <td className="px-3 py-2">
         {r.imageUrl ? (
@@ -110,6 +84,58 @@ function SortableRow({ row: r, index, onUpdateQty, isDragOverlay = false }: RowP
         />
       </td>
       <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
+    </>
+  );
+}
+
+function OverlayRow({ row: r, index }: { row: RmsExportItem; index: number }) {
+  return (
+    <tr className="border-t border-slate-100 bg-white shadow-lg">
+      <td className="px-2 py-2 w-8">
+        <span className="text-slate-300 p-1 inline-flex">
+          <GripVertical className="w-4 h-4" />
+        </span>
+      </td>
+      <RowCells row={r} index={index} onUpdateQty={() => {}} />
+    </tr>
+  );
+}
+
+type SortableRowProps = {
+  row: RmsExportItem;
+  index: number;
+  onUpdateQty: (id: number, qty: number) => void;
+};
+
+function SortableRow({ row: r, index, onUpdateQty }: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-t border-slate-100"
+      data-testid={`row-rms-${r.id}`}
+    >
+      <td className="px-2 py-2 w-8">
+        <button
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 touch-none p-1 rounded"
+          tabIndex={-1}
+          data-testid={`handle-rms-${r.id}`}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      <RowCells row={r} index={index} onUpdateQty={onUpdateQty} />
     </tr>
   );
 }
@@ -155,6 +181,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     setRows(prev => {
       const oldIdx = prev.findIndex(r => r.id === active.id);
       const newIdx = prev.findIndex(r => r.id === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
       return arrayMove(prev, oldIdx, newIdx);
     });
   };
@@ -358,11 +385,9 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                       {activeRow && (
                         <table className="w-full text-sm">
                           <tbody>
-                            <SortableRow
+                            <OverlayRow
                               row={activeRow}
                               index={rows.findIndex(r => r.id === activeRow.id)}
-                              onUpdateQty={() => {}}
-                              isDragOverlay
                             />
                           </tbody>
                         </table>

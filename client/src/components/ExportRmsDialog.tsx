@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, GripVertical, Loader2, Package } from "lucide-react";
+import { Download, GripVertical, Loader2, Package, X } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -48,9 +48,11 @@ type RowCellsProps = {
   row: RmsExportItem;
   index: number;
   onUpdateQty: (id: number, qty: number) => void;
+  onRemove: (id: number) => void;
+  removeLabel: string;
 };
 
-function RowCells({ row: r, index, onUpdateQty }: RowCellsProps) {
+function RowCells({ row: r, index, onUpdateQty, onRemove, removeLabel }: RowCellsProps) {
   return (
     <>
       <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8">{index + 1}</td>
@@ -84,6 +86,16 @@ function RowCells({ row: r, index, onUpdateQty }: RowCellsProps) {
         />
       </td>
       <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
+      <td className="px-2 py-2 w-8">
+        <button
+          onClick={() => onRemove(r.id)}
+          className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors"
+          aria-label={removeLabel}
+          data-testid={`button-rms-remove-${r.id}`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </td>
     </>
   );
 }
@@ -96,7 +108,7 @@ function OverlayRow({ row: r, index }: { row: RmsExportItem; index: number }) {
           <GripVertical className="w-4 h-4" />
         </span>
       </td>
-      <RowCells row={r} index={index} onUpdateQty={() => {}} />
+      <RowCells row={r} index={index} onUpdateQty={() => {}} onRemove={() => {}} removeLabel="" />
     </tr>
   );
 }
@@ -105,9 +117,11 @@ type SortableRowProps = {
   row: RmsExportItem;
   index: number;
   onUpdateQty: (id: number, qty: number) => void;
+  onRemove: (id: number) => void;
+  removeLabel: string;
 };
 
-function SortableRow({ row: r, index, onUpdateQty }: SortableRowProps) {
+function SortableRow({ row: r, index, onUpdateQty, onRemove, removeLabel }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
 
   const style: React.CSSProperties = {
@@ -135,7 +149,7 @@ function SortableRow({ row: r, index, onUpdateQty }: SortableRowProps) {
           <GripVertical className="w-4 h-4" />
         </button>
       </td>
-      <RowCells row={r} index={index} onUpdateQty={onUpdateQty} />
+      <RowCells row={r} index={index} onUpdateQty={onUpdateQty} onRemove={onRemove} removeLabel={removeLabel} />
     </tr>
   );
 }
@@ -225,6 +239,10 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
 
   const updateQty = (id: number, qty: number) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, qty: Number.isFinite(qty) ? qty : 0 } : r));
+  };
+
+  const removeRow = (id: number) => {
+    setRows(prev => prev.filter(r => r.id !== id));
   };
 
   const handleSubmit = async () => {
@@ -366,6 +384,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                       <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
                       <th className="text-right font-medium px-3 py-2 w-24">{t.reorderRmsQty}</th>
                       <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
+                      <th className="w-8 px-2 py-2" />
                     </tr>
                   </thead>
                   <DndContext
@@ -377,7 +396,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                     <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
                       <tbody>
                         {rows.map((r, i) => (
-                          <SortableRow key={r.id} row={r} index={i} onUpdateQty={updateQty} />
+                          <SortableRow key={r.id} row={r} index={i} onUpdateQty={updateQty} onRemove={removeRow} removeLabel={t.removeFromCart} />
                         ))}
                       </tbody>
                     </SortableContext>

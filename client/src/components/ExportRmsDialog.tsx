@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import {
   DndContext,
   DragOverlay,
@@ -342,6 +343,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/next-seq"] });
       toast({ title: t.reorderRmsExportSuccess });
       onOpenChange(false);
     } catch (err: any) {

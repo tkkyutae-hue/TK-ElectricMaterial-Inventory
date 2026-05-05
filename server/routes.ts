@@ -985,6 +985,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // Best-effort: persist export history snapshot. Failures are logged but
       // do not interrupt the download response.
+      let rmsFilename = `${((s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim())(parsed.header.poNumber) || "RMS"}.xlsx`;
       try {
         const currentUser = (req as RequestWithUser).currentUser;
         const itemIds = itemsToWrite
@@ -1032,15 +1033,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           itemCount: itemsToWrite.length,
           status: "exported",
         };
-        await storage.createRmsExportHistory(headerInsert, lines);
+        const created = await storage.createRmsExportHistory(headerInsert, lines);
+        const seq = created.poSeq ?? 1;
+        const safeFn = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+        const poPart = safeFn(parsed.header.poNumber) || "RMS";
+        rmsFilename = `RMS-${poPart}-${String(seq).padStart(4, "0")}.xlsx`;
       } catch (histErr) {
         const msg = histErr instanceof Error ? histErr.message : String(histErr);
         console.error("[rms-export] failed to persist history:", msg);
       }
 
-      const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
-      const poPart = safe(parsed.header.poNumber) || "RMS";
-      const filename = `${poPart}.xlsx`;
+      const filename = rmsFilename;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       if (truncated) res.setHeader("X-RMS-Truncated", "50");

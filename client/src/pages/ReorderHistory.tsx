@@ -204,6 +204,7 @@ export default function ReorderHistory() {
                 data-testid="checkbox-history-select-all"
               />
             </TableHead>
+            <TableHead className="w-12 text-right">{t.reorderHistoryColRowNum}</TableHead>
             <TableHead>{t.reorderHistoryColExportedAt}</TableHead>
             <TableHead>{t.reorderHistoryColExportedBy}</TableHead>
             <TableHead>{t.reorderHistoryColProject}</TableHead>
@@ -230,6 +231,9 @@ export default function ReorderHistory() {
                     aria-label={t.reorderHistorySelectRowAria}
                     data-testid={`checkbox-history-row-${r.id}`}
                   />
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-slate-400" data-testid={`text-history-seq-${r.id}`}>
+                  {r.poSeq != null ? String(r.poSeq).padStart(4, "0") : "—"}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
                 <TableCell data-testid={`text-history-requester-${r.id}`}>{r.requestFrom || "—"}</TableCell>

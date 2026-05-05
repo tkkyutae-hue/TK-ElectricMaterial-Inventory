@@ -572,6 +572,7 @@ export const rmsExportHistory = pgTable("rms_export_history", {
   deliveryTo: text("delivery_to"),
   itemCount: integer("item_count").notNull().default(0),
   status: text("status").notNull().default("exported"),
+  poSeq: integer("po_seq"),
 });
 
 export const rmsExportHistoryItems = pgTable("rms_export_history_items", {

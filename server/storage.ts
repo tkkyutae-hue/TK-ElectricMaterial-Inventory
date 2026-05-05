@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray } from "drizzle-orm";
+import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
@@ -2724,7 +2724,15 @@ export class DatabaseStorage implements IStorage {
     lines: Omit<CreateRmsExportHistoryItem, "historyId">[],
   ): Promise<RmsExportHistory> {
     return await db.transaction(async (tx) => {
-      const [created] = await tx.insert(rmsExportHistory).values(header).returning();
+      const poFilter = header.poNumber
+        ? eq(rmsExportHistory.poNumber, header.poNumber)
+        : isNull(rmsExportHistory.poNumber);
+      const [{ cnt }] = await tx
+        .select({ cnt: sql<number>`count(*)::int` })
+        .from(rmsExportHistory)
+        .where(poFilter);
+      const headerWithSeq = { ...header, poSeq: (cnt ?? 0) + 1 };
+      const [created] = await tx.insert(rmsExportHistory).values(headerWithSeq).returning();
       if (lines.length > 0) {
         await tx.insert(rmsExportHistoryItems).values(
           lines.map((l, i) => ({ ...l, historyId: created.id, sortOrder: l.sortOrder ?? i })),

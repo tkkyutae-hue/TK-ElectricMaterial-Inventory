@@ -1,5 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, Loader2, Package } from "lucide-react";
+import { Download, GripVertical, Loader2, Package } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -25,6 +43,76 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   initialItems: RmsExportItem[];
 };
+
+type RowProps = {
+  row: RmsExportItem;
+  index: number;
+  onUpdateQty: (id: number, qty: number) => void;
+  isDragOverlay?: boolean;
+};
+
+function SortableRow({ row: r, index, onUpdateQty, isDragOverlay = false }: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-t border-slate-100 ${isDragOverlay ? "bg-white shadow-lg rounded" : ""}`}
+      data-testid={`row-rms-${r.id}`}
+    >
+      <td className="px-2 py-2 w-8">
+        <button
+          {...listeners}
+          {...attributes}
+          className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 touch-none p-1 rounded"
+          tabIndex={-1}
+          data-testid={`handle-rms-${r.id}`}
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8">{index + 1}</td>
+      <td className="px-3 py-2">
+        {r.imageUrl ? (
+          <img
+            src={r.imageUrl}
+            alt={r.name}
+            className="w-10 h-10 rounded object-cover border border-slate-200"
+            data-testid={`img-rms-photo-${r.id}`}
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"
+            data-testid={`img-rms-photo-${r.id}`}
+          >
+            <Package className="w-4 h-4" />
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2 text-slate-600">{r.size || "—"}</td>
+      <td className="px-3 py-2 text-slate-900">{r.name}</td>
+      <td className="px-3 py-2 text-right">
+        <Input
+          type="number"
+          min={0}
+          className="h-8 text-right w-24 ml-auto"
+          value={r.qty}
+          onChange={e => onUpdateQty(r.id, Number(e.target.value))}
+          data-testid={`input-rms-qty-${r.id}`}
+        />
+      </td>
+      <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
+    </tr>
+  );
+}
 
 function todayIso() {
   const d = new Date();
@@ -47,6 +135,29 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [deliveryTo, setDeliveryTo] = useState("");
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const activeRow = activeId != null ? rows.find(r => r.id === activeId) ?? null : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as number);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRows(prev => {
+      const oldIdx = prev.findIndex(r => r.id === active.id);
+      const newIdx = prev.findIndex(r => r.id === over.id);
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
 
   // Load projects for the picker. Only fetched when dialog is open.
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
@@ -221,7 +332,8 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2 w-10">#</th>
+                      <th className="w-8 px-2 py-2" />
+                      <th className="text-right font-medium px-2 py-2 w-8">#</th>
                       <th className="text-left font-medium px-3 py-2 w-14">{t.reorderRmsPhoto}</th>
                       <th className="text-left font-medium px-3 py-2 w-28">{t.reorderRmsSize}</th>
                       <th className="text-left font-medium px-3 py-2">{t.reorderRmsItem}</th>
@@ -229,43 +341,34 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                       <th className="text-left font-medium px-3 py-2 w-20">{t.reorderRmsUnit}</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={r.id} className="border-t border-slate-100" data-testid={`row-rms-${r.id}`}>
-                        <td className="px-3 py-2 text-slate-400">{i + 1}</td>
-                        <td className="px-3 py-2">
-                          {r.imageUrl ? (
-                            <img
-                              src={r.imageUrl}
-                              alt={r.name}
-                              className="w-10 h-10 rounded object-cover border border-slate-200"
-                              data-testid={`img-rms-photo-${r.id}`}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                      <tbody>
+                        {rows.map((r, i) => (
+                          <SortableRow key={r.id} row={r} index={i} onUpdateQty={updateQty} />
+                        ))}
+                      </tbody>
+                    </SortableContext>
+                    <DragOverlay>
+                      {activeRow && (
+                        <table className="w-full text-sm">
+                          <tbody>
+                            <SortableRow
+                              row={activeRow}
+                              index={rows.findIndex(r => r.id === activeRow.id)}
+                              onUpdateQty={() => {}}
+                              isDragOverlay
                             />
-                          ) : (
-                            <div
-                              className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"
-                              data-testid={`img-rms-photo-${r.id}`}
-                            >
-                              <Package className="w-4 h-4" />
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-slate-600">{r.size || "—"}</td>
-                        <td className="px-3 py-2 text-slate-900">{r.name}</td>
-                        <td className="px-3 py-2 text-right">
-                          <Input
-                            type="number"
-                            min={0}
-                            className="h-8 text-right w-24 ml-auto"
-                            value={r.qty}
-                            onChange={e => updateQty(r.id, Number(e.target.value))}
-                            data-testid={`input-rms-qty-${r.id}`}
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-slate-600">{r.unit || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
+                          </tbody>
+                        </table>
+                      )}
+                    </DragOverlay>
+                  </DndContext>
                 </table>
               </div>
             </div>

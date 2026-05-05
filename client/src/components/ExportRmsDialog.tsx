@@ -395,7 +395,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 {poNumber.trim().length > 0 && (
                   <p className="text-xs text-slate-400 font-mono" data-testid="text-rms-filename-preview">
                     {t.reorderRmsFilenamePreview}{" "}
-                    {seqFetching ? (
+                    {seqFetching || poNumber.trim() !== debouncedPo ? (
                       <span className="text-slate-400">…</span>
                     ) : (
                       <span className="text-slate-600">{predictedFilename}</span>

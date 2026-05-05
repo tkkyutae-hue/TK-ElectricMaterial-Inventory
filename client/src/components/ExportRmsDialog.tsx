@@ -179,7 +179,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [lastRemoved, setLastRemoved] = useState<{ row: RmsExportItem; index: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -227,7 +226,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     if (open) {
       setRows(initialItems);
       setSelectedProjectId("");
-      setLastRemoved(null);
     }
   }, [open, initialItems]);
 
@@ -251,7 +249,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     if (index < 0) return;
     const row = rows[index];
     const removed = { row, index };
-    setLastRemoved(removed);
     setRows(prev => prev.filter(r => r.id !== id));
     const { dismiss } = toast({
       title: t.reorderRmsRowRemoved,
@@ -266,7 +263,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
               next.splice(removed.index, 0, removed.row);
               return next;
             });
-            setLastRemoved(null);
             dismiss();
           }}
         >

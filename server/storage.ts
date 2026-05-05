@@ -2773,6 +2773,52 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+// ─── One-time sizeSortValue backfill ─────────────────────────────────────────
+// Computes and stores sizeSortValue for every active item that currently has
+// sizeSortValue=0 and a non-empty sizeLabel.  Idempotent: items whose value is
+// already set (≠ 0) are skipped.  Items whose sizeLabel can't be parsed to a
+// meaningful sort number (result = 999999) are also skipped so we don't write
+// a useless sentinel into the DB.
+// Called once at server startup; subsequent calls are near-zero-cost because
+// the WHERE clause matches nothing once all items are backfilled.
+export async function backfillSizeSortValues(): Promise<void> {
+  const rows = await db
+    .select({ id: items.id, sizeLabel: items.sizeLabel })
+    .from(items)
+    .where(
+      and(
+        eq(items.isActive, true),
+        or(eq(items.sizeSortValue, 0), sql`${items.sizeSortValue} IS NULL`),
+        sql`${items.sizeLabel} IS NOT NULL AND trim(${items.sizeLabel}) <> ''`,
+      ),
+    );
+
+  if (rows.length === 0) return;
+
+  const updates: { id: number; val: number }[] = [];
+  for (const row of rows) {
+    const val = parseSizeLabelForSort(row.sizeLabel!);
+    if (val !== 999999) updates.push({ id: row.id, val });
+  }
+
+  if (updates.length === 0) return;
+
+  // Batch into chunks of 200 to stay well under any parameter-count limits.
+  const CHUNK = 200;
+  for (let i = 0; i < updates.length; i += CHUNK) {
+    const chunk = updates.slice(i, i + CHUNK);
+    await Promise.all(
+      chunk.map(({ id, val }) =>
+        db.update(items)
+          .set({ sizeSortValue: val })
+          .where(eq(items.id, id)),
+      ),
+    );
+  }
+
+  console.log(`[backfill] sizeSortValue set for ${updates.length} item(s) (${rows.length - updates.length} skipped — unparseable label)`);
+}
+
 // ─── Field data extraction helpers ───────────────────────────────────────────
 //
 // Category-specific family ordering constants.

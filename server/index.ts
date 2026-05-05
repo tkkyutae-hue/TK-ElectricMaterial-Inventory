@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
 import { pool } from "./db";
 import { runSeed } from "./seed";
+import { backfillSizeSortValues } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -74,6 +75,13 @@ app.use((req, res, next) => {
     await runSeed();
   } catch (err: any) {
     console.error("[seed] seed failed (non-fatal):", err.message);
+  }
+
+  // ─── Backfill sizeSortValue for items missing it (idempotent) ────────────
+  try {
+    await backfillSizeSortValues();
+  } catch (err: any) {
+    console.error("[backfill] sizeSortValue backfill failed (non-fatal):", err.message);
   }
 
   await setupAuth(app);

@@ -1060,7 +1060,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const po = (req.query.po as string | undefined) || null;
       const nextSeq = await storage.getNextRmsSeq(po);
-      res.json({ nextSeq });
+      res.set("Cache-Control", "no-store").json({ nextSeq });
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Failed to get next seq" });
     }

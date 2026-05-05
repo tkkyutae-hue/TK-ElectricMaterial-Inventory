@@ -33,6 +33,14 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+function buildRmsFilename(poNumber?: string | null, poSeq?: number | null): string {
+  if (poSeq == null) return "—";
+  const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+  const poPart = safe(poNumber || "");
+  const seqStr = String(poSeq).padStart(4, "0");
+  return poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
+}
+
 function formatDateTime(value?: string | Date | null): string {
   if (!value) return "—";
   const d = value instanceof Date ? value : new Date(value);
@@ -521,6 +529,7 @@ export default function ReorderHistory() {
                 <Field label={t.reorderHistoryColExportedByMeta} value={detailQuery.data.exportedByName || "—"} />
                 <Field label={t.reorderRmsRequester} value={detailQuery.data.requestFrom || "—"} />
                 <Field label={t.reorderHistoryColPo} value={detailQuery.data.poNumber || "—"} />
+                <Field label={t.reorderHistoryFilename} value={buildRmsFilename(detailQuery.data.poNumber, detailQuery.data.poSeq)} />
                 <Field label={t.reorderHistoryColProject} value={detailQuery.data.projectName || "—"} />
                 <Field label={t.reorderRmsCompletionDate} value={detailQuery.data.completionDate || "—"} />
                 <Field label={t.reorderHistoryColDelivery} value={detailQuery.data.deliveryTo || "—"} />

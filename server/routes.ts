@@ -18,41 +18,6 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import crypto from "crypto";
-import dns from "dns/promises";
-
-// ─── Export SSRF guard ────────────────────────────────────────────────────────
-function isPrivateIp(ip: string): boolean {
-  if (ip === "::1" || ip === "0:0:0:0:0:0:0:1" || ip === "0.0.0.0") return true;
-  if (ip.startsWith("fc") || ip.startsWith("fd")) return true;
-  return [
-    /^127\./,
-    /^10\./,
-    /^172\.(1[6-9]|2\d|3[01])\./,
-    /^192\.168\./,
-    /^169\.254\./,
-    /^0\./,
-  ].some(r => r.test(ip));
-}
-
-async function isSafeExportUrl(rawUrl: string): Promise<boolean> {
-  try {
-    const u = new URL(rawUrl);
-    if (u.protocol !== "https:") return false;
-    if (u.port && u.port !== "443") return false;
-    const hostname = u.hostname.toLowerCase();
-    if (["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(hostname)) return false;
-    // Resolve ALL A and AAAA records; every address must be public
-    const ips: string[] = [];
-    try { ips.push(...(await dns.resolve4(hostname))); } catch { /* no A records */ }
-    try { ips.push(...(await dns.resolve6(hostname))); } catch { /* no AAAA records */ }
-    if (ips.length === 0) return false; // cannot resolve = deny
-    if (ips.some(ip => isPrivateIp(ip))) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ─── Upload magic-bytes validator ─────────────────────────────────────────────
 // Verifies that file content matches the declared MIME type's signature.
 function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
@@ -159,7 +124,14 @@ function getUserId(req: any): string | null {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
 
-  app.use("/uploads", (_req, res, next) => {
+  // Only image extensions are served from /uploads — deny everything else (including any
+  // legacy .html or other non-image files that may exist in the directory).
+  const ALLOWED_UPLOAD_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+  app.use("/uploads", (req, res, next) => {
+    const ext = path.extname(req.path).toLowerCase();
+    if (!ALLOWED_UPLOAD_EXTS.has(ext)) {
+      return res.status(403).end();
+    }
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Disposition", "inline");
     next();
@@ -1843,34 +1815,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                   }
                 }
               } else if (srcUrl.startsWith("https://")) {
-                // ── remote HTTPS URL ────────────────────────────────────────────
-                // SSRF guard: block private/loopback IPs and non-standard ports
-                const safe = await isSafeExportUrl(srcUrl);
-                if (!safe) {
-                  console.warn("[export] PHOTO: URL blocked by SSRF guard:", srcUrl.slice(0, 80));
-                } else {
-                  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB cap
-                  const resp = await fetch(srcUrl, { signal: AbortSignal.timeout(10_000), redirect: "error" });
-                  if (!resp.ok) {
-                    console.warn("[export] PHOTO: HTTP fetch failed (status", resp.status, ") for:", srcUrl);
-                  } else {
-                    const ct = (resp.headers.get("content-type") ?? "").toLowerCase();
-                    const rawExt = ct.includes("jpeg") || ct.includes("jpg") ? "jpeg"
-                                 : ct.includes("png")  ? "png"
-                                 : null;
-                    if (!rawExt) {
-                      console.warn("[export] PHOTO: unsupported content-type", ct, "for:", srcUrl);
-                    } else {
-                      const bytes = Buffer.from(await resp.arrayBuffer());
-                      if (bytes.length > MAX_IMAGE_BYTES) {
-                        console.warn("[export] PHOTO: response too large (" + bytes.length + " bytes), skipping:", srcUrl.slice(0, 80));
-                      } else {
-                        ext = rawExt;
-                        buf = bytes;
-                      }
-                    }
-                  }
-                }
+                // Remote URLs are not fetched server-side during export
+                // (prevents SSRF). Only /uploads/ local files and data URIs are embedded.
+                console.warn("[export] PHOTO: remote URL skipped (not embedded in export):", srcUrl.slice(0, 80));
               } else if (srcUrl.startsWith("/uploads/")) {
                 // ── local /uploads/ file ────────────────────────────────────────
                 const filename = srcUrl.slice("/uploads/".length);

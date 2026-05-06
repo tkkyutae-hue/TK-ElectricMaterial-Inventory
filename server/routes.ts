@@ -1908,7 +1908,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             : "";
 
           const rowData: Record<string, any> = {
-            matName:   cat.code === "WC" ? (item.name || "") : (item.baseItemName || item.name || ""),
+            matName:   cat.code === "CW" ? (item.name || "") : (item.baseItemName || item.name || ""),
             size:      item.sizeLabel   ?? "",
             family:    family           ?? "",
             type:      type             ?? "",

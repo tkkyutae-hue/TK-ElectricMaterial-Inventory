@@ -27,7 +27,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Download, Loader2, Package, X } from "lucide-react";
+import { Clock, Download, Loader2, Package, Save, X } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -40,6 +40,35 @@ export type RmsExportItem = {
   onHand?: number;
   imageUrl?: string | null;
 };
+
+type RmsDraft = {
+  id: string;
+  savedAt: number;
+  label: string;
+  header: {
+    date: string;
+    requester: string;
+    poNumber: string;
+    projectName: string;
+    deliveryTo: string;
+  };
+  selectedProjectId: string;
+  items: RmsExportItem[];
+};
+
+const DRAFT_KEY = "voltstock_rms_drafts";
+
+function loadDrafts(): RmsDraft[] {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFT_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveDrafts(drafts: RmsDraft[]) {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+}
 
 type Props = {
   open: boolean;
@@ -163,6 +192,15 @@ function buildRmsFilename(poNumber: string, poSeq: number): string {
   return poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
 }
 
+function formatSavedAt(ts: number): string {
+  const d = new Date(ts);
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${mo}/${day} ${hh}:${mm}`;
+}
+
 export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Props) {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -173,12 +211,14 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
   const [debouncedPo, setDebouncedPo] = useState("");
   const [projectName, setProjectName] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
-  const [completionDate, setCompletionDate] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
   const [rows, setRows] = useState<RmsExportItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+
+  const [drafts, setDrafts] = useState<RmsDraft[]>([]);
+  const [draftsOpen, setDraftsOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -203,13 +243,11 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     });
   };
 
-  // Load projects for the picker. Only fetched when dialog is open.
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     enabled: open,
   });
 
-  // Project options sorted by name; label includes PO number when present.
   const projectOptions = useMemo(() => {
     const sorted = [...projects].sort((a, b) =>
       String(a.name ?? "").localeCompare(String(b.name ?? "")),
@@ -220,13 +258,11 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     }));
   }, [projects]);
 
-  // Debounce PO number for seq lookup (400 ms)
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedPo(poNumber.trim()), 400);
     return () => clearTimeout(timer);
   }, [poNumber]);
 
-  // Fetch predicted sequence number for the current PO
   const { data: seqData, isFetching: seqFetching } = useQuery<{ nextSeq: number }>({
     queryKey: ["/api/reorder/next-seq", debouncedPo],
     queryFn: async ({ queryKey }) => {
@@ -242,12 +278,12 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
 
   const predictedFilename = buildRmsFilename(poNumber, seqData?.nextSeq ?? 1);
 
-  // When dialog opens, refresh row list from incoming selection and clear the
-  // picker so a new export starts from a clean slate.
   useEffect(() => {
     if (open) {
       setRows(initialItems);
       setSelectedProjectId("");
+      setDrafts(loadDrafts());
+      setDraftsOpen(false);
     }
   }, [open, initialItems]);
 
@@ -294,6 +330,45 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     });
   };
 
+  const handleSaveDraft = () => {
+    const now = Date.now();
+    const label = poNumber.trim()
+      ? `${poNumber.trim()}${projectName.trim() ? " · " + projectName.trim() : ""}`
+      : projectName.trim() || date;
+    const draft: RmsDraft = {
+      id: String(now),
+      savedAt: now,
+      label,
+      header: { date, requester, poNumber, projectName, deliveryTo },
+      selectedProjectId,
+      items: rows,
+    };
+    const updated = [draft, ...loadDrafts()].slice(0, 20);
+    saveDrafts(updated);
+    setDrafts(updated);
+    setDraftsOpen(true);
+    toast({ title: t.rmsDraftSaved });
+  };
+
+  const handleLoadDraft = (draft: RmsDraft) => {
+    setDate(draft.header.date);
+    setRequester(draft.header.requester);
+    setPoNumber(draft.header.poNumber);
+    setProjectName(draft.header.projectName);
+    setDeliveryTo(draft.header.deliveryTo);
+    setSelectedProjectId(draft.selectedProjectId);
+    setRows(draft.items);
+    setDraftsOpen(false);
+    toast({ title: t.rmsDraftLoaded });
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    const updated = drafts.filter(d => d.id !== id);
+    saveDrafts(updated);
+    setDrafts(updated);
+    toast({ title: t.rmsDraftDeleted });
+  };
+
   const handleSubmit = async () => {
     if (!poNumber.trim()) {
       toast({ title: t.reorderRmsPoRequired, variant: "destructive" });
@@ -315,7 +390,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
             requester,
             poNumber,
             projectName,
-            completionDate,
             deliveryTo,
           },
           projectId: selectedProjectId ? Number(selectedProjectId) : undefined,
@@ -363,6 +437,52 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
         </DialogHeader>
 
         <div className="space-y-5">
+          {/* Saved Drafts */}
+          {drafts.length > 0 && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                onClick={() => setDraftsOpen(v => !v)}
+                data-testid="button-rms-drafts-toggle"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  {t.rmsDraftSection}
+                  <span className="text-xs font-normal text-slate-400">({drafts.length})</span>
+                </span>
+                <span className="text-xs text-slate-400">{draftsOpen ? "▲" : "▼"}</span>
+              </button>
+              {draftsOpen && (
+                <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                  {drafts.map(d => (
+                    <div key={d.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50" data-testid={`row-draft-${d.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{d.label}</p>
+                        <p className="text-xs text-slate-400">{formatSavedAt(d.savedAt)} · {d.items.length} items</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs shrink-0"
+                        onClick={() => handleLoadDraft(d)}
+                        data-testid={`button-draft-load-${d.id}`}
+                      >
+                        {t.rmsDraftLoad}
+                      </Button>
+                      <button
+                        className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors shrink-0"
+                        onClick={() => handleDeleteDraft(d.id)}
+                        data-testid={`button-draft-delete-${d.id}`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Header inputs */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.reorderRmsHeaderSection}</h3>
@@ -410,11 +530,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 <Label htmlFor="rms-project" className="text-xs text-slate-600">{t.reorderRmsProjectName}</Label>
                 <Input id="rms-project" value={projectName} onChange={e => setProjectName(e.target.value)} data-testid="input-rms-project" />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="rms-comp" className="text-xs text-slate-600">{t.reorderRmsCompletionDate}</Label>
-                <Input id="rms-comp" type="date" value={completionDate} onChange={e => setCompletionDate(e.target.value)} data-testid="input-rms-comp" />
-              </div>
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <Label htmlFor="rms-delivery" className="text-xs text-slate-600">{t.reorderRmsDeliveryTo}</Label>
                 <Input id="rms-delivery" value={deliveryTo} onChange={e => setDeliveryTo(e.target.value)} data-testid="input-rms-delivery" />
               </div>
@@ -479,9 +595,19 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
           </div>
         </div>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-4 flex-wrap gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting} data-testid="button-rms-cancel">
             {t.reorderRmsCancel}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={submitting}
+            className="gap-1.5"
+            data-testid="button-rms-save-draft"
+          >
+            <Save className="w-4 h-4" />
+            {t.rmsDraftSave}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || rows.length === 0} data-testid="button-rms-download">
             {submitting ? (

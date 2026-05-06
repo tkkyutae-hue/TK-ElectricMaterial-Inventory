@@ -2,6 +2,19 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
   Search, Plus, Check, X as XIcon, ImageIcon,
 } from "lucide-react";
@@ -47,6 +60,11 @@ export default function CategoryDetail() {
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
   const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
+  const [orderedGroupNames, setOrderedGroupNames] = useState<string[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const toggleFamilyCollapsed = useCallback((familyName: string) => {
     setCollapsedFamilies(prev => {
@@ -75,6 +93,30 @@ export default function CategoryDetail() {
     }
   }, [data, draftFamily]);
 
+  // Sync orderedGroupNames from server data (only when names change, not on every refetch)
+  useEffect(() => {
+    if (!data?.groups) return;
+    const incoming = data.groups.map(g => g.baseItemName);
+    setOrderedGroupNames(prev => {
+      // Keep existing order, append new names, remove deleted names
+      const incomingSet = new Set(incoming);
+      const kept = prev.filter(n => incomingSet.has(n));
+      const added = incoming.filter(n => !kept.includes(n));
+      return [...kept, ...added];
+    });
+  }, [data?.groups]);
+
+  const orderedGroups = useMemo(() => {
+    if (!data) return [];
+    if (orderedGroupNames.length === 0) return data.groups;
+    const nameIndex = new Map(orderedGroupNames.map((n, i) => [n, i]));
+    return [...data.groups].sort((a, b) => {
+      const ai = nameIndex.has(a.baseItemName) ? nameIndex.get(a.baseItemName)! : 9999;
+      const bi = nameIndex.has(b.baseItemName) ? nameIndex.get(b.baseItemName)! : 9999;
+      return ai - bi;
+    });
+  }, [data, orderedGroupNames]);
+
   const allSkus = useMemo(() => {
     if (!data) return new Set<string>();
     const s = new Set<string>();
@@ -85,7 +127,7 @@ export default function CategoryDetail() {
   const filteredGroups = useMemo(() => {
     if (!data) return [];
     const tokens = search.trim().toLowerCase().split(/\s+/).filter(t => t.length > 0);
-    return data.groups
+    return orderedGroups
       .filter(g => familyFilter === "all" || g.baseItemName === familyFilter)
       .map(g => ({
         ...g,
@@ -100,7 +142,24 @@ export default function CategoryDetail() {
         }),
       }))
       .filter(g => g.items.length > 0 || inlineEditFamily === g.baseItemName);
-  }, [data, search, statusFilter, familyFilter, locationFilter, inlineEditFamily]);
+  }, [data, orderedGroups, search, statusFilter, familyFilter, locationFilter, inlineEditFamily]);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOrderedGroupNames(prev => {
+      const oldIndex = prev.indexOf(String(active.id));
+      const newIndex = prev.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
+        orders: next.map((name, i) => ({ baseItemName: name, sortOrder: i })),
+      }).catch(() => {
+        toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });
+      });
+      return next;
+    });
+  }
 
   const displayGroups = useMemo(() => {
     if (!draftFamily?.confirmed) return filteredGroups;
@@ -514,38 +573,43 @@ export default function CategoryDetail() {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {displayGroups.map((group) => (
-            <FamilyGroupCard
-              key={group.baseItemName}
-              group={group}
-              draftFamily={draftFamily}
-              inlineEditFamily={inlineEditFamily}
-              editDrafts={editDrafts}
-              editNewRows={editNewRows}
-              savingInline={savingInline}
-              familySortDir={familySortDir}
-              locations={locations || []}
-              allSkus={allSkus}
-              data={data}
-              onEnterEdit={enterInlineEdit}
-              onCancelEdit={cancelInlineEdit}
-              onSaveEdit={saveInlineEdits}
-              onAddRow={addNewRow}
-              onUpdateDraft={updateDraft}
-              onDeleteRow={deleteRow}
-              onUpdateNewRow={updateNewRow}
-              onRemoveNewRow={removeNewRow}
-              onToggleSort={toggleFamilySort}
-              onOpenSettings={setEditingGroup}
-              onMoveCategory={setMoveCategoryGroup}
-              onAdjustStock={setAdjustingItem}
-              isAdmin={isAdminRole}
-              isCollapsed={collapsedFamilies.has(group.baseItemName)}
-              onToggleCollapsed={toggleFamilyCollapsed}
-            />
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={displayGroups.map(g => g.baseItemName)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {displayGroups.map((group) => (
+                <FamilyGroupCard
+                  key={group.baseItemName}
+                  group={group}
+                  draftFamily={draftFamily}
+                  inlineEditFamily={inlineEditFamily}
+                  editDrafts={editDrafts}
+                  editNewRows={editNewRows}
+                  savingInline={savingInline}
+                  familySortDir={familySortDir}
+                  locations={locations || []}
+                  allSkus={allSkus}
+                  data={data}
+                  onEnterEdit={enterInlineEdit}
+                  onCancelEdit={cancelInlineEdit}
+                  onSaveEdit={saveInlineEdits}
+                  onAddRow={addNewRow}
+                  onUpdateDraft={updateDraft}
+                  onDeleteRow={deleteRow}
+                  onUpdateNewRow={updateNewRow}
+                  onRemoveNewRow={removeNewRow}
+                  onToggleSort={toggleFamilySort}
+                  onOpenSettings={setEditingGroup}
+                  onMoveCategory={setMoveCategoryGroup}
+                  onAdjustStock={setAdjustingItem}
+                  isAdmin={isAdminRole}
+                  isCollapsed={collapsedFamilies.has(group.baseItemName)}
+                  onToggleCollapsed={toggleFamilyCollapsed}
+                  isDraggable={!hasActiveFilters && !inlineEditFamily}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Family Settings dialog */}

@@ -1,4 +1,6 @@
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight } from "lucide-react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,6 +37,7 @@ interface FamilyGroupCardProps {
   isAdmin?: boolean;
   isCollapsed?: boolean;
   onToggleCollapsed?: (familyName: string) => void;
+  isDraggable?: boolean;
 }
 
 export function FamilyGroupCard({
@@ -43,8 +46,12 @@ export function FamilyGroupCard({
   onEnterEdit, onCancelEdit, onSaveEdit, onAddRow,
   onUpdateDraft, onDeleteRow, onUpdateNewRow, onRemoveNewRow,
   onToggleSort, onOpenSettings, onMoveCategory, onAdjustStock, isAdmin,
-  isCollapsed, onToggleCollapsed,
+  isCollapsed, onToggleCollapsed, isDraggable,
 }: FamilyGroupCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: group.baseItemName,
+    disabled: !isDraggable,
+  });
   const { t } = useLanguage();
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === group.baseItemName;
@@ -66,11 +73,24 @@ export function FamilyGroupCard({
 
   return (
     <div
+      ref={isDraggable ? setNodeRef : undefined}
+      style={isDraggable ? { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 } : undefined}
       className={`bg-white border rounded-xl overflow-hidden shadow-sm ${isDraftConfirmed ? "border-brand-300 border-2" : isEditingThis ? "border-amber-300 border-2" : "border-slate-200"}`}
       data-testid={`family-card-${group.baseItemName.replace(/\s+/g, "-")}`}
     >
       {/* Family card header */}
       <div className={`flex items-center justify-between px-5 border-b ${effectivelyCollapsed ? "border-b-0" : ""} min-h-[60px] ${isEditingThis ? "bg-amber-50/60 border-amber-200" : "border-slate-200 bg-slate-50/80"}`}>
+        {isDraggable && !isEditingThis && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing mr-1 text-slate-300 hover:text-slate-500 shrink-0 touch-none select-none"
+            title="Drag to reorder"
+            data-testid={`drag-handle-${group.baseItemName.replace(/\s+/g, "-")}`}
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+        )}
         <button
           type="button"
           onClick={handleToggleCollapsed}

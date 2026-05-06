@@ -69,6 +69,7 @@ export interface IStorage {
   deleteItem(id: number): Promise<void>;
   restoreItems(ids: number[]): Promise<void>;
   upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup>;
+  updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; sortOrder: number }[]): Promise<void>;
   renameFamily(categoryId: number, oldName: string, newName: string): Promise<void>;
   moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void>;
   bulkSoftDeleteItems(itemIds: number[]): Promise<void>;
@@ -1249,11 +1250,13 @@ export class DatabaseStorage implements IStorage {
       ? await db.select().from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
       : [];
 
-    // Load item group metadata (custom representative images)
+    // Load item group metadata (custom representative images + sort order)
     const groupRecords = await db.select().from(itemGroups).where(eq(itemGroups.categoryId, categoryId));
     const groupImageMap = new Map<string, string | null>();
+    const groupSortOrderMap = new Map<string, number>();
     for (const g of groupRecords) {
       groupImageMap.set(g.baseItemName, g.imageUrl ?? null);
+      groupSortOrderMap.set(g.baseItemName, g.sortOrder ?? 0);
     }
 
     // Override quantityOnHand with live reel sum for reel-tracked items
@@ -1328,12 +1331,18 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const groups = Array.from(groupMap.entries()).map(([baseItemName, data]) => ({
-      baseItemName,
-      items: data.items,
-      representativeImage: data.representativeImage,
-      customImageUrl: groupImageMap.get(baseItemName) ?? null,
-    }));
+    const groups = Array.from(groupMap.entries())
+      .map(([baseItemName, data]) => ({
+        baseItemName,
+        items: data.items,
+        representativeImage: data.representativeImage,
+        customImageUrl: groupImageMap.get(baseItemName) ?? null,
+        sortOrder: groupSortOrderMap.get(baseItemName) ?? 0,
+      }))
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.baseItemName.localeCompare(b.baseItemName);
+      });
 
     const totalQuantity = enriched.reduce((s, i) => s + i.quantityOnHand, 0);
     const lowStockCount = enriched.filter(i => i.status === "low_stock").length;
@@ -1542,6 +1551,22 @@ export class DatabaseStorage implements IStorage {
       .values({ categoryId, baseItemName, imageUrl: data.imageUrl ?? null })
       .returning();
     return created;
+  }
+
+  async updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; sortOrder: number }[]): Promise<void> {
+    const existing = await db.select().from(itemGroups).where(eq(itemGroups.categoryId, categoryId));
+    const existingMap = new Map<string, typeof existing[0]>(existing.map(g => [g.baseItemName, g]));
+    for (const { baseItemName, sortOrder } of orders) {
+      const rec = existingMap.get(baseItemName);
+      if (rec) {
+        await db.update(itemGroups)
+          .set({ sortOrder, updatedAt: new Date() })
+          .where(eq(itemGroups.id, rec.id));
+      } else {
+        await db.insert(itemGroups)
+          .values({ categoryId, baseItemName, sortOrder, imageUrl: null });
+      }
+    }
   }
 
   async renameFamily(categoryId: number, oldName: string, newName: string): Promise<void> {

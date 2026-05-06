@@ -147,17 +147,19 @@ export default function CategoryDetail() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setOrderedGroupNames(prev => {
-      const oldIndex = prev.indexOf(String(active.id));
-      const newIndex = prev.indexOf(String(over.id));
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
-        orders: next.map((name, i) => ({ baseItemName: name, sortOrder: i })),
-      }).catch(() => {
-        toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });
-      });
-      return next;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const oldIndex = orderedGroupNames.indexOf(activeId);
+    const newIndex = orderedGroupNames.indexOf(overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const previous = orderedGroupNames;
+    const next = arrayMove(orderedGroupNames, oldIndex, newIndex);
+    setOrderedGroupNames(next);
+    apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
+      orders: next.map((name, i) => ({ baseItemName: name, sortOrder: i })),
+    }).catch(() => {
+      setOrderedGroupNames(previous);
+      toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });
     });
   }
 

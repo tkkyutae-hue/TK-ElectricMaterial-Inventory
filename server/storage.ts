@@ -1337,7 +1337,7 @@ export class DatabaseStorage implements IStorage {
         items: data.items,
         representativeImage: data.representativeImage,
         customImageUrl: groupImageMap.get(baseItemName) ?? null,
-        sortOrder: groupSortOrderMap.get(baseItemName) ?? 0,
+        sortOrder: groupSortOrderMap.has(baseItemName) ? groupSortOrderMap.get(baseItemName)! : 1_000_000,
       }))
       .sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;

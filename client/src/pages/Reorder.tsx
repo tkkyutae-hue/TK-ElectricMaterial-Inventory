@@ -72,6 +72,14 @@ export default function Reorder() {
   const [needsReorderOnly, setNeedsReorderOnly]   = useState(DEFAULTS.needsReorderOnly);
   const [selectedIds, setSelectedIds]             = useState<Set<number>>(new Set());
   const [rmsOpen, setRmsOpen]                     = useState(false);
+  const [draftCount, setDraftCount]               = useState(() => {
+    try { return JSON.parse(localStorage.getItem("voltstock_rms_drafts") || "[]").length; } catch { return 0; }
+  });
+  useEffect(() => {
+    if (!rmsOpen) {
+      try { setDraftCount(JSON.parse(localStorage.getItem("voltstock_rms_drafts") || "[]").length); } catch {}
+    }
+  }, [rmsOpen]);
 
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => loadSession(SS_OPEN_CATS, {}));
   const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>(() => loadSession(SS_OPEN_FAMS, {}));
@@ -599,13 +607,18 @@ export default function Reorder() {
             </Button>
             <Button
               size="sm"
-              className="h-8 bg-brand-600 hover:bg-brand-700 text-white rounded-full"
+              className="h-8 bg-brand-600 hover:bg-brand-700 text-white rounded-full relative"
               onClick={() => setRmsOpen(true)}
               disabled={exportableCount === 0}
               data-testid="button-export-rms"
             >
               <FileSpreadsheet className="w-4 h-4 mr-1.5" />
               {t.reorderExportRms}
+              {draftCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-900 text-[10px] font-bold flex items-center justify-center leading-none" data-testid="badge-rms-draft-count">
+                  {draftCount}
+                </span>
+              )}
             </Button>
           </div>
         </div>,

@@ -118,6 +118,7 @@ export interface IStorage {
   getWireReelsByItemIds(itemIds: number[]): Promise<Map<number, string[]>>;
   getWireReelExportData(itemIds: number[]): Promise<Map<number, Array<{ reelId: string; lengthFt: number }>>>;
   getItemGroupImages(): Promise<Map<string, string>>;
+  getItemGroupSortOrders(): Promise<Map<string, number>>;
   getNextReelSeq(itemId: number): Promise<number>;
   getDistinctReelBrands(): Promise<string[]>;
   createWireReel(data: CreateWireReelRequest): Promise<WireReel>;
@@ -2264,6 +2265,17 @@ export class DatabaseStorage implements IStorage {
     const map = new Map<string, string>();
     for (const row of rows) {
       if (row.imageUrl) map.set(`${row.categoryId}:${row.baseItemName}`, row.imageUrl);
+    }
+    return map;
+  }
+
+  async getItemGroupSortOrders(): Promise<Map<string, number>> {
+    const rows = await db
+      .select({ categoryId: itemGroups.categoryId, baseItemName: itemGroups.baseItemName, sortOrder: itemGroups.sortOrder })
+      .from(itemGroups);
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      map.set(`${row.categoryId}:${row.baseItemName}`, row.sortOrder ?? 1_000_000);
     }
     return map;
   }

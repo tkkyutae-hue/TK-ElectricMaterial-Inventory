@@ -1671,6 +1671,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Keys: "${categoryId}:${baseItemName}" → imageUrl
       const itemGroupImageMap = await storage.getItemGroupImages();
 
+      // ── Pre-fetch item_groups drag-and-drop sort order map ────────────────────
+      // Keys: "${categoryId}:${baseItemName}" → sortOrder (lower = higher up)
+      const itemGroupSortOrderMap = await storage.getItemGroupSortOrders();
+
       // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
         const catItems = byCategoryId.get(cat.id);
@@ -1734,7 +1738,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           cell.border    = { bottom: { style: "thin", color: { argb: C.white } } };
         });
 
-        // ── Sort: subcategory → detailType → baseItemName → exportSizeKey ───────────
+        // ── Sort: subcategory → detailType → drag-and-drop order → size asc ────────
         const sorted = [...catItems].sort((a, b) => {
           const fa = (a.subcategory  || "\uFFFF").toLowerCase();
           const fb = (b.subcategory  || "\uFFFF").toLowerCase();
@@ -1742,9 +1746,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const ta = (a.detailType   || "\uFFFF").toLowerCase();
           const tb = (b.detailType   || "\uFFFF").toLowerCase();
           if (ta !== tb) return ta.localeCompare(tb);
-          const na = (a.baseItemName || a.name || "").toLowerCase();
-          const nb = (b.baseItemName || b.name || "").toLowerCase();
-          if (na !== nb) return na.localeCompare(nb);
+          const na = a.baseItemName || a.name || "";
+          const nb = b.baseItemName || b.name || "";
+          // Use drag-and-drop sort order if available; fall back to alphabetical
+          const sa = itemGroupSortOrderMap.get(`${cat.id}:${na}`) ?? 1_000_000;
+          const sb = itemGroupSortOrderMap.get(`${cat.id}:${nb}`) ?? 1_000_000;
+          if (sa !== sb) return sa - sb;
+          if (na.toLowerCase() !== nb.toLowerCase()) return na.toLowerCase().localeCompare(nb.toLowerCase());
+          // Within same family: size small → large
           return exportSizeKey(a) - exportSizeKey(b);
         });
 

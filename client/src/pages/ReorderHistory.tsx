@@ -1,9 +1,27 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,11 +39,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ChevronDown, ChevronRight, Eye, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Eye, GripVertical, Loader2, Package, Pencil, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { RmsExportHistory, RmsExportHistoryWithLines } from "@shared/schema";
+import type { RmsExportHistory, RmsExportHistoryWithLines, RmsExportHistoryItem } from "@shared/schema";
+
+type HistoryLine = RmsExportHistoryItem & { itemImageUrl: string | null };
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: "include" });
@@ -62,6 +82,283 @@ const editSchema = z.object({
 });
 type EditFormValues = z.infer<typeof editSchema>;
 
+type EditableLine = HistoryLine & { _qty: number };
+
+function SortableItemRow({
+  line,
+  index,
+  onQtyChange,
+}: {
+  line: EditableLine;
+  index: number;
+  onQtyChange: (id: number, qty: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-t border-slate-100 bg-white"
+      data-testid={`row-pending-line-${line.id}`}
+    >
+      <td
+        className="px-2 py-2 text-slate-300 cursor-grab active:cursor-grabbing touch-none"
+        {...listeners}
+        {...attributes}
+      >
+        <GripVertical className="w-4 h-4" />
+      </td>
+      <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8 text-xs">{index + 1}</td>
+      <td className="px-2 py-2 w-12">
+        {line.itemImageUrl ? (
+          <img src={line.itemImageUrl} alt={line.nameSnapshot ?? ""} className="w-9 h-9 rounded object-cover border border-slate-200" />
+        ) : (
+          <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
+            <Package className="w-3.5 h-3.5" />
+          </div>
+        )}
+      </td>
+      <td className="px-2 py-2 text-xs text-slate-500 w-24">{line.sizeSnapshot || "—"}</td>
+      <td className="px-2 py-2 text-sm text-slate-800">{line.nameSnapshot || "—"}</td>
+      <td className="px-2 py-2 text-xs text-slate-400 text-right tabular-nums w-16">
+        {line.onHandSnapshot ?? "—"}
+      </td>
+      <td className="px-2 py-2 text-right w-24">
+        <Input
+          type="number"
+          min={0}
+          className="h-8 text-right w-20 ml-auto text-sm"
+          value={line._qty}
+          onChange={e => onQtyChange(line.id, Number(e.target.value))}
+          onPointerDown={e => e.stopPropagation()}
+          data-testid={`input-pending-qty-${line.id}`}
+        />
+      </td>
+      <td className="px-2 py-2 text-xs text-slate-500 w-16">{line.unitSnapshot || "—"}</td>
+    </tr>
+  );
+}
+
+function OverlayItemRow({ line, index }: { line: EditableLine; index: number }) {
+  return (
+    <tr className="border border-slate-200 bg-white shadow-lg">
+      <td className="px-2 py-2 text-slate-300"><GripVertical className="w-4 h-4" /></td>
+      <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8 text-xs">{index + 1}</td>
+      <td className="px-2 py-2 w-12">
+        {line.itemImageUrl ? (
+          <img src={line.itemImageUrl} alt={line.nameSnapshot ?? ""} className="w-9 h-9 rounded object-cover border border-slate-200" />
+        ) : (
+          <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
+            <Package className="w-3.5 h-3.5" />
+          </div>
+        )}
+      </td>
+      <td className="px-2 py-2 text-xs text-slate-500 w-24">{line.sizeSnapshot || "—"}</td>
+      <td className="px-2 py-2 text-sm text-slate-800">{line.nameSnapshot || "—"}</td>
+      <td className="px-2 py-2 text-xs text-slate-400 text-right tabular-nums w-16">{line.onHandSnapshot ?? "—"}</td>
+      <td className="px-2 py-2 text-right w-24">
+        <div className="h-8 w-20 ml-auto border rounded text-right px-2 flex items-center justify-end text-sm">{line._qty}</div>
+      </td>
+      <td className="px-2 py-2 text-xs text-slate-500 w-16">{line.unitSnapshot || "—"}</td>
+    </tr>
+  );
+}
+
+function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; onDownloaded: () => void }) {
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [lines, setLines] = useState<EditableLine[]>([]);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const detailQuery = useQuery<RmsExportHistoryWithLines>({
+    queryKey: ["/api/reorder/history", historyId],
+    queryFn: () => fetchJson<RmsExportHistoryWithLines>(`/api/reorder/history/${historyId}`),
+  });
+
+  useEffect(() => {
+    if (detailQuery.data) {
+      const sorted = [...detailQuery.data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      setLines(sorted.map(l => ({ ...l, _qty: l.qty })));
+    }
+  }, [detailQuery.data]);
+
+  const activeRow = activeId != null ? lines.find(l => l.id === activeId) ?? null : null;
+
+  const handleDragStart = (e: DragStartEvent) => setActiveId(e.active.id as number);
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setLines(prev => {
+      const oldIdx = prev.findIndex(l => l.id === active.id);
+      const newIdx = prev.findIndex(l => l.id === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
+      return arrayMove(prev, oldIdx, newIdx);
+    });
+  };
+
+  const updateQty = (id: number, qty: number) => {
+    setLines(prev => prev.map(l => l.id === id ? { ...l, _qty: Number.isFinite(qty) ? qty : 0 } : l));
+  };
+
+  const saveItemsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/reorder/history/${historyId}/items`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: lines.map((l, i) => ({ id: l.id, qty: l._qty, sortOrder: i })),
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+      toast({ description: t.reorderHistoryItemsUpdated });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.cmnSaveFailed, description: err.message });
+    },
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: async () => {
+      const saveRes = await fetch(`/api/reorder/history/${historyId}/items`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: lines.map((l, i) => ({ id: l.id, qty: l._qty, sortOrder: i })),
+        }),
+      });
+      if (!saveRes.ok) throw new Error(`Save failed: HTTP ${saveRes.status}`);
+      const dlRes = await fetch(`/api/reorder/history/${historyId}/download`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!dlRes.ok) throw new Error(`Download failed: HTTP ${dlRes.status}`);
+      const blob = await dlRes.blob();
+      const cd = dlRes.headers.get("Content-Disposition") || "";
+      const m = /filename="([^"]+)"/.exec(cd);
+      return { blob, filename: m?.[1] || "RMS.xlsx" };
+    },
+    onSuccess: ({ blob, filename }) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+      toast({ description: t.reorderHistoryDownloadSuccess });
+      onDownloaded();
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.reorderHistoryDownloadError, description: err.message });
+    },
+  });
+
+  if (detailQuery.isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-4 px-4 text-slate-400 text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" /> {t.cmnLoading}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-amber-200 bg-amber-50/40 px-4 py-3 space-y-3">
+      <p className="text-xs text-amber-700 font-medium">{t.reorderHistoryPendingBanner}</p>
+
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <table ref={tableRef} className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-xs">
+                <tr>
+                  <th className="w-8 px-2 py-2" />
+                  <th className="w-8 text-right px-2 py-2">#</th>
+                  <th className="w-12 px-2 py-2">{t.reorderRmsPhoto}</th>
+                  <th className="text-left px-2 py-2">{t.reorderRmsSize}</th>
+                  <th className="text-left px-2 py-2">{t.reorderRmsItem}</th>
+                  <th className="text-right px-2 py-2 w-16">{t.reorderColOnHand}</th>
+                  <th className="text-right px-2 py-2 w-24">{t.reorderRmsQty}</th>
+                  <th className="text-left px-2 py-2 w-16">{t.reorderRmsUnit}</th>
+                </tr>
+              </thead>
+              <SortableContext items={lines.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {lines.map((line, i) => (
+                    <SortableItemRow key={line.id} line={line} index={i} onQtyChange={updateQty} />
+                  ))}
+                </tbody>
+              </SortableContext>
+              <DragOverlay>
+                {activeRow && (
+                  <table className="text-sm" style={{ width: tableRef.current?.offsetWidth }}>
+                    <tbody>
+                      <OverlayItemRow line={activeRow} index={lines.findIndex(l => l.id === activeRow.id)} />
+                    </tbody>
+                  </table>
+                )}
+              </DragOverlay>
+            </table>
+          </DndContext>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => saveItemsMutation.mutate()}
+          disabled={saveItemsMutation.isPending || downloadMutation.isPending}
+          data-testid={`button-pending-save-${historyId}`}
+        >
+          {saveItemsMutation.isPending ? (
+            <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
+          ) : t.reorderHistorySaveItems}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => downloadMutation.mutate()}
+          disabled={saveItemsMutation.isPending || downloadMutation.isPending}
+          data-testid={`button-pending-download-${historyId}`}
+        >
+          {downloadMutation.isPending ? (
+            <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.reorderHistoryDownloading}</>
+          ) : (
+            <><Download className="w-4 h-4 mr-1.5" />{t.reorderHistoryDownload}</>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function ReorderHistory() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -69,6 +366,7 @@ export default function ReorderHistory() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editId, setEditId] = useState<number | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [expandedPending, setExpandedPending] = useState<Set<number>>(new Set());
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<RmsExportHistory[]>({
     queryKey: ["/api/reorder/history"],
@@ -84,8 +382,6 @@ export default function ReorderHistory() {
   const rows = data ?? [];
   const visibleIds = useMemo(() => rows.map(r => r.id), [rows]);
 
-  // Group rows by PO number; group order = most-recently-active PO first.
-  // Within each group rows are sorted by poSeq asc, then exportedAt asc.
   const groups = useMemo(() => {
     const orderMap = new Map<string, number>();
     rows.forEach(r => {
@@ -122,7 +418,13 @@ export default function ReorderHistory() {
       return next;
     });
 
-  // Reconcile selection against current rows so deletes don't leave phantoms.
+  const togglePending = (id: number) =>
+    setExpandedPending(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
   useEffect(() => {
     setSelected(prev => {
       const valid = new Set(visibleIds);
@@ -266,7 +568,6 @@ export default function ReorderHistory() {
             const label = group.poKey ? group.poKey : t.reorderHistoryNoPo;
             return (
               <React.Fragment key={group.poKey || "no-po"}>
-                {/* PO group header row */}
                 <TableRow
                   className="bg-slate-50 hover:bg-slate-100 cursor-pointer select-none"
                   onClick={() => toggleGroup(group.poKey)}
@@ -286,47 +587,89 @@ export default function ReorderHistory() {
                   </TableCell>
                 </TableRow>
 
-                {/* Data rows */}
                 {!collapsed && group.rows.map((r) => {
                   const isSelected = selected.has(r.id);
+                  const isPending = r.status === "pending";
+                  const isExpanded = expandedPending.has(r.id);
                   return (
-                    <TableRow
-                      key={r.id}
-                      data-testid={`row-history-${r.id}`}
-                      data-state={isSelected ? "selected" : undefined}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(v) => toggleOne(r.id, v === true)}
-                          aria-label={t.reorderHistorySelectRowAria}
-                          data-testid={`checkbox-history-row-${r.id}`}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-slate-400" data-testid={`text-history-seq-${r.id}`}>
-                        {r.poSeq != null ? String(r.poSeq).padStart(4, "0") : "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
-                      <TableCell data-testid={`text-history-requester-${r.id}`}>{r.requestFrom || "—"}</TableCell>
-                      <TableCell>{r.projectName || "—"}</TableCell>
-                      <TableCell>{r.deliveryTo || "—"}</TableCell>
-                      <TableCell className="text-right tabular-nums">{r.itemCount}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" data-testid={`text-history-status-${r.id}`}>
-                          {r.status === "exported" ? t.reorderHistoryStatusExported : r.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setOpenId(r.id)}
-                          data-testid={`button-history-detail-${r.id}`}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={r.id}>
+                      <TableRow
+                        data-testid={`row-history-${r.id}`}
+                        data-state={isSelected ? "selected" : undefined}
+                        className={isPending ? "bg-amber-50/50" : undefined}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(v) => toggleOne(r.id, v === true)}
+                            aria-label={t.reorderHistorySelectRowAria}
+                            data-testid={`checkbox-history-row-${r.id}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-slate-400" data-testid={`text-history-seq-${r.id}`}>
+                          {r.poSeq != null ? String(r.poSeq).padStart(4, "0") : "—"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{formatDateTime(r.exportedAt)}</TableCell>
+                        <TableCell data-testid={`text-history-requester-${r.id}`}>{r.requestFrom || "—"}</TableCell>
+                        <TableCell>{r.projectName || "—"}</TableCell>
+                        <TableCell>{r.deliveryTo || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{r.itemCount}</TableCell>
+                        <TableCell>
+                          {isPending ? (
+                            <Badge
+                              className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100"
+                              variant="outline"
+                              data-testid={`text-history-status-${r.id}`}
+                            >
+                              {t.reorderHistoryStatusPending}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" data-testid={`text-history-status-${r.id}`}>
+                              {r.status === "exported" ? t.reorderHistoryStatusExported : r.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isPending ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => togglePending(r.id)}
+                              data-testid={`button-history-pending-toggle-${r.id}`}
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="w-4 h-4" />
+                                : <ChevronRight className="w-4 h-4" />}
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setOpenId(r.id)}
+                              data-testid={`button-history-detail-${r.id}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+
+                      {isPending && isExpanded && (
+                        <TableRow data-testid={`row-pending-editor-${r.id}`}>
+                          <TableCell colSpan={9} className="p-0">
+                            <PendingInlineEditor
+                              historyId={r.id}
+                              onDownloaded={() => setExpandedPending(prev => {
+                                const next = new Set(prev);
+                                next.delete(r.id);
+                                return next;
+                              })}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </React.Fragment>
@@ -338,7 +681,6 @@ export default function ReorderHistory() {
         <div className="px-4 py-2 text-xs text-slate-400">{t.cmnLoading}</div>
       )}
 
-      {/* Floating bottom action bar */}
       {selectedCount > 0 && typeof document !== "undefined" && createPortal(
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4">
           <div
@@ -387,7 +729,6 @@ export default function ReorderHistory() {
         document.body,
       )}
 
-      {/* Edit dialog */}
       <Dialog open={editId != null} onOpenChange={(o) => !o && setEditId(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -487,7 +828,6 @@ export default function ReorderHistory() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -511,7 +851,6 @@ export default function ReorderHistory() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Detail dialog */}
       <Dialog open={openId != null} onOpenChange={(o) => !o && setOpenId(null)}>
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>

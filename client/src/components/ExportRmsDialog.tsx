@@ -27,7 +27,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-import { Clock, Download, Loader2, Package, Save, X } from "lucide-react";
+import { Clock, History, Loader2, Package, Save, X } from "lucide-react";
 import type { Project } from "@shared/schema";
 
 export type RmsExportItem = {
@@ -373,12 +373,12 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
       return;
     }
     if (rows.length === 0) {
-      toast({ title: t.reorderRmsExportError, variant: "destructive" });
+      toast({ title: t.reorderRmsSaveError, variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/reorder/export-rms", {
+      const res = await fetch("/api/reorder/save-rms", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -405,23 +405,12 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
         const text = await res.text().catch(() => "");
         throw new Error(text || `HTTP ${res.status}`);
       }
-      const blob = await res.blob();
-      const cd = res.headers.get("Content-Disposition") || "";
-      const m = /filename="([^"]+)"/.exec(cd);
-      const filename = m?.[1] || `${(poNumber || "RMS").replace(/[\\/:*?"<>|]/g, "_")}.xlsx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/next-seq"] });
-      toast({ title: t.reorderRmsExportSuccess });
+      toast({ title: t.reorderRmsSaved });
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: t.reorderRmsExportError, description: err?.message, variant: "destructive" });
+      toast({ title: t.reorderRmsSaveError, description: err?.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -605,11 +594,11 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
             <Save className="w-4 h-4" />
             {t.rmsDraftSave}
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || rows.length === 0} data-testid="button-rms-download">
+          <Button onClick={handleSubmit} disabled={submitting || rows.length === 0} data-testid="button-rms-save-to-history">
             {submitting ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.reorderRmsGenerating}</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.reorderRmsSaving}</>
             ) : (
-              <><Download className="w-4 h-4 mr-2" />{t.reorderRmsDownload}</>
+              <><History className="w-4 h-4 mr-2" />{t.reorderRmsSaveToHistory}</>
             )}
           </Button>
         </DialogFooter>

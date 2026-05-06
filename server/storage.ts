@@ -183,6 +183,8 @@ export interface IStorage {
   listRmsExportHistory(limit?: number): Promise<RmsExportHistory[]>;
   getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined>;
   updateRmsExportHistory(id: number, patch: Partial<Pick<CreateRmsExportHistory, "requestFrom" | "poNumber" | "projectName" | "completionDate" | "deliveryTo">>): Promise<RmsExportHistory | undefined>;
+  updateRmsExportHistoryItems(historyId: number, updates: Array<{ id: number; qty: number; sortOrder: number }>): Promise<void>;
+  updateRmsExportHistoryStatus(id: number, status: string): Promise<RmsExportHistory | undefined>;
   deleteRmsExportHistory(ids: number[]): Promise<number>;
   getNextRmsSeq(poNumber: string | null | undefined): Promise<number>;
 }
@@ -2843,6 +2845,28 @@ export class DatabaseStorage implements IStorage {
     }
     const [updated] = await db.update(rmsExportHistory)
       .set(patch)
+      .where(eq(rmsExportHistory.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateRmsExportHistoryItems(
+    historyId: number,
+    updates: Array<{ id: number; qty: number; sortOrder: number }>,
+  ): Promise<void> {
+    if (updates.length === 0) return;
+    await db.transaction(async (tx) => {
+      for (const u of updates) {
+        await tx.update(rmsExportHistoryItems)
+          .set({ qty: u.qty, sortOrder: u.sortOrder })
+          .where(and(eq(rmsExportHistoryItems.id, u.id), eq(rmsExportHistoryItems.historyId, historyId)));
+      }
+    });
+  }
+
+  async updateRmsExportHistoryStatus(id: number, status: string): Promise<RmsExportHistory | undefined> {
+    const [updated] = await db.update(rmsExportHistory)
+      .set({ status })
       .where(eq(rmsExportHistory.id, id))
       .returning();
     return updated;

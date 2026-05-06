@@ -84,6 +84,35 @@
 - Manual testing only (automated testing disabled in fast mode)
 - Login: michael_kim@tkelectricllc.us / tk69956995!! (admin role)
 
+## RMS Export 2-Step Flow (May 6, 2026)
+
+**New flow:** Dialog → Save to History (pending) → Export History tab → edit + download
+
+### Dialog changes (ExportRmsDialog.tsx)
+- Primary button changed from "Download Excel" to "Save to History"
+- Calls `POST /api/reorder/save-rms` (creates pending history record, returns JSON)
+- No file downloaded from the dialog — user goes to Export History tab next
+- Draft save (localStorage) still available as secondary action
+
+### Export History tab (ReorderHistory.tsx)
+- **Pending records** shown with amber badge; expand via chevron toggle
+- Inline editor per pending record: drag-and-drop row reorder + qty editing (DnD via @dnd-kit)
+- "Save Changes" button → `PATCH /api/reorder/history/:id/items`
+- "Download Excel" button → auto-saves items then calls `POST /api/reorder/history/:id/download`; marks record as `exported` after download
+- Exported records unchanged (read-only detail dialog via Eye icon)
+
+### New API endpoints (server/routes.ts)
+- `POST /api/reorder/save-rms` — creates pending history without generating Excel
+- `POST /api/reorder/history/:id/download` — generates Excel from stored data, marks exported
+- `PATCH /api/reorder/history/:id/items` — updates qty + sortOrder of line items
+
+### New storage methods (server/storage.ts)
+- `updateRmsExportHistoryItems(historyId, updates[])` — per-item qty + sortOrder update
+- `updateRmsExportHistoryStatus(id, status)` — sets status (pending → exported)
+
+### i18n keys added (client/src/lib/i18n.ts)
+- 14 new keys in EN, KO, ES: reorderRmsSaveToHistory, reorderHistoryStatusPending, reorderHistoryDownload, etc.
+
 ## Recent DB Changes
 - CABLE-023G: 1315 FT (from 13150) ✓
 - CABLE-063G: 1024 FT (from 10240) ✓

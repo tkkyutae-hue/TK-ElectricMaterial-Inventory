@@ -948,6 +948,92 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Reorder: Save RMS to history (pending, no download) ─────────────────────
+  const saveRmsSchema = z.object({
+    header: z.object({
+      date:           z.string().optional().default(""),
+      requester:      z.string().optional().default(""),
+      poNumber:       z.string().optional().default(""),
+      projectName:    z.string().optional().default(""),
+      deliveryTo:     z.string().optional().default(""),
+    }),
+    items: z.array(z.object({
+      itemId:  z.number().int().positive().optional(),
+      name:    z.string().default(""),
+      size:    z.string().optional().default(""),
+      qty:     z.union([z.number(), z.string()]).transform(v => {
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+      }),
+      onHand:  z.union([z.number(), z.string(), z.null()]).optional().transform(v => {
+        if (v == null) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      }),
+      unit:    z.string().optional().default(""),
+      remarks: z.string().optional().default(""),
+    })).min(1),
+    projectId: z.number().int().positive().optional(),
+  });
+
+  app.post("/api/reorder/save-rms", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const parsed = saveRmsSchema.parse(req.body);
+      const currentUser = (req as RequestWithUser).currentUser;
+      const itemIds = parsed.items
+        .map(i => i.itemId)
+        .filter((v): v is number => typeof v === "number" && v > 0);
+      const itemMap = new Map<number, Item>();
+      if (itemIds.length > 0) {
+        const { db } = await import("./db");
+        const { items: itemsTable } = await import("../shared/schema");
+        const { inArray } = await import("drizzle-orm");
+        const rows = await db.select().from(itemsTable).where(inArray(itemsTable.id, itemIds));
+        for (const r of rows) itemMap.set(r.id, r);
+      }
+      const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = parsed.items.map((it, idx) => {
+        const dbItem = typeof it.itemId === "number" ? itemMap.get(it.itemId) : undefined;
+        const safeItemId = dbItem ? dbItem.id : null;
+        return {
+          itemId: safeItemId,
+          skuSnapshot: dbItem?.sku ?? null,
+          nameSnapshot: it.name || dbItem?.name || null,
+          sizeSnapshot: it.size || dbItem?.sizeLabel || null,
+          unitSnapshot: it.unit || dbItem?.unitOfMeasure || null,
+          qty: it.qty || 0,
+          remarksSnapshot: it.remarks || null,
+          onHandSnapshot: it.onHand != null ? it.onHand : (dbItem?.quantityOnHand ?? null),
+          reorderPointSnapshot: dbItem?.reorderPoint ?? null,
+          reorderQuantitySnapshot: dbItem?.reorderQuantity ?? null,
+          minimumStockSnapshot: dbItem?.minimumStock ?? null,
+          sortOrder: idx,
+        };
+      });
+      const headerInsert: CreateRmsExportHistory = {
+        exportType: "rms",
+        exportedBy: currentUser?.id ?? null,
+        exportedByName: currentUser?.name ?? currentUser?.email ?? null,
+        requestFrom: parsed.header.requester || null,
+        poNumber: parsed.header.poNumber || null,
+        projectId: parsed.projectId ?? null,
+        projectName: parsed.header.projectName || null,
+        completionDate: null,
+        deliveryTo: parsed.header.deliveryTo || null,
+        itemCount: parsed.items.length,
+        status: "pending",
+      };
+      const created = await storage.createRmsExportHistory(headerInsert, lines);
+      const safeFn = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+      const poPart = safeFn(parsed.header.poNumber || "");
+      const seqStr = String(created.poSeq ?? 1).padStart(4, "0");
+      const filename = poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
+      res.json({ id: created.id, poSeq: created.poSeq, filename });
+    } catch (err: any) {
+      if (err?.issues) return res.status(400).json({ message: "Invalid payload", issues: err.issues });
+      res.status(500).json({ message: err.message || "Failed to save RMS history" });
+    }
+  });
+
   // ─── Reorder: Export selected items into the company RMS Excel template ──────
   const exportRmsSchema = z.object({
     header: z.object({
@@ -1175,6 +1261,107 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Failed to update export history" });
+    }
+  });
+
+  // ─── Reorder: Download Excel from existing history record ────────────────────
+  app.post("/api/reorder/history/:id/download", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    try {
+      const detail = await storage.getRmsExportHistoryDetail(id);
+      if (!detail) return res.status(404).json({ message: "Not found" });
+      const ExcelJS = (await import("exceljs")).default;
+      const templatePath = path.resolve(process.cwd(), "server/templates/rms-template.xlsx");
+      if (!fs.existsSync(templatePath)) {
+        return res.status(500).json({ message: "RMS template file is missing on server." });
+      }
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.readFile(templatePath);
+      const ws = wb.getWorksheet("RMS") || wb.worksheets[0];
+      if (!ws) return res.status(500).json({ message: "RMS template sheet not found." });
+      const setCell = (addr: string, val: string) => { ws.getCell(addr).value = val; };
+      setCell("C1", detail.exportedAt ? new Date(detail.exportedAt).toISOString().slice(0, 10) : "");
+      setCell("C2", detail.requestFrom || "");
+      setCell("C3", detail.poNumber || "");
+      setCell("C4", detail.projectName || "");
+      setCell("C5", detail.completionDate || "");
+      setCell("C6", detail.deliveryTo || "");
+      const DATA_FONT = { size: 10, color: { theme: 1 as any }, name: "Calibri", family: 2, scheme: "minor" as any };
+      const THIN_EDGE = { style: "thin" as const, color: { indexed: 64 } };
+      const ALL_BORDERS = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
+      const sortedLines = [...detail.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      let curRow = 9;
+      for (let i = 0; i < sortedLines.length; i++) {
+        const item = sortedLines[i];
+        ws.getRow(curRow).height = 21;
+        const sc = (col: number, val: any, halign = "center", wrap = false) => {
+          const cell = ws.getCell(curRow, col);
+          cell.value = val;
+          cell.font = DATA_FONT;
+          cell.border = ALL_BORDERS;
+          cell.alignment = { horizontal: halign as any, vertical: "middle", wrapText: wrap };
+        };
+        sc(1, i + 1);
+        sc(2, item.sizeSnapshot || "");
+        sc(3, item.nameSnapshot || "", "left", true);
+        sc(4, item.onHandSnapshot != null ? item.onHandSnapshot : null);
+        sc(5, item.qty || 0);
+        sc(6, item.unitSnapshot || "");
+        sc(7, item.remarksSnapshot || "");
+        curRow++;
+      }
+      ws.getRow(curRow).height = 7.5;
+      ws.mergeCells(`A${curRow}:G${curRow}`);
+      const sepCell = ws.getCell(`A${curRow}`);
+      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { theme: 0 as any, tint: -0.1499984740745262 }, bgColor: { indexed: 64 } };
+      sepCell.border = { left: THIN_EDGE, right: THIN_EDGE, bottom: THIN_EDGE };
+      curRow++;
+      const remStart = curRow;
+      ws.mergeCells(`A${remStart}:G${remStart + 2}`);
+      const remCell = ws.getCell(`A${remStart}`);
+      remCell.value = " REMARKS :     ";
+      remCell.font = DATA_FONT;
+      remCell.border = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE };
+      remCell.alignment = { horizontal: "left", vertical: "top" };
+      ws.getRow(remStart).height = 40;
+      const buf = await wb.xlsx.writeBuffer();
+      await storage.updateRmsExportHistoryStatus(id, "exported");
+      const safeFn = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+      const poPart = safeFn(detail.poNumber || "");
+      const seqStr = String(detail.poSeq ?? 1).padStart(4, "0");
+      const filename = poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(Buffer.from(buf));
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to download RMS Excel" });
+    }
+  });
+
+  // ─── Reorder: Update items in a history record ────────────────────────────────
+  const updateRmsItemsSchema = z.object({
+    items: z.array(z.object({
+      id: z.number().int().positive(),
+      qty: z.number().int().min(0),
+      sortOrder: z.number().int().min(0),
+    })).min(1),
+  });
+
+  app.patch("/api/reorder/history/:id/items", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    const parsed = updateRmsItemsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+    try {
+      await storage.updateRmsExportHistoryItems(id, parsed.data.items);
+      const updated = await storage.getRmsExportHistoryDetail(id);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to update items" });
     }
   });
 

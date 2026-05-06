@@ -1332,6 +1332,16 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Clean up orphaned item_groups rows (families whose items were all
+    // soft-deleted or moved to another family / category since last save).
+    const activeFamilyNames = new Set(groupMap.keys());
+    const orphanedGroupIds = groupRecords
+      .filter(g => !activeFamilyNames.has(g.baseItemName))
+      .map(g => g.id);
+    if (orphanedGroupIds.length > 0) {
+      await db.delete(itemGroups).where(inArray(itemGroups.id, orphanedGroupIds));
+    }
+
     const groups = Array.from(groupMap.entries())
       .map(([baseItemName, data]) => ({
         baseItemName,

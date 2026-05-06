@@ -730,17 +730,27 @@ export default function ReorderHistory() {
                         </TableCell>
                         <TableCell>
                           {isPending ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => togglePending(r.id)}
-                              data-testid={`button-history-pending-toggle-${r.id}`}
-                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            >
-                              {isExpanded
-                                ? <ChevronDown className="w-4 h-4" />
-                                : <ChevronRight className="w-4 h-4" />}
-                            </Button>
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => togglePending(r.id)}
+                                data-testid={`button-history-pending-toggle-${r.id}`}
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              >
+                                {isExpanded
+                                  ? <ChevronDown className="w-4 h-4" />
+                                  : <ChevronRight className="w-4 h-4" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setOpenId(r.id)}
+                                data-testid={`button-history-pending-detail-${r.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-0.5">
                               <Button

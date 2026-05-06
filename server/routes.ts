@@ -976,13 +976,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     projectId: z.number().int().positive().optional(),
   });
 
-  app.post("/api/reorder/save-rms", isAuthenticated, requireManager, async (req, res) => {
+  // Shared handler for creating a pending RMS history record (used by both endpoints below).
+  const handleSaveRmsPending = async (req: any, res: any) => {
     try {
       const parsed = saveRmsSchema.parse(req.body);
       const currentUser = (req as RequestWithUser).currentUser;
       const itemIds = parsed.items
-        .map(i => i.itemId)
-        .filter((v): v is number => typeof v === "number" && v > 0);
+        .map((i: any) => i.itemId)
+        .filter((v: any): v is number => typeof v === "number" && v > 0);
       const itemMap = new Map<number, Item>();
       if (itemIds.length > 0) {
         const { db } = await import("./db");
@@ -991,7 +992,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const rows = await db.select().from(itemsTable).where(inArray(itemsTable.id, itemIds));
         for (const r of rows) itemMap.set(r.id, r);
       }
-      const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = parsed.items.map((it, idx) => {
+      const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = parsed.items.map((it: any, idx: number) => {
         const dbItem = typeof it.itemId === "number" ? itemMap.get(it.itemId) : undefined;
         const safeItemId = dbItem ? dbItem.id : null;
         return {
@@ -1032,7 +1033,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (err?.issues) return res.status(400).json({ message: "Invalid payload", issues: err.issues });
       res.status(500).json({ message: err.message || "Failed to save RMS history" });
     }
-  });
+  };
+
+  // Alias kept for backward compatibility — delegates to shared handler.
+  app.post("/api/reorder/save-rms", isAuthenticated, requireManager, handleSaveRmsPending);
 
   // ─── Reorder: Export selected items into the company RMS Excel template ──────
   const exportRmsSchema = z.object({
@@ -1229,64 +1233,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder: Create pending history record (canonical endpoint) ───────────
-  // POST /api/reorder/history is the official save endpoint; save-rms is kept as alias.
-  app.post("/api/reorder/history", isAuthenticated, requireManager, async (req, res) => {
-    try {
-      const parsed = saveRmsSchema.parse(req.body);
-      const currentUser = (req as RequestWithUser).currentUser;
-      const itemIds = parsed.items
-        .map(i => i.itemId)
-        .filter((v): v is number => typeof v === "number" && v > 0);
-      const itemMap = new Map<number, Item>();
-      if (itemIds.length > 0) {
-        const { db } = await import("./db");
-        const { items: itemsTable } = await import("../shared/schema");
-        const { inArray } = await import("drizzle-orm");
-        const rows = await db.select().from(itemsTable).where(inArray(itemsTable.id, itemIds));
-        for (const r of rows) itemMap.set(r.id, r);
-      }
-      const lines: Omit<CreateRmsExportHistoryItem, "historyId">[] = parsed.items.map((it, idx) => {
-        const dbItem = typeof it.itemId === "number" ? itemMap.get(it.itemId) : undefined;
-        const safeItemId = dbItem ? dbItem.id : null;
-        return {
-          itemId: safeItemId,
-          skuSnapshot: dbItem?.sku ?? null,
-          nameSnapshot: it.name || dbItem?.name || null,
-          sizeSnapshot: it.size || dbItem?.sizeLabel || null,
-          unitSnapshot: it.unit || dbItem?.unitOfMeasure || null,
-          qty: it.qty || 0,
-          remarksSnapshot: it.remarks || null,
-          onHandSnapshot: it.onHand != null ? it.onHand : (dbItem?.quantityOnHand ?? null),
-          reorderPointSnapshot: dbItem?.reorderPoint ?? null,
-          reorderQuantitySnapshot: dbItem?.reorderQuantity ?? null,
-          minimumStockSnapshot: dbItem?.minimumStock ?? null,
-          sortOrder: idx,
-        };
-      });
-      const headerInsert: CreateRmsExportHistory = {
-        exportType: "rms",
-        exportedBy: currentUser?.id ?? null,
-        exportedByName: currentUser?.name ?? currentUser?.email ?? null,
-        requestFrom: parsed.header.requester || null,
-        poNumber: parsed.header.poNumber || null,
-        projectId: parsed.projectId ?? null,
-        projectName: parsed.header.projectName || null,
-        completionDate: null,
-        deliveryTo: parsed.header.deliveryTo || null,
-        itemCount: parsed.items.length,
-        status: "pending",
-      };
-      const created = await storage.createRmsExportHistory(headerInsert, lines);
-      const safeFn = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
-      const poPart = safeFn(parsed.header.poNumber || "");
-      const seqStr = String(created.poSeq ?? 1).padStart(4, "0");
-      const filename = poPart ? `RMS-${poPart}-${seqStr}.xlsx` : `RMS-${seqStr}.xlsx`;
-      res.json({ id: created.id, poSeq: created.poSeq, filename });
-    } catch (err: any) {
-      if (err?.issues) return res.status(400).json({ message: "Invalid payload", issues: err.issues });
-      res.status(500).json({ message: err.message || "Failed to save RMS history" });
-    }
-  });
+  // POST /api/reorder/history is the official save endpoint; delegates to shared handler.
+  app.post("/api/reorder/history", isAuthenticated, requireManager, handleSaveRmsPending);
 
   app.get("/api/reorder/history/:id", isAuthenticated, requireManager, async (req, res) => {
     const id = parseIntParam(req.params.id, "id", res);

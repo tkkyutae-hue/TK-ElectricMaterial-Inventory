@@ -60,14 +60,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // ─── Verify DB connectivity ─────────────────────────────────────────────
-  try {
-    const client = await pool.connect();
-    client.release();
-    log("database connection OK", "db");
-  } catch (err: any) {
-    console.error("[db] FATAL — cannot connect to database:", err.message);
-    process.exit(1);
+  // ─── Verify DB connectivity (retry up to 10×, 3 s apart) ───────────────
+  {
+    let lastErr: any;
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      try {
+        const client = await pool.connect();
+        client.release();
+        log("database connection OK", "db");
+        lastErr = null;
+        break;
+      } catch (err: any) {
+        lastErr = err;
+        console.warn(`[db] connection attempt ${attempt}/10 failed: ${err.message} — retrying in 3 s…`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+    if (lastErr) {
+      console.error("[db] FATAL — cannot connect to database:", lastErr.message);
+      process.exit(1);
+    }
   }
 
   // ─── Seed essential data (idempotent) ────────────────────────────────────

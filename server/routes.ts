@@ -1537,12 +1537,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       wb.creator = "VoltStock – TK Electric";
       wb.created = new Date();
 
-      // ── Helper: export filename (sequence is extensible for future deduplication) ──
-      const buildExportFilename = (seq: number = 1): string => {
+      // ── Helper: export filename ───────────────────────────────────────────────────
+      const buildExportFilename = (): string => {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, "0");
-        return `SA WAREHOUSE MATERIAL STATUS-${year}-${month}(${seq}).xlsx`;
+        return `SA WAREHOUSE MATERIAL STATUS-${year}-${month}.xlsx`;
       };
 
       // ── Helper: sanitize Excel worksheet name ─────────────────────────────────────
@@ -1603,6 +1603,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // Strip leading # and retry (e.g. "#1/0" → "1/0")
         const stripped = label.replace(/^#/, "");
         if (EXPORT_AWG_MAP[stripped] !== undefined) return EXPORT_AWG_MAP[stripped];
+        // Try adding # prefix (e.g. "12" → "#12", "10" → "#10")
+        const hashLabel = `#${label}`;
+        if (EXPORT_AWG_MAP[hashLabel] !== undefined) return EXPORT_AWG_MAP[hashLabel];
         // N/0-suffix range: "1/0-14AWG", "2/0-14AWG" → sort by primary conductor
         const slashORange = label.match(/^(\d+\/0)-/);
         if (slashORange && EXPORT_AWG_MAP[slashORange[1]] !== undefined) return EXPORT_AWG_MAP[slashORange[1]];
@@ -2017,7 +2020,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       // 5. Stream buffer to client
-      const filename = buildExportFilename(1);
+      const filename = buildExportFilename();
       const buffer   = await wb.xlsx.writeBuffer();
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

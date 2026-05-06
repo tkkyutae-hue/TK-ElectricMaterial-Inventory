@@ -296,8 +296,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     }
   };
 
-  const truncated = rows.length > 50;
-
   const updateQty = (id: number, qty: number) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, qty: Number.isFinite(qty) ? qty : 0 } : r));
   };
@@ -399,6 +397,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
             size: r.size,
             unit: r.unit,
             qty: Number(r.qty) || 0,
+            onHand: r.onHand ?? null,
           })),
         }),
       });
@@ -544,9 +543,6 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
                 {t.reorderRmsItemsSection}{" "}
                 <span className="text-slate-400 font-normal">({rows.length})</span>
               </h3>
-              {truncated && (
-                <span className="text-xs text-amber-600">{t.reorderRmsTruncatedNote}</span>
-              )}
             </div>
             <div className="border border-slate-200 rounded-md overflow-hidden">
               <div className="max-h-72 overflow-y-auto">

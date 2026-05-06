@@ -959,14 +959,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       deliveryTo:     z.string().optional().default(""),
     }),
     items: z.array(z.object({
-      itemId: z.number().int().positive().optional(),
-      name: z.string().default(""),
-      size: z.string().optional().default(""),
-      qty:  z.union([z.number(), z.string()]).transform(v => {
+      itemId:  z.number().int().positive().optional(),
+      name:    z.string().default(""),
+      size:    z.string().optional().default(""),
+      qty:     z.union([z.number(), z.string()]).transform(v => {
         const n = Number(v);
         return Number.isFinite(n) && n >= 0 ? n : 0;
       }),
-      unit: z.string().optional().default(""),
+      onHand:  z.union([z.number(), z.string(), z.null()]).optional().transform(v => {
+        if (v == null) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      }),
+      unit:    z.string().optional().default(""),
       remarks: z.string().optional().default(""),
     })).min(1),
     projectId: z.number().int().positive().optional(),
@@ -997,37 +1002,52 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       setCell("C5", parsed.header.completionDate);
       setCell("C6", parsed.header.deliveryTo);
 
-      // Body rows.  Template has two sections of 25 lines each:
-      //   Section 1: rows 9-33  (NO. 1-25)
-      //   Section 2: rows 39-63 (NO. 26-50)
-      // Rows 34-37 and 64-67 are merged page-break / footer ranges; do not touch.
-      const rowForIndex = (i: number): number | null => {
-        if (i < 25) return 9 + i;
-        if (i < 50) return 39 + (i - 25);
-        return null;
-      };
-      const truncated = parsed.items.length > 50;
-      const itemsToWrite = parsed.items.slice(0, 50);
+      // Body rows — dynamic (no 50-item cap).  Written starting at row 9.
+      // New 7-column layout: A=NO, B=SIZE, C=MATERIAL DESCRIPTION,
+      //   D=On Hand, E=Order QTY, F=UNIT, G=REMARKS
+      const itemsToWrite = parsed.items;
+      const DATA_FONT = { size: 10, color: { theme: 1 as any }, name: "Calibri", family: 2, scheme: "minor" as any };
+      const THIN_EDGE = { style: "thin" as const, color: { indexed: 64 } };
+      const ALL_BORDERS = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE, bottom: THIN_EDGE };
 
-      for (let i = 0; i < 50; i++) {
-        const row = rowForIndex(i);
-        if (row == null) break;
+      let curRow = 9;
+      for (let i = 0; i < itemsToWrite.length; i++) {
         const item = itemsToWrite[i];
-        ws.getCell(`A${row}`).value = i + 1;
-        if (item) {
-          ws.getCell(`B${row}`).value = item.size || "";
-          ws.getCell(`C${row}`).value = item.name || "";
-          ws.getCell(`D${row}`).value = item.qty || 0;
-          ws.getCell(`E${row}`).value = item.unit || "";
-          ws.getCell(`F${row}`).value = item.remarks || "";
-        } else {
-          ws.getCell(`B${row}`).value = "";
-          ws.getCell(`C${row}`).value = "";
-          ws.getCell(`D${row}`).value = "";
-          ws.getCell(`E${row}`).value = "";
-          ws.getCell(`F${row}`).value = "";
-        }
+        ws.getRow(curRow).height = 21;
+        const sc = (col: number, val: any, halign = "center", wrap = false) => {
+          const cell = ws.getCell(curRow, col);
+          cell.value = val;
+          cell.font = DATA_FONT;
+          cell.border = ALL_BORDERS;
+          cell.alignment = { horizontal: halign as any, vertical: "middle", wrapText: wrap };
+        };
+        sc(1, i + 1);
+        sc(2, item.size || "");
+        sc(3, item.name || "", "left", true);
+        sc(4, item.onHand != null ? item.onHand : null);
+        sc(5, item.qty || 0);
+        sc(6, item.unit || "");
+        sc(7, item.remarks || "");
+        curRow++;
       }
+
+      // Separator bar
+      ws.getRow(curRow).height = 7.5;
+      ws.mergeCells(`A${curRow}:G${curRow}`);
+      const sepCell = ws.getCell(`A${curRow}`);
+      sepCell.fill = { type: "pattern", pattern: "solid", fgColor: { theme: 0 as any, tint: -0.1499984740745262 }, bgColor: { indexed: 64 } };
+      sepCell.border = { left: THIN_EDGE, right: THIN_EDGE, bottom: THIN_EDGE };
+      curRow++;
+
+      // REMARKS footer (3 merged rows)
+      const remStart = curRow;
+      ws.mergeCells(`A${remStart}:G${remStart + 2}`);
+      const remCell = ws.getCell(`A${remStart}`);
+      remCell.value = " REMARKS :     ";
+      remCell.font = DATA_FONT;
+      remCell.border = { left: THIN_EDGE, right: THIN_EDGE, top: THIN_EDGE };
+      remCell.alignment = { horizontal: "left", vertical: "top" };
+      ws.getRow(remStart).height = 40;
 
       const buf = await wb.xlsx.writeBuffer();
 
@@ -1095,7 +1115,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const filename = rmsFilename;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      if (truncated) res.setHeader("X-RMS-Truncated", "50");
       res.send(Buffer.from(buf));
     } catch (err: any) {
       if (err?.issues) return res.status(400).json({ message: "Invalid export payload", issues: err.issues });

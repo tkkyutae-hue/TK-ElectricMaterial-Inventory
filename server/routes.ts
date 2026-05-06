@@ -1542,7 +1542,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, "0");
-        return `GA WAREHOUSE MATERIAL STATUS-${year}-${month}(${seq}).xlsx`;
+        return `SA WAREHOUSE MATERIAL STATUS-${year}-${month}(${seq}).xlsx`;
       };
 
       // ── Helper: sanitize Excel worksheet name ─────────────────────────────────────

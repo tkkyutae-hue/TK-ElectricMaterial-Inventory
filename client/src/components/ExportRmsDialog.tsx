@@ -378,7 +378,7 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/reorder/save-rms", {
+      const res = await fetch("/api/reorder/history", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

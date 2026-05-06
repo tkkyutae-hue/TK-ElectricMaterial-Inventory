@@ -174,6 +174,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   const { toast } = useToast();
   const [lines, setLines] = useState<EditableLine[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [headerFields, setHeaderFields] = useState({ requestFrom: "", poNumber: "", projectName: "", deliveryTo: "" });
   const tableRef = useRef<HTMLTableElement>(null);
 
   const sensors = useSensors(
@@ -190,8 +191,33 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
     if (detailQuery.data) {
       const sorted = [...detailQuery.data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
       setLines(sorted.map(l => ({ ...l, _qty: l.qty })));
+      setHeaderFields({
+        requestFrom: detailQuery.data.requestFrom ?? "",
+        poNumber: detailQuery.data.poNumber ?? "",
+        projectName: detailQuery.data.projectName ?? "",
+        deliveryTo: detailQuery.data.deliveryTo ?? "",
+      });
     }
   }, [detailQuery.data]);
+
+  const patchHeader = async () => {
+    const payload: Record<string, string | null> = {
+      requestFrom: headerFields.requestFrom.trim() || null,
+      poNumber: headerFields.poNumber.trim() || null,
+      projectName: headerFields.projectName.trim() || null,
+      deliveryTo: headerFields.deliveryTo.trim() || null,
+    };
+    const res = await fetch(`/api/reorder/history/${historyId}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Header update failed: HTTP ${res.status}`);
+  };
+
+  const setHeader = (key: keyof typeof headerFields) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setHeaderFields(prev => ({ ...prev, [key]: e.target.value }));
 
   const activeRow = activeId != null ? lines.find(l => l.id === activeId) ?? null : null;
 
@@ -214,6 +240,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 
   const saveItemsMutation = useMutation({
     mutationFn: async () => {
+      await patchHeader();
       const res = await fetch(`/api/reorder/history/${historyId}/items`, {
         method: "PATCH",
         credentials: "include",
@@ -239,6 +266,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 
   const downloadMutation = useMutation({
     mutationFn: async () => {
+      await patchHeader();
       const saveRes = await fetch(`/api/reorder/history/${historyId}/items`, {
         method: "PATCH",
         credentials: "include",
@@ -287,6 +315,45 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   return (
     <div className="border-t border-amber-200 bg-amber-50/40 px-4 py-3 space-y-3">
       <p className="text-xs text-amber-700 font-medium">{t.reorderHistoryPendingBanner}</p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="space-y-1">
+          <label className="text-xs text-slate-500">{t.reorderRmsRequester}</label>
+          <Input
+            value={headerFields.requestFrom}
+            onChange={setHeader("requestFrom")}
+            className="h-8 text-sm"
+            data-testid={`input-pending-requester-${historyId}`}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-500">{t.reorderHistoryColPo}</label>
+          <Input
+            value={headerFields.poNumber}
+            onChange={setHeader("poNumber")}
+            className="h-8 text-sm"
+            data-testid={`input-pending-po-${historyId}`}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-500">{t.reorderHistoryColProject}</label>
+          <Input
+            value={headerFields.projectName}
+            onChange={setHeader("projectName")}
+            className="h-8 text-sm"
+            data-testid={`input-pending-project-${historyId}`}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-500">{t.reorderHistoryColDelivery}</label>
+          <Input
+            value={headerFields.deliveryTo}
+            onChange={setHeader("deliveryTo")}
+            className="h-8 text-sm"
+            data-testid={`input-pending-delivery-${historyId}`}
+          />
+        </div>
+      </div>
 
       <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
         <div className="overflow-x-auto">
@@ -367,6 +434,7 @@ export default function ReorderHistory() {
   const [editId, setEditId] = useState<number | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [expandedPending, setExpandedPending] = useState<Set<number>>(new Set());
+  const [downloadingExportedId, setDownloadingExportedId] = useState<number | null>(null);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<RmsExportHistory[]>({
     queryKey: ["/api/reorder/history"],
@@ -512,6 +580,37 @@ export default function ReorderHistory() {
     },
   });
 
+  const redownloadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      setDownloadingExportedId(id);
+      const res = await fetch(`/api/reorder/history/${id}/download`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = /filename="([^"]+)"/.exec(cd);
+      return { blob, filename: m?.[1] || "RMS.xlsx" };
+    },
+    onSuccess: ({ blob, filename }) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+      toast({ description: t.reorderHistoryDownloadSuccess });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.reorderHistoryDownloadError, description: err.message });
+    },
+    onSettled: () => setDownloadingExportedId(null),
+  });
+
   if (isLoading) {
     return (
       <div className="premium-card bg-white p-10 flex items-center justify-center text-slate-500">
@@ -643,14 +742,28 @@ export default function ReorderHistory() {
                                 : <ChevronRight className="w-4 h-4" />}
                             </Button>
                           ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setOpenId(r.id)}
-                              data-testid={`button-history-detail-${r.id}`}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => redownloadMutation.mutate(r.id)}
+                                disabled={downloadingExportedId === r.id}
+                                data-testid={`button-history-download-${r.id}`}
+                                title={t.reorderHistoryDownload}
+                              >
+                                {downloadingExportedId === r.id
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <Download className="w-4 h-4" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setOpenId(r.id)}
+                                data-testid={`button-history-detail-${r.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>

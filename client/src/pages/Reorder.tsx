@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { ShoppingCart, RefreshCw, CheckCircle, XCircle, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown, FileSpreadsheet, X } from "lucide-react";
+import { ShoppingCart, RefreshCw, Search, Filter, ChevronRight, ChevronDown, Package, ChevronsDownUp, ChevronsUpDown, FileSpreadsheet, X } from "lucide-react";
 
 import ExportRmsDialog, { type RmsExportItem } from "@/components/ExportRmsDialog";
 import { Button } from "@/components/ui/button";
@@ -116,20 +116,6 @@ export default function Reorder() {
       qc.invalidateQueries({ queryKey: [api.reorder.recommendations.path] });
       toast({ title: t.reorderGenerated, description: `${data.length} ${data.length !== 1 ? t.reorderItemPlural : t.reorderItemSingular} ${t.reorderNeedAttention}` });
     },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/reorder/recommendations/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [api.reorder.recommendations.path] }),
   });
 
   // Categories that actually appear in current recommendations (deduped, sorted).
@@ -567,8 +553,7 @@ export default function Reorder() {
                                   fam.items.forEach((r: any) => { if (on) n.add(r.id); else n.delete(r.id); });
                                   return n;
                                 })}
-                                onMarkOrdered={(id) => updateStatusMutation.mutate({ id, status: 'ordered' })}
-                                onDismiss={(id) => updateStatusMutation.mutate({ id, status: 'dismissed' })}
+
                               />
                             )}
                           </div>
@@ -637,14 +622,12 @@ export default function Reorder() {
 // ─── Per-family Table ────────────────────────────────────────────────────────
 
 function FamilyTable({
-  items, selectedIds, onToggleOne, onToggleAll, onMarkOrdered, onDismiss,
+  items, selectedIds, onToggleOne, onToggleAll,
 }: {
   items: any[];
   selectedIds: Set<number>;
   onToggleOne: (id: number, on: boolean) => void;
   onToggleAll: (on: boolean) => void;
-  onMarkOrdered: (id: number) => void;
-  onDismiss: (id: number) => void;
 }) {
   const { t } = useLanguage();
   const allSelected = items.length > 0 && items.every(r => selectedIds.has(r.id));
@@ -663,7 +646,6 @@ function FamilyTable({
           <col style={{ width: "100px" }} />
           <col style={{ width: "100px" }} />
           <col style={{ width: "112px" }} />
-          <col style={{ width: "150px" }} />
         </colgroup>
         <TableHeader className="bg-slate-50/80">
           <TableRow className="hover:bg-transparent">
@@ -684,7 +666,6 @@ function FamilyTable({
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColReorderPt}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColOrderQty}</TableHead>
             <TableHead className="font-semibold text-slate-600 text-center whitespace-nowrap">{t.reorderColUsagePattern}</TableHead>
-            <TableHead className="font-semibold text-slate-600 text-right whitespace-nowrap">{t.reorderColActions}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -736,32 +717,6 @@ function FamilyTable({
                   lastIssueAt={rec.lastIssueAt}
                   testId={`chip-usage-pattern-${rec.id}`}
                 />
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1 justify-end">
-                  {rec.id > 0 && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-xs text-emerald-600 hover:bg-emerald-50 border-emerald-200"
-                        onClick={() => onMarkOrdered(rec.id)}
-                        data-testid={`button-mark-ordered-${rec.id}`}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />{t.reorderOrderedBtn}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs text-slate-400 hover:text-rose-500"
-                        onClick={() => onDismiss(rec.id)}
-                        data-testid={`button-dismiss-${rec.id}`}
-                      >
-                        <XCircle className="w-3 h-3" />
-                      </Button>
-                    </>
-                  )}
-                </div>
               </TableCell>
             </TableRow>
           ))}

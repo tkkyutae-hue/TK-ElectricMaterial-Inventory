@@ -613,7 +613,7 @@ export default function Reorder() {
               data-testid="button-export-rms"
             >
               <FileSpreadsheet className="w-4 h-4 mr-1.5" />
-              {t.reorderExportRms}
+              {t.reorderRmsSaveToHistory}
               {draftCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-slate-900 text-[10px] font-bold flex items-center justify-center leading-none" data-testid="badge-rms-draft-count">
                   {draftCount}

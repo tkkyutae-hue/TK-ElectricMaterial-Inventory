@@ -106,6 +106,7 @@ function SortableItemRow({
   onQtyChange: (id: number, qty: number) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),

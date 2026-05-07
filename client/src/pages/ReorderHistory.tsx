@@ -42,6 +42,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ChevronDown, ChevronRight, Download, Eye, GripVertical, Loader2, Package, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { RmsExportHistory, RmsExportHistoryWithLines, RmsExportHistoryItem, ItemWithRelations } from "@shared/schema";
 
@@ -276,6 +277,67 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
     },
   });
 
+  // Map from itemId → { line snapshot, original index } so concurrent deletes don't cross-wire
+  const pendingDeletesRef = useRef<Map<number, { line: EditableLine; index: number }>>(new Map());
+
+  const undoDeleteMutation = useMutation({
+    mutationFn: async ({ line, index }: { line: EditableLine; index: number }) => {
+      const res = await fetch(`/api/reorder/history/${historyId}/items/add-batch`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{
+            itemId: line.itemId ?? undefined,
+            nameSnapshot: line.nameSnapshot ?? "",
+            sizeSnapshot: line.sizeSnapshot ?? undefined,
+            unitSnapshot: line.unitSnapshot ?? undefined,
+            onHandSnapshot: line.onHandSnapshot ?? undefined,
+            qty: line._qty,
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      const data = await res.json() as RmsExportHistoryWithLines;
+      return { data, index };
+    },
+    onSuccess: async ({ data, index }) => {
+      // Server always appends the re-added row at the end (highest sortOrder).
+      // We need to move it back to the captured original index, then persist.
+      const sorted = [...data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      const newItem = sorted[sorted.length - 1]; // last = just re-added
+      const rest = sorted.filter(l => l.id !== newItem.id);
+      const clampedIndex = Math.min(index, rest.length);
+      rest.splice(clampedIndex, 0, newItem);
+      const editableLines = rest.map(l => ({ ...l, _qty: l.qty }));
+      setLines(editableLines);
+
+      // Persist the restored sort order so a page refresh keeps it
+      try {
+        const patchRes = await fetch(`/api/reorder/history/${historyId}/items`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: editableLines.map((l, i) => ({ id: l.id, qty: l._qty, sortOrder: i })),
+          }),
+        });
+        if (!patchRes.ok) {
+          toast({ description: t.reorderHistoryItemsUpdated + " (order not saved)", duration: 4000 });
+        }
+      } catch {
+        // Non-critical — row is restored in DB, only sort order may revert on refresh
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.cmnSaveFailed, description: err.message });
+    },
+  });
+
   const deleteLineMutation = useMutation({
     mutationFn: async (itemId: number) => {
       const res = await fetch(`/api/reorder/history/${historyId}/items/${itemId}`, {
@@ -289,13 +351,45 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
       return itemId;
     },
     onSuccess: (itemId) => {
+      const captured = pendingDeletesRef.current.get(itemId);
+      pendingDeletesRef.current.delete(itemId);
       setLines(prev => prev.filter(l => l.id !== itemId));
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+      if (captured) {
+        const { dismiss } = toast({
+          title: t.reorderRmsRowRemoved,
+          duration: 5000,
+          action: (
+            <ToastAction
+              altText={t.undoMovement}
+              data-testid={`toast-undo-line-delete-${itemId}`}
+              onClick={() => {
+                undoDeleteMutation.mutate(captured);
+                dismiss();
+              }}
+            >
+              {t.undoMovement}
+            </ToastAction>
+          ),
+        });
+      }
     },
-    onError: (err: Error) => {
+    onError: (err: Error, itemId: number) => {
+      pendingDeletesRef.current.delete(itemId);
       toast({ variant: "destructive", title: t.cmnDeleteFailed, description: err.message });
     },
   });
+
+  const handleDeleteLine = useCallback((id: number) => {
+    setLines(prev => {
+      const index = prev.findIndex(l => l.id === id);
+      if (index >= 0) {
+        pendingDeletesRef.current.set(id, { line: prev[index], index });
+      }
+      return prev;
+    });
+    deleteLineMutation.mutate(id);
+  }, [deleteLineMutation]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -500,7 +594,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
               <SortableContext items={lines.map(l => l.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
                   {lines.map((line, i) => (
-                    <SortableItemRow key={line.id} line={line} index={i} onQtyChange={updateQty} onDelete={id => deleteLineMutation.mutate(id)} />
+                    <SortableItemRow key={line.id} line={line} index={i} onQtyChange={updateQty} onDelete={handleDeleteLine} />
                   ))}
                 </tbody>
               </SortableContext>

@@ -182,13 +182,16 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   const [addSearch, setAddSearch] = useState("");
   const [addDebouncedSearch, setAddDebouncedSearch] = useState("");
   const [addSelectedItem, setAddSelectedItem] = useState<ItemWithRelations | null>(null);
-  const [addName, setAddName] = useState("");
   const [addSize, setAddSize] = useState("");
   const [addUnit, setAddUnit] = useState("");
   const [addQty, setAddQty] = useState(1);
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const addSearchRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
+  }, []);
 
   const handleAddSearchChange = useCallback((val: string) => {
     setAddSearch(val);
@@ -208,7 +211,6 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   const selectSearchItem = (item: ItemWithRelations) => {
     setAddSelectedItem(item);
     setAddSearch(item.name);
-    setAddName(item.name);
     setAddSize(item.sizeLabel ?? "");
     setAddUnit(item.unitOfMeasure ?? "");
     setAddDropdownOpen(false);
@@ -219,7 +221,6 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
     setAddSearch("");
     setAddDebouncedSearch("");
     setAddSelectedItem(null);
-    setAddName("");
     setAddSize("");
     setAddUnit("");
     setAddQty(1);
@@ -228,7 +229,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 
   const addItemMutation = useMutation({
     mutationFn: async () => {
-      const nameToUse = addSelectedItem ? addSelectedItem.name : (addName.trim() || addSearch.trim());
+      const nameToUse = addSelectedItem ? addSelectedItem.name : addSearch.trim();
       if (!nameToUse) throw new Error("Name is required");
       const body: Record<string, unknown> = {
         nameSnapshot: nameToUse,

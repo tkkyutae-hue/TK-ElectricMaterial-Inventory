@@ -54,6 +54,15 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+async function safeJson<T = unknown>(res: Response): Promise<T> {
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Unexpected response (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 function buildRmsFilename(poNumber?: string | null, poSeq?: number | null): string {
   if (poSeq == null) return "—";
   const safe = (s: string) => (s || "").replace(/[\\/:*?"<>|]/g, "_").trim();
@@ -265,7 +274,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
         const text = await res.text().catch(() => "");
         throw new Error(text || `HTTP ${res.status}`);
       }
-      return res.json() as Promise<RmsExportHistoryWithLines>;
+      return safeJson<RmsExportHistoryWithLines>(res);
     },
     onSuccess: (data) => {
       const sorted = [...data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -302,7 +311,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
         const text = await res.text().catch(() => "");
         throw new Error(text || `HTTP ${res.status}`);
       }
-      const data = await res.json() as RmsExportHistoryWithLines;
+      const data = await safeJson<RmsExportHistoryWithLines>(res);
       return { data, index };
     },
     onSuccess: async ({ data, index }) => {
@@ -468,7 +477,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
         const text = await res.text().catch(() => "");
         throw new Error(text || `HTTP ${res.status}`);
       }
-      return res.json();
+      return safeJson(res);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });

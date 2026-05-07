@@ -577,7 +577,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
             <Button
               size="sm"
               onClick={() => addItemMutation.mutate()}
-              disabled={addItemMutation.isPending || (!addSelectedItem && !addName.trim() && !addSearch.trim())}
+              disabled={addItemMutation.isPending || (!addSelectedItem && !addSearch.trim())}
               data-testid={`button-additem-confirm-${historyId}`}
             >
               {addItemMutation.isPending ? (

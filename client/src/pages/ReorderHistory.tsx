@@ -151,6 +151,7 @@ function SortableItemRow({
           type="button"
           onClick={() => onDelete(line.id)}
           onPointerDown={e => e.stopPropagation()}
+          title={t.reorderHistoryDeleteItemTip}
           className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
           data-testid={`button-delete-line-${line.id}`}
         >
@@ -537,7 +538,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 
           {/* Search results */}
           {addDebouncedSearch.length >= 1 && (
-            <div className="border border-slate-200 rounded-md overflow-hidden max-h-56 overflow-y-auto">
+            <div className="border border-slate-200 rounded-md overflow-hidden max-h-56 overflow-y-auto min-w-[400px]">
               {searchItemsQuery.isLoading ? (
                 <div className="flex items-center gap-2 px-3 py-3 text-xs text-slate-400">
                   <Loader2 className="w-3 h-3 animate-spin" /> {t.cmnLoading}
@@ -664,7 +665,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
               {addBatchMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
               ) : (
-                <><Plus className="w-4 h-4 mr-1.5" />{addChecked.size > 0 ? `${t.reorderHistoryAddItemsCount} (${addChecked.size})` : t.reorderHistoryAddItemsCount}</>
+                <><Plus className="w-4 h-4 mr-1.5" />{addChecked.size > 0 ? t.reorderHistoryAddItemsCount.replace("{n}", String(addChecked.size)) : t.reorderHistoryAddItems}</>
               )}
             </Button>
           </div>

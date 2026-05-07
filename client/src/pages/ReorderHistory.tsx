@@ -662,11 +662,16 @@ export default function ReorderHistory() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groups.map((group) => {
+          {groups.map((group, groupIdx) => {
             const collapsed = collapsedGroups.has(group.poKey);
             const label = group.poKey ? group.poKey : t.reorderHistoryNoPo;
             return (
               <React.Fragment key={group.poKey || "no-po"}>
+                {groupIdx > 0 && (
+                  <TableRow aria-hidden="true">
+                    <TableCell colSpan={9} className="p-0 h-2 bg-slate-100/60 border-none" />
+                  </TableRow>
+                )}
                 <TableRow
                   className="bg-slate-50 hover:bg-slate-100 cursor-pointer select-none"
                   onClick={() => toggleGroup(group.poKey)}

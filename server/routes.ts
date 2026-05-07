@@ -1353,7 +1353,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       id: z.number().int().positive(),
       qty: z.number().int().min(0),
       sortOrder: z.number().int().min(0),
-    })).min(1),
+    })).min(0),
   });
 
   app.patch("/api/reorder/history/:id/items", isAuthenticated, requireManager, async (req, res) => {
@@ -1400,6 +1400,57 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Failed to add item" });
+    }
+  });
+
+  // ─── Reorder: Batch-add items to a pending history record ────────────────────
+  const addRmsItemsBatchSchema = z.object({
+    items: z.array(z.object({
+      itemId: z.number().int().positive().optional(),
+      nameSnapshot: z.string().trim().min(1).max(500),
+      sizeSnapshot: z.string().trim().max(255).optional(),
+      unitSnapshot: z.string().trim().max(64).optional(),
+      onHandSnapshot: z.number().int().min(0).optional(),
+      qty: z.number().int().min(0).default(1),
+    })).min(1).max(200),
+  });
+
+  app.post("/api/reorder/history/:id/items/add-batch", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    const parsed = addRmsItemsBatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+    try {
+      const detail = await storage.getRmsExportHistoryDetail(id);
+      if (!detail) return res.status(404).json({ message: "Not found" });
+      if (detail.status !== "pending") {
+        return res.status(409).json({ message: "Cannot modify a non-pending record" });
+      }
+      const updated = await storage.addRmsExportHistoryItems(id, parsed.data.items);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to add items" });
+    }
+  });
+
+  // ─── Reorder: Delete a single item from a pending history record ──────────────
+  app.delete("/api/reorder/history/:id/items/:itemId", isAuthenticated, requireManager, async (req, res) => {
+    const id = parseIntParam(req.params.id, "id", res);
+    if (id == null) return;
+    const itemId = parseIntParam(req.params.itemId, "itemId", res);
+    if (itemId == null) return;
+    try {
+      const detail = await storage.getRmsExportHistoryDetail(id);
+      if (!detail) return res.status(404).json({ message: "Not found" });
+      if (detail.status !== "pending") {
+        return res.status(409).json({ message: "Cannot modify a non-pending record" });
+      }
+      await storage.deleteRmsExportHistoryItem(id, itemId);
+      res.json({ deleted: itemId });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Failed to delete item" });
     }
   });
 

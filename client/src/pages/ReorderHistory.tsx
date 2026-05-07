@@ -84,14 +84,26 @@ type EditFormValues = z.infer<typeof editSchema>;
 
 type EditableLine = HistoryLine & { _qty: number };
 
+function ItemThumb({ imageUrl, name }: { imageUrl?: string | null; name?: string | null }) {
+  return imageUrl ? (
+    <img src={imageUrl} alt={name ?? ""} className="w-9 h-9 rounded object-cover border border-slate-200 shrink-0" />
+  ) : (
+    <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300 shrink-0">
+      <Package className="w-3.5 h-3.5" />
+    </div>
+  );
+}
+
 function SortableItemRow({
   line,
   index,
   onQtyChange,
+  onDelete,
 }: {
   line: EditableLine;
   index: number;
   onQtyChange: (id: number, qty: number) => void;
+  onDelete: (id: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id });
   const style: React.CSSProperties = {
@@ -115,13 +127,7 @@ function SortableItemRow({
       </td>
       <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8 text-xs">{index + 1}</td>
       <td className="px-2 py-2 w-12">
-        {line.itemImageUrl ? (
-          <img src={line.itemImageUrl} alt={line.nameSnapshot ?? ""} className="w-9 h-9 rounded object-cover border border-slate-200" />
-        ) : (
-          <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
-            <Package className="w-3.5 h-3.5" />
-          </div>
-        )}
+        <ItemThumb imageUrl={line.itemImageUrl} name={line.nameSnapshot} />
       </td>
       <td className="px-2 py-2 text-xs text-slate-500 w-24">{line.sizeSnapshot || "—"}</td>
       <td className="px-2 py-2 text-sm text-slate-800">{line.nameSnapshot || "—"}</td>
@@ -140,6 +146,17 @@ function SortableItemRow({
         />
       </td>
       <td className="px-2 py-2 text-xs text-slate-500 w-16">{line.unitSnapshot || "—"}</td>
+      <td className="px-2 py-1 w-8">
+        <button
+          type="button"
+          onClick={() => onDelete(line.id)}
+          onPointerDown={e => e.stopPropagation()}
+          className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+          data-testid={`button-delete-line-${line.id}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -149,15 +166,7 @@ function OverlayItemRow({ line, index }: { line: EditableLine; index: number }) 
     <tr className="border border-slate-200 bg-white shadow-lg">
       <td className="px-2 py-2 text-slate-300"><GripVertical className="w-4 h-4" /></td>
       <td className="px-2 py-2 text-slate-400 tabular-nums text-right w-8 text-xs">{index + 1}</td>
-      <td className="px-2 py-2 w-12">
-        {line.itemImageUrl ? (
-          <img src={line.itemImageUrl} alt={line.nameSnapshot ?? ""} className="w-9 h-9 rounded object-cover border border-slate-200" />
-        ) : (
-          <div className="w-9 h-9 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-300">
-            <Package className="w-3.5 h-3.5" />
-          </div>
-        )}
-      </td>
+      <td className="px-2 py-2 w-12"><ItemThumb imageUrl={line.itemImageUrl} name={line.nameSnapshot} /></td>
       <td className="px-2 py-2 text-xs text-slate-500 w-24">{line.sizeSnapshot || "—"}</td>
       <td className="px-2 py-2 text-sm text-slate-800">{line.nameSnapshot || "—"}</td>
       <td className="px-2 py-2 text-xs text-slate-400 text-right tabular-nums w-16">{line.onHandSnapshot ?? "—"}</td>
@@ -165,6 +174,7 @@ function OverlayItemRow({ line, index }: { line: EditableLine; index: number }) 
         <div className="h-8 w-20 ml-auto border rounded text-right px-2 flex items-center justify-end text-sm">{line._qty}</div>
       </td>
       <td className="px-2 py-2 text-xs text-slate-500 w-16">{line.unitSnapshot || "—"}</td>
+      <td className="px-2 py-1 w-8" />
     </tr>
   );
 }
@@ -177,15 +187,12 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   const [headerFields, setHeaderFields] = useState({ requestFrom: "", poNumber: "", projectName: "", deliveryTo: "" });
   const tableRef = useRef<HTMLTableElement>(null);
 
-  // ── Add-item form state ───────────────────────────────────────────────────
-  const [showAddForm, setShowAddForm] = useState(false);
+  // ── Add-item panel state (multi-select) ──────────────────────────────────
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [addSearch, setAddSearch] = useState("");
   const [addDebouncedSearch, setAddDebouncedSearch] = useState("");
-  const [addSelectedItem, setAddSelectedItem] = useState<ItemWithRelations | null>(null);
-  const [addSize, setAddSize] = useState("");
-  const [addUnit, setAddUnit] = useState("");
-  const [addQty, setAddQty] = useState(1);
-  const [addDropdownOpen, setAddDropdownOpen] = useState(false);
+  // Map<itemId, { item, qty }>
+  const [addChecked, setAddChecked] = useState<Map<number, { item: ItemWithRelations; qty: number }>>(new Map());
   const addSearchRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -195,60 +202,61 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 
   const handleAddSearchChange = useCallback((val: string) => {
     setAddSearch(val);
-    setAddSelectedItem(null);
-    setAddDropdownOpen(val.length >= 1);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => setAddDebouncedSearch(val), 300);
   }, []);
 
   const searchItemsQuery = useQuery<ItemWithRelations[]>({
     queryKey: ["/api/items", { search: addDebouncedSearch }],
-    queryFn: () => fetchJson<ItemWithRelations[]>(`/api/items?search=${encodeURIComponent(addDebouncedSearch)}&perPage=10`),
+    queryFn: () => fetchJson<ItemWithRelations[]>(`/api/items?search=${encodeURIComponent(addDebouncedSearch)}&perPage=20`),
     enabled: addDebouncedSearch.length >= 1,
     staleTime: 10_000,
   });
 
-  const selectSearchItem = (item: ItemWithRelations) => {
-    setAddSelectedItem(item);
-    setAddSearch(item.name);
-    setAddSize(item.sizeLabel ?? "");
-    setAddUnit(item.unitOfMeasure ?? "");
-    setAddDropdownOpen(false);
+  const toggleAddItem = (item: ItemWithRelations) => {
+    setAddChecked(prev => {
+      const next = new Map(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.set(item.id, { item, qty: item.reorderQuantity && item.reorderQuantity > 0 ? item.reorderQuantity : 1 });
+      }
+      return next;
+    });
   };
 
-  const resetAddForm = () => {
-    setShowAddForm(false);
+  const updateAddQty = (itemId: number, qty: number) => {
+    setAddChecked(prev => {
+      const entry = prev.get(itemId);
+      if (!entry) return prev;
+      const next = new Map(prev);
+      next.set(itemId, { ...entry, qty: Math.max(0, qty) });
+      return next;
+    });
+  };
+
+  const resetAddPanel = () => {
+    setShowAddPanel(false);
     setAddSearch("");
     setAddDebouncedSearch("");
-    setAddSelectedItem(null);
-    setAddSize("");
-    setAddUnit("");
-    setAddQty(1);
-    setAddDropdownOpen(false);
+    setAddChecked(new Map());
   };
 
-  const addItemMutation = useMutation({
+  const addBatchMutation = useMutation({
     mutationFn: async () => {
-      const nameToUse = addSelectedItem ? addSelectedItem.name : addSearch.trim();
-      if (!nameToUse) throw new Error("Name is required");
-      const body: Record<string, unknown> = {
-        nameSnapshot: nameToUse,
-        qty: addQty,
-      };
-      if (addSelectedItem) {
-        body.itemId = addSelectedItem.id;
-        body.sizeSnapshot = addSelectedItem.sizeLabel ?? undefined;
-        body.unitSnapshot = addSelectedItem.unitOfMeasure ?? undefined;
-        body.onHandSnapshot = addSelectedItem.quantityOnHand ?? undefined;
-      } else {
-        if (addSize.trim()) body.sizeSnapshot = addSize.trim();
-        if (addUnit.trim()) body.unitSnapshot = addUnit.trim();
-      }
-      const res = await fetch(`/api/reorder/history/${historyId}/items/add`, {
+      const items = Array.from(addChecked.values()).map(({ item, qty }) => ({
+        itemId: item.id,
+        nameSnapshot: item.name,
+        sizeSnapshot: item.sizeLabel ?? undefined,
+        unitSnapshot: item.unitOfMeasure ?? undefined,
+        onHandSnapshot: item.quantityOnHand ?? undefined,
+        qty,
+      }));
+      const res = await fetch(`/api/reorder/history/${historyId}/items/add-batch`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ items }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -260,10 +268,31 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
       const sorted = [...data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
       setLines(sorted.map(l => ({ ...l, _qty: l.qty })));
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
-      resetAddForm();
+      resetAddPanel();
     },
     onError: (err: Error) => {
       toast({ variant: "destructive", title: t.cmnSaveFailed, description: err.message });
+    },
+  });
+
+  const deleteLineMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      const res = await fetch(`/api/reorder/history/${historyId}/items/${itemId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return itemId;
+    },
+    onSuccess: (itemId) => {
+      setLines(prev => prev.filter(l => l.id !== itemId));
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.cmnDeleteFailed, description: err.message });
     },
   });
 
@@ -464,12 +493,13 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
                   <th className="text-right px-2 py-2 w-16">{t.reorderColOnHand}</th>
                   <th className="text-right px-2 py-2 w-24">{t.reorderRmsQty}</th>
                   <th className="text-left px-2 py-2 w-16">{t.reorderRmsUnit}</th>
+                  <th className="w-8 px-2 py-2" />
                 </tr>
               </thead>
               <SortableContext items={lines.map(l => l.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
                   {lines.map((line, i) => (
-                    <SortableItemRow key={line.id} line={line} index={i} onQtyChange={updateQty} />
+                    <SortableItemRow key={line.id} line={line} index={i} onQtyChange={updateQty} onDelete={id => deleteLineMutation.mutate(id)} />
                   ))}
                 </tbody>
               </SortableContext>
@@ -487,103 +517,154 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
         </div>
       </div>
 
-      {/* ── Add-item form ───────────────────────────────────────────────── */}
-      {showAddForm ? (
-        <div className="border border-slate-200 rounded-lg bg-white p-3 space-y-3">
+      {/* ── Multi-select add panel ───────────────────────────────────────── */}
+      {showAddPanel ? (
+        <div className="border border-slate-200 rounded-lg bg-white p-3 space-y-3" data-testid={`panel-additem-${historyId}`}>
           <p className="text-xs font-medium text-slate-600">{t.reorderHistoryAddItem}</p>
 
-          {/* Search / name row */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            {/* Search combobox */}
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              <Input
-                ref={addSearchRef}
-                value={addSearch}
-                onChange={e => handleAddSearchChange(e.target.value)}
-                onFocus={() => addSearch.length >= 1 && setAddDropdownOpen(true)}
-                onBlur={() => setTimeout(() => setAddDropdownOpen(false), 150)}
-                placeholder={t.reorderHistoryAddItemSearch}
-                className="h-8 text-sm pl-8"
-                data-testid={`input-additem-search-${historyId}`}
-              />
-              {addDropdownOpen && (
-                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  {searchItemsQuery.isLoading && (
-                    <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400">
-                      <Loader2 className="w-3 h-3 animate-spin" /> {t.cmnLoading}
-                    </div>
-                  )}
-                  {!searchItemsQuery.isLoading && (searchItemsQuery.data ?? []).length === 0 && (
-                    <div className="px-3 py-2 text-xs text-slate-400">—</div>
-                  )}
-                  {(searchItemsQuery.data ?? []).map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onMouseDown={() => selectSearchItem(item)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
-                      data-testid={`option-additem-${item.id}`}
-                    >
-                      <span className="font-medium text-slate-700 truncate">{item.name}</span>
-                      {item.sizeLabel && <span className="text-xs text-slate-400 shrink-0">{item.sizeLabel}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Size (auto-filled or manual) */}
+          {/* Search input */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             <Input
-              value={addSize}
-              onChange={e => setAddSize(e.target.value)}
-              placeholder={t.reorderRmsSize}
-              className="h-8 text-sm w-28 shrink-0"
-              data-testid={`input-additem-size-${historyId}`}
-            />
-
-            {/* Qty */}
-            <Input
-              type="number"
-              min={0}
-              value={addQty}
-              onChange={e => setAddQty(Math.max(0, Number(e.target.value)))}
-              placeholder={t.reorderRmsQty}
-              className="h-8 text-sm w-20 shrink-0 text-right"
-              data-testid={`input-additem-qty-${historyId}`}
-            />
-
-            {/* Unit (auto-filled or manual) */}
-            <Input
-              value={addUnit}
-              onChange={e => setAddUnit(e.target.value)}
-              placeholder={t.reorderRmsUnit}
-              className="h-8 text-sm w-20 shrink-0"
-              data-testid={`input-additem-unit-${historyId}`}
+              ref={addSearchRef}
+              value={addSearch}
+              onChange={e => handleAddSearchChange(e.target.value)}
+              placeholder={t.reorderHistoryAddItemSearch}
+              className="h-8 text-sm pl-8"
+              data-testid={`input-additem-search-${historyId}`}
             />
           </div>
+
+          {/* Search results */}
+          {addDebouncedSearch.length >= 1 && (
+            <div className="border border-slate-200 rounded-md overflow-hidden max-h-56 overflow-y-auto">
+              {searchItemsQuery.isLoading ? (
+                <div className="flex items-center gap-2 px-3 py-3 text-xs text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" /> {t.cmnLoading}
+                </div>
+              ) : (searchItemsQuery.data ?? []).length === 0 ? (
+                <div className="px-3 py-3 text-xs text-slate-400">—</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200 sticky top-0">
+                    <tr>
+                      <th className="w-8 px-2 py-1.5" />
+                      <th className="w-10 px-2 py-1.5">{t.reorderRmsPhoto}</th>
+                      <th className="text-left px-2 py-1.5 w-28">{t.reorderRmsSize}</th>
+                      <th className="text-left px-2 py-1.5">{t.reorderRmsItem}</th>
+                      <th className="text-right px-2 py-1.5 w-20">{t.reorderColOnHand}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(searchItemsQuery.data ?? []).map(item => {
+                      const checked = addChecked.has(item.id);
+                      return (
+                        <tr
+                          key={item.id}
+                          onClick={() => toggleAddItem(item)}
+                          className={`border-t border-slate-100 cursor-pointer hover:bg-blue-50 transition-colors ${checked ? "bg-blue-50" : "bg-white"}`}
+                          data-testid={`row-additem-${item.id}`}
+                        >
+                          <td className="px-2 py-2">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => toggleAddItem(item)}
+                              onClick={e => e.stopPropagation()}
+                              data-testid={`check-additem-${item.id}`}
+                            />
+                          </td>
+                          <td className="px-2 py-2 w-10">
+                            <ItemThumb imageUrl={item.imageUrl ?? null} name={item.name} />
+                          </td>
+                          <td className="px-2 py-2 text-xs text-slate-500 w-28">{item.sizeLabel || "—"}</td>
+                          <td className="px-2 py-2 text-sm text-slate-800">{item.name}</td>
+                          <td className={`px-2 py-2 text-xs text-right tabular-nums w-20 ${(item.quantityOnHand ?? 0) <= 0 ? "text-red-500" : "text-slate-400"}`}>
+                            {item.quantityOnHand ?? 0} {item.unitOfMeasure || ""}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {/* Selected items table */}
+          {addChecked.size > 0 && (
+            <div className="border border-blue-200 rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-blue-50 text-blue-700 text-xs border-b border-blue-200">
+                  <tr>
+                    <th className="w-10 px-2 py-1.5">{t.reorderRmsPhoto}</th>
+                    <th className="text-left px-2 py-1.5 w-28">{t.reorderRmsSize}</th>
+                    <th className="text-left px-2 py-1.5">{t.reorderRmsItem}</th>
+                    <th className="text-right px-2 py-1.5 w-20">{t.reorderColOnHand}</th>
+                    <th className="text-right px-2 py-1.5 w-24">{t.reorderRmsQty}</th>
+                    <th className="text-left px-2 py-1.5 w-16">{t.reorderRmsUnit}</th>
+                    <th className="w-8 px-2 py-1.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from(addChecked.values()).map(({ item, qty }) => (
+                    <tr key={item.id} className="border-t border-blue-100 bg-white">
+                      <td className="px-2 py-1.5 w-10">
+                        <ItemThumb imageUrl={item.imageUrl ?? null} name={item.name} />
+                      </td>
+                      <td className="px-2 py-1.5 text-xs text-slate-500 w-28">{item.sizeLabel || "—"}</td>
+                      <td className="px-2 py-1.5 text-sm text-slate-800">{item.name}</td>
+                      <td className={`px-2 py-1.5 text-xs text-right tabular-nums w-20 ${(item.quantityOnHand ?? 0) <= 0 ? "text-red-500" : "text-slate-400"}`}>
+                        {item.quantityOnHand ?? 0}
+                      </td>
+                      <td className="px-2 py-1.5 text-right w-24">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={qty}
+                          onChange={e => updateAddQty(item.id, Number(e.target.value))}
+                          className="h-7 text-right w-20 ml-auto text-sm"
+                          data-testid={`input-additem-qty-${item.id}`}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 text-xs text-slate-500 w-16">{item.unitOfMeasure || "—"}</td>
+                      <td className="px-2 py-1.5 w-8">
+                        <button
+                          type="button"
+                          onClick={() => toggleAddItem(item)}
+                          className="p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          data-testid={`button-additem-remove-${item.id}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Action buttons */}
           <div className="flex items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={resetAddForm}
-              disabled={addItemMutation.isPending}
+              onClick={resetAddPanel}
+              disabled={addBatchMutation.isPending}
               data-testid={`button-additem-cancel-${historyId}`}
             >
               {t.cmnCancel}
             </Button>
             <Button
               size="sm"
-              onClick={() => addItemMutation.mutate()}
-              disabled={addItemMutation.isPending || (!addSelectedItem && !addSearch.trim())}
+              onClick={() => addBatchMutation.mutate()}
+              disabled={addBatchMutation.isPending || addChecked.size === 0}
               data-testid={`button-additem-confirm-${historyId}`}
             >
-              {addItemMutation.isPending ? (
+              {addBatchMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
               ) : (
-                <><Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItemConfirm}</>
+                <><Plus className="w-4 h-4 mr-1.5" />{addChecked.size > 0 ? `${t.reorderHistoryAddItemsCount} (${addChecked.size})` : t.reorderHistoryAddItemsCount}</>
               )}
             </Button>
           </div>
@@ -593,7 +674,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setShowAddForm(true); setTimeout(() => addSearchRef.current?.focus(), 50); }}
+            onClick={() => { setShowAddPanel(true); setTimeout(() => addSearchRef.current?.focus(), 50); }}
             data-testid={`button-additem-open-${historyId}`}
           >
             <Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItem}

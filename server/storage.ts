@@ -184,6 +184,7 @@ export interface IStorage {
   getRmsExportHistoryDetail(id: number): Promise<RmsExportHistoryWithLines | undefined>;
   updateRmsExportHistory(id: number, patch: Partial<Pick<CreateRmsExportHistory, "requestFrom" | "poNumber" | "projectName" | "completionDate" | "deliveryTo">>): Promise<RmsExportHistory | undefined>;
   updateRmsExportHistoryItems(historyId: number, updates: Array<{ id: number; qty: number; sortOrder: number }>): Promise<void>;
+  addRmsExportHistoryItem(historyId: number, item: Omit<CreateRmsExportHistoryItem, "historyId" | "sortOrder">): Promise<RmsExportHistoryWithLines>;
   updateRmsExportHistoryStatus(id: number, status: string): Promise<RmsExportHistory | undefined>;
   deleteRmsExportHistory(ids: number[]): Promise<number>;
   getNextRmsSeq(poNumber: string | null | undefined): Promise<number>;
@@ -2862,6 +2863,21 @@ export class DatabaseStorage implements IStorage {
           .where(and(eq(rmsExportHistoryItems.id, u.id), eq(rmsExportHistoryItems.historyId, historyId)));
       }
     });
+  }
+
+  async addRmsExportHistoryItem(
+    historyId: number,
+    item: Omit<CreateRmsExportHistoryItem, "historyId" | "sortOrder">,
+  ): Promise<RmsExportHistoryWithLines> {
+    const [{ maxSort }] = await db
+      .select({ maxSort: sql<number | null>`max(sort_order)` })
+      .from(rmsExportHistoryItems)
+      .where(eq(rmsExportHistoryItems.historyId, historyId));
+    const nextSort = (maxSort ?? -1) + 1;
+    await db.insert(rmsExportHistoryItems).values({ ...item, historyId, sortOrder: nextSort });
+    const detail = await this.getRmsExportHistoryDetail(historyId);
+    if (!detail) throw new Error("History record not found after insert");
+    return detail;
   }
 
   async updateRmsExportHistoryStatus(id: number, status: string): Promise<RmsExportHistory | undefined> {

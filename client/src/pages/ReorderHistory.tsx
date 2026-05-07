@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -39,11 +39,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ChevronDown, ChevronRight, Download, Eye, GripVertical, Loader2, Package, Pencil, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Eye, GripVertical, Loader2, Package, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { RmsExportHistory, RmsExportHistoryWithLines, RmsExportHistoryItem } from "@shared/schema";
+import type { RmsExportHistory, RmsExportHistoryWithLines, RmsExportHistoryItem, ItemWithRelations } from "@shared/schema";
 
 type HistoryLine = RmsExportHistoryItem & { itemImageUrl: string | null };
 
@@ -176,6 +176,95 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
   const [activeId, setActiveId] = useState<number | null>(null);
   const [headerFields, setHeaderFields] = useState({ requestFrom: "", poNumber: "", projectName: "", deliveryTo: "" });
   const tableRef = useRef<HTMLTableElement>(null);
+
+  // ── Add-item form state ───────────────────────────────────────────────────
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addSearch, setAddSearch] = useState("");
+  const [addDebouncedSearch, setAddDebouncedSearch] = useState("");
+  const [addSelectedItem, setAddSelectedItem] = useState<ItemWithRelations | null>(null);
+  const [addName, setAddName] = useState("");
+  const [addSize, setAddSize] = useState("");
+  const [addUnit, setAddUnit] = useState("");
+  const [addQty, setAddQty] = useState(1);
+  const [addDropdownOpen, setAddDropdownOpen] = useState(false);
+  const addSearchRef = useRef<HTMLInputElement>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAddSearchChange = useCallback((val: string) => {
+    setAddSearch(val);
+    setAddSelectedItem(null);
+    setAddDropdownOpen(val.length >= 1);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setAddDebouncedSearch(val), 300);
+  }, []);
+
+  const searchItemsQuery = useQuery<ItemWithRelations[]>({
+    queryKey: ["/api/items", { search: addDebouncedSearch }],
+    queryFn: () => fetchJson<ItemWithRelations[]>(`/api/items?search=${encodeURIComponent(addDebouncedSearch)}&perPage=10`),
+    enabled: addDebouncedSearch.length >= 1,
+    staleTime: 10_000,
+  });
+
+  const selectSearchItem = (item: ItemWithRelations) => {
+    setAddSelectedItem(item);
+    setAddSearch(item.name);
+    setAddName(item.name);
+    setAddSize(item.sizeLabel ?? "");
+    setAddUnit(item.unitOfMeasure ?? "");
+    setAddDropdownOpen(false);
+  };
+
+  const resetAddForm = () => {
+    setShowAddForm(false);
+    setAddSearch("");
+    setAddDebouncedSearch("");
+    setAddSelectedItem(null);
+    setAddName("");
+    setAddSize("");
+    setAddUnit("");
+    setAddQty(1);
+    setAddDropdownOpen(false);
+  };
+
+  const addItemMutation = useMutation({
+    mutationFn: async () => {
+      const nameToUse = addSelectedItem ? addSelectedItem.name : (addName.trim() || addSearch.trim());
+      if (!nameToUse) throw new Error("Name is required");
+      const body: Record<string, unknown> = {
+        nameSnapshot: nameToUse,
+        qty: addQty,
+      };
+      if (addSelectedItem) {
+        body.itemId = addSelectedItem.id;
+        body.sizeSnapshot = addSelectedItem.sizeLabel ?? undefined;
+        body.unitSnapshot = addSelectedItem.unitOfMeasure ?? undefined;
+        body.onHandSnapshot = addSelectedItem.quantityOnHand ?? undefined;
+      } else {
+        if (addSize.trim()) body.sizeSnapshot = addSize.trim();
+        if (addUnit.trim()) body.unitSnapshot = addUnit.trim();
+      }
+      const res = await fetch(`/api/reorder/history/${historyId}/items/add`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json() as Promise<RmsExportHistoryWithLines>;
+    },
+    onSuccess: (data) => {
+      const sorted = [...data.lines].sort((a, b) => a.sortOrder - b.sortOrder);
+      setLines(sorted.map(l => ({ ...l, _qty: l.qty })));
+      queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
+      resetAddForm();
+    },
+    onError: (err: Error) => {
+      toast({ variant: "destructive", title: t.cmnSaveFailed, description: err.message });
+    },
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -396,6 +485,120 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
           </DndContext>
         </div>
       </div>
+
+      {/* ── Add-item form ───────────────────────────────────────────────── */}
+      {showAddForm ? (
+        <div className="border border-slate-200 rounded-lg bg-white p-3 space-y-3">
+          <p className="text-xs font-medium text-slate-600">{t.reorderHistoryAddItem}</p>
+
+          {/* Search / name row */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Search combobox */}
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <Input
+                ref={addSearchRef}
+                value={addSearch}
+                onChange={e => handleAddSearchChange(e.target.value)}
+                onFocus={() => addSearch.length >= 1 && setAddDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setAddDropdownOpen(false), 150)}
+                placeholder={t.reorderHistoryAddItemSearch}
+                className="h-8 text-sm pl-8"
+                data-testid={`input-additem-search-${historyId}`}
+              />
+              {addDropdownOpen && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {searchItemsQuery.isLoading && (
+                    <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin" /> {t.cmnLoading}
+                    </div>
+                  )}
+                  {!searchItemsQuery.isLoading && (searchItemsQuery.data ?? []).length === 0 && (
+                    <div className="px-3 py-2 text-xs text-slate-400">—</div>
+                  )}
+                  {(searchItemsQuery.data ?? []).map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={() => selectSearchItem(item)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-2"
+                      data-testid={`option-additem-${item.id}`}
+                    >
+                      <span className="font-medium text-slate-700 truncate">{item.name}</span>
+                      {item.sizeLabel && <span className="text-xs text-slate-400 shrink-0">{item.sizeLabel}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Size (auto-filled or manual) */}
+            <Input
+              value={addSize}
+              onChange={e => setAddSize(e.target.value)}
+              placeholder={t.reorderRmsSize}
+              className="h-8 text-sm w-28 shrink-0"
+              data-testid={`input-additem-size-${historyId}`}
+            />
+
+            {/* Qty */}
+            <Input
+              type="number"
+              min={0}
+              value={addQty}
+              onChange={e => setAddQty(Math.max(0, Number(e.target.value)))}
+              placeholder={t.reorderRmsQty}
+              className="h-8 text-sm w-20 shrink-0 text-right"
+              data-testid={`input-additem-qty-${historyId}`}
+            />
+
+            {/* Unit (auto-filled or manual) */}
+            <Input
+              value={addUnit}
+              onChange={e => setAddUnit(e.target.value)}
+              placeholder={t.reorderRmsUnit}
+              className="h-8 text-sm w-20 shrink-0"
+              data-testid={`input-additem-unit-${historyId}`}
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetAddForm}
+              disabled={addItemMutation.isPending}
+              data-testid={`button-additem-cancel-${historyId}`}
+            >
+              {t.cmnCancel}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => addItemMutation.mutate()}
+              disabled={addItemMutation.isPending || (!addSelectedItem && !addName.trim() && !addSearch.trim())}
+              data-testid={`button-additem-confirm-${historyId}`}
+            >
+              {addItemMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
+              ) : (
+                <><Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItemConfirm}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setShowAddForm(true); setTimeout(() => addSearchRef.current?.focus(), 50); }}
+            data-testid={`button-additem-open-${historyId}`}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItem}
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center justify-end gap-2">
         <Button

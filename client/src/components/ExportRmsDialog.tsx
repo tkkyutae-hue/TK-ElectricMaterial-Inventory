@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -204,6 +205,7 @@ function formatSavedAt(ts: number): string {
 export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Props) {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const [date, setDate] = useState(todayIso());
   const [requester, setRequester] = useState("");
@@ -407,8 +409,20 @@ export default function ExportRmsDialog({ open, onOpenChange, initialItems }: Pr
       }
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/reorder/next-seq"] });
-      toast({ title: t.reorderRmsSaved });
       onOpenChange(false);
+      toast({
+        title: t.reorderRmsSaved,
+        duration: 7000,
+        action: (
+          <ToastAction
+            altText={t.reorderRmsViewInHistory}
+            data-testid="toast-view-in-history"
+            onClick={() => navigate("/reorder?tab=history")}
+          >
+            {t.reorderRmsViewInHistory}
+          </ToastAction>
+        ),
+      });
     } catch (err: any) {
       toast({ title: t.reorderRmsSaveError, description: err?.message, variant: "destructive" });
     } finally {

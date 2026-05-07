@@ -1,31 +1,28 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShoppingCart, History } from "lucide-react";
 import Reorder from "@/pages/Reorder";
 import ReorderHistory from "@/pages/ReorderHistory";
 import { useLanguage } from "@/hooks/use-language";
 
-function readTabFromUrl(): "recommendations" | "history" {
-  if (typeof window === "undefined") return "recommendations";
-  const sp = new URLSearchParams(window.location.search);
+function parseTab(search: string): "recommendations" | "history" {
+  const sp = new URLSearchParams(search);
   return sp.get("tab") === "history" ? "history" : "recommendations";
 }
 
 export default function ReorderArea() {
   const { t } = useLanguage();
   const [, navigate] = useLocation();
-  const [tab, setTab] = useState<"recommendations" | "history">(readTabFromUrl);
+  const search = useSearch();
+  const [tab, setTab] = useState<"recommendations" | "history">(() => parseTab(search));
 
   useEffect(() => {
-    const onPop = () => setTab(readTabFromUrl());
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+    setTab(parseTab(search));
+  }, [search]);
 
   const handleChange = (v: string) => {
     const next = v === "history" ? "history" : "recommendations";
-    setTab(next);
     const path = next === "history" ? "/reorder?tab=history" : "/reorder";
     navigate(path, { replace: true });
   };

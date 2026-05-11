@@ -55,7 +55,7 @@ type SupplierViewRow = {
   updatedAt: string | null;
 };
 type SupplierViewData = { supplierId: number; supplierName: string; items: SupplierViewRow[] };
-type RowEdit = { supplierSku: string; lastUnitCost: string; leadTimeDays: string; preferredSupplier: boolean; note: string };
+type RowEdit = { lastUnitCost: string; leadTimeDays: string; note: string };
 
 type Supplier = { id: number; name: string };
 type SupplierItem = {
@@ -894,6 +894,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
   const { t } = useLanguage();
   const { toast } = useToast();
   const [edits, setEdits] = useState<Record<number, RowEdit>>({});
+  const [svSearch, setSvSearch] = useState("");
 
   const SS_SV_CATS = `supplierView.openCats.${supplierId}.v1`;
   const SS_SV_FAMS = `supplierView.openFams.${supplierId}.v1`;
@@ -925,30 +926,62 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
     }));
   }, [rows, t.cmnUnknown]);
 
+  const filteredGroups = useMemo<SvGroup[]>(() => {
+    const q = svSearch.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map(g => ({
+        ...g,
+        families: g.families
+          .map(f => ({
+            ...f,
+            items: f.items.filter(r =>
+              `${r.sku} ${r.name} ${r.sizeLabel ?? ""}`.toLowerCase().includes(q)
+            ),
+          }))
+          .filter(f => f.items.length > 0),
+      }))
+      .filter(g => g.families.length > 0);
+  }, [groups, svSearch]);
+
+  useEffect(() => {
+    if (!svSearch.trim()) return;
+    const co: Record<string, boolean> = {};
+    const fo: Record<string, boolean> = {};
+    filteredGroups.forEach(g => {
+      co[g.catName] = true;
+      g.families.forEach(f => { fo[`${g.catName}::${f.famName}`] = true; });
+    });
+    setOpenCats(prev => ({ ...prev, ...co }));
+    setOpenFams(prev => ({ ...prev, ...fo }));
+  }, [svSearch, filteredGroups]);
+
+  const toggleSvCatFamilies = (catName: string, families: { famName: string }[], open: boolean) => {
+    setOpenFams(prev => {
+      const next = { ...prev };
+      families.forEach(f => { next[`${catName}::${f.famName}`] = open; });
+      return next;
+    });
+  };
+
   const getField = useCallback((row: SupplierViewRow, field: keyof RowEdit) => {
     const e = edits[row.itemId];
     if (e !== undefined) return e[field];
-    if (field === "supplierSku") return row.supplierSku ?? "";
     if (field === "lastUnitCost") return row.lastUnitCost != null ? String(row.lastUnitCost) : "";
     if (field === "leadTimeDays") return row.leadTimeDays != null ? String(row.leadTimeDays) : "";
-    if (field === "preferredSupplier") return row.preferredSupplier;
     if (field === "note") return row.note ?? "";
     return "";
   }, [edits]);
 
-  const updateField = useCallback((row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => {
+  const updateField = useCallback((row: SupplierViewRow, field: keyof RowEdit, value: string) => {
     setEdits(prev => {
-      const origSku = (row.supplierSku ?? "").trim();
       const origCost = row.lastUnitCost != null ? parseFloat(String(row.lastUnitCost)) : null;
-      const origPref = row.preferredSupplier;
       const origNote = (row.note ?? "").trim();
       const origLead = row.leadTimeDays != null ? String(row.leadTimeDays) : "";
 
       const orig: RowEdit = {
-        supplierSku: origSku,
         lastUnitCost: row.lastUnitCost != null ? String(row.lastUnitCost) : "",
         leadTimeDays: origLead,
-        preferredSupplier: origPref,
         note: origNote,
       };
       const current = prev[row.itemId] ?? orig;
@@ -963,9 +996,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
         : false;
 
       const isReverted =
-        (next.supplierSku as string).trim() === origSku &&
         costSame &&
-        next.preferredSupplier === origPref &&
         (next.note as string).trim() === origNote;
 
       if (isReverted) {
@@ -985,10 +1016,8 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
         return {
           supplierItemId: r.supplierItemId ?? null,
           itemId: r.itemId,
-          supplierSku: e.supplierSku || null,
-          lastUnitCost: e.lastUnitCost !== "" ? parseFloat(e.lastUnitCost as string) : null,
-          leadTimeDays: (e.leadTimeDays as string) !== "" ? parseInt(e.leadTimeDays as string, 10) : (r.leadTimeDays ?? null),
-          preferredSupplier: e.preferredSupplier as boolean,
+          lastUnitCost: e.lastUnitCost !== "" ? parseFloat(e.lastUnitCost) : null,
+          leadTimeDays: e.leadTimeDays !== "" ? parseInt(e.leadTimeDays, 10) : (r.leadTimeDays ?? null),
           note: e.note || null,
         };
       });
@@ -1050,9 +1079,12 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
       )}
 
       {/* Category → Family → Item accordion */}
-      {groups.map(group => {
+      {filteredGroups.map(group => {
         const catOpen = openCats[group.catName] ?? false;
         const totalItems = group.families.reduce((s, f) => s + f.items.length, 0);
+        const allFamiliesOpen = group.families.length > 0 && group.families.every(
+          f => openFams[`${group.catName}::${f.famName}`] ?? false
+        );
         return (
           <div key={group.catName} className="bg-white border border-slate-200 rounded-lg overflow-hidden" data-testid={`sv-cat-${group.catName}`}>
             <div
@@ -1060,12 +1092,30 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
               tabIndex={0}
               onClick={() => setOpenCats(s => ({ ...s, [group.catName]: !s[group.catName] }))}
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenCats(s => ({ ...s, [group.catName]: !s[group.catName] })); } }}
-              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
               data-testid={`sv-toggle-cat-${group.catName}`}
             >
-              {catOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-              <h2 className="font-semibold text-slate-900 text-base">{group.catName}</h2>
-              <Badge variant="secondary" className="text-xs">{totalItems} {t.stockPricingItemCountSuffix}</Badge>
+              <div className="flex items-center gap-3">
+                {catOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                <h2 className="font-semibold text-slate-900 text-base">{group.catName}</h2>
+                <Badge variant="secondary" className="text-xs">{totalItems} {t.stockPricingItemCountSuffix}</Badge>
+              </div>
+              {group.families.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 bg-white text-xs whitespace-nowrap"
+                  onClick={e => { e.stopPropagation(); toggleSvCatFamilies(group.catName, group.families, !allFamiliesOpen); }}
+                  data-testid={`sv-button-toggle-cat-families-${group.catName}`}
+                >
+                  {allFamiliesOpen ? (
+                    <><ChevronsDownUp className="w-3.5 h-3.5 mr-1.5" />{t.reorderCollapseAll}</>
+                  ) : (
+                    <><ChevronsUpDown className="w-3.5 h-3.5 mr-1.5" />{t.reorderExpandAll}</>
+                  )}
+                </Button>
+              )}
             </div>
 
             {catOpen && (
@@ -1109,6 +1159,27 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
           </div>
         );
       })}
+
+      {typeof document !== "undefined" && createPortal(
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-xl pointer-events-none">
+          <div
+            className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xl pointer-events-auto"
+            data-testid="toolbar-supplier-view"
+          >
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                value={svSearch}
+                onChange={e => setSvSearch(e.target.value)}
+                placeholder={t.stockPricingSearchPlaceholder}
+                className="pl-8 h-9"
+                data-testid="input-sv-search"
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -1120,22 +1191,20 @@ function SvFamilyTable({
 }: {
   rows: SupplierViewRow[];
   edits: Record<number, RowEdit>;
-  getField: (row: SupplierViewRow, field: keyof RowEdit) => string | boolean;
-  updateField: (row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => void;
+  getField: (row: SupplierViewRow, field: keyof RowEdit) => string;
+  updateField: (row: SupplierViewRow, field: keyof RowEdit, value: string) => void;
   t: Translations;
 }) {
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "1060px" }}>
+      <Table style={{ minWidth: "760px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-14 px-2">{t.stockPricingColPhoto}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-20">{t.stockPricingColSize}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingColName}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-24">{t.stockPricingColOnHand}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-32">{t.stockPricingSupplierSku}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-28">{t.stockPricingUnitCost}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center w-20">{t.stockPricingPreferred}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingNote}</TableHead>
           </TableRow>
         </TableHeader>
@@ -1175,39 +1244,19 @@ function SvFamilyTable({
                   <span className="text-sm text-slate-700" data-testid={`sv-onhand-${row.itemId}`}>{row.quantityOnHand.toLocaleString()}</span>
                   <span className="text-slate-400 text-[11px] ml-1">{row.unitOfMeasure}</span>
                 </TableCell>
-                <TableCell className="w-32">
-                  <Input
-                    value={getField(row, "supplierSku") as string}
-                    onChange={e => updateField(row, "supplierSku", e.target.value)}
-                    className="h-7 text-xs w-full"
-                    placeholder="—"
-                    data-testid={`input-sv-sku-${row.itemId}`}
-                  />
-                </TableCell>
                 <TableCell className="w-28">
                   <Input
                     type="number" min="0" step="0.01"
-                    value={getField(row, "lastUnitCost") as string}
+                    value={getField(row, "lastUnitCost")}
                     onChange={e => updateField(row, "lastUnitCost", e.target.value)}
                     className="h-7 text-xs w-full text-right"
                     placeholder="0.00"
                     data-testid={`input-sv-cost-${row.itemId}`}
                   />
                 </TableCell>
-                <TableCell className="text-center w-20">
-                  <button
-                    type="button"
-                    onClick={() => updateField(row, "preferredSupplier", !(getField(row, "preferredSupplier") as boolean))}
-                    className={`p-1 rounded transition-colors ${getField(row, "preferredSupplier") ? "text-amber-500 hover:text-amber-600" : "text-slate-300 hover:text-slate-500"}`}
-                    data-testid={`button-sv-preferred-${row.itemId}`}
-                    aria-label={t.stockPricingPreferred}
-                  >
-                    <Star className={`w-4 h-4 ${getField(row, "preferredSupplier") ? "fill-amber-400" : ""}`} />
-                  </button>
-                </TableCell>
                 <TableCell>
                   <Input
-                    value={getField(row, "note") as string}
+                    value={getField(row, "note")}
                     onChange={e => updateField(row, "note", e.target.value)}
                     className="h-7 text-xs w-full"
                     placeholder={t.stockPricingNotePlaceholder}

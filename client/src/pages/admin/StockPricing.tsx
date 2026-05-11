@@ -211,7 +211,7 @@ export default function StockPricing() {
         </div>
       )}
 
-      {activeTab === "item" && !isLoading && !isError && filtered.length === 0 && (
+      {activeTab === "summary" && !isLoading && !isError && filtered.length === 0 && (
         <div className="text-center py-12 text-slate-400" data-testid="text-empty">
           {t.stockPricingEmpty}
         </div>
@@ -397,7 +397,6 @@ function FamilyTable({
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColAveragePrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColLowestPrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center">{t.stockPricingColSupplierCount}</TableHead>
-            <TableHead className="w-24" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -414,181 +413,81 @@ function FamilyTable({
   );
 }
 
-// ─── Item Row + inline edit ─────────────────────────────────────────────────
+// ─── Item Row (read-only summary) ───────────────────────────────────────────
 
 function ItemRow({
-  item, suppliers,
+  item,
 }: {
   item: StockItem;
   suppliers: Supplier[];
 }) {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [draft, setDraft] = useState({
-    reorderPoint: item.reorderPoint,
-    reorderQuantity: item.reorderQuantity,
-    minimumStock: item.minimumStock,
-  });
-
-  useEffect(() => {
-    setDraft({
-      reorderPoint: item.reorderPoint,
-      reorderQuantity: item.reorderQuantity,
-      minimumStock: item.minimumStock,
-    });
-  }, [item.reorderPoint, item.reorderQuantity, item.minimumStock]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (patch: { reorderPoint: number; reorderQuantity: number; minimumStock: number }) => {
-      const res = await apiRequest("PATCH", `/api/admin/items/${item.id}/stock-settings`, patch);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: t.stockPricingSaved });
-      queryClient.invalidateQueries({ queryKey: QK_OVERVIEW });
-    },
-    onError: (err: any) => {
-      setDraft({ reorderPoint: item.reorderPoint, reorderQuantity: item.reorderQuantity, minimumStock: item.minimumStock });
-      toast({ title: t.stockPricingSaveFailed, description: err?.message ?? "", variant: "destructive" });
-    },
-  });
-
-  const setField = useCallback((field: "reorderPoint" | "reorderQuantity" | "minimumStock", raw: string) => {
-    const v = Math.max(0, Math.floor(Number(raw) || 0));
-    setDraft(prev => ({ ...prev, [field]: v }));
-  }, []);
-
-  const isDirty =
-    draft.reorderPoint !== item.reorderPoint ||
-    draft.reorderQuantity !== item.reorderQuantity ||
-    draft.minimumStock !== item.minimumStock;
-
-  const handleSaveRow = () => { if (isDirty) saveMutation.mutate(draft); };
-  const handleCancelRow = () => setDraft({
-    reorderPoint: item.reorderPoint,
-    reorderQuantity: item.reorderQuantity,
-    minimumStock: item.minimumStock,
-  });
-  const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") { e.preventDefault(); handleSaveRow(); }
-    else if (e.key === "Escape") { e.preventDefault(); handleCancelRow(); }
-  };
-
   const statusCls =
     item.status === "out_of_stock" ? "bg-red-50/40" :
     item.status === "low_stock" ? "bg-amber-50/40" : "";
 
   return (
-    <>
-      <TableRow className={`${statusCls} border-b border-slate-100`} data-testid={`row-item-${item.id}`}>
-        <TableCell className="w-16 px-2">
-          {item.imageUrl ? (
-            <img
-              src={item.imageUrl}
-              alt=""
-              className="w-9 h-9 rounded object-cover border border-slate-200 bg-slate-50"
-              data-testid={`img-item-${item.id}`}
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-9 h-9 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300">
-              <Package className="w-4 h-4" />
-            </div>
-          )}
-        </TableCell>
-        <TableCell className="w-24 text-xs text-slate-500 tabular-nums" data-testid={`text-size-${item.id}`}>
-          {item.sizeLabel || ""}
-        </TableCell>
-        <TableCell>
-          <div className="text-sm font-medium text-slate-800" data-testid={`text-name-${item.id}`}>{item.name}</div>
-        </TableCell>
-        <TableCell className="text-right tabular-nums">
-          <span className="font-semibold text-slate-900 text-sm" data-testid={`text-on-hand-${item.id}`}>{item.quantityOnHand.toLocaleString()}</span>
-          <span className="text-slate-400 text-[11px] ml-1">{item.unitOfMeasure}</span>
-        </TableCell>
-        <TableCell className="text-center">
-          <Input
-            type="number" min="0" step="1"
-            value={String(draft.reorderPoint)}
-            disabled={saveMutation.isPending}
-            onChange={e => setField("reorderPoint", e.target.value)}
-            onKeyDown={handleEnter}
-            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
-            data-testid={`input-reorder-point-${item.id}`}
+    <TableRow className={`${statusCls} border-b border-slate-100`} data-testid={`row-item-${item.id}`}>
+      <TableCell className="w-16 px-2">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt=""
+            className="w-9 h-9 rounded object-cover border border-slate-200 bg-slate-50"
+            data-testid={`img-item-${item.id}`}
+            loading="lazy"
           />
-        </TableCell>
-        <TableCell className="text-center">
-          <Input
-            type="number" min="0" step="1"
-            value={String(draft.reorderQuantity)}
-            disabled={saveMutation.isPending}
-            onChange={e => setField("reorderQuantity", e.target.value)}
-            onKeyDown={handleEnter}
-            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
-            data-testid={`input-reorder-qty-${item.id}`}
-          />
-        </TableCell>
-        <TableCell className="text-center">
-          <Input
-            type="number" min="0" step="1"
-            value={String(draft.minimumStock)}
-            disabled={saveMutation.isPending}
-            onChange={e => setField("minimumStock", e.target.value)}
-            onKeyDown={handleEnter}
-            className={`w-20 h-8 text-center text-sm tabular-nums mx-auto ${isDirty ? "border-amber-400 ring-1 ring-amber-200" : ""}`}
-            data-testid={`input-min-stock-${item.id}`}
-          />
-        </TableCell>
-        <TableCell className="text-right tabular-nums">
-          <span className={`text-sm ${item.averagePrice == null ? "text-slate-300" : "text-slate-700"}`} data-testid={`text-average-price-${item.id}`}>
-            {formatPrice(item.averagePrice)}
-          </span>
-        </TableCell>
-        <TableCell className="text-right tabular-nums">
-          <span className={`text-sm font-medium ${item.bestPrice == null ? "text-slate-300" : "text-slate-800"}`} data-testid={`text-lowest-price-${item.id}`}>
-            {formatPrice(item.bestPrice)}
-          </span>
-        </TableCell>
-        <TableCell className="text-center">
-          <Badge
-            variant={item.pricedSupplierCount === 0 ? "outline" : "secondary"}
-            className={item.pricedSupplierCount === 0 ? "text-amber-700 border-amber-300 bg-amber-50" : ""}
-            data-testid={`badge-supplier-count-${item.id}`}
-          >
-            {item.pricedSupplierCount === 0 && <AlertTriangle className="w-3 h-3 mr-1" />}
-            {item.supplierCount}
-          </Badge>
-        </TableCell>
-        <TableCell className="w-24">
-          {isDirty && (
-            <div className="flex items-center gap-1 justify-end" data-testid={`row-actions-${item.id}`}>
-              <Button
-                size="sm" variant="default"
-                className="h-7 px-2"
-                onClick={handleSaveRow}
-                disabled={saveMutation.isPending}
-                data-testid={`button-save-row-${item.id}`}
-                aria-label={t.cmnSave}
-                title={t.cmnSave}
-              >
-                {saveMutation.isPending ? <span className="text-xs">…</span> : <Check className="w-3.5 h-3.5" />}
-              </Button>
-              <Button
-                size="sm" variant="ghost"
-                className="h-7 px-2"
-                onClick={handleCancelRow}
-                disabled={saveMutation.isPending}
-                data-testid={`button-cancel-row-${item.id}`}
-                aria-label={t.cmnCancel}
-                title={t.cmnCancel}
-              >
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          )}
-        </TableCell>
-      </TableRow>
-    </>
+        ) : (
+          <div className="w-9 h-9 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300">
+            <Package className="w-4 h-4" />
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="w-24 text-xs text-slate-500 tabular-nums" data-testid={`text-size-${item.id}`}>
+        {item.sizeLabel || ""}
+      </TableCell>
+      <TableCell>
+        <div className="text-sm font-medium text-slate-800" data-testid={`text-name-${item.id}`}>{item.name}</div>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        <span className="font-semibold text-slate-900 text-sm" data-testid={`text-on-hand-${item.id}`}>{item.quantityOnHand.toLocaleString()}</span>
+        <span className="text-slate-400 text-[11px] ml-1">{item.unitOfMeasure}</span>
+      </TableCell>
+      <TableCell className="text-center tabular-nums">
+        <span className="text-sm text-slate-700" data-testid={`text-reorder-point-${item.id}`}>
+          {item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : <span className="text-slate-300">—</span>}
+        </span>
+      </TableCell>
+      <TableCell className="text-center tabular-nums">
+        <span className="text-sm text-slate-700" data-testid={`text-reorder-qty-${item.id}`}>
+          {item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : <span className="text-slate-300">—</span>}
+        </span>
+      </TableCell>
+      <TableCell className="text-center tabular-nums">
+        <span className="text-sm text-slate-700" data-testid={`text-min-stock-${item.id}`}>
+          {item.minimumStock > 0 ? item.minimumStock.toLocaleString() : <span className="text-slate-300">—</span>}
+        </span>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        <span className={`text-sm ${item.averagePrice == null ? "text-slate-300" : "text-slate-700"}`} data-testid={`text-average-price-${item.id}`}>
+          {formatPrice(item.averagePrice)}
+        </span>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        <span className={`text-sm font-medium ${item.bestPrice == null ? "text-slate-300" : "text-slate-800"}`} data-testid={`text-lowest-price-${item.id}`}>
+          {formatPrice(item.bestPrice)}
+        </span>
+      </TableCell>
+      <TableCell className="text-center">
+        <Badge
+          variant={item.pricedSupplierCount === 0 ? "outline" : "secondary"}
+          className={item.pricedSupplierCount === 0 ? "text-amber-700 border-amber-300 bg-amber-50" : ""}
+          data-testid={`badge-supplier-count-${item.id}`}
+        >
+          {item.pricedSupplierCount === 0 && <AlertTriangle className="w-3 h-3 mr-1" />}
+          {item.supplierCount}
+        </Badge>
+      </TableCell>
+    </TableRow>
   );
 }
 

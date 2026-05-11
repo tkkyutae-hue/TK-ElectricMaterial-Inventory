@@ -406,19 +406,27 @@ function FamilyTable({ items }: { items: StockItem[] }) {
 
 type StockDraft = { reorderPoint: string; reorderQuantity: string; minimumStock: string };
 
+function normInt(s: string) { return Math.max(0, parseInt(s || "0", 10) || 0); }
+
 function ItemRow({ item }: { item: StockItem }) {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [draft, setDraft] = useState<StockDraft | null>(null);
-  const isDirty = draft !== null;
+
+  const isEditing = draft !== null;
+  const isDirty = draft !== null && (
+    normInt(draft.reorderPoint) !== item.reorderPoint ||
+    normInt(draft.reorderQuantity) !== item.reorderQuantity ||
+    normInt(draft.minimumStock) !== item.minimumStock
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!draft) return;
       const body = {
-        reorderPoint: Math.max(0, parseInt(draft.reorderPoint || "0", 10) || 0),
-        reorderQuantity: Math.max(0, parseInt(draft.reorderQuantity || "0", 10) || 0),
-        minimumStock: Math.max(0, parseInt(draft.minimumStock || "0", 10) || 0),
+        reorderPoint: normInt(draft.reorderPoint),
+        reorderQuantity: normInt(draft.reorderQuantity),
+        minimumStock: normInt(draft.minimumStock),
       };
       await apiRequest("PATCH", `/api/admin/items/${item.id}/stock-settings`, body);
     },
@@ -551,18 +559,20 @@ function ItemRow({ item }: { item: StockItem }) {
         </Badge>
       </TableCell>
       <TableCell className="w-20 px-1">
-        {isDirty && (
+        {isEditing && (
           <div className="flex items-center gap-0.5 justify-end">
-            <button
-              type="button"
-              onClick={() => saveMut.mutate()}
-              disabled={saveMut.isPending}
-              className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
-              data-testid={`button-save-stock-${item.id}`}
-              aria-label="Save"
-            >
-              <Check className="w-4 h-4" />
-            </button>
+            {isDirty && (
+              <button
+                type="button"
+                onClick={() => saveMut.mutate()}
+                disabled={saveMut.isPending}
+                className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
+                data-testid={`button-save-stock-${item.id}`}
+                aria-label="Save"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setDraft(null)}
@@ -927,14 +937,41 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
 
   const updateField = useCallback((row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => {
     setEdits(prev => {
-      const current = prev[row.itemId] ?? {
-        supplierSku: row.supplierSku ?? "",
+      const origSku = (row.supplierSku ?? "").trim();
+      const origCost = row.lastUnitCost != null ? parseFloat(String(row.lastUnitCost)) : null;
+      const origPref = row.preferredSupplier;
+      const origNote = (row.note ?? "").trim();
+      const origLead = row.leadTimeDays != null ? String(row.leadTimeDays) : "";
+
+      const orig: RowEdit = {
+        supplierSku: origSku,
         lastUnitCost: row.lastUnitCost != null ? String(row.lastUnitCost) : "",
-        leadTimeDays: row.leadTimeDays != null ? String(row.leadTimeDays) : "",
-        preferredSupplier: row.preferredSupplier,
-        note: row.note ?? "",
+        leadTimeDays: origLead,
+        preferredSupplier: origPref,
+        note: origNote,
       };
-      return { ...prev, [row.itemId]: { ...current, [field]: value } };
+      const current = prev[row.itemId] ?? orig;
+      const next: RowEdit = { ...current, [field]: value };
+
+      const nextCostStr = (next.lastUnitCost as string).trim();
+      const nextCost = nextCostStr !== "" ? parseFloat(nextCostStr) : null;
+      const costSame = origCost === null && nextCost === null
+        ? true
+        : origCost !== null && nextCost !== null
+        ? Math.abs(origCost - nextCost) < 0.00001
+        : false;
+
+      const isReverted =
+        (next.supplierSku as string).trim() === origSku &&
+        costSame &&
+        next.preferredSupplier === origPref &&
+        (next.note as string).trim() === origNote;
+
+      if (isReverted) {
+        const { [row.itemId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [row.itemId]: next };
     });
   }, []);
 

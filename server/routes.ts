@@ -1890,6 +1890,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         '250 KCMIL': 1400, '300 KCMIL': 1500, '350 KCMIL': 1600, '400 KCMIL': 1700,
         '500 KCMIL': 1800, '600 KCMIL': 1900, '750 KCMIL': 2000, '1000 KCMIL': 2100,
       };
+      function detailTypeKey(t: string): number {
+        if (!t) return 999_999;
+        if (EXPORT_AWG_MAP[t] !== undefined) return EXPORT_AWG_MAP[t];
+        const stripped = t.replace(/^#/, "");
+        if (EXPORT_AWG_MAP[stripped] !== undefined) return EXPORT_AWG_MAP[stripped];
+        if (EXPORT_AWG_MAP[`#${stripped}`] !== undefined) return EXPORT_AWG_MAP[`#${stripped}`];
+        if (/^\d+$/.test(stripped) && parseInt(stripped) >= 250) {
+          const kcmilKey = `${stripped} KCMIL`;
+          if (EXPORT_AWG_MAP[kcmilKey] !== undefined) return EXPORT_AWG_MAP[kcmilKey];
+        }
+        return 999_999;
+      }
+
       function exportSizeKey(item: any): number {
         const label = (item.sizeLabel ?? "").trim();
         if (!label) return 999999;
@@ -2041,9 +2054,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const fa = (a.subcategory  || "\uFFFF").toLowerCase();
           const fb = (b.subcategory  || "\uFFFF").toLowerCase();
           if (fa !== fb) return fa.localeCompare(fb);
-          const ta = (a.detailType   || "\uFFFF").toLowerCase();
-          const tb = (b.detailType   || "\uFFFF").toLowerCase();
-          if (ta !== tb) return ta.localeCompare(tb);
+          const ta = a.detailType || "";
+          const tb = b.detailType || "";
+          if (ta !== tb) {
+            const ka = detailTypeKey(ta);
+            const kb = detailTypeKey(tb);
+            if (ka !== kb) return ka - kb;
+            return ta.toLowerCase().localeCompare(tb.toLowerCase());
+          }
           const na = a.baseItemName || a.name || "";
           const nb = b.baseItemName || b.name || "";
           // Use drag-and-drop sort order if available; fall back to alphabetical

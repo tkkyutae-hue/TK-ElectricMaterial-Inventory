@@ -376,7 +376,7 @@ function FamilyTable({ items }: { items: StockItem[] }) {
   const { t } = useLanguage();
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "1080px" }}>
+      <Table style={{ minWidth: "1160px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-16 px-2">{t.stockPricingColPhoto}</TableHead>
@@ -389,6 +389,7 @@ function FamilyTable({ items }: { items: StockItem[] }) {
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColAveragePrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right">{t.stockPricingColLowestPrice}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center">{t.stockPricingColSupplierCount}</TableHead>
+            <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -401,12 +402,46 @@ function FamilyTable({ items }: { items: StockItem[] }) {
   );
 }
 
-// ─── Item Row (read-only summary) ───────────────────────────────────────────
+// ─── Item Row (editable: Reorder Pt / Reorder Qt / Min Stock) ───────────────
+
+type StockDraft = { reorderPoint: string; reorderQuantity: string; minimumStock: string };
 
 function ItemRow({ item }: { item: StockItem }) {
-  const statusCls =
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [draft, setDraft] = useState<StockDraft | null>(null);
+  const isDirty = draft !== null;
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (!draft) return;
+      const body = {
+        reorderPoint: Math.max(0, parseInt(draft.reorderPoint || "0", 10) || 0),
+        reorderQuantity: Math.max(0, parseInt(draft.reorderQuantity || "0", 10) || 0),
+        minimumStock: Math.max(0, parseInt(draft.minimumStock || "0", 10) || 0),
+      };
+      await apiRequest("PATCH", `/api/admin/items/${item.id}/stock-settings`, body);
+    },
+    onSuccess: () => {
+      setDraft(null);
+      queryClient.invalidateQueries({ queryKey: QK_OVERVIEW });
+      toast({ title: t.stockPricingSaved });
+    },
+    onError: () => toast({ title: t.stockPricingSaveFailed, variant: "destructive" }),
+  });
+
+  const startDraft = () => {
+    if (draft) return;
+    setDraft({
+      reorderPoint: item.reorderPoint > 0 ? String(item.reorderPoint) : "",
+      reorderQuantity: item.reorderQuantity > 0 ? String(item.reorderQuantity) : "",
+      minimumStock: item.minimumStock > 0 ? String(item.minimumStock) : "",
+    });
+  };
+
+  const statusCls = isDirty ? "bg-amber-50/40" :
     item.status === "out_of_stock" ? "bg-red-50/40" :
-    item.status === "low_stock" ? "bg-amber-50/40" : "";
+    item.status === "low_stock" ? "bg-amber-50/30" : "";
 
   return (
     <TableRow className={`${statusCls} border-b border-slate-100`} data-testid={`row-item-${item.id}`}>
@@ -435,20 +470,65 @@ function ItemRow({ item }: { item: StockItem }) {
         <span className="font-semibold text-slate-900 text-sm" data-testid={`text-on-hand-${item.id}`}>{item.quantityOnHand.toLocaleString()}</span>
         <span className="text-slate-400 text-[11px] ml-1">{item.unitOfMeasure}</span>
       </TableCell>
-      <TableCell className="text-center tabular-nums">
-        <span className="text-sm text-slate-700" data-testid={`text-reorder-point-${item.id}`}>
-          {item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : <span className="text-slate-300">—</span>}
-        </span>
+      <TableCell className="text-center tabular-nums w-28 px-2">
+        {draft ? (
+          <Input
+            type="number" min="0" step="1"
+            value={draft.reorderPoint}
+            onChange={e => setDraft(d => d ? { ...d, reorderPoint: e.target.value } : d)}
+            className="h-7 text-xs w-full text-center"
+            data-testid={`input-reorder-point-${item.id}`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startDraft}
+            className="w-full text-center text-sm text-slate-700 hover:text-brand-600 rounded px-1 py-0.5 hover:bg-brand-50 transition-colors"
+            data-testid={`text-reorder-point-${item.id}`}
+          >
+            {item.reorderPoint > 0 ? item.reorderPoint.toLocaleString() : <span className="text-slate-300">—</span>}
+          </button>
+        )}
       </TableCell>
-      <TableCell className="text-center tabular-nums">
-        <span className="text-sm text-slate-700" data-testid={`text-reorder-qty-${item.id}`}>
-          {item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : <span className="text-slate-300">—</span>}
-        </span>
+      <TableCell className="text-center tabular-nums w-28 px-2">
+        {draft ? (
+          <Input
+            type="number" min="0" step="1"
+            value={draft.reorderQuantity}
+            onChange={e => setDraft(d => d ? { ...d, reorderQuantity: e.target.value } : d)}
+            className="h-7 text-xs w-full text-center"
+            data-testid={`input-reorder-qty-${item.id}`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startDraft}
+            className="w-full text-center text-sm text-slate-700 hover:text-brand-600 rounded px-1 py-0.5 hover:bg-brand-50 transition-colors"
+            data-testid={`text-reorder-qty-${item.id}`}
+          >
+            {item.reorderQuantity > 0 ? item.reorderQuantity.toLocaleString() : <span className="text-slate-300">—</span>}
+          </button>
+        )}
       </TableCell>
-      <TableCell className="text-center tabular-nums">
-        <span className="text-sm text-slate-700" data-testid={`text-min-stock-${item.id}`}>
-          {item.minimumStock > 0 ? item.minimumStock.toLocaleString() : <span className="text-slate-300">—</span>}
-        </span>
+      <TableCell className="text-center tabular-nums w-28 px-2">
+        {draft ? (
+          <Input
+            type="number" min="0" step="1"
+            value={draft.minimumStock}
+            onChange={e => setDraft(d => d ? { ...d, minimumStock: e.target.value } : d)}
+            className="h-7 text-xs w-full text-center"
+            data-testid={`input-min-stock-${item.id}`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startDraft}
+            className="w-full text-center text-sm text-slate-700 hover:text-brand-600 rounded px-1 py-0.5 hover:bg-brand-50 transition-colors"
+            data-testid={`text-min-stock-${item.id}`}
+          >
+            {item.minimumStock > 0 ? item.minimumStock.toLocaleString() : <span className="text-slate-300">—</span>}
+          </button>
+        )}
       </TableCell>
       <TableCell className="text-right tabular-nums">
         <span className={`text-sm ${item.averagePrice == null ? "text-slate-300" : "text-slate-700"}`} data-testid={`text-average-price-${item.id}`}>
@@ -469,6 +549,32 @@ function ItemRow({ item }: { item: StockItem }) {
           {item.pricedSupplierCount === 0 && <AlertTriangle className="w-3 h-3 mr-1" />}
           {item.supplierCount}
         </Badge>
+      </TableCell>
+      <TableCell className="w-20 px-1">
+        {isDirty && (
+          <div className="flex items-center gap-0.5 justify-end">
+            <button
+              type="button"
+              onClick={() => saveMut.mutate()}
+              disabled={saveMut.isPending}
+              className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors disabled:opacity-50"
+              data-testid={`button-save-stock-${item.id}`}
+              aria-label="Save"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(null)}
+              disabled={saveMut.isPending}
+              className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+              data-testid={`button-cancel-stock-${item.id}`}
+              aria-label="Cancel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </TableCell>
     </TableRow>
   );
@@ -771,10 +877,19 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
 
 // ─── Supplier View ───────────────────────────────────────────────────────────
 
+type SvGroup = { catName: string; families: { famName: string; items: SupplierViewRow[] }[] };
+
 function SupplierView({ supplierId, supplierName }: { supplierId: number; supplierName: string }) {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [edits, setEdits] = useState<Record<number, RowEdit>>({});
+
+  const SS_SV_CATS = `stockPricing.sv.openCats.${supplierId}.v1`;
+  const SS_SV_FAMS = `stockPricing.sv.openFams.${supplierId}.v1`;
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => loadSession(SS_SV_CATS, {}));
+  const [openFams, setOpenFams] = useState<Record<string, boolean>>(() => loadSession(SS_SV_FAMS, {}));
+  useEffect(() => saveSession(SS_SV_CATS, openCats), [openCats]);
+  useEffect(() => saveSession(SS_SV_FAMS, openFams), [openFams]);
 
   const { data, isLoading } = useQuery<SupplierViewData>({
     queryKey: ["/api/admin/stock-pricing/by-supplier", supplierId],
@@ -782,6 +897,22 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
 
   const rows = data?.items ?? [];
   const isDirty = Object.keys(edits).length > 0;
+
+  const groups = useMemo<SvGroup[]>(() => {
+    const catMap = new Map<string, Map<string, SupplierViewRow[]>>();
+    for (const row of rows) {
+      const catName = row.categoryName ?? t.cmnUnknown;
+      const famName = row.familyName ?? row.name;
+      if (!catMap.has(catName)) catMap.set(catName, new Map());
+      const famMap = catMap.get(catName)!;
+      if (!famMap.has(famName)) famMap.set(famName, []);
+      famMap.get(famName)!.push(row);
+    }
+    return Array.from(catMap.entries()).map(([catName, famMap]) => ({
+      catName,
+      families: Array.from(famMap.entries()).map(([famName, items]) => ({ famName, items })),
+    }));
+  }, [rows, t.cmnUnknown]);
 
   const getField = useCallback((row: SupplierViewRow, field: keyof RowEdit) => {
     const e = edits[row.itemId];
@@ -818,7 +949,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
           itemId: r.itemId,
           supplierSku: e.supplierSku || null,
           lastUnitCost: e.lastUnitCost !== "" ? parseFloat(e.lastUnitCost as string) : null,
-          leadTimeDays: e.leadTimeDays !== "" ? parseInt(e.leadTimeDays as string, 10) : null,
+          leadTimeDays: (e.leadTimeDays as string) !== "" ? parseInt(e.leadTimeDays as string, 10) : (r.leadTimeDays ?? null),
           preferredSupplier: e.preferredSupplier as boolean,
           note: e.note || null,
         };
@@ -831,16 +962,14 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
       queryClient.invalidateQueries({ queryKey: QK_OVERVIEW });
       toast({ title: t.stockPricingBatchSaved });
     },
-    onError: () => {
-      toast({ title: t.stockPricingSaveFailed, variant: "destructive" });
-    },
+    onError: () => toast({ title: t.stockPricingSaveFailed, variant: "destructive" }),
   });
 
   if (isLoading) {
     return (
       <div className="space-y-2 mt-4" data-testid="text-supplier-view-loading">
-        {[0, 1, 2, 4].map(i => (
-          <div key={i} className="h-11 bg-slate-100 rounded animate-pulse" />
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className="h-12 bg-slate-100 rounded animate-pulse" />
         ))}
       </div>
     );
@@ -850,6 +979,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
 
   return (
     <div className="mt-4 space-y-3" data-testid={`supplier-view-${supplierId}`}>
+      {/* Header bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="text-sm text-slate-500">
           <span className="font-semibold text-slate-800">{supplierName}</span>
@@ -863,22 +993,11 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
             <span className="text-xs text-amber-600 font-medium" data-testid="text-unsaved-changes">
               {t.stockPricingUnsavedChanges}
             </span>
-            <Button
-              size="sm"
-              onClick={() => batchMutation.mutate()}
-              disabled={batchMutation.isPending}
-              data-testid="button-batch-save"
-            >
+            <Button size="sm" onClick={() => batchMutation.mutate()} disabled={batchMutation.isPending} data-testid="button-batch-save">
               <Check className="w-3.5 h-3.5 mr-1.5" />
               {batchMutation.isPending ? t.cmnSaving : t.stockPricingBatchSave}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEdits({})}
-              disabled={batchMutation.isPending}
-              data-testid="button-batch-discard"
-            >
+            <Button size="sm" variant="outline" onClick={() => setEdits({})} disabled={batchMutation.isPending} data-testid="button-batch-discard">
               <X className="w-3.5 h-3.5 mr-1.5" />
               {t.stockPricingBatchDiscard}
             </Button>
@@ -892,120 +1011,176 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
         </div>
       )}
 
-      {rows.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-          <Table style={{ minWidth: "1040px" }}>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent border-b border-slate-200">
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-24">{t.stockPricingColSku}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColName}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right w-24">{t.stockPricingColOnHand}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-32">{t.stockPricingSupplierSku}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right w-28">{t.stockPricingUnitCost}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-24">{t.stockPricingLeadTime}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-20">{t.stockPricingPreferred}</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingNote}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(() => {
-                let lastCat: string | null = null;
-                return rows.map(row => {
-                  const catHeader = row.categoryName !== lastCat;
-                  if (catHeader) lastCat = row.categoryName ?? null;
-                  const dirty = edits[row.itemId] !== undefined;
-                  const isLinked = row.supplierItemId != null;
+      {/* Category → Family → Item accordion */}
+      {groups.map(group => {
+        const catOpen = openCats[group.catName] ?? false;
+        const totalItems = group.families.reduce((s, f) => s + f.items.length, 0);
+        return (
+          <div key={group.catName} className="bg-white border border-slate-200 rounded-lg overflow-hidden" data-testid={`sv-cat-${group.catName}`}>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setOpenCats(s => ({ ...s, [group.catName]: !s[group.catName] }))}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenCats(s => ({ ...s, [group.catName]: !s[group.catName] })); } }}
+              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
+              data-testid={`sv-toggle-cat-${group.catName}`}
+            >
+              {catOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              <h2 className="font-semibold text-slate-900 text-base">{group.catName}</h2>
+              <Badge variant="secondary" className="text-xs">{totalItems} {t.stockPricingItemCountSuffix}</Badge>
+            </div>
+
+            {catOpen && (
+              <div className="px-3 pb-3 space-y-2">
+                {group.families.map(fam => {
+                  const famKey = `${group.catName}::${fam.famName}`;
+                  const famOpen = openFams[famKey] ?? false;
+                  const dirtyInFam = fam.items.filter(r => edits[r.itemId] !== undefined).length;
                   return (
-                    <>
-                      {catHeader && (
-                        <TableRow key={`cat-${row.categoryName}-${row.itemId}`} className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
-                          <TableCell colSpan={8} className="py-1.5 px-4">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{row.categoryName ?? t.cmnUnknown}</span>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      <TableRow
-                        key={row.itemId}
-                        className={`${dirty ? "bg-amber-50/60" : isLinked ? "hover:bg-slate-50" : "bg-slate-50/30 hover:bg-slate-50"} border-b border-slate-100`}
-                        data-testid={`sv-row-${row.itemId}`}
+                    <div key={famKey} className="border border-slate-200 rounded-md bg-slate-50/40" data-testid={`sv-fam-${famKey}`}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenFams(s => ({ ...s, [famKey]: !s[famKey] }))}
+                        className="w-full flex items-center justify-between px-4 py-2 hover:bg-slate-100/70 transition-colors"
+                        data-testid={`sv-toggle-fam-${famKey}`}
                       >
-                        <TableCell className="font-mono text-xs text-slate-500 px-4">{row.sku}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {!isLinked && (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">{t.stockPricingNewBadge}</span>
-                            )}
-                            <span className={`text-sm font-medium ${isLinked ? "text-slate-800" : "text-slate-500"}`}>
-                              {row.name}{row.sizeLabel ? ` — ${row.sizeLabel}` : ""}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          <span className="text-sm text-slate-700">{row.quantityOnHand.toLocaleString()}</span>
-                          <span className="text-slate-400 text-[11px] ml-1">{row.unitOfMeasure}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={getField(row, "supplierSku") as string}
-                            onChange={e => updateField(row, "supplierSku", e.target.value)}
-                            className="h-7 text-xs w-full"
-                            placeholder="—"
-                            data-testid={`input-sv-sku-${row.itemId}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={getField(row, "lastUnitCost") as string}
-                            onChange={e => updateField(row, "lastUnitCost", e.target.value)}
-                            className="h-7 text-xs w-full text-right"
-                            placeholder="0.00"
-                            data-testid={`input-sv-cost-${row.itemId}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={getField(row, "leadTimeDays") as string}
-                            onChange={e => updateField(row, "leadTimeDays", e.target.value)}
-                            className="h-7 text-xs w-full text-center"
-                            placeholder="—"
-                            data-testid={`input-sv-lead-${row.itemId}`}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateField(row, "preferredSupplier", !(getField(row, "preferredSupplier") as boolean))}
-                            className={`p-1 rounded transition-colors ${getField(row, "preferredSupplier") ? "text-amber-500 hover:text-amber-600" : "text-slate-300 hover:text-slate-500"}`}
-                            data-testid={`button-sv-preferred-${row.itemId}`}
-                            aria-label={t.stockPricingPreferred}
-                          >
-                            <Star className="w-4 h-4" fill={getField(row, "preferredSupplier") ? "currentColor" : "none"} />
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={getField(row, "note") as string}
-                            onChange={e => updateField(row, "note", e.target.value)}
-                            className="h-7 text-xs w-full"
-                            placeholder={t.stockPricingNotePlaceholder}
-                            data-testid={`input-sv-note-${row.itemId}`}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    </>
+                        <div className="flex items-center gap-2">
+                          {famOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                          <Package className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="font-medium text-slate-700 text-sm">{fam.famName}</span>
+                          <span className="text-xs text-slate-400">({fam.items.length} {t.stockPricingItemCountSuffix})</span>
+                          {dirtyInFam > 0 && (
+                            <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 font-semibold">{dirtyInFam} {t.stockPricingUnsavedChanges}</span>
+                          )}
+                        </div>
+                      </button>
+                      {famOpen && (
+                        <SvFamilyTable
+                          rows={fam.items}
+                          edits={edits}
+                          getField={getField}
+                          updateField={updateField}
+                          t={t}
+                        />
+                      )}
+                    </div>
                   );
-                });
-              })()}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Supplier View Family Table ───────────────────────────────────────────────
+
+function SvFamilyTable({
+  rows, edits, getField, updateField, t,
+}: {
+  rows: SupplierViewRow[];
+  edits: Record<number, RowEdit>;
+  getField: (row: SupplierViewRow, field: keyof RowEdit) => string | boolean;
+  updateField: (row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => void;
+  t: any;
+}) {
+  return (
+    <div className="overflow-x-auto bg-white">
+      <Table style={{ minWidth: "1060px" }}>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-b border-slate-200">
+            <TableHead className="w-14 px-2">{t.stockPricingColPhoto}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-20">{t.stockPricingColSize}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingColName}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-24">{t.stockPricingColOnHand}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-32">{t.stockPricingSupplierSku}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-28">{t.stockPricingUnitCost}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-center w-20">{t.stockPricingPreferred}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingNote}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map(row => {
+            const dirty = edits[row.itemId] !== undefined;
+            const isLinked = row.supplierItemId != null;
+            return (
+              <TableRow
+                key={row.itemId}
+                className={`${dirty ? "bg-amber-50/60" : isLinked ? "hover:bg-slate-50" : "bg-slate-50/30 hover:bg-slate-50"} border-b border-slate-100`}
+                data-testid={`sv-row-${row.itemId}`}
+              >
+                <TableCell className="w-14 px-2">
+                  {row.imageUrl ? (
+                    <img src={row.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-slate-200 bg-slate-50" loading="lazy" data-testid={`sv-img-${row.itemId}`} />
+                  ) : (
+                    <div className="w-8 h-8 rounded border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-slate-300">
+                      <Package className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="w-20 text-xs text-slate-500 tabular-nums" data-testid={`sv-size-${row.itemId}`}>
+                  {row.sizeLabel || ""}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {!isLinked && (
+                      <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">{t.stockPricingNewBadge}</span>
+                    )}
+                    <span className={`text-sm font-medium ${isLinked ? "text-slate-800" : "text-slate-500"}`} data-testid={`sv-name-${row.itemId}`}>
+                      {row.name}{row.sizeLabel ? ` — ${row.sizeLabel}` : ""}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right tabular-nums w-24">
+                  <span className="text-sm text-slate-700" data-testid={`sv-onhand-${row.itemId}`}>{row.quantityOnHand.toLocaleString()}</span>
+                  <span className="text-slate-400 text-[11px] ml-1">{row.unitOfMeasure}</span>
+                </TableCell>
+                <TableCell className="w-32">
+                  <Input
+                    value={getField(row, "supplierSku") as string}
+                    onChange={e => updateField(row, "supplierSku", e.target.value)}
+                    className="h-7 text-xs w-full"
+                    placeholder="—"
+                    data-testid={`input-sv-sku-${row.itemId}`}
+                  />
+                </TableCell>
+                <TableCell className="w-28">
+                  <Input
+                    type="number" min="0" step="0.01"
+                    value={getField(row, "lastUnitCost") as string}
+                    onChange={e => updateField(row, "lastUnitCost", e.target.value)}
+                    className="h-7 text-xs w-full text-right"
+                    placeholder="0.00"
+                    data-testid={`input-sv-cost-${row.itemId}`}
+                  />
+                </TableCell>
+                <TableCell className="text-center w-20">
+                  <button
+                    type="button"
+                    onClick={() => updateField(row, "preferredSupplier", !(getField(row, "preferredSupplier") as boolean))}
+                    className={`p-1 rounded transition-colors ${getField(row, "preferredSupplier") ? "text-amber-500 hover:text-amber-600" : "text-slate-300 hover:text-slate-500"}`}
+                    data-testid={`button-sv-preferred-${row.itemId}`}
+                    aria-label={t.stockPricingPreferred}
+                  >
+                    <Star className={`w-4 h-4 ${getField(row, "preferredSupplier") ? "fill-amber-400" : ""}`} />
+                  </button>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    value={getField(row, "note") as string}
+                    onChange={e => updateField(row, "note", e.target.value)}
+                    className="h-7 text-xs w-full"
+                    placeholder={t.stockPricingNotePlaceholder}
+                    data-testid={`input-sv-note-${row.itemId}`}
+                  />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

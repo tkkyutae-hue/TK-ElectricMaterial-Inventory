@@ -305,10 +305,7 @@ export default function StockPricing() {
                           </div>
                         </button>
                         {famOpen && (
-                          <FamilyTable
-                            items={fam.items}
-                            suppliers={suppliers}
-                          />
+                          <FamilyTable items={fam.items} />
                         )}
                       </div>
                     );
@@ -375,12 +372,7 @@ export default function StockPricing() {
 
 // ─── Family Table ───────────────────────────────────────────────────────────
 
-function FamilyTable({
-  items, suppliers,
-}: {
-  items: StockItem[];
-  suppliers: Supplier[];
-}) {
+function FamilyTable({ items }: { items: StockItem[] }) {
   const { t } = useLanguage();
   return (
     <div className="overflow-x-auto bg-white">
@@ -401,11 +393,7 @@ function FamilyTable({
         </TableHeader>
         <TableBody>
           {items.map(item => (
-            <ItemRow
-              key={item.id}
-              item={item}
-              suppliers={suppliers}
-            />
+            <ItemRow key={item.id} item={item} />
           ))}
         </TableBody>
       </Table>
@@ -415,12 +403,7 @@ function FamilyTable({
 
 // ─── Item Row (read-only summary) ───────────────────────────────────────────
 
-function ItemRow({
-  item,
-}: {
-  item: StockItem;
-  suppliers: Supplier[];
-}) {
+function ItemRow({ item }: { item: StockItem }) {
   const statusCls =
     item.status === "out_of_stock" ? "bg-red-50/40" :
     item.status === "low_stock" ? "bg-amber-50/40" : "";
@@ -873,7 +856,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
           <span className="ml-2">·</span>
           <span className="ml-2">{rows.length} {t.stockPricingItemCountSuffix}</span>
           <span className="ml-2">·</span>
-          <span className="ml-2 text-brand-600">{linkedCount} linked</span>
+          <span className="ml-2 text-brand-600">{linkedCount} {t.stockPricingLinkedCount}</span>
         </div>
         {isDirty && (
           <div className="flex items-center gap-2">
@@ -950,7 +933,7 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {!isLinked && (
-                              <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">new</span>
+                              <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">{t.stockPricingNewBadge}</span>
                             )}
                             <span className={`text-sm font-medium ${isLinked ? "text-slate-800" : "text-slate-500"}`}>
                               {row.name}{row.sizeLabel ? ` — ${row.sizeLabel}` : ""}

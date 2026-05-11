@@ -927,18 +927,18 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
   }, [rows, t.cmnUnknown]);
 
   const filteredGroups = useMemo<SvGroup[]>(() => {
-    const q = svSearch.trim().toLowerCase();
-    if (!q) return groups;
+    const raw = svSearch.trim().toLowerCase();
+    if (!raw) return groups;
+    const tokens = raw.split(/\s+/).filter(Boolean);
+    const matches = (r: SupplierViewRow) => {
+      const target = `${r.sku} ${r.name} ${r.sizeLabel ?? ""}`.toLowerCase();
+      return tokens.every(tok => target.includes(tok));
+    };
     return groups
       .map(g => ({
         ...g,
         families: g.families
-          .map(f => ({
-            ...f,
-            items: f.items.filter(r =>
-              `${r.sku} ${r.name} ${r.sizeLabel ?? ""}`.toLowerCase().includes(q)
-            ),
-          }))
+          .map(f => ({ ...f, items: f.items.filter(matches) }))
           .filter(f => f.items.length > 0),
       }))
       .filter(g => g.families.length > 0);
@@ -1202,11 +1202,11 @@ function SvFamilyTable({
       <Table style={{ minWidth: "760px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
-            <TableHead className="w-14 px-2">{t.stockPricingColPhoto}</TableHead>
+            <TableHead className="w-16 pl-2 pr-4">{t.stockPricingColPhoto}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-20">{t.stockPricingColSize}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingColName}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-24">{t.stockPricingColOnHand}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-28">{t.stockPricingUnitCost}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-28">{t.stockPricingColOnHand}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-44">{t.stockPricingUnitCost}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingNote}</TableHead>
           </TableRow>
         </TableHeader>
@@ -1220,7 +1220,7 @@ function SvFamilyTable({
                 className={`${dirty ? "bg-amber-50/60" : isLinked ? "hover:bg-slate-50" : "bg-slate-50/30 hover:bg-slate-50"} border-b border-slate-100`}
                 data-testid={`sv-row-${row.itemId}`}
               >
-                <TableCell className="w-14 px-2">
+                <TableCell className="w-16 pl-2 pr-4 align-middle">
                   {row.imageUrl ? (
                     <img src={row.imageUrl} alt="" className="w-8 h-8 rounded object-cover border border-slate-200 bg-slate-50" loading="lazy" data-testid={`sv-img-${row.itemId}`} />
                   ) : (
@@ -1229,10 +1229,10 @@ function SvFamilyTable({
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="w-20 text-xs text-slate-500 tabular-nums" data-testid={`sv-size-${row.itemId}`}>
+                <TableCell className="w-20 text-xs text-slate-500 tabular-nums align-middle" data-testid={`sv-size-${row.itemId}`}>
                   {row.sizeLabel || ""}
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-middle">
                   <div className="flex items-center gap-2">
                     {!isLinked && (
                       <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">{t.stockPricingNewBadge}</span>
@@ -1242,21 +1242,25 @@ function SvFamilyTable({
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right tabular-nums w-24">
+                <TableCell className="text-right tabular-nums w-28 align-middle">
                   <span className="text-sm text-slate-700" data-testid={`sv-onhand-${row.itemId}`}>{row.quantityOnHand.toLocaleString()}</span>
                   <span className="text-slate-400 text-[11px] ml-1">{row.unitOfMeasure}</span>
                 </TableCell>
-                <TableCell className="w-28">
-                  <Input
-                    type="number" min="0" step="0.01"
-                    value={getField(row, "lastUnitCost")}
-                    onChange={e => updateField(row, "lastUnitCost", e.target.value)}
-                    className="h-7 text-xs w-full text-right"
-                    placeholder="0.00"
-                    data-testid={`input-sv-cost-${row.itemId}`}
-                  />
+                <TableCell className="w-44 align-middle">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-500 shrink-0">$</span>
+                    <Input
+                      type="number" min="0" step="0.01"
+                      value={getField(row, "lastUnitCost")}
+                      onChange={e => updateField(row, "lastUnitCost", e.target.value)}
+                      className="h-7 text-xs flex-1 text-right"
+                      placeholder="0.00"
+                      data-testid={`input-sv-cost-${row.itemId}`}
+                    />
+                    <span className="text-[11px] text-slate-400 shrink-0 whitespace-nowrap">/ {row.unitOfMeasure}</span>
+                  </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-middle">
                   <Input
                     value={getField(row, "note")}
                     onChange={e => updateField(row, "note", e.target.value)}

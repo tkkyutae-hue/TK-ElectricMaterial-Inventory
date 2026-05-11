@@ -2135,9 +2135,58 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                   }
                 }
               } else if (srcUrl.startsWith("https://")) {
-                // Remote URLs are not fetched server-side during export
-                // (prevents SSRF). Only /uploads/ local files and data URIs are embedded.
-                console.warn("[export] PHOTO: remote URL skipped (not embedded in export):", srcUrl.slice(0, 80));
+                // ── remote https:// image — fetch with timeout + size cap ────────
+                try {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 5000);
+                  const fetchRes = await fetch(srcUrl, {
+                    signal: controller.signal,
+                    headers: { "User-Agent": "VoltStock-Export/1.0" },
+                  });
+                  clearTimeout(timer);
+                  if (fetchRes.ok) {
+                    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+                    const ct = fetchRes.headers.get("content-type") ?? "";
+                    const remoteExt: "jpeg" | "png" | null =
+                      ct.includes("png") ? "png" :
+                      ct.includes("jpeg") || ct.includes("jpg") ? "jpeg" :
+                      null;
+                    if (remoteExt) {
+                      const arrayBuf = await fetchRes.arrayBuffer();
+                      if (arrayBuf.byteLength <= MAX_BYTES) {
+                        buf = Buffer.from(arrayBuf);
+                        ext = remoteExt;
+                      } else {
+                        console.warn("[export] PHOTO: remote image too large, skipping:", srcUrl.slice(0, 80));
+                      }
+                    } else {
+                      // Try to infer extension from URL when Content-Type is generic
+                      const urlLower = srcUrl.split("?")[0].toLowerCase();
+                      const inferredExt: "jpeg" | "png" | null =
+                        urlLower.endsWith(".png") ? "png" :
+                        urlLower.endsWith(".jpg") || urlLower.endsWith(".jpeg") ? "jpeg" :
+                        null;
+                      if (inferredExt) {
+                        const arrayBuf = await fetchRes.arrayBuffer();
+                        if (arrayBuf.byteLength <= MAX_BYTES) {
+                          buf = Buffer.from(arrayBuf);
+                          ext = inferredExt;
+                        }
+                      } else {
+                        // Default to jpeg for unknown types (Google thumbnails etc.)
+                        const arrayBuf = await fetchRes.arrayBuffer();
+                        if (arrayBuf.byteLength > 0 && arrayBuf.byteLength <= MAX_BYTES) {
+                          buf = Buffer.from(arrayBuf);
+                          ext = "jpeg";
+                        }
+                      }
+                    }
+                  } else {
+                    console.warn("[export] PHOTO: remote fetch returned", fetchRes.status, "—", srcUrl.slice(0, 80));
+                  }
+                } catch (fetchErr: any) {
+                  console.warn("[export] PHOTO: remote fetch failed:", fetchErr?.message ?? fetchErr, "—", srcUrl.slice(0, 80));
+                }
               } else if (srcUrl.startsWith("/uploads/")) {
                 // ── local /uploads/ file ────────────────────────────────────────
                 const filename = srcUrl.slice("/uploads/".length);

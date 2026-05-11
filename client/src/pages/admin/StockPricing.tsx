@@ -1016,8 +1016,10 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
         return {
           supplierItemId: r.supplierItemId ?? null,
           itemId: r.itemId,
+          supplierSku: r.supplierSku ?? null,
           lastUnitCost: e.lastUnitCost !== "" ? parseFloat(e.lastUnitCost) : null,
           leadTimeDays: e.leadTimeDays !== "" ? parseInt(e.leadTimeDays, 10) : (r.leadTimeDays ?? null),
+          preferredSupplier: r.preferredSupplier,
           note: e.note || null,
         };
       });

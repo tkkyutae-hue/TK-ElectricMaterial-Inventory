@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull } from "drizzle-orm";
+import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
@@ -1402,7 +1402,8 @@ export class DatabaseStorage implements IStorage {
     const aggRows = itemIds.length > 0
       ? await db.select({
           itemId: supplierItems.itemId,
-          cnt: sql<string>`COUNT(*)`,
+          cnt:       sql<string>`COUNT(*)`,
+          pricedCnt: sql<string>`COUNT(*) FILTER (WHERE ${supplierItems.lastUnitCost} IS NOT NULL)`,
           best: sql<string | null>`MIN(${supplierItems.lastUnitCost})`,
           avg:  sql<string | null>`AVG(${supplierItems.lastUnitCost})`,
         })
@@ -1410,9 +1411,10 @@ export class DatabaseStorage implements IStorage {
         .where(inArray(supplierItems.itemId, itemIds))
         .groupBy(supplierItems.itemId)
       : [];
-    const aggMap = new Map<number, { count: number; bestPrice: number | null; averagePrice: number | null }>(
+    const aggMap = new Map<number, { count: number; pricedCount: number; bestPrice: number | null; averagePrice: number | null }>(
       aggRows.map(r => [r.itemId, {
         count: Number(r.cnt) || 0,
+        pricedCount: Number(r.pricedCnt) || 0,
         bestPrice: r.best != null ? Number(r.best) : null,
         averagePrice: r.avg != null ? Math.round(Number(r.avg) * 100) / 100 : null,
       }])
@@ -1449,6 +1451,7 @@ export class DatabaseStorage implements IStorage {
         minimumStock: it.minimumStock,
         status,
         supplierCount: agg?.count ?? 0,
+        pricedSupplierCount: agg?.pricedCount ?? 0,
         bestPrice: agg?.bestPrice ?? null,
         averagePrice: agg?.averagePrice ?? null,
       });
@@ -1511,16 +1514,46 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSupplierItem(data: { itemId: number; supplierId: number; supplierSku?: string | null; leadTimeDays?: number | null; preferredSupplier?: boolean; lastUnitCost?: string | number | null; note?: string | null }): Promise<SupplierItem> {
-    const [created] = await db.insert(supplierItems).values({
-      itemId: data.itemId,
-      supplierId: data.supplierId,
-      supplierSku: data.supplierSku ?? null,
-      leadTimeDays: data.leadTimeDays ?? null,
-      preferredSupplier: data.preferredSupplier ?? false,
-      lastUnitCost: data.lastUnitCost != null ? String(data.lastUnitCost) : null,
-      note: data.note ?? null,
-    }).returning();
-    return created;
+    const costStr = data.lastUnitCost != null ? String(data.lastUnitCost) : null;
+    const wantPreferred = data.preferredSupplier ?? false;
+
+    // Application-level duplicate prevention: upsert instead of blind insert
+    const [existing] = await db.select().from(supplierItems)
+      .where(and(eq(supplierItems.itemId, data.itemId), eq(supplierItems.supplierId, data.supplierId)))
+      .limit(1);
+
+    let row: SupplierItem;
+    if (existing) {
+      const [updated] = await db.update(supplierItems).set({
+        supplierSku: data.supplierSku ?? null,
+        leadTimeDays: data.leadTimeDays ?? null,
+        preferredSupplier: wantPreferred,
+        lastUnitCost: costStr,
+        note: data.note ?? null,
+        updatedAt: new Date(),
+      }).where(eq(supplierItems.id, existing.id)).returning();
+      row = updated;
+    } else {
+      const [created] = await db.insert(supplierItems).values({
+        itemId: data.itemId,
+        supplierId: data.supplierId,
+        supplierSku: data.supplierSku ?? null,
+        leadTimeDays: data.leadTimeDays ?? null,
+        preferredSupplier: wantPreferred,
+        lastUnitCost: costStr,
+        note: data.note ?? null,
+      }).returning();
+      row = created;
+    }
+
+    // One preferred per item: unset all other rows for same itemId
+    if (wantPreferred) {
+      await db.update(supplierItems)
+        .set({ preferredSupplier: false, updatedAt: new Date() })
+        .where(and(eq(supplierItems.itemId, data.itemId), ne(supplierItems.id, row.id)));
+    }
+
+    return row;
   }
 
   async updateSupplierItem(id: number, data: {
@@ -1539,7 +1572,181 @@ export class DatabaseStorage implements IStorage {
     if (data.lastUnitCost !== undefined) patch.lastUnitCost = data.lastUnitCost != null ? String(data.lastUnitCost) : null;
     if (data.note !== undefined) patch.note = data.note;
     const [updated] = await db.update(supplierItems).set(patch).where(eq(supplierItems.id, id)).returning();
+
+    // One preferred per item: when setting preferredSupplier=true, unset all others for same itemId
+    if (data.preferredSupplier === true && updated) {
+      await db.update(supplierItems)
+        .set({ preferredSupplier: false, updatedAt: new Date() })
+        .where(and(eq(supplierItems.itemId, updated.itemId), ne(supplierItems.id, id)));
+    }
+
     return updated;
+  }
+
+  // ─── Supplier View: all items for one supplier ────────────────────────────────
+
+  async getStockPricingBySupplier(supplierId: number): Promise<any | null> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, supplierId)).limit(1);
+    if (!supplier) return null;
+
+    const rows = await db.select({
+      si: supplierItems,
+      item: items,
+      cat: categories,
+    })
+    .from(supplierItems)
+    .innerJoin(items, and(eq(supplierItems.itemId, items.id), eq(items.isActive, true)))
+    .leftJoin(categories, eq(items.categoryId, categories.id))
+    .where(eq(supplierItems.supplierId, supplierId))
+    .orderBy(asc(categories.name), asc(items.baseItemName), asc(items.sizeSortValue), asc(items.name));
+
+    const itemIds = rows.map(r => r.item.id);
+    const imgRows = itemIds.length > 0
+      ? await db.select({ itemId: itemImages.itemId, imageUrl: itemImages.imageUrl, sortOrder: itemImages.sortOrder })
+          .from(itemImages).where(inArray(itemImages.itemId, itemIds)).orderBy(asc(itemImages.sortOrder))
+      : [];
+    const imgMap = new Map<number, string>();
+    for (const r of imgRows) if (!imgMap.has(r.itemId)) imgMap.set(r.itemId, r.imageUrl);
+
+    return {
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      items: rows.map(r => ({
+        supplierItemId: r.si.id,
+        itemId: r.item.id,
+        sku: r.item.sku,
+        name: r.item.name,
+        sizeLabel: r.item.sizeLabel ?? null,
+        unitOfMeasure: r.item.unitOfMeasure,
+        imageUrl: imgMap.get(r.item.id) ?? null,
+        categoryId: r.cat?.id ?? null,
+        categoryName: r.cat?.name ?? null,
+        familyName: r.item.baseItemName ?? r.item.name,
+        quantityOnHand: r.item.quantityOnHand,
+        reorderPoint: r.item.reorderPoint,
+        supplierSku: r.si.supplierSku ?? null,
+        lastUnitCost: r.si.lastUnitCost != null ? Number(r.si.lastUnitCost) : null,
+        leadTimeDays: r.si.leadTimeDays ?? null,
+        preferredSupplier: r.si.preferredSupplier ?? false,
+        note: r.si.note ?? null,
+        updatedAt: r.si.updatedAt ? r.si.updatedAt.toISOString() : null,
+      })),
+    };
+  }
+
+  // ─── Batch upsert supplier items from Supplier View ───────────────────────────
+
+  async batchUpsertSupplierItemsForSupplier(
+    supplierId: number,
+    items_: Array<{
+      supplierItemId?: number | null;
+      itemId: number;
+      supplierSku: string | null;
+      lastUnitCost: number | null;
+      leadTimeDays: number | null;
+      preferredSupplier: boolean;
+      note: string | null;
+    }>
+  ): Promise<void> {
+    for (const item of items_) {
+      const costStr = item.lastUnitCost != null ? String(item.lastUnitCost) : null;
+
+      // Find canonical row for this (itemId, supplierId)
+      const existing = await db.select().from(supplierItems)
+        .where(and(eq(supplierItems.itemId, item.itemId), eq(supplierItems.supplierId, supplierId)))
+        .orderBy(
+          desc(supplierItems.preferredSupplier),
+          sql`${supplierItems.lastUnitCost} IS NOT NULL desc`,
+          desc(supplierItems.updatedAt),
+          asc(supplierItems.id)
+        )
+        .limit(1);
+
+      let rowId: number;
+      if (existing.length > 0) {
+        const [updated] = await db.update(supplierItems).set({
+          supplierSku: item.supplierSku,
+          lastUnitCost: costStr,
+          leadTimeDays: item.leadTimeDays,
+          preferredSupplier: item.preferredSupplier,
+          note: item.note,
+          updatedAt: new Date(),
+        }).where(eq(supplierItems.id, existing[0].id)).returning();
+        rowId = updated.id;
+      } else {
+        const [created] = await db.insert(supplierItems).values({
+          itemId: item.itemId,
+          supplierId,
+          supplierSku: item.supplierSku,
+          lastUnitCost: costStr,
+          leadTimeDays: item.leadTimeDays,
+          preferredSupplier: item.preferredSupplier,
+          note: item.note,
+        }).returning();
+        rowId = created.id;
+      }
+
+      // One preferred per item
+      if (item.preferredSupplier) {
+        await db.update(supplierItems)
+          .set({ preferredSupplier: false, updatedAt: new Date() })
+          .where(and(eq(supplierItems.itemId, item.itemId), ne(supplierItems.id, rowId)));
+      }
+    }
+  }
+
+  // ─── Duplicate scan (admin utility) ──────────────────────────────────────────
+  // TODO: After duplicate scan and cleanup are verified, add a DB-level unique
+  //       constraint on supplier_items(item_id, supplier_id) using a proper
+  //       migration or controlled SQL migration.
+
+  async getSupplierItemDuplicates(): Promise<any[]> {
+    const dupeGroups = await db.execute(sql`
+      SELECT item_id, supplier_id, COUNT(*) as cnt
+      FROM supplier_items
+      GROUP BY item_id, supplier_id
+      HAVING COUNT(*) > 1
+    `);
+
+    if (!dupeGroups.rows.length) return [];
+
+    const results: any[] = [];
+    for (const g of dupeGroups.rows) {
+      const itemId = Number(g.item_id);
+      const supplierId = Number(g.supplier_id);
+      const rows = await db.select().from(supplierItems)
+        .where(and(eq(supplierItems.itemId, itemId), eq(supplierItems.supplierId, supplierId)))
+        .orderBy(desc(supplierItems.preferredSupplier), desc(supplierItems.updatedAt), asc(supplierItems.id));
+
+      const sorted = [...rows].sort((a, b) => {
+        if (a.preferredSupplier && !b.preferredSupplier) return -1;
+        if (!a.preferredSupplier && b.preferredSupplier) return 1;
+        if (a.lastUnitCost != null && b.lastUnitCost == null) return -1;
+        if (a.lastUnitCost == null && b.lastUnitCost != null) return 1;
+        const ad = a.updatedAt?.getTime() ?? 0;
+        const bd = b.updatedAt?.getTime() ?? 0;
+        if (ad !== bd) return bd - ad;
+        return a.id - b.id;
+      });
+
+      results.push({
+        itemId,
+        supplierId,
+        count: Number(g.cnt),
+        recommendedKeepId: sorted[0]?.id ?? null,
+        rows: rows.map(r => ({
+          id: r.id,
+          itemId: r.itemId,
+          supplierId: r.supplierId,
+          supplierSku: r.supplierSku ?? null,
+          lastUnitCost: r.lastUnitCost != null ? Number(r.lastUnitCost) : null,
+          preferredSupplier: r.preferredSupplier ?? false,
+          updatedAt: r.updatedAt?.toISOString() ?? null,
+          createdAt: r.createdAt?.toISOString() ?? null,
+        })),
+      });
+    }
+    return results;
   }
 
   async deleteSupplierItem(id: number): Promise<void> {

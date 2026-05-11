@@ -2778,11 +2778,84 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   const supplierItemBodySchema = z.object({
     supplierId: z.number().int().positive(),
-    supplierSku: z.string().trim().max(100).optional().nullable(),
+    supplierSku: z.string().trim().max(100).optional().nullable()
+      .transform(v => (v == null || v === "") ? null : v.trim()),
     leadTimeDays: z.number().int().min(0).max(3650).optional().nullable(),
     preferredSupplier: z.boolean().optional(),
-    lastUnitCost: z.union([z.number(), z.string()]).optional().nullable().transform(v => v === null || v === undefined || v === "" ? null : Number(v)),
-    note: z.string().trim().max(500).optional().nullable(),
+    lastUnitCost: z.union([z.number(), z.string()])
+      .optional().nullable()
+      .transform(v => (v === null || v === undefined || v === "") ? null : Number(v))
+      .refine(v => v === null || (typeof v === "number" && isFinite(v) && v >= 0), {
+        message: "Unit cost must be null or a non-negative finite number",
+      }),
+    note: z.string().trim().max(500).optional().nullable()
+      .transform(v => (v == null || v === "") ? null : v.trim()),
+  });
+
+  // ─── Supplier View: by-supplier read + batch save + duplicates ────────────────
+
+  app.get("/api/admin/stock-pricing/by-supplier/:supplierId", isAuthenticated, requireAdmin, async (req, res) => {
+    const supplierId = parseIntParam(req.params.supplierId, "supplierId", res);
+    if (supplierId === null) return;
+    try {
+      const data = await storage.getStockPricingBySupplier(supplierId);
+      if (!data) return res.status(404).json({ message: "Supplier not found" });
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  const batchSupplierPricingItemSchema = z.object({
+    supplierItemId: z.number().int().positive().optional().nullable(),
+    itemId: z.number().int().positive(),
+    supplierSku: z.string().trim().max(100).optional().nullable()
+      .transform(v => (v == null || v === "") ? null : v.trim()),
+    leadTimeDays: z.number().int().min(0).max(3650).optional().nullable(),
+    preferredSupplier: z.boolean().default(false),
+    lastUnitCost: z.union([z.number(), z.string()])
+      .optional().nullable()
+      .transform(v => (v === null || v === undefined || v === "") ? null : Number(v))
+      .refine(v => v === null || (typeof v === "number" && isFinite(v) && v >= 0), {
+        message: "Unit cost must be null or a non-negative finite number",
+      }),
+    note: z.string().trim().max(500).optional().nullable()
+      .transform(v => (v == null || v === "") ? null : v.trim()),
+  });
+
+  app.patch("/api/admin/stock-pricing/by-supplier/:supplierId/batch", isAuthenticated, requireAdmin, async (req, res) => {
+    const supplierId = parseIntParam(req.params.supplierId, "supplierId", res);
+    if (supplierId === null) return;
+    const parsed = z.object({ items: z.array(batchSupplierPricingItemSchema) }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid batch data", errors: parsed.error.errors });
+    }
+    try {
+      await storage.batchUpsertSupplierItemsForSupplier(
+        supplierId,
+        parsed.data.items.map(item => ({
+          supplierItemId: item.supplierItemId ?? null,
+          itemId: item.itemId,
+          supplierSku: item.supplierSku ?? null,
+          lastUnitCost: item.lastUnitCost ?? null,
+          leadTimeDays: item.leadTimeDays ?? null,
+          preferredSupplier: item.preferredSupplier,
+          note: item.note ?? null,
+        }))
+      );
+      res.json({ ok: true, saved: parsed.data.items.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/stock-pricing/supplier-items/duplicates", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const duplicates = await storage.getSupplierItemDuplicates();
+      res.json({ duplicates, count: duplicates.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   app.post("/api/admin/items/:id/supplier-items", isAuthenticated, requireAdmin, async (req, res) => {

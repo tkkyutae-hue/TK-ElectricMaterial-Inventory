@@ -1,0 +1,201 @@
+Implement Phase 3 hardening for Stock & Pricing supplier pricing data.
+
+Context:
+Phase 1 and Phase 2 added Supplier View and batch save for Stock & Pricing.
+Now harden validation, duplicate prevention, preferred supplier behavior, and missing price logic.
+
+Important:
+Do NOT add the DB unique constraint yet.
+Do NOT run db:push for supplier_items uniqueness in this phase.
+Do NOT create production-risky schema changes unless explicitly required.
+This phase should focus on application-level hardening, validation, duplicate detection, and cleanup preparation.
+
+Goals:
+1. Fix existing supplier pricing route bugs.
+2. Strengthen server-side validation.
+3. Prevent duplicate supplier_items rows at the application level.
+4. Make preferredSupplier behave as one preferred supplier per item.
+5. Fix missing price logic.
+6. Add a safe duplicate scan utility/API for supplier_items.
+7. Keep existing Item View and Supplier View working.
+
+Tasks:
+
+1. Fix duplicate response bug
+Check the supplier item PATCH route in server/routes.ts.
+If there is a duplicate res.json(updated), remove the duplicate.
+Each request must send only one response.
+
+Expected:
+- No “Cannot set headers after they are sent to the client” error.
+
+2. Strengthen validation for supplier_items create/update/batch save
+For all supplier pricing write paths:
+- Existing Item View supplier item create
+- Existing Item View supplier item update
+- Supplier View batch save
+
+Validate:
+- lastUnitCost must be null or a finite non-negative number.
+- leadTimeDays must be null or a finite non-negative integer.
+- supplierSku should be trimmed.
+- Empty supplierSku should be stored as null.
+- note should be trimmed.
+- Empty note should be stored as null.
+- Do not allow NaN into the database.
+- Do not allow negative unit cost.
+- Do not allow negative lead time.
+
+If validation fails:
+- Return a clear JSON error response.
+- Do not partially save invalid data.
+
+3. Application-level duplicate prevention
+Before creating a supplier_items row, check if a row already exists for the same:
+- itemId
+- supplierId
+
+If it exists:
+- Update the existing row instead of inserting a duplicate.
+
+If supplierItemId is provided:
+- Verify the supplier_items row belongs to the same itemId and supplierId.
+- If it does not match, return 400 or 409 JSON error.
+- Do not update the wrong row.
+
+If multiple duplicate rows already exist:
+- Do not create more duplicates.
+- Prefer updating the most appropriate existing row:
+  1. preferredSupplier = true first
+  2. row with non-null lastUnitCost next
+  3. latest updatedAt next
+  4. lowest id as fallback
+
+Do not delete duplicates automatically in this phase unless there is already a safe cleanup mechanism.
+
+4. Preferred supplier behavior
+Keep preferredSupplier as a boolean for now.
+
+When a supplier item is saved with preferredSupplier = true:
+- Unset preferredSupplier for all other supplier_items rows with the same itemId.
+- Then set the current row preferredSupplier = true.
+
+This must apply to:
+- Item View create/update
+- Supplier View batch save
+
+Expected:
+- Only one supplier can be preferred for each item.
+- Existing UI should not break.
+
+5. Missing price logic
+Fix missing price behavior so that a supplier row with null/blank lastUnitCost still counts as missing price.
+
+If current Stock & Pricing overview uses supplierCount > 0 to hide missing price rows, update the logic.
+
+Separate these concepts:
+- supplierCount = total supplier_items rows
+- pricedSupplierCount = supplier_items rows where lastUnitCost is not null
+
+Missing price should mean:
+- pricedSupplierCount === 0 in Item View overview context
+or
+- selected supplier has no valid lastUnitCost in Supplier View context
+
+Expected:
+- Items with a supplier row but blank/null price still appear in Missing Price Only.
+- Missing price filter should not be based only on supplierCount.
+
+6. Add supplier_items duplicate scan
+Add a safe admin-only way to detect existing duplicate supplier_items rows.
+
+Add one of these:
+Option A:
+GET /api/admin/stock-pricing/supplier-items/duplicates
+
+or, if this project avoids diagnostic APIs:
+Option B:
+Add a clearly named storage method and temporary admin route consistent with existing admin tools.
+
+Return grouped duplicates:
+{
+  itemId,
+  supplierId,
+  count,
+  rows: [
+    {
+      id,
+      itemId,
+      supplierId,
+      supplierSku,
+      lastUnitCost,
+      preferredSupplier,
+      updatedAt,
+      createdAt
+    }
+  ]
+}
+
+Security:
+- Require admin access.
+- Return JSON only.
+- Do not expose this unauthenticated.
+
+Do not automatically delete anything from this endpoint.
+
+7. Add cleanup recommendation but do not execute destructive cleanup automatically
+If duplicate rows are found, the response may include a recommendedKeepId using this priority:
+1. preferredSupplier = true
+2. non-null lastUnitCost
+3. latest updatedAt
+4. lowest id
+
+But do not delete duplicate rows automatically in this phase.
+
+8. Do not add DB unique constraint yet
+Do not add:
+- unique(item_id, supplier_id)
+- uniqueIndex on supplier_items
+- db:push migration for this constraint
+
+Leave a clear TODO comment:
+“After duplicate scan and cleanup are verified, add a DB-level unique constraint on supplier_items(item_id, supplier_id) using a proper migration or controlled SQL migration.”
+
+9. Error handling
+All new API errors must return JSON, not HTML.
+Do not blindly call res.json() on non-JSON responses from the client side if touching client code.
+Use existing apiRequest/fetch helper if available.
+
+10. Manual verification
+Verify:
+- Existing Item View still loads.
+- Existing Item View supplier add still works.
+- Existing Item View supplier update still works.
+- Supplier View still loads.
+- Supplier View batch save still works.
+- Unit Cost cannot save NaN.
+- Unit Cost cannot save negative values.
+- Lead Time Days cannot save NaN.
+- Lead Time Days cannot save negative values.
+- Empty SKU saves as null.
+- Empty note saves as null.
+- Setting one supplier as preferred unsets other preferred suppliers for the same item.
+- Missing Price Only still shows items with supplier rows but null price.
+- Duplicate supplier item rows are not newly created.
+- Duplicate scan endpoint returns grouped duplicate rows if any exist.
+- Server logs do not show “Cannot set headers after they are sent to the client”.
+
+Files likely involved:
+- server/routes.ts
+- server/storage.ts
+- shared/schema.ts only if needed for types, but do not add unique constraint yet
+- client/src/pages/StockPricing.tsx only if needed for missing price display or safer error handling
+
+Do not:
+- Do not change inventory movement logic.
+- Do not redesign Stock & Pricing.
+- Do not remove Item View.
+- Do not remove Supplier View.
+- Do not add DB unique constraint in this phase.
+- Do not use db:push to force supplier_items uniqueness.
+- Do not perform destructive cleanup automatically.

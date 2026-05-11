@@ -1,0 +1,68 @@
+Implement phase 3 hardening for Stock & Pricing Supplier View and supplier_items data integrity.
+
+Goal:
+Strengthen supplier pricing data integrity after Supplier View and batch save are working.
+
+Tasks:
+
+1. Fix duplicate response bug
+Check the supplier item PATCH route in server/routes.ts.
+If there is a duplicate res.json(updated), remove the duplicate.
+Each request must send only one response.
+This should prevent “Cannot set headers after they are sent to the client”.
+
+2. Add stronger server validation
+For supplier item create/update/batch save:
+- lastUnitCost must be null or a finite non-negative number.
+- leadTimeDays must be null or a finite non-negative integer.
+- supplierSku should be trimmed and empty string stored as null.
+- note should be trimmed and empty string stored as null.
+- Do not allow NaN into the database.
+
+3. Prevent duplicate supplier_items rows
+Add database-level protection for duplicate supplier pricing rows:
+- Add a proper migration for unique(item_id, supplier_id) on supplier_items if the table currently allows duplicates.
+- Before adding the unique constraint, handle existing duplicate rows safely.
+- If duplicates exist, consolidate them or keep the best/latest row and remove or deactivate duplicate rows according to the existing schema.
+- Do not use db:push-only changes for this production-critical constraint.
+- Create a proper Drizzle migration if this repo uses Drizzle migrations.
+
+4. Preferred supplier behavior
+For this phase, keep preferredSupplier as a boolean.
+When a supplier item is set to preferredSupplier = true:
+- Unset preferredSupplier for other supplier_items rows with the same itemId.
+- This makes preferred supplier effectively one per item.
+- Apply this behavior to existing Item View edits and new Supplier View batch save.
+- Do not break existing UI.
+
+5. Missing price accuracy
+Make sure Stock & Pricing overview and Supplier View do not treat a supplier row with null lastUnitCost as “priced”.
+If overview currently uses COUNT(*) for supplier pricing, separate:
+- supplierCount: total supplier rows
+- pricedSupplierCount: rows where lastUnitCost is not null
+Missing price filters should use pricedSupplierCount or equivalent logic, not supplierCount alone.
+
+6. Regression checks
+Verify:
+- Existing Item View still works.
+- Supplier View still works.
+- Batch save still works.
+- Same item + supplier cannot be duplicated.
+- Setting one preferred supplier unsets other preferred suppliers for the same item.
+- Unit Cost cannot save as NaN.
+- Negative Unit Cost is rejected.
+- Negative Lead Time Days is rejected.
+- Supplier row with blank price still appears in Missing Price Only.
+- Server logs do not show “Cannot set headers after they are sent to the client”.
+
+Files likely involved:
+- server/routes.ts
+- server/storage.ts
+- shared/schema.ts
+- migration files
+- client/src/pages/StockPricing.tsx if needed for missing price display
+
+Do not:
+- Do not change inventory movement logic.
+- Do not redesign the whole Stock & Pricing page.
+- Do not remove existing supplier pricing features.

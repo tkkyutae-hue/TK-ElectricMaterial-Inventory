@@ -1,0 +1,101 @@
+Add the first phase of Supplier View to the Stock & Pricing page.
+
+Goal:
+Add a supplier-based pricing view where the user can select a supplier and see all active inventory items with that supplier’s existing pricing data. This phase is read-only or light-edit UI preparation only. Do not implement batch save yet.
+
+Important:
+Do not remove or redesign the existing Item View.
+Add a view mode switch/tab:
+- Item View
+- Supplier View
+
+Supplier View UI:
+Add controls:
+- Supplier dropdown
+- Category filter
+- Search input
+- Missing price only checkbox
+
+Add a table with these columns:
+- Image
+- Category
+- Family / Item Name
+- Size
+- Unit
+- On Hand
+- Supplier SKU
+- Unit Cost
+- Lead Time Days
+- Preferred
+- Note
+- Last Updated
+
+Behavior:
+- When a supplier is selected, load active inventory items.
+- If the selected supplier already has a supplier_items row for an item, populate the pricing fields.
+- If there is no supplier_items row for that supplier and item, still show the item with blank pricing fields.
+- Missing price only should show items where the selected supplier has no valid unit cost.
+- A supplier_items row with null or blank lastUnitCost should still count as missing price.
+- Search should filter by item name, base item name, size, SKU, and category if available.
+- Category filter should filter by category.
+- Keep the UI consistent with the current Stock & Pricing page.
+
+API:
+Add this endpoint:
+
+GET /api/stock-pricing/by-supplier/:supplierId
+
+Query params:
+- categoryId optional
+- search optional
+- missingPriceOnly optional
+
+Response should return one row per active item:
+{
+  itemId,
+  itemName,
+  baseItemName,
+  size,
+  unit,
+  categoryId,
+  categoryName,
+  imageUrl,
+  quantityOnHand,
+  liveQuantityOnHand,
+  supplierItemId,
+  supplierId,
+  supplierSku,
+  lastUnitCost,
+  leadTimeDays,
+  preferredSupplier,
+  note,
+  updatedAt
+}
+
+Server behavior:
+- Validate supplier exists.
+- Return active inventory items.
+- Left join supplier_items for the selected supplier.
+- Do not create or update supplier_items in this phase.
+- Reuse existing live reel quantity logic if Stock & Pricing already uses it.
+- Supplier pricing read should require authentication.
+
+Files likely involved:
+- client/src/pages/StockPricing.tsx
+- server/routes.ts
+- server/storage.ts
+
+Do not:
+- Do not implement batch save yet.
+- Do not add migrations in this phase.
+- Do not change inventory movement logic.
+- Do not remove existing item-based supplier pricing features.
+
+Manual verification:
+- Item View still works.
+- Supplier View appears as a second tab/mode.
+- Selecting a supplier loads item rows.
+- Existing supplier pricing appears in the correct rows.
+- Items without supplier pricing still appear with blank pricing fields.
+- Missing price only works correctly.
+- Search and category filters work.

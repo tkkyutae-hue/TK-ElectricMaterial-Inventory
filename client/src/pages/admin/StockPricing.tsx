@@ -25,12 +25,36 @@ type StockItem = {
   minimumStock: number;
   status: string;
   supplierCount: number;
+  pricedSupplierCount: number;
   bestPrice: number | null;
   averagePrice: number | null;
 };
 type Family = { name: string; items: StockItem[] };
 type Cat = { id: number; name: string; code: string | null; itemCount: number; families: Family[] };
 type Overview = { categories: Cat[] };
+
+type SupplierViewRow = {
+  supplierItemId: number;
+  itemId: number;
+  sku: string;
+  name: string;
+  sizeLabel: string | null;
+  unitOfMeasure: string;
+  imageUrl: string | null;
+  categoryId: number | null;
+  categoryName: string | null;
+  familyName: string | null;
+  quantityOnHand: number;
+  reorderPoint: number;
+  supplierSku: string | null;
+  lastUnitCost: number | null;
+  leadTimeDays: number | null;
+  preferredSupplier: boolean;
+  note: string | null;
+  updatedAt: string | null;
+};
+type SupplierViewData = { supplierId: number; supplierName: string; items: SupplierViewRow[] };
+type RowEdit = { supplierSku: string; lastUnitCost: string; leadTimeDays: string; preferredSupplier: boolean; note: string };
 
 type Supplier = { id: number; name: string };
 type SupplierItem = {
@@ -70,6 +94,7 @@ function formatPrice(v: number | null) {
 export default function StockPricing() {
   const { t } = useLanguage();
 
+  const [activeTab, setActiveTab] = useState<"item" | "supplier">("item");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [missingPrice, setMissingPrice] = useState(false);
@@ -100,7 +125,7 @@ export default function StockPricing() {
               const hay = `${it.sku} ${it.name} ${it.sizeLabel ?? ""}`.toLowerCase();
               if (!hay.includes(q)) return false;
             }
-            if (missingPrice && it.supplierCount > 0) return false;
+            if (missingPrice && it.pricedSupplierCount > 0) return false;
             if (missingReorder && it.reorderPoint > 0 && it.reorderQuantity > 0) return false;
             if (lowStockOnly && !(it.quantityOnHand <= it.reorderPoint)) return false;
             return true;
@@ -137,9 +162,29 @@ export default function StockPricing() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900" data-testid="text-page-title">{t.stockPricingTitle}</h1>
         <p className="text-sm text-slate-500 mt-1">{t.stockPricingSubtitle}</p>
+        <div className="mt-4 flex gap-0.5 border-b border-slate-200">
+          <button
+            type="button"
+            onClick={() => setActiveTab("item")}
+            className={`px-4 py-2 text-sm font-medium transition-colors rounded-t border-b-2 ${activeTab === "item" ? "border-brand-500 text-brand-600 bg-brand-50/50" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+            data-testid="tab-item-view"
+          >
+            {t.stockPricingTabItemView}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("supplier")}
+            className={`px-4 py-2 text-sm font-medium transition-colors rounded-t border-b-2 ${activeTab === "supplier" ? "border-brand-500 text-brand-600 bg-brand-50/50" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+            data-testid="tab-supplier-view"
+          >
+            {t.stockPricingTabSupplierView}
+          </button>
+        </div>
       </header>
 
-      {isLoading && (
+      {activeTab === "supplier" && <SupplierView suppliers={suppliers} />}
+
+      {activeTab === "item" && isLoading && (
         <div className="space-y-3" data-testid="text-loading">
           {[0, 1, 2].map(i => (
             <div key={i} className="bg-white border border-slate-200 rounded-lg p-4 animate-pulse">
@@ -154,20 +199,20 @@ export default function StockPricing() {
         </div>
       )}
 
-      {isError && (
+      {activeTab === "item" && isError && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700 flex items-center justify-between" data-testid="text-error">
           <span>{(error as Error)?.message ?? t.stockPricingSaveFailed}</span>
           <Button size="sm" variant="outline" onClick={() => refetch()} data-testid="button-retry">{t.stockPricingRetry}</Button>
         </div>
       )}
 
-      {!isLoading && !isError && filtered.length === 0 && (
+      {activeTab === "item" && !isLoading && !isError && filtered.length === 0 && (
         <div className="text-center py-12 text-slate-400" data-testid="text-empty">
           {t.stockPricingEmpty}
         </div>
       )}
 
-      <div className="space-y-3">
+      {activeTab === "item" && <div className="space-y-3">
         {filtered.map(cat => {
           const catOpen = openCats[cat.id] ?? false;
           const totalItems = cat.families.reduce((s, f) => s + f.items.length, 0);
@@ -244,7 +289,7 @@ export default function StockPricing() {
                               ({fam.items.length} {t.stockPricingItemCountSuffix}
                               {(() => {
                                 const low = fam.items.filter(i => i.quantityOnHand <= i.reorderPoint).length;
-                                const noPrice = fam.items.filter(i => i.supplierCount === 0).length;
+                                const noPrice = fam.items.filter(i => i.pricedSupplierCount === 0).length;
                                 const parts: string[] = [];
                                 if (low > 0) parts.push(`${low} ${t.stockPricingFilterLowStock.toLowerCase()}`);
                                 if (noPrice > 0) parts.push(`${noPrice} ${t.stockPricingFilterMissingPrice.toLowerCase()}`);
@@ -270,9 +315,9 @@ export default function StockPricing() {
             </div>
           );
         })}
-      </div>
+      </div>}
 
-      {typeof document !== "undefined" && createPortal(
+      {activeTab === "item" && typeof document !== "undefined" && createPortal(
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-3xl pointer-events-none">
           <div
             className="bg-white border border-slate-200 rounded-2xl p-3 space-y-2 shadow-xl pointer-events-auto"
@@ -530,11 +575,11 @@ function ItemRow({
         </TableCell>
         <TableCell className="text-center">
           <Badge
-            variant={item.supplierCount === 0 ? "outline" : "secondary"}
-            className={item.supplierCount === 0 ? "text-amber-700 border-amber-300 bg-amber-50" : ""}
+            variant={item.pricedSupplierCount === 0 ? "outline" : "secondary"}
+            className={item.pricedSupplierCount === 0 ? "text-amber-700 border-amber-300 bg-amber-50" : ""}
             data-testid={`badge-supplier-count-${item.id}`}
           >
-            {item.supplierCount === 0 && <AlertTriangle className="w-3 h-3 mr-1" />}
+            {item.pricedSupplierCount === 0 && <AlertTriangle className="w-3 h-3 mr-1" />}
             {item.supplierCount}
           </Badge>
         </TableCell>
@@ -870,5 +915,227 @@ function SupplierRow({ row, onPatch, onDelete, disabled }: {
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+// ─── Supplier View ───────────────────────────────────────────────────────────
+
+function SupplierView({ suppliers }: { suppliers: Supplier[] }) {
+  const { t } = useLanguage();
+  const { toast } = useToast();
+
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
+  const [edits, setEdits] = useState<Record<number, RowEdit>>({});
+
+  const supplierId = selectedSupplierId ? Number(selectedSupplierId) : null;
+
+  const { data, isLoading } = useQuery<SupplierViewData>({
+    queryKey: ["/api/admin/stock-pricing/by-supplier", supplierId],
+    enabled: supplierId != null,
+  });
+
+  const batchMutation = useMutation({
+    mutationFn: async () => {
+      if (!supplierId) return;
+      const updates = Object.entries(edits).map(([id, e]) => ({
+        supplierItemId: Number(id),
+        supplierSku: e.supplierSku || null,
+        lastUnitCost: e.lastUnitCost ? parseFloat(e.lastUnitCost) : null,
+        leadTimeDays: e.leadTimeDays ? parseInt(e.leadTimeDays, 10) : null,
+        preferredSupplier: e.preferredSupplier,
+        note: e.note || null,
+      }));
+      await apiRequest("PATCH", `/api/admin/stock-pricing/by-supplier/${supplierId}/batch`, { updates });
+    },
+    onSuccess: () => {
+      setEdits({});
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stock-pricing/by-supplier", supplierId] });
+      queryClient.invalidateQueries({ queryKey: QK_OVERVIEW });
+      toast({ title: t.stockPricingBatchSaved });
+    },
+    onError: () => {
+      toast({ title: t.stockPricingSaveFailed, variant: "destructive" });
+    },
+  });
+
+  const rows = data?.items ?? [];
+  const isDirty = Object.keys(edits).length > 0;
+
+  const getField = useCallback((row: SupplierViewRow, field: keyof RowEdit) => {
+    if (edits[row.supplierItemId] !== undefined) return edits[row.supplierItemId][field];
+    if (field === "supplierSku") return row.supplierSku ?? "";
+    if (field === "lastUnitCost") return row.lastUnitCost != null ? String(row.lastUnitCost) : "";
+    if (field === "leadTimeDays") return row.leadTimeDays != null ? String(row.leadTimeDays) : "";
+    if (field === "preferredSupplier") return row.preferredSupplier;
+    if (field === "note") return row.note ?? "";
+    return "";
+  }, [edits]);
+
+  const updateField = useCallback((rowId: number, row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => {
+    setEdits(prev => {
+      const current = prev[rowId] ?? {
+        supplierSku: row.supplierSku ?? "",
+        lastUnitCost: row.lastUnitCost != null ? String(row.lastUnitCost) : "",
+        leadTimeDays: row.leadTimeDays != null ? String(row.leadTimeDays) : "",
+        preferredSupplier: row.preferredSupplier,
+        note: row.note ?? "",
+      };
+      return { ...prev, [rowId]: { ...current, [field]: value } };
+    });
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={selectedSupplierId} onValueChange={v => { setSelectedSupplierId(v); setEdits({}); }} data-testid="select-supplier-view">
+          <SelectTrigger className="w-72" data-testid="trigger-supplier-view">
+            <SelectValue placeholder={t.stockPricingSelectSupplierPrompt} />
+          </SelectTrigger>
+          <SelectContent>
+            {suppliers.map(s => (
+              <SelectItem key={s.id} value={String(s.id)} data-testid={`option-supplier-${s.id}`}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {isDirty && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => batchMutation.mutate()}
+              disabled={batchMutation.isPending}
+              data-testid="button-batch-save"
+            >
+              <Check className="w-3.5 h-3.5 mr-1.5" />
+              {batchMutation.isPending ? t.stockPricingSaving : t.stockPricingBatchSave}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEdits({})}
+              disabled={batchMutation.isPending}
+              data-testid="button-batch-discard"
+            >
+              <X className="w-3.5 h-3.5 mr-1.5" />
+              {t.stockPricingBatchDiscard}
+            </Button>
+          </div>
+        )}
+
+        {isDirty && (
+          <span className="text-xs text-amber-600 font-medium" data-testid="text-unsaved-changes">
+            {t.stockPricingUnsavedChanges}
+          </span>
+        )}
+      </div>
+
+      {!selectedSupplierId && (
+        <div className="text-center py-16 text-slate-400" data-testid="text-supplier-view-empty">
+          {t.stockPricingSupplierViewEmpty}
+        </div>
+      )}
+
+      {selectedSupplierId && isLoading && (
+        <div className="space-y-2" data-testid="text-supplier-view-loading">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-12 bg-slate-100 rounded animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {selectedSupplierId && !isLoading && rows.length === 0 && (
+        <div className="text-center py-12 text-slate-400" data-testid="text-supplier-view-no-items">
+          {t.stockPricingEmpty}
+        </div>
+      )}
+
+      {selectedSupplierId && !isLoading && rows.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+          <Table style={{ minWidth: "1000px" }}>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-b border-slate-200">
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-24">{t.stockPricingColSKU}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColName}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColCategory}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColFamily}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500 w-28">{t.stockPricingColSupplierSku}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-right w-28">{t.stockPricingColUnitCost}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-24">{t.stockPricingColLeadTime}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500 text-center w-20">{t.stockPricingColPreferred}</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">{t.stockPricingColNote}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map(row => {
+                const dirty = edits[row.supplierItemId] !== undefined;
+                return (
+                  <TableRow
+                    key={row.supplierItemId}
+                    className={dirty ? "bg-amber-50/60" : "hover:bg-slate-50"}
+                    data-testid={`sv-row-${row.supplierItemId}`}
+                  >
+                    <TableCell className="font-mono text-xs text-slate-500">{row.sku}</TableCell>
+                    <TableCell className="text-sm font-medium text-slate-800">
+                      {row.name}{row.sizeLabel ? ` — ${row.sizeLabel}` : ""}
+                    </TableCell>
+                    <TableCell className="text-xs text-slate-500">{row.categoryName ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-slate-500">{row.familyName ?? "—"}</TableCell>
+                    <TableCell>
+                      <Input
+                        value={getField(row, "supplierSku") as string}
+                        onChange={e => updateField(row.supplierItemId, row, "supplierSku", e.target.value)}
+                        className="h-7 text-xs w-full"
+                        data-testid={`input-sv-sku-${row.supplierItemId}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={getField(row, "lastUnitCost") as string}
+                        onChange={e => updateField(row.supplierItemId, row, "lastUnitCost", e.target.value)}
+                        className="h-7 text-xs w-full text-right"
+                        data-testid={`input-sv-cost-${row.supplierItemId}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={getField(row, "leadTimeDays") as string}
+                        onChange={e => updateField(row.supplierItemId, row, "leadTimeDays", e.target.value)}
+                        className="h-7 text-xs w-full text-center"
+                        data-testid={`input-sv-lead-${row.supplierItemId}`}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => updateField(row.supplierItemId, row, "preferredSupplier", !(getField(row, "preferredSupplier") as boolean))}
+                        className={`p-1 rounded transition-colors ${getField(row, "preferredSupplier") ? "text-amber-500 hover:text-amber-600" : "text-slate-300 hover:text-slate-500"}`}
+                        data-testid={`button-sv-preferred-${row.supplierItemId}`}
+                        aria-label={t.stockPricingColPreferred}
+                      >
+                        <Star className="w-4 h-4" fill={getField(row, "preferredSupplier") ? "currentColor" : "none"} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={getField(row, "note") as string}
+                        onChange={e => updateField(row.supplierItemId, row, "note", e.target.value)}
+                        className="h-7 text-xs w-full"
+                        data-testid={`input-sv-note-${row.supplierItemId}`}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   );
 }

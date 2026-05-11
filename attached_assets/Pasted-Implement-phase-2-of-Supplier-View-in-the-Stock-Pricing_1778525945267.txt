@@ -1,0 +1,100 @@
+Implement phase 2 of Supplier View in the Stock & Pricing page: editable pricing grid with batch save.
+
+Context:
+Phase 1 added Supplier View with:
+- Supplier dropdown
+- Category filter
+- Search input
+- Missing price only checkbox
+- Table showing all active items with selected supplier pricing data
+
+Goal:
+Make Supplier View editable so the user can enter prices for many items and save them in one batch request.
+
+Required UI behavior:
+- Make these columns editable:
+  - Supplier SKU
+  - Unit Cost
+  - Lead Time Days
+  - Preferred
+  - Note
+- Track dirty rows locally.
+- Visually indicate dirty rows.
+- Add Save Changes button.
+- Add Cancel Changes button.
+- Save Changes should be disabled when there are no dirty rows.
+- Cancel Changes should revert unsaved edits back to the last loaded data.
+- Do not send one API request per row.
+- Save all edited rows in one batch request.
+
+Row behavior:
+- If a row already has supplierItemId, save should update the existing supplier_items row.
+- If a row does not have supplierItemId, save should create a new supplier_items row for the selected supplier and item.
+- The user should not need to manually click “Add supplier” for each item.
+- Blank Supplier SKU should be stored as null.
+- Blank Note should be stored as null.
+- Blank Unit Cost should be stored as null.
+- Blank Lead Time Days should be stored as null.
+
+Validation:
+- Unit Cost must be blank/null or a valid non-negative number.
+- Lead Time Days must be blank/null or a valid non-negative integer.
+- Do not allow NaN to reach the server or database.
+- Trim Supplier SKU and Note.
+- Show a clear error toast for invalid rows.
+- If one row is invalid, block the save and identify the problematic row clearly enough for the user.
+
+API:
+Add this endpoint:
+
+PATCH /api/stock-pricing/by-supplier/:supplierId/batch
+
+Request body:
+{
+  rows: [
+    {
+      itemId,
+      supplierItemId optional,
+      supplierSku optional/null,
+      lastUnitCost optional/null,
+      leadTimeDays optional/null,
+      preferredSupplier optional,
+      note optional/null
+    }
+  ]
+}
+
+Server behavior:
+- Require manager/admin level permission, consistent with existing Stock & Pricing edit permissions.
+- Validate supplier exists.
+- Validate every item exists and is active.
+- For each row:
+  - If supplierItemId exists, update that supplier_items row only if it belongs to the same supplier and item.
+  - If supplierItemId does not exist, create or update by itemId + supplierId using safe upsert behavior.
+- Return the updated supplier-view rows or enough data for the client to refresh cleanly.
+- Do not create duplicate supplier_items rows for the same item and supplier.
+- If duplicates already exist, prefer updating the first existing row and do not create more duplicates.
+
+Important:
+- Do not add a DB unique constraint in this phase unless it is already safe and migration-ready.
+- Implement application-level duplicate prevention first.
+- Do not change inventory movement logic.
+- Do not redesign Item View.
+- Existing Item View supplier add/edit/delete must still work.
+
+Fetch/error handling:
+- Do not blindly call res.json() on non-JSON responses.
+- Use the existing API helper if available.
+- If needed, add a safe JSON response parser for this feature.
+
+Manual verification:
+- Select a supplier.
+- Edit prices for multiple blank rows.
+- Save creates supplier_items rows.
+- Edit existing supplier rows.
+- Save updates existing supplier_items rows.
+- Cancel reverts unsaved edits.
+- Invalid Unit Cost is blocked.
+- Invalid Lead Time Days is blocked.
+- Missing price only updates correctly after save/refetch.
+- No duplicate supplier_items rows are created.

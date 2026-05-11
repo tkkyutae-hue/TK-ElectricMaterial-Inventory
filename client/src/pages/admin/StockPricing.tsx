@@ -1199,15 +1199,15 @@ function SvFamilyTable({
 }) {
   return (
     <div className="overflow-x-auto bg-white">
-      <Table style={{ minWidth: "760px" }}>
+      <Table className="w-full table-fixed" style={{ minWidth: "760px" }}>
         <TableHeader>
           <TableRow className="hover:bg-transparent border-b border-slate-200">
             <TableHead className="w-16 pl-2 pr-4">{t.stockPricingColPhoto}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-20">{t.stockPricingColSize}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingColName}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap min-w-0">{t.stockPricingColName}</TableHead>
             <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-right w-28">{t.stockPricingColOnHand}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-44">{t.stockPricingUnitCost}</TableHead>
-            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap">{t.stockPricingNote}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap text-left w-44">{t.stockPricingUnitCost}</TableHead>
+            <TableHead className="text-xs uppercase tracking-wide text-slate-500 whitespace-nowrap w-44">{t.stockPricingNote}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1232,12 +1232,12 @@ function SvFamilyTable({
                 <TableCell className="w-20 text-xs text-slate-500 tabular-nums align-middle" data-testid={`sv-size-${row.itemId}`}>
                   {row.sizeLabel || ""}
                 </TableCell>
-                <TableCell className="align-middle">
-                  <div className="flex items-center gap-2">
+                <TableCell className="align-middle min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     {!isLinked && (
-                      <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide">{t.stockPricingNewBadge}</span>
+                      <span className="text-[10px] bg-slate-200 text-slate-500 rounded px-1 py-0.5 uppercase font-semibold tracking-wide shrink-0">{t.stockPricingNewBadge}</span>
                     )}
-                    <span className={`text-sm font-medium ${isLinked ? "text-slate-800" : "text-slate-500"}`} data-testid={`sv-name-${row.itemId}`}>
+                    <span className={`text-sm font-medium truncate ${isLinked ? "text-slate-800" : "text-slate-500"}`} data-testid={`sv-name-${row.itemId}`}>
                       {row.name}{row.sizeLabel ? ` — ${row.sizeLabel}` : ""}
                     </span>
                   </div>

@@ -1594,10 +1594,10 @@ export class DatabaseStorage implements IStorage {
       item: items,
       cat: categories,
     })
-    .from(supplierItems)
-    .innerJoin(items, and(eq(supplierItems.itemId, items.id), eq(items.isActive, true)))
+    .from(items)
+    .leftJoin(supplierItems, and(eq(supplierItems.itemId, items.id), eq(supplierItems.supplierId, supplierId)))
     .leftJoin(categories, eq(items.categoryId, categories.id))
-    .where(eq(supplierItems.supplierId, supplierId))
+    .where(eq(items.isActive, true))
     .orderBy(asc(categories.name), asc(items.baseItemName), asc(items.sizeSortValue), asc(items.name));
 
     const itemIds = rows.map(r => r.item.id);
@@ -1612,7 +1612,7 @@ export class DatabaseStorage implements IStorage {
       supplierId: supplier.id,
       supplierName: supplier.name,
       items: rows.map(r => ({
-        supplierItemId: r.si.id,
+        supplierItemId: r.si?.id ?? null,
         itemId: r.item.id,
         sku: r.item.sku,
         name: r.item.name,
@@ -1624,12 +1624,12 @@ export class DatabaseStorage implements IStorage {
         familyName: r.item.baseItemName ?? r.item.name,
         quantityOnHand: r.item.quantityOnHand,
         reorderPoint: r.item.reorderPoint,
-        supplierSku: r.si.supplierSku ?? null,
-        lastUnitCost: r.si.lastUnitCost != null ? Number(r.si.lastUnitCost) : null,
-        leadTimeDays: r.si.leadTimeDays ?? null,
-        preferredSupplier: r.si.preferredSupplier ?? false,
-        note: r.si.note ?? null,
-        updatedAt: r.si.updatedAt ? r.si.updatedAt.toISOString() : null,
+        supplierSku: r.si?.supplierSku ?? null,
+        lastUnitCost: r.si?.lastUnitCost != null ? Number(r.si.lastUnitCost) : null,
+        leadTimeDays: r.si?.leadTimeDays ?? null,
+        preferredSupplier: r.si?.preferredSupplier ?? false,
+        note: r.si?.note ?? null,
+        updatedAt: r.si?.updatedAt ? r.si.updatedAt.toISOString() : null,
       })),
     };
   }

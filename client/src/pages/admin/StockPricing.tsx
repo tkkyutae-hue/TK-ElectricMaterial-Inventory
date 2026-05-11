@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronRight, ChevronDown, ChevronsUpDown, ChevronsDownUp, Plus, Trash2, Search, AlertTriangle, Package, DollarSign, Star, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import type { Translations } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type StockItem = {
@@ -894,8 +895,8 @@ function SupplierView({ supplierId, supplierName }: { supplierId: number; suppli
   const { toast } = useToast();
   const [edits, setEdits] = useState<Record<number, RowEdit>>({});
 
-  const SS_SV_CATS = `stockPricing.sv.openCats.${supplierId}.v1`;
-  const SS_SV_FAMS = `stockPricing.sv.openFams.${supplierId}.v1`;
+  const SS_SV_CATS = `supplierView.openCats.${supplierId}.v1`;
+  const SS_SV_FAMS = `supplierView.openFams.${supplierId}.v1`;
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => loadSession(SS_SV_CATS, {}));
   const [openFams, setOpenFams] = useState<Record<string, boolean>>(() => loadSession(SS_SV_FAMS, {}));
   useEffect(() => saveSession(SS_SV_CATS, openCats), [openCats]);
@@ -1121,7 +1122,7 @@ function SvFamilyTable({
   edits: Record<number, RowEdit>;
   getField: (row: SupplierViewRow, field: keyof RowEdit) => string | boolean;
   updateField: (row: SupplierViewRow, field: keyof RowEdit, value: string | boolean) => void;
-  t: any;
+  t: Translations;
 }) {
   return (
     <div className="overflow-x-auto bg-white">

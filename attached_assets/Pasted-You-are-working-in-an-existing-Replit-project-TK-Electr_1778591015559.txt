@@ -1,0 +1,867 @@
+You are working in an existing Replit project: TK Electric VoltStock (React + TypeScript + Tailwind + Express + PostgreSQL PWA).
+
+Implement a dark/light theme toggle for Login, Mode Select (Home.tsx), and Field Mode screens.
+Admin Mode must not be affected at all.
+
+---
+
+## IMPORTANT: Current state of the codebase (read before touching anything)
+
+- `client/src/hooks/use-field-theme.tsx` → DOES NOT EXIST. Create it.
+- `client/src/lib/fieldTokens.ts` → EXISTS. Has only a static dark token object `F`. No light tokens. No context. No hook.
+- `client/src/components/layout/FieldLayout.tsx` → EXISTS. Uses `import { F } from "@/lib/fieldTokens"` (static). Uses `F.bg` in 2 places.
+- `client/src/components/layout/FieldHeader.tsx` → EXISTS. Uses static `F.*` tokens. Has `LanguageSwitcher theme="dark"` hardcoded. No theme switcher.
+- `client/src/pages/field/FieldHome.tsx` → EXISTS. Does NOT import F at all. All hardcoded hex: `"#162019"`, `"#2a4030"`, `"#e2f0e5"`, `"#4a7052"`.
+- `client/src/pages/Login.tsx` → EXISTS. Fully hardcoded dark styles in a `const CSS` string + inline styles.
+- `client/src/pages/Home.tsx` → EXISTS. Mode Select screen. Hardcoded dark: `"#0d1410"`, `"#162019"`, `"#2a4030"`, `"#e2f0e5"`, `"#4a7052"`.
+- `client/src/lib/i18n.ts` → EXISTS. No `fieldThemeDark` or `fieldThemeLight` keys yet. The `Translations` type must be updated.
+- `client/src/App.tsx` → EXISTS. No FieldThemeProvider anywhere.
+
+Do NOT touch: `FieldInventory.tsx`, `FieldTransactions.tsx`, `FieldMovement.tsx`, `FieldCartReview.tsx`, `FieldRequestsList.tsx`, `DraftMovementsList.tsx`, `AppLayout.tsx`, anything in `server/`, anything in `shared/`, `use-language.tsx`.
+
+---
+
+## FILE 1 — REPLACE entire `client/src/lib/fieldTokens.ts`
+
+```ts
+/**
+ * Field Mode Design Tokens
+ * F_DARK = original dark palette (unchanged values)
+ * F_LIGHT = light palette for theme switching
+ * F = F_DARK kept as legacy export — do not remove (FieldInventory etc. import it)
+ */
+
+export const F_DARK = {
+  bg:           "#0d1410",
+  surface:      "#1c2b1f",
+  surface2:     "#162019",
+  border:       "#1e2e21",
+  borderStrong: "#2a4030",
+  text:         "#e2f0e5",
+  textMuted:    "#7aab82",
+  textSub:      "#9abda2",
+  textDim:      "#4a7052",
+  accent:       "#2ddb6f",
+  accentBg:     "rgba(45,219,111,0.10)",
+  accentBorder: "rgba(45,219,111,0.25)",
+  accentText:   "#0d1410",
+  danger:       "#ff5050",
+  dangerBg:     "rgba(255,80,80,0.10)",
+  dangerBorder: "rgba(255,80,80,0.25)",
+  warning:      "#f5a623",
+  warningBg:    "rgba(245,166,35,0.10)",
+  warningBorder:"rgba(245,166,35,0.25)",
+  ordered:      "#38bdf8",
+  orderedBg:    "rgba(56,189,248,0.10)",
+  orderedBorder:"rgba(56,189,248,0.25)",
+  info:         "#5b9cf6",
+  infoBg:       "rgba(91,156,246,0.13)",
+  infoBorder:   "rgba(91,156,246,0.40)",
+} as const;
+
+export const F_LIGHT = {
+  bg:           "#f4f7f4",
+  surface:      "#ffffff",
+  surface2:     "#eef3ee",
+  border:       "#ddeadd",
+  borderStrong: "#c4d9c4",
+  text:         "#111820",
+  textMuted:    "#3d6b47",
+  textSub:      "#4a7a55",
+  textDim:      "#8aab8a",
+  accent:       "#0d8c3a",
+  accentBg:     "rgba(13,140,58,0.08)",
+  accentBorder: "rgba(13,140,58,0.22)",
+  accentText:   "#ffffff",
+  danger:       "#c0392b",
+  dangerBg:     "rgba(192,57,43,0.08)",
+  dangerBorder: "rgba(192,57,43,0.22)",
+  warning:      "#b7770d",
+  warningBg:    "rgba(183,119,13,0.08)",
+  warningBorder:"rgba(183,119,13,0.22)",
+  ordered:      "#0369a1",
+  orderedBg:    "rgba(3,105,161,0.08)",
+  orderedBorder:"rgba(3,105,161,0.22)",
+  info:         "#1d4ed8",
+  infoBg:       "rgba(29,78,216,0.08)",
+  infoBorder:   "rgba(29,78,216,0.30)",
+} as const;
+
+// Legacy export — FieldInventory, FieldTransactions, etc. import this directly.
+// DO NOT REMOVE.
+export const F = F_DARK;
+export type FieldToken = typeof F_DARK;
+```
+
+---
+
+## FILE 2 — CREATE `client/src/hooks/use-field-theme.tsx` (new file)
+
+`FieldThemeSwitcher` must be a DROPDOWN, not a toggle button.
+It must mirror the exact structure of `LanguageSwitcher` in `use-language.tsx`:
+same Radix `DropdownMenu` components, same color variable names, same `compact` prop, same `Check` + `ChevronDown` icons.
+
+```tsx
+import { createContext, useContext, useState } from "react";
+import { Check, ChevronDown, Moon, Sun } from "lucide-react";
+import { F_DARK, F_LIGHT, type FieldToken } from "@/lib/fieldTokens";
+import { useLanguage } from "@/hooks/use-language";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const STORAGE_KEY = "voltstock_field_theme";
+
+interface FieldThemeContextValue {
+  theme: "dark" | "light";
+  setTheme: (t: "dark" | "light") => void;
+  F: FieldToken;
+}
+
+const FieldThemeContext = createContext<FieldThemeContextValue | null>(null);
+
+export function FieldThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<"dark" | "light">(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
+
+  const setTheme = (t: "dark" | "light") => {
+    setThemeState(t);
+    try { localStorage.setItem(STORAGE_KEY, t); } catch {}
+  };
+
+  const F: FieldToken = theme === "light" ? F_LIGHT : F_DARK;
+
+  return (
+    <FieldThemeContext.Provider value={{ theme, setTheme, F }}>
+      {children}
+    </FieldThemeContext.Provider>
+  );
+}
+
+export function useFieldTheme(): FieldThemeContextValue {
+  const ctx = useContext(FieldThemeContext);
+  if (!ctx) throw new Error("useFieldTheme must be used inside FieldThemeProvider");
+  return ctx;
+}
+
+// ── FieldThemeSwitcher ────────────────────────────────────────────────────────
+// Dropdown — same structure as LanguageSwitcher in use-language.tsx
+
+interface ThemeSwitcherProps {
+  compact?: boolean;
+}
+
+export function FieldThemeSwitcher({ compact = false }: ThemeSwitcherProps) {
+  const { theme, setTheme } = useFieldTheme();
+  const { t } = useLanguage();
+  const isDark = theme === "dark";
+
+  // Exact same color variable names as LanguageSwitcher
+  const triggerBg          = isDark ? "#162019"               : "#f1f5f9";
+  const triggerBorder      = isDark ? "#2a4030"               : "#e2e8f0";
+  const triggerColor       = isDark ? "#c8deca"               : "#0f172a";
+  const triggerHoverBorder = isDark ? "rgba(45,219,111,0.40)" : "#cbd5e1";
+  const chevronColor       = isDark ? "#4a7052"               : "#94a3b8";
+  const itemActiveBg       = isDark ? "rgba(45,219,111,0.12)" : "#f0fdf4";
+  const itemActiveColor    = isDark ? "#2ddb6f"               : "#0f766e";
+
+  const pad = compact ? "4px 8px 4px 9px" : "5px 9px 5px 10px";
+
+  const options: { value: "dark" | "light"; label: string; Icon: typeof Moon }[] = [
+    { value: "dark",  label: t.fieldThemeDark,  Icon: Moon },
+    { value: "light", label: t.fieldThemeLight, Icon: Sun  },
+  ];
+
+  const CurrentIcon = isDark ? Moon : Sun;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          data-testid="btn-theme-switcher"
+          aria-label={`Theme: ${theme}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: triggerBg,
+            border: `1px solid ${triggerBorder}`,
+            borderRadius: 8,
+            padding: pad,
+            color: triggerColor,
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontWeight: 600,
+            fontSize: 11,
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            transition: "border-color 0.15s, background 0.15s",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = triggerHoverBorder;
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = triggerBorder;
+          }}
+        >
+          <CurrentIcon style={{ width: 13, height: 13, flexShrink: 0 }} aria-hidden="true" />
+          <ChevronDown
+            style={{ width: 11, height: 11, color: chevronColor, flexShrink: 0 }}
+            aria-hidden="true"
+          />
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        sideOffset={6}
+        className="min-w-[160px] p-1"
+        style={
+          isDark
+            ? { background: "#0f1812", border: "1px solid #2a4030", color: "#c8deca" }
+            : undefined
+        }
+      >
+        {options.map(({ value, label, Icon }) => {
+          const isActive = theme === value;
+          return (
+            <DropdownMenuItem
+              key={value}
+              data-testid={`theme-option-${value}`}
+              onSelect={() => setTheme(value)}
+              className="flex items-center gap-2 cursor-pointer"
+              style={{
+                background: isActive ? itemActiveBg : undefined,
+                color: isActive ? itemActiveColor : (isDark ? "#c8deca" : undefined),
+                fontWeight: isActive ? 600 : 500,
+              }}
+            >
+              <Icon style={{ width: 14, height: 14, flexShrink: 0 }} aria-hidden="true" />
+              <span style={{ flex: 1 }}>{label}</span>
+              {isActive && (
+                <Check style={{ width: 14, height: 14, color: itemActiveColor }} />
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+```
+
+---
+
+## FILE 3 — MODIFY `client/src/lib/i18n.ts`
+
+Step A: Find the `Translations` type/interface definition. Add these two fields:
+```ts
+fieldThemeDark:  string;
+fieldThemeLight: string;
+```
+
+Step B: Find the English translations object. Add:
+```ts
+fieldThemeDark:  "Dark",
+fieldThemeLight: "Light",
+```
+
+Step C: Find the Korean translations object. Add:
+```ts
+fieldThemeDark:  "어둡게 보기",
+fieldThemeLight: "밝게 보기",
+```
+
+Step D: Find the Spanish translations object. Add:
+```ts
+fieldThemeDark:  "Oscuro",
+fieldThemeLight: "Claro",
+```
+
+---
+
+## FILE 4 — MODIFY `client/src/App.tsx`
+
+Step A: Add this import near the top:
+```tsx
+import { FieldThemeProvider } from "@/hooks/use-field-theme";
+```
+
+Step B: Find the `App()` function. Wrap the outermost JSX element with `<FieldThemeProvider>`:
+```tsx
+function App() {
+  return (
+    <FieldThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        ...existing content unchanged...
+      </QueryClientProvider>
+    </FieldThemeProvider>
+  );
+}
+```
+
+Do not change anything else in App.tsx.
+
+---
+
+## FILE 5 — MODIFY `client/src/components/layout/FieldLayout.tsx`
+
+Step A: Remove this line:
+```tsx
+import { F } from "@/lib/fieldTokens";
+```
+
+Step B: Add this import:
+```tsx
+import { useFieldTheme } from "@/hooks/use-field-theme";
+```
+
+Step C: Inside `export function FieldLayout(...)`, add at the top of the function body:
+```tsx
+const { F, theme } = useFieldTheme();
+```
+
+Step D: Find the `useEffect` that currently sets `document.body.dataset.fieldMode = "true"`.
+Replace the entire useEffect with:
+```tsx
+useEffect(() => {
+  document.body.dataset.fieldMode = "true";
+  document.body.dataset.fieldTheme = theme;
+  return () => {
+    delete document.body.dataset.fieldMode;
+    delete document.body.dataset.fieldTheme;
+  };
+}, [theme]);
+```
+
+The rest of FieldLayout JSX stays exactly the same — `F.bg` references now use the live hook value.
+
+---
+
+## FILE 6 — MODIFY `client/src/components/layout/FieldHeader.tsx`
+
+Step A: Remove:
+```tsx
+import { F } from "@/lib/fieldTokens";
+```
+
+Step B: Add:
+```tsx
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+```
+
+Step C: At the top of the `FieldHeader` function body, add:
+```tsx
+const { F, theme } = useFieldTheme();
+```
+
+Step D: Find this exact line in FieldHeader.tsx:
+```tsx
+<LanguageSwitcher theme="dark" compact={true} />
+```
+Replace with:
+```tsx
+<FieldThemeSwitcher compact={true} />
+<LanguageSwitcher theme={theme} compact={true} />
+```
+
+All other `F.*` usages in the file automatically use live tokens — no further changes needed.
+
+---
+
+## FILE 7 — MODIFY `client/src/pages/field/FieldHome.tsx`
+
+This file currently has NO F import and NO useFieldTheme. All styles are hardcoded hex.
+
+Step A: Add these imports at the top:
+```tsx
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
+```
+
+Step B: Add `F: FieldToken` to the `CardDef` type:
+```tsx
+type CardDef = {
+  testId: string;
+  emoji: string;
+  emojiBg: string;
+  accentColor: string;
+  title: string;
+  tags: string[];
+  tagStyle: React.CSSProperties;
+  route: string;
+  F: FieldToken;   // ← add this
+};
+```
+
+Step C: Add `F: FieldToken` to the `ActionCard` function props:
+```tsx
+function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick, F }: CardDef & { onClick: () => void }) {
+```
+
+Step D: In `ActionCard`, make these exact replacements:
+
+Replace:
+```tsx
+background: "#162019",
+border: `1px solid ${hovered ? accentColor + "55" : "#2a4030"}`,
+```
+With:
+```tsx
+background: F.surface2,
+border: `1px solid ${hovered ? accentColor + "55" : F.borderStrong}`,
+```
+
+Replace:
+```tsx
+color: "#e2f0e5", margin: "0 0 8px",
+```
+With:
+```tsx
+color: F.text, margin: "0 0 8px",
+```
+
+Replace:
+```tsx
+color: hovered ? accentColor : "#4a7052",
+```
+(the arrow `→` span color — there is exactly one of these)
+With:
+```tsx
+color: hovered ? accentColor : F.textDim,
+```
+
+Step E: In the `FieldHome` component function body, add at the top:
+```tsx
+const { F } = useFieldTheme();
+```
+
+Step F: In `FieldHome`, pass `F` into every `CardDef` object inside the `CARDS` array.
+Each card object currently has fields like `testId`, `emoji`, etc.
+Add `F` to every card:
+```tsx
+{
+  testId: "tile-receive",
+  F,           // ← add this to every card object
+  emoji: "📦",
+  ...
+},
+```
+
+Step G: In `FieldHome`, make these exact replacements in the JSX heading block:
+
+Replace:
+```tsx
+color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif",
+```
+(the `⚡ {t.fieldActions}` label color)
+With:
+```tsx
+color: F.warning, fontFamily: "'Barlow Condensed', sans-serif",
+```
+
+Replace:
+```tsx
+color: "#e2f0e5", letterSpacing: 1,
+```
+(the `h1` color)
+With:
+```tsx
+color: F.text, letterSpacing: 1,
+```
+
+Replace:
+```tsx
+fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif"
+```
+(the subtitle paragraph)
+With:
+```tsx
+fontSize: 13, color: F.textDim, margin: 0, fontFamily: "'Barlow', sans-serif"
+```
+
+Step H: In `FieldHome`, pass `F` into `ActionCard`:
+```tsx
+<ActionCard
+  key={card.testId}
+  {...card}
+  onClick={() => navigate(card.route)}
+/>
+```
+This already spreads `card` which now includes `F` — no further change needed.
+
+---
+
+## FILE 8 — MODIFY `client/src/pages/Login.tsx`
+
+Step A: Add imports at the top:
+```tsx
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+```
+
+Step B: Inside `export default function Login()`, add at the very top of the function body:
+```tsx
+const { F, theme } = useFieldTheme();
+```
+
+Step C: The file has `const CSS = \`...\`` as a module-level constant string.
+Move `CSS` INSIDE the `Login` function body (after the `useFieldTheme` call) and make it dynamic:
+
+Replace the static `const CSS = \`...\`` block (which contains `.vs-input`, `.vs-btn` etc.)
+with this dynamic version inside the function:
+```tsx
+const CSS = `
+@keyframes vs-fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vs-fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vs-flicker {
+  0%,95%,97%,100% { opacity: 1; }
+  96%             { opacity: 0.55; }
+  98%             { opacity: 0.75; }
+}
+@keyframes vs-pulse-dot {
+  0%,100% { transform: scale(1);    opacity: 1; }
+  50%     { transform: scale(1.35); opacity: 0.6; }
+}
+@keyframes vs-arrow-slide {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+.vs-logo      { animation: vs-fadeDown 0.5s ease both; }
+.vs-card      { animation: vs-fadeUp   0.5s ease 0.1s both; }
+.vs-k         { animation: vs-flicker  6s ease-in-out 2s infinite; }
+.vs-pulse-dot { animation: vs-pulse-dot 2.5s ease-in-out infinite; }
+.vs-btn:hover .vs-arrow { animation: vs-arrow-slide 0.6s ease infinite; }
+.vs-input {
+  background: ${F.surface};
+  border: 1px solid ${F.borderStrong};
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: ${F.text};
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+.vs-input::placeholder { color: ${F.textDim}; }
+.vs-input:focus {
+  border-color: ${F.accent};
+  box-shadow: 0 0 0 3px ${F.accentBg};
+}
+.vs-btn {
+  width: 100%;
+  height: 48px;
+  background: ${F.accent};
+  border: none;
+  border-radius: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: ${F.accentText};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 0 24px ${F.accentBg};
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.vs-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 0 36px ${F.accentBorder};
+  transform: translateY(-1px);
+}
+.vs-btn:disabled {
+  background: ${F.accentBg};
+  color: ${F.textDim};
+  cursor: not-allowed;
+  box-shadow: none;
+}
+`;
+```
+
+Step D: `BG_STYLE`, `GRID_STYLE`, `DIAGONAL_STYLE`, `GLOW_STYLE` are module-level constants.
+Move them INSIDE the `Login` function (after the hook call) and make `BG_STYLE` dynamic:
+
+```tsx
+const BG_STYLE: React.CSSProperties = {
+  minHeight: "100vh",
+  background: F.bg,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  position: "relative",
+  overflow: "hidden",
+  fontFamily: "'Barlow', sans-serif",
+};
+```
+
+`GRID_STYLE`, `DIAGONAL_STYLE`, `GLOW_STYLE` — keep their values unchanged (green tint works in both themes).
+
+Step E: Find the login card `<div>` that currently has `background: "#0b100d"` (or similar dark hex).
+Replace it with `background: F.surface`.
+
+Step F: Find label texts that have `color: "#527856"`. Replace with `color: F.textMuted`.
+
+Step G: Find the footer/link texts that have `color: "#2b3f2e"`. Replace with `color: F.textDim`.
+
+Step H: Find the existing top-right controls area. Currently it is:
+```tsx
+<div style={{ position: "absolute", top: 16, right: 16, zIndex: 50 }}>
+  <LanguageSwitcher theme="dark" />
+</div>
+```
+Replace with:
+```tsx
+<div style={{ position: "absolute", top: 16, right: 16, zIndex: 50, display: "flex", gap: 8 }}>
+  <FieldThemeSwitcher />
+  <LanguageSwitcher theme={theme} />
+</div>
+```
+If the exact wrapper doesn't match, find where `<LanguageSwitcher theme="dark" />` appears in Login.tsx and add `<FieldThemeSwitcher />` before it, and change `theme="dark"` to `theme={theme}`.
+
+---
+
+## FILE 9 — MODIFY `client/src/pages/Home.tsx`
+
+Step A: Add import:
+```tsx
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
+```
+
+Step B: The file has module-level `const BG_STYLE`. Move it inside `export default function Home()` and make it dynamic.
+
+Step C: At the top of `export default function Home()`, add:
+```tsx
+const { F, theme } = useFieldTheme();
+```
+
+Step D: Replace the `BG_STYLE` definition (after moving inside the function):
+```tsx
+const BG_STYLE: React.CSSProperties = {
+  minHeight: "100vh",
+  background: F.bg,
+  display: "flex",
+  flexDirection: "column",
+  position: "relative",
+  overflow: "hidden",
+  fontFamily: "'Barlow', sans-serif",
+};
+```
+
+Step E: `SquareCard` and `WideCard` need to accept an `F: FieldToken` prop.
+Add `F: FieldToken` to both `SquareCardProps` and `WideCardProps` interfaces.
+Add `F` to both function signatures.
+
+Step F: In `SquareCard`, make these replacements:
+
+Replace:
+```tsx
+background: locked ? "#111815" : "#162019",
+border: `1px solid ${locked ? "#1e2d22" : hovered ? accentColor : "#2a4030"}`,
+```
+With:
+```tsx
+background: locked ? F.surface : F.surface2,
+border: `1px solid ${locked ? F.border : hovered ? accentColor : F.borderStrong}`,
+```
+
+Replace:
+```tsx
+color: locked ? "#4a7052" : "#e2f0e5", margin: 0,
+```
+(the card title `<p>` color)
+With:
+```tsx
+color: locked ? F.textDim : F.text, margin: 0,
+```
+
+Replace:
+```tsx
+color: "#4a7052", whiteSpace: "nowrap",
+```
+(the locked label color)
+With:
+```tsx
+color: F.textDim, whiteSpace: "nowrap",
+```
+
+Replace (the arrow `→` span):
+```tsx
+color: hovered ? accentColor : "#4a7052",
+```
+With:
+```tsx
+color: hovered ? accentColor : F.textDim,
+```
+
+Step G: Apply the same replacements to `WideCard` — it has the same hardcoded values.
+
+Step H: In `export default function Home()` JSX, find the `<header>` element.
+It currently contains:
+```tsx
+background: "#0d1410",
+borderBottom: "1px solid #2a4030",
+```
+Replace with:
+```tsx
+background: F.bg,
+borderBottom: `1px solid ${F.borderStrong}`,
+```
+
+Step I: In the header, find:
+```tsx
+<LanguageSwitcher theme="dark" />
+```
+Replace with:
+```tsx
+<FieldThemeSwitcher />
+<LanguageSwitcher theme={theme} />
+```
+
+Step J: In the `<header>`, find the logout button colors:
+```tsx
+color: "#4a7052", fontSize: 13,
+```
+and the hover handlers:
+```tsx
+onMouseEnter={e => (e.currentTarget.style.color = "#7aab82")}
+onMouseLeave={e => (e.currentTarget.style.color = "#4a7052")}
+```
+Replace with:
+```tsx
+color: F.textDim, fontSize: 13,
+```
+```tsx
+onMouseEnter={e => (e.currentTarget.style.color = F.textMuted)}
+onMouseLeave={e => (e.currentTarget.style.color = F.textDim)}
+```
+
+Step K: In the greeting section, replace:
+```tsx
+color: "#e2f0e5",
+```
+(h1 color)
+With:
+```tsx
+color: F.text,
+```
+
+Replace:
+```tsx
+fontSize: 13, color: "#4a7052", margin: 0,
+```
+(subtitle paragraph)
+With:
+```tsx
+fontSize: 13, color: F.textDim, margin: 0,
+```
+
+Step L: When calling `SquareCard` and `WideCard` in JSX, pass `F={F}` as a prop to each.
+
+---
+
+## FILE 10 — MODIFY `client/src/index.css`
+
+Append the following at the end of the file. Do NOT modify any existing rules:
+
+```css
+/* ── Field/Public light theme overrides ──────────────────────────────────── */
+/* Scoped to body[data-field-theme="light"] — does not affect Admin Mode     */
+
+body[data-field-theme="light"] [role="listbox"] {
+  background: #ffffff !important;
+  border: 1px solid #c4d9c4 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+  color: #111820 !important;
+}
+body[data-field-theme="light"] [role="option"] {
+  color: #111820 !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+}
+body[data-field-theme="light"] [role="option"]:focus,
+body[data-field-theme="light"] [role="option"][data-highlighted] {
+  background: rgba(13,140,58,0.08) !important;
+  color: #0d8c3a !important;
+  outline: none !important;
+}
+body[data-field-theme="light"] [role="option"][data-state="checked"],
+body[data-field-theme="light"] [role="option"][aria-selected="true"] {
+  color: #0d8c3a !important;
+  background: rgba(13,140,58,0.06) !important;
+}
+
+/* Light theme — toast */
+body[data-field-theme="light"] [data-toast-viewport] li:not(.destructive) {
+  background-color: #ffffff !important;
+  border-color: #c4d9c4 !important;
+  color: #111820 !important;
+}
+body[data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-title] {
+  color: #111820 !important;
+}
+body[data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-description] {
+  color: #3d6b47 !important;
+}
+
+/* Light theme — scrollbars */
+body[data-field-theme="light"] { scrollbar-color: rgba(13,140,58,0.18) transparent; }
+body[data-field-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(13,140,58,0.18); }
+```
+
+---
+
+## DO NOT TOUCH (strict)
+
+- `server/` — any file
+- `shared/` — any file
+- `client/src/components/layout/AppLayout.tsx`
+- `client/src/hooks/use-language.tsx`
+- `client/src/pages/field/FieldInventory.tsx`
+- `client/src/pages/field/FieldTransactions.tsx`
+- `client/src/pages/field/FieldMovement.tsx`
+- `client/src/pages/field/FieldCartReview.tsx`
+- `client/src/pages/field/FieldRequestsList.tsx`
+- `client/src/pages/field/DraftMovementsList.tsx`
+- Any Admin Mode page (Dashboard, Inventory, Transactions, Projects, etc.)
+- Any file not listed in the steps above
+
+---
+
+## After completing all changes, verify
+
+1. Run the app and open Login — FieldThemeSwitcher dropdown appears, click it, two options show (Moon/Dark, Sun/Light) with a check on the current selection
+2. Select Light — Login background, card, inputs turn light immediately
+3. Refresh — Light mode persists
+4. Select Dark — returns to original dark appearance (no visual regression)
+5. Open Mode Select (Home) — theme switcher works, cards update
+6. Enter Admin Mode from Mode Select — Admin UI looks exactly the same as before (no switcher, no style change)
+7. Enter Field Mode — FieldHome action cards update in light mode (not stuck dark)
+8. FieldHeader shows both theme switcher and language switcher side by side
+9. FieldInventory, FieldTransactions still load with no errors (they use static F)
+10. No TypeScript errors, no console runtime errors

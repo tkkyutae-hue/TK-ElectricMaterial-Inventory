@@ -17,7 +17,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useFieldCart } from "@/lib/fieldCart";
 import type { CartItem } from "@/lib/fieldCart";
 import { CartPhoto } from "@/pages/field/FieldCartReview";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
 import type { MaterialRequest, Project } from "@shared/schema";
 
 const FONT_COND  = "'Barlow Condensed', sans-serif";
@@ -28,17 +29,20 @@ const FONT_MONO  = "monospace";
 
 type ReqStatus = "requested" | "preparing" | "ready" | "completed" | "cancelled";
 
-const STATUS_CONFIG: Record<ReqStatus, { color: string; bg: string; border: string; dot: string }> = {
-  requested:  { color: F.info,    bg: F.infoBg,    border: F.infoBorder,    dot: F.info    },
-  preparing:  { color: F.warning, bg: F.warningBg, border: F.warningBorder, dot: F.warning },
-  ready:      { color: F.accent,  bg: F.accentBg,  border: F.accentBorder,  dot: F.accent  },
-  completed:  { color: F.textMuted, bg: "rgba(122,171,130,0.08)", border: "rgba(122,171,130,0.25)", dot: F.textMuted },
-  cancelled:  { color: F.danger,  bg: F.dangerBg,  border: F.dangerBorder,  dot: F.danger  },
-};
+function getStatusConfig(F: FieldToken): Record<ReqStatus, { color: string; bg: string; border: string; dot: string }> {
+  return {
+    requested:  { color: F.info,      bg: F.infoBg,    border: F.infoBorder,    dot: F.info      },
+    preparing:  { color: F.warning,   bg: F.warningBg, border: F.warningBorder, dot: F.warning   },
+    ready:      { color: F.accent,    bg: F.accentBg,  border: F.accentBorder,  dot: F.accent    },
+    completed:  { color: F.textMuted, bg: F.accentBg,  border: F.accentBorder,  dot: F.textMuted },
+    cancelled:  { color: F.danger,    bg: F.dangerBg,  border: F.dangerBorder,  dot: F.danger    },
+  };
+}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
-  const cfg = STATUS_CONFIG[status as ReqStatus] ?? STATUS_CONFIG.requested;
+  const { F } = useFieldTheme();
+  const cfg = getStatusConfig(F)[status as ReqStatus] ?? getStatusConfig(F).requested;
   const key = `reqStatus_${status}` as keyof typeof t;
   const label = (t[key] as string | undefined) ?? status.replace(/_/g, " ");
   return (
@@ -57,13 +61,14 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type: string }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const isTransfer = type === "transfer";
   const label = isTransfer ? t.reqType_transfer : t.reqType_issue;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
       padding: "2px 7px", borderRadius: 5,
-      background: isTransfer ? F.warningBg : "rgba(45,219,111,0.08)",
+      background: isTransfer ? F.warningBg : F.accentBg,
       border: `1px solid ${isTransfer ? F.warningBorder : F.accentBorder}`,
       fontSize: 9, fontWeight: 800, color: isTransfer ? F.warning : F.accent,
       fontFamily: FONT_COND, letterSpacing: "0.07em", whiteSpace: "nowrap",
@@ -98,6 +103,7 @@ function StatusActions({
   onStatusChanged: () => void;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [changing, setChanging] = useState<string | null>(null);
@@ -221,6 +227,7 @@ function EditRequestPanel({
   onClose: () => void;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { restoreCart, setEditingRequest } = useFieldCart();
@@ -596,6 +603,7 @@ function RequestCard({
   onStatusChanged: () => void;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -1169,6 +1177,7 @@ function RequestCard({
 
 export default function FieldRequestsList() {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 

@@ -4,6 +4,9 @@
  * Single source of truth for Field UI colors.
  * Used in inline style props throughout Field pages.
  *
+ * F  = dark theme (default)
+ * FL = light theme
+ *
  * Color values are extracted from the existing Field UI palette — nothing invented.
  * Do NOT change values without updating ALL consumers via token reference.
  */
@@ -21,7 +24,7 @@ export const F = {
   // ── Text ──────────────────────────────────────────────────────────────────
   text:         "#e2f0e5",  // primary: headers, item names, values
   textMuted:    "#7aab82",  // secondary: SKUs, categories, metadata
-  textSub:      "#9abda2",  // sub-primary: readable "from" location, size labels (between muted and primary)
+  textSub:      "#9abda2",  // sub-primary: readable "from" location, size labels
   textDim:      "#4a7052",  // labels, placeholder icons, disabled / faint text
 
   // ── Accent (green) ────────────────────────────────────────────────────────
@@ -48,4 +51,45 @@ export const F = {
   infoBorder:   "rgba(91,156,246,0.40)",
 } as const;
 
+export const FL = {
+  // ── Surfaces ──────────────────────────────────────────────────────────────
+  bg:           "#f4f8f5",
+  surface:      "#e8f0ea",
+  surface2:     "#dde8df",
+
+  // ── Borders ───────────────────────────────────────────────────────────────
+  border:       "#c8d9cb",
+  borderStrong: "#afc6b3",
+
+  // ── Text ──────────────────────────────────────────────────────────────────
+  text:         "#1a2e1d",
+  textMuted:    "#3b6b42",
+  textSub:      "#4d7a54",
+  textDim:      "#7aab82",
+
+  // ── Accent (green) ────────────────────────────────────────────────────────
+  accent:       "#1ca84e",
+  accentBg:     "rgba(28,168,78,0.10)",
+  accentBorder: "rgba(28,168,78,0.30)",
+  accentText:   "#ffffff",
+
+  // ── Status ────────────────────────────────────────────────────────────────
+  danger:       "#dc2626",
+  dangerBg:     "rgba(220,38,38,0.08)",
+  dangerBorder: "rgba(220,38,38,0.25)",
+
+  warning:      "#c2790a",
+  warningBg:    "rgba(194,121,10,0.10)",
+  warningBorder:"rgba(194,121,10,0.30)",
+
+  ordered:      "#0284c7",
+  orderedBg:    "rgba(2,132,199,0.10)",
+  orderedBorder:"rgba(2,132,199,0.25)",
+
+  info:         "#2563eb",
+  infoBg:       "rgba(37,99,235,0.10)",
+  infoBorder:   "rgba(37,99,235,0.35)",
+} as const;
+
 export type FieldToken = typeof F;
+export type FieldTheme = "dark" | "light";

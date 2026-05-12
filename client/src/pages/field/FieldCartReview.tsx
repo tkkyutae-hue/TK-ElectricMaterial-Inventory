@@ -17,7 +17,7 @@ import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { Worker } from "@shared/schema";
@@ -27,6 +27,7 @@ import type { Project } from "@shared/schema";
 
 export function CartPhoto({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   const [imgError, setImgError] = useState(false);
+  const { F } = useFieldTheme();
   const base: React.CSSProperties = {
     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
     background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center",
@@ -60,6 +61,7 @@ const FONT_BEBAS = "'Bebas Neue', sans-serif";
 function QtyButton({
   onClick, children, disabled,
 }: { onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+  const { F } = useFieldTheme();
   return (
     <button
       type="button"
@@ -84,6 +86,7 @@ function QtyButton({
 
 function QtyInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [raw, setRaw] = useState(String(value));
+  const { F } = useFieldTheme();
 
   useEffect(() => {
     setRaw(String(value));
@@ -124,6 +127,7 @@ function QtyInput({ value, onChange }: { value: number; onChange: (n: number) =>
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function FieldCartReview({ onClose }: { onClose?: () => void } = {}) {
+  const { F } = useFieldTheme();
   const {
     cartItems, updateQty, removeFromCart, clearCart, restoreCart, totalItems,
     editingRequestId, editingRequestNumber, editingMeta, clearEditingRequest, setEditingRequest,

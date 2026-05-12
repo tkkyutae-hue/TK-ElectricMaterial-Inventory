@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { F } from "@/lib/fieldTokens";
+import { FieldThemeProvider, useFieldTheme } from "@/hooks/use-field-theme";
 import { FieldCartProvider } from "@/lib/fieldCart";
 import { FieldHeader } from "./FieldHeader";
 
@@ -28,21 +28,41 @@ const CSS = `
 }
 `;
 
-export function FieldLayout({ children }: { children: React.ReactNode }) {
+function FieldLayoutInner({ children }: { children: React.ReactNode }) {
+  const { theme, F } = useFieldTheme();
+
   useEffect(() => {
     document.body.dataset.fieldMode = "true";
     return () => { delete document.body.dataset.fieldMode; };
   }, []);
 
+  const isDark = theme === "dark";
+
+  const gridColor = isDark
+    ? "rgba(45,219,111,0.05)"
+    : "rgba(28,168,78,0.06)";
+
+  const glowColor = isDark
+    ? "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,219,111,0.10) 0%, transparent 65%)"
+    : "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(28,168,78,0.06) 0%, transparent 65%)";
+
   return (
-    <FieldCartProvider>
-    <div className="fl-outer" style={{ display: "flex", flexDirection: "column", background: F.bg, position: "relative", overflow: "hidden", fontFamily: "'Barlow', sans-serif" }}>
+    <div
+      className="fl-outer"
+      style={{
+        display: "flex", flexDirection: "column",
+        background: F.bg,
+        position: "relative", overflow: "hidden",
+        fontFamily: "'Barlow', sans-serif",
+        transition: "background 0.2s",
+      }}
+    >
       <style>{CSS}</style>
 
       {/* Grid texture */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: `linear-gradient(rgba(45,219,111,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(45,219,111,0.05) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`,
         backgroundSize: "52px 52px",
       }} />
 
@@ -50,7 +70,7 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       <div style={{
         position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)",
         width: "100%", height: "55vh", pointerEvents: "none", zIndex: 0,
-        background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(45,219,111,0.10) 0%, transparent 65%)",
+        background: glowColor,
       }} />
 
       {/* ── Top header ── */}
@@ -59,7 +79,13 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main
         className="relative"
-        style={{ zIndex: 10, flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", background: F.bg }}
+        style={{
+          zIndex: 10, flex: 1, minHeight: 0,
+          overflowY: "auto", overflowX: "hidden",
+          display: "flex", flexDirection: "column",
+          background: F.bg,
+          transition: "background 0.2s",
+        }}
       >
         <div
           className="px-4 sm:px-6"
@@ -72,6 +98,15 @@ export function FieldLayout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     </div>
-    </FieldCartProvider>
+  );
+}
+
+export function FieldLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <FieldThemeProvider>
+      <FieldCartProvider>
+        <FieldLayoutInner>{children}</FieldLayoutInner>
+      </FieldCartProvider>
+    </FieldThemeProvider>
   );
 }

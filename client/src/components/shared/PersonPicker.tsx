@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import { User, X as XIcon, ChevronDown, Check, Search } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import type { Worker } from "@shared/schema";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(() =>
@@ -73,6 +73,7 @@ export function PersonPicker({
   const { t } = useLanguage();
   const tv = t as any;
   const isMobile = useIsMobile();
+  const { F } = useFieldTheme();
 
   const [open, setOpen]       = useState(false);
   const [query, setQuery]     = useState("");

@@ -4,7 +4,7 @@ import { ArrowLeft, HardHat, Home } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 
 function useClock() {
   const [now, setNow] = useState(new Date());
@@ -18,6 +18,7 @@ function useClock() {
 export function FieldHeader() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
@@ -38,6 +39,7 @@ export function FieldHeader() {
         paddingBottom: 0,
         background: F.bg,
         borderBottom: `1px solid ${F.borderStrong}`,
+        transition: "background 0.2s, border-color 0.2s",
       }}
     >
       {/* Left side */}
@@ -47,17 +49,17 @@ export function FieldHeader() {
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36,
           lineHeight: 1, letterSpacing: 1, display: "flex", gap: 0 }}>
           <span style={{ color: "transparent",
-            WebkitTextStroke: "1.4px rgba(255,255,255,0.85)" }}>T</span>
+            WebkitTextStroke: `1.4px ${F.text}` }}>T</span>
           <span className="fl-k" style={{ color: "transparent",
             WebkitTextStroke: `1.4px ${F.accent}`,
-            filter: "drop-shadow(0 0 8px rgba(45,219,111,0.65)) drop-shadow(0 0 3px rgba(45,219,111,0.4))" }}>K</span>
+            filter: `drop-shadow(0 0 8px ${F.accentBg}) drop-shadow(0 0 3px ${F.accentBorder})` }}>K</span>
         </div>
 
         {/* Field Mode chip */}
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
-          background: "rgba(45,219,111,0.08)",
-          border: "1px solid rgba(45,219,111,0.22)",
+          background: F.accentBg,
+          border: `1px solid ${F.accentBorder}`,
           borderRadius: 20, padding: "3px 10px",
           fontFamily: "'Barlow Condensed', sans-serif",
           fontSize: 11, fontWeight: 700, letterSpacing: 1,
@@ -84,6 +86,9 @@ export function FieldHeader() {
 
       {/* Right side */}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+
+        {/* Dark/Light theme toggle — left of language switcher */}
+        <FieldThemeSwitcher compact={true} />
 
         <LanguageSwitcher theme="dark" compact={true} />
 
@@ -138,7 +143,7 @@ export function FieldHeader() {
               textTransform: "uppercase",
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#c8deca";
+              (e.currentTarget as HTMLButtonElement).style.color = F.text;
               (e.currentTarget as HTMLButtonElement).style.borderColor = F.accentBorder;
             }}
             onMouseLeave={e => {

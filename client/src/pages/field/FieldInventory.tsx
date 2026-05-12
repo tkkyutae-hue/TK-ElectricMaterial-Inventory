@@ -17,7 +17,7 @@ import { FilterChip } from "@/components/shared/FilterChip";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveReelMode } from "@/lib/reelEligibility";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 import FieldCartReview from "./FieldCartReview";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -94,6 +94,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 function FieldStatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const config: Record<string, { label: string; bg: string; color: string; border: string }> = {
     in_stock:     { label: t.inStock,    bg: F.accentBg,   color: F.accent,   border: `1px solid ${F.accentBorder}`  },
     low_stock:    { label: t.lowStock,   bg: F.warningBg,  color: F.warning,  border: `1px solid ${F.warningBorder}` },
@@ -133,6 +134,7 @@ function PillBar({
   displayFn?: (name: string) => string;
   allLabel: string;
 }) {
+  const { F } = useFieldTheme();
   const getLabel = displayFn ?? ((n: string) => n);
 
   return (
@@ -177,6 +179,7 @@ function PillBar({
 // ─── Photo Cell ─────────────────────────────────────────────────────────────
 
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+  const { F } = useFieldTheme();
   if (!imageUrl) {
     return (
       <div style={{ width: 36, height: 36, borderRadius: 8, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -203,13 +206,13 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 
 // ─── Reel Row ────────────────────────────────────────────────────────────────
 
-const REEL_STATUS_DOT: Record<string, { color: string }> = {
-  new:      { color: F.accent   },
-  used:     { color: F.warning  },
-  depleted: { color: F.danger   },
-};
-
 function ReelRow({ reel }: { reel: FieldWireReel }) {
+  const { F } = useFieldTheme();
+  const REEL_STATUS_DOT: Record<string, { color: string }> = {
+    new:      { color: F.accent  },
+    used:     { color: F.warning },
+    depleted: { color: F.danger  },
+  };
   const dot = REEL_STATUS_DOT[reel.status || ""] || { color: F.textMuted };
   return (
     <div style={{
@@ -242,6 +245,7 @@ function ReelRow({ reel }: { reel: FieldWireReel }) {
 
 function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () => void }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const [, navigate] = useLocation();
   const { isManagerOrAbove, canDoMovements } = useAuth();
   const isReelItem = resolveReelMode(item);
@@ -907,6 +911,7 @@ function MobileCatBar({
 
 export default function FieldInventory() {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const rawSearch = useSearch();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();

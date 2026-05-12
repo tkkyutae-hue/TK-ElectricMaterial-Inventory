@@ -17,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfDay, endOfDay, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { EditTransactionDrawer, EditSuccessToast } from "@/components/EditTransactionDrawer";
-import { F } from "@/lib/fieldTokens";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ type MovementTypeFilter = "all" | "receive" | "issue" | "return" | "transfer" | 
 
 function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
   const [broken, setBroken] = useState(false);
+  const { F } = useFieldTheme();
 
   const placeholder = (
     <div style={{
@@ -52,24 +54,28 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 
 // ─── Qty colour helper ────────────────────────────────────────────────────────
 
-function qtyColor(type: string): string {
+function qtyColor(type: string, F: FieldToken): string {
   if (type === "issue")    return F.danger;
   if (type === "transfer") return F.info;
   if (type === "adjust")   return F.warning;
   return F.accent;
 }
 
-// ─── Shared input / label styles ──────────────────────────────────────────────
+// ─── Shared input / label style factories ─────────────────────────────────────
 
-const INPUT_STYLE: React.CSSProperties = {
-  background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7,
-  padding: "8px 10px", color: F.text, fontSize: 12, width: "100%", outline: "none",
-};
+function mkInputStyle(F: FieldToken): React.CSSProperties {
+  return {
+    background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7,
+    padding: "8px 10px", color: F.text, fontSize: 12, width: "100%", outline: "none",
+  };
+}
 
-const LABEL_STYLE: React.CSSProperties = {
-  display: "block", fontSize: 9, fontWeight: 700, color: F.textMuted,
-  textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 5,
-};
+function mkLabelStyle(F: FieldToken): React.CSSProperties {
+  return {
+    display: "block", fontSize: 9, fontWeight: 700, color: F.textMuted,
+    textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: 5,
+  };
+}
 
 // ─── Type Quick-Filter Pill ───────────────────────────────────────────────────
 
@@ -118,6 +124,8 @@ function TypePillFilter({
 
 function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode }) {
   const { icon, style, onFocus, onBlur, ...rest } = props;
+  const { F } = useFieldTheme();
+  const inputStyle = mkInputStyle(F);
   return (
     <div style={{ position: "relative" }}>
       {icon && (
@@ -126,7 +134,7 @@ function FieldInput(props: React.InputHTMLAttributes<HTMLInputElement> & { icon?
         </span>
       )}
       <input
-        style={{ ...INPUT_STYLE, paddingLeft: icon ? 28 : undefined, ...style }}
+        style={{ ...inputStyle, paddingLeft: icon ? 28 : undefined, ...style }}
         onFocus={e => {
           e.currentTarget.style.borderColor = F.accent;
           e.currentTarget.style.boxShadow = `0 0 0 3px ${F.accentBg}`;
@@ -157,20 +165,18 @@ function useIsNarrow() {
   return narrow;
 }
 
-// ─── TH style ─────────────────────────────────────────────────────────────────
-
-const TH: React.CSSProperties = {
-  fontSize: 9, fontWeight: 700, color: F.textMuted,
-  textTransform: "uppercase", letterSpacing: "1px",
-  padding: "10px 8px", whiteSpace: "nowrap", background: F.surface2,
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FieldTransactions() {
   const { user }  = useAuth();
   const { t }     = useLanguage();
+  const { F }     = useFieldTheme();
   const { toast } = useToast();
+  const TH: React.CSSProperties = {
+    fontSize: 9, fontWeight: 700, color: F.textMuted,
+    textTransform: "uppercase", letterSpacing: "1px",
+    padding: "10px 8px", whiteSpace: "nowrap", background: F.surface2,
+  };
   const hasDeletePerm = user?.role === "staff" || user?.role === "manager" || user?.role === "admin";
 
   const urlSearch = useSearch();
@@ -435,7 +441,7 @@ export default function FieldTransactions() {
 
             {/* Row 1: Type quick-filter pills — always visible */}
             <div>
-              <label style={LABEL_STYLE}>{t.colType}</label>
+              <label style={mkLabelStyle(F)}>{t.colType}</label>
               <TypePillFilter value={typeFilter} onChange={v => { setTypeFilter(v); setCurrentPage(1); }} />
             </div>
 
@@ -445,7 +451,7 @@ export default function FieldTransactions() {
                 {/* Search + More-filters button side by side */}
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                   <div style={{ flex: 1 }}>
-                    <label style={LABEL_STYLE}>{t.txSearch}</label>
+                    <label style={mkLabelStyle(F)}>{t.txSearch}</label>
                     <FieldInput
                       type="text"
                       placeholder={t.txSearchPlaceholder}
@@ -497,7 +503,7 @@ export default function FieldTransactions() {
                     {/* From + To */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div>
-                        <label style={LABEL_STYLE}>{t.txFrom}</label>
+                        <label style={mkLabelStyle(F)}>{t.txFrom}</label>
                         <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
                           <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
                             <SelectValue placeholder={t.allFilter} />
@@ -509,7 +515,7 @@ export default function FieldTransactions() {
                         </Select>
                       </div>
                       <div>
-                        <label style={LABEL_STYLE}>{t.txTo}</label>
+                        <label style={mkLabelStyle(F)}>{t.txTo}</label>
                         <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
                           <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
                             <SelectValue placeholder={t.allFilter} />
@@ -523,7 +529,7 @@ export default function FieldTransactions() {
                     </div>
                     {/* Project */}
                     <div>
-                      <label style={LABEL_STYLE}>{t.txProject}</label>
+                      <label style={mkLabelStyle(F)}>{t.txProject}</label>
                       <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
                         <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
                           <SelectValue placeholder={t.allFilter} />
@@ -537,7 +543,7 @@ export default function FieldTransactions() {
                     {/* Date range */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       <div>
-                        <label style={LABEL_STYLE}>{t.txDateFrom}</label>
+                        <label style={mkLabelStyle(F)}>{t.txDateFrom}</label>
                         <FieldInput
                           type="date"
                           value={dateFrom}
@@ -548,7 +554,7 @@ export default function FieldTransactions() {
                         />
                       </div>
                       <div>
-                        <label style={LABEL_STYLE}>{t.txDateTo}</label>
+                        <label style={mkLabelStyle(F)}>{t.txDateTo}</label>
                         <FieldInput
                           type="date"
                           value={dateTo}
@@ -582,7 +588,7 @@ export default function FieldTransactions() {
                 <div className="grid gap-3" style={{ gridTemplateColumns: "2fr 1fr 1fr 1fr" }}>
                   {/* Search */}
                   <div>
-                    <label style={LABEL_STYLE}>{t.txSearch}</label>
+                    <label style={mkLabelStyle(F)}>{t.txSearch}</label>
                     <FieldInput
                       type="text"
                       placeholder={t.txSearchPlaceholder}
@@ -595,7 +601,7 @@ export default function FieldTransactions() {
                   </div>
                   {/* From */}
                   <div>
-                    <label style={LABEL_STYLE}>{t.txFrom}</label>
+                    <label style={mkLabelStyle(F)}>{t.txFrom}</label>
                     <Select value={fromFilter} onValueChange={v => { setFrom(v); setCurrentPage(1); }}>
                       <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-from-filter">
                         <SelectValue placeholder={t.allFilter} />
@@ -608,7 +614,7 @@ export default function FieldTransactions() {
                   </div>
                   {/* To */}
                   <div>
-                    <label style={LABEL_STYLE}>{t.txTo}</label>
+                    <label style={mkLabelStyle(F)}>{t.txTo}</label>
                     <Select value={toFilter} onValueChange={v => { setTo(v); setCurrentPage(1); }}>
                       <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-to-filter">
                         <SelectValue placeholder={t.allFilter} />
@@ -621,7 +627,7 @@ export default function FieldTransactions() {
                   </div>
                   {/* Project */}
                   <div>
-                    <label style={LABEL_STYLE}>{t.txProject}</label>
+                    <label style={mkLabelStyle(F)}>{t.txProject}</label>
                     <Select value={projectFilter} onValueChange={v => { setProj(v); setCurrentPage(1); }}>
                       <SelectTrigger className="w-full h-[37px] text-xs" style={{ background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.text, borderRadius: 7 }} data-testid="field-tx-project-filter">
                         <SelectValue placeholder={t.allFilter} />
@@ -636,7 +642,7 @@ export default function FieldTransactions() {
                 {/* Row 3: Date range */}
                 <div className="grid gap-3" style={{ gridTemplateColumns: "1fr 1fr auto" }}>
                   <div>
-                    <label style={LABEL_STYLE}>{t.txDateFrom}</label>
+                    <label style={mkLabelStyle(F)}>{t.txDateFrom}</label>
                     <FieldInput
                       type="date"
                       value={dateFrom}
@@ -647,7 +653,7 @@ export default function FieldTransactions() {
                     />
                   </div>
                   <div>
-                    <label style={LABEL_STYLE}>{t.txDateTo}</label>
+                    <label style={mkLabelStyle(F)}>{t.txDateTo}</label>
                     <FieldInput
                       type="date"
                       value={dateTo}
@@ -785,7 +791,7 @@ export default function FieldTransactions() {
                           )}
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 22, color: qtyColor(m.movementType), letterSpacing: "-0.01em", lineHeight: 1 }}>
+                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 22, color: qtyColor(m.movementType, F), letterSpacing: "-0.01em", lineHeight: 1 }}>
                             {m.quantity}
                           </span>
                           {item?.unitOfMeasure && (
@@ -962,7 +968,7 @@ export default function FieldTransactions() {
 
                         {/* Qty + Unit (large, high-contrast) */}
                         <td style={{ padding: "12px 8px", whiteSpace: "nowrap", textAlign: "center" }}>
-                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 18, color: qtyColor(m.movementType), letterSpacing: "-0.01em" }}>
+                          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 18, color: qtyColor(m.movementType, F), letterSpacing: "-0.01em" }}>
                             {m.quantity}
                           </span>
                           {item?.unitOfMeasure && (

@@ -89,7 +89,7 @@ export function FieldThemeSwitcher({ compact = false }: SwitcherProps) {
   const triggerHoverBorder = F.accentBorder;
   const chevronColor  = F.textDim;
 
-  const pad = compact ? "4px 8px 4px 9px" : "5px 9px 5px 10px";
+  const pad = compact ? "0 8px 0 9px" : "5px 9px 5px 10px";
 
   const itemActiveBg    = F.accentBg;
   const itemActiveColor = F.accent;
@@ -112,6 +112,7 @@ export function FieldThemeSwitcher({ compact = false }: SwitcherProps) {
             display: "inline-flex",
             alignItems: "center",
             gap: 5,
+            height: compact ? 32 : undefined,
             background: triggerBg,
             border: `1px solid ${triggerBorder}`,
             borderRadius: 8,

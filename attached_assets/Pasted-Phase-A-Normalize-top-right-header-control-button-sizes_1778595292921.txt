@@ -1,0 +1,75 @@
+Phase A — Normalize top-right header control button sizes and spacing.
+
+Goal:
+Make the header control buttons visually consistent across Field/Public screens and Admin screens, without changing layout behavior.
+
+Current issue:
+The theme switcher, language switcher, Back button, Mode Select button, and profile/avatar controls have inconsistent height, padding, border radius, font size, and spacing.
+In Field Mode, the theme/language buttons look smaller than Back and Mode Select.
+
+Important:
+Field/Public header and Admin header may need separate styles.
+Do not force Admin Mode to use the Field theme tokens.
+Do not redesign the header.
+
+Files to inspect:
+- client/src/components/layout/FieldHeader.tsx
+- client/src/hooks/use-field-theme.tsx
+- client/src/hooks/use-language.tsx
+- client/src/components/layout/AppLayout.tsx or Admin header component if Admin header controls are defined there
+- Any shared header button/control component if it exists
+
+Required Field/Public behavior:
+1. FieldHeader top-right controls should use consistent sizing:
+   - height: 32px or 34px
+   - consistent horizontal padding
+   - border-radius: 8px or 10px
+   - font-size: 11px or 12px
+   - icon size: 13px to 14px
+   - gap between controls: 6px to 8px
+
+2. The following FieldHeader controls should visually align:
+   - Theme switcher
+   - Language switcher
+   - Back button
+   - Mode Select button
+   - User/avatar button
+
+3. ThemeSwitcher and LanguageSwitcher should match each other in height and style.
+
+4. Back and Mode Select should not appear oversized compared to theme/language buttons.
+
+5. In light mode:
+   - Background should be light.
+   - Border should use F.borderStrong or F.accentBorder.
+   - Text should use F.textMuted or F.text.
+   - Hover should be subtle but visible.
+
+6. In dark mode:
+   - Existing dark visual style should remain close to current design.
+   - Do not make dark mode look like Admin Mode.
+
+Required Admin behavior:
+1. If Admin header has similar language/theme/mode buttons, normalize sizing separately using Admin design colors.
+2. Do not apply Field F tokens to Admin Mode.
+3. Admin Mode should keep its current light admin UI.
+
+Implementation guidance:
+- Prefer creating small style helper objects or functions instead of duplicating inline button sizes.
+- Example:
+  getFieldHeaderControlStyle(F, theme)
+  getFieldHeaderIconButtonStyle(F, theme)
+
+Do not:
+- Do not change routing.
+- Do not change auth logic.
+- Do not change backend.
+- Do not change Admin sidebar layout.
+- Do not add new features.
+
+Verification:
+- Field Mode header controls have consistent height and alignment.
+- Theme/language buttons are not smaller than Back/Mode Select.
+- Light mode header looks clean.
+- Dark mode header still looks like original Field Mode.
+- Admin Mode remains visually unchanged except if minor button size alignment was intentionally applied with Admin-safe styles.

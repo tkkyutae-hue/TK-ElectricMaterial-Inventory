@@ -85,7 +85,7 @@ export function FieldHeader() {
       </div>
 
       {/* Right side */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
 
         {/* Dark/Light theme toggle — left of language switcher */}
         <FieldThemeSwitcher compact={true} />
@@ -102,8 +102,9 @@ export function FieldHeader() {
                 focus-visible:ring-offset-[#0d1410]"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
+                height: 32,
                 background: F.surface2, border: `1px solid ${F.borderStrong}`,
-                borderRadius: 8, padding: "5px 10px",
+                borderRadius: 8, padding: "0 10px",
                 color: F.textMuted, fontSize: 11,
                 fontFamily: "'Barlow Condensed', sans-serif",
                 fontWeight: 600, letterSpacing: 0.5,
@@ -134,8 +135,9 @@ export function FieldHeader() {
               focus-visible:ring-offset-[#0d1410]"
             style={{
               display: "flex", alignItems: "center", gap: 5,
+              height: 32,
               background: F.surface2, border: `1px solid ${F.borderStrong}`,
-              borderRadius: 8, padding: "5px 10px",
+              borderRadius: 8, padding: "0 10px",
               color: F.textMuted, fontSize: 11,
               fontFamily: "'Barlow Condensed', sans-serif",
               fontWeight: 600, letterSpacing: 0.5,
@@ -158,7 +160,7 @@ export function FieldHeader() {
 
         {/* User avatar */}
         <div style={{
-          width: 28, height: 28, borderRadius: "50%",
+          width: 32, height: 32, borderRadius: "50%",
           background: F.accentBg,
           border: `1px solid ${F.borderStrong}`,
           display: "flex", alignItems: "center", justifyContent: "center",

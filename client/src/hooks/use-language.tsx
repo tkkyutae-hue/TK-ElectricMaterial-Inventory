@@ -67,7 +67,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
   const triggerHoverBorder = isDark ? "rgba(45,219,111,0.40)" : "#cbd5e1";
   const chevronColor  = isDark ? "#4a7052" : "#94a3b8";
 
-  const pad = compact ? "4px 8px 4px 9px" : "5px 9px 5px 10px";
+  const pad = compact ? "0 8px 0 9px" : "5px 9px 5px 10px";
 
   const itemActiveBg    = isDark ? "rgba(45,219,111,0.12)" : "#f0fdf4";
   const itemActiveColor = isDark ? "#2ddb6f"               : "#0f766e";
@@ -83,6 +83,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
+            height: compact ? 32 : undefined,
             background: triggerBg,
             border: `1px solid ${triggerBorder}`,
             borderRadius: 8,

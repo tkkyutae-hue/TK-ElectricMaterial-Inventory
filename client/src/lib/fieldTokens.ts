@@ -55,42 +55,42 @@ export const F_DARK = {
 
 export const F_LIGHT = {
   // ── Surfaces ──────────────────────────────────────────────────────────────
-  bg:           "#f4f8f5",
-  surface:      "#e8f0ea",
-  surface2:     "#dde8df",
+  bg:           "#f6faf6",
+  surface:      "#ffffff",
+  surface2:     "#f8fbf8",
 
   // ── Borders ───────────────────────────────────────────────────────────────
-  border:       "#c8d9cb",
-  borderStrong: "#afc6b3",
+  border:       "#d5e5d5",
+  borderStrong: "#a9c8ad",
 
   // ── Text ──────────────────────────────────────────────────────────────────
-  text:         "#1a2e1d",
-  textMuted:    "#3b6b42",
-  textSub:      "#4d7a54",
-  textDim:      "#7aab82",
+  text:         "#0f1f17",
+  textMuted:    "#315f3b",
+  textSub:      "#3f704a",
+  textDim:      "#647a68",
 
   // ── Accent (green) ────────────────────────────────────────────────────────
-  accent:       "#1ca84e",
-  accentBg:     "rgba(28,168,78,0.10)",
-  accentBorder: "rgba(28,168,78,0.30)",
+  accent:       "#16a34a",
+  accentBg:     "rgba(22,163,74,0.10)",
+  accentBorder: "rgba(22,163,74,0.28)",
   accentText:   "#ffffff",
 
   // ── Status ────────────────────────────────────────────────────────────────
-  danger:       "#dc2626",
-  dangerBg:     "rgba(220,38,38,0.08)",
-  dangerBorder: "rgba(220,38,38,0.25)",
+  danger:       "#c0392b",
+  dangerBg:     "rgba(192,57,43,0.08)",
+  dangerBorder: "rgba(192,57,43,0.22)",
 
-  warning:      "#c2790a",
-  warningBg:    "rgba(194,121,10,0.10)",
-  warningBorder:"rgba(194,121,10,0.30)",
+  warning:      "#b7770d",
+  warningBg:    "rgba(183,119,13,0.08)",
+  warningBorder:"rgba(183,119,13,0.22)",
 
-  ordered:      "#0284c7",
-  orderedBg:    "rgba(2,132,199,0.10)",
-  orderedBorder:"rgba(2,132,199,0.25)",
+  ordered:      "#0369a1",
+  orderedBg:    "rgba(3,105,161,0.08)",
+  orderedBorder:"rgba(3,105,161,0.22)",
 
-  info:         "#2563eb",
-  infoBg:       "rgba(37,99,235,0.10)",
-  infoBorder:   "rgba(37,99,235,0.35)",
+  info:         "#1d4ed8",
+  infoBg:       "rgba(29,78,216,0.08)",
+  infoBorder:   "rgba(29,78,216,0.30)",
 } as const;
 
 export type FieldToken = typeof F_DARK;

@@ -18,7 +18,7 @@ function useClock() {
 export function FieldHeader() {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const { theme, F } = useFieldTheme();
+  const { theme: fieldTheme, F } = useFieldTheme();
   const [location] = useLocation();
   const isFieldHome = location === "/field";
   const now = useClock();
@@ -90,7 +90,7 @@ export function FieldHeader() {
         {/* Dark/Light theme toggle — left of language switcher */}
         <FieldThemeSwitcher compact={true} />
 
-        <LanguageSwitcher theme={theme === "light" ? "light" : "dark"} compact={true} />
+        <LanguageSwitcher theme={fieldTheme} compact={true} />
 
         {/* Back button — sub-pages only */}
         {!isFieldHome && (

@@ -253,3 +253,61 @@ body[data-field-mode] button:active:not([disabled]) {
   transform: scale(0.97);
   transition: transform 0.08s ease;
 }
+
+/* ── Field Mode LIGHT theme overrides ───────────────────────────────────────
+   Applied when data-field-theme="light" is set on <body> by FieldLayout.
+   Overrides the dark-green color values set by the base [data-field-mode] rules.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Toast — readable on light background */
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) {
+  background-color: #f0f7f2 !important;
+  border-color: #afc6b3 !important;
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-title] {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) [data-description] {
+  color: #3b6b42 !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button[toast-close] {
+  color: #3b6b42 !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button[toast-close]:hover {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button:not([toast-close]) {
+  color: #1ca84e !important;
+  text-decoration-color: #1ca84e !important;
+}
+body[data-field-mode][data-field-theme="light"] [data-toast-viewport] li:not(.destructive) button:not([toast-close]):hover {
+  color: #1a2e1d !important;
+  text-decoration-color: #1a2e1d !important;
+}
+
+/* Scrollbars — lighter green tint on light background */
+body[data-field-mode][data-field-theme="light"] { scrollbar-color: rgba(28,168,78,0.20) transparent; }
+body[data-field-mode][data-field-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(28,168,78,0.20); }
+body[data-field-mode][data-field-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(28,168,78,0.40); }
+
+/* Dropdown / listbox — light surface */
+body[data-field-mode][data-field-theme="light"] [role="listbox"] {
+  background: #f4f8f5 !important;
+  border: 1px solid #afc6b3 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14) !important;
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"] {
+  color: #1a2e1d !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"]:focus,
+body[data-field-mode][data-field-theme="light"] [role="option"][data-highlighted] {
+  background: rgba(28,168,78,0.12) !important;
+  color: #1ca84e !important;
+}
+body[data-field-mode][data-field-theme="light"] [role="option"][data-state="checked"],
+body[data-field-mode][data-field-theme="light"] [role="option"][aria-selected="true"] {
+  color: #1ca84e !important;
+  background: rgba(28,168,78,0.08) !important;
+}

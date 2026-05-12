@@ -53,6 +53,8 @@ const en = {
   fieldModeChip:      "Field Mode",
   back:               "Back",
   modeSelect:         "Mode Select",
+  fieldThemeDark:     "Dark",
+  fieldThemeLight:    "Light",
 
   // ── Field home ───────────────────────────────────────────────────────────
   fieldActions:       "Field Actions",
@@ -2261,6 +2263,8 @@ const ko: Translations = {
   fieldModeChip:      "현장 모드",
   back:               "뒤로",
   modeSelect:         "모드 선택",
+  fieldThemeDark:     "어둡게",
+  fieldThemeLight:    "밝게",
 
   fieldActions:       "현장 작업",
   whatToDo:           "무엇을\n해야 하나요?",
@@ -4457,6 +4461,8 @@ const es: Translations = {
   fieldModeChip:      "Modo Campo",
   back:               "Atrás",
   modeSelect:         "Selección de modo",
+  fieldThemeDark:     "Oscuro",
+  fieldThemeLight:    "Claro",
 
   fieldActions:       "Acciones de campo",
   whatToDo:           "¿Qué necesitas\nhacer?",

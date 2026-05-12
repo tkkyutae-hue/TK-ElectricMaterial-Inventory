@@ -33,8 +33,15 @@ function FieldLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.body.dataset.fieldMode = "true";
-    return () => { delete document.body.dataset.fieldMode; };
+    return () => {
+      delete document.body.dataset.fieldMode;
+      delete document.body.dataset.fieldTheme;
+    };
   }, []);
+
+  useEffect(() => {
+    document.body.dataset.fieldTheme = theme;
+  }, [theme]);
 
   const isDark = theme === "dark";
 

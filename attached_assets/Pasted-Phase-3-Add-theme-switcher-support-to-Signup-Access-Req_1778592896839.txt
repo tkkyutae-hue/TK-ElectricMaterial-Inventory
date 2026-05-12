@@ -1,0 +1,65 @@
+Phase 3 — Add theme switcher support to Signup / Access Request screen.
+
+Context:
+Login screen has dark/light theme switcher.
+Mode Select screen has dark/light theme switcher.
+But the Signup / Access Request screen does not have the theme switcher, creating a UX break.
+
+Goal:
+Add the same FieldThemeSwitcher to the Signup / Access Request screen and make its visual styles follow the active theme.
+
+Files to inspect:
+- client/src/pages/Login.tsx
+- Any signup/access-request component or page used from Login.tsx
+- Possible names:
+  - Signup.tsx
+  - Register.tsx
+  - AccessRequest.tsx
+  - RequestAccess.tsx
+  - a conditional form inside Login.tsx
+
+Do not touch:
+- server/
+- shared/
+- Admin Mode
+- FieldMovement
+- FieldInventory
+- FieldTransactions
+- SearchableLocationSelect
+- Auth logic, except visual theme styling
+
+Required behavior:
+1. Signup / Access Request screen should show the same theme switcher as Login.
+2. Place it near the language switcher, consistent with Login.
+3. It should use:
+   <FieldThemeSwitcher />
+   <LanguageSwitcher theme={theme} />
+4. Use useFieldTheme() to read:
+   const { F, theme } = useFieldTheme();
+
+5. Visual styling:
+- Dark mode should remain the existing dark style.
+- Light mode should use F tokens:
+  - page background: F.bg
+  - card background: F.surface
+  - input background: F.surface
+  - border: F.borderStrong or F.border
+  - main text: F.text
+  - label text: F.textMuted
+  - helper/secondary text: F.textDim
+  - accent/button: F.accent / F.accentText
+  - warning/info box should remain readable in both modes
+
+6. If the signup/access request form uses hardcoded dark colors, replace them with F tokens.
+7. If the form shares CSS with Login, make sure the CSS is dynamic and follows F tokens.
+
+Verification:
+- Open Login in light mode.
+- Click access request/signup.
+- Theme switcher is still visible.
+- Signup screen is light and readable.
+- Switch to dark mode from signup screen.
+- Signup screen returns to dark style.
+- Go back to login; selected theme persists.
+- No Admin Mode changes.
+- No runtime errors.

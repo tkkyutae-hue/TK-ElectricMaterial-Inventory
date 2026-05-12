@@ -170,12 +170,14 @@ function useIsNarrow() {
 export default function FieldTransactions() {
   const { user }  = useAuth();
   const { t }     = useLanguage();
-  const { F }     = useFieldTheme();
+  const { F, theme } = useFieldTheme();
   const { toast } = useToast();
   const TH: React.CSSProperties = {
-    fontSize: 9, fontWeight: 700, color: F.textMuted,
+    fontSize: 9, fontWeight: 700, color: theme === "dark" ? F.textSub : F.textMuted,
     textTransform: "uppercase", letterSpacing: "1px",
-    padding: "10px 8px", whiteSpace: "nowrap", background: F.surface2,
+    padding: "10px 8px", whiteSpace: "nowrap",
+    background: theme === "dark" ? F.surface : "#e8f1e8",
+    borderBottom: `2px solid ${F.borderStrong}`,
   };
   const hasDeletePerm = user?.role === "staff" || user?.role === "manager" || user?.role === "admin";
 

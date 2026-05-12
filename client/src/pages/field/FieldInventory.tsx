@@ -915,7 +915,7 @@ function MobileCatBar({
 
 export default function FieldInventory() {
   const { t } = useLanguage();
-  const { F } = useFieldTheme();
+  const { F, theme } = useFieldTheme();
   const rawSearch = useSearch();
   const [, navigate] = useLocation();
   const isMobile = useIsMobile();
@@ -1574,12 +1574,12 @@ export default function FieldInventory() {
                 <col style={{ width: "110px" }} />
               </colgroup>
               <thead>
-                <tr style={{ background: F.surface2, borderBottom: `1px solid ${F.border}` }}>
+                <tr style={{ background: theme === "dark" ? F.surface : "#e8f1e8", borderBottom: `2px solid ${F.borderStrong}` }}>
                   {TABLE_COLS.map(col => (
                     <th
                       key={col.label}
                       className={`px-3 py-2.5 align-middle whitespace-nowrap ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : "text-left"} ${(col as any).cls || ""}`}
-                      style={{ fontSize: 9, fontWeight: 700, color: F.textMuted, textTransform: "uppercase", letterSpacing: "1px" }}
+                      style={{ fontSize: 9, fontWeight: 700, color: theme === "dark" ? F.textSub : F.textMuted, textTransform: "uppercase", letterSpacing: "1px" }}
                     >
                       {col.label}
                     </th>

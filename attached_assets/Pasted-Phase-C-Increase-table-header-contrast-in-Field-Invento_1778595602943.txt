@@ -1,0 +1,92 @@
+Phase C — Increase table header contrast in Field Inventory and Field Transactions.
+
+Goal:
+Improve table header contrast in both light and dark modes.
+Do not change item rows.
+Only adjust table header styling.
+
+Current issue:
+In Field Inventory and Field Transactions, table body rows are acceptable, but table headers are too faint and blend into the background.
+
+Files to inspect:
+- client/src/pages/field/FieldInventory.tsx
+- client/src/pages/field/FieldTransactions.tsx
+- shared field table components if used by both
+
+Do not touch:
+- server/
+- shared/
+- Admin Mode
+- movement logic
+- row rendering logic
+- sorting/filtering behavior
+
+Required behavior:
+
+1. Table header background
+Make table header background slightly stronger than row background.
+
+Light mode:
+- header background should be visibly distinct from body rows.
+- Suggested:
+  background: "#e8f1e8" or a token-based equivalent
+  border-bottom: F.borderStrong
+  header text: F.textMuted or F.text
+
+Dark mode:
+- header background should also be slightly stronger than body rows.
+- Suggested:
+  background: F.surface or a darker surface variant
+  border-bottom: F.borderStrong or F.accentBorder
+  header text: F.textSub or F.textMuted
+
+2. Do not darken item rows
+Only headers:
+- table <thead>
+- header cells
+- column label row
+- filter section headers if visually part of table header
+
+Do not change:
+- item row backgrounds
+- item row hover state
+- status badges
+- quantity colors
+- image cells
+
+3. Theme support
+If these pages currently import static F from fieldTokens:
+- For this task, use the least risky method.
+- If they already support useFieldTheme, use it.
+- If they still import static F, do not convert the entire file unless necessary.
+- You may add minimal useFieldTheme only around header styling if safe.
+
+Preferred:
+- Use active F tokens so light/dark mode both improve.
+- Avoid reintroducing “F is not defined”.
+
+4. Header text
+Header labels like:
+- SKU
+- PHOTO
+- SIZE
+- ITEM
+- CATEGORY
+- QTY / UNIT
+- LOCATION
+- STATUS
+- TYPE
+- FROM → TO
+- PROJECT / PO
+- DATE
+- NOTE
+
+Should be more readable.
+
+Verification:
+- Inventory table header is visibly stronger in light mode.
+- Inventory table body rows unchanged.
+- Transactions table header is visibly stronger in light mode.
+- Transactions table body rows unchanged.
+- Dark mode table headers also have good contrast.
+- No runtime errors.

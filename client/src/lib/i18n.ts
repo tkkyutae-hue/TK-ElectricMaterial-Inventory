@@ -2263,8 +2263,8 @@ const ko: Translations = {
   fieldModeChip:      "현장 모드",
   back:               "뒤로",
   modeSelect:         "모드 선택",
-  fieldThemeDark:     "어둡게",
-  fieldThemeLight:    "밝게",
+  fieldThemeDark:     "어둡게 보기",
+  fieldThemeLight:    "밝게 보기",
 
   fieldActions:       "현장 작업",
   whatToDo:           "무엇을\n해야 하나요?",

@@ -306,7 +306,7 @@ export default function Home() {
         transition: "background 0.2s, border-color 0.2s",
       }}>
         <FieldThemeSwitcher compact={true} />
-        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} />
+        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
 
         <button
           onClick={() => logout()}

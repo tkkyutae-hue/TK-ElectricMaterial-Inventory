@@ -176,7 +176,7 @@ export default function Login() {
       {/* Theme + Language switchers — top right */}
       <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20, display: "flex", alignItems: "center", gap: 6 }}>
         <FieldThemeSwitcher compact={true} />
-        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} />
+        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} compact={true} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 380, padding: "0 24px", position: "relative", zIndex: 1 }}>

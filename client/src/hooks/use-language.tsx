@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Lang, LANGUAGES, TRANSLATIONS, Translations } from "@/lib/i18n";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { F_DARK, F_LIGHT } from "@/lib/fieldTokens";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,16 +62,18 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
 
   const current = LANGUAGES.find(l => l.code === lang) ?? LANGUAGES[0];
 
-  const triggerBg     = isDark ? "#162019" : "#f1f5f9";
-  const triggerBorder = isDark ? "#2a4030" : "#e2e8f0";
-  const triggerColor  = isDark ? "#c8deca" : "#0f172a";
-  const triggerHoverBorder = isDark ? "rgba(45,219,111,0.40)" : "#cbd5e1";
-  const chevronColor  = isDark ? "#4a7052" : "#94a3b8";
+  // compact = field mode (Login, Home, Signup, FieldHeader) → use F tokens
+  // non-compact = admin mode → keep slate/admin palette
+  const FT = isDark ? F_DARK : F_LIGHT;
 
-  const pad = compact ? "0 8px 0 9px" : "5px 9px 5px 10px";
+  const triggerBg          = compact ? FT.surface2          : (isDark ? "#162019" : "#f1f5f9");
+  const triggerBorder      = compact ? FT.borderStrong      : (isDark ? "#2a4030" : "#e2e8f0");
+  const triggerColor       = compact ? FT.textMuted         : (isDark ? "#c8deca" : "#0f172a");
+  const triggerHoverBorder = compact ? FT.accentBorder      : (isDark ? "rgba(45,219,111,0.40)" : "#cbd5e1");
+  const chevronColor       = compact ? FT.textDim           : (isDark ? "#4a7052" : "#94a3b8");
 
-  const itemActiveBg    = isDark ? "rgba(45,219,111,0.12)" : "#f0fdf4";
-  const itemActiveColor = isDark ? "#2ddb6f"               : "#0f766e";
+  const itemActiveBg    = compact ? FT.accentBg   : (isDark ? "rgba(45,219,111,0.12)" : "#f0fdf4");
+  const itemActiveColor = compact ? FT.accent      : (isDark ? "#2ddb6f"              : "#0f766e");
 
   return (
     <DropdownMenu>
@@ -82,12 +85,12 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
+            gap: compact ? 5 : 6,
             height: compact ? 32 : undefined,
             background: triggerBg,
             border: `1px solid ${triggerBorder}`,
             borderRadius: 8,
-            padding: pad,
+            padding: compact ? "0 8px 0 9px" : "5px 9px 5px 10px",
             color: triggerColor,
             fontFamily: "'Barlow Condensed', sans-serif",
             fontWeight: 600,
@@ -110,7 +113,9 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
           <span style={{ fontSize: 13, lineHeight: 1 }} aria-hidden="true">
             {current.flag}
           </span>
-          <span>{isMobile ? current.country : current.code.toUpperCase()}</span>
+          {!compact && (
+            <span>{isMobile ? current.country : current.code.toUpperCase()}</span>
+          )}
           <ChevronDown
             style={{ width: 11, height: 11, color: chevronColor, flexShrink: 0 }}
             aria-hidden="true"

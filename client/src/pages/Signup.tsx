@@ -185,7 +185,7 @@ export default function Signup() {
   const Switchers = (
     <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20, display: "flex", alignItems: "center", gap: 6 }}>
       <FieldThemeSwitcher compact={true} />
-      <LanguageSwitcher theme={fieldTheme} />
+      <LanguageSwitcher theme={fieldTheme} compact={true} />
     </div>
   );
 

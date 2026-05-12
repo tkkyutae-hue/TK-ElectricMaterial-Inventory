@@ -9,6 +9,13 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
+
+  const logoTStroke   = fieldTheme === "light" ? "1.8px rgba(15,31,23,0.50)" : "1.8px rgba(255,255,255,0.85)";
+  const logoKFilter   = fieldTheme === "light"
+    ? "drop-shadow(0 2px 8px rgba(22,163,74,0.22))"
+    : "drop-shadow(0 0 14px rgba(45,219,111,0.70)) drop-shadow(0 0 4px rgba(45,219,111,0.50))";
+  const gridLineColor = fieldTheme === "light" ? "rgba(22,163,74,0.022)" : F.accentBg;
+  const cardShadow    = fieldTheme === "light" ? "0 8px 32px rgba(15,23,42,0.09)" : "0 28px 60px rgba(0,0,0,0.60)";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -108,8 +115,8 @@ export default function Login() {
   const GRID_STYLE: React.CSSProperties = {
     position: "absolute", inset: 0, pointerEvents: "none",
     backgroundImage: `
-      linear-gradient(${F.accentBg} 1px, transparent 1px),
-      linear-gradient(90deg, ${F.accentBg} 1px, transparent 1px)
+      linear-gradient(${gridLineColor} 1px, transparent 1px),
+      linear-gradient(90deg, ${gridLineColor} 1px, transparent 1px)
     `,
     backgroundSize: "56px 56px",
     zIndex: 0,
@@ -118,7 +125,7 @@ export default function Login() {
   const DIAGONAL_STYLE: React.CSSProperties = {
     position: "absolute", inset: 0, pointerEvents: "none",
     backgroundImage: `repeating-linear-gradient(-45deg, ${F.accent} 0px, ${F.accent} 1px, transparent 1px, transparent 32px)`,
-    opacity: 0.018,
+    opacity: fieldTheme === "light" ? 0.006 : 0.018,
     zIndex: 0,
   };
 
@@ -127,7 +134,9 @@ export default function Login() {
     top: "-80px", left: "50%",
     transform: "translateX(-50%)",
     width: 900, height: 700,
-    background: `radial-gradient(ellipse, ${F.accentBg} 0%, transparent 60%)`,
+    background: fieldTheme === "light"
+      ? `radial-gradient(ellipse, rgba(22,163,74,0.05) 0%, transparent 60%)`
+      : `radial-gradient(ellipse, ${F.accentBg} 0%, transparent 60%)`,
     pointerEvents: "none",
     zIndex: 0,
   };
@@ -179,52 +188,52 @@ export default function Login() {
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 88, lineHeight: 1, letterSpacing: 2, display: "flex", justifyContent: "center", gap: 2 }}>
             <span style={{
               color: "transparent",
-              WebkitTextStroke: "1.8px rgba(255,255,255,0.85)",
+              WebkitTextStroke: logoTStroke,
             }}>T</span>
             <span className="vs-k" style={{
               color: "transparent",
-              WebkitTextStroke: "1.8px #2ddb6f",
-              filter: "drop-shadow(0 0 14px rgba(45,219,111,0.7)) drop-shadow(0 0 4px rgba(45,219,111,0.5))",
+              WebkitTextStroke: `1.8px ${F.accent}`,
+              filter: logoKFilter,
             }}>K</span>
           </div>
 
           {/* ELECTRIC LLC rule */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, marginBottom: 6 }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(45,219,111,0.22)" }} />
+            <div style={{ flex: 1, height: 1, background: F.accentBorder }} />
             <span style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 11,
               letterSpacing: 6,
-              color: "rgba(45,219,111,0.55)",
+              color: F.textMuted,
               textTransform: "uppercase",
               whiteSpace: "nowrap",
             }}>ELECTRIC LLC</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(45,219,111,0.22)" }} />
+            <div style={{ flex: 1, height: 1, background: F.accentBorder }} />
           </div>
 
           {/* URL */}
-          <div style={{ fontSize: 10, color: "#2b3f2e", marginBottom: 14, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
+          <div style={{ fontSize: 10, color: F.textDim, marginBottom: 14, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
             www.tkglobal.us
           </div>
 
           {/* Badge */}
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 7,
-            background: "rgba(45,219,111,0.08)",
-            border: "1px solid rgba(45,219,111,0.22)",
+            background: F.accentBg,
+            border: `1px solid ${F.accentBorder}`,
             borderRadius: 20, padding: "5px 14px",
           }}>
             <span className="vs-pulse-dot" style={{
               display: "inline-block",
               width: 7, height: 7, borderRadius: "50%",
-              background: "#2ddb6f",
-              boxShadow: "0 0 6px #2ddb6f",
+              background: F.accent,
+              boxShadow: `0 0 6px ${F.accent}`,
               flexShrink: 0,
             }} />
             <span style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 11, letterSpacing: 2,
-              color: "rgba(45,219,111,0.7)", textTransform: "uppercase",
+              color: F.textMuted, textTransform: "uppercase",
             }}>{t.materialInventorySystem}</span>
           </div>
         </div>
@@ -234,12 +243,12 @@ export default function Login() {
           background: F.surface,
           border: `1px solid ${F.borderStrong}`,
           borderRadius: 20,
-          boxShadow: "0 28px 60px rgba(0,0,0,0.6)",
+          boxShadow: cardShadow,
           overflow: "hidden",
           transition: "background 0.2s, border-color 0.2s",
         }}>
           {/* Top shine */}
-          <div style={{ height: 2, background: "linear-gradient(90deg, transparent, #2ddb6f, transparent)" }} />
+          <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${F.accent}, transparent)` }} />
 
           <div style={{ padding: 28 }}>
             <form onSubmit={handleSubmit}>
@@ -343,7 +352,7 @@ export default function Login() {
                 onClick={() => navigate("/signup")}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
-                  color: "#2ddb6f", fontWeight: 600, fontSize: 13,
+                  color: F.accent, fontWeight: 600, fontSize: 13,
                   fontFamily: "inherit", padding: 0,
                   textDecoration: "underline", textUnderlineOffset: 3,
                 }}

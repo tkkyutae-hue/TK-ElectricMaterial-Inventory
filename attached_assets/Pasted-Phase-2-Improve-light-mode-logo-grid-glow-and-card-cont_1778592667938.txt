@@ -1,0 +1,96 @@
+Phase 2 — Improve light mode logo, grid, glow, and card contrast.
+
+Context:
+Dark/light theme already works for Login and Mode Select.
+F_LIGHT tokens were improved in Phase 1.
+
+Goal:
+Improve light mode visual contrast without redesigning the screens.
+Dark mode must look the same as before.
+
+Files to inspect/modify:
+- client/src/pages/Login.tsx
+- client/src/pages/Home.tsx
+- client/src/components/layout/FieldHeader.tsx if it contains the TK logo for Field Mode
+- client/src/pages/field/FieldHome.tsx only if card contrast needs small light-mode shadow improvement
+
+Do not touch:
+- server/
+- shared/
+- Admin Mode
+- FieldMovement
+- SearchableLocationSelect
+- FieldInventory
+- FieldTransactions
+- FieldCartReview
+- FieldRequestsList
+- DraftMovementsList
+
+Required changes:
+
+1. Logo contrast in light mode
+Any TK logo or large neon text that uses glow/stroke should have theme-specific styling.
+
+Dark mode:
+- Keep current neon/glow style.
+
+Light mode:
+- Reduce green glow.
+- Use stronger stroke or text shadow so the logo is readable on light background.
+- Avoid overly bright white glow on light background.
+
+Suggested pattern:
+const logoTextShadow =
+  theme === "light"
+    ? "0 2px 10px rgba(22,163,74,0.18)"
+    : "0 0 18px rgba(45,219,111,0.65)";
+
+const logoStroke =
+  theme === "light"
+    ? "1px rgba(15,31,23,0.35)"
+    : "1px rgba(226,240,229,0.85)";
+
+Apply this only where relevant.
+Do not force this exact code if the file structure differs, but keep the same visual intent.
+
+2. Grid opacity in light mode
+Current dark green grid works in dark mode but is too visible or visually noisy in light mode.
+
+Dark mode:
+- Keep current grid opacity and style.
+
+Light mode:
+- Reduce grid opacity.
+- Suggested opacity: 0.02 to 0.025 for grid lines.
+- Reduce central glow intensity by about 40–60% in light mode.
+
+3. Login screen
+In light mode:
+- Logo should be readable.
+- Footer text should be readable.
+- Login card should remain clean and visible.
+- Disabled login button should still be readable enough.
+- Language and theme dropdowns should remain readable.
+
+4. Mode Select screen
+In light mode:
+- Cards should stand out from the background.
+- If cards look too flat, add a subtle light-mode shadow:
+  boxShadow: theme === "light"
+    ? "0 12px 32px rgba(15,23,42,0.08)"
+    : existing shadow or none
+- Keep green accent.
+- Admin Mode card on Mode Select may use light card styling, but entering Admin Mode must not change Admin UI.
+
+5. FieldHome cards
+If FieldHome light cards still look too flat:
+- Use F.surface or F.surface2 consistently.
+- Add subtle light-mode shadow only if needed.
+- Keep dark mode unchanged.
+
+Verification:
+- Login light mode logo and small text are readable.
+- Mode Select light mode cards are visually separated from the background.
+- Dark mode still looks like the original design.
+- Admin Mode remains unchanged.
+- No runtime errors.

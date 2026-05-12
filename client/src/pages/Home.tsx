@@ -28,9 +28,11 @@ interface SquareCardProps {
   locked?: boolean;
   lockedLabel?: string;
   F: FieldToken;
+  hoverShadow: string;
+  restShadow: string;
 }
 
-function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4, locked = false, lockedLabel = "Manager+ only", F }: SquareCardProps) {
+function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4, locked = false, lockedLabel = "Manager+ only", F, hoverShadow, restShadow }: SquareCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -52,7 +54,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         padding: 0,
         cursor: locked ? "not-allowed" : "pointer",
         transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
-        boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        boxShadow: !locked && hovered ? hoverShadow : restShadow,
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.2s",
         overflow: "hidden",
         display: "flex",
@@ -145,9 +147,11 @@ interface WideCardProps {
   locked?: boolean;
   lockedLabel?: string;
   F: FieldToken;
+  hoverShadow: string;
+  restShadow: string;
 }
 
-function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, locked = false, lockedLabel = "Manager+ only", F }: WideCardProps) {
+function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, locked = false, lockedLabel = "Manager+ only", F, hoverShadow, restShadow }: WideCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -168,7 +172,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
         padding: 0,
         cursor: locked ? "not-allowed" : "pointer",
         transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
-        boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        boxShadow: !locked && hovered ? hoverShadow : restShadow,
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.2s",
         overflow: "hidden",
         opacity: locked ? 0.6 : 1,
@@ -238,6 +242,10 @@ export default function Home() {
   const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
 
+  const gridLineColor = fieldTheme === "light" ? "rgba(22,163,74,0.022)" : F.accentBg;
+  const hoverShadow   = fieldTheme === "light" ? "0 8px 28px rgba(15,23,42,0.10)" : "0 8px 28px rgba(0,0,0,0.45)";
+  const restShadow    = fieldTheme === "light" ? "0 2px 12px rgba(15,23,42,0.07)" : "none";
+
   const displayName = user?.name ?? (user as any)?.firstName ?? user?.email ?? "User";
   const firstName = displayName.split(" ")[0].toUpperCase();
   const timeKey = getTimeKey();
@@ -265,7 +273,9 @@ export default function Home() {
     top: 0, left: "50%",
     transform: "translateX(-50%)",
     width: "100%", height: "65vh",
-    background: `radial-gradient(ellipse 80% 65% at 50% 0%, ${F.accentBg} 0%, transparent 65%)`,
+    background: fieldTheme === "light"
+      ? `radial-gradient(ellipse 80% 65% at 50% 0%, rgba(22,163,74,0.05) 0%, transparent 65%)`
+      : `radial-gradient(ellipse 80% 65% at 50% 0%, ${F.accentBg} 0%, transparent 65%)`,
     pointerEvents: "none",
     zIndex: 0,
   };
@@ -273,8 +283,8 @@ export default function Home() {
   const gridStyle: React.CSSProperties = {
     position: "absolute", inset: 0, pointerEvents: "none",
     backgroundImage: `
-      linear-gradient(${F.accentBg} 1px, transparent 1px),
-      linear-gradient(90deg, ${F.accentBg} 1px, transparent 1px)
+      linear-gradient(${gridLineColor} 1px, transparent 1px),
+      linear-gradient(90deg, ${gridLineColor} 1px, transparent 1px)
     `,
     backgroundSize: "52px 52px",
     zIndex: 0,
@@ -377,6 +387,8 @@ export default function Home() {
                   color: F.accent,
                 }}
                 F={F}
+                hoverShadow={hoverShadow}
+                restShadow={restShadow}
               />
 
               <SquareCard
@@ -395,6 +407,8 @@ export default function Home() {
                 }}
                 locked={!canAccessAdminMode}
                 F={F}
+                hoverShadow={hoverShadow}
+                restShadow={restShadow}
               />
             </div>
 
@@ -414,6 +428,8 @@ export default function Home() {
               }}
               locked={!canAccessAdminMode}
               F={F}
+              hoverShadow={hoverShadow}
+              restShadow={restShadow}
             />
           </div>
         </div>

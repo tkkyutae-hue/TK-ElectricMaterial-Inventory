@@ -23,9 +23,12 @@ type CardDef = {
   route: string;
 };
 
-function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick, F }: CardDef & { onClick: () => void; F: FieldToken }) {
+function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick, F, theme }: CardDef & { onClick: () => void; F: FieldToken; theme: "dark" | "light" }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
+
+  const hoverShadow = theme === "light" ? "0 8px 28px rgba(15,23,42,0.10)" : "0 8px 28px rgba(0,0,0,0.45)";
+  const restShadow  = theme === "light" ? "0 2px 10px rgba(15,23,42,0.06)" : "none";
 
   return (
     <button
@@ -44,7 +47,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
         padding: 0,
         cursor: "pointer",
         transform: hovered && !pressed ? "translateY(-2px)" : pressed ? "scale(0.99)" : "none",
-        boxShadow: hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
+        boxShadow: hovered ? hoverShadow : restShadow,
         transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
         overflow: "hidden",
       }}
@@ -97,7 +100,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
 export default function FieldHome() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
-  const { F } = useFieldTheme();
+  const { F, theme: fieldTheme } = useFieldTheme();
 
   const CARDS: CardDef[] = [
     {
@@ -215,6 +218,7 @@ export default function FieldHome() {
               key={card.testId}
               {...card}
               F={F}
+              theme={fieldTheme}
               onClick={() => navigate(card.route)}
             />
           ))}

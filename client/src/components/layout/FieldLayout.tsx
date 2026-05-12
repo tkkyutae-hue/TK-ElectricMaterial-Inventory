@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { FieldThemeProvider, useFieldTheme } from "@/hooks/use-field-theme";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 import { FieldCartProvider } from "@/lib/fieldCart";
 import { FieldHeader } from "./FieldHeader";
 
@@ -35,13 +35,8 @@ function FieldLayoutInner({ children }: { children: React.ReactNode }) {
     document.body.dataset.fieldMode = "true";
     return () => {
       delete document.body.dataset.fieldMode;
-      delete document.body.dataset.fieldTheme;
     };
   }, []);
-
-  useEffect(() => {
-    document.body.dataset.fieldTheme = theme;
-  }, [theme]);
 
   const isDark = theme === "dark";
 
@@ -110,10 +105,8 @@ function FieldLayoutInner({ children }: { children: React.ReactNode }) {
 
 export function FieldLayout({ children }: { children: React.ReactNode }) {
   return (
-    <FieldThemeProvider>
-      <FieldCartProvider>
-        <FieldLayoutInner>{children}</FieldLayoutInner>
-      </FieldCartProvider>
-    </FieldThemeProvider>
+    <FieldCartProvider>
+      <FieldLayoutInner>{children}</FieldLayoutInner>
+    </FieldCartProvider>
   );
 }

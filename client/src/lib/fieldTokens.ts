@@ -93,3 +93,6 @@ export const FL = {
 
 export type FieldToken = typeof F;
 export type FieldTheme = "dark" | "light";
+
+export const F_DARK: FieldToken = F;
+export const F_LIGHT: FieldToken = FL;

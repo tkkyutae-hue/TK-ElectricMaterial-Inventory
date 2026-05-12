@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
 
 const CSS = `
 @keyframes fh-fadeUp {
@@ -21,7 +23,7 @@ type CardDef = {
   route: string;
 };
 
-function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick }: CardDef & { onClick: () => void }) {
+function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle, route, onClick, F }: CardDef & { onClick: () => void; F: FieldToken }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -36,8 +38,8 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
       style={{
         width: "100%",
         textAlign: "left",
-        background: "#162019",
-        border: `1px solid ${hovered ? accentColor + "55" : "#2a4030"}`,
+        background: F.surface2,
+        border: `1px solid ${hovered ? accentColor + "55" : F.borderStrong}`,
         borderRadius: 14,
         padding: 0,
         cursor: "pointer",
@@ -63,7 +65,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 19, fontWeight: 700,
-            color: "#e2f0e5", margin: "0 0 8px",
+            color: F.text, margin: "0 0 8px",
             letterSpacing: 0.3,
           }}>{title}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -81,7 +83,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
 
         <span style={{
           fontSize: 20, flexShrink: 0,
-          color: hovered ? accentColor : "#4a7052",
+          color: hovered ? accentColor : F.textDim,
           transition: "color 0.15s, transform 0.15s",
           transform: hovered ? "translateX(3px)" : "translateX(0)",
           display: "inline-block",
@@ -95,6 +97,7 @@ function ActionCard({ testId, emoji, emojiBg, accentColor, title, tags, tagStyle
 export default function FieldHome() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
 
   const CARDS: CardDef[] = [
     {
@@ -142,14 +145,14 @@ export default function FieldHome() {
     {
       testId: "tile-transactions",
       emoji: "📋",
-      emojiBg: "rgba(82,120,86,0.15)",
-      accentColor: "#527856",
+      emojiBg: F.accentBg,
+      accentColor: F.textMuted,
       title: t.transactionsCard,
       tags: [t.tagHistory, t.tagFilter],
       tagStyle: {
-        background: "rgba(82,120,86,0.10)",
-        border: "1px solid rgba(82,120,86,0.20)",
-        color: "#527856",
+        background: F.accentBg,
+        border: `1px solid ${F.accentBorder}`,
+        color: F.textMuted,
       },
       route: "/field/transactions",
     },
@@ -179,7 +182,7 @@ export default function FieldHome() {
         <div style={{ marginBottom: 28 }}>
           <p style={{
             fontSize: 11, textTransform: "uppercase", letterSpacing: 2,
-            color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif",
+            color: F.warning, fontFamily: "'Barlow Condensed', sans-serif",
             fontWeight: 600, margin: "0 0 6px",
             display: "flex", alignItems: "center", gap: 5,
           }}>
@@ -189,7 +192,7 @@ export default function FieldHome() {
             fontFamily: "'Bebas Neue', sans-serif",
             fontSize: "clamp(32px, 7vw, 48px)",
             lineHeight: 1.05, margin: "0 0 8px",
-            color: "#e2f0e5", letterSpacing: 1,
+            color: F.text, letterSpacing: 1,
           }}>
             {t.whatToDo.split("\n").map((line, i) => (
               <span key={i} style={{
@@ -200,7 +203,7 @@ export default function FieldHome() {
               }}>{line}</span>
             ))}
           </h1>
-          <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
+          <p style={{ fontSize: 13, color: F.textDim, margin: 0, fontFamily: "'Barlow', sans-serif" }}>
             {t.selectAction}
           </p>
         </div>
@@ -211,6 +214,7 @@ export default function FieldHome() {
             <ActionCard
               key={card.testId}
               {...card}
+              F={F}
               onClick={() => navigate(card.route)}
             />
           ))}

@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { FieldLayout } from "@/components/layout/FieldLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { LanguageProvider, useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { FieldThemeProvider } from "@/hooks/use-field-theme";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 
@@ -258,10 +259,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <FieldThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </FieldThemeProvider>
       </LanguageProvider>
     </QueryClientProvider>
   );

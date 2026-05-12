@@ -10,7 +10,7 @@
  * Default: "dark"
  */
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { Sun, Moon, Check, ChevronDown } from "lucide-react";
 import { F as FDark, FL as FLight, FieldToken, FieldTheme } from "@/lib/fieldTokens";
 import { useLanguage } from "@/hooks/use-language";
@@ -40,6 +40,13 @@ export function FieldThemeProvider({ children }: { children: React.ReactNode }) 
     const stored = localStorage.getItem(LS_KEY);
     return stored === "light" ? "light" : "dark";
   });
+
+  useEffect(() => {
+    document.body.dataset.fieldTheme = theme;
+    return () => {
+      delete document.body.dataset.fieldTheme;
+    };
+  }, [theme]);
 
   function setTheme(t: FieldTheme) {
     setThemeState(t);

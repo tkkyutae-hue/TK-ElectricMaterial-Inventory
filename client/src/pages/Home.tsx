@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Lock } from "lucide-react";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
 
 function getTimeKey(): "morning" | "afternoon" | "evening" {
   const h = new Date().getHours();
@@ -12,36 +14,6 @@ function getTimeKey(): "morning" | "afternoon" | "evening" {
 }
 
 const EMOJI_MAP = { morning: "☀️", afternoon: "🌤️", evening: "🌙" };
-
-const BG_STYLE: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "#0d1410",
-  display: "flex",
-  flexDirection: "column",
-  position: "relative",
-  overflow: "hidden",
-  fontFamily: "'Barlow', sans-serif",
-};
-
-const GLOW_STYLE: React.CSSProperties = {
-  position: "absolute",
-  top: 0, left: "50%",
-  transform: "translateX(-50%)",
-  width: "100%", height: "65vh",
-  background: "radial-gradient(ellipse 80% 65% at 50% 0%, rgba(45,219,111,0.10) 0%, transparent 65%)",
-  pointerEvents: "none",
-  zIndex: 0,
-};
-
-const GRID_STYLE: React.CSSProperties = {
-  position: "absolute", inset: 0, pointerEvents: "none",
-  backgroundImage: `
-    linear-gradient(rgba(45,219,111,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45,219,111,0.05) 1px, transparent 1px)
-  `,
-  backgroundSize: "52px 52px",
-  zIndex: 0,
-};
 
 interface SquareCardProps {
   testId: string;
@@ -55,9 +27,10 @@ interface SquareCardProps {
   tagGap?: number;
   locked?: boolean;
   lockedLabel?: string;
+  F: FieldToken;
 }
 
-function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4, locked = false, lockedLabel = "Manager+ only" }: SquareCardProps) {
+function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, tagGap = 4, locked = false, lockedLabel = "Manager+ only", F }: SquareCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -73,14 +46,14 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         flex: 1,
         minHeight: 220,
         textAlign: "center",
-        background: locked ? "#111815" : "#162019",
-        border: `1px solid ${locked ? "#1e2d22" : hovered ? accentColor : "#2a4030"}`,
+        background: locked ? F.surface : F.surface2,
+        border: `1px solid ${locked ? F.border : hovered ? accentColor : F.borderStrong}`,
         borderRadius: 14,
         padding: 0,
         cursor: locked ? "not-allowed" : "pointer",
         transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
         boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
-        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
+        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.2s",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -89,7 +62,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         position: "relative",
       }}
     >
-      <div style={{ height: 2, background: locked ? "#1e2d22" : accentColor, width: "100%" }} />
+      <div style={{ height: 2, background: locked ? F.border : accentColor, width: "100%" }} />
 
       <div style={{
         flex: 1,
@@ -113,7 +86,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
         <p style={{
           fontFamily: "'Barlow Condensed', sans-serif",
           fontSize: 17, fontWeight: 700,
-          color: locked ? "#4a7052" : "#e2f0e5", margin: 0,
+          color: locked ? F.textDim : F.text, margin: 0,
           letterSpacing: 0.3,
           lineHeight: 1.2,
         }}>{title}</p>
@@ -134,10 +107,10 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
           <div style={{
             position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
             display: "flex", alignItems: "center", gap: 4,
-            background: "rgba(13,20,16,0.85)", borderRadius: 6, padding: "3px 8px",
+            background: F.surface, borderRadius: 6, padding: "3px 8px",
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
-            color: "#4a7052", whiteSpace: "nowrap",
+            color: F.textDim, whiteSpace: "nowrap",
           }}>
             <Lock style={{ width: 9, height: 9, flexShrink: 0 }} />
             {lockedLabel}
@@ -148,7 +121,7 @@ function SquareCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags,
             bottom: 14,
             right: 16,
             fontSize: 14,
-            color: hovered ? accentColor : "#4a7052",
+            color: hovered ? accentColor : F.textDim,
             transition: "color 0.15s, transform 0.15s",
             transform: hovered ? "translateX(3px)" : "translateX(0)",
             display: "inline-block",
@@ -171,9 +144,10 @@ interface WideCardProps {
   tagStyle: React.CSSProperties;
   locked?: boolean;
   lockedLabel?: string;
+  F: FieldToken;
 }
 
-function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, locked = false, lockedLabel = "Manager+ only" }: WideCardProps) {
+function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, tagStyle, locked = false, lockedLabel = "Manager+ only", F }: WideCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
 
@@ -188,19 +162,19 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
       style={{
         width: "100%",
         textAlign: "left",
-        background: locked ? "#111815" : "#162019",
-        border: `1px solid ${locked ? "#1e2d22" : hovered ? accentColor : "#2a4030"}`,
+        background: locked ? F.surface : F.surface2,
+        border: `1px solid ${locked ? F.border : hovered ? accentColor : F.borderStrong}`,
         borderRadius: 14,
         padding: 0,
         cursor: locked ? "not-allowed" : "pointer",
         transform: !locked && hovered && !pressed ? "translateY(-2px)" : !locked && pressed ? "translateY(0px) scale(0.99)" : "translateY(0)",
         boxShadow: !locked && hovered ? `0 8px 28px rgba(0,0,0,0.45)` : "none",
-        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s",
+        transition: "transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.2s",
         overflow: "hidden",
         opacity: locked ? 0.6 : 1,
       }}
     >
-      <div style={{ height: 2, background: locked ? "#1e2d22" : accentColor, width: "100%" }} />
+      <div style={{ height: 2, background: locked ? F.border : accentColor, width: "100%" }} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 22px" }}>
         <div style={{
@@ -216,7 +190,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
           <p style={{
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 19, fontWeight: 700,
-            color: locked ? "#4a7052" : "#e2f0e5", margin: "0 0 8px",
+            color: locked ? F.textDim : F.text, margin: "0 0 8px",
             letterSpacing: 0.3,
           }}>{title}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
@@ -238,7 +212,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
             flexShrink: 0,
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 11, fontWeight: 600, letterSpacing: 0.5,
-            color: "#4a7052",
+            color: F.textDim,
           }}>
             <Lock style={{ width: 12, height: 12, flexShrink: 0 }} />
             <span>{lockedLabel}</span>
@@ -246,7 +220,7 @@ function WideCard({ testId, onClick, accentColor, emoji, emojiBg, title, tags, t
         ) : (
           <span style={{
             fontSize: 20, flexShrink: 0,
-            color: hovered ? accentColor : "#4a7052",
+            color: hovered ? accentColor : F.textDim,
             transition: "color 0.15s, transform 0.15s",
             transform: hovered ? "translateX(3px)" : "translateX(0)",
             display: "inline-block",
@@ -262,6 +236,7 @@ export default function Home() {
   const [, navigate] = useLocation();
   const { user, logout, isAdminRole, canAccessAdminMode } = useAuth();
   const { t } = useLanguage();
+  const { F, theme: fieldTheme } = useFieldTheme();
 
   const displayName = user?.name ?? (user as any)?.firstName ?? user?.email ?? "User";
   const firstName = displayName.split(" ")[0].toUpperCase();
@@ -274,10 +249,41 @@ export default function Home() {
     : t.goodEvening
   );
 
+  const bgStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: F.bg,
+    display: "flex",
+    flexDirection: "column",
+    position: "relative",
+    overflow: "hidden",
+    fontFamily: "'Barlow', sans-serif",
+    transition: "background 0.2s",
+  };
+
+  const glowStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 0, left: "50%",
+    transform: "translateX(-50%)",
+    width: "100%", height: "65vh",
+    background: `radial-gradient(ellipse 80% 65% at 50% 0%, ${F.accentBg} 0%, transparent 65%)`,
+    pointerEvents: "none",
+    zIndex: 0,
+  };
+
+  const gridStyle: React.CSSProperties = {
+    position: "absolute", inset: 0, pointerEvents: "none",
+    backgroundImage: `
+      linear-gradient(${F.accentBg} 1px, transparent 1px),
+      linear-gradient(90deg, ${F.accentBg} 1px, transparent 1px)
+    `,
+    backgroundSize: "52px 52px",
+    zIndex: 0,
+  };
+
   return (
-    <div style={BG_STYLE}>
-      <div style={GLOW_STYLE} />
-      <div style={GRID_STYLE} />
+    <div style={bgStyle}>
+      <div style={glowStyle} />
+      <div style={gridStyle} />
 
       {/* Header */}
       <header style={{
@@ -285,10 +291,12 @@ export default function Home() {
         display: "flex", alignItems: "center", justifyContent: "flex-end",
         padding: "14px 20px",
         gap: 10,
-        background: "#0d1410",
-        borderBottom: "1px solid #2a4030",
+        background: F.bg,
+        borderBottom: `1px solid ${F.borderStrong}`,
+        transition: "background 0.2s, border-color 0.2s",
       }}>
-        <LanguageSwitcher theme="dark" />
+        <FieldThemeSwitcher compact={true} />
+        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} />
 
         <button
           onClick={() => logout()}
@@ -296,12 +304,12 @@ export default function Home() {
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "none", cursor: "pointer",
-            color: "#4a7052", fontSize: 13, fontFamily: "'Barlow', sans-serif",
+            color: F.textDim, fontSize: 13, fontFamily: "'Barlow', sans-serif",
             transition: "color 0.15s",
             padding: "6px 10px", borderRadius: 8,
           }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#7aab82")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#4a7052")}
+          onMouseEnter={e => (e.currentTarget.style.color = F.textMuted)}
+          onMouseLeave={e => (e.currentTarget.style.color = F.textDim)}
         >
           <LogOut style={{ width: 14, height: 14 }} />
           <span>{t.logout}</span>
@@ -320,7 +328,7 @@ export default function Home() {
           <div style={{ marginBottom: 32 }}>
             <p style={{
               fontSize: 11, textTransform: "uppercase", letterSpacing: 2,
-              color: "#7aab82", fontFamily: "'Barlow Condensed', sans-serif",
+              color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif",
               fontWeight: 600, margin: "0 0 8px",
               display: "flex", alignItems: "center", gap: 5,
             }}>
@@ -330,7 +338,7 @@ export default function Home() {
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: "clamp(36px, 8vw, 58px)",
               lineHeight: 1.05, margin: "0 0 10px",
-              color: "#e2f0e5",
+              color: F.text,
               letterSpacing: 1,
             }}>
               <span style={{
@@ -341,11 +349,11 @@ export default function Home() {
               }}>
                 {greeting.toUpperCase()}
               </span>
-              <span style={{ color: "#2ddb6f", display: "block" }}>
+              <span style={{ color: F.accent, display: "block" }}>
                 {firstName}.
               </span>
             </h1>
-            <p style={{ fontSize: 13, color: "#4a7052", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
+            <p style={{ fontSize: 13, color: F.textDim, margin: 0, fontFamily: "'Barlow', sans-serif" }}>
               {t.selectMode}
             </p>
           </div>
@@ -358,16 +366,17 @@ export default function Home() {
               <SquareCard
                 testId="btn-inventory-mode"
                 onClick={() => navigate("/field")}
-                accentColor="#2ddb6f"
+                accentColor={F.accent}
                 emoji="🪖"
-                emojiBg="rgba(45,219,111,0.08)"
+                emojiBg={F.accentBg}
                 title={t.inventoryMode}
                 tags={[t.tagReceive, t.tagIssue, t.tagInventory, t.tagTransfer]}
                 tagStyle={{
-                  background: "rgba(45,219,111,0.08)",
-                  border: "1px solid rgba(45,219,111,0.15)",
-                  color: "#2ddb6f",
+                  background: F.accentBg,
+                  border: `1px solid ${F.accentBorder}`,
+                  color: F.accent,
                 }}
+                F={F}
               />
 
               <SquareCard
@@ -385,6 +394,7 @@ export default function Home() {
                   color: "#60a5fa",
                 }}
                 locked={!canAccessAdminMode}
+                F={F}
               />
             </div>
 
@@ -392,17 +402,18 @@ export default function Home() {
             <WideCard
               testId="btn-admin-mode"
               onClick={() => navigate("/")}
-              accentColor="#f5a623"
+              accentColor={F.warning}
               emoji="⚙️"
-              emojiBg="rgba(245,166,35,0.08)"
+              emojiBg={F.warningBg}
               title={t.adminMode}
               tags={[t.tagDashboard, t.tagReports, t.tagSuppliers, t.tagUsers]}
               tagStyle={{
-                background: "rgba(245,166,35,0.08)",
-                border: "1px solid rgba(245,166,35,0.15)",
-                color: "#f5a623",
+                background: F.warningBg,
+                border: `1px solid ${F.warningBorder}`,
+                color: F.warning,
               }}
               locked={!canAccessAdminMode}
+              F={F}
             />
           </div>
         </div>

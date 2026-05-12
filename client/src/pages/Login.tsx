@@ -3,8 +3,19 @@ import { useLocation } from "wouter";
 import { AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
+import { useFieldTheme, FieldThemeSwitcher } from "@/hooks/use-field-theme";
 
-const CSS = `
+export default function Login() {
+  const [, navigate] = useLocation();
+  const { t } = useLanguage();
+  const { F, theme: fieldTheme } = useFieldTheme();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const CSS = `
 @keyframes vs-fadeDown {
   from { opacity: 0; transform: translateY(-12px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -33,26 +44,26 @@ const CSS = `
 .vs-pulse-dot { animation: vs-pulse-dot 2.5s ease-in-out infinite; }
 .vs-btn:hover .vs-arrow { animation: vs-arrow-slide 0.6s ease infinite; }
 .vs-input {
-  background: #141e17;
-  border: 1px solid #203023;
+  background: ${F.surface};
+  border: 1px solid ${F.borderStrong};
   border-radius: 10px;
   padding: 11px 14px;
-  color: #c8deca;
+  color: ${F.text};
   font-size: 14px;
   width: 100%;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   font-family: inherit;
 }
-.vs-input::placeholder { color: #2b3f2e; }
+.vs-input::placeholder { color: ${F.textDim}; }
 .vs-input:focus {
-  border-color: #2ddb6f;
-  box-shadow: 0 0 0 3px rgba(45,219,111,0.12);
+  border-color: ${F.accent};
+  box-shadow: 0 0 0 3px ${F.accentBg};
 }
 .vs-btn {
   width: 100%;
   height: 48px;
-  background: #2ddb6f;
+  background: ${F.accent};
   border: none;
   border-radius: 10px;
   font-family: 'Barlow Condensed', sans-serif;
@@ -60,75 +71,66 @@ const CSS = `
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #07090a;
+  color: ${F.accentText};
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 0 24px rgba(45,219,111,0.2);
+  box-shadow: 0 0 24px ${F.accentBg};
   transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 .vs-btn:hover:not(:disabled) {
-  background: #35f07e;
-  box-shadow: 0 0 36px rgba(45,219,111,0.38);
+  box-shadow: 0 0 36px ${F.accentBorder};
   transform: translateY(-1px);
 }
 .vs-btn:disabled {
-  background: rgba(45,219,111,0.18);
-  color: #2b3f2e;
+  background: ${F.accentBg};
+  color: ${F.textDim};
   cursor: not-allowed;
   box-shadow: none;
 }
 `;
 
-const BG_STYLE: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "#07090a",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  position: "relative",
-  overflow: "hidden",
-  fontFamily: "'Barlow', sans-serif",
-};
+  const BG_STYLE: React.CSSProperties = {
+    minHeight: "100vh",
+    background: F.bg,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+    fontFamily: "'Barlow', sans-serif",
+    transition: "background 0.2s",
+  };
 
-const GRID_STYLE: React.CSSProperties = {
-  position: "absolute", inset: 0, pointerEvents: "none",
-  backgroundImage: `
-    linear-gradient(rgba(45,219,111,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45,219,111,0.03) 1px, transparent 1px)
-  `,
-  backgroundSize: "56px 56px",
-  zIndex: 0,
-};
+  const GRID_STYLE: React.CSSProperties = {
+    position: "absolute", inset: 0, pointerEvents: "none",
+    backgroundImage: `
+      linear-gradient(${F.accentBg} 1px, transparent 1px),
+      linear-gradient(90deg, ${F.accentBg} 1px, transparent 1px)
+    `,
+    backgroundSize: "56px 56px",
+    zIndex: 0,
+  };
 
-const DIAGONAL_STYLE: React.CSSProperties = {
-  position: "absolute", inset: 0, pointerEvents: "none",
-  backgroundImage: "repeating-linear-gradient(-45deg, #2ddb6f 0px, #2ddb6f 1px, transparent 1px, transparent 32px)",
-  opacity: 0.018,
-  zIndex: 0,
-};
+  const DIAGONAL_STYLE: React.CSSProperties = {
+    position: "absolute", inset: 0, pointerEvents: "none",
+    backgroundImage: `repeating-linear-gradient(-45deg, ${F.accent} 0px, ${F.accent} 1px, transparent 1px, transparent 32px)`,
+    opacity: 0.018,
+    zIndex: 0,
+  };
 
-const GLOW_STYLE: React.CSSProperties = {
-  position: "absolute",
-  top: "-80px", left: "50%",
-  transform: "translateX(-50%)",
-  width: 900, height: 700,
-  background: "radial-gradient(ellipse, rgba(45,219,111,0.07) 0%, transparent 60%)",
-  pointerEvents: "none",
-  zIndex: 0,
-};
-
-export default function Login() {
-  const [, navigate] = useLocation();
-  const { t } = useLanguage();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const GLOW_STYLE: React.CSSProperties = {
+    position: "absolute",
+    top: "-80px", left: "50%",
+    transform: "translateX(-50%)",
+    width: 900, height: 700,
+    background: `radial-gradient(ellipse, ${F.accentBg} 0%, transparent 60%)`,
+    pointerEvents: "none",
+    zIndex: 0,
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -162,9 +164,10 @@ export default function Login() {
       <div style={GRID_STYLE} />
       <div style={DIAGONAL_STYLE} />
 
-      {/* Language switcher — top right */}
-      <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20 }}>
-        <LanguageSwitcher theme="dark" />
+      {/* Theme + Language switchers — top right */}
+      <div style={{ position: "absolute", top: 18, right: 20, zIndex: 20, display: "flex", alignItems: "center", gap: 6 }}>
+        <FieldThemeSwitcher compact={true} />
+        <LanguageSwitcher theme={fieldTheme === "light" ? "light" : "dark"} />
       </div>
 
       <div style={{ width: "100%", maxWidth: 380, padding: "0 24px", position: "relative", zIndex: 1 }}>
@@ -228,11 +231,12 @@ export default function Login() {
 
         {/* ── Card ── */}
         <div className="vs-card" style={{
-          background: "#0b100d",
-          border: "1px solid #203023",
+          background: F.surface,
+          border: `1px solid ${F.borderStrong}`,
           borderRadius: 20,
           boxShadow: "0 28px 60px rgba(0,0,0,0.6)",
           overflow: "hidden",
+          transition: "background 0.2s, border-color 0.2s",
         }}>
           {/* Top shine */}
           <div style={{ height: 2, background: "linear-gradient(90deg, transparent, #2ddb6f, transparent)" }} />
@@ -244,7 +248,7 @@ export default function Login() {
               <div style={{ marginBottom: 16 }}>
                 <label style={{
                   display: "block", marginBottom: 6,
-                  fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
+                  fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: F.textMuted,
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
                 }}>{t.email}</label>
                 <input
@@ -264,7 +268,7 @@ export default function Login() {
               <div style={{ marginBottom: 20 }}>
                 <label style={{
                   display: "block", marginBottom: 6,
-                  fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#527856",
+                  fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: F.textMuted,
                   fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
                 }}>{t.password}</label>
                 <div style={{ position: "relative" }}>
@@ -285,7 +289,7 @@ export default function Login() {
                     tabIndex={-1}
                     style={{
                       position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)",
-                      background: "none", border: "none", cursor: "pointer", color: "#527856", padding: 0,
+                      background: "none", border: "none", cursor: "pointer", color: F.textMuted, padding: 0,
                       display: "flex", alignItems: "center",
                     }}
                     data-testid="btn-toggle-password"
@@ -333,7 +337,7 @@ export default function Login() {
             </form>
 
             {/* Link */}
-            <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#2b3f2e" }}>
+            <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: F.textDim }}>
               {t.noAccount}{" "}
               <button
                 onClick={() => navigate("/signup")}
@@ -352,7 +356,7 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <p style={{ textAlign: "center", marginTop: 20, fontSize: 10, color: "#2b3f2e", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5 }}>
+        <p style={{ textAlign: "center", marginTop: 20, fontSize: 10, color: F.textDim, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5 }}>
           Created by Kyutae Kim (Michael) · TK Electric LLC
         </p>
       </div>

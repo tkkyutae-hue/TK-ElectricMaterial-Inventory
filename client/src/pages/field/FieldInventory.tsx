@@ -18,6 +18,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveReelMode } from "@/lib/reelEligibility";
 import { useFieldTheme } from "@/hooks/use-field-theme";
+import type { FieldToken } from "@/lib/fieldTokens";
 import FieldCartReview from "./FieldCartReview";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -654,6 +655,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
 // ─── Field Cart Bar ───────────────────────────────────────────────────────────
 
 function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
+  const { F } = useFieldTheme();
   const { t } = useLanguage();
   const { canDoMovements } = useAuth();
   const { totalItems, totalQty } = useFieldCart();
@@ -722,6 +724,7 @@ function FieldCartBar({ onReviewCart }: { onReviewCart: () => void }) {
 // ─── Field Cart Panel ─────────────────────────────────────────────────────────
 
 function FieldCartPanel({ onClose }: { onClose: () => void }) {
+  const { F } = useFieldTheme();
   const { t } = useLanguage();
   const isMobile = useIsMobile();
 
@@ -799,7 +802,7 @@ function FieldCartPanel({ onClose }: { onClose: () => void }) {
 
 // ─── Qty color helper ────────────────────────────────────────────────────────
 
-function qtyColor(status: string): string {
+function qtyColor(status: string, F: FieldToken): string {
   if (status === "out_of_stock") return F.danger;
   if (status === "low_stock") return F.warning;
   return F.accent;
@@ -846,6 +849,7 @@ function MobileCatBar({
   cat: CategorySummary;
   onExpand: () => void;
 }) {
+  const { F } = useFieldTheme();
   const gradient = getCategoryGradient(cat.code);
   return (
     <div
@@ -1544,7 +1548,7 @@ export default function FieldInventory() {
                   {/* Qty + status */}
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <span style={{ fontSize: 17, fontWeight: 700, color: qtyColor(item.status), fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: qtyColor(item.status, F), fontFamily: "'Barlow Condensed', sans-serif", lineHeight: 1 }}>
                         {item.quantityOnHand.toLocaleString()}
                       </span>
                       <span style={{ fontSize: 9, color: F.textMuted, marginLeft: 3 }}>{item.unitOfMeasure}</span>
@@ -1634,7 +1638,7 @@ export default function FieldInventory() {
                       <span style={{ fontSize: 11, color: F.textMuted, lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>
                     </td>
                     <td className="px-3 py-3 align-middle text-right whitespace-nowrap">
-                      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
+                      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 16, color: qtyColor(item.status, F), tabularNums: true } as any}>{item.quantityOnHand.toLocaleString()}</span>
                       <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 400, color: F.textMuted }}>{item.unitOfMeasure}</span>
                     </td>
                     <td className="px-3 py-3 align-middle hidden md:table-cell">

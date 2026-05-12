@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateLocation, useDeleteLocation } from "@/hooks/use-reference-data";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -34,6 +35,7 @@ export function SearchableLocationSelect({
   dark?: boolean;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const ph = placeholder ?? t.movSearchTypeToFilter;
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -49,7 +51,6 @@ export function SearchableLocationSelect({
 
   const selected = locations.find(l => l.id === value);
 
-  // Guard: skip locations where name is null/undefined to prevent crashes
   const validLocations = locations.filter(l => l.name != null);
 
   const filtered = search.trim()
@@ -171,16 +172,16 @@ export function SearchableLocationSelect({
       {filtered.map(loc => (
         <div
           key={loc.id}
-          style={D ? { display: "flex", alignItems: "center", background: loc.id === value ? "#141e17" : "transparent" } : undefined}
+          style={D ? { display: "flex", alignItems: "center", background: loc.id === value ? F.surface : "transparent" } : undefined}
           className={D ? "group" : `group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
           data-testid={`${testId}-option-${loc.id}`}
-          onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = "#141e17"; } : undefined}
-          onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = loc.id === value ? "#141e17" : "transparent"; } : undefined}
+          onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = F.surface; } : undefined}
+          onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = loc.id === value ? F.surface : "transparent"; } : undefined}
         >
           <button
             type="button"
             onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
-            style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: loc.id === value ? "#2ddb6f" : "#c8deca", fontWeight: loc.id === value ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
+            style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: loc.id === value ? F.accent : F.text, fontWeight: loc.id === value ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
             className={D ? undefined : `flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
           >
             {loc.name}
@@ -189,7 +190,7 @@ export function SearchableLocationSelect({
             type="button"
             onClick={(e) => handleDelete(e, loc)}
             disabled={deleteLocation.isPending}
-            style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: "#527856", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
+            style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: F.textMuted, background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
             className={D ? "group-hover:opacity-100" : "opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"}
             data-testid={`${testId}-delete-${loc.id}`}
             title={t.movSearchDeleteLocation}
@@ -199,14 +200,14 @@ export function SearchableLocationSelect({
         </div>
       ))}
       {filtered.length === 0 && !showCreate && (
-        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchNoLocations}</p>
+        <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchNoLocations}</p>
       )}
       {showCreate && (
         <button
           type="button"
           onClick={handleCreate}
           disabled={createLocation.isPending}
-          style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: "#2ddb6f", fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: "1px solid #203023", background: "none", border: "none", borderTopStyle: "solid", cursor: "pointer" } : undefined}
+          style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: F.accent, fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${F.borderStrong}`, background: "none", border: "none", borderTopStyle: "solid", cursor: "pointer" } : undefined}
           className={D ? undefined : "w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"}
           data-testid={`${testId}-create`}
         >
@@ -222,16 +223,16 @@ export function SearchableLocationSelect({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: open && !isMobile ? "10px 10px 0 0" : 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: "none", transition: "border-color 0.15s" } : undefined}
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: F.surface, border: `1px solid ${open ? F.accent : F.borderStrong}`, borderRadius: open && !isMobile ? "10px 10px 0 0" : 10, color: selected ? F.text : F.textDim, cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: "none", transition: "border-color 0.15s" } : undefined}
         className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid={`${testId}-trigger`}
       >
         {selected ? (
           <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{selected.name}</span>
         ) : (
-          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
+          <span style={D ? { color: F.textDim } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
         )}
-        <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
+        <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
       {open && createPortal(
@@ -247,8 +248,8 @@ export function SearchableLocationSelect({
               ref={dropdownRef}
               style={{
                 position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9991,
-                background: D ? "#0d1410" : "#ffffff",
-                borderTop: `2px solid ${D ? "#2ddb6f" : "#e2e8f0"}`,
+                background: D ? F.bg : "#ffffff",
+                borderTop: `2px solid ${D ? F.accent : "#e2e8f0"}`,
                 borderRadius: "18px 18px 0 0",
                 boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
                 display: "flex", flexDirection: "column",
@@ -259,10 +260,10 @@ export function SearchableLocationSelect({
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "14px 16px 10px",
-                borderBottom: `1px solid ${D ? "#1e2e21" : "#e2e8f0"}`,
+                borderBottom: `1px solid ${D ? F.border : "#e2e8f0"}`,
                 flexShrink: 0,
               }}>
-                <Search style={{ width: 15, height: 15, color: D ? "#527856" : "#94a3b8", flexShrink: 0 }} />
+                <Search style={{ width: 15, height: 15, color: D ? F.textMuted : "#94a3b8", flexShrink: 0 }} />
                 <input
                   ref={inputRef}
                   type="text"
@@ -272,7 +273,7 @@ export function SearchableLocationSelect({
                   style={{
                     flex: 1, fontSize: 14, outline: "none",
                     background: "transparent",
-                    color: D ? "#c8deca" : "#0f172a",
+                    color: D ? F.text : "#0f172a",
                     border: "none", minWidth: 0,
                   }}
                   data-testid={`${testId}-search`}
@@ -281,7 +282,7 @@ export function SearchableLocationSelect({
                   <button
                     type="button"
                     onMouseDown={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? "#527856" : "#94a3b8" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? F.textMuted : "#94a3b8" }}
                   >
                     <X style={{ width: 14, height: 14 }} />
                   </button>
@@ -290,8 +291,8 @@ export function SearchableLocationSelect({
                   type="button"
                   onMouseDown={handleClose}
                   style={{
-                    background: "none", border: `1px solid ${D ? "#2a4030" : "#cbd5e1"}`,
-                    cursor: "pointer", color: D ? "#7aab82" : "#475569",
+                    background: "none", border: `1px solid ${D ? F.borderStrong : "#cbd5e1"}`,
+                    cursor: "pointer", color: D ? F.textMuted : "#475569",
                     padding: "4px 10px", borderRadius: 7,
                     fontSize: 13, fontWeight: 600,
                     fontFamily: "'Barlow Condensed', sans-serif",
@@ -312,7 +313,7 @@ export function SearchableLocationSelect({
             ref={dropdownRef}
             style={D ? {
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
-              zIndex: 9999, background: "#0f1612", border: "1px solid #2ddb6f",
+              zIndex: 9999, background: F.bg, border: `1px solid ${F.accent}`,
               borderTop: "none", borderRadius: "0 0 10px 10px",
               boxShadow: "0 10px 28px rgba(0,0,0,0.6)", overflow: "hidden",
               maxHeight: 260,
@@ -323,21 +324,21 @@ export function SearchableLocationSelect({
             className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-60"}
           >
             {/* Search bar */}
-            <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
-              <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
+            <div style={D ? { padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, display: "flex", alignItems: "center", gap: 8, background: F.bg } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
+              <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
               <input
                 ref={inputRef}
                 type="text"
                 placeholder={t.movTypeToFilterCreate}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca", border: "none" } : undefined}
+                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
                 className={D ? undefined : "flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
                 data-testid={`${testId}-search`}
               />
               {search && (
                 <button type="button" onClick={() => setSearch("")} className="p-0.5">
-                  <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
+                  <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
                 </button>
               )}
             </div>

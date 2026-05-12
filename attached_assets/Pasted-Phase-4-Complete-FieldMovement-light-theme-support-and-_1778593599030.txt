@@ -1,0 +1,145 @@
+Phase 4 — Complete FieldMovement light theme support and fix dark dropdowns.
+
+Context:
+Login, Mode Select, and FieldHome now support dark/light theme.
+However, inside Field Mode movement forms, many controls remain dark in light mode.
+
+Visible issues:
+- Movement type select remains dark.
+- Source/location select remains dark.
+- Project select remains dark.
+- Item search field remains dark.
+- Note textarea remains dark.
+- Bottom sticky action bar remains dark.
+- SearchableLocationSelect dropdown remains dark in light mode.
+- CSS body[data-field-theme="light"] override does not fix SearchableLocationSelect because it uses inline hardcoded dark styles.
+
+Goal:
+Apply the active field theme tokens to FieldMovement and field-only form controls, especially SearchableLocationSelect.
+
+Do not change movement logic.
+Do not change API calls.
+Do not change inventory calculations.
+Do not touch Admin Mode.
+
+Files to inspect/modify:
+- client/src/pages/field/FieldMovement.tsx
+- client/src/components/shared/SearchableLocationSelect.tsx or actual file containing searchable location dropdown
+- Any field-only select/combobox components used by FieldMovement
+- PersonPicker only if it appears visually broken in FieldMovement and can be safely themed without affecting Admin Mode
+
+Do not touch:
+- server/
+- shared/
+- Admin Mode files
+- Stock & Pricing
+- Inventory movement backend logic
+- Reorder logic
+
+Required changes:
+
+1. Use theme hook in FieldMovement
+Inside React components:
+const { F, theme } = useFieldTheme();
+
+Do not import static runtime F for components that need live theme.
+If there are helper functions outside components, pass F as parameter.
+Do not call hooks inside helper functions.
+
+2. Replace hardcoded dark colors in FieldMovement
+Replace dark hardcoded values with F tokens:
+
+Dark backgrounds:
+- "#0d1410"
+- "#162019"
+- "#111815"
+- "#0f1812"
+- "#1c2b1f"
+- rgba dark backgrounds
+
+Use:
+- F.bg for page background if needed
+- F.surface for large panels / sticky footer
+- F.surface2 for inputs/selects/cards
+- F.border / F.borderStrong for borders
+- F.text for main text
+- F.textMuted for labels
+- F.textDim for placeholder/helper text
+- F.accent for active/focus states
+
+3. Inputs/selects/textareas
+In light mode, they should be light and readable:
+- background: F.surface or F.surface2
+- border: F.borderStrong
+- color: F.text
+- placeholder: F.textDim
+- focus border: F.accent
+- focus ring: F.accentBg
+
+Dark mode should remain close to current style.
+
+4. Bottom sticky action bar
+In light mode:
+- background should be light, not dark.
+- border should use F.borderStrong.
+- buttons should remain readable.
+- Confirm button should use F.accent / F.accentText.
+- Cancel button should retain danger styling but readable.
+
+5. SearchableLocationSelect
+This is the important dropdown bug.
+
+Problem:
+The dropdown/listbox remains dark in light mode because the component injects inline hardcoded dark styles.
+CSS body selector overrides cannot reliably override inline styles.
+
+Fix:
+- Add useFieldTheme() inside SearchableLocationSelect if it is used only in Field Mode.
+- If it is shared with Admin Mode, make it accept optional theme tokens/variant prop, or safely fallback to existing dark tokens when outside provider.
+- Replace inline hardcoded dark colors with F tokens:
+  - trigger/input background
+  - dropdown panel background
+  - option text
+  - option hover background
+  - selected state
+  - border
+  - scrollbar if inline-styled
+- In light mode, dropdown panel should be light.
+- In dark mode, dropdown panel should look as before.
+
+6. Provider safety
+If SearchableLocationSelect can be rendered outside FieldThemeProvider, do not make it crash.
+Either:
+- only call useFieldTheme if guaranteed inside provider,
+or
+- add a safe wrapper/fallback using legacy F_DARK,
+or
+- pass F from FieldMovement as prop.
+
+Prefer the least risky implementation.
+
+7. Language/theme dropdowns
+Do not break existing FieldHeader switchers.
+Do not modify LanguageSwitcher unless absolutely necessary.
+
+8. Runtime safety
+Search for remaining “F.” usages in modified files:
+- If inside component, make sure F comes from useFieldTheme or prop.
+- If inside helper, pass F as parameter.
+- No “F is not defined”.
+- No hook used outside component.
+
+Verification:
+- Open Field Mode in light mode.
+- Go to 입고 / 반품.
+- Movement type select is light and readable.
+- Source/location select is light and readable.
+- SearchableLocationSelect dropdown opens as light panel.
+- Project select is light and readable.
+- Item search input is light and readable.
+- Note textarea is light and readable.
+- Bottom sticky action bar is light and readable.
+- Switch to dark mode.
+- Original dark look remains acceptable.
+- No runtime errors.
+- No movement behavior changes.

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Search, X, ChevronDown, Plus } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -31,6 +32,7 @@ export function SearchableProjectSelect({
   placeholder?: string;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   placeholder = placeholder ?? t.movSearchProjPlaceholder;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -111,7 +113,7 @@ export function SearchableProjectSelect({
         <button
           type="button"
           onClick={() => { onChange(undefined); setSearch(""); setOpen(false); }}
-          style={D ? { width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#527856", background: "none", border: "none", borderBottom: "1px solid #203023", cursor: "pointer", fontStyle: "italic" } : undefined}
+          style={D ? { width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 12, color: F.textMuted, background: "none", border: "none", borderBottom: `1px solid ${F.borderStrong}`, cursor: "pointer", fontStyle: "italic" } : undefined}
           className={D ? undefined : "w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 italic border-b border-slate-100"}
           data-testid="project-clear"
         >
@@ -123,27 +125,27 @@ export function SearchableProjectSelect({
           key={p.id}
           type="button"
           onClick={() => { onChange(p.id); setSearch(""); setOpen(false); }}
-          style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: p.id === value ? "#2ddb6f" : "#c8deca", fontWeight: p.id === value ? 600 : 400, background: p.id === value ? "#141e17" : "transparent", border: "none", cursor: "pointer", display: "block" } : undefined}
+          style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: p.id === value ? F.accent : F.text, fontWeight: p.id === value ? 600 : 400, background: p.id === value ? F.surface : "transparent", border: "none", cursor: "pointer", display: "block" } : undefined}
           className={D ? undefined : `w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors ${p.id === value ? "bg-brand-50 font-medium" : "text-slate-800"}`}
           data-testid={`project-option-${p.id}`}
-          onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = "#141e17"; } : undefined}
-          onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = p.id === value ? "#141e17" : "transparent"; } : undefined}
+          onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = F.surface; } : undefined}
+          onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = p.id === value ? F.surface : "transparent"; } : undefined}
         >
           {p.poNumber && (
-            <span style={D ? { color: "#527856", fontSize: 11, marginRight: 6, fontFamily: "monospace" } : undefined} className={D ? undefined : "font-mono text-xs text-slate-500 mr-1.5"}>{p.poNumber} —</span>
+            <span style={D ? { color: F.textMuted, fontSize: 11, marginRight: 6, fontFamily: "monospace" } : undefined} className={D ? undefined : "font-mono text-xs text-slate-500 mr-1.5"}>{p.poNumber} —</span>
           )}
           {p.name}
         </button>
       ))}
       {filtered.length === 0 && (
-        <p style={D ? { textAlign: "center", fontSize: 12, color: "#527856", padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchProjNone}</p>
+        <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchProjNone}</p>
       )}
       {!hideCreate && (
-        <div style={D ? { borderTop: "1px solid #203023", padding: "8px 12px" } : undefined} className={D ? undefined : "border-t border-slate-100 px-3 py-2"}>
+        <div style={D ? { borderTop: `1px solid ${F.borderStrong}`, padding: "8px 12px" } : undefined} className={D ? undefined : "border-t border-slate-100 px-3 py-2"}>
           <a
             href="/projects"
             onClick={() => setOpen(false)}
-            style={D ? { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#2ddb6f", fontWeight: 500, textDecoration: "none" } : undefined}
+            style={D ? { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: F.accent, fontWeight: 500, textDecoration: "none" } : undefined}
             className={D ? undefined : "flex items-center gap-1.5 text-xs text-brand-700 hover:text-brand-800 font-medium"}
             data-testid="project-create-link"
           >
@@ -160,16 +162,16 @@ export function SearchableProjectSelect({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: "#141e17", border: `1px solid ${open ? "#2ddb6f" : "#203023"}`, borderRadius: 10, color: selected ? "#c8deca" : "#2b3f2e", cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: open && !isMobile ? "0 0 0 3px rgba(45,219,111,0.12)" : "none", transition: "border-color 0.15s" } : undefined}
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: F.surface, border: `1px solid ${open ? F.accent : F.borderStrong}`, borderRadius: 10, color: selected ? F.text : F.textDim, cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: open && !isMobile ? `0 0 0 3px ${F.accentBg}` : "none", transition: "border-color 0.15s" } : undefined}
         className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid="project-select-trigger"
       >
         {selected ? (
           <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{label(selected)}</span>
         ) : (
-          <span style={D ? { color: "#2b3f2e" } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
+          <span style={D ? { color: F.textDim } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
         )}
-        <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
+        <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
       </button>
 
       {open && createPortal(
@@ -185,8 +187,8 @@ export function SearchableProjectSelect({
               ref={dropdownRef}
               style={{
                 position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9991,
-                background: D ? "#0d1410" : "#ffffff",
-                borderTop: `2px solid ${D ? "#2ddb6f" : "#e2e8f0"}`,
+                background: D ? F.bg : "#ffffff",
+                borderTop: `2px solid ${D ? F.accent : "#e2e8f0"}`,
                 borderRadius: "18px 18px 0 0",
                 boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
                 display: "flex", flexDirection: "column",
@@ -197,10 +199,10 @@ export function SearchableProjectSelect({
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "14px 16px 10px",
-                borderBottom: `1px solid ${D ? "#1e2e21" : "#e2e8f0"}`,
+                borderBottom: `1px solid ${D ? F.border : "#e2e8f0"}`,
                 flexShrink: 0,
               }}>
-                <Search style={{ width: 15, height: 15, color: D ? "#527856" : "#94a3b8", flexShrink: 0 }} />
+                <Search style={{ width: 15, height: 15, color: D ? F.textMuted : "#94a3b8", flexShrink: 0 }} />
                 <input
                   ref={inputRef}
                   type="text"
@@ -210,7 +212,7 @@ export function SearchableProjectSelect({
                   style={{
                     flex: 1, fontSize: 14, outline: "none",
                     background: "transparent",
-                    color: D ? "#c8deca" : "#0f172a",
+                    color: D ? F.text : "#0f172a",
                     border: "none", minWidth: 0,
                   }}
                   data-testid="project-search-input"
@@ -219,7 +221,7 @@ export function SearchableProjectSelect({
                   <button
                     type="button"
                     onMouseDown={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? "#527856" : "#94a3b8" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? F.textMuted : "#94a3b8" }}
                   >
                     <X style={{ width: 14, height: 14 }} />
                   </button>
@@ -228,8 +230,8 @@ export function SearchableProjectSelect({
                   type="button"
                   onMouseDown={handleClose}
                   style={{
-                    background: "none", border: `1px solid ${D ? "#2a4030" : "#cbd5e1"}`,
-                    cursor: "pointer", color: D ? "#7aab82" : "#475569",
+                    background: "none", border: `1px solid ${D ? F.borderStrong : "#cbd5e1"}`,
+                    cursor: "pointer", color: D ? F.textMuted : "#475569",
                     padding: "4px 10px", borderRadius: 7,
                     fontSize: 13, fontWeight: 600,
                     fontFamily: "'Barlow Condensed', sans-serif",
@@ -250,7 +252,7 @@ export function SearchableProjectSelect({
             ref={dropdownRef}
             style={D ? {
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
-              zIndex: 9999, background: "#0f1612", border: "1px solid #203023",
+              zIndex: 9999, background: F.bg, border: `1px solid ${F.borderStrong}`,
               borderRadius: 10, boxShadow: "0 12px 32px rgba(0,0,0,0.6)", overflow: "hidden",
               maxHeight: 240,
             } : {
@@ -259,21 +261,21 @@ export function SearchableProjectSelect({
             }}
             className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden"}
           >
-            <div style={D ? { padding: "8px 12px", borderBottom: "1px solid #203023", display: "flex", alignItems: "center", gap: 8, background: "#0f1612" } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
-              <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
+            <div style={D ? { padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, display: "flex", alignItems: "center", gap: 8, background: F.bg } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
+              <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
               <input
                 ref={inputRef}
                 type="text"
                 placeholder={t.movSearchProjSearchPh}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca", border: "none" } : undefined}
+                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
                 className={D ? undefined : "flex-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
                 data-testid="project-search-input"
               />
               {search && (
                 <button type="button" onClick={() => setSearch("")} className="p-0.5">
-                  <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
+                  <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }} className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
                 </button>
               )}
             </div>

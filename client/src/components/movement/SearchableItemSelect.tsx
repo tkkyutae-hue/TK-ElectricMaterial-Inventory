@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Search, X, ChevronDown, ImageOff } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 
 function useIsMobileInline() {
   const [mobile, setMobile] = useState(() =>
@@ -34,6 +35,7 @@ export function SearchableItemSelect({
   closeText?: string;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   searchPlaceholder = searchPlaceholder ?? t.movSearchItemPlaceholder;
   loadingText = loadingText ?? t.movSearchItemLoading;
   noResultsText = noResultsText ?? t.movSearchItemNoResults;
@@ -130,17 +132,17 @@ export function SearchableItemSelect({
     <div style={{ overflowY: "auto", ...listStyle }}>
       {isLoading ? (
         <div className="flex items-center justify-center h-11">
-          <p style={D ? { fontSize: 12, color: "#527856" } : undefined}
+          <p style={D ? { fontSize: 12, color: F.textMuted } : undefined}
             className={D ? undefined : "text-sm text-slate-400"}>{loadingText}</p>
         </div>
       ) : errorMessage ? (
         <div className="flex items-center justify-center h-11">
-          <p style={D ? { fontSize: 12, color: "#ff5050" } : undefined}
+          <p style={D ? { fontSize: 12, color: F.danger } : undefined}
             className={D ? undefined : "text-sm text-red-500"}>{errorMessage}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex items-center justify-center h-11">
-          <p style={D ? { fontSize: 12, color: "#527856" } : undefined}
+          <p style={D ? { fontSize: 12, color: F.textMuted } : undefined}
             className={D ? undefined : "text-sm text-slate-400"}>{noResultsText}</p>
         </div>
       ) : (
@@ -151,34 +153,34 @@ export function SearchableItemSelect({
             onClick={() => handleSelect(item.id)}
             style={D ? {
               minHeight: 44, width: "100%", display: "flex", alignItems: "center", gap: 8,
-              padding: "0 12px", textAlign: "left", background: item.id === value ? "#141e17" : "transparent",
-              borderBottom: "1px solid #0f1612", cursor: "pointer", border: "none",
+              padding: "0 12px", textAlign: "left", background: item.id === value ? F.surface : "transparent",
+              borderBottom: `1px solid ${F.border}`, cursor: "pointer", border: "none",
             } : { height: "44px", minHeight: "44px" }}
             className={D ? undefined : `w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors border-b border-slate-50 last:border-0 ${item.id === value ? "bg-brand-50" : ""}`}
             data-testid={`item-option-${item.id}`}
-            onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = "#141e17"; } : undefined}
-            onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = item.id === value ? "#141e17" : "transparent"; } : undefined}
+            onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = F.surface; } : undefined}
+            onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = item.id === value ? F.surface : "transparent"; } : undefined}
           >
-            <span style={D ? { color: "#527856", fontSize: 11, width: 64, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
+            <span style={D ? { color: F.textMuted, fontSize: 11, width: 64, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
               className={D ? undefined : "font-mono text-xs text-slate-400 w-16 shrink-0 truncate"}>{item.sku}</span>
-            <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 5, overflow: "hidden", border: "1px solid #203023", background: "#141e17", display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
+            <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 5, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface, display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
               className={D ? undefined : "w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center"}>
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                <ImageOff style={{ width: 13, height: 13, color: D ? "#2b3f2e" : undefined }}
+                <ImageOff style={{ width: 13, height: 13, color: D ? F.textDim : undefined }}
                   className={D ? undefined : "w-4 h-4 text-slate-300"} />
               )}
             </span>
             <div className="flex-1 min-w-0">
-              <p style={D ? { fontSize: 13, fontWeight: 500, color: item.id === value ? "#2ddb6f" : "#c8deca", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 } : undefined}
+              <p style={D ? { fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 } : undefined}
                 className={D ? undefined : "text-sm font-medium text-slate-900 truncate leading-tight"}>{item.name}</p>
               {item.sizeLabel && (
-                <p style={D ? { fontSize: 11, color: "#527856", lineHeight: 1.3, margin: 0 } : undefined}
+                <p style={D ? { fontSize: 11, color: F.textMuted, lineHeight: 1.3, margin: 0 } : undefined}
                   className={D ? undefined : "text-xs text-slate-400 leading-tight"}>{item.sizeLabel}</p>
               )}
             </div>
-            <span style={D ? { fontSize: 11, color: "#527856", flexShrink: 0, whiteSpace: "nowrap" } : undefined}
+            <span style={D ? { fontSize: 11, color: F.textMuted, flexShrink: 0, whiteSpace: "nowrap" } : undefined}
               className={D ? undefined : "text-xs text-slate-400 shrink-0 whitespace-nowrap"}>{item.quantityOnHand} {item.unitOfMeasure}</span>
           </button>
         ))
@@ -194,12 +196,12 @@ export function SearchableItemSelect({
         style={D ? {
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "0 14px", fontSize: 13, minHeight: 42, cursor: "pointer",
-          background: "#141e17",
-          border: `1px solid ${open && !isMobile ? "#2ddb6f" : open && isMobile ? "#2ddb6f" : "#203023"}`,
+          background: F.surface,
+          border: `1px solid ${open && !isMobile ? F.accent : open && isMobile ? F.accent : F.borderStrong}`,
           borderRadius: open && !isMobile ? "10px 10px 0 0" : 10,
           boxShadow: "none",
           transition: "border-color 0.15s",
-          color: "#c8deca",
+          color: F.text,
         } : undefined}
         className={D ? undefined : `w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-pointer transition-colors ${
           open ? "border-brand-400 ring-1 ring-brand-300 bg-white" : "border-input hover:bg-slate-50"
@@ -210,28 +212,28 @@ export function SearchableItemSelect({
         {selected ? (
           <>
             <span className="flex items-center gap-2.5 min-w-0 flex-1 py-1">
-              <span style={D ? { color: "#527856", fontSize: 11, flexShrink: 0, width: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
+              <span style={D ? { color: F.textMuted, fontSize: 11, flexShrink: 0, width: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
                 className={D ? undefined : "font-mono text-xs text-slate-400 shrink-0 w-20 truncate"}>{selected.sku}</span>
-              <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 6, overflow: "hidden", border: "1px solid #203023", background: "#0f1612", display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
+              <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 6, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.bg, display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
                 className={D ? undefined : "w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center"}>
                 {selected.imageUrl ? (
                   <img src={selected.imageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <ImageOff style={{ width: 13, height: 13, color: D ? "#2b3f2e" : undefined }}
+                  <ImageOff style={{ width: 13, height: 13, color: D ? F.textDim : undefined }}
                     className={D ? undefined : "w-4 h-4 text-slate-300"} />
                 )}
               </span>
-              <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#c8deca", fontSize: 13 } : undefined}
+              <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: F.text, fontSize: 13 } : undefined}
                 className={D ? undefined : "truncate text-slate-900 text-sm"}>{selected.name}</span>
             </span>
-            <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }}
+            <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }}
               className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
           </>
         ) : (
           <>
-            <span style={D ? { color: "#2b3f2e", paddingTop: 10, paddingBottom: 10, flex: 1, fontSize: 13 } : undefined}
+            <span style={D ? { color: F.textDim, paddingTop: 10, paddingBottom: 10, flex: 1, fontSize: 13 } : undefined}
               className={D ? undefined : "text-muted-foreground py-2 flex-1 text-sm"}>{searchPlaceholder}</span>
-            <ChevronDown style={{ width: 14, height: 14, color: D ? "#527856" : undefined, flexShrink: 0, marginLeft: 8 }}
+            <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }}
               className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
           </>
         )}
@@ -251,8 +253,8 @@ export function SearchableItemSelect({
               ref={dropdownRef}
               style={{
                 position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9991,
-                background: "#0d1410",
-                borderTop: `2px solid ${D ? "#2ddb6f" : "#e2e8f0"}`,
+                background: D ? F.bg : "#ffffff",
+                borderTop: `2px solid ${D ? F.accent : "#e2e8f0"}`,
                 borderRadius: "18px 18px 0 0",
                 boxShadow: "0 -8px 40px rgba(0,0,0,0.72)",
                 display: "flex", flexDirection: "column",
@@ -263,10 +265,10 @@ export function SearchableItemSelect({
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "14px 16px 10px",
-                borderBottom: `1px solid ${D ? "#1e2e21" : "#e2e8f0"}`,
+                borderBottom: `1px solid ${D ? F.border : "#e2e8f0"}`,
                 flexShrink: 0,
               }}>
-                <Search style={{ width: 15, height: 15, color: D ? "#527856" : "#94a3b8", flexShrink: 0 }} />
+                <Search style={{ width: 15, height: 15, color: D ? F.textMuted : "#94a3b8", flexShrink: 0 }} />
                 <input
                   ref={inputRef}
                   type="text"
@@ -276,7 +278,7 @@ export function SearchableItemSelect({
                   style={{
                     flex: 1, fontSize: 14, outline: "none",
                     background: "transparent",
-                    color: D ? "#c8deca" : "#0f172a",
+                    color: D ? F.text : "#0f172a",
                     border: "none", minWidth: 0,
                   }}
                   data-testid="item-search-input"
@@ -285,7 +287,7 @@ export function SearchableItemSelect({
                   <button
                     type="button"
                     onMouseDown={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? "#527856" : "#94a3b8" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: D ? F.textMuted : "#94a3b8" }}
                   >
                     <X style={{ width: 14, height: 14 }} />
                   </button>
@@ -294,8 +296,8 @@ export function SearchableItemSelect({
                   type="button"
                   onMouseDown={handleClose}
                   style={{
-                    background: "none", border: `1px solid ${D ? "#2a4030" : "#cbd5e1"}`,
-                    cursor: "pointer", color: D ? "#7aab82" : "#475569",
+                    background: "none", border: `1px solid ${D ? F.borderStrong : "#cbd5e1"}`,
+                    cursor: "pointer", color: D ? F.textMuted : "#475569",
                     padding: "4px 10px", borderRadius: 7,
                     fontSize: 13, fontWeight: 600,
                     fontFamily: "'Barlow Condensed', sans-serif",
@@ -316,7 +318,7 @@ export function SearchableItemSelect({
             ref={dropdownRef}
             style={D ? {
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
-              zIndex: 9999, background: "#0f1612", border: "1px solid #2ddb6f",
+              zIndex: 9999, background: F.bg, border: `1px solid ${F.accent}`,
               borderTop: "none", borderRadius: "0 0 10px 10px",
               boxShadow: "0 10px 28px rgba(0,0,0,0.6)", overflow: "hidden",
               maxHeight: `${maxDropdownH}px`,
@@ -327,9 +329,9 @@ export function SearchableItemSelect({
             className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
           >
             {/* Inline search bar for desktop only (trigger is a div, not input) */}
-            <div style={D ? { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: "1px solid #203023" } : undefined}
+            <div style={D ? { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}` } : undefined}
               className={D ? undefined : "flex items-center gap-2 px-3 py-2 border-b border-slate-100"}>
-              <Search style={{ width: 13, height: 13, color: D ? "#527856" : undefined, flexShrink: 0 }}
+              <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
                 className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
               <input
                 ref={inputRef}
@@ -338,13 +340,13 @@ export function SearchableItemSelect({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 onClick={e => e.stopPropagation()}
-                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: "#c8deca", border: "none" } : undefined}
+                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
                 className={D ? undefined : "flex-1 py-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
                 data-testid="item-search-input"
               />
               {search && (
                 <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
-                  <X style={{ width: 13, height: 13, color: D ? "#527856" : undefined }}
+                  <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
                     className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
                 </button>
               )}

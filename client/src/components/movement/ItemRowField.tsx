@@ -5,6 +5,7 @@ import { shouldShowReelUI } from "@/lib/reelEligibility";
 import { ChevronLeft, ChevronRight, ChevronDown, Trash2, Plus, X, Search } from "lucide-react";
 import { SearchableItemSelect } from "./SearchableItemSelect";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 import type { ItemRow, NewReel } from "./types";
 
 function useIsNarrow() {
@@ -49,6 +50,7 @@ function BrandCombobox({
   idx: number;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -77,8 +79,8 @@ function BrandCombobox({
   }
 
   const INPUT_STYLE: React.CSSProperties = {
-    height: 32, padding: "0 8px", fontSize: 13, background: "#0b1a0f",
-    border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5",
+    height: 32, padding: "0 8px", fontSize: 13, background: F.surface,
+    border: `1px solid ${F.borderStrong}`, borderRadius: 7, color: F.text,
     outline: "none", width: "100%", boxSizing: "border-box",
   };
 
@@ -96,9 +98,9 @@ function BrandCombobox({
         data-testid={`bulk-reel-brand-${idx}`}
       />
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, background: "#111d14", border: "1px solid #2a4030", borderRadius: 7, zIndex: 200, maxHeight: 150, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, background: F.bg, border: `1px solid ${F.borderStrong}`, borderRadius: 7, zIndex: 200, maxHeight: 150, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.5)" }}>
           {filtered.length === 0 ? (
-            <div style={{ padding: "7px 10px", fontSize: 11, color: "#4a7052", fontStyle: "italic" }}>
+            <div style={{ padding: "7px 10px", fontSize: 11, color: F.textDim, fontStyle: "italic" }}>
               {t.movItemPressTabEnter.replace("{q}", query)}
             </div>
           ) : (
@@ -106,7 +108,7 @@ function BrandCombobox({
               <div
                 key={brand}
                 onMouseDown={() => select(brand)}
-                style={{ padding: "6px 10px", fontSize: 13, color: brand.toLowerCase() === query.toLowerCase() ? "#2ddb6f" : "#c8deca", cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", borderBottom: "1px solid #152118" }}
+                style={{ padding: "6px 10px", fontSize: 13, color: brand.toLowerCase() === query.toLowerCase() ? F.accent : F.text, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", borderBottom: `1px solid ${F.border}` }}
               >
                 {brand}
               </div>
@@ -128,6 +130,7 @@ function ReelLocationSelect({
   idx: number;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -157,8 +160,8 @@ function ReelLocationSelect({
   const BTN: React.CSSProperties = {
     height: 32, width: "100%", display: "flex", alignItems: "center",
     justifyContent: "space-between", padding: "0 8px", fontSize: 13,
-    background: "#0b1a0f", border: `1px solid ${open ? "#2ddb6f" : "#2a4030"}`,
-    borderRadius: open ? "7px 7px 0 0" : 7, color: selected ? "#e2f0e5" : "#4a7052",
+    background: F.surface, border: `1px solid ${open ? F.accent : F.borderStrong}`,
+    borderRadius: open ? "7px 7px 0 0" : 7, color: selected ? F.text : F.textDim,
     cursor: "pointer", textAlign: "left", transition: "border-color 0.15s",
     boxSizing: "border-box",
   };
@@ -169,31 +172,31 @@ function ReelLocationSelect({
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {selected ? selected.name : t.movItemDefault}
         </span>
-        <ChevronDown style={{ width: 12, height: 12, color: "#527856", flexShrink: 0, marginLeft: 4 }} />
+        <ChevronDown style={{ width: 12, height: 12, color: F.textMuted, flexShrink: 0, marginLeft: 4 }} />
       </button>
       {open && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200,
-          background: "#111d14", border: "1px solid #2ddb6f", borderTop: "none",
+          background: F.bg, border: `1px solid ${F.accent}`, borderTop: "none",
           borderRadius: "0 0 7px 7px", overflow: "hidden",
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
         }}>
-          <div style={{ padding: "5px 7px", borderBottom: "1px solid #1a2c1e", display: "flex", alignItems: "center", gap: 5 }}>
-            <Search style={{ width: 11, height: 11, color: "#527856", flexShrink: 0 }} />
+          <div style={{ padding: "5px 7px", borderBottom: `1px solid ${F.border}`, display: "flex", alignItems: "center", gap: 5 }}>
+            <Search style={{ width: 11, height: 11, color: F.textMuted, flexShrink: 0 }} />
             <input
               ref={inputRef}
               type="text"
               placeholder={t.movItemFilter}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, fontSize: 12, outline: "none", background: "transparent", color: "#c8deca", border: "none" }}
+              style={{ flex: 1, fontSize: 12, outline: "none", background: "transparent", color: F.text, border: "none" }}
             />
           </div>
           <div style={{ maxHeight: 144, overflowY: "auto" }}>
             <button
               type="button"
               onMouseDown={() => { onChange(""); setOpen(false); setSearch(""); }}
-              style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: !value ? "#2ddb6f" : "#7aab82", background: "none", border: "none", borderBottom: "1px solid #0e1810", cursor: "pointer" }}
+              style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: !value ? F.accent : F.textMuted, background: "none", border: "none", borderBottom: `1px solid ${F.border}`, cursor: "pointer" }}
             >
               {t.movItemDefault}
             </button>
@@ -202,7 +205,7 @@ function ReelLocationSelect({
                 key={loc.id}
                 type="button"
                 onMouseDown={() => { onChange(String(loc.id)); setOpen(false); setSearch(""); }}
-                style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: String(loc.id) === value ? "#2ddb6f" : "#c8deca", background: "none", border: "none", borderBottom: "1px solid #0e1810", cursor: "pointer" }}
+                style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 13, color: String(loc.id) === value ? F.accent : F.text, background: "none", border: "none", borderBottom: `1px solid ${F.border}`, cursor: "pointer" }}
               >
                 {loc.name}
               </button>
@@ -237,6 +240,7 @@ function BulkReelEntry({
   locations: any[];
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const [rows, setRows] = useState<BulkReelRow[]>([makeBulkRow()]);
   const [nextSeq, setNextSeq] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -306,8 +310,8 @@ function BulkReelEntry({
 
   const narrow = useIsNarrow();
 
-  const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: "#527856", textTransform: "uppercase" as const, letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif" };
-  const INPUT: React.CSSProperties = { height: 32, padding: "0 8px", fontSize: 13, background: "#0b1a0f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none", width: "100%", boxSizing: "border-box" as const };
+  const LBL: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: F.textMuted, textTransform: "uppercase" as const, letterSpacing: 0.8, fontFamily: "Barlow Condensed, sans-serif" };
+  const INPUT: React.CSSProperties = { height: 32, padding: "0 8px", fontSize: 13, background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7, color: F.text, outline: "none", width: "100%", boxSizing: "border-box" as const };
   const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(100px,130px) 78px 1fr 1fr 68px 26px", gap: 6, alignItems: "center" };
 
   const RemoveBtn = ({ tempId, idx: i }: { tempId: string; idx: number }) => (
@@ -315,7 +319,7 @@ function BulkReelEntry({
       type="button"
       onClick={() => removeRow(tempId)}
       title={t.movItemRemoveRow}
-      style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#ff5050", opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
+      style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: F.danger, opacity: 0.6, borderRadius: 5, flexShrink: 0, transition: "opacity 0.15s, background 0.15s" }}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
       data-testid={`btn-remove-bulk-row-${i}`}
@@ -325,8 +329,8 @@ function BulkReelEntry({
   );
 
   return (
-    <div style={{ marginTop: 10, padding: "10px 12px", background: "#0f1a12", border: "1px solid rgba(45,219,111,0.2)", borderRadius: 9 }} data-testid="bulk-reel-entry">
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
+    <div style={{ marginTop: 10, padding: "10px 12px", background: F.bg, border: `1px solid ${F.accentBorder}`, borderRadius: 9 }} data-testid="bulk-reel-entry">
+      <div style={{ fontSize: 10, fontWeight: 700, color: F.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, fontFamily: "Barlow Condensed, sans-serif" }}>
         {t.movItemNewReels}
       </div>
 
@@ -348,13 +352,13 @@ function BulkReelEntry({
         if (narrow) {
           // ── Mobile: two-row card layout ────────────────────────────────────
           return (
-            <div key={row.tempId} style={{ marginBottom: 8, background: "#0a150c", border: "1px solid #1e3022", borderRadius: 8, padding: "8px 10px" }}>
+            <div key={row.tempId} style={{ marginBottom: 8, background: F.surface, border: `1px solid ${F.border}`, borderRadius: 8, padding: "8px 10px" }}>
               {/* Row 1: Reel ID + Length FT */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
                 <div>
                   <div style={{ ...LBL, marginBottom: 3 }}>{t.movItemReelId}</div>
-                  <div style={{ height: 32, display: "flex", alignItems: "center", background: "#080f09", border: "1px solid #1a2c1e", borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? "#4a7052" : reelId ? "#2ddb6f" : "#4a7052", fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis" }} data-testid={`bulk-reel-id-${idx}`}>
+                  <div style={{ height: 32, display: "flex", alignItems: "center", background: F.bg, border: `1px solid ${F.border}`, borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? F.textDim : reelId ? F.accent : F.textDim, fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis" }} data-testid={`bulk-reel-id-${idx}`}>
                       {fetching ? "…" : reelId ?? "—"}
                     </span>
                   </div>
@@ -408,7 +412,7 @@ function BulkReelEntry({
               </div>
 
               {row.error && (
-                <p style={{ fontSize: 10, color: "#ff5050", marginTop: 4 }}>{row.error}</p>
+                <p style={{ fontSize: 10, color: F.danger, marginTop: 4 }}>{row.error}</p>
               )}
             </div>
           );
@@ -418,8 +422,8 @@ function BulkReelEntry({
         return (
           <div key={row.tempId} style={{ marginBottom: 5 }}>
             <div style={GRID}>
-              <div style={{ height: 32, display: "flex", alignItems: "center", background: "#080f09", border: "1px solid #1a2c1e", borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? "#4a7052" : reelId ? "#2ddb6f" : "#4a7052", fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3 }} data-testid={`bulk-reel-id-${idx}`}>
+              <div style={{ height: 32, display: "flex", alignItems: "center", background: F.bg, border: `1px solid ${F.border}`, borderRadius: 7, padding: "0 8px", overflow: "hidden" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: fetching ? F.textDim : reelId ? F.accent : F.textDim, fontFamily: "Barlow Condensed, sans-serif", whiteSpace: "nowrap", letterSpacing: 0.3 }} data-testid={`bulk-reel-id-${idx}`}>
                   {fetching ? "…" : reelId ?? "—"}
                 </span>
               </div>
@@ -453,7 +457,7 @@ function BulkReelEntry({
               <RemoveBtn tempId={row.tempId} idx={idx} />
             </div>
             {row.error && (
-              <p style={{ fontSize: 10, color: "#ff5050", marginTop: 2, paddingLeft: 2 }}>{row.error}</p>
+              <p style={{ fontSize: 10, color: F.danger, marginTop: 2, paddingLeft: 2 }}>{row.error}</p>
             )}
           </div>
         );
@@ -463,7 +467,7 @@ function BulkReelEntry({
         <button
           type="button"
           onClick={() => setRows(prev => [...prev, makeBulkRow()])}
-          style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "none", border: "1px dashed #2a4030", borderRadius: 7, color: "#527856", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
+          style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", background: "none", border: `1px dashed ${F.borderStrong}`, borderRadius: 7, color: F.textMuted, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
           data-testid="btn-add-reel-row"
         >
           <Plus style={{ width: 12, height: 12 }} />
@@ -473,7 +477,7 @@ function BulkReelEntry({
           <button
             type="button"
             onClick={() => setRows([makeBulkRow()])}
-            style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: "1px solid #2a4030", color: "#7aab82", fontSize: 12, cursor: "pointer" }}
+            style={{ padding: "5px 12px", borderRadius: 7, background: "none", border: `1px solid ${F.borderStrong}`, color: F.textMuted, fontSize: 12, cursor: "pointer" }}
             data-testid="btn-bulk-reel-clear"
           >
             {t.movItemClear}
@@ -482,7 +486,7 @@ function BulkReelEntry({
             type="button"
             onClick={handleAddAll}
             disabled={!nextSeq || fetching}
-            style={{ padding: "5px 16px", borderRadius: 7, background: "#2ddb6f", border: "none", color: "#0b1a0f", fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (!nextSeq || fetching) ? 0.5 : 1, fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
+            style={{ padding: "5px 16px", borderRadius: 7, background: F.accent, border: "none", color: F.accentText, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: (!nextSeq || fetching) ? 0.5 : 1, fontFamily: "Barlow Condensed, sans-serif", letterSpacing: 0.3 }}
             data-testid="btn-add-all-reels"
           >
             {t.movItemAddAllReels}
@@ -514,6 +518,7 @@ export function ItemRowField({
   closeText?: string;
 }) {
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
   const sp = searchPlaceholder ?? t.movSearchByNameSkuSize;
   const ct = closeText ?? t.movSearchDone;
   const selectedItem = items?.find((i: any) => i.id === row.itemId);
@@ -596,7 +601,7 @@ export function ItemRowField({
 
   return (
     <div
-      style={{ position: "relative", zIndex: itemCount - idx, background: "#0b1a0f", border: "1px solid #203023", borderRadius: 10, padding: 8 }}
+      style={{ position: "relative", zIndex: itemCount - idx, background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 10, padding: 8 }}
       data-testid={`item-row-${idx}`}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -615,32 +620,32 @@ export function ItemRowField({
             closeText={ct}
           />
           {row.errors.itemId && (
-            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
+            <p style={{ fontSize: 10, color: F.danger, marginTop: 3, marginLeft: 2 }} data-testid={`error-item-${idx}`}>{row.errors.itemId}</p>
           )}
         </div>
 
         {showQtyStepper && (
           <div style={{ flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center" }}>
-              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: Math.max(0, row.quantity - 1) })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: "1px solid #203023", borderRight: "none", background: "#141e17", color: "#527856", cursor: "pointer" }} data-testid={`btn-qty-dec-${idx}`}>
+              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: Math.max(0, row.quantity - 1) })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "8px 0 0 8px", border: `1px solid ${F.borderStrong}`, borderRight: "none", background: F.surface, color: F.textMuted, cursor: "pointer" }} data-testid={`btn-qty-dec-${idx}`}>
                 <ChevronLeft style={{ width: 14, height: 14 }} />
               </button>
               <input
                 type="text" inputMode="numeric" pattern="[0-9]*" value={row.quantity}
                 onChange={(e) => { const v = parseInt(e.target.value.replace(/\D/g, ""), 10); onUpdate(row.rowId, { quantity: isNaN(v) || v < 0 ? 0 : v }); }}
                 onBlur={(e) => { const v = parseInt(e.target.value, 10); if (isNaN(v) || v < 0) onUpdate(row.rowId, { quantity: 0 }); }}
-                style={{ textAlign: "center", height: 34, width: 56, fontSize: 13, fontWeight: 700, border: "1px solid #203023", borderLeft: "none", borderRight: "none", background: "#0f1612", color: "#c8deca", outline: "none", padding: 0 }}
+                style={{ textAlign: "center", height: 34, width: 56, fontSize: 13, fontWeight: 700, border: `1px solid ${F.borderStrong}`, borderLeft: "none", borderRight: "none", background: F.bg, color: F.text, outline: "none", padding: 0 }}
                 data-testid={`input-quantity-${idx}`}
               />
-              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: row.quantity + 1 })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "0 8px 8px 0", border: "1px solid #203023", borderLeft: "none", background: "#141e17", color: "#527856", cursor: "pointer" }} data-testid={`btn-qty-inc-${idx}`}>
+              <button type="button" onClick={() => onUpdate(row.rowId, { quantity: row.quantity + 1 })} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "0 8px 8px 0", border: `1px solid ${F.borderStrong}`, borderLeft: "none", background: F.surface, color: F.textMuted, cursor: "pointer" }} data-testid={`btn-qty-inc-${idx}`}>
                 <ChevronRight style={{ width: 14, height: 14 }} />
               </button>
               {selectedItem && (
-                <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#527856", textTransform: "uppercase", whiteSpace: "nowrap" }}>{selectedItem.unitOfMeasure}</span>
+                <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: F.textMuted, textTransform: "uppercase", whiteSpace: "nowrap" }}>{selectedItem.unitOfMeasure}</span>
               )}
             </div>
             {row.errors.quantity && (
-              <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, textAlign: "center" }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+              <p style={{ fontSize: 10, color: F.danger, marginTop: 3, textAlign: "center" }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
             )}
           </div>
         )}
@@ -650,7 +655,7 @@ export function ItemRowField({
             type="button"
             onClick={() => onRemove(row.rowId)}
             disabled={itemCount === 1}
-            style={{ padding: "5px 7px", borderRadius: 7, color: itemCount === 1 ? "#1e3524" : "#ff5050", background: "none", border: "none", cursor: itemCount === 1 ? "not-allowed" : "pointer", opacity: itemCount === 1 ? 0.35 : 0.65, transition: "opacity 0.15s, background 0.15s" }}
+            style={{ padding: "5px 7px", borderRadius: 7, color: itemCount === 1 ? F.border : F.danger, background: "none", border: "none", cursor: itemCount === 1 ? "not-allowed" : "pointer", opacity: itemCount === 1 ? 0.35 : 0.65, transition: "opacity 0.15s, background 0.15s" }}
             onMouseEnter={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.12)"; } : undefined}
             onMouseLeave={itemCount > 1 ? e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.65"; (e.currentTarget as HTMLButtonElement).style.background = "none"; } : undefined}
             data-testid={`btn-remove-row-${idx}`}
@@ -663,22 +668,22 @@ export function ItemRowField({
 
       {/* ── Receive Reel UI ─────────────────────────────────────────── */}
       {showReceiveReelUI && (
-        <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7052", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontFamily: "Barlow Condensed, sans-serif" }}>
+        <div style={{ marginTop: 10, borderTop: `1px solid ${F.borderStrong}`, paddingTop: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: F.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontFamily: "Barlow Condensed, sans-serif" }}>
             {t.movItemActiveReels}
           </div>
           {reels.length === 0 ? (
-            <div style={{ fontSize: 11, color: "#4a7052", padding: "4px 0 8px", fontStyle: "italic" }}>{t.movItemNoActiveReels}</div>
+            <div style={{ fontSize: 11, color: F.textDim, padding: "4px 0 8px", fontStyle: "italic" }}>{t.movItemNoActiveReels}</div>
           ) : (
             reels.map((reel: any) => {
               const isNew = reel.status === "new" || reel.status === "full";
               return (
-                <div key={reel.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: "#111d14", border: "1px solid #1a2c1e" }}>
-                  <span style={{ fontWeight: 600, fontSize: 12, color: "#c8deca", fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{reel.reelId}</span>
-                  <span style={{ fontSize: 13, color: "#2ddb6f", fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{reel.lengthFt} FT</span>
-                  {reel.brand && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.brand}</span>}
-                  {reel.location && <span style={{ fontSize: 11, color: "#527856" }}>{reel.location.name}</span>}
-                  <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.1)" : "rgba(245,166,35,0.1)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
+                <div key={reel.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: F.bg, border: `1px solid ${F.border}` }}>
+                  <span style={{ fontWeight: 600, fontSize: 12, color: F.text, fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{reel.reelId}</span>
+                  <span style={{ fontSize: 13, color: F.accent, fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{reel.lengthFt} FT</span>
+                  {reel.brand && <span style={{ fontSize: 11, color: F.textMuted }}>{reel.brand}</span>}
+                  {reel.location && <span style={{ fontSize: 11, color: F.textMuted }}>{reel.location.name}</span>}
+                  <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? F.accentBg : F.warningBg, color: isNew ? F.accent : F.warning }}>
                     {isNew ? t.movItemNew : t.movItemUsed}
                   </span>
                 </div>
@@ -688,15 +693,15 @@ export function ItemRowField({
 
           {newReels.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#2ddb6f", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "Barlow Condensed, sans-serif" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: F.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, fontFamily: "Barlow Condensed, sans-serif" }}>
                 {t.movItemAdding}
               </div>
               {newReels.map(nr => (
-                <div key={nr.tempId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: "rgba(45,219,111,0.06)", border: "1px solid rgba(45,219,111,0.2)" }} data-testid={`new-reel-pending-${nr.tempId}`}>
-                  <span style={{ fontWeight: 700, fontSize: 12, color: "#2ddb6f", fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{nr.reelId}</span>
-                  <span style={{ fontSize: 13, color: "#e2f0e5", fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{nr.lengthFt} FT</span>
-                  {nr.brand && <span style={{ fontSize: 11, color: "#7aab82" }}>{nr.brand}</span>}
-                  <button type="button" onClick={() => removeNewReel(nr.tempId)} style={{ marginLeft: "auto", padding: 3, background: "none", border: "none", cursor: "pointer", color: "#4a7052" }} data-testid={`btn-remove-new-reel-${nr.tempId}`}>
+                <div key={nr.tempId} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", marginBottom: 3, borderRadius: 7, background: F.accentBg, border: `1px solid ${F.accentBorder}` }} data-testid={`new-reel-pending-${nr.tempId}`}>
+                  <span style={{ fontWeight: 700, fontSize: 12, color: F.accent, fontFamily: "Barlow Condensed, sans-serif", minWidth: 44 }}>{nr.reelId}</span>
+                  <span style={{ fontSize: 13, color: F.text, fontWeight: 600, fontFamily: "Barlow Condensed, sans-serif" }}>{nr.lengthFt} FT</span>
+                  {nr.brand && <span style={{ fontSize: 11, color: F.textMuted }}>{nr.brand}</span>}
+                  <button type="button" onClick={() => removeNewReel(nr.tempId)} style={{ marginLeft: "auto", padding: 3, background: "none", border: "none", cursor: "pointer", color: F.textDim }} data-testid={`btn-remove-new-reel-${nr.tempId}`}>
                     <X style={{ width: 13, height: 13 }} />
                   </button>
                 </div>
@@ -707,19 +712,19 @@ export function ItemRowField({
           <BulkReelEntry item={selectedItem ?? null} pendingCount={newReels.length} onAddAll={addNewReels} locations={locations} />
 
           {newReels.length > 0 && (
-            <div style={{ textAlign: "right", marginTop: 6, fontSize: 12, color: "#7aab82" }}>
+            <div style={{ textAlign: "right", marginTop: 6, fontSize: 12, color: F.textMuted }}>
               {t.movItemNewReelsCountFt.replace("{n}", String(newReels.length)).replace("{ft}", newReelsTotalFt.toLocaleString())}
             </div>
           )}
           {row.errors.quantity && (
-            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 4 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+            <p style={{ fontSize: 10, color: F.danger, marginTop: 4 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
           )}
         </div>
       )}
 
       {/* ── Issue / Return Reel UI ───────────────────────────────────── */}
       {showIssueReelUI && (
-        <div style={{ marginTop: 10, borderTop: "1px solid #203023", paddingTop: 8 }}>
+        <div style={{ marginTop: 10, borderTop: `1px solid ${F.borderStrong}`, paddingTop: 8 }}>
           {reels.map((reel: any) => {
             const isSelected = selections[reel.id] !== undefined;
             const ftValue = selections[reel.id] ?? reel.lengthFt;
@@ -728,20 +733,20 @@ export function ItemRowField({
               <div
                 key={reel.id}
                 onClick={() => toggleReel(reel)}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", marginBottom: 4, borderRadius: 8, borderLeft: `3px solid ${isSelected ? "#2ddb6f" : "transparent"}`, background: isSelected ? "rgba(45,219,111,0.08)" : "transparent", cursor: "pointer", userSelect: "none" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", marginBottom: 4, borderRadius: 8, borderLeft: `3px solid ${isSelected ? F.accent : "transparent"}`, background: isSelected ? F.accentBg : "transparent", cursor: "pointer", userSelect: "none" }}
                 data-testid={`reel-row-${reel.id}`}
               >
-                <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${isSelected ? "#2ddb6f" : "#2a4030"}`, background: isSelected ? "#2ddb6f" : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {isSelected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0b1a0f" }} />}
+                <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${isSelected ? F.accent : F.borderStrong}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {isSelected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: F.accentText }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 600, fontSize: 12, color: "#e2f0e5", fontFamily: "Barlow Condensed, sans-serif" }}>{reel.reelId}</span>
-                    <span style={{ fontSize: 15, color: "#2ddb6f", fontFamily: "Barlow Condensed, sans-serif", fontWeight: 500 }}>{reel.lengthFt} FT</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? "rgba(45,219,111,0.15)" : "rgba(245,166,35,0.15)", color: isNew ? "#2ddb6f" : "#f5a623" }}>
+                    <span style={{ fontWeight: 600, fontSize: 12, color: F.text, fontFamily: "Barlow Condensed, sans-serif" }}>{reel.reelId}</span>
+                    <span style={{ fontSize: 15, color: F.accent, fontFamily: "Barlow Condensed, sans-serif", fontWeight: 500 }}>{reel.lengthFt} FT</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: isNew ? F.accentBg : F.warningBg, color: isNew ? F.accent : F.warning }}>
                       {isNew ? t.movItemNew : t.movItemUsed}
                     </span>
-                    {reel.location && <span style={{ fontSize: 11, color: "#7aab82" }}>{reel.location.name}</span>}
+                    {reel.location && <span style={{ fontSize: 11, color: F.textMuted }}>{reel.location.name}</span>}
                   </div>
                 </div>
                 {isSelected && (
@@ -749,20 +754,20 @@ export function ItemRowField({
                     <input
                       type="number" min={1} max={reel.lengthFt} value={ftValue}
                       onChange={(e) => { const v = parseInt(e.target.value, 10); setReelFt(reel.id, isNaN(v) ? 0 : v, reel.lengthFt); }}
-                      style={{ width: 70, height: 30, textAlign: "center", fontSize: 13, fontWeight: 700, background: "#1c2b1f", border: "1px solid #2a4030", borderRadius: 7, color: "#e2f0e5", outline: "none", padding: "0 6px" }}
+                      style={{ width: 70, height: 30, textAlign: "center", fontSize: 13, fontWeight: 700, background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 7, color: F.text, outline: "none", padding: "0 6px" }}
                       data-testid={`reel-ft-input-${reel.id}`}
                     />
-                    <span style={{ fontSize: 11, color: "#4a7052", whiteSpace: "nowrap" }}>/ {reel.lengthFt} FT</span>
+                    <span style={{ fontSize: 11, color: F.textDim, whiteSpace: "nowrap" }}>/ {reel.lengthFt} FT</span>
                   </div>
                 )}
               </div>
             );
           })}
           {row.errors.quantity && (
-            <p style={{ fontSize: 10, color: "#ff5050", marginTop: 3, marginLeft: 2 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
+            <p style={{ fontSize: 10, color: F.danger, marginTop: 3, marginLeft: 2 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
           )}
           {selectedCount > 0 && (
-            <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: "#7aab82" }}>
+            <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: F.textMuted }}>
               {t.movItemReelsCountFt.replace("{n}", String(selectedCount)).replace("{ft}", totalFt.toLocaleString())}
             </div>
           )}

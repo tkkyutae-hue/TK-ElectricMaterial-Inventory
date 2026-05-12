@@ -8,6 +8,8 @@ import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects } from "@/hooks/use-reference-data";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
+import { type FieldToken } from "@/lib/fieldTokens";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -26,10 +28,11 @@ import { ItemRowField } from "./movement/ItemRowField";
 import type { ItemRow } from "./movement/types";
 import type { Worker } from "@shared/schema";
 
-// ── Field Mode dark CSS ────────────────────────────────────────────────────────
-const FM_CSS = `
+// ── Field Mode CSS (theme-aware) ───────────────────────────────────────────────
+function makeFieldCss(F: FieldToken): string {
+  return `
 .fm-dark label {
-  color: #527856 !important;
+  color: ${F.textMuted} !important;
   font-family: 'Barlow Condensed', sans-serif !important;
   font-size: 11px !important;
   font-weight: 700 !important;
@@ -39,54 +42,55 @@ const FM_CSS = `
   display: block;
 }
 .fm-dark [data-testid="select-movement-type"] {
-  background: #141e17 !important;
-  border: 1px solid #203023 !important;
+  background: ${F.surface} !important;
+  border: 1px solid ${F.borderStrong} !important;
   border-radius: 10px !important;
-  color: #c8deca !important;
+  color: ${F.text} !important;
   font-size: 13px !important;
   min-height: 42px !important;
 }
 .fm-dark [data-testid="select-movement-type"]:focus-within {
-  border-color: #2ddb6f !important;
-  box-shadow: 0 0 0 3px rgba(45,219,111,0.12) !important;
+  border-color: ${F.accent} !important;
+  box-shadow: 0 0 0 3px ${F.accentBg} !important;
 }
 .fm-dark [data-testid="select-movement-type"] span {
-  color: #c8deca !important;
+  color: ${F.text} !important;
 }
 .fm-dark textarea {
-  background: #141e17 !important;
-  border: 1px solid #203023 !important;
+  background: ${F.surface} !important;
+  border: 1px solid ${F.borderStrong} !important;
   border-radius: 10px !important;
-  color: #c8deca !important;
+  color: ${F.text} !important;
   font-size: 13px !important;
   padding: 10px 14px !important;
   min-height: 72px !important;
 }
-.fm-dark textarea::placeholder { color: #2b3f2e !important; }
+.fm-dark textarea::placeholder { color: ${F.textDim} !important; }
 .fm-dark textarea:focus {
-  border-color: #2ddb6f !important;
-  box-shadow: 0 0 0 3px rgba(45,219,111,0.12) !important;
+  border-color: ${F.accent} !important;
+  box-shadow: 0 0 0 3px ${F.accentBg} !important;
   outline: none !important;
 }
-.fm-dark p[id^="form-item-message"] { color: #f87171 !important; font-size: 11px !important; }
+.fm-dark p[id^="form-item-message"] { color: ${F.danger} !important; font-size: 11px !important; }
 .fm-dark-select-content {
-  background: #0f1612 !important;
-  border: 1px solid #203023 !important;
+  background: ${F.bg} !important;
+  border: 1px solid ${F.borderStrong} !important;
   border-radius: 10px !important;
 }
 .fm-dark-select-content [role="option"] {
-  color: #c8deca !important;
+  color: ${F.text} !important;
   font-size: 13px !important;
   cursor: pointer;
 }
 .fm-dark-select-content [role="option"]:focus,
 .fm-dark-select-content [role="option"]:hover {
-  background: #141e17 !important;
+  background: ${F.surface} !important;
 }
 .fm-dark-select-content [role="option"][data-state="checked"] {
-  color: #2ddb6f !important;
+  color: ${F.accent} !important;
 }
 `;
+}
 
 // ── Schema + types ────────────────────────────────────────────────────────────
 const sharedSchema = z.object({
@@ -198,6 +202,8 @@ export function MovementForm({
 }: MovementFormProps) {
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
+  const FM_CSS = makeFieldCss(F);
   const movementTypes = getMovementTypes(t as unknown as Record<string, string>);
   const qc = useQueryClient();
   const [, navigate] = useLocation();
@@ -606,7 +612,7 @@ export function MovementForm({
 
           {/* ── Section B: Items ── */}
           {fieldMode ? (
-            <div style={{ borderTop: "1px solid #203023", paddingTop: 20 }}>
+            <div style={{ borderTop: `1px solid ${F.borderStrong}`, paddingTop: 20 }}>
               <ItemsSection form={form} itemRows={itemRows} items={items} locations={locations} addRow={addRow} updateRow={updateRow} removeRow={removeRow} fieldMode={true} movType={movType} t={t} isLoading={itemsLoading} errorMessage={itemsErrorMessage} />
             </div>
           ) : (
@@ -631,7 +637,7 @@ export function MovementForm({
 
           {/* ── Note ── */}
           {fieldMode ? (
-            <div style={{ flexShrink: 0, paddingTop: 20, borderTop: "1px solid #203023", marginTop: 4 }}>
+            <div style={{ flexShrink: 0, paddingTop: 20, borderTop: `1px solid ${F.borderStrong}`, marginTop: 4 }}>
               <NoteField form={form} fieldMode={true} t={t} />
             </div>
           ) : (
@@ -642,7 +648,7 @@ export function MovementForm({
 
           {/* ── Submit footer ── */}
           <div
-            style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 8, paddingTop: 12, paddingBottom: 12, marginTop: 16, background: "#0d1410", borderTop: "1px solid #203023" } : undefined}
+            style={fieldMode ? { position: "sticky", bottom: 0, zIndex: 10, display: "flex", alignItems: "center", gap: 8, paddingTop: 12, paddingBottom: 12, marginTop: 16, background: F.bg, borderTop: `1px solid ${F.borderStrong}` } : undefined}
             className={fieldMode ? "-mx-4 sm:-mx-6 px-4 sm:px-6" : "sticky bottom-0 z-10 flex items-center justify-end gap-2 py-3 mt-4 -mx-4 md:-mx-6 px-4 md:px-6"}
           >
             <div className={fieldMode ? "w-full flex items-center gap-2" : "flex items-center gap-2"}>
@@ -653,7 +659,7 @@ export function MovementForm({
                       <Button
                         type="button"
                         disabled
-                        style={fieldMode ? { background: "#1a2a1d", border: "1px solid #203023", color: "#2b3f2e", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 20px", cursor: "not-allowed" } : undefined}
+                        style={fieldMode ? { background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.textDim, borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 20px", cursor: "not-allowed" } : undefined}
                         className={fieldMode ? undefined : "bg-slate-300 text-slate-500 min-w-[100px] cursor-not-allowed"}
                         data-testid="button-submit-movement"
                       >
@@ -669,7 +675,7 @@ export function MovementForm({
                     type="button"
                     disabled={draftSaving || submitting}
                     variant={fieldMode ? undefined : "outline"}
-                    style={fieldMode ? { flex: 1, background: "#141e17", border: "1px solid #203023", color: "#527856", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0 } : undefined}
+                    style={fieldMode ? { flex: 1, background: F.surface, border: `1px solid ${F.borderStrong}`, color: F.textMuted, borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0 } : undefined}
                     className={fieldMode ? undefined : "min-w-[110px]"}
                     data-testid="button-save-draft"
                     onClick={onSaveDraft}
@@ -691,7 +697,7 @@ export function MovementForm({
                   <Button
                     type="submit"
                     disabled={submitting}
-                    style={fieldMode ? { flex: 1, background: "#2ddb6f", color: "#07090a", borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0, border: "none", letterSpacing: "0.03em" } : undefined}
+                    style={fieldMode ? { flex: 1, background: F.accent, color: F.accentText, borderRadius: 10, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 14, height: 40, padding: "0 12px", minWidth: 0, border: "none", letterSpacing: "0.03em" } : undefined}
                     className={fieldMode ? undefined : "bg-brand-700 hover:bg-brand-800 min-w-[100px]"}
                     data-testid="button-submit-movement"
                   >
@@ -719,6 +725,7 @@ function MovementTypeSection({
   fieldMode: boolean;
   t: any;
 }) {
+  const { F } = useFieldTheme();
   return (
     <FormField control={form.control} name="movementType" render={({ field }: { field: any }) => (
       <FormItem>
@@ -735,7 +742,7 @@ function MovementTypeSection({
                 <SelectItem key={mt.value} value={mt.value} textValue={mt.label}>
                   <span>
                     <span className="font-medium">{mt.label}</span>
-                    <span style={{ color: "#527856", fontSize: 11, marginLeft: 6 }}>— {mt.desc}</span>
+                    <span style={{ color: F.textMuted, fontSize: 11, marginLeft: 6 }}>— {mt.desc}</span>
                   </span>
                 </SelectItem>
               ))}
@@ -951,18 +958,19 @@ function ItemsSection({
   isLoading?: boolean;
   errorMessage?: string | null;
 }) {
+  const { F } = useFieldTheme();
   return (
     <>
       <div className="flex items-center gap-2 mb-2">
-        <p style={fieldMode ? { fontSize: 13, fontWeight: 600, color: "#527856", margin: 0 } : undefined} className={fieldMode ? undefined : "text-sm font-semibold text-slate-700"}>{t.items}</p>
-        <span style={fieldMode ? { fontSize: 11, color: "#2ddb6f", background: "#0b1a0f", borderRadius: 12, padding: "1px 8px", fontWeight: 600 } : undefined} className={fieldMode ? undefined : "text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium"}>
+        <p style={fieldMode ? { fontSize: 13, fontWeight: 600, color: F.textMuted, margin: 0 } : undefined} className={fieldMode ? undefined : "text-sm font-semibold text-slate-700"}>{t.items}</p>
+        <span style={fieldMode ? { fontSize: 11, color: F.accent, background: F.surface, borderRadius: 12, padding: "1px 8px", fontWeight: 600 } : undefined} className={fieldMode ? undefined : "text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 font-medium"}>
           {itemRows.length}
         </span>
-        <div style={fieldMode ? { height: 1, flex: 1, background: "#203023" } : undefined} className={fieldMode ? undefined : "h-px flex-1 bg-slate-100"} />
+        <div style={fieldMode ? { height: 1, flex: 1, background: F.borderStrong } : undefined} className={fieldMode ? undefined : "h-px flex-1 bg-slate-100"} />
         <button
           type="button"
           onClick={addRow}
-          style={fieldMode ? { display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "#2ddb6f", background: "rgba(45,219,111,0.06)", border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", flexShrink: 0 } : undefined}
+          style={fieldMode ? { display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: F.accent, background: F.accentBg, border: "none", borderRadius: 6, padding: "5px 10px", cursor: "pointer", flexShrink: 0 } : undefined}
           className={fieldMode ? undefined : "flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-md transition-all shrink-0"}
           data-testid="btn-add-item"
         >
@@ -1023,6 +1031,7 @@ function AdminItemsSection({
 }
 
 function NoteField({ form, fieldMode, t }: { form: any; fieldMode: boolean; t: any }) {
+  const { F } = useFieldTheme();
   return (
     <FormField control={form.control} name="note" render={({ field }: { field: any }) => (
       <FormItem>
@@ -1030,7 +1039,7 @@ function NoteField({ form, fieldMode, t }: { form: any; fieldMode: boolean; t: a
         <FormControl>
           <Textarea
             placeholder="Reference number, PO, reason…"
-            style={fieldMode ? { background: "#141e17", border: "1px solid #203023", borderRadius: 10, color: "#c8deca", fontSize: 13, resize: "none" } : undefined}
+            style={fieldMode ? { background: F.surface, border: `1px solid ${F.borderStrong}`, borderRadius: 10, color: F.text, fontSize: 13, resize: "none" } : undefined}
             className="resize-none"
             rows={2}
             {...field}

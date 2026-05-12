@@ -974,7 +974,7 @@ export default function FieldTransactions() {
                             {m.quantity}
                           </span>
                           {item?.unitOfMeasure && (
-                            <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase", display: "block", marginTop: 1 }}>
+                            <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase" }}>
                               {item.unitOfMeasure}
                             </span>
                           )}

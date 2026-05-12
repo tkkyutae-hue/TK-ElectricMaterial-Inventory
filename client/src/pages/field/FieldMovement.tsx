@@ -1,6 +1,7 @@
 import { useSearch, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/hooks/use-language";
+import { useFieldTheme } from "@/hooks/use-field-theme";
 import { MovementForm } from "@/components/MovementForm";
 
 export default function FieldMovement() {
@@ -11,6 +12,7 @@ export default function FieldMovement() {
   const draftId = params.get("draftId") ? Number(params.get("draftId")) : undefined;
   const { canDoMovements } = useAuth();
   const { t } = useLanguage();
+  const { F } = useFieldTheme();
 
   const isReceive = presetType === "receive";
   const heading = isReceive ? t.receiveReturn : t.issueTransfer;
@@ -25,18 +27,18 @@ export default function FieldMovement() {
         <h1 style={{
           fontFamily: "'Barlow Condensed', sans-serif",
           fontSize: 24, fontWeight: 700,
-          color: "#ffffff", margin: "0 0 5px",
+          color: F.text, margin: "0 0 5px",
           letterSpacing: 0.3,
         }}>
           {emoji} {heading}
           {draftId && (
-            <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 600, color: "#f5a623", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
+            <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 600, color: F.warning, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1 }}>
               — {t.resumingDraft}
             </span>
           )}
         </h1>
         <p style={{
-          fontSize: 11, color: "#2ddb6f", margin: 0,
+          fontSize: 11, color: F.accent, margin: 0,
           fontFamily: "'Barlow Condensed', sans-serif",
           letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600,
         }}>

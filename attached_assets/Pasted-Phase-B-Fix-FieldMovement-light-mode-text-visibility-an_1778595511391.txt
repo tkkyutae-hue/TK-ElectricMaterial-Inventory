@@ -1,0 +1,84 @@
+Phase B — Fix FieldMovement light-mode text visibility and form surface colors.
+
+Goal:
+Fix FieldMovement screen readability in light mode.
+The page title “Receive / Return” or “입고 / 반품” is currently white and blends into the light background.
+Several form controls may still use hardcoded dark colors.
+
+Files to inspect:
+- client/src/pages/field/FieldMovement.tsx
+- field-only select/input components used by FieldMovement
+- SearchableLocationSelect only if directly used here and causing dark dropdowns
+
+Do not touch:
+- server/
+- shared/
+- Admin Mode
+- inventory movement backend logic
+- Stock & Pricing
+- Reorder logic
+
+Required fixes:
+
+1. Page title visibility
+Find the FieldMovement page title area:
+- icon
+- large title text such as “입고 / 반품” or “Receive / Return”
+- subtitle such as “Log Movement”
+
+Replace hardcoded white/light text with theme tokens:
+- title: F.text
+- subtitle/accent label: F.accent or F.textMuted
+- icon background: F.accentBg or existing icon color but readable
+
+In light mode, the title must be clearly readable.
+In dark mode, existing look should remain close.
+
+2. Section labels
+Labels like:
+- Movement Type
+- Receive From
+- Project
+- Location
+- Items
+- Memo
+
+Should use:
+- F.textMuted or F.text
+Not fixed white or fixed dark values.
+
+3. Inputs/selects/textareas
+If any controls remain dark in light mode, convert them to F tokens:
+- background: F.surface or F.surface2
+- border: F.borderStrong
+- text: F.text
+- placeholder: F.textDim
+- focus border: F.accent
+- focus ring/background: F.accentBg
+
+4. Bottom action bar
+If the bottom sticky action area is still dark in light mode:
+- background: F.surface
+- borderTop: F.borderStrong
+- button styles readable in both modes
+
+5. Dropdowns
+If FieldMovement dropdowns are inline-styled dark:
+- replace hardcoded dark colors with F tokens
+- do not rely only on global CSS overrides if inline styles are present
+
+Implementation rules:
+- Inside React components, use:
+  const { F, theme } = useFieldTheme()
+- Do not import static runtime F for live themed components.
+- Do not call hooks inside helper functions.
+- If helper functions need colors, pass F as a parameter.
+
+Verification:
+- Light mode FieldMovement title is readable.
+- Form labels are readable.
+- Select/input/textarea controls are not stuck dark unless intentionally styled and still readable.
+- Dropdowns are readable.
+- Dark mode remains acceptable.
+- No “F is not defined”.
+- No movement behavior changes.

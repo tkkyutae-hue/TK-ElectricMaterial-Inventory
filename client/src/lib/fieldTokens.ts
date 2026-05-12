@@ -4,14 +4,16 @@
  * Single source of truth for Field UI colors.
  * Used in inline style props throughout Field pages.
  *
- * F  = dark theme (default)
- * FL = light theme
+ * F_DARK  = dark theme (canonical)
+ * F_LIGHT = light theme (canonical)
+ * F  = legacy alias for F_DARK
+ * FL = legacy alias for F_LIGHT
  *
  * Color values are extracted from the existing Field UI palette — nothing invented.
  * Do NOT change values without updating ALL consumers via token reference.
  */
 
-export const F = {
+export const F_DARK = {
   // ── Surfaces ──────────────────────────────────────────────────────────────
   bg:           "#0d1410",  // page bg, drawer bg, sticky panel bg
   surface:      "#1c2b1f",  // inputs, row hover, inactive pills, secondary buttons
@@ -51,7 +53,7 @@ export const F = {
   infoBorder:   "rgba(91,156,246,0.40)",
 } as const;
 
-export const FL = {
+export const F_LIGHT = {
   // ── Surfaces ──────────────────────────────────────────────────────────────
   bg:           "#f4f8f5",
   surface:      "#e8f0ea",
@@ -91,8 +93,9 @@ export const FL = {
   infoBorder:   "rgba(37,99,235,0.35)",
 } as const;
 
-export type FieldToken = typeof F;
+export type FieldToken = typeof F_DARK;
 export type FieldTheme = "dark" | "light";
 
-export const F_DARK: FieldToken = F;
-export const F_LIGHT: FieldToken = FL;
+// Legacy aliases — prefer F_DARK / F_LIGHT in new code
+export const F: FieldToken = F_DARK;
+export const FL: FieldToken = F_LIGHT;

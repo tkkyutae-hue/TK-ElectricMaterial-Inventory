@@ -12,7 +12,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { Sun, Moon, Check, ChevronDown } from "lucide-react";
-import { F as FDark, FL as FLight, FieldToken, FieldTheme } from "@/lib/fieldTokens";
+import { F_DARK, F_LIGHT, FieldToken, FieldTheme } from "@/lib/fieldTokens";
 import { useLanguage } from "@/hooks/use-language";
 import {
   DropdownMenu,
@@ -32,7 +32,7 @@ interface FieldThemeCtx {
 const FieldThemeContext = createContext<FieldThemeCtx>({
   theme: "dark",
   setTheme: () => {},
-  F: FDark,
+  F: F_DARK,
 });
 
 export function FieldThemeProvider({ children }: { children: React.ReactNode }) {
@@ -53,7 +53,7 @@ export function FieldThemeProvider({ children }: { children: React.ReactNode }) 
     localStorage.setItem(LS_KEY, t);
   }
 
-  const tokens: FieldToken = theme === "light" ? FLight : FDark;
+  const tokens: FieldToken = theme === "light" ? F_LIGHT : F_DARK;
 
   return (
     <FieldThemeContext.Provider value={{ theme, setTheme, F: tokens }}>

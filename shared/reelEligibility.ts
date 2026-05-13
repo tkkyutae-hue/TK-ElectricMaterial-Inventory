@@ -119,6 +119,16 @@ const ACCESSORY_EXCLUSION_TERMS = [
   " lug ",
   "bonding jumper",
   " jumper ",
+  // Network / data accessories — excluded even when inside CABLE / WIRE category
+  "keystone",
+  " jack ",
+  "relief boot",
+  " boot ",
+  "modular plug",
+  // Wire management accessories
+  "wire nut",
+  " clip ",
+  " plug ",
 ] as const;
 
 // ── Step B: Non-reel conduit / structure guardrail ───────────────────────────

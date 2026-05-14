@@ -24,6 +24,7 @@ export const locations = pgTable("locations", {
   code: text("code"),
   locationType: text("location_type"),
   description: text("description"),
+  supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -316,6 +317,8 @@ export type SupplierWithStats = Supplier & {
   itemCount?: number;
   lowStockCount?: number;
   items?: Item[];
+  recentReceipts?: any[];
+  linkedLocations?: Location[];
 };
 
 export type PurchaseRecommendationWithRelations = PurchaseRecommendation & {

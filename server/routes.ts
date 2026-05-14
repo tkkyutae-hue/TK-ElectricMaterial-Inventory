@@ -308,6 +308,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/locations/:id/supplier", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { supplierId } = req.body;
+      if (isNaN(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+      if (!supplierId || isNaN(Number(supplierId))) return res.status(400).json({ ok: false, error: "supplierId is required" });
+      const updated = await storage.linkLocationToSupplier(id, Number(supplierId));
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.delete("/api/locations/:id/supplier", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ ok: false, error: "Invalid id" });
+      const updated = await storage.unlinkLocationFromSupplier(id);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
   // ─── Suppliers ──────────────────────────────────────────────────────────────
   app.get("/api/suppliers", isAuthenticated, async (_req, res) => {
     res.json(await storage.getSuppliers());

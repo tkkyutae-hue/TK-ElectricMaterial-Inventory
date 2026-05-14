@@ -1469,6 +1469,14 @@ const en = {
   supplierDetailColUnitCost:       "Unit Cost",
   supplierDetailColStatus:         "Status",
   supplierDetailPreferredBadge:    "Preferred Vendor",
+  supplierAssocLocations:          "Associated Locations",
+  supplierAssocLocEmpty:           "No locations linked. Link a location to pull its receive movements into Recent Receipts above.",
+  supplierAssocLocLink:            "Link Location",
+  supplierAssocLocUnlink:          "Unlink",
+  supplierAssocLocSelect:          "Select a location…",
+  supplierAssocLocLinked:          "linked",
+  supplierAssocLocLinkSuccess:     "Location linked",
+  supplierAssocLocUnlinkSuccess:   "Location unlinked",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "Adjust On Hand Stock",
@@ -3676,6 +3684,14 @@ const ko: Translations = {
   supplierDetailColUnitCost:       "단가",
   supplierDetailColStatus:         "상태",
   supplierDetailPreferredBadge:    "우선 거래처",
+  supplierAssocLocations:          "연결된 위치",
+  supplierAssocLocEmpty:           "연결된 위치가 없습니다. 위치를 연결하면 해당 입고 이력이 위의 최근 입고 이력에 표시됩니다.",
+  supplierAssocLocLink:            "위치 연결",
+  supplierAssocLocUnlink:          "연결 해제",
+  supplierAssocLocSelect:          "위치 선택…",
+  supplierAssocLocLinked:          "연결됨",
+  supplierAssocLocLinkSuccess:     "위치 연결됨",
+  supplierAssocLocUnlinkSuccess:   "위치 연결 해제됨",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "재고 수량 조정",
@@ -5883,6 +5899,14 @@ const es: Translations = {
   supplierDetailColUnitCost:       "Costo unitario",
   supplierDetailColStatus:         "Estado",
   supplierDetailPreferredBadge:    "Proveedor preferido",
+  supplierAssocLocations:          "Ubicaciones asociadas",
+  supplierAssocLocEmpty:           "Sin ubicaciones vinculadas. Vincule una ubicación para incluir sus movimientos de recepción en los recibos recientes.",
+  supplierAssocLocLink:            "Vincular ubicación",
+  supplierAssocLocUnlink:          "Desvincular",
+  supplierAssocLocSelect:          "Seleccionar ubicación…",
+  supplierAssocLocLinked:          "vinculado",
+  supplierAssocLocLinkSuccess:     "Ubicación vinculada",
+  supplierAssocLocUnlinkSuccess:   "Ubicación desvinculada",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "Ajustar stock disponible",

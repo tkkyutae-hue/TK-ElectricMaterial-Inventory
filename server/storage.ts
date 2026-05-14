@@ -37,6 +37,8 @@ export interface IStorage {
   createLocation(location: CreateLocationRequest): Promise<Location>;
   deleteLocation(id: number): Promise<void>;
   restoreLocation(id: number): Promise<void>;
+  linkLocationToSupplier(locationId: number, supplierId: number): Promise<Location>;
+  unlinkLocationFromSupplier(locationId: number): Promise<Location>;
 
   getSuppliers(): Promise<Supplier[]>;
   getSupplier(id: number): Promise<SupplierWithStats | undefined>;
@@ -224,6 +226,16 @@ export class DatabaseStorage implements IStorage {
     await db.update(locations).set({ isActive: true }).where(eq(locations.id, id));
   }
 
+  async linkLocationToSupplier(locationId: number, supplierId: number): Promise<Location> {
+    const [updated] = await db.update(locations).set({ supplierId }).where(eq(locations.id, locationId)).returning();
+    return updated;
+  }
+
+  async unlinkLocationFromSupplier(locationId: number): Promise<Location> {
+    const [updated] = await db.update(locations).set({ supplierId: null }).where(eq(locations.id, locationId)).returning();
+    return updated;
+  }
+
   // ─── Suppliers ───────────────────────────────────────────────────────────────
 
   async getSuppliers(): Promise<Supplier[]> {
@@ -234,11 +246,16 @@ export class DatabaseStorage implements IStorage {
     const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
     if (!supplier) return undefined;
 
+    // Get locations linked to this supplier
+    const linkedLocations = await db.select().from(locations)
+      .where(eq(locations.supplierId, id))
+      .orderBy(asc(locations.name));
+
     // Get items where this supplier is the primary
     const primaryItems = await db.select().from(items)
       .where(and(eq(items.supplierId, id), eq(items.isActive, true)));
 
-    // Get distinct items ever received from this supplier via movements
+    // Get distinct items ever received from this supplier via movements (supplierId on movement)
     const receivedItemIds = await db.selectDistinct({ itemId: inventoryMovements.itemId })
       .from(inventoryMovements)
       .where(and(
@@ -246,8 +263,24 @@ export class DatabaseStorage implements IStorage {
         eq(inventoryMovements.movementType, 'receive')
       ));
 
+    // Also get distinct items received from linked locations
+    let locationReceivedItemIds: { itemId: number | null }[] = [];
+    if (linkedLocations.length > 0) {
+      const linkedLocationIds = linkedLocations.map(l => l.id);
+      locationReceivedItemIds = await db.selectDistinct({ itemId: inventoryMovements.itemId })
+        .from(inventoryMovements)
+        .where(and(
+          inArray(inventoryMovements.sourceLocationId, linkedLocationIds),
+          eq(inventoryMovements.movementType, 'receive')
+        ));
+    }
+
     const primaryIds = new Set(primaryItems.map(i => i.id));
-    const newIds = receivedItemIds.map(r => r.itemId).filter(iid => iid !== null && !primaryIds.has(iid as number)) as number[];
+    const allReceivedIds = [
+      ...receivedItemIds.map(r => r.itemId),
+      ...locationReceivedItemIds.map(r => r.itemId),
+    ].filter(iid => iid !== null && !primaryIds.has(iid as number)) as number[];
+    const newIds = [...new Set(allReceivedIds)];
 
     let receivedOnlyItems: Item[] = [];
     if (newIds.length > 0) {
@@ -256,6 +289,16 @@ export class DatabaseStorage implements IStorage {
     }
 
     const allItems = [...primaryItems, ...receivedOnlyItems];
+
+    // Build receipt rows: union of movements by supplierId + movements from linked locations
+    const linkedLocationIds = linkedLocations.map(l => l.id);
+
+    const receiptConditions = linkedLocationIds.length > 0
+      ? or(
+          and(eq(inventoryMovements.supplierId, id), eq(inventoryMovements.movementType, 'receive')),
+          and(inArray(inventoryMovements.sourceLocationId, linkedLocationIds), eq(inventoryMovements.movementType, 'receive'))
+        )
+      : and(eq(inventoryMovements.supplierId, id), eq(inventoryMovements.movementType, 'receive'));
 
     const recentReceiptRows = await db.select({
       id: inventoryMovements.id,
@@ -269,12 +312,9 @@ export class DatabaseStorage implements IStorage {
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
-    .where(and(
-      eq(inventoryMovements.supplierId, id),
-      eq(inventoryMovements.movementType, 'receive')
-    ))
+    .where(receiptConditions)
     .orderBy(desc(inventoryMovements.createdAt))
-    .limit(20);
+    .limit(50);
 
     const lowStockCount = allItems.filter(i => i.quantityOnHand <= i.reorderPoint).length;
 
@@ -284,6 +324,7 @@ export class DatabaseStorage implements IStorage {
       lowStockCount,
       items: allItems,
       recentReceipts: recentReceiptRows,
+      linkedLocations,
     };
   }
 

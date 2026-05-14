@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useSupplier, useUpdateSupplier, useDeleteSupplier } from "@/hooks/use-reference-data";
-import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil, Trash2, ShoppingCart } from "lucide-react";
+import { useSupplier, useUpdateSupplier, useDeleteSupplier, useLocations } from "@/hooks/use-reference-data";
+import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil, Trash2, ShoppingCart, MapPin, Link2, X } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,6 +18,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 function computeStatus(item: any): string {
   if (item.quantityOnHand === 0) return "out_of_stock";
@@ -243,8 +247,50 @@ export default function SupplierDetail() {
   const [, params] = useRoute("/suppliers/:id");
   const id = Number(params?.id || "0");
   const { data: supplier, isLoading } = useSupplier(id);
+  const { data: allLocations = [] } = useLocations();
   const [editOpen, setEditOpen] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const { t } = useLanguage();
+  const { isManagerOrAbove } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const linkMutation = useMutation({
+    mutationFn: async ({ locationId, supplierId }: { locationId: number; supplierId: number }) => {
+      const res = await apiRequest("PATCH", `/api/locations/${locationId}/supplier`, { supplierId });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/suppliers/:id", id] });
+      qc.invalidateQueries({ queryKey: ["/api/locations"] });
+      setSelectedLocationId("");
+      toast({ title: t.supplierAssocLocLinkSuccess });
+    },
+    onError: (err: any) => {
+      toast({ title: t.cmnError, description: err.message, variant: "destructive" });
+    },
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: async (locationId: number) => {
+      const res = await apiRequest("DELETE", `/api/locations/${locationId}/supplier`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/suppliers/:id", id] });
+      qc.invalidateQueries({ queryKey: ["/api/locations"] });
+      toast({ title: t.supplierAssocLocUnlinkSuccess });
+    },
+    onError: (err: any) => {
+      toast({ title: t.cmnError, description: err.message, variant: "destructive" });
+    },
+  });
+
+  const linkedLocations: any[] = supplier?.linkedLocations ?? [];
+  const linkedLocationIds = new Set(linkedLocations.map((l: any) => l.id));
+  const availableLocations = (allLocations as any[]).filter(
+    (l: any) => l.isActive && !linkedLocationIds.has(l.id)
+  );
 
   if (isLoading) return (
     <div className="space-y-4 animate-pulse">
@@ -397,6 +443,82 @@ export default function SupplierDetail() {
                 </TableBody>
               </Table>
             </div>
+          </Card>
+
+          <Card className="premium-card border-none" data-testid="supplier-assoc-locations">
+            <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold text-slate-900">
+                  <MapPin className="w-4 h-4 inline mr-2 text-slate-400" />
+                  {t.supplierAssocLocations}
+                  {linkedLocations.length > 0 && (
+                    <Badge className="ml-2 bg-brand-50 text-brand-700 border-brand-200 border text-xs font-medium">
+                      {linkedLocations.length} {t.supplierAssocLocLinked}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3">
+              {linkedLocations.length === 0 ? (
+                <p className="text-sm text-slate-500 py-2">{t.supplierAssocLocEmpty}</p>
+              ) : (
+                <div className="space-y-2">
+                  {linkedLocations.map((loc: any) => (
+                    <div key={loc.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2.5" data-testid={`assoc-loc-${loc.id}`}>
+                      <div className="flex items-center gap-2">
+                        <Link2 className="w-3.5 h-3.5 text-brand-500" />
+                        <span className="text-sm font-medium text-slate-800">{loc.name}</span>
+                        {loc.code && <span className="font-mono text-xs text-slate-400">{loc.code}</span>}
+                      </div>
+                      {isManagerOrAbove && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                          onClick={() => unlinkMutation.mutate(loc.id)}
+                          disabled={unlinkMutation.isPending}
+                          data-testid={`button-unlink-loc-${loc.id}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span className="ml-1 text-xs">{t.supplierAssocLocUnlink}</span>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isManagerOrAbove && availableLocations.length > 0 && (
+                <div className="flex gap-2 pt-1">
+                  <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                    <SelectTrigger className="flex-1 h-9 text-sm" data-testid="select-link-location">
+                      <SelectValue placeholder={t.supplierAssocLocSelect} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableLocations.map((loc: any) => (
+                        <SelectItem key={loc.id} value={String(loc.id)}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="h-9 bg-brand-700 hover:bg-brand-800 text-white gap-1.5 shrink-0"
+                    onClick={() => {
+                      if (!selectedLocationId) return;
+                      linkMutation.mutate({ locationId: Number(selectedLocationId), supplierId: id });
+                    }}
+                    disabled={!selectedLocationId || linkMutation.isPending}
+                    data-testid="button-link-location"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    {t.supplierAssocLocLink}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
 

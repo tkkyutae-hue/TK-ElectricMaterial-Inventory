@@ -273,6 +273,12 @@ export class DatabaseStorage implements IStorage {
     if (referencedItems.length > 0) {
       throw new Error(`Cannot delete: ${referencedItems.length} active item(s) reference this supplier. Reassign them first.`);
     }
+    await db.update(purchaseRecommendations)
+      .set({ supplierId: null })
+      .where(eq(purchaseRecommendations.supplierId, id));
+    await db.update(wireReels)
+      .set({ supplierId: null })
+      .where(eq(wireReels.supplierId, id));
     await db.delete(supplierItems).where(eq(supplierItems.supplierId, id));
     await db.delete(suppliers).where(eq(suppliers.id, id));
   }

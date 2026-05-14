@@ -736,7 +736,7 @@ export class DatabaseStorage implements IStorage {
         newQuantity: movement.newQuantity,
         sourceLocationId: movement.sourceLocationId ?? null,
         destinationLocationId: movement.destinationLocationId ?? null,
-        supplierId: (movement as any).supplierId ?? null,
+        supplierId: movement.supplierId ?? null,
         projectId: movement.projectId ?? null,
         unitCostSnapshot: movement.unitCostSnapshot ?? null,
         note: movement.note ?? null,

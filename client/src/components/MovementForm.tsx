@@ -271,6 +271,12 @@ export function MovementForm({
   const projectId  = form.watch("projectId");
   const projectName = (projects ?? []).find((p: any) => p.id === projectId)?.name ?? null;
 
+  useEffect(() => {
+    if (!["receive", "return"].includes(movType)) {
+      form.setValue("supplierId", undefined);
+    }
+  }, [movType]);
+
   const needsSource      = ["receive", "return", "transfer"].includes(movType);
   const needsDestination = ["issue", "transfer"].includes(movType);
   const needsProject     = ["receive", "issue", "return"].includes(movType);

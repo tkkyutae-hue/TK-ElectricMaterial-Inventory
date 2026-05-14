@@ -664,7 +664,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         newQuantity: newQty,
         sourceLocationId: body.sourceLocationId ? Number(body.sourceLocationId) : null,
         destinationLocationId: body.destinationLocationId ? Number(body.destinationLocationId) : null,
-        supplierId: body.supplierId ? Number(body.supplierId) : null,
+        supplierId: (movementType === "receive" || movementType === "return") && body.supplierId ? Number(body.supplierId) : null,
         projectId: body.projectId ? Number(body.projectId) : null,
         unitCostSnapshot: item.unitCost,
         note: body.note ?? null,
@@ -672,7 +672,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         referenceType: body.referenceType ?? null,
         referenceId: body.referenceId ?? null,
         createdBy: getUserId(req),
-      } as any);
+      });
 
       res.status(201).json(movement);
     } catch (err: any) {

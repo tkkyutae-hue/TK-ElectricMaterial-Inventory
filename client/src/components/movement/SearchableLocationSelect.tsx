@@ -26,6 +26,11 @@ export function SearchableLocationSelect({
   placeholder,
   testId = "location-select",
   dark = false,
+  suppliers,
+  mode,
+  canDelete = false,
+  supplierValue,
+  onSupplierChange,
 }: {
   value?: number | null;
   onChange: (id: number) => void;
@@ -33,6 +38,11 @@ export function SearchableLocationSelect({
   placeholder?: string;
   testId?: string;
   dark?: boolean;
+  suppliers?: { id: number; name: string }[];
+  mode?: "source" | "destination";
+  canDelete?: boolean;
+  supplierValue?: number | null;
+  onSupplierChange?: (id: number | null) => void;
 }) {
   const { t } = useLanguage();
   const { F } = useFieldTheme();
@@ -50,14 +60,27 @@ export function SearchableLocationSelect({
   const isMobile = useIsMobileInline();
 
   const selected = locations.find(l => l.id === value);
+  const selectedSupplier = (suppliers ?? []).find(s => s.id === supplierValue);
 
   const validLocations = locations.filter(l => l.name != null);
 
-  const filtered = search.trim()
-    ? validLocations.filter(l =>
-        (l.name as string).toLowerCase().includes(search.toLowerCase())
-      )
+  const filteredSuppliers = (suppliers ?? []).filter(s =>
+    !search.trim() || s.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  let filteredLocations = search.trim()
+    ? validLocations.filter(l => (l.name as string).toLowerCase().includes(search.toLowerCase()))
     : validLocations;
+
+  if (mode === "destination") {
+    const warehouseLocs = filteredLocations.filter(l =>
+      (l.name as string).toLowerCase().includes("warehouse")
+    );
+    const otherLocs = filteredLocations.filter(l =>
+      !(l.name as string).toLowerCase().includes("warehouse")
+    );
+    filteredLocations = [...warehouseLocs, ...otherLocs];
+  }
 
   const showCreate =
     search.trim().length > 0 &&
@@ -167,68 +190,131 @@ export function SearchableLocationSelect({
 
   const D = dark;
 
-  const resultList = (listStyle: React.CSSProperties = {}) => (
-    <div style={{ overflowY: "auto", ...listStyle }}>
-      {filtered.map(loc => (
-        <div
-          key={loc.id}
-          style={D ? { display: "flex", alignItems: "center", background: loc.id === value ? F.surface : "transparent" } : undefined}
-          className={D ? "group" : `group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
-          data-testid={`${testId}-option-${loc.id}`}
-          onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = F.surface; } : undefined}
-          onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = loc.id === value ? F.surface : "transparent"; } : undefined}
-        >
-          <button
-            type="button"
-            onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
-            style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: loc.id === value ? F.accent : F.text, fontWeight: loc.id === value ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
-            className={D ? undefined : `flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
-          >
-            {loc.name}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => handleDelete(e, loc)}
-            disabled={deleteLocation.isPending}
-            style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: F.textMuted, background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
-            className={D ? "group-hover:opacity-100" : "opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"}
-            data-testid={`${testId}-delete-${loc.id}`}
-            title={t.movSearchDeleteLocation}
-          >
-            <Trash2 style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
-          </button>
-        </div>
-      ))}
-      {filtered.length === 0 && !showCreate && (
-        <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchNoLocations}</p>
-      )}
-      {showCreate && (
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={createLocation.isPending}
-          style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: F.accent, fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${F.borderStrong}`, background: "none", border: "none", borderTopStyle: "solid", cursor: "pointer" } : undefined}
-          className={D ? undefined : "w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"}
-          data-testid={`${testId}-create`}
-        >
-          <Plus style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
-          {createLocation.isPending ? t.movSearchCreating : t.movSearchCreateLocation.replace("{name}", search.trim())}
-        </button>
-      )}
-    </div>
+  const sectionLabel = (label: string) =>
+    D ? (
+      <div style={{ padding: "5px 12px 3px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: F.textMuted }}>
+        {label}
+      </div>
+    ) : (
+      <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        {label}
+      </div>
+    );
+
+  const dividerEl = D ? (
+    <div style={{ height: 1, margin: "4px 0", background: F.borderStrong }} />
+  ) : (
+    <div className="h-px my-1 bg-slate-100" />
   );
+
+  const resultList = (listStyle: React.CSSProperties = {}) => {
+    const showSupplierGroup = mode === "source" && (suppliers ?? []).length > 0;
+
+    return (
+      <div style={{ overflowY: "auto", ...listStyle }}>
+        {showSupplierGroup && (
+          <>
+            {sectionLabel((t as any).movSuppliers ?? "Suppliers")}
+            {filteredSuppliers.length === 0 && !search.trim() && (
+              <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "6px 0" } : undefined}
+                 className={D ? undefined : "text-center text-xs text-slate-400 py-1.5"}>
+                —
+              </p>
+            )}
+            {filteredSuppliers.length === 0 && search.trim() && null}
+            {filteredSuppliers.map(sup => (
+              <div
+                key={`sup-${sup.id}`}
+                style={D ? { display: "flex", alignItems: "center", background: sup.id === supplierValue ? F.surface : "transparent" } : undefined}
+                className={D ? "group" : `group flex items-center hover:bg-brand-50 transition-colors ${sup.id === supplierValue ? "bg-brand-50" : ""}`}
+                data-testid={`${testId}-supplier-${sup.id}`}
+                onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = F.surface; } : undefined}
+                onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = sup.id === supplierValue ? F.surface : "transparent"; } : undefined}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSupplierChange) onSupplierChange(sup.id);
+                    setSearch("");
+                    setOpen(false);
+                  }}
+                  style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: sup.id === supplierValue ? F.accent : F.text, fontWeight: sup.id === supplierValue ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
+                  className={D ? undefined : `flex-1 text-left px-3 py-2 text-sm ${sup.id === supplierValue ? "font-medium text-slate-900" : "text-slate-800"}`}
+                >
+                  {sup.name}
+                </button>
+              </div>
+            ))}
+            {dividerEl}
+            {sectionLabel((t as any).movLocations ?? "Locations")}
+          </>
+        )}
+
+        {filteredLocations.map(loc => (
+          <div
+            key={loc.id}
+            style={D ? { display: "flex", alignItems: "center", background: loc.id === value ? F.surface : "transparent" } : undefined}
+            className={D ? "group" : `group flex items-center hover:bg-brand-50 transition-colors ${loc.id === value ? "bg-brand-50" : ""}`}
+            data-testid={`${testId}-option-${loc.id}`}
+            onMouseEnter={D ? e => { (e.currentTarget as HTMLDivElement).style.background = F.surface; } : undefined}
+            onMouseLeave={D ? e => { (e.currentTarget as HTMLDivElement).style.background = loc.id === value ? F.surface : "transparent"; } : undefined}
+          >
+            <button
+              type="button"
+              onClick={() => { onChange(loc.id); setSearch(""); setOpen(false); }}
+              style={D ? { flex: 1, textAlign: "left", padding: "9px 12px", fontSize: 13, color: loc.id === value ? F.accent : F.text, fontWeight: loc.id === value ? 600 : 400, background: "none", border: "none", cursor: "pointer" } : undefined}
+              className={D ? undefined : `flex-1 text-left px-3 py-2 text-sm ${loc.id === value ? "font-medium text-slate-900" : "text-slate-800"}`}
+            >
+              {loc.name}
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={(e) => handleDelete(e, loc)}
+                disabled={deleteLocation.isPending}
+                style={D ? { opacity: 0, marginRight: 8, padding: 4, borderRadius: 4, color: F.textMuted, background: "none", border: "none", cursor: "pointer", transition: "opacity 0.15s" } : undefined}
+                className={D ? "group-hover:opacity-100" : "opacity-0 group-hover:opacity-100 mr-2 p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"}
+                data-testid={`${testId}-delete-${loc.id}`}
+                title={t.movSearchDeleteLocation}
+              >
+                <Trash2 style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
+              </button>
+            )}
+          </div>
+        ))}
+        {filteredLocations.length === 0 && !showCreate && (
+          <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchNoLocations}</p>
+        )}
+        {showCreate && (
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={createLocation.isPending}
+            style={D ? { width: "100%", textAlign: "left", padding: "9px 12px", fontSize: 13, color: F.accent, fontWeight: 500, display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${F.borderStrong}`, background: "none", border: "none", borderTopStyle: "solid", cursor: "pointer" } : undefined}
+            className={D ? undefined : "w-full text-left px-3 py-2 text-sm text-brand-700 font-medium flex items-center gap-2 hover:bg-brand-50 border-t border-slate-100 transition-colors"}
+            data-testid={`${testId}-create`}
+          >
+            <Plus style={{ width: 13, height: 13 }} className={D ? undefined : "w-3.5 h-3.5"} />
+            {createLocation.isPending ? t.movSearchCreating : t.movSearchCreateLocation.replace("{name}", search.trim())}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const displayLabel = selectedSupplier?.name ?? selected?.name;
 
   return (
     <div ref={ref} className="relative" data-testid={testId}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: F.surface, border: `1px solid ${open ? F.accent : F.borderStrong}`, borderRadius: open && !isMobile ? "10px 10px 0 0" : 10, color: selected ? F.text : F.textDim, cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: "none", transition: "border-color 0.15s" } : undefined}
+        style={D ? { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", fontSize: 13, background: F.surface, border: `1px solid ${open ? F.accent : F.borderStrong}`, borderRadius: open && !isMobile ? "10px 10px 0 0" : 10, color: displayLabel ? F.text : F.textDim, cursor: "pointer", textAlign: "left", minHeight: 42, boxShadow: "none", transition: "border-color 0.15s" } : undefined}
         className={D ? undefined : "w-full flex items-center justify-between px-3 py-2 text-sm border border-input rounded-md bg-background hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ring text-left min-h-[38px]"}
         data-testid={`${testId}-trigger`}
       >
-        {selected ? (
-          <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{selected.name}</span>
+        {displayLabel ? (
+          <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined} className={D ? undefined : "truncate text-slate-900"}>{displayLabel}</span>
         ) : (
           <span style={D ? { color: F.textDim } : undefined} className={D ? undefined : "text-muted-foreground"}>{placeholder}</span>
         )}
@@ -238,12 +324,10 @@ export function SearchableLocationSelect({
       {open && createPortal(
         isMobile ? (
           <>
-            {/* Backdrop */}
             <div
               style={{ position: "fixed", inset: 0, zIndex: 9990, background: "rgba(0,0,0,0.72)" }}
               onMouseDown={handleClose}
             />
-            {/* Bottom sheet */}
             <div
               ref={dropdownRef}
               style={{
@@ -256,7 +340,6 @@ export function SearchableLocationSelect({
                 maxHeight: "72vh", minHeight: "44vh",
               }}
             >
-              {/* Search header */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "14px 16px 10px",
@@ -303,12 +386,10 @@ export function SearchableLocationSelect({
                   {t.movDoneBtn}
                 </button>
               </div>
-              {/* Results */}
               {resultList({ flex: 1, minHeight: 0, WebkitOverflowScrolling: "touch" as any })}
             </div>
           </>
         ) : (
-          /* Desktop: fixed dropdown below trigger */
           <div
             ref={dropdownRef}
             style={D ? {
@@ -316,14 +397,13 @@ export function SearchableLocationSelect({
               zIndex: 9999, background: F.bg, border: `1px solid ${F.accent}`,
               borderTop: "none", borderRadius: "0 0 10px 10px",
               boxShadow: "0 10px 28px rgba(0,0,0,0.6)", overflow: "hidden",
-              maxHeight: 260,
+              maxHeight: 300,
             } : {
               position: "fixed", top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
               zIndex: 9999,
             }}
-            className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-60"}
+            className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-72"}
           >
-            {/* Search bar */}
             <div style={D ? { padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}`, display: "flex", alignItems: "center", gap: 8, background: F.bg } : undefined} className={D ? undefined : "p-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50/80"}>
               <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }} className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
               <input
@@ -342,7 +422,7 @@ export function SearchableLocationSelect({
                 </button>
               )}
             </div>
-            {resultList({ maxHeight: 200, overflowY: "auto" })}
+            {resultList({ maxHeight: 240, overflowY: "auto" })}
           </div>
         ),
         document.body

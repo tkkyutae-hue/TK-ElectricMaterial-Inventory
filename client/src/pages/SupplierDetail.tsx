@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useSupplier, useUpdateSupplier, useDeleteSupplier } from "@/hooks/use-reference-data";
-import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Truck, Phone, Mail, Globe, Star, Package, AlertTriangle, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -295,7 +295,7 @@ export default function SupplierDetail() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6" data-testid="supplier-detail-main">
           {lowStockItems.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
@@ -347,6 +347,51 @@ export default function SupplierDetail() {
                       <TableCell className="text-right font-medium">{item.quantityOnHand} <span className="text-slate-400 text-xs">{item.unitOfMeasure}</span></TableCell>
                       <TableCell className="text-right text-slate-600">{item.unitCost ? `$${parseFloat(item.unitCost).toFixed(2)}` : '—'}</TableCell>
                       <TableCell><ItemStatusBadge status={computeStatus(item)} /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          <Card className="premium-card border-none" data-testid="supplier-recent-receipts">
+            <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+              <CardTitle className="text-base font-semibold text-slate-900">
+                <ShoppingCart className="w-4 h-4 inline mr-2 text-slate-400" />
+                {t.supplierDetailRecentReceipts}
+              </CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/80">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailReceiptDate}</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailColSku}</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailReceiptItem}</TableHead>
+                    <TableHead className="font-semibold text-slate-600 text-right">{t.supplierDetailReceiptQty}</TableHead>
+                    <TableHead className="font-semibold text-slate-600">{t.supplierDetailReceiptBy}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!supplier.recentReceipts?.length ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-slate-500">{t.supplierDetailNoReceipts}</TableCell>
+                    </TableRow>
+                  ) : supplier.recentReceipts.map((r: any) => (
+                    <TableRow key={r.id} className="hover:bg-slate-50/50" data-testid={`receipt-row-${r.id}`}>
+                      <TableCell className="text-xs text-slate-500">
+                        {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-slate-400">{r.sku ?? "—"}</TableCell>
+                      <TableCell>
+                        <Link href={`/inventory/${r.itemId}`} className="font-medium text-slate-900 hover:text-brand-600 text-sm">
+                          {r.itemName ?? "—"}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-sm">
+                        {r.quantity} <span className="text-slate-400 text-xs">{r.unitOfMeasure}</span>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-500">{r.createdBy ?? "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

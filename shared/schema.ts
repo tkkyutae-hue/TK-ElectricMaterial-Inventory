@@ -149,6 +149,7 @@ export const inventoryMovements = pgTable("inventory_movements", {
   unitCostSnapshot: numeric("unit_cost_snapshot", { precision: 12, scale: 2 }),
   referenceType: text("reference_type"),
   referenceId: text("reference_id"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
   note: text("note"),
   reason: text("reason"),
   createdBy: text("created_by").references(() => users.id),

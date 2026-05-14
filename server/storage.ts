@@ -248,11 +248,31 @@ export class DatabaseStorage implements IStorage {
 
     const allItems = [...primaryItems];
 
+    const recentReceiptRows = await db.select({
+      id: inventoryMovements.id,
+      itemId: inventoryMovements.itemId,
+      sku: items.sku,
+      itemName: items.name,
+      unitOfMeasure: items.unitOfMeasure,
+      quantity: inventoryMovements.quantity,
+      createdAt: inventoryMovements.createdAt,
+      createdBy: inventoryMovements.createdBy,
+    })
+    .from(inventoryMovements)
+    .leftJoin(items, eq(inventoryMovements.itemId, items.id))
+    .where(and(
+      eq(inventoryMovements.supplierId, id),
+      eq(inventoryMovements.movementType, 'receive')
+    ))
+    .orderBy(desc(inventoryMovements.createdAt))
+    .limit(20);
+
     return {
       ...supplier,
       itemCount: allItems.length,
       lowStockCount,
-      items: allItems
+      items: allItems,
+      recentReceipts: recentReceiptRows,
     };
   }
 
@@ -716,6 +736,7 @@ export class DatabaseStorage implements IStorage {
         newQuantity: movement.newQuantity,
         sourceLocationId: movement.sourceLocationId ?? null,
         destinationLocationId: movement.destinationLocationId ?? null,
+        supplierId: (movement as any).supplierId ?? null,
         projectId: movement.projectId ?? null,
         unitCostSnapshot: movement.unitCostSnapshot ?? null,
         note: movement.note ?? null,

@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useItems } from "@/hooks/use-items";
 import { useLocations, useProjects } from "@/hooks/use-reference-data";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { useFieldTheme } from "@/hooks/use-field-theme";
@@ -97,6 +98,7 @@ const sharedSchema = z.object({
   movementType: z.string().min(1, "Movement type is required"),
   sourceLocationId: z.coerce.number().optional(),
   destinationLocationId: z.coerce.number().optional(),
+  supplierId: z.coerce.number().optional(),
   projectId: z.coerce.number().optional(),
   note: z.string().optional(),
   personName: z.string().optional(),
@@ -218,6 +220,9 @@ export function MovementForm({
   const { data: locations } = useLocations();
   const { data: projects } = useProjects();
   const { data: workers } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
+  const { data: suppliersRaw } = useQuery<any[]>({ queryKey: ["/api/suppliers"] });
+  const supplierList: { id: number; name: string }[] = (suppliersRaw ?? []).map((s: any) => ({ id: s.id, name: s.name }));
+  const { isAdminRole } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -421,6 +426,7 @@ export function MovementForm({
               quantity: row.quantity,
               sourceLocationId: shared.sourceLocationId || null,
               destinationLocationId: shared.destinationLocationId || null,
+              supplierId: shared.supplierId || null,
               projectId: shared.projectId || null,
               note: shared.note || null,
               reason: shared.personName || null,
@@ -601,12 +607,12 @@ export function MovementForm({
           {fieldMode ? (
             <div className="space-y-4 pb-4">
               <MovementTypeSection form={form} movementTypes={movementTypes} allowedTypes={allowedTypes} fieldMode={true} t={t} />
-              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={true} t={t} workers={workers} projectName={projectName} />
+              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={true} t={t} workers={workers} projectName={projectName} suppliers={supplierList} canDelete={isAdminRole} />
             </div>
           ) : (
             <SectionCard title="Movement Details" bodyClassName="space-y-4">
               <MovementTypeSection form={form} movementTypes={movementTypes} allowedTypes={allowedTypes} fieldMode={false} t={t} />
-              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={false} t={t} workers={workers} projectName={projectName} />
+              <LocationProjectSection form={form} locations={locations} projects={projects} movType={movType} needsSource={needsSource} needsDestination={needsDestination} needsProject={needsProject} sourceLabel={sourceLabel} destLabel={destLabel} fieldMode={false} t={t} workers={workers} projectName={projectName} suppliers={supplierList} canDelete={isAdminRole} />
             </SectionCard>
           )}
 
@@ -766,6 +772,7 @@ function MovementTypeSection({
 function LocationProjectSection({
   form, locations, projects, movType, needsSource, needsDestination, needsProject,
   sourceLabel, destLabel, fieldMode, t, workers, projectName,
+  suppliers, canDelete,
 }: {
   form: any;
   locations: any[] | undefined;
@@ -780,7 +787,11 @@ function LocationProjectSection({
   t: any;
   workers?: Worker[];
   projectName?: string | null;
+  suppliers?: { id: number; name: string }[];
+  canDelete?: boolean;
 }) {
+  const isReceiveOrReturn = movType === "receive" || movType === "return";
+  const supplierValue = form.watch("supplierId") as number | undefined;
   return (
     <div className="space-y-4">
       {/* Row 1: primary location + project (or both locations for transfer) */}
@@ -792,11 +803,16 @@ function LocationProjectSection({
               <FormControl>
                 <SearchableLocationSelect
                   value={field.value ?? null}
-                  onChange={(id) => field.onChange(id)}
+                  onChange={(id) => { field.onChange(id); if (id) form.setValue("supplierId", undefined); }}
                   locations={locations || []}
                   placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                   testId="select-source-location"
                   dark={fieldMode}
+                  suppliers={isReceiveOrReturn ? suppliers : undefined}
+                  mode={isReceiveOrReturn ? "source" : undefined}
+                  supplierValue={isReceiveOrReturn ? (supplierValue ?? null) : null}
+                  onSupplierChange={isReceiveOrReturn ? (id) => { form.setValue("supplierId", id ?? undefined); field.onChange(undefined); } : undefined}
+                  canDelete={canDelete}
                 />
               </FormControl>
               <FormMessage />
@@ -815,6 +831,7 @@ function LocationProjectSection({
                   placeholder={(t as any).selectDestination ?? "Select destination…"}
                   testId="select-dest-location"
                   dark={fieldMode}
+                  canDelete={canDelete}
                 />
               </FormControl>
               <FormMessage />
@@ -852,6 +869,7 @@ function LocationProjectSection({
                   placeholder={(t as any).selectDestination ?? "Select destination…"}
                   testId="select-dest-location"
                   dark={fieldMode}
+                  canDelete={canDelete}
                 />
               </FormControl>
               <FormMessage />
@@ -874,6 +892,8 @@ function LocationProjectSection({
                   placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                   testId="select-dest-location"
                   dark={fieldMode}
+                  mode="destination"
+                  canDelete={canDelete}
                 />
               </FormControl>
               <FormMessage />
@@ -912,6 +932,7 @@ function LocationProjectSection({
                     placeholder={(t as any).searchOrTypeToCreate ?? "Search or type to create…"}
                     testId="select-source-location"
                     dark={fieldMode}
+                    canDelete={canDelete}
                   />
                 </FormControl>
                 <FormMessage />

@@ -234,13 +234,6 @@ export class DatabaseStorage implements IStorage {
     const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
     if (!supplier) return undefined;
 
-    const supplierItemRows = await db.select({ item: items })
-      .from(supplierItems)
-      .leftJoin(items, eq(supplierItems.itemId, items.id))
-      .where(eq(supplierItems.supplierId, id));
-
-    const linkedItems = supplierItemRows.map(r => r.item).filter(Boolean) as Item[];
-
     // Get items where this supplier is the primary
     const primaryItems = await db.select().from(items)
       .where(and(eq(items.supplierId, id), eq(items.isActive, true)));

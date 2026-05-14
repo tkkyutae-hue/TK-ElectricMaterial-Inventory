@@ -86,14 +86,33 @@ export async function runSeed() {
   const allLocations = await db.select().from(locations);
   const allSuppliers = await db.select().from(suppliers);
 
+  let linked = 0;
+  const missingLocations: string[] = [];
+  const missingSuppliers: string[] = [];
+
   for (const { locationName, supplierName } of LOCATION_SUPPLIER_LINKS) {
     const loc = allLocations.find(l => l.name === locationName);
     const sup = allSuppliers.find(s => s.name === supplierName);
-    if (!loc) { seedLog(`location "${locationName}" not found — skipping link`); continue; }
-    if (!sup) { seedLog(`supplier "${supplierName}" not found — skipping link`); continue; }
-    if (loc.supplierId === sup.id) { continue; }
+    if (!loc) { missingLocations.push(locationName); continue; }
+    if (!sup) { missingSuppliers.push(supplierName); continue; }
+    if (loc.supplierId === sup.id) { linked++; continue; }
     await db.update(locations).set({ supplierId: sup.id }).where(eq(locations.id, loc.id));
     seedLog(`linked location "${locationName}" → supplier "${supplierName}"`);
+    linked++;
+  }
+
+  // ── Verification summary ──────────────────────────────────────────────────
+  const [{ cnt: linkedCount }] = await db
+    .select({ cnt: count() })
+    .from(locations)
+    .where(eq(locations.isActive, true));
+  const linkedLocs = allLocations.filter(l => l.supplierId !== null);
+  seedLog(`supplier-location links: ${linkedLocs.length} linked / ${linkedCount} active locations`);
+  if (missingLocations.length > 0) {
+    seedLog(`WARN: locations not found for linking: ${missingLocations.join(", ")}`);
+  }
+  if (missingSuppliers.length > 0) {
+    seedLog(`WARN: suppliers not found for linking: ${missingSuppliers.join(", ")}`);
   }
 
   seedLog("seed complete");

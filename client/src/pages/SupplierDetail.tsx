@@ -476,7 +476,11 @@ export default function SupplierDetail() {
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50"
-                          onClick={() => unlinkMutation.mutate(loc.id)}
+                          onClick={() => {
+                            if (window.confirm(t.supplierAssocLocUnlinkConfirm)) {
+                              unlinkMutation.mutate(loc.id);
+                            }
+                          }}
                           disabled={unlinkMutation.isPending}
                           data-testid={`button-unlink-loc-${loc.id}`}
                         >

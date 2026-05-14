@@ -1477,6 +1477,7 @@ const en = {
   supplierAssocLocLinked:          "linked",
   supplierAssocLocLinkSuccess:     "Location linked",
   supplierAssocLocUnlinkSuccess:   "Location unlinked",
+  supplierAssocLocUnlinkConfirm:   "Unlink this location? It will no longer contribute receive movements to this supplier.",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "Adjust On Hand Stock",
@@ -3692,6 +3693,7 @@ const ko: Translations = {
   supplierAssocLocLinked:          "연결됨",
   supplierAssocLocLinkSuccess:     "위치 연결됨",
   supplierAssocLocUnlinkSuccess:   "위치 연결 해제됨",
+  supplierAssocLocUnlinkConfirm:   "이 위치를 연결 해제하시겠습니까? 이 공급업체의 입고 이력에서 제외됩니다.",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "재고 수량 조정",
@@ -5907,6 +5909,7 @@ const es: Translations = {
   supplierAssocLocLinked:          "vinculado",
   supplierAssocLocLinkSuccess:     "Ubicación vinculada",
   supplierAssocLocUnlinkSuccess:   "Ubicación desvinculada",
+  supplierAssocLocUnlinkConfirm:   "¿Desvincular esta ubicación? Ya no contribuirá movimientos de recepción a este proveedor.",
 
   // ── Category Adjust Stock dialog (batch 3) ───────────────────────────────
   catAdjustTitle:                  "Ajustar stock disponible",

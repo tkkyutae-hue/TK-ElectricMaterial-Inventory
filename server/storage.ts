@@ -227,6 +227,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async linkLocationToSupplier(locationId: number, supplierId: number): Promise<Location> {
+    const [existing] = await db.select().from(locations).where(eq(locations.id, locationId));
+    if (!existing) throw new Error("Location not found");
+    if (existing.supplierId !== null && existing.supplierId !== supplierId) {
+      throw new Error("Location is already linked to another supplier. Unlink it first.");
+    }
     const [updated] = await db.update(locations).set({ supplierId }).where(eq(locations.id, locationId)).returning();
     return updated;
   }

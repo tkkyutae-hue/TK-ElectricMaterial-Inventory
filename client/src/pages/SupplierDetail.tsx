@@ -289,7 +289,7 @@ export default function SupplierDetail() {
   const linkedLocations: any[] = supplier?.linkedLocations ?? [];
   const linkedLocationIds = new Set(linkedLocations.map((l: any) => l.id));
   const availableLocations = (allLocations as any[]).filter(
-    (l: any) => l.isActive && !linkedLocationIds.has(l.id)
+    (l: any) => l.isActive && l.supplierId == null
   );
 
   if (isLoading) return (

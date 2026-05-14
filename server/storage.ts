@@ -240,13 +240,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(supplierItems.supplierId, id));
 
     const linkedItems = supplierItemRows.map(r => r.item).filter(Boolean) as Item[];
-    const lowStockCount = linkedItems.filter(i => i && i.quantityOnHand <= i.reorderPoint).length;
 
-    // Also get items where this supplier is the primary
+    // Get items where this supplier is the primary
     const primaryItems = await db.select().from(items)
       .where(and(eq(items.supplierId, id), eq(items.isActive, true)));
 
-    const allItems = [...primaryItems];
+    // Get distinct items ever received from this supplier via movements
+    const receivedItemIds = await db.selectDistinct({ itemId: inventoryMovements.itemId })
+      .from(inventoryMovements)
+      .where(and(
+        eq(inventoryMovements.supplierId, id),
+        eq(inventoryMovements.movementType, 'receive')
+      ));
+
+    const primaryIds = new Set(primaryItems.map(i => i.id));
+    const newIds = receivedItemIds.map(r => r.itemId).filter(iid => iid !== null && !primaryIds.has(iid as number)) as number[];
+
+    let receivedOnlyItems: Item[] = [];
+    if (newIds.length > 0) {
+      receivedOnlyItems = await db.select().from(items)
+        .where(and(inArray(items.id, newIds), eq(items.isActive, true)));
+    }
+
+    const allItems = [...primaryItems, ...receivedOnlyItems];
 
     const recentReceiptRows = await db.select({
       id: inventoryMovements.id,
@@ -266,6 +282,8 @@ export class DatabaseStorage implements IStorage {
     ))
     .orderBy(desc(inventoryMovements.createdAt))
     .limit(20);
+
+    const lowStockCount = allItems.filter(i => i.quantityOnHand <= i.reorderPoint).length;
 
     return {
       ...supplier,

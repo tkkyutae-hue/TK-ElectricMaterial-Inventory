@@ -3032,6 +3032,81 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Preview suppliers that still have items linked (with or without movements).
+  app.get("/api/admin/cleanup/supplier-remaining", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      const result = await db.execute(sql`
+        SELECT
+          s.id                 AS "supplierId",
+          s.name               AS "supplierName",
+          i.id,
+          i.sku,
+          i.name,
+          i.quantity_on_hand   AS "quantityOnHand",
+          i.unit_of_measure    AS "unitOfMeasure",
+          COUNT(im.id)::int    AS "movementCount"
+        FROM items i
+        JOIN suppliers s ON s.id = i.supplier_id
+        LEFT JOIN inventory_movements im ON im.item_id = i.id
+        WHERE i.is_active = true
+          AND i.supplier_id IS NOT NULL
+        GROUP BY s.id, s.name, i.id, i.sku, i.name, i.quantity_on_hand, i.unit_of_measure
+        ORDER BY s.name, i.name
+      `);
+
+      const items = (result.rows as any[]).map(r => ({
+        supplierId:    Number(r.supplierId),
+        supplierName:  r.supplierName as string,
+        id:            Number(r.id),
+        sku:           r.sku as string,
+        name:          r.name as string,
+        quantityOnHand: Number(r.quantityOnHand),
+        unitOfMeasure: r.unitOfMeasure as string,
+        movementCount: Number(r.movementCount),
+      }));
+
+      res.json({ items });
+    } catch (err: any) {
+      console.error("[supplier-remaining]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Unlinks supplier_id for ALL items belonging to the given supplier IDs,
+  // regardless of whether they have movement history.
+  app.post("/api/admin/cleanup/supplier-unlink-all", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const rawIds = req.body?.supplierIds;
+      if (!Array.isArray(rawIds) || rawIds.length === 0) {
+        return res.status(400).json({ message: "supplierIds 배열이 필요합니다." });
+      }
+      const ids: number[] = [...new Set(rawIds.map(Number).filter(n => Number.isInteger(n) && n > 0))];
+      if (ids.length === 0) {
+        return res.status(400).json({ message: "유효한 supplier ID가 없습니다." });
+      }
+
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      const idList = ids.join(",");
+      const result = await db.execute(sql.raw(`
+        UPDATE items
+        SET supplier_id = NULL
+        WHERE is_active = true
+          AND supplier_id IN (${idList})
+        RETURNING id
+      `));
+
+      res.json({ unlinked: result.rows.length });
+    } catch (err: any) {
+      console.error("[supplier-unlink-all]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // Permanently hard-deletes inactive items.
   // Body: { ids: number[] }  — all IDs must have isActive=false and no movement history.
   app.delete("/api/admin/items/purge", isAuthenticated, requireAdmin, async (req, res) => {

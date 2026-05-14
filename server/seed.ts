@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { categories, locations } from "@shared/schema";
-import { count } from "drizzle-orm";
+import { categories, locations, suppliers } from "@shared/schema";
+import { count, eq } from "drizzle-orm";
 
 function seedLog(msg: string) {
   const t = new Date().toLocaleTimeString("en-US", { hour12: true, hour: "numeric", minute: "2-digit", second: "2-digit" });
@@ -27,6 +27,22 @@ const DEFAULT_LOCATIONS = [
   { name: "Job Trailer B",  code: "JTB", locationType: "trailer"   },
 ];
 
+// Suppliers that must exist for location linking to work
+const REQUIRED_SUPPLIERS = [
+  { name: "MPHUSKY", leadTimeDays: 3 },
+  { name: "DWC",     leadTimeDays: 3 },
+];
+
+// location name → supplier name pairs to link (both sides looked up by name)
+const LOCATION_SUPPLIER_LINKS: Array<{ locationName: string; supplierName: string }> = [
+  { locationName: "C.E.S(City Electric Supply)", supplierName: "C.E.S(City Electric Supply)" },
+  { locationName: "GraybaR",                     supplierName: "GraybaR"                     },
+  { locationName: "KENDALL",                      supplierName: "KENDALL"                     },
+  { locationName: "Home Depot",                   supplierName: "Home Depot"                  },
+  { locationName: "MPHUSKY",                      supplierName: "MPHUSKY"                     },
+  { locationName: "DWC",                          supplierName: "DWC"                         },
+];
+
 export async function runSeed() {
   seedLog("checking seed requirements…");
 
@@ -43,9 +59,41 @@ export async function runSeed() {
   if (locCount === 0) {
     seedLog(`locations empty — inserting ${DEFAULT_LOCATIONS.length} defaults`);
     await db.insert(locations).values(DEFAULT_LOCATIONS.map(l => ({ ...l, isActive: true }))).onConflictDoNothing();
-    seedLog(`inserted ${DEFAULT_LOCATIONS.length} locations`);
+    seedLog(`inserted ${DEFAULT_LOCATIONS.length} defaults`);
   } else {
     seedLog(`locations already seeded (${locCount} rows) — skipping`);
+  }
+
+  // ── Step 1: Rename "C.E.S" → "C.E.S(City Electric Supply)" ──────────────
+  const [cesLoc] = await db.select().from(locations).where(eq(locations.name, "C.E.S"));
+  if (cesLoc) {
+    await db.update(locations)
+      .set({ name: "C.E.S(City Electric Supply)", code: "C.E.S" })
+      .where(eq(locations.id, cesLoc.id));
+    seedLog(`renamed location "C.E.S" → "C.E.S(City Electric Supply)"`);
+  }
+
+  // ── Step 2: Ensure MPHUSKY and DWC suppliers exist ───────────────────────
+  for (const sup of REQUIRED_SUPPLIERS) {
+    const [existing] = await db.select().from(suppliers).where(eq(suppliers.name, sup.name));
+    if (!existing) {
+      await db.insert(suppliers).values({ name: sup.name, leadTimeDays: sup.leadTimeDays }).onConflictDoNothing();
+      seedLog(`created supplier "${sup.name}"`);
+    }
+  }
+
+  // ── Step 3: Link locations to suppliers by name ───────────────────────────
+  const allLocations = await db.select().from(locations);
+  const allSuppliers = await db.select().from(suppliers);
+
+  for (const { locationName, supplierName } of LOCATION_SUPPLIER_LINKS) {
+    const loc = allLocations.find(l => l.name === locationName);
+    const sup = allSuppliers.find(s => s.name === supplierName);
+    if (!loc) { seedLog(`location "${locationName}" not found — skipping link`); continue; }
+    if (!sup) { seedLog(`supplier "${supplierName}" not found — skipping link`); continue; }
+    if (loc.supplierId === sup.id) { continue; }
+    await db.update(locations).set({ supplierId: sup.id }).where(eq(locations.id, loc.id));
+    seedLog(`linked location "${locationName}" → supplier "${supplierName}"`);
   }
 
   seedLog("seed complete");

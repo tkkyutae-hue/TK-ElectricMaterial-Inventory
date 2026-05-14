@@ -2962,6 +2962,76 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Admin Supplier Cleanup ─────────────────────────────────────────────────
+  // Returns items that have a supplier_id but zero inventory_movements records.
+  // These were entered as initial stock and never ordered through the system.
+
+  app.get("/api/admin/cleanup/supplier-unlink-preview", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      const result = await db.execute(sql`
+        SELECT
+          i.id,
+          i.sku,
+          i.name,
+          i.quantity_on_hand   AS "quantityOnHand",
+          i.unit_of_measure    AS "unitOfMeasure",
+          s.id                 AS "supplierId",
+          s.name               AS "supplierName"
+        FROM items i
+        JOIN suppliers s ON s.id = i.supplier_id
+        WHERE i.is_active = true
+          AND i.supplier_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM inventory_movements im WHERE im.item_id = i.id
+          )
+        ORDER BY s.name, i.name
+      `);
+
+      const items = (result.rows as any[]).map(r => ({
+        id:            Number(r.id),
+        sku:           r.sku as string,
+        name:          r.name as string,
+        quantityOnHand: Number(r.quantityOnHand),
+        unitOfMeasure: r.unitOfMeasure as string,
+        supplierId:    Number(r.supplierId),
+        supplierName:  r.supplierName as string,
+      }));
+
+      res.json({ items, total: items.length });
+    } catch (err: any) {
+      console.error("[supplier-unlink-preview]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Executes the cleanup: sets supplier_id = NULL for all items with no movements.
+  app.post("/api/admin/cleanup/supplier-unlink", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { db } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+
+      const result = await db.execute(sql`
+        UPDATE items
+        SET supplier_id = NULL
+        WHERE is_active = true
+          AND supplier_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM inventory_movements im WHERE im.item_id = items.id
+          )
+        RETURNING id
+      `);
+
+      const unlinked = result.rows.length;
+      res.json({ unlinked });
+    } catch (err: any) {
+      console.error("[supplier-unlink]", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // Permanently hard-deletes inactive items.
   // Body: { ids: number[] }  — all IDs must have isActive=false and no movement history.
   app.delete("/api/admin/items/purge", isAuthenticated, requireAdmin, async (req, res) => {

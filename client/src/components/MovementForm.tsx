@@ -365,6 +365,7 @@ export function MovementForm({
           unit: item?.unitOfMeasure ?? "",
           reelIds: Object.entries(row.reelSelections ?? {}).filter(([, v]) => v > 0).map(([k]) => Number(k)),
           reelSelections: row.reelSelections ?? {},
+          newReels: row.newReels ?? [],
         };
       });
 
@@ -452,19 +453,21 @@ export function MovementForm({
 
       const reelOps: Promise<any>[] = [];
       for (const row of validRows) {
-        for (const [reelIdStr, ftUsed] of Object.entries(row.reelSelections ?? {})) {
-          if (!ftUsed) continue;
-          const reelId = Number(reelIdStr);
-          const snapshot = row.reelSnapshots?.[reelId];
-          if (!snapshot) continue;
-          const newLength = snapshot.lengthFt - ftUsed;
-          if (newLength <= 0) {
-            reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "DELETE", credentials: "include" }));
-          } else {
-            reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ lengthFt: newLength, status: "used" }) }));
+        if (shared.movementType === "issue") {
+          for (const [reelIdStr, ftUsed] of Object.entries(row.reelSelections ?? {})) {
+            if (!ftUsed) continue;
+            const reelId = Number(reelIdStr);
+            const snapshot = row.reelSnapshots?.[reelId];
+            if (!snapshot) continue;
+            const newLength = snapshot.lengthFt - ftUsed;
+            if (newLength <= 0) {
+              reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "DELETE", credentials: "include" }));
+            } else {
+              reelOps.push(fetch(`/api/wire-reels/${reelId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ lengthFt: newLength, status: "used" }) }));
+            }
           }
         }
-        if (shared.movementType === "receive") {
+        if (shared.movementType === "receive" || shared.movementType === "return") {
           for (const nr of (row.newReels ?? [])) {
             await fetch("/api/wire-reels", {
               method: "POST",
@@ -475,7 +478,7 @@ export function MovementForm({
                 reelId: nr.reelId,
                 lengthFt: nr.lengthFt,
                 brand: nr.brand || null,
-                locationId: nr.locationId ?? shared.destinationLocationId ?? null,
+                locationId: nr.locationId ?? shared.destinationLocationId ?? shared.sourceLocationId ?? null,
                 status: nr.status ?? "full",
               }),
             });

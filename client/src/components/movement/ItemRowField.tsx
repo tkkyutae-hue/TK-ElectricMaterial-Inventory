@@ -532,8 +532,9 @@ export function ItemRowField({
 
   const isReelItem = shouldShowReelUI(selectedItem);
   const isReceive = movementType === "receive";
-  const showReceiveReelUI = isReceive && !!row.itemId && isReelItem;
-  const showIssueReelUI = !isReceive && isReelItem && hasReels;
+  const isReturn  = movementType === "return";
+  const showReceiveReelUI = (isReceive || isReturn) && !!row.itemId && isReelItem;
+  const showIssueReelUI = movementType === "issue" && isReelItem && hasReels;
 
   const selections = row.reelSelections ?? {};
   const snapshots = row.reelSnapshots ?? {};

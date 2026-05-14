@@ -2679,7 +2679,7 @@ export class DatabaseStorage implements IStorage {
     const draft = await this.getDraft(id);
     if (!draft) throw new Error("Draft not found");
 
-    const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number> }> = JSON.parse(draft.itemsJson || "[]");
+    const draftItems: Array<{ itemId: number; qty: number; reelSelections?: Record<string, number>; newReels?: Array<{ reelId: string; lengthFt: number; brand?: string | null; locationId?: number | null; status?: string }> }> = JSON.parse(draft.itemsJson || "[]");
 
     const createdMovementIds: number[] = [];
 
@@ -2722,7 +2722,7 @@ export class DatabaseStorage implements IStorage {
         }, tx);
         createdMovementIds.push(created.id);
 
-        if (di.reelSelections) {
+        if (movementType === "issue" && di.reelSelections) {
           for (const [reelIdStr, ftUsed] of Object.entries(di.reelSelections)) {
             if (!ftUsed) continue;
             const reelId = Number(reelIdStr);
@@ -2734,6 +2734,18 @@ export class DatabaseStorage implements IStorage {
             } else {
               await tx.update(wireReels).set({ lengthFt: newLength, status: "used", updatedAt: new Date() }).where(eq(wireReels.id, reelId));
             }
+          }
+        }
+        if ((movementType === "receive" || movementType === "return") && di.newReels?.length) {
+          for (const nr of di.newReels) {
+            await tx.insert(wireReels).values({
+              itemId: itemRow.id,
+              reelId: nr.reelId,
+              lengthFt: nr.lengthFt,
+              brand: nr.brand ?? null,
+              locationId: nr.locationId ?? draft.destinationLocationId ?? draft.sourceLocationId ?? null,
+              status: (nr.status ?? "full") as any,
+            });
           }
         }
       }

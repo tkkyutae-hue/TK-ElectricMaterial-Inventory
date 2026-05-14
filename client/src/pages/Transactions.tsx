@@ -350,6 +350,7 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right w-[80px]">{t.txAdminColQty}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[170px]">{t.txAdminColFrom} → {t.txAdminColTo}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">{t.txAdminColProject}</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[120px]">{t.colSupplier}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txAdminColNote}</TableHead>
               </TableRow>
             </TableHeader>
@@ -357,7 +358,7 @@ export default function Transactions() {
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    {[...Array(10)].map((__, j) => (
+                    {[...Array(11)].map((__, j) => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                     ))}
                   </TableRow>
@@ -365,7 +366,7 @@ export default function Transactions() {
 
               ) : !filtered?.length ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={11} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                     <p className="font-medium text-slate-900">{t.txAdminNoneFound}</p>
                     <p className="text-sm">{t.txAdminTryAdjusting}</p>
@@ -651,6 +652,27 @@ export default function Transactions() {
                             </Tooltip>
                           </TooltipProvider>
                         ) : <span className="text-slate-300">—</span>}
+                      </TableCell>
+
+                      {/* Supplier */}
+                      <TableCell className="text-xs text-slate-500" style={{ verticalAlign: "middle" }}>
+                        {tx.supplierName ? (
+                          <span
+                            data-testid={`tx-supplier-${tx.id}`}
+                            style={{
+                              display: "inline-flex", alignItems: "center",
+                              background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.20)",
+                              color: "#0369a1", padding: "2px 6px", borderRadius: 4,
+                              fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
+                              maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis",
+                            }}
+                            title={tx.supplierName}
+                          >
+                            {tx.supplierName}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
                       </TableCell>
 
                       {/* Note */}

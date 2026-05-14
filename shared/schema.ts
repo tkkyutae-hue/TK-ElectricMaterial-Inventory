@@ -303,6 +303,7 @@ export type InventoryMovementWithRelations = InventoryMovement & {
   sourceLocation?: Location | null;
   destinationLocation?: Location | null;
   project?: Project | null;
+  supplierName?: string | null;
 };
 
 export type ProjectWithStats = Project & {

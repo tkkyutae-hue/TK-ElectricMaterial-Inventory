@@ -691,6 +691,7 @@ export class DatabaseStorage implements IStorage {
     const srcLoc = alias(locations, "src_loc");
     const dstLoc = alias(locations, "dst_loc");
     const firstImg = alias(itemImages, "first_img");
+    const movSup = alias(suppliers, "mov_sup");
 
     const rows = await db.select({
       movement: inventoryMovements,
@@ -699,6 +700,7 @@ export class DatabaseStorage implements IStorage {
       project: projects,
       sourceLocation: srcLoc,
       destinationLocation: dstLoc,
+      supplierName: movSup.name,
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
@@ -706,6 +708,7 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(projects, eq(inventoryMovements.projectId, projects.id))
     .leftJoin(srcLoc, eq(inventoryMovements.sourceLocationId, srcLoc.id))
     .leftJoin(dstLoc, eq(inventoryMovements.destinationLocationId, dstLoc.id))
+    .leftJoin(movSup, eq(inventoryMovements.supplierId, movSup.id))
     .orderBy(desc(inventoryMovements.createdAt), asc(firstImg.sortOrder));
 
     let result = rows.map(r => ({
@@ -714,6 +717,7 @@ export class DatabaseStorage implements IStorage {
       project: r.project,
       sourceLocation: r.sourceLocation,
       destinationLocation: r.destinationLocation,
+      supplierName: r.supplierName ?? null,
     }));
 
     if (filters?.itemId) result = result.filter(r => r.itemId === filters.itemId);

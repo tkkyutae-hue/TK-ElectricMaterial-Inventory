@@ -366,7 +366,7 @@ export default function FieldTransactions() {
   const hasActiveFilters = typeFilter !== "all" || fromFilter !== "all" || toFilter !== "all" || projectFilter !== "all" || !!dateFrom || !!dateTo;
   const secondaryFilterCount = [fromFilter !== "all", toFilter !== "all", projectFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
-  const COLS_COUNT = 11;
+  const COLS_COUNT = 12;
 
   return (
     <div className="space-y-4 pt-5 pb-8">
@@ -831,7 +831,25 @@ export default function FieldTransactions() {
                         </div>
                       )}
 
-                      {/* Row 5: note (subdued single line) */}
+                      {/* Row 5: supplier chip (receive / return only) */}
+                      {mx.supplierName && (
+                        <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span
+                            data-testid={`field-tx-supplier-card-${m.id}`}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 3,
+                              background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.25)",
+                              color: F.accent, padding: "2px 7px", borderRadius: 4,
+                              fontSize: 10, fontWeight: 600, overflow: "hidden",
+                              textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%",
+                            }}
+                          >
+                            {mx.supplierName}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Row 6: note (subdued single line) */}
                       {m.note && (
                         <p style={{ margin: "4px 0 0", fontSize: 10, color: F.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           "{m.note}"
@@ -845,7 +863,7 @@ export default function FieldTransactions() {
               /* ── Desktop: existing table (unchanged) ── */
               <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <colgroup>
-                  {/* Select, #, Type, Photo, Size, Item, Qty, From→To, Project, Date, Note */}
+                  {/* Select, #, Type, Photo, Size, Item, Qty, From→To, Project, Supplier, Date, Note */}
                   <col style={{ width: 32 }} />
                   <col style={{ width: 36 }} />
                   <col style={{ width: 82 }} />
@@ -855,6 +873,7 @@ export default function FieldTransactions() {
                   <col style={{ width: 62 }} />
                   <col style={{ width: "13%" }} />
                   <col style={{ width: "11%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 70 }} />
                 </colgroup>
@@ -880,6 +899,7 @@ export default function FieldTransactions() {
                     <th style={{ ...TH, textAlign: "center" }}>{t.colQtyUnit}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colFromTo}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colProjectPo}</th>
+                    <th style={{ ...TH, textAlign: "center" }}>{t.colSupplier}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
                   </tr>
@@ -1007,6 +1027,25 @@ export default function FieldTransactions() {
                               )}
                             </div>
                           ) : <span style={{ color: F.textDim, fontSize: 12 }}>—</span>}
+                        </td>
+
+                        {/* Supplier */}
+                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                          {mx.supplierName ? (
+                            <span
+                              data-testid={`field-tx-supplier-${m.id}`}
+                              title={mx.supplierName}
+                              style={{
+                                display: "inline-block", maxWidth: "100%",
+                                background: "rgba(45,219,111,0.10)", border: "1px solid rgba(45,219,111,0.25)",
+                                color: F.accent, padding: "2px 6px", borderRadius: 4,
+                                fontSize: 10, fontWeight: 600, overflow: "hidden",
+                                textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              }}
+                            >
+                              {mx.supplierName}
+                            </span>
+                          ) : <span style={{ color: F.textDim }}>—</span>}
                         </td>
 
                         {/* Date */}

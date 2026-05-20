@@ -487,7 +487,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
       </div>
 
       {/* Photo count (manager only) */}
-      {isManagerOrAbove && images.length > 0 && (
+      {isManagerOrAbove && (
         <p className="text-xs font-medium text-slate-500">
           {t.itemDetailGalleryLabel}{" "}
           <span className="font-bold text-slate-700">{t.itemDetailPhotoCount.replace("{current}", String(images.length))}</span>
@@ -595,6 +595,10 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     {t.itemDetailTakePhoto}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-slate-400" data-testid="menu-cancel-slot">
+                    {t.itemDetailDeletePhotoCancel}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

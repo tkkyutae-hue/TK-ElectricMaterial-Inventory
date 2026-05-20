@@ -13,7 +13,10 @@ import {
   ArrowLeft, Edit, Trash2, Tag, Save, X as XIcon,
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
   ClipboardList, Layers, Plus, Pencil, Check,
+  ChevronLeft, ChevronRight, Star, Camera,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import type { ItemImage } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -307,206 +310,273 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
   );
 }
 
-function ItemImagePanel({ item, itemId }: { item: any; itemId: number }) {
+function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
   const { toast } = useToast();
   const { t } = useLanguage();
   const qc = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [urlInput, setUrlInput] = useState("");
-  const [showUrlInput, setShowUrlInput] = useState(false);
+  const { isManagerOrAbove } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [uploading, setUploading] = useState(false);
 
-  const currentImage = item.images?.[0]?.imageUrl || null;
-
-  const updateImageMutation = useMutation({
-    mutationFn: (imageUrl: string | null) =>
-      apiRequest("PATCH", `/api/inventory/${itemId}/image`, { imageUrl }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [api.items.get.path, itemId] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
-      qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
-      toast({ title: t.itemDetailImageUpdated });
-    },
-    onError: (err: any) =>
-      toast({ title: t.itemDetailImageUpdateFailed, description: err.message, variant: "destructive" }),
+  const { data: images = [] } = useQuery<ItemImage[]>({
+    queryKey: ["/api/inventory", itemId, "images"],
+    queryFn: () => fetch(`/api/inventory/${itemId}/images`, { credentials: "include" }).then(r => r.json()),
   });
 
-  async function uploadFile(file: File) {
-    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      toast({ title: t.itemDetailUnsupportedType, description: t.itemDetailUnsupportedTypeDesc, variant: "destructive" });
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      toast({ title: t.itemDetailFileTooLarge, description: t.itemDetailFileTooLargeDesc, variant: "destructive" });
-      return;
-    }
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload/item-image", { method: "POST", body: formData });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || t.itemDetailUploadFailed);
-      }
-      const { url } = await res.json();
-      await updateImageMutation.mutateAsync(url);
-    } catch (err: any) {
-      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
+  useEffect(() => {
+    if (images.length > 0 && activeIdx >= images.length) setActiveIdx(images.length - 1);
+  }, [images.length, activeIdx]);
+
+  const canAdd = images.length < 4;
+  const activeImage = images[activeIdx] ?? null;
+
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ["/api/inventory", itemId, "images"] });
+    qc.invalidateQueries({ queryKey: [api.items.get.path, itemId] });
+    qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
   }
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) uploadFile(file);
+  const appendMutation = useMutation({
+    mutationFn: (imageUrl: string) =>
+      apiRequest("POST", `/api/inventory/${itemId}/images`, { imageUrl }),
+    onSuccess: invalidateAll,
+    onError: (err: any) =>
+      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (imageId: number) =>
+      apiRequest("DELETE", `/api/inventory/${itemId}/images/${imageId}`),
+    onSuccess: invalidateAll,
+    onError: (err: any) =>
+      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" }),
+  });
+
+  const primaryMutation = useMutation({
+    mutationFn: (imageId: number) =>
+      apiRequest("PATCH", `/api/inventory/${itemId}/images/${imageId}/primary`),
+    onSuccess: () => { invalidateAll(); setActiveIdx(0); },
+    onError: (err: any) =>
+      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" }),
+  });
+
+  async function uploadFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const slots = 4 - images.length;
+    if (slots <= 0) {
+      toast({ description: t.itemDetailMaxPhotosReached, variant: "destructive" });
+      return;
+    }
+    const fileArr = Array.from(files);
+    const toUpload = fileArr.slice(0, slots);
+    if (fileArr.length > slots) {
+      toast({ description: t.itemDetailSkippedFiles.replace("{n}", String(fileArr.length - slots)) });
+    }
+    for (const file of toUpload) {
+      const nameLower = file.name.toLowerCase();
+      if (
+        file.type === "image/heic" || file.type === "image/heif" ||
+        nameLower.endsWith(".heic") || nameLower.endsWith(".heif")
+      ) {
+        toast({ title: t.itemDetailHeicNotSupported, variant: "destructive" });
+        continue;
+      }
+      const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      if (!allowed.includes(file.type)) {
+        toast({ title: t.itemDetailUnsupportedType, description: t.itemDetailUnsupportedTypeDesc, variant: "destructive" });
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: t.itemDetailFileTooLarge, description: t.itemDetailFileTooLargeDesc, variant: "destructive" });
+        continue;
+      }
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload/item-image", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || t.itemDetailUploadFailed);
+        }
+        const { url } = await res.json();
+        await appendMutation.mutateAsync(url);
+      } catch (err: any) {
+        toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" });
+      } finally {
+        setUploading(false);
+      }
+    }
   }
 
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    uploadFiles(e.target.files);
     e.target.value = "";
   }
 
-  async function handleUrlSet() {
-    const url = urlInput.trim();
-    if (!url) return;
-    await updateImageMutation.mutateAsync(url);
-    setUrlInput("");
-    setShowUrlInput(false);
-  }
-
-  const busy = uploading || updateImageMutation.isPending;
+  const busy = uploading || appendMutation.isPending || deleteMutation.isPending || primaryMutation.isPending;
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
+      {/* Main image */}
       <div
-        className={`relative rounded-2xl overflow-hidden border-2 transition-all cursor-pointer group ${
-          dragOver
-            ? "border-brand-400 bg-brand-50/60 shadow-lg shadow-brand-100"
-            : currentImage
-            ? "border-slate-200 hover:border-brand-300"
-            : "border-dashed border-slate-300 bg-slate-50 hover:border-brand-300 hover:bg-brand-50/30"
-        }`}
+        className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50"
         style={{ aspectRatio: "1 / 1" }}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => !busy && fileInputRef.current?.click()}
-        data-testid="image-drop-zone"
       >
-        {busy ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm">
-            <div className="w-9 h-9 border-[3px] border-brand-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-slate-500 mt-3 font-medium">
-              {uploading ? t.itemDetailUploadingDots : t.itemDetailSavingDots}
-            </p>
-          </div>
-        ) : currentImage ? (
+        {activeImage ? (
           <>
             <img
-              src={currentImage}
-              alt={item.name}
+              src={activeImage.imageUrl}
+              alt={(activeImage as any).altText ?? item.name}
               className="w-full h-full object-contain p-3"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden");
-              }}
+              data-testid="img-gallery-main"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
-            <div className="hidden absolute inset-0 flex-col items-center justify-center text-slate-300">
-              <ImageIcon className="w-14 h-14" />
-              <p className="text-sm mt-2 text-slate-400">{t.itemDetailImageUnavailable}</p>
-            </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 rounded-2xl">
-              <UploadCloud className="w-8 h-8 text-white mb-1.5" />
-              <span className="text-white text-sm font-medium">{t.itemDetailReplaceImage}</span>
-            </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 select-none">
-            {dragOver ? (
+            {images.length > 1 && (
               <>
-                <UploadCloud className="w-14 h-14 text-brand-400 mb-2" />
-                <p className="text-sm font-semibold text-brand-500">{t.itemDetailDropToUpload}</p>
-              </>
-            ) : (
-              <>
-                <ImageIcon className="w-14 h-14 text-slate-300 mb-2" />
-                <p className="text-sm font-medium text-slate-500">{t.itemDetailDropImageHere}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{t.itemDetailOrClickToUpload}</p>
-                <p className="text-[11px] text-slate-300 mt-2">{t.itemDetailImageHint}</p>
+                <button
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm opacity-70 hover:opacity-100 transition-opacity"
+                  onClick={() => setActiveIdx(i => (i - 1 + images.length) % images.length)}
+                  data-testid="btn-gallery-prev"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-700" />
+                </button>
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm opacity-70 hover:opacity-100 transition-opacity"
+                  onClick={() => setActiveIdx(i => (i + 1) % images.length)}
+                  data-testid="btn-gallery-next"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-700" />
+                </button>
               </>
             )}
+          </>
+        ) : (
+          <div
+            className={`absolute inset-0 flex flex-col items-center justify-center text-slate-400 select-none ${isManagerOrAbove && canAdd ? "cursor-pointer" : ""}`}
+            onClick={() => isManagerOrAbove && canAdd && fileRef.current?.click()}
+            data-testid="image-drop-zone"
+          >
+            <ImageIcon className="w-14 h-14 text-slate-300 mb-2" />
+            <p className="text-sm font-medium text-slate-500">{t.itemDetailDropImageHere}</p>
+            {isManagerOrAbove && <p className="text-xs text-slate-400 mt-0.5">{t.itemDetailOrClickToUpload}</p>}
+            <p className="text-[11px] text-slate-300 mt-2">{t.itemDetailImageHint}</p>
+          </div>
+        )}
+        {busy && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
+            <div className="w-8 h-8 border-[3px] border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-500 mt-2">{uploading ? t.itemDetailUploadingDots : t.itemDetailSavingDots}</p>
           </div>
         )}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFileInput}
-        data-testid="file-input-image"
-      />
-
-      {showUrlInput ? (
-        <div className="flex gap-2">
-          <Input
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder={t.itemDetailImageUrlPh}
-            className="text-xs h-8"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleUrlSet();
-              if (e.key === "Escape") { setShowUrlInput(false); setUrlInput(""); }
-            }}
-            autoFocus
-            data-testid="input-image-url"
-          />
-          <Button
-            size="sm"
-            className="h-8 px-3 bg-brand-700 hover:bg-brand-800 text-xs shrink-0"
-            onClick={handleUrlSet}
-            disabled={!urlInput.trim() || busy}
-          >
-            {t.itemDetailSetBtn}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 px-2 shrink-0"
-            onClick={() => { setShowUrlInput(false); setUrlInput(""); }}
-          >
-            <XIcon className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3">
-          <button
-            className="text-xs text-brand-600 hover:underline transition-colors"
-            onClick={() => setShowUrlInput(true)}
-            data-testid="button-set-image-url"
-          >
-            {currentImage ? t.itemDetailChangeUrl : t.itemDetailPasteImageUrl}
-          </button>
-          {currentImage && (
-            <button
-              className="text-xs text-rose-500 hover:underline transition-colors ml-auto"
-              onClick={() => updateImageMutation.mutate(null)}
-              disabled={busy}
-              data-testid="button-clear-image"
+      {/* Count + upload buttons (manager only) */}
+      {isManagerOrAbove && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-500">
+            {t.itemDetailGalleryLabel}{" "}
+            <span className="font-bold text-slate-700">{images.length} / 4</span>
+          </span>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={() => canAdd && fileRef.current?.click()}
+              disabled={!canAdd || busy}
+              title={!canAdd ? t.itemDetailMaxPhotosReached : undefined}
+              data-testid="btn-add-photo"
             >
-              {t.itemDetailClear}
-            </button>
-          )}
+              <UploadCloud className="w-3.5 h-3.5" />
+              {t.itemDetailAddPhoto}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={() => canAdd && cameraRef.current?.click()}
+              disabled={!canAdd || busy}
+              title={!canAdd ? t.itemDetailMaxPhotosReached : undefined}
+              data-testid="btn-take-photo"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              {t.itemDetailTakePhoto}
+            </Button>
+          </div>
         </div>
       )}
+
+      {/* 4-slot thumbnail grid */}
+      <div className="grid grid-cols-4 gap-2">
+        {Array.from({ length: 4 }).map((_, idx) => {
+          const img = images[idx];
+          const isPrimary = idx === 0;
+          const isActive = idx === activeIdx;
+          return img ? (
+            <div
+              key={img.id}
+              className={`relative rounded-lg overflow-hidden bg-slate-100 cursor-pointer transition-all ${
+                isActive ? "ring-2 ring-brand-500 shadow-sm" : "ring-1 ring-slate-200 hover:ring-brand-300"
+              }`}
+              style={{ aspectRatio: "1 / 1" }}
+              onClick={() => setActiveIdx(idx)}
+              data-testid={`thumbnail-image-${img.id}`}
+            >
+              <img
+                src={img.imageUrl}
+                alt={(img as any).altText ?? `Photo ${idx + 1}`}
+                className="w-full h-full object-cover"
+              />
+              {isManagerOrAbove && (
+                <>
+                  <button
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded transition-opacity ${isPrimary ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
+                    onClick={(e) => { e.stopPropagation(); if (!isPrimary && !primaryMutation.isPending) primaryMutation.mutate(img.id); }}
+                    title={isPrimary ? t.itemDetailPrimaryBadge : t.itemDetailSetPrimary}
+                    data-testid={`btn-primary-${img.id}`}
+                  >
+                    <Star className={`w-3.5 h-3.5 drop-shadow-sm ${isPrimary ? "text-amber-400 fill-amber-400" : "text-white fill-transparent stroke-white"}`} />
+                  </button>
+                  <button
+                    className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded bg-black/35 hover:bg-rose-500 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!deleteMutation.isPending) {
+                        if (isActive && idx > 0) setActiveIdx(idx - 1);
+                        deleteMutation.mutate(img.id);
+                      }
+                    }}
+                    title={t.itemDetailDeletePhoto}
+                    data-testid={`btn-delete-${img.id}`}
+                  >
+                    <XIcon className="w-3 h-3 text-white" />
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div
+              key={`empty-${idx}`}
+              className={`relative rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center transition-colors ${isManagerOrAbove && canAdd ? "cursor-pointer hover:border-brand-300 hover:bg-brand-50/30" : ""}`}
+              style={{ aspectRatio: "1 / 1" }}
+              onClick={() => isManagerOrAbove && canAdd && fileRef.current?.click()}
+              data-testid={`thumbnail-empty-${idx}`}
+            >
+              {isManagerOrAbove && canAdd && <Plus className="w-4 h-4 text-slate-300" />}
+            </div>
+          );
+        })}
+      </div>
+
+      {!canAdd && isManagerOrAbove && (
+        <p className="text-[11px] text-slate-400 text-center">{t.itemDetailMaxPhotosReached}</p>
+      )}
+
+      <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden" onChange={handleFileInput} data-testid="file-input-gallery" />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} data-testid="file-input-camera" />
     </div>
   );
 }
@@ -1178,7 +1248,7 @@ export default function ItemDetails() {
 
           {/* LEFT: Image panel */}
           <div className="lg:col-span-2 p-6 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/40">
-            <ItemImagePanel item={item} itemId={id} />
+            <ItemGalleryPanel item={item} itemId={id} />
           </div>
 
           {/* RIGHT: Item info */}

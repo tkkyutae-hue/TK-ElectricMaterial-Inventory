@@ -252,6 +252,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const isReelItem = resolveReelMode(item);
   const isMobile = useIsMobile();
   const [imgEnlarged, setImgEnlarged] = useState(false);
+  const [galleryIdx, setGalleryIdx] = useState(0);
 
   const { getCartItem, addToCart, removeFromCart } = useFieldCart();
   const existingCartItem = getCartItem(item.id);
@@ -285,6 +286,11 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
       return r.json();
     },
     enabled: isReelItem,
+  });
+
+  const { data: galleryImages = [] } = useQuery<{ id: number; imageUrl: string }[]>({
+    queryKey: ["/api/inventory", item.id, "images"],
+    queryFn: () => fetch(`/api/inventory/${item.id}/images`, { credentials: "include" }).then(r => r.json()),
   });
 
   useEffect(() => {
@@ -375,39 +381,67 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         {/* ── Content ── */}
         <div style={{ padding: "14px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
 
-          {/* Photo */}
-          {item.imageUrl ? (
-            <div
-              onClick={() => setImgEnlarged(true)}
-              data-testid="img-item-photo"
-              style={{
-                borderRadius: 12, overflow: "hidden", border: `1px solid ${F.borderStrong}`,
-                background: F.surface2, cursor: "zoom-in", position: "relative",
-                height: 172, display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 10 }}
-                onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
-              />
-              <div style={{
-                position: "absolute", bottom: 6, right: 8, display: "flex", alignItems: "center", gap: 4,
-                fontSize: 9, color: "rgba(255,255,255,0.35)", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
-              }}>
-                <ZoomIn style={{ width: 10, height: 10 }} />
-                {t.tapToEnlarge}
+          {/* Photo carousel */}
+          {(() => {
+            const imgs = galleryImages.length > 0
+              ? galleryImages
+              : item.imageUrl ? [{ id: -1, imageUrl: item.imageUrl }] : [];
+            const cur = imgs[galleryIdx] ?? null;
+            return cur ? (
+              <div
+                style={{
+                  borderRadius: 12, overflow: "hidden", border: `1px solid ${F.borderStrong}`,
+                  background: F.surface2, position: "relative",
+                  height: 172, display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <img
+                  src={cur.imageUrl}
+                  alt={item.name}
+                  data-testid="img-item-photo"
+                  style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 10, cursor: "zoom-in" }}
+                  onClick={() => setImgEnlarged(true)}
+                  onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
+                />
+                <div
+                  style={{ position: "absolute", bottom: 6, right: 8, display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: "rgba(255,255,255,0.35)", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1, cursor: "zoom-in" }}
+                  onClick={() => setImgEnlarged(true)}
+                >
+                  <ZoomIn style={{ width: 10, height: 10 }} />
+                  {t.tapToEnlarge}
+                </div>
+                {imgs.length > 1 && (
+                  <>
+                    <button
+                      onClick={e => { e.stopPropagation(); setGalleryIdx(i => (i - 1 + imgs.length) % imgs.length); }}
+                      style={{ position: "absolute", left: 6, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 20, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}
+                    >
+                      <ChevronLeft style={{ width: 14, height: 14 }} />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setGalleryIdx(i => (i + 1) % imgs.length); }}
+                      style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: 20, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff" }}
+                    >
+                      <ChevronRight style={{ width: 14, height: 14 }} />
+                    </button>
+                    <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 4 }}>
+                      {imgs.map((_, i) => (
+                        <div
+                          key={i}
+                          onClick={e => { e.stopPropagation(); setGalleryIdx(i); }}
+                          style={{ width: 6, height: 6, borderRadius: "50%", background: i === galleryIdx ? "#fff" : "rgba(255,255,255,0.35)", cursor: "pointer", transition: "background 0.2s" }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          ) : (
-            <div style={{
-              borderRadius: 12, border: `1px dashed ${F.borderStrong}`, background: F.surface2,
-              height: 80, display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <ImageOff style={{ width: 22, height: 22, color: F.borderStrong }} />
-            </div>
-          )}
+            ) : (
+              <div style={{ borderRadius: 12, border: `1px dashed ${F.borderStrong}`, background: F.surface2, height: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ImageOff style={{ width: 22, height: 22, color: F.borderStrong }} />
+              </div>
+            );
+          })()}
 
           {/* ── Hero qty / total FT ── */}
           <div style={{
@@ -630,23 +664,25 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
       </div>
 
       {/* Enlarged image overlay */}
-      {imgEnlarged && item.imageUrl && (
-        <div
-          style={{
-            position: "absolute", inset: 0, background: "rgba(0,0,0,0.92)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 3, cursor: "zoom-out",
-          }}
-          onClick={() => setImgEnlarged(false)}
-          data-testid="img-enlarged-overlay"
-        >
-          <img
-            src={item.imageUrl}
-            alt={item.name}
-            style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 10 }}
-          />
-        </div>
-      )}
+      {imgEnlarged && (() => {
+        const imgs = galleryImages.length > 0
+          ? galleryImages
+          : item.imageUrl ? [{ id: -1, imageUrl: item.imageUrl }] : [];
+        const cur = imgs[galleryIdx] ?? null;
+        return cur ? (
+          <div
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3, cursor: "zoom-out" }}
+            onClick={() => setImgEnlarged(false)}
+            data-testid="img-enlarged-overlay"
+          >
+            <img
+              src={cur.imageUrl}
+              alt={item.name}
+              style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 10 }}
+            />
+          </div>
+        ) : null;
+      })()}
     </div>,
     document.body
   );

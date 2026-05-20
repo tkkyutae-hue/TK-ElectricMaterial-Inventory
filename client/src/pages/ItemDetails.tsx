@@ -13,8 +13,16 @@ import {
   ArrowLeft, Edit, Trash2, Tag, Save, X as XIcon,
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
   ClipboardList, Layers, Plus, Pencil, Check,
-  ChevronLeft, ChevronRight, Star, Camera,
+  ChevronLeft, ChevronRight, Star, Camera, Eye,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import type { ItemImage } from "@shared/schema";
 import { Link, useLocation } from "wouter";
@@ -319,6 +327,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const { data: images = [] } = useQuery<ItemImage[]>({
     queryKey: ["/api/inventory", itemId, "images"],
@@ -349,9 +358,11 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
   const deleteMutation = useMutation({
     mutationFn: (imageId: number) =>
       apiRequest("DELETE", `/api/inventory/${itemId}/images/${imageId}`),
-    onSuccess: invalidateAll,
-    onError: (err: any) =>
-      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" }),
+    onSuccess: () => { invalidateAll(); setPendingDeleteId(null); },
+    onError: (err: any) => {
+      toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" });
+      setPendingDeleteId(null);
+    },
   });
 
   const primaryMutation = useMutation({
@@ -458,8 +469,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
           </>
         ) : (
           <div
-            className={`absolute inset-0 flex flex-col items-center justify-center text-slate-400 select-none ${isManagerOrAbove && canAdd ? "cursor-pointer" : ""}`}
-            onClick={() => isManagerOrAbove && canAdd && fileRef.current?.click()}
+            className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 select-none"
             data-testid="image-drop-zone"
           >
             <ImageIcon className="w-14 h-14 text-slate-300 mb-2" />
@@ -476,40 +486,12 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
         )}
       </div>
 
-      {/* Count + upload buttons (manager only) */}
-      {isManagerOrAbove && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-slate-500">
-            {t.itemDetailGalleryLabel}{" "}
-            <span className="font-bold text-slate-700">{t.itemDetailPhotoCount.replace("{current}", String(images.length))}</span>
-          </span>
-          <div className="flex gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2.5 text-xs gap-1.5"
-              onClick={() => canAdd && fileRef.current?.click()}
-              disabled={!canAdd || busy}
-              title={!canAdd ? t.itemDetailMaxPhotosReached : undefined}
-              data-testid="btn-add-photo"
-            >
-              <UploadCloud className="w-3.5 h-3.5" />
-              {t.itemDetailAddPhoto}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2.5 text-xs gap-1.5"
-              onClick={() => canAdd && cameraRef.current?.click()}
-              disabled={!canAdd || busy}
-              title={!canAdd ? t.itemDetailMaxPhotosReached : undefined}
-              data-testid="btn-take-photo"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              {t.itemDetailTakePhoto}
-            </Button>
-          </div>
-        </div>
+      {/* Photo count (manager only) */}
+      {isManagerOrAbove && images.length > 0 && (
+        <p className="text-xs font-medium text-slate-500">
+          {t.itemDetailGalleryLabel}{" "}
+          <span className="font-bold text-slate-700">{t.itemDetailPhotoCount.replace("{current}", String(images.length))}</span>
+        </p>
       )}
 
       {/* 4-slot thumbnail grid */}
@@ -518,58 +500,114 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
           const img = images[idx];
           const isPrimary = idx === 0;
           const isActive = idx === activeIdx;
-          return img ? (
-            <div
-              key={img.id}
-              className={`relative rounded-lg overflow-hidden bg-slate-100 cursor-pointer transition-all ${
-                isActive ? "ring-2 ring-brand-500 shadow-sm" : "ring-1 ring-slate-200 hover:ring-brand-300"
-              }`}
-              style={{ aspectRatio: "1 / 1" }}
-              onClick={() => setActiveIdx(idx)}
-              data-testid={`thumbnail-image-${img.id}`}
-            >
-              <img
-                src={img.imageUrl}
-                alt={(img as any).altText ?? `Photo ${idx + 1}`}
-                className="w-full h-full object-cover"
-              />
-              {isManagerOrAbove && (
-                <>
-                  <button
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded transition-opacity ${isPrimary ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
-                    onClick={(e) => { e.stopPropagation(); if (!isPrimary && !primaryMutation.isPending) primaryMutation.mutate(img.id); }}
-                    title={isPrimary ? t.itemDetailPrimaryBadge : t.itemDetailSetPrimary}
-                    data-testid={`btn-primary-${img.id}`}
+
+          if (img) {
+            const thumbnail = (
+              <div
+                className={`relative rounded-lg overflow-hidden bg-slate-100 cursor-pointer transition-all ${
+                  isActive ? "ring-2 ring-brand-500 shadow-sm" : "ring-1 ring-slate-200 hover:ring-brand-300"
+                }`}
+                style={{ aspectRatio: "1 / 1" }}
+                data-testid={`thumbnail-image-${img.id}`}
+              >
+                <img
+                  src={img.imageUrl}
+                  alt={(img as any).altText ?? `Photo ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {isPrimary && (
+                  <div className="absolute top-0.5 left-0.5 w-5 h-5 flex items-center justify-center pointer-events-none">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 drop-shadow-sm" />
+                  </div>
+                )}
+              </div>
+            );
+
+            if (isManagerOrAbove) {
+              return (
+                <DropdownMenu key={img.id}>
+                  <DropdownMenuTrigger asChild>{thumbnail}</DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuItem
+                      onClick={() => setActiveIdx(idx)}
+                      data-testid={`menu-view-${img.id}`}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      {t.itemDetailViewPhoto}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={isPrimary || primaryMutation.isPending}
+                      onClick={() => { if (!isPrimary) primaryMutation.mutate(img.id); }}
+                      data-testid={`menu-primary-${img.id}`}
+                    >
+                      <Star className="w-4 h-4 mr-2" />
+                      {t.itemDetailSetPrimary}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled>
+                      {/* TODO: Replace Photo — individual image replacement API not yet implemented */}
+                      <UploadCloud className="w-4 h-4 mr-2" />
+                      {t.itemDetailReplacePhoto}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                      onClick={() => setPendingDeleteId(img.id)}
+                      data-testid={`menu-delete-${img.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {t.itemDetailDeletePhoto}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
+
+            return (
+              <div key={img.id} onClick={() => setActiveIdx(idx)}>
+                {thumbnail}
+              </div>
+            );
+          }
+
+          if (isManagerOrAbove && canAdd) {
+            return (
+              <DropdownMenu key={`empty-${idx}`}>
+                <DropdownMenuTrigger asChild>
+                  <div
+                    className="relative rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center transition-colors cursor-pointer hover:border-brand-300 hover:bg-brand-50/30"
+                    style={{ aspectRatio: "1 / 1" }}
+                    data-testid={`thumbnail-empty-${idx}`}
                   >
-                    <Star className={`w-3.5 h-3.5 drop-shadow-sm ${isPrimary ? "text-amber-400 fill-amber-400" : "text-white fill-transparent stroke-white"}`} />
-                  </button>
-                  <button
-                    className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded bg-black/35 hover:bg-rose-500 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!deleteMutation.isPending) {
-                        if (isActive && idx > 0) setActiveIdx(idx - 1);
-                        deleteMutation.mutate(img.id);
-                      }
-                    }}
-                    title={t.itemDetailDeletePhoto}
-                    data-testid={`btn-delete-${img.id}`}
+                    <Plus className="w-4 h-4 text-slate-300" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  <DropdownMenuItem
+                    onClick={() => fileRef.current?.click()}
+                    data-testid="menu-upload-photo"
                   >
-                    <XIcon className="w-3 h-3 text-white" />
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
+                    <UploadCloud className="w-4 h-4 mr-2" />
+                    {t.itemDetailUploadPhoto}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => cameraRef.current?.click()}
+                    data-testid="menu-take-photo"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    {t.itemDetailTakePhoto}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          }
+
+          return (
             <div
               key={`empty-${idx}`}
-              className={`relative rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center transition-colors ${isManagerOrAbove && canAdd ? "cursor-pointer hover:border-brand-300 hover:bg-brand-50/30" : ""}`}
+              className="relative rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/60"
               style={{ aspectRatio: "1 / 1" }}
-              onClick={() => isManagerOrAbove && canAdd && fileRef.current?.click()}
               data-testid={`thumbnail-empty-${idx}`}
-            >
-              {isManagerOrAbove && canAdd && <Plus className="w-4 h-4 text-slate-300" />}
-            </div>
+            />
           );
         })}
       </div>
@@ -577,6 +615,35 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
       {!canAdd && isManagerOrAbove && (
         <p className="text-[11px] text-slate-400 text-center">{t.itemDetailMaxPhotosReached}</p>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.itemDetailDeletePhotoTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.itemDetailDeletePhotoConfirm}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setPendingDeleteId(null)}
+              data-testid="btn-delete-cancel"
+            >
+              {t.itemDetailDeletePhotoCancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
+              onClick={() => { if (pendingDeleteId !== null) deleteMutation.mutate(pendingDeleteId); }}
+              disabled={deleteMutation.isPending}
+              data-testid="btn-delete-confirm"
+            >
+              {t.itemDetailDeletePhotoDelete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden" onChange={handleFileInput} data-testid="file-input-gallery" />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} data-testid="file-input-camera" />

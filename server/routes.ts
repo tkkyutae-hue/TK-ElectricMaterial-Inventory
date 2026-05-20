@@ -1685,6 +1685,78 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Item Image Gallery (multi-image, max 4) ─────────────────────────────────
+
+  app.get("/api/inventory/:id/images", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
+      const images = await storage.getItemImages(id);
+      res.json(images);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/inventory/:id/images", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
+      const item = await storage.getItem(id);
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      const { imageUrl, altText } = req.body;
+      if (!imageUrl || typeof imageUrl !== "string" || !imageUrl.trim()) {
+        return res.status(400).json({ message: "imageUrl is required" });
+      }
+      const images = await storage.appendItemImage(id, imageUrl.trim(), altText ?? null);
+      res.status(201).json(images);
+    } catch (err: any) {
+      const status = err.message?.includes("최대 4장") ? 400 : 500;
+      res.status(status).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/inventory/:id/images/:imageId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const imageId = parseInt(req.params.imageId);
+      if (isNaN(id) || isNaN(imageId)) return res.status(400).json({ message: "Invalid id" });
+      const images = await storage.deleteItemImage(id, imageId);
+      res.json(images);
+    } catch (err: any) {
+      const status = err.message?.includes("찾을 수 없습니다") ? 404 : 500;
+      res.status(status).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/inventory/:id/images/reorder", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid item id" });
+      const { imageIds } = req.body;
+      if (!Array.isArray(imageIds) || imageIds.some(x => typeof x !== "number")) {
+        return res.status(400).json({ message: "imageIds must be an array of numbers" });
+      }
+      const images = await storage.reorderItemImages(id, imageIds);
+      res.json(images);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/inventory/:id/images/:imageId/primary", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const imageId = parseInt(req.params.imageId);
+      if (isNaN(id) || isNaN(imageId)) return res.status(400).json({ message: "Invalid id" });
+      const images = await storage.setItemImagePrimary(id, imageId);
+      res.json(images);
+    } catch (err: any) {
+      const status = err.message?.includes("찾을 수 없습니다") ? 404 : 500;
+      res.status(status).json({ message: err.message });
+    }
+  });
+
   // ─── Admin Gate ─────────────────────────────────────────────────────────────
   function sha256hex(s: string): string {
     return crypto.createHash("sha256").update(s).digest("hex");

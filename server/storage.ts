@@ -67,6 +67,11 @@ export interface IStorage {
   createItem(item: CreateItemRequest): Promise<Item>;
   createItemImage(itemId: number, imageUrl: string): Promise<void>;
   setItemImage(itemId: number, imageUrl: string | null): Promise<void>;
+  getItemImages(itemId: number): Promise<ItemImage[]>;
+  appendItemImage(itemId: number, imageUrl: string, altText?: string | null): Promise<ItemImage[]>;
+  deleteItemImage(itemId: number, imageId: number): Promise<ItemImage[]>;
+  setItemImagePrimary(itemId: number, imageId: number): Promise<ItemImage[]>;
+  reorderItemImages(itemId: number, imageIds: number[]): Promise<ItemImage[]>;
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
   restoreItems(ids: number[]): Promise<void>;
@@ -716,6 +721,56 @@ export class DatabaseStorage implements IStorage {
     if (imageUrl) {
       await db.insert(itemImages).values({ itemId, imageUrl, sortOrder: 0 });
     }
+  }
+
+  async getItemImages(itemId: number): Promise<ItemImage[]> {
+    return db.select().from(itemImages)
+      .where(eq(itemImages.itemId, itemId))
+      .orderBy(asc(itemImages.sortOrder), asc(itemImages.id));
+  }
+
+  private async _normalizeItemImageSortOrder(tx: typeof db, itemId: number): Promise<void> {
+    const rows = await tx.select({ id: itemImages.id })
+      .from(itemImages)
+      .where(eq(itemImages.itemId, itemId))
+      .orderBy(asc(itemImages.sortOrder), asc(itemImages.id));
+    for (let i = 0; i < rows.length; i++) {
+      await tx.update(itemImages).set({ sortOrder: i }).where(eq(itemImages.id, rows[i].id));
+    }
+  }
+
+  async appendItemImage(itemId: number, imageUrl: string, altText?: string | null): Promise<ItemImage[]> {
+    const existing = await this.getItemImages(itemId);
+    if (existing.length >= 4) throw new Error("이미지는 아이템당 최대 4장까지 등록할 수 있습니다.");
+    const nextOrder = existing.length > 0 ? Math.max(...existing.map(i => i.sortOrder ?? 0)) + 1 : 0;
+    await db.insert(itemImages).values({ itemId, imageUrl, altText: altText ?? null, sortOrder: nextOrder });
+    return this.getItemImages(itemId);
+  }
+
+  async deleteItemImage(itemId: number, imageId: number): Promise<ItemImage[]> {
+    const [img] = await db.select().from(itemImages).where(eq(itemImages.id, imageId)).limit(1);
+    if (!img || img.itemId !== itemId) throw new Error("이미지를 찾을 수 없습니다.");
+    await db.delete(itemImages).where(eq(itemImages.id, imageId));
+    await this._normalizeItemImageSortOrder(db, itemId);
+    return this.getItemImages(itemId);
+  }
+
+  async setItemImagePrimary(itemId: number, imageId: number): Promise<ItemImage[]> {
+    const [img] = await db.select().from(itemImages).where(eq(itemImages.id, imageId)).limit(1);
+    if (!img || img.itemId !== itemId) throw new Error("이미지를 찾을 수 없습니다.");
+    await db.update(itemImages).set({ sortOrder: -1 }).where(eq(itemImages.id, imageId));
+    await this._normalizeItemImageSortOrder(db, itemId);
+    return this.getItemImages(itemId);
+  }
+
+  async reorderItemImages(itemId: number, imageIds: number[]): Promise<ItemImage[]> {
+    const existing = await this.getItemImages(itemId);
+    const existingIds = new Set(existing.map(i => i.id));
+    if (!imageIds.every(id => existingIds.has(id))) throw new Error("유효하지 않은 이미지 ID가 포함되어 있습니다.");
+    for (let i = 0; i < imageIds.length; i++) {
+      await db.update(itemImages).set({ sortOrder: i }).where(eq(itemImages.id, imageIds[i]));
+    }
+    return this.getItemImages(itemId);
   }
 
   async updateItem(id: number, item: UpdateItemRequest): Promise<Item> {

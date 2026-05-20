@@ -1,0 +1,88 @@
+Implement Phase 1 of multi-image support for inventory items: backend image gallery API only.
+
+Goal:
+Allow each inventory item to have up to 4 images using the existing item_images table.
+
+Important:
+Do not modify frontend UI in this phase.
+Do not change Excel export in this phase.
+Do not delete existing images automatically.
+Do not break existing external image URLs or local /uploads image URLs.
+
+Existing production data:
+Some item images are external URLs.
+Some item images are local uploaded files under /uploads.
+Both must continue to work.
+
+Use existing item_images table if available:
+- id
+- itemId
+- imageUrl
+- altText
+- sortOrder
+- createdAt
+
+Rules:
+- Max 4 images per item.
+- sortOrder 0 = primary image.
+- Existing images must be preserved.
+- Adding an image must append to existing images.
+- Deleting an image must delete only the selected image.
+- After delete or primary change, normalize sortOrder starting from 0.
+- Do not use the old single-image replace behavior for this gallery flow.
+
+Add APIs:
+
+GET /api/inventory/:id/images
+- Return all images for item ordered by sortOrder ASC, id ASC.
+
+POST /api/inventory/:id/images
+Body:
+{
+  imageUrl: string,
+  altText?: string | null
+}
+- Validate item exists.
+- Reject if item already has 4 images.
+- Append as next sortOrder.
+- Do not delete existing images.
+- Return updated image list.
+
+DELETE /api/inventory/:id/images/:imageId
+- Delete only this image.
+- Verify image belongs to item.
+- Normalize remaining sortOrder.
+- Return updated image list.
+
+PATCH /api/inventory/:id/images/:imageId/primary
+- Verify image belongs to item.
+- Set selected image to sortOrder 0.
+- Reorder all others to 1,2,3.
+- Return updated image list.
+
+Optional:
+PATCH /api/inventory/:id/images/reorder
+- Only implement if simple.
+- Body: { imageIds: number[] }
+- Validate all belong to item.
+- Update sortOrder.
+
+Upload:
+Do not change existing upload endpoint yet unless necessary.
+If current upload endpoint deletes item_images, do not use it for gallery.
+This phase only needs imageUrl persistence APIs.
+
+Backfill safety:
+If there is a legacy item.imageUrl field and item_images is empty for that item:
+- Do not run destructive migration.
+- If backfill is needed, add a safe helper but do not delete legacy data.
+
+Manual verification:
+1. Existing item with image still has image.
+2. POST new imageUrl appends image.
+3. Item can have max 4 images.
+4. 5th image is rejected with clear JSON error.
+5. DELETE removes only selected image.
+6. Primary change updates sortOrder correctly.
+7. Existing external URLs and /uploads URLs both remain valid.
+8. No inventory quantity or movement logic changes.

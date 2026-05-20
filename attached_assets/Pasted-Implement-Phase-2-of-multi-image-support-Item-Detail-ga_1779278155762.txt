@@ -1,0 +1,94 @@
+Implement Phase 2 of multi-image support: Item Detail gallery UI with desktop/mobile upload.
+
+Context:
+Phase 1 added backend APIs for item image gallery:
+GET /api/inventory/:id/images
+POST /api/inventory/:id/images
+DELETE /api/inventory/:id/images/:imageId
+PATCH /api/inventory/:id/images/:imageId/primary
+
+Goal:
+Update Item Detail page to show a Home Depot-style image gallery.
+Users should be able to upload images from desktop, phone, or iPad.
+
+Files likely involved:
+- client/src/pages/ItemDetails.tsx
+- existing item image upload component if any
+- existing upload API helper if any
+
+Do not:
+- Do not change backend movement logic.
+- Do not change inventory quantities.
+- Do not change supplier pricing.
+- Do not change Excel export yet.
+- Do not delete existing images automatically.
+
+UI requirements:
+- Large main image area.
+- Thumbnail strip below or beside main image.
+- Up to 4 thumbnails.
+- Add Photo button.
+- Delete button per image.
+- Set as Primary button or star action.
+- Show image count like "2 / 4" or "Max 4 photos".
+- If no images, show placeholder and Add Photo button.
+
+Behavior:
+- Load image list from GET /api/inventory/:id/images.
+- Clicking thumbnail changes the large main image.
+- Uploading a new image appends it to the gallery.
+- If first image is uploaded, it becomes primary.
+- If there are already 4 images, disable Add Photo and show:
+  "Maximum 4 photos per item."
+- Delete removes only selected image.
+- Set as Primary calls the primary API and refreshes/reorders thumbnails.
+- Existing external URL images display normally.
+- Existing /uploads images display normally.
+
+Mobile/iPad upload:
+Use a standard file input compatible with mobile browsers.
+
+Recommended:
+<input
+  type="file"
+  accept="image/jpeg,image/png,image/webp"
+  multiple
+/>
+
+Rules:
+- Allow selecting from desktop, phone, or iPad photo library/files.
+- Enforce max 4 total images.
+- If user selects more files than remaining slots, upload only allowed count or show a clear message.
+- Max file size: 5MB per image.
+- Allowed types: jpg/jpeg/png/webp.
+- Reject HEIC/HEIF with clear message:
+  "Please upload JPG, PNG, or WebP. HEIC is not supported yet."
+- Do not attempt risky client-side HEIC conversion in this phase.
+
+Optional camera support:
+If simple, add a separate "Take Photo" button using:
+<input type="file" accept="image/*" capture="environment" />
+But do not replace normal library upload with camera-only behavior.
+Mobile users should still be able to choose existing photos.
+
+Upload flow:
+1. User chooses image file.
+2. Upload file using existing upload endpoint.
+3. Receive imageUrl.
+4. POST imageUrl to /api/inventory/:id/images.
+5. Refresh image list.
+6. Existing images remain.
+
+Important:
+If the existing upload endpoint replaces/deletes previous item_images, do not use that destructive flow.
+Use upload endpoint only to get file URL, then append via gallery API.
+
+Manual verification:
+1. Desktop upload works.
+2. iPhone/iPad photo library upload works.
+3. Android photo upload works if available.
+4. Existing image remains after uploading a second image.
+5. Max 4 images enforced.
+6. Delete removes only selected image.
+7. Set as Primary reorders thumbnails.
+8. No existing production images are deleted.

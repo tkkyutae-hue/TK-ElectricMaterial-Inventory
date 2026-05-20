@@ -1,0 +1,221 @@
+Refine Item Detail image gallery controls.
+
+Context:
+Multi-image item gallery is already implemented.
+Item Detail currently has:
+- Main image
+- Thumbnail slots up to 4 images
+- Add Photo button
+- Take Photo button
+- Delete X button on thumbnails
+
+Problem:
+There are too many upload entry points:
+1. Add Photo button
+2. Take Photo button
+3. Empty thumbnail + slot
+4. Existing photo thumbnail actions
+
+This is redundant and makes the UI look cluttered.
+
+Goal:
+Remove the separate Add Photo and Take Photo buttons.
+Use the thumbnail slots as the main interaction point.
+
+Do not change backend APIs.
+Do not change upload logic.
+Do not change image storage logic.
+Do not change inventory quantity logic.
+Do not change supplier pricing.
+Do not change Excel export logic in this task.
+
+File likely involved:
+- client/src/pages/ItemDetails.tsx
+
+Required UI behavior:
+
+1. Remove standalone buttons
+Remove the visible standalone:
+- Add Photo
+- Take Photo
+
+Keep the image count text:
+Photos 1 / 4
+
+2. Empty thumbnail slot behavior
+Each empty thumbnail slot should remain visible as a small square + box.
+
+When user clicks an empty + slot, open an action menu.
+
+Menu options:
+- Upload Photo
+- Take Photo
+- Cancel / close
+
+Upload Photo:
+- Open normal file picker.
+- Use existing upload flow.
+- Accept JPG, JPEG, PNG, WebP.
+- Works on desktop, mobile, and iPad photo library/files.
+
+Take Photo:
+- Open camera capture flow using the existing take-photo input if already implemented.
+- Use capture="environment" if already available.
+- Do not remove normal Upload Photo.
+
+If max 4 photos reached:
+- Do not show empty slots.
+- Do not show upload/take photo actions.
+- Optionally show small text: Maximum 4 photos.
+
+3. Existing thumbnail behavior
+When user clicks an existing photo thumbnail, open an action menu.
+
+Menu options:
+- View Photo
+- Set as Primary
+- Replace Photo
+- Delete Photo
+- Cancel / close
+
+View Photo:
+- Set this thumbnail as the currently selected main image.
+- Do not change sortOrder.
+
+Set as Primary:
+- Call existing primary API.
+- Reorder thumbnails after success.
+- Primary image should remain sortOrder 0.
+
+Replace Photo:
+- Open file picker.
+- Upload replacement image.
+- Replace only this selected image if existing backend supports replacement.
+- If replacement API does not exist, skip this option for now and leave a TODO.
+- Do not implement replacement by deleting all item images.
+- Do not use legacy PATCH /api/inventory/:id/image because it deletes all item_images.
+
+Delete Photo:
+- Must show confirmation dialog before deleting.
+- Do not delete immediately from the menu.
+
+4. Delete confirmation
+When Delete Photo is selected, show a confirmation dialog.
+
+Dialog:
+Title:
+Delete photo?
+
+Description:
+This photo will be removed from this item. This action cannot be undone.
+
+Buttons:
+Cancel
+Delete
+
+On Cancel:
+- Close dialog.
+- Do nothing.
+
+On Delete:
+- Call existing DELETE /api/inventory/:id/images/:imageId
+- Delete only the selected image.
+- Existing other images must remain.
+- After success, refetch image list and keep main image valid.
+
+If i18n keys are already available, use them.
+If not, add these keys:
+
+EN:
+itemDetailDeletePhotoTitle: "Delete photo?"
+itemDetailDeletePhotoConfirm: "This photo will be removed from this item. This action cannot be undone."
+itemDetailDeletePhotoCancel: "Cancel"
+itemDetailDeletePhotoDelete: "Delete"
+itemDetailUploadPhoto: "Upload Photo"
+itemDetailTakePhoto: "Take Photo"
+itemDetailViewPhoto: "View Photo"
+itemDetailSetPrimary: "Set as Primary"
+itemDetailReplacePhoto: "Replace Photo"
+
+KO:
+itemDetailDeletePhotoTitle: "사진을 삭제할까요?"
+itemDetailDeletePhotoConfirm: "이 사진은 아이템에서 제거됩니다. 이 작업은 되돌릴 수 없습니다."
+itemDetailDeletePhotoCancel: "취소"
+itemDetailDeletePhotoDelete: "삭제"
+itemDetailUploadPhoto: "사진 업로드"
+itemDetailTakePhoto: "사진 촬영"
+itemDetailViewPhoto: "사진 보기"
+itemDetailSetPrimary: "대표사진 설정"
+itemDetailReplacePhoto: "사진 교체"
+
+ES:
+itemDetailDeletePhotoTitle: "¿Eliminar foto?"
+itemDetailDeletePhotoConfirm: "Esta foto se eliminará del artículo. Esta acción no se puede deshacer."
+itemDetailDeletePhotoCancel: "Cancelar"
+itemDetailDeletePhotoDelete: "Eliminar"
+itemDetailUploadPhoto: "Subir foto"
+itemDetailTakePhoto: "Tomar foto"
+itemDetailViewPhoto: "Ver foto"
+itemDetailSetPrimary: "Establecer como principal"
+itemDetailReplacePhoto: "Reemplazar foto"
+
+5. Permission behavior
+Keep existing permission rules:
+- Only manager/admin should see image management actions.
+- Staff/viewer should be able to view images but not delete/upload/set primary if current permissions already restrict that.
+- Do not loosen permissions.
+
+6. Thumbnail layout
+Keep compact fixed thumbnail layout:
+- Thumbnails should stay small.
+- Recommended: 80px x 80px.
+- Empty + slots should also be small.
+- Do not revert to large stacked image cards.
+- Main image remains one large image only.
+
+7. Mobile/iPad behavior
+On mobile/iPad:
+- Empty slot tap should open the same action menu or mobile-friendly sheet.
+- Upload Photo should allow photo library/files.
+- Take Photo should open camera if browser supports it.
+- Existing thumbnail tap should show options.
+- No separate Add Photo / Take Photo buttons needed.
+
+8. Hidden inputs
+Use hidden file inputs for:
+- upload from device
+- take photo
+
+Do not show duplicate visible buttons.
+The menu options should trigger the hidden inputs.
+
+9. Do not use destructive legacy image API
+Do not call:
+PATCH /api/inventory/:id/image
+
+Reason:
+That legacy route may delete all item_images and replace with one image.
+
+The gallery must use:
+POST /api/inventory/:id/images
+DELETE /api/inventory/:id/images/:imageId
+PATCH /api/inventory/:id/images/:imageId/primary
+
+10. Verification
+- Item with 0 photos shows main placeholder and 4 small + slots.
+- Clicking + opens Upload Photo / Take Photo menu.
+- Uploading photo adds image.
+- Item with 1 photo shows one thumbnail and 3 + slots.
+- No standalone Add Photo / Take Photo buttons are visible.
+- Clicking existing thumbnail opens View / Set Primary / Delete menu.
+- View Photo changes main image.
+- Set as Primary changes primary image.
+- Delete Photo shows confirmation.
+- Cancel does not delete.
+- Delete removes only selected image.
+- Other images remain.
+- Max 4 photos enforced.
+- Desktop upload works.
+- iPhone/iPad upload from photo library works.
+- Take Photo works where supported.
+- No inventory, pricing, or movement behavior changes.

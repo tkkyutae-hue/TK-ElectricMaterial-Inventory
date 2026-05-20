@@ -253,6 +253,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const isMobile = useIsMobile();
   const [imgEnlarged, setImgEnlarged] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
+  const swipeStartX = useRef<number | null>(null);
 
   const { getCartItem, addToCart, removeFromCart } = useFieldCart();
   const existingCartItem = getCartItem(item.id);
@@ -393,7 +394,18 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
                   borderRadius: 12, overflow: "hidden", border: `1px solid ${F.borderStrong}`,
                   background: F.surface2, position: "relative",
                   height: 172, display: "flex", alignItems: "center", justifyContent: "center",
+                  touchAction: "pan-y",
                 }}
+                onPointerDown={e => { swipeStartX.current = e.clientX; }}
+                onPointerUp={e => {
+                  if (swipeStartX.current === null) return;
+                  const delta = e.clientX - swipeStartX.current;
+                  swipeStartX.current = null;
+                  if (Math.abs(delta) > 40 && imgs.length > 1) {
+                    setGalleryIdx(i => delta < 0 ? (i + 1) % imgs.length : (i - 1 + imgs.length) % imgs.length);
+                  }
+                }}
+                onPointerCancel={() => { swipeStartX.current = null; }}
               >
                 <img
                   src={cur.imageUrl}

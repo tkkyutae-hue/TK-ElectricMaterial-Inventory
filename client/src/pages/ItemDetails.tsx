@@ -374,6 +374,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
     if (fileArr.length > slots) {
       toast({ description: t.itemDetailSkippedFiles.replace("{n}", String(fileArr.length - slots)) });
     }
+    let appendCount = 0;
     for (const file of toUpload) {
       const nameLower = file.name.toLowerCase();
       if (
@@ -403,6 +404,8 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
         }
         const { url } = await res.json();
         await appendMutation.mutateAsync(url);
+        setActiveIdx(images.length + appendCount);
+        appendCount++;
       } catch (err: any) {
         toast({ title: t.itemDetailUploadFailed, description: err.message, variant: "destructive" });
       } finally {
@@ -478,7 +481,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-slate-500">
             {t.itemDetailGalleryLabel}{" "}
-            <span className="font-bold text-slate-700">{images.length} / 4</span>
+            <span className="font-bold text-slate-700">{t.itemDetailPhotoCount.replace("{current}", String(images.length))}</span>
           </span>
           <div className="flex gap-1.5">
             <Button

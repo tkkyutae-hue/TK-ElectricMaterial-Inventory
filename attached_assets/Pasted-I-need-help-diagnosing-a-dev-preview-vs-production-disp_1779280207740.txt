@@ -1,0 +1,81 @@
+I need help diagnosing a dev preview vs production display mismatch in my Replit web app.
+
+Project:
+React + TypeScript + Vite + Express + PostgreSQL PWA.
+
+Problem:
+When I make UI changes in development, the Replit dev preview sometimes does not show the latest updated UI correctly.
+However, after I deploy/publish to production, the updated UI appears there.
+
+This creates a bad workflow:
+- I edit code in dev
+- Dev preview does not reliably reflect the latest changes
+- I have to redeploy to production just to verify small UI fixes
+- Production becomes my test environment, which is unsafe
+
+Recent example:
+I updated an Item Detail image gallery layout.
+Production showed the updated thumbnail/delete behavior, but development preview appeared different or stale.
+This makes it hard to know whether the code is actually fixed before publishing.
+
+I suspect this may be related to one or more of these:
+1. Service Worker / PWA caching
+2. Browser cache
+3. Vite HMR not updating correctly in Replit preview
+4. Replit dev preview using stale JS/CSS bundles
+5. Production and dev preview being served from different cached assets
+
+Important code detail:
+My app has a service worker file:
+client/public/sw.js
+
+And the React entry file may register it from:
+client/src/main.tsx
+
+I want to know:
+1. Can a service worker registered from a previous production or dev build control the Replit dev preview?
+2. Should service worker registration be disabled in development using import.meta.env.PROD?
+3. Should I unregister service workers and clear caches automatically in development?
+4. Is there a Replit-specific cache or preview behavior that can cause dev preview to show stale UI?
+5. What is the recommended Replit setup for Vite + React + Express + PWA so dev preview always reflects the latest source changes?
+6. Is there a proper way to disable PWA/service worker only in dev but keep it enabled in production?
+7. Should I add no-cache headers to the Vite dev HTML fallback in Express?
+8. How can I verify whether the dev preview is being controlled by a stale service worker or stale CSS/JS bundle?
+
+Desired behavior:
+- Development preview should always show the latest code without requiring production redeploy.
+- Production can keep service worker/PWA behavior.
+- Admin/Inventory/Field Mode behavior should not change.
+- I only want to fix stale dev preview/cache issues.
+
+Potential fix I am considering:
+
+In client/src/main.tsx:
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js");
+  });
+}
+
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
+  });
+
+  if ("caches" in window) {
+    caches.keys().then((keys) => {
+      keys
+        .filter((key) => key.startsWith("voltstock"))
+        .forEach((key) => caches.delete(key));
+    });
+  }
+}
+
+Also considering adding no-cache headers in the Express Vite dev fallback:
+Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+Pragma: no-cache
+Expires: 0
+
+Question:
+Is this the correct approach for Replit, or is there a better Replit-specific way to ensure dev preview never uses stale service worker/cache assets?

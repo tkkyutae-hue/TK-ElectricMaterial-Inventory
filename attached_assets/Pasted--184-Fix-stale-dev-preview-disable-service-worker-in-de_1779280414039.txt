@@ -1,0 +1,136 @@
+#184 - Fix stale dev preview — disable service worker in development
+
+Problem:
+main.tsx registers the service worker unconditionally.
+sw.js uses a cache-first strategy for .js and .css assets.
+Because of that, once a build chunk is cached, the service worker can serve stale JS/CSS even when Vite HMR has updated the source.
+
+This makes the Replit dev preview stale after code changes and forces production redeploys just to verify UI fixes.
+
+server/vite.ts already re-reads index.html and adds a nanoid() cache-buster to the entry point, so the HTML layer is mostly fine.
+The main issue is the service worker intercepting asset requests in development.
+
+Goal:
+Development preview must always show the latest code.
+Production should still register the service worker and cache assets normally.
+
+Do not change:
+- sw.js production caching strategy
+- Vite config
+- Admin Mode
+- Field Mode
+- inventory logic
+- gallery logic
+- movement logic
+- reporting logic
+- database schema
+- API behavior
+
+Files to modify:
+- client/src/main.tsx
+- server/vite.ts
+
+Task 1 — Guard service worker registration in main.tsx
+
+In client/src/main.tsx, update service worker registration so it only runs in production:
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("VoltStock Service Worker registered:", registration.scope);
+      })
+      .catch((error) => {
+        console.warn("VoltStock Service Worker registration failed:", error);
+      });
+  });
+}
+
+Task 2 — Dev-only service worker cleanup
+
+In client/src/main.tsx, add a development-only cleanup block.
+
+Requirements:
+- Only run when import.meta.env.DEV is true.
+- Unregister all existing service worker registrations.
+- Delete any Cache Storage entries whose key starts with "voltstock".
+- Do not throw fatal errors if cleanup fails.
+- Use catch(console.warn) or equivalent safe handling.
+
+Example:
+
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .getRegistrations()
+    .then((registrations) => {
+      registrations.forEach((registration) => {
+        registration.unregister();
+      });
+    })
+    .catch((error) => {
+      console.warn("VoltStock DEV: failed to unregister service workers", error);
+    });
+
+  if ("caches" in window) {
+    caches
+      .keys()
+      .then((keys) => {
+        return Promise.all(
+          keys
+            .filter((key) => key.startsWith("voltstock"))
+            .map((key) => caches.delete(key))
+        );
+      })
+      .catch((error) => {
+        console.warn("VoltStock DEV: failed to clear caches", error);
+      });
+  }
+
+  console.log("VoltStock DEV mode: service worker disabled and VoltStock caches cleared.");
+}
+
+Task 3 — Add no-cache headers to dev HTML response
+
+In server/vite.ts, find the development HTML fallback handler, likely:
+
+app.use("/{*path}", async (req, res, next) => {
+  ...
+  res.status(200).set({ "Content-Type": "text/html" }).end(page);
+});
+
+Update the response headers to include:
+
+Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+Pragma: no-cache
+Expires: 0
+
+Example:
+
+res.status(200).set({
+  "Content-Type": "text/html",
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  "Pragma": "no-cache",
+  "Expires": "0",
+}).end(page);
+
+Keep the existing transformIndexHtml behavior.
+Keep the existing nanoid() cache-buster behavior.
+
+Task 4 — Do not modify sw.js
+
+Do not modify client/public/sw.js in this task.
+Production service worker behavior should remain unchanged.
+
+Verification:
+1. Start the Replit dev preview.
+2. Open Chrome DevTools → Application → Service Workers.
+3. Confirm no active service worker controls the dev preview.
+4. Open Chrome DevTools → Application → Cache Storage.
+5. Confirm old voltstock-* caches are cleared in dev.
+6. Make a small UI change.
+7. Refresh dev preview.
+8. Confirm the latest UI appears without production redeploy.
+9. Build/deploy production.
+10. Confirm production still registers /sw.js.
+11. Confirm no functional changes to Admin Mode, Field Mode, inventory, gallery, movement, or reporting.

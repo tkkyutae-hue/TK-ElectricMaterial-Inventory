@@ -1,0 +1,152 @@
+Improve Admin Transaction History selected-row actions.
+
+Current issue:
+In Admin Mode → Transactions → Transaction History, when a transaction row is selected, the action buttons appear at the bottom-right of the table/footer.
+Users may need to scroll all the way down to access Edit / Delete / Cancel.
+This is inconvenient for long transaction lists.
+
+Goal:
+When one or more transactions are selected, show a floating action bar at the bottom center of the visible admin content area.
+
+Important:
+Keep the action name as Delete.
+Do NOT rename Delete to Void or Reverse.
+Do NOT change backend delete behavior in this task.
+This is a UI/UX improvement only.
+
+Files likely involved:
+- client/src/pages/Transactions.tsx
+- client/src/pages/admin/Transactions.tsx
+- transaction table component if separated
+
+Do not:
+- Do not change backend API.
+- Do not change inventory movement logic.
+- Do not change transaction delete semantics.
+- Do not change database schema.
+- Do not change Field Mode.
+- Do not change unrelated transaction filters or table behavior.
+
+Required behavior:
+
+1. Floating selected action bar
+When selectedTransactions.length > 0, show a floating action bar.
+
+Position:
+- Fixed near bottom of viewport.
+- Centered within the main admin content area, not hidden in the table footer.
+- Should not require scrolling to access.
+- Should not overlap the left sidebar awkwardly.
+- Recommended:
+  position: fixed;
+  bottom: 24px;
+  left: calc(sidebarWidth + remainingContent / 2) or use a container approach;
+  transform: translateX(-50%);
+  z-index: high;
+
+Visual:
+- White/light surface.
+- Border.
+- Soft shadow.
+- Rounded corners.
+- Compact but visible.
+- Match existing Admin UI style.
+
+Example content:
+[ 1 selected ] [ Edit ] [ Delete ] [ Cancel ]
+
+For multiple selections:
+[ 3 selected ] [ Delete ] [ Cancel ]
+
+2. Edit behavior
+- Edit should only be enabled/visible when exactly 1 transaction is selected.
+- If multiple transactions are selected, hide Edit or disable it.
+
+3. Delete behavior
+- Keep label as Delete.
+- Delete should be available when one or more transactions are selected.
+- Keep existing delete API/mutation.
+- Do not change the delete backend behavior.
+
+4. Delete confirmation
+Before deleting, show confirmation dialog.
+
+Dialog title:
+Delete transaction?
+
+For one selected:
+This transaction will be deleted. This action cannot be undone.
+
+For multiple selected:
+{count} transactions will be deleted. This action cannot be undone.
+
+Buttons:
+Cancel
+Delete
+
+On Cancel:
+- Close dialog.
+- Do nothing.
+
+On Delete:
+- Call existing delete mutation/API.
+- After success, clear selection.
+- Refetch transaction list if current behavior requires it.
+
+5. Cancel / Clear selection
+- Rename visual button to Cancel if current UI already uses Cancel.
+- It should clear selected transactions.
+- It should not modify data.
+
+6. Remove or hide old footer action buttons
+The old bottom-right table/footer Edit/Delete/Cancel buttons should be removed or hidden when the floating bar is used.
+Avoid duplicate action controls.
+
+7. Selected row styling
+Selected transaction rows should be visibly highlighted.
+Use a subtle green or blue-tinted background consistent with Admin UI.
+Do not make it too strong.
+
+8. Selection reset rules
+Clear selected transactions when:
+- Search query changes
+- Date range changes
+- Type filter changes
+- Project filter changes
+- Page changes
+- Page size changes
+- Delete succeeds
+
+This prevents actions being applied to hidden rows accidentally.
+
+9. Table footer
+Keep pagination and row count display in the table footer.
+Only move selected-row actions out of the footer.
+
+10. Mobile / smaller screens
+On smaller screens:
+- Floating bar should still be visible.
+- It can span most of the width.
+- Buttons should not overflow.
+- Use compact layout if needed.
+
+11. Permissions
+Keep existing permissions.
+If the current UI only allows certain roles to edit/delete, preserve that.
+Do not loosen permissions.
+
+Manual verification:
+1. Open Admin → Transactions.
+2. Select one row.
+3. Floating action bar appears at bottom center.
+4. Edit, Delete, Cancel are visible.
+5. Click Cancel: selection clears and bar disappears.
+6. Select one row and click Delete: confirmation dialog appears.
+7. Cancel in dialog: nothing is deleted.
+8. Confirm Delete: existing delete behavior runs, selection clears, list refreshes.
+9. Select multiple rows.
+10. Floating bar shows count.
+11. Edit is hidden or disabled.
+12. Delete and Cancel work.
+13. Change filters/page: selection clears.
+14. No backend behavior changed.

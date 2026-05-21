@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMovements, useBulkDeleteMovements, useUpdateMovement } from "@/hooks/use-transactions";
 import { useProjects, useLocations } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
@@ -109,6 +109,13 @@ export default function Transactions() {
   function clearSelection() {
     setSelectedIds(new Set());
   }
+
+  // Auto-clear selection when filters or pagination changes
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setSelectedIds(new Set());
+  }, [search, typeFilter, projectFilter, startDate, endDate, currentPage, pageSize]);
 
   async function handleBulkDelete() {
     const ids = Array.from(selectedIds);
@@ -794,71 +801,115 @@ export default function Transactions() {
             >›</button>
           </div>
 
-          {/* Right: action buttons (always present; dimmed when nothing selected) */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
+          {/* Right: editing indicator only */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
             {editingIds.size > 0 && (
-              <span className="text-xs font-semibold" style={{ marginRight: 2, color: "#ca8a04" }}>
+              <span className="text-xs font-semibold" style={{ color: "#ca8a04" }}>
                 {editingIds.size} {t.txAdminEditing}
               </span>
             )}
-            {selCount > 0 && editingIds.size === 0 && (
-              <span className="text-xs text-slate-400" style={{ marginRight: 2 }}>
-                {selCount} {t.txAdminSelected}
-              </span>
-            )}
-            <button
-              type="button"
-              data-testid="btn-tx-edit"
-              onClick={() => { if (canEdit) openInlineEdit(); }}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "4px 11px", borderRadius: 7,
-                background: canEdit ? "rgba(22,163,74,0.08)" : "white",
-                border: `1px solid ${canEdit ? "rgba(22,163,74,0.25)" : "#e2e8f0"}`,
-                color: canEdit ? "#16a34a" : "#cbd5e1",
-                fontSize: 11, fontWeight: 700,
-                cursor: canEdit ? "pointer" : "default",
-              }}
-            >
-              <Edit2 style={{ width: 10, height: 10 }} />
-              {selCount > 1 ? `${t.txAdminEditBtn} (${selCount})` : t.txAdminEditBtn}
-            </button>
-            <button
-              type="button"
-              data-testid="btn-tx-delete"
-              onClick={() => canDelete && setConfirmDelete(true)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "4px 11px", borderRadius: 7,
-                background: canDelete ? "rgba(220,38,38,0.07)" : "white",
-                border: `1px solid ${canDelete ? "rgba(220,38,38,0.22)" : "#e2e8f0"}`,
-                color: canDelete ? "#dc2626" : "#cbd5e1",
-                fontSize: 11, fontWeight: 700,
-                cursor: canDelete ? "pointer" : "default",
-              }}
-            >
-              <Trash2 style={{ width: 10, height: 10 }} /> {t.txAdminDeleteBtn}
-            </button>
-            <button
-              type="button"
-              data-testid="btn-tx-cancel"
-              onClick={cancelAllEdits}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "4px 11px", borderRadius: 7,
-                background: "white",
-                border: "1px solid #e2e8f0",
-                color: (selCount > 0 || editingIds.size > 0) ? "#475569" : "#cbd5e1",
-                fontSize: 11, fontWeight: 700,
-                cursor: (selCount > 0 || editingIds.size > 0) ? "pointer" : "default",
-              }}
-            >
-              <X style={{ width: 10, height: 10 }} /> {t.txAdminCancelBtn}
-            </button>
           </div>
         </div>
 
       </div>
+
+      {/* ── Floating selection action bar ── */}
+      {(selCount > 0 || editingIds.size > 0) && (
+        <div
+          data-testid="floating-action-bar"
+          className="fixed bottom-6 left-1/2 md:ml-32 z-50"
+          style={{
+            transform: "translateX(-50%)",
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 14,
+            boxShadow: "0 4px 24px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.06)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 14px",
+            whiteSpace: "nowrap",
+            maxWidth: "calc(100vw - 32px)",
+          }}
+        >
+          {/* Count / status badge */}
+          <span
+            style={{
+              fontSize: 12, fontWeight: 700,
+              color: editingIds.size > 0 ? "#b45309" : "#475569",
+              background: editingIds.size > 0 ? "rgba(234,179,8,0.10)" : "rgba(100,116,139,0.08)",
+              border: `1px solid ${editingIds.size > 0 ? "rgba(217,119,6,0.20)" : "rgba(148,163,184,0.25)"}`,
+              borderRadius: 8, padding: "2px 9px",
+              marginRight: 2,
+            }}
+            data-testid="floating-bar-count"
+          >
+            {editingIds.size > 0
+              ? `${editingIds.size} ${t.txAdminEditing}`
+              : `${selCount} ${t.txAdminSelected}`}
+          </span>
+
+          <div style={{ width: 1, height: 18, background: "#e2e8f0", flexShrink: 0 }} />
+
+          {/* Edit — single selection only, not while editing */}
+          {selCount === 1 && editingIds.size === 0 && (
+            <button
+              type="button"
+              data-testid="btn-tx-edit"
+              onClick={openInlineEdit}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "5px 13px", borderRadius: 8,
+                background: "rgba(22,163,74,0.08)",
+                border: "1px solid rgba(22,163,74,0.25)",
+                color: "#16a34a",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <Edit2 style={{ width: 11, height: 11 }} />
+              {t.txAdminEditBtn}
+            </button>
+          )}
+
+          {/* Delete — when rows selected and not mid-edit */}
+          {editingIds.size === 0 && selCount > 0 && (
+            <button
+              type="button"
+              data-testid="btn-tx-delete"
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "5px 13px", borderRadius: 8,
+                background: "rgba(220,38,38,0.07)",
+                border: "1px solid rgba(220,38,38,0.22)",
+                color: "#dc2626",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+              }}
+            >
+              <Trash2 style={{ width: 11, height: 11 }} />
+              {t.txAdminDeleteBtn}
+            </button>
+          )}
+
+          {/* Cancel */}
+          <button
+            type="button"
+            data-testid="btn-tx-cancel"
+            onClick={cancelAllEdits}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "5px 13px", borderRadius: 8,
+              background: "white",
+              border: "1px solid #e2e8f0",
+              color: "#475569",
+              fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            <X style={{ width: 11, height: 11 }} />
+            {t.txAdminCancelBtn}
+          </button>
+        </div>
+      )}
 
       {/* ── Confirm bulk delete ── */}
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>

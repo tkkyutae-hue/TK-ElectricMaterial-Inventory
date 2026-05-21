@@ -392,19 +392,29 @@ export default function Transactions() {
           <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 text-xs text-slate-500 bg-white">
             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
             <span className="text-slate-600">
-              {t.txAdminFilterSummary
-                .replace("{range}",
-                  `${format(new Date(startDate + "T00:00:00"), "MMM d", { locale: dfLocale })} – ${format(new Date(endDate + "T00:00:00"), "MMM d, yyyy", { locale: dfLocale })}`)
-                .replace("{type}",
-                  typeFilter === "all" ? t.txAdminAllTypesItem
-                  : typeFilter === "receive" ? t.txAdminTypeReceive
-                  : typeFilter === "issue" ? t.txAdminTypeIssue
-                  : typeFilter === "return" ? t.txAdminTypeReturn
-                  : t.txAdminTypeTransfer)
-                .replace("{project}",
-                  projectFilter === "all" ? t.txAdminAllProjectsItem
-                  : (projects?.find((p: any) => p.id.toString() === projectFilter)?.name ?? projectFilter))
-                .replace("{count}", String(filtered?.length ?? 0))}
+              {(() => {
+                const startD = startDate ? new Date(startDate + "T00:00:00") : null;
+                const endD   = endDate   ? new Date(endDate   + "T00:00:00") : null;
+                const validStart = startD && !isNaN(startD.getTime());
+                const validEnd   = endD   && !isNaN(endD.getTime());
+                const range = validStart && validEnd
+                  ? `${format(startD!, "MMM d", { locale: dfLocale })} – ${format(endD!, "MMM d, yyyy", { locale: dfLocale })}`
+                  : validStart ? format(startD!, "MMM d, yyyy", { locale: dfLocale })
+                  : validEnd   ? format(endD!,   "MMM d, yyyy", { locale: dfLocale })
+                  : "–";
+                return t.txAdminFilterSummary
+                  .replace("{range}", range)
+                  .replace("{type}",
+                    typeFilter === "all" ? t.txAdminAllTypesItem
+                    : typeFilter === "receive" ? t.txAdminTypeReceive
+                    : typeFilter === "issue" ? t.txAdminTypeIssue
+                    : typeFilter === "return" ? t.txAdminTypeReturn
+                    : t.txAdminTypeTransfer)
+                  .replace("{project}",
+                    projectFilter === "all" ? t.txAdminAllProjectsItem
+                    : (projects?.find((p: any) => p.id.toString() === projectFilter)?.name ?? projectFilter))
+                  .replace("{count}", String(filtered?.length ?? 0));
+              })()}
             </span>
           </div>
         )}
@@ -488,7 +498,7 @@ export default function Transactions() {
                         ...(isEditing ? { background: "rgba(234,179,8,0.05)", outline: "1px solid rgba(234,179,8,0.20)" } : isSelected ? selectedRowStyle : {}),
                         transition: "background 0.1s",
                       }}
-                      className={isEditing ? "" : "hover:bg-slate-50/50"}
+                      className={isEditing || isSelected ? "" : "hover:bg-slate-50/60"}
                     >
                       {/* Leftmost: select checkbox or Save/Cancel when editing */}
                       <TableCell

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format, startOfDay, endOfDay, subDays, formatDistanceToNow } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, startOfMonth, formatDistanceToNow } from "date-fns";
 import { ko as dfKo, es as dfEs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -30,6 +30,7 @@ export default function Transactions() {
   const [startDate, setStartDate]   = useState(thirtyAgoStr());
   const [endDate, setEndDate]       = useState(todayStr());
   const [logOpen, setLogOpen]       = useState(false);
+  const [datePreset, setDatePreset] = useState("30d");
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -108,6 +109,32 @@ export default function Transactions() {
 
   function clearSelection() {
     setSelectedIds(new Set());
+  }
+
+  function applyPreset(preset: string) {
+    const today = new Date();
+    const todayS = today.toISOString().split("T")[0];
+    if (preset === "today") {
+      setStartDate(todayS); setEndDate(todayS);
+    } else if (preset === "7d") {
+      setStartDate(subDays(today, 7).toISOString().split("T")[0]); setEndDate(todayS);
+    } else if (preset === "30d") {
+      setStartDate(thirtyAgoStr()); setEndDate(todayStr());
+    } else if (preset === "month") {
+      setStartDate(startOfMonth(today).toISOString().split("T")[0]); setEndDate(todayS);
+    }
+    setDatePreset(preset);
+    setCurrentPage(1);
+  }
+
+  function handleResetAll() {
+    setSearch("");
+    setTypeFilter("all");
+    setProjectFilter("all");
+    setDatePreset("30d");
+    setStartDate(thirtyAgoStr());
+    setEndDate(todayStr());
+    setCurrentPage(1);
   }
 
   // Auto-clear selection when filters or pagination changes
@@ -256,20 +283,69 @@ export default function Transactions() {
       {/* ── Table card ── */}
       <div className="premium-card bg-white overflow-hidden" style={{ position: "relative" }}>
         {/* Filters */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-2.5">
+          {/* Row 1: Full-width search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder={t.txAdminSearchPh}
+              className="h-9 pl-9 bg-white border-slate-200"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="input-tx-search"
+            />
+          </div>
+
+          {/* Row 2: Quick-date chips + date range + type + project + reset */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick-date chips */}
+            {([
+              { key: "today", label: t.txAdminQuickToday },
+              { key: "7d",    label: t.txAdminQuick7Days },
+              { key: "30d",   label: t.txAdminQuick30Days },
+              { key: "month", label: t.txAdminQuickThisMonth },
+            ] as { key: string; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyPreset(key)}
+                data-testid={`btn-date-preset-${key}`}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                  datePreset === key
+                    ? "bg-brand-600/10 border-brand-400/40 text-brand-700"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-brand-300 hover:text-brand-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+
+            <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
+            {/* Date range */}
+            <div className="flex items-center gap-1.5">
               <Input
-                placeholder={t.txAdminSearchPh}
-                className="pl-9 bg-white border-slate-200"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                data-testid="input-tx-search"
+                type="date"
+                className="h-9 w-[130px] bg-white border-slate-200 text-sm"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setDatePreset("custom"); }}
+                data-testid="input-tx-start-date"
+              />
+              <span className="text-slate-400 text-xs">–</span>
+              <Input
+                type="date"
+                className="h-9 w-[130px] bg-white border-slate-200 text-sm"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setDatePreset("custom"); }}
+                data-testid="input-tx-end-date"
               />
             </div>
+
+            <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
+            {/* Type select */}
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px] bg-white" data-testid="select-tx-type">
+              <SelectTrigger className="h-9 w-[130px] bg-white" data-testid="select-tx-type">
                 <SelectValue placeholder={t.txAdminAllTypesPh} />
               </SelectTrigger>
               <SelectContent>
@@ -280,8 +356,10 @@ export default function Transactions() {
                 <SelectItem value="transfer">{t.txAdminTypeTransfer}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Project select */}
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-[170px] bg-white">
+              <SelectTrigger className="h-9 w-[155px] bg-white" data-testid="select-tx-project">
                 <SelectValue placeholder={t.txAdminAllProjectsPh} />
               </SelectTrigger>
               <SelectContent>
@@ -291,40 +369,47 @@ export default function Transactions() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span className="whitespace-nowrap text-xs font-medium text-slate-500">{t.txAdminDateRange}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                className="h-8 w-[140px] bg-white border-slate-200 text-sm"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                data-testid="input-tx-start-date"
-              />
-              <span className="text-slate-400 text-xs">–</span>
-              <Input
-                type="date"
-                className="h-8 w-[140px] bg-white border-slate-200 text-sm"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                data-testid="input-tx-end-date"
-              />
-            </div>
-            {(startDate !== thirtyAgoStr() || endDate !== todayStr()) && (
+
+            {/* Reset all — only when at least one filter is non-default */}
+            {(search !== "" || typeFilter !== "all" || projectFilter !== "all" || datePreset !== "30d") && (
               <button
-                onClick={() => { setStartDate(thirtyAgoStr()); setEndDate(todayStr()); }}
-                className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
-                data-testid="button-reset-dates"
+                type="button"
+                onClick={handleResetAll}
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-rose-500 transition-colors"
+                data-testid="button-reset-filters"
               >
-                {t.txAdminReset30}
+                <X className="w-3 h-3" />
+                {t.txAdminResetFilters}
               </button>
             )}
           </div>
         </div>
+
+        {/* Active filter summary */}
+        {(search !== "" || typeFilter !== "all" || projectFilter !== "all" || datePreset !== "30d") && (
+          <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1.5 text-xs text-slate-500 bg-white">
+            <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
+            <span className="font-medium text-slate-600">
+              {format(new Date(startDate + "T00:00:00"), "MMM d", { locale: dfLocale })}
+              {" – "}
+              {format(new Date(endDate + "T00:00:00"), "MMM d, yyyy", { locale: dfLocale })}
+            </span>
+            {typeFilter !== "all" && (
+              <>
+                <span className="text-slate-300 mx-0.5">·</span>
+                <span>{typeFilter === "receive" ? t.txAdminTypeReceive : typeFilter === "issue" ? t.txAdminTypeIssue : typeFilter === "return" ? t.txAdminTypeReturn : t.txAdminTypeTransfer}</span>
+              </>
+            )}
+            {projectFilter !== "all" && (
+              <>
+                <span className="text-slate-300 mx-0.5">·</span>
+                <span>{projects?.find((p: any) => p.id.toString() === projectFilter)?.name ?? projectFilter}</span>
+              </>
+            )}
+            <span className="text-slate-300 mx-0.5">·</span>
+            <span className="font-medium text-slate-600">{filtered?.length ?? 0} {t.txAdminFilterResults}</span>
+          </div>
+        )}
 
         {/* Table */}
         <div className="overflow-x-auto" style={{ paddingRight: 16 }}>

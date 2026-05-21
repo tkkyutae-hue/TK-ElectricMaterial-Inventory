@@ -230,6 +230,8 @@ export default function Transactions() {
     clearSelection();
   }
 
+  const isNonDefault = search !== "" || typeFilter !== "all" || projectFilter !== "all" || startDate !== thirtyAgoStr() || endDate !== todayStr();
+
   const CHECKBOX_SIZE = 15;
 
   const checkboxStyle = (checked: boolean): React.CSSProperties => ({
@@ -371,7 +373,7 @@ export default function Transactions() {
             </Select>
 
             {/* Reset all — only when at least one filter is non-default */}
-            {(search !== "" || typeFilter !== "all" || projectFilter !== "all" || datePreset !== "30d") && (
+            {isNonDefault && (
               <button
                 type="button"
                 onClick={handleResetAll}
@@ -386,28 +388,24 @@ export default function Transactions() {
         </div>
 
         {/* Active filter summary */}
-        {(search !== "" || typeFilter !== "all" || projectFilter !== "all" || datePreset !== "30d") && (
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-1.5 text-xs text-slate-500 bg-white">
+        {isNonDefault && (
+          <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 text-xs text-slate-500 bg-white">
             <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
-            <span className="font-medium text-slate-600">
-              {format(new Date(startDate + "T00:00:00"), "MMM d", { locale: dfLocale })}
-              {" – "}
-              {format(new Date(endDate + "T00:00:00"), "MMM d, yyyy", { locale: dfLocale })}
+            <span className="text-slate-600">
+              {t.txAdminFilterSummary
+                .replace("{range}",
+                  `${format(new Date(startDate + "T00:00:00"), "MMM d", { locale: dfLocale })} – ${format(new Date(endDate + "T00:00:00"), "MMM d, yyyy", { locale: dfLocale })}`)
+                .replace("{type}",
+                  typeFilter === "all" ? t.txAdminAllTypesItem
+                  : typeFilter === "receive" ? t.txAdminTypeReceive
+                  : typeFilter === "issue" ? t.txAdminTypeIssue
+                  : typeFilter === "return" ? t.txAdminTypeReturn
+                  : t.txAdminTypeTransfer)
+                .replace("{project}",
+                  projectFilter === "all" ? t.txAdminAllProjectsItem
+                  : (projects?.find((p: any) => p.id.toString() === projectFilter)?.name ?? projectFilter))
+                .replace("{count}", String(filtered?.length ?? 0))}
             </span>
-            {typeFilter !== "all" && (
-              <>
-                <span className="text-slate-300 mx-0.5">·</span>
-                <span>{typeFilter === "receive" ? t.txAdminTypeReceive : typeFilter === "issue" ? t.txAdminTypeIssue : typeFilter === "return" ? t.txAdminTypeReturn : t.txAdminTypeTransfer}</span>
-              </>
-            )}
-            {projectFilter !== "all" && (
-              <>
-                <span className="text-slate-300 mx-0.5">·</span>
-                <span>{projects?.find((p: any) => p.id.toString() === projectFilter)?.name ?? projectFilter}</span>
-              </>
-            )}
-            <span className="text-slate-300 mx-0.5">·</span>
-            <span className="font-medium text-slate-600">{filtered?.length ?? 0} {t.txAdminFilterResults}</span>
           </div>
         )}
 

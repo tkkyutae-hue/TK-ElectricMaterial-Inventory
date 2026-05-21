@@ -814,7 +814,7 @@ export default function Transactions() {
       </div>
 
       {/* ── Floating selection action bar ── */}
-      {(selCount > 0 || editingIds.size > 0) && (
+      {selCount > 0 && (
         <div
           data-testid="floating-action-bar"
           className="fixed bottom-6 left-1/2 md:ml-32 z-50"
@@ -825,10 +825,10 @@ export default function Transactions() {
             borderRadius: 14,
             boxShadow: "0 4px 24px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.06)",
             display: "flex",
+            flexWrap: "wrap",
             alignItems: "center",
             gap: 6,
             padding: "8px 14px",
-            whiteSpace: "nowrap",
             maxWidth: "calc(100vw - 32px)",
           }}
         >
@@ -917,14 +917,16 @@ export default function Transactions() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-500" />
-              {t.txAdminConfirmDelTitle.replace("{n}", String(selCount))}
+              {selCount === 1 ? t.txAdminConfirmDelTitleSingle : t.txAdminConfirmDelTitleMulti}
             </DialogTitle>
             <p className="text-sm text-slate-500 mt-1">
-              {t.txAdminConfirmDelBody}
+              {selCount === 1
+                ? t.txAdminConfirmDelBodySingle
+                : t.txAdminConfirmDelBodyMulti.replace("{n}", String(selCount))}
             </p>
           </DialogHeader>
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={bulkDelete.isPending}>
+            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={bulkDelete.isPending} data-testid="button-cancel-delete">
               {t.txAdminCancelBtn}
             </Button>
             <Button
@@ -935,7 +937,7 @@ export default function Transactions() {
               data-testid="button-confirm-delete"
             >
               <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-              {bulkDelete.isPending ? t.txAdminDeleting : `${t.txAdminConfirmDeleteBtn} ${selCount}`}
+              {bulkDelete.isPending ? t.txAdminDeleting : t.txAdminConfirmDeleteBtn}
             </Button>
           </div>
         </DialogContent>

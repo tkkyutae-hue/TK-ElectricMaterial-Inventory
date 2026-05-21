@@ -1,0 +1,100 @@
+Improve Admin Transaction History top toolbar UI.
+
+Current issue:
+The Transaction History page works, but the top area looks unfinished.
+Search, filters, date range, and Log Movement button feel visually disconnected.
+
+Goal:
+Polish the top section of Admin → Transactions without changing backend behavior.
+
+Do not:
+- Do not change backend APIs.
+- Do not change transaction delete/edit semantics.
+- Do not change inventory movement logic.
+- Do not change database schema.
+- Do not change Field Mode.
+
+Files likely involved:
+- client/src/pages/Transactions.tsx
+- client/src/pages/admin/Transactions.tsx
+- transaction table component if separated
+
+Required UI changes:
+
+1. Header layout
+Update the page header to look like a clean admin tool header.
+
+Left:
+- Title: Transaction History
+- Subtitle: Full log of all inventory movements.
+
+Right:
+- Export CSV button if already available
+- Log Movement button as primary green action
+
+Example:
+Transaction History                         [Export CSV] [Log Movement]
+Full log of all inventory movements.
+
+If Export CSV does not exist on this page, do not add backend logic. Only add the button if existing export functionality exists.
+
+2. Filter toolbar card
+Move search and filters into a clean toolbar card.
+
+Recommended layout:
+Row 1:
+- Full-width search input:
+  "Search by item, SKU, project, person, note..."
+
+Row 2:
+- Date range
+- Type filter
+- Project filter
+- Supplier filter if existing data supports it
+- Reset Filters button
+
+Keep filters compact and aligned.
+All inputs/selects should have consistent height.
+
+3. Quick date filter
+Add quick date choices if simple and frontend-only:
+- Today
+- 7 Days
+- 30 Days
+- This Month
+- Custom
+
+Default can remain current date range behavior.
+
+Do not break existing date range filter.
+
+4. Filter summary
+Below the toolbar or above the table, show a compact summary:
+
+Examples:
+- Showing 1–10 of 145 movements
+- Apr 21, 2026 – May 21, 2026 · All Types · All Projects
+
+This should help users understand the current filtered state.
+
+5. Table visual polish
+Do not redesign the whole table.
+But improve spacing/contrast if needed:
+- Header row slightly stronger
+- Row hover subtle
+- Selected row highlight retained
+- Keep current columns
+
+6. Responsive behavior
+On smaller widths:
+- Filters may wrap to next line
+- Log Movement remains accessible
+- Search remains usable
+
+Verification:
+- Search still works.
+- Date range still works.
+- Type filter still works.
+- Project filter still works.
+- Log Movement still opens existing movement form.
+- No backend behavior changes.

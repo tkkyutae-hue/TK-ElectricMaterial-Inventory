@@ -851,8 +851,8 @@ export default function Transactions() {
 
           <div style={{ width: 1, height: 18, background: "#e2e8f0", flexShrink: 0 }} />
 
-          {/* Edit — single selection only, not while editing */}
-          {selCount === 1 && editingIds.size === 0 && (
+          {/* Edit — any selection, not while editing */}
+          {canEdit && (
             <button
               type="button"
               data-testid="btn-tx-edit"

@@ -1,0 +1,177 @@
+Improve Admin Transaction History header action and date range filter UI.
+
+Current state:
+The Transaction History page has been improved with search, quick date chips, type/project filters, and a Log Movement button.
+However:
+1. The Log Movement button feels visually disconnected from the main toolbar/header.
+2. The date range uses native input type="date" fields, which look inconsistent and show an awkward browser calendar popup.
+3. The date controls make the filter toolbar feel less polished.
+
+Goal:
+Polish the Transaction History top area:
+- Keep Log Movement as the primary action.
+- Replace raw native date inputs with a cleaner Date Range popover.
+- Preserve all existing filter behavior.
+- Do not change backend logic.
+
+Files likely involved:
+- client/src/pages/Transactions.tsx
+- client/src/components/ui/calendar.tsx
+- client/src/components/ui/popover.tsx
+- client/src/lib/i18n.ts if new labels are needed
+
+Do not:
+- Do not change backend APIs.
+- Do not change movement logic.
+- Do not change delete/edit semantics.
+- Do not change database schema.
+- Do not change Field Mode.
+- Do not add new packages.
+
+Implementation notes:
+This repo already has:
+- Calendar component in client/src/components/ui/calendar.tsx
+- Popover component in client/src/components/ui/popover.tsx
+Use existing components instead of adding a new date picker package.
+
+Part 1 — Log Movement button alignment
+
+Current issue:
+The Log Movement button appears visually detached from the filter/table area.
+
+Required:
+1. Keep Log Movement in the page header/action area, not inside the table body.
+2. Align it with the same content max-width as the filter card/table.
+3. Make the header row visually balanced:
+   Left:
+   - Transaction History
+   - Full log of all inventory movements.
+   Right:
+   - Log Movement button
+
+4. Button style:
+   - height around 36px
+   - consistent border radius with other admin buttons
+   - keep green primary style
+   - icon and label centered
+   - do not make it oversized
+   - do not let it float too far from the content card
+
+5. Reduce excessive vertical gap between header and filter card if needed.
+
+Part 2 — Replace native date inputs with Date Range popover
+
+Current issue:
+Two native date inputs create inconsistent browser UI and an awkward calendar popup.
+
+Replace:
+<input type="date" ... startDate />
+<input type="date" ... endDate />
+
+With:
+A single Date Range trigger button.
+
+Example trigger text:
+- "Apr 21 – May 21"
+- "Today"
+- "Last 7 days"
+- "Last 30 days"
+- "This Month"
+- "Custom Range"
+
+Recommended layout in toolbar:
+[Today] [7 Days] [30 Days] [This Month]  [Apr 21 – May 21 ▼]  [All Types] [All Projects]
+
+Behavior:
+- Existing quick date chips must still work.
+- Clicking Today / 7 Days / 30 Days / This Month should update startDate/endDate and datePreset.
+- The Date Range button should open a Popover.
+- Selecting custom dates in the popover should set datePreset = "custom".
+- Existing filtering behavior must remain unchanged.
+
+Popover UI:
+- Title: Date range
+- Show existing quick presets inside the popover if useful, or keep presets outside and only show calendar in popover.
+- Use Calendar component.
+- Prefer range selection if Calendar supports mode="range".
+- If range mode is too risky, use two small date selectors inside the popover but styled consistently.
+- Show Apply and Cancel if the range is staged.
+- Or apply immediately if simpler and consistent with current behavior.
+
+Important date behavior:
+- startDate and endDate should remain stored in YYYY-MM-DD string format for existing query/filter logic.
+- Convert between Date objects and YYYY-MM-DD safely.
+- Avoid timezone off-by-one errors.
+- Use date-fns format where already used.
+- Respect existing language/locale if simple:
+  - EN
+  - KO
+  - ES
+
+Part 3 — Date display formatting
+
+In the trigger button, display dates in a compact readable format:
+EN:
+Apr 21 – May 21
+
+KO:
+4월 21일 – 5월 21일 or 2026-04-21 – 2026-05-21 if easier
+
+ES:
+21 abr – 21 may if simple, otherwise numeric date is acceptable.
+
+Do not overcomplicate locale formatting if risky.
+Readable and consistent is more important.
+
+Part 4 — Filter toolbar polish
+
+After replacing date inputs:
+- Keep all filter controls same height.
+- Search remains full-width first row.
+- Second row controls align cleanly.
+- Type and Project dropdowns stay the same behavior.
+- Reset Filters remains available when filters are non-default.
+- Avoid controls jumping when popovers open.
+
+Part 5 — Z-index / overlay
+
+Date popover should:
+- appear above table
+- not be clipped by filter card
+- not hide behind table rows
+- have proper z-index
+- close when clicking outside
+
+Part 6 — Regression requirements
+
+Keep existing behavior:
+- Search works.
+- Type filter works.
+- Project filter works.
+- Date range filtering works.
+- Quick presets work.
+- Log Movement opens existing MovementForm dialog.
+- Transaction table still loads.
+- Pagination still works.
+- Floating selection/action bar still works if implemented.
+
+Do not change:
+- API query shape unless absolutely necessary.
+- movement creation logic.
+- transaction edit/delete logic.
+
+Manual verification:
+1. Open Admin → Transactions.
+2. Click Today, 7 Days, 30 Days, This Month.
+3. Confirm dates update and table filters correctly.
+4. Click Date Range trigger.
+5. Popover opens cleanly.
+6. Select custom range.
+7. Table filters correctly.
+8. Click Type dropdown.
+9. Type dropdown still works.
+10. Click Project dropdown.
+11. Project dropdown still works.
+12. Click Log Movement.
+13. Movement form opens.
+14. No backend behavior changes.

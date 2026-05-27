@@ -29,6 +29,21 @@ import {
   type CreateRmsExportHistory, type CreateRmsExportHistoryItem,
 } from "@shared/schema";
 
+// ── Reel ID Cleanup types ──────────────────────────────────────────────────
+export type ReelIdPreviewRow = {
+  reelDbId: number;
+  currentReelId: string;
+  proposedReelId: string;
+  itemId: number;
+  itemName: string;
+  sizeLabel: string | null;
+  coreCode: "MC" | "SC";
+  sizeCode: string;
+  configCode: string;
+  status: "ready" | "already_new_format" | "ambiguous" | "conflict" | "invalid_sequence" | "missing_item";
+  reason: string;
+};
+
 export interface IStorage {
   getCategories(): Promise<Category[]>;
   createCategory(category: CreateCategoryRequest): Promise<Category>;
@@ -197,6 +212,9 @@ export interface IStorage {
   updateRmsExportHistoryStatus(id: number, status: string): Promise<RmsExportHistory | undefined>;
   deleteRmsExportHistory(ids: number[]): Promise<number>;
   getNextRmsSeq(poNumber: string | null | undefined): Promise<number>;
+  // Reel ID Cleanup
+  getReelIdPreview(): Promise<ReelIdPreviewRow[]>;
+  renameReelIds(reelDbIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2567,7 +2585,11 @@ export class DatabaseStorage implements IStorage {
     const allReels = await db.select({ reelId: wireReels.reelId }).from(wireReels).where(eq(wireReels.itemId, itemId));
     let maxNum = 0;
     for (const r of allReels) {
-      const match = r.reelId.match(/R(\d+)$/i);
+      // Support both new format (R-MC-008-4CG-001 → last 3 digits after dash)
+      // and old format (ITEM-SIZE-BRAND-R12 → digits after R at end)
+      const newFmtMatch = r.reelId.match(/-(\d{3})$/);
+      const oldFmtMatch = r.reelId.match(/R(\d+)$/i);
+      const match = newFmtMatch || oldFmtMatch;
       if (match) {
         const n = parseInt(match[1], 10);
         if (n > maxNum) maxNum = n;
@@ -3278,6 +3300,176 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: rmsExportHistory.id });
     return deleted.length;
   }
+
+  async getReelIdPreview(): Promise<ReelIdPreviewRow[]> {
+    const rows = await db
+      .select({
+        reelId: wireReels.reelId,
+        reelDbId: wireReels.id,
+        itemId: wireReels.itemId,
+        reelNotes: wireReels.notes,
+        itemName: items.name,
+        sizeLabel: items.sizeLabel,
+        isActive: wireReels.isActive,
+      })
+      .from(wireReels)
+      .leftJoin(items, eq(wireReels.itemId, items.id))
+      .where(eq(wireReels.isActive, true));
+
+    type IntermRow = ReelIdPreviewRow & { _proposed: string };
+    const interim: IntermRow[] = [];
+
+    for (const row of rows) {
+      const currentReelId = row.reelId;
+
+      if (NEW_REEL_FORMAT.test(currentReelId)) {
+        interim.push({
+          reelDbId: row.reelDbId,
+          currentReelId,
+          proposedReelId: currentReelId,
+          itemId: row.itemId ?? 0,
+          itemName: row.itemName ?? "(missing)",
+          sizeLabel: row.sizeLabel ?? null,
+          coreCode: "SC", sizeCode: "", configCode: "",
+          status: "already_new_format",
+          reason: "Already matches new format",
+          _proposed: currentReelId,
+        });
+        continue;
+      }
+
+      if (!row.itemName) {
+        interim.push({
+          reelDbId: row.reelDbId,
+          currentReelId,
+          proposedReelId: currentReelId,
+          itemId: row.itemId ?? 0,
+          itemName: "(missing)", sizeLabel: null,
+          coreCode: "SC", sizeCode: "UNK", configCode: "UNK",
+          status: "missing_item",
+          reason: "Item record not found",
+          _proposed: currentReelId,
+        });
+        continue;
+      }
+
+      const seq = _extractSeqFromReelId(currentReelId);
+      if (seq === null) {
+        interim.push({
+          reelDbId: row.reelDbId,
+          currentReelId,
+          proposedReelId: currentReelId,
+          itemId: row.itemId ?? 0,
+          itemName: row.itemName,
+          sizeLabel: row.sizeLabel ?? null,
+          coreCode: "SC", sizeCode: "UNK", configCode: "UNK",
+          status: "invalid_sequence",
+          reason: "Cannot extract sequence number from current Reel ID",
+          _proposed: currentReelId,
+        });
+        continue;
+      }
+
+      const { coreCode, sizeCode, configCode } = _deriveReelIdParts(row.itemName, row.sizeLabel ?? null);
+      const seqStr = String(seq).padStart(3, "0");
+      const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
+      const hasUnk = sizeCode === "UNK" || configCode === "UNK";
+      interim.push({
+        reelDbId: row.reelDbId,
+        currentReelId,
+        proposedReelId: proposed,
+        itemId: row.itemId ?? 0,
+        itemName: row.itemName,
+        sizeLabel: row.sizeLabel ?? null,
+        coreCode, sizeCode, configCode,
+        status: hasUnk ? "ambiguous" : "ready",
+        reason: hasUnk
+          ? `Unknown ${sizeCode === "UNK" ? "size" : ""}${sizeCode === "UNK" && configCode === "UNK" ? " + " : ""}${configCode === "UNK" ? "config/color" : ""} — review required`
+          : `Will rename to ${proposed}`,
+        _proposed: proposed,
+      });
+    }
+
+    const existingNewIds = new Set(
+      interim.filter(r => r.status === "already_new_format").map(r => r.currentReelId)
+    );
+    const proposedCount = new Map<string, number>();
+    for (const r of interim) {
+      if (r.status === "ready" || r.status === "ambiguous") {
+        proposedCount.set(r._proposed, (proposedCount.get(r._proposed) ?? 0) + 1);
+      }
+    }
+
+    return interim.map(r => {
+      if (r.status !== "ready" && r.status !== "ambiguous") {
+        const { _proposed, ...rest } = r; return rest;
+      }
+      const dupCount = proposedCount.get(r._proposed) ?? 1;
+      const conflictsWithExisting = existingNewIds.has(r._proposed);
+      if (dupCount > 1 || conflictsWithExisting) {
+        const { _proposed, ...rest } = r;
+        return { ...rest, status: "conflict" as const,
+          reason: conflictsWithExisting
+            ? `Proposed ID conflicts with existing reel: ${r._proposed}`
+            : `Multiple reels would get the same ID: ${r._proposed}` };
+      }
+      const { _proposed, ...rest } = r;
+      return rest;
+    });
+  }
+
+  async renameReelIds(reelDbIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }> {
+    let updated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const reelDbId of reelDbIds) {
+      try {
+        const [reel] = await db
+          .select()
+          .from(wireReels)
+          .leftJoin(items, eq(wireReels.itemId, items.id))
+          .where(eq(wireReels.id, reelDbId));
+
+        if (!reel) { errors.push(`Reel #${reelDbId} not found`); skipped++; continue; }
+        const currentId = reel.wire_reels.reelId;
+        const itemName = reel.items?.name ?? "";
+        const sizeLabel = reel.items?.sizeLabel ?? null;
+
+        if (NEW_REEL_FORMAT.test(currentId)) { skipped++; continue; }
+
+        const seq = _extractSeqFromReelId(currentId);
+        if (seq === null) { errors.push(`${currentId}: cannot extract sequence`); skipped++; continue; }
+
+        const { coreCode, sizeCode, configCode } = _deriveReelIdParts(itemName, sizeLabel);
+        const seqStr = String(seq).padStart(3, "0");
+        const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
+
+        const [existing] = await db
+          .select({ id: wireReels.id })
+          .from(wireReels)
+          .where(and(eq(wireReels.reelId, proposed), ne(wireReels.id, reelDbId)));
+        if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
+
+        const existingNotes = reel.wire_reels.notes || "";
+        const newNotes = existingNotes
+          ? `${existingNotes} [renamed from ${currentId}]`
+          : `[renamed from ${currentId}]`;
+
+        await db
+          .update(wireReels)
+          .set({ reelId: proposed, notes: newNotes })
+          .where(eq(wireReels.id, reelDbId));
+
+        updated++;
+      } catch (err: any) {
+        errors.push(`Reel #${reelDbId}: ${err?.message ?? "unknown error"}`);
+        skipped++;
+      }
+    }
+
+    return { updated, skipped, errors };
+  }
 }
 
 // ─── One-time sizeSortValue backfill ─────────────────────────────────────────
@@ -3682,4 +3874,62 @@ export function extractSubcategory(
   return '';
 }
 
+// ── Reel ID cleanup helpers ────────────────────────────────────────────────
+
+const NEW_REEL_FORMAT = /^R-(MC|SC)-[A-Z0-9]+-[A-Z0-9]+-\d{3}$/;
+
+function _normalizeSizeCode(sizeLabel: string | null | undefined): string {
+  const raw = (sizeLabel || "").trim();
+  if (!raw) return "UNK";
+  const cleaned = raw.replace(/^#/, "").replace(/\s+/g, "").replace(/["']/g, "");
+  if (cleaned === "1/0") return "10";
+  if (cleaned === "2/0") return "20";
+  if (cleaned === "3/0") return "30";
+  if (cleaned === "4/0") return "40";
+  if (/^\d+$/.test(cleaned)) {
+    const n = parseInt(cleaned, 10);
+    return n >= 250 ? String(n) : String(n).padStart(3, "0");
+  }
+  const safe = cleaned.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 6);
+  return safe || "UNK";
+}
+
+function _deriveReelIdParts(itemName: string, sizeLabel: string | null): {
+  coreCode: "MC" | "SC"; sizeCode: string; configCode: string;
+} {
+  const name = (itemName || "").trim();
+  const mcMatch = name.match(/\b(4C\+G|3C\+G|2C\+G|4C|3C|2C)\b/i);
+  if (mcMatch) {
+    const raw = mcMatch[1].toUpperCase();
+    const mcMap: Record<string, string> = {
+      "4C+G": "4CG", "3C+G": "3CG", "2C+G": "2CG",
+      "4C": "4C", "3C": "3C", "2C": "2C",
+    };
+    return { coreCode: "MC", sizeCode: _normalizeSizeCode(sizeLabel), configCode: mcMap[raw] || "UNK" };
+  }
+  const colorMap: [RegExp, string][] = [
+    [/\b(green|grn|ground)\b/i, "GRN"],
+    [/\b(black|blk)\b/i, "BLK"],
+    [/\b(white|wht)\b/i, "WHT"],
+    [/\b(red)\b/i, "RED"],
+    [/\b(blue|blu)\b/i, "BLU"],
+    [/\b(brown)\b/i, "BRN"],
+    [/\b(orange)\b/i, "ORG"],
+    [/\b(yellow|yel)\b/i, "YEL"],
+    [/\b(gray|grey)\b/i, "GRY"],
+  ];
+  const sizeCode = _normalizeSizeCode(sizeLabel);
+  for (const [pattern, code] of colorMap) {
+    if (pattern.test(name)) return { coreCode: "SC", sizeCode, configCode: code };
+  }
+  return { coreCode: "SC", sizeCode, configCode: "UNK" };
+}
+
+function _extractSeqFromReelId(reelId: string): number | null {
+  const newFmt = reelId.match(/-(\d{3})$/);
+  if (newFmt) return parseInt(newFmt[1], 10);
+  const oldFmt = reelId.match(/R(\d+)$/i);
+  if (oldFmt) return parseInt(oldFmt[1], 10);
+  return null;
+}
 export const storage = new DatabaseStorage();

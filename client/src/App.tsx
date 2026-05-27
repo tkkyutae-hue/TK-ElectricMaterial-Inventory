@@ -38,6 +38,7 @@ import SkuCleanup from "@/pages/admin/SkuCleanup";
 import InactiveItems from "@/pages/admin/InactiveItems";
 import StockPricing from "@/pages/admin/StockPricing";
 import SupplierCleanup from "@/pages/admin/SupplierCleanup";
+import ReelIdCleanup from "@/pages/admin/ReelIdCleanup";
 
 import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
@@ -201,6 +202,7 @@ function AdminRouter() {
           <Route path="/admin/inactive-items" component={() => <AdminToolsGuard><InactiveItems /></AdminToolsGuard>} />
           <Route path="/admin/stock-pricing" component={() => <AdminToolsGuard><StockPricing /></AdminToolsGuard>} />
           <Route path="/admin/supplier-cleanup" component={() => <AdminToolsGuard><SupplierCleanup /></AdminToolsGuard>} />
+          <Route path="/admin/reel-id-cleanup" component={() => <AdminToolsGuard><ReelIdCleanup /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

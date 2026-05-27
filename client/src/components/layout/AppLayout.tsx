@@ -23,6 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Unlink,
+  Cable,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -89,6 +90,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/admin/inactive-items", label: t.navInactiveItems, icon: PackageX },
         { href: "/admin/stock-pricing", label: t.navStockPricing, icon: DollarSign },
         { href: "/admin/supplier-cleanup", label: t.navSupplierCleanup, icon: Unlink },
+        { href: "/admin/reel-id-cleanup", label: t.navReelIdCleanup, icon: Cable },
       ],
     }] : []),
   ];

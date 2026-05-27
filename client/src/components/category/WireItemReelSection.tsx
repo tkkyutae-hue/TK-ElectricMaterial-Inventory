@@ -9,6 +9,7 @@ import { useLocations, useSuppliers } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 import type { CategoryGroupedItem } from "./types";
 import { parseWireConfig } from "@/lib/wire-config-utils";
+import { generateReelId } from "@/lib/reel-utils";
 
 // ── Local types ───────────────────────────────────────────────────────────────
 
@@ -212,7 +213,17 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
         </div>
         <button
           className="flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:text-brand-800 transition-colors"
-          onClick={() => { setShowAdd(v => !v); setDraft(BLANK_REEL_DRAFT); }}
+          onClick={() => {
+            if (showAdd) {
+              setShowAdd(false);
+              setDraft(BLANK_REEL_DRAFT);
+            } else {
+              const nextSeq = reels.length + 1;
+              const autoId = generateReelId(item, "", nextSeq);
+              setDraft({ ...BLANK_REEL_DRAFT, reelId: autoId });
+              setShowAdd(true);
+            }
+          }}
           data-testid={`button-add-reel-${item.id}`}
         >
           <Plus className="w-3 h-3" />{showAdd ? "Cancel" : "Add Reel"}

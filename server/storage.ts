@@ -40,6 +40,7 @@ export type ReelIdPreviewRow = {
   coreCode: "MC" | "SC";
   sizeCode: string;
   configCode: string;
+  sequence: number | null;
   status: "ready" | "already_new_format" | "ambiguous" | "conflict" | "invalid_sequence" | "missing_item";
   reason: string;
 };
@@ -3331,6 +3332,7 @@ export class DatabaseStorage implements IStorage {
           itemName: row.itemName ?? "(missing)",
           sizeLabel: row.sizeLabel ?? null,
           coreCode: "SC", sizeCode: "", configCode: "",
+          sequence: _extractSeqFromReelId(currentReelId),
           status: "already_new_format",
           reason: "Already matches new format",
           _proposed: currentReelId,
@@ -3346,6 +3348,7 @@ export class DatabaseStorage implements IStorage {
           itemId: row.itemId ?? 0,
           itemName: "(missing)", sizeLabel: null,
           coreCode: "SC", sizeCode: "UNK", configCode: "UNK",
+          sequence: null,
           status: "missing_item",
           reason: "Item record not found",
           _proposed: currentReelId,
@@ -3363,6 +3366,7 @@ export class DatabaseStorage implements IStorage {
           itemName: row.itemName,
           sizeLabel: row.sizeLabel ?? null,
           coreCode: "SC", sizeCode: "UNK", configCode: "UNK",
+          sequence: null,
           status: "invalid_sequence",
           reason: "Cannot extract sequence number from current Reel ID",
           _proposed: currentReelId,
@@ -3382,6 +3386,7 @@ export class DatabaseStorage implements IStorage {
         itemName: row.itemName,
         sizeLabel: row.sizeLabel ?? null,
         coreCode, sizeCode, configCode,
+        sequence: seq,
         status: hasUnk ? "ambiguous" : "ready",
         reason: hasUnk
           ? `Unknown ${sizeCode === "UNK" ? "size" : ""}${sizeCode === "UNK" && configCode === "UNK" ? " + " : ""}${configCode === "UNK" ? "config/color" : ""} — review required`
@@ -3483,7 +3488,7 @@ export class DatabaseStorage implements IStorage {
         if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
 
         const existingNotes = (notes || "").trim();
-        const note = `[renamed from ${currentId} → ${proposed} on ${today}]`;
+        const note = `Reel ID renamed from ${currentId} to ${proposed} on ${today}.`;
         const newNotes = existingNotes ? `${existingNotes}\n${note}` : note;
 
         await tx

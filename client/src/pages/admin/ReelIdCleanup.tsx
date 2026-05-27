@@ -38,6 +38,7 @@ type ReelIdPreviewRow = {
   coreCode: "MC" | "SC";
   sizeCode: string;
   configCode: string;
+  sequence: number | null;
   status: "ready" | "already_new_format" | "ambiguous" | "conflict" | "invalid_sequence" | "missing_item";
   reason: string;
 };

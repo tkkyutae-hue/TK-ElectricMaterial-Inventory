@@ -750,6 +750,13 @@ function WireReelInlineInner(
   });
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
+  const maxReelSeq = reels.reduce((max, r) => {
+    const n = r.reelId.match(/-(\d{3})$/);
+    if (n) return Math.max(max, parseInt(n[1], 10));
+    const o = r.reelId.match(/R(\d+)$/i);
+    if (o) return Math.max(max, parseInt(o[1], 10));
+    return max;
+  }, 0);
   const wireConfig = parseWireConfig(item);
 
   const invalidateAll = () => {
@@ -763,7 +770,7 @@ function WireReelInlineInner(
     mutationFn: () => apiRequest("POST", "/api/wire-reels/bulk", {
       reels: rows.map((row, i) => ({
         itemId: item.id,
-        reelId: generateReelId(item, row.brand, reels.length + i + 1),
+        reelId: generateReelId(item, row.brand, maxReelSeq + i + 1),
         lengthFt: parseInt(row.lengthFt) || 0,
         brand: row.brand.trim() || null,
         locationId: row.locationId ? parseInt(row.locationId) : null,
@@ -936,7 +943,7 @@ function WireReelInlineInner(
             {rows.map((row, i) => (
               <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
                 <Input
-                  value={generateReelId(item, row.brand, reels.length + i + 1)}
+                  value={generateReelId(item, row.brand, maxReelSeq + i + 1)}
                   readOnly
                   className="h-8 text-xs bg-slate-50 text-slate-400 font-mono cursor-default"
                   data-testid={`input-reel-id-${item.id}-${i}`}

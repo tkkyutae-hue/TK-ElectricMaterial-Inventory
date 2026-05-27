@@ -873,13 +873,7 @@ function WireReelInlineInner(
     setRowDrafts(prev => {
       const current = prev[reelDbId];
       if (!current) return prev;
-      const updated = { ...current, [field]: value };
-      if (field === "brand") {
-        const seqMatch = current.reelId.match(/R(\d+)$/i);
-        const seq = seqMatch ? parseInt(seqMatch[1]) : 1;
-        updated.reelId = generateReelId(item, value, seq);
-      }
-      return { ...prev, [reelDbId]: updated };
+      return { ...prev, [reelDbId]: { ...current, [field]: value } };
     });
   };
 

@@ -337,6 +337,7 @@ export type InventoryMovementWithRelations = InventoryMovement & {
   project?: Project | null;
   supplierName?: string | null;
   reelLines?: ReelMovementLine[];
+  createdByName?: string | null;
 };
 
 export type ProjectWithStats = Project & {

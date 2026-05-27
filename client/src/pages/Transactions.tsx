@@ -662,6 +662,24 @@ export default function Transactions() {
                           <>
                             {format(new Date(tx.createdAt), "MMM d, yy", { locale: dfLocale })}<br />
                             <span className="text-slate-400">{format(new Date(tx.createdAt), "HH:mm", { locale: dfLocale })}</span>
+                            {(() => {
+                              const contextParts: string[] = [];
+                              if ((tx.movementType === "issue" || tx.movementType === "return") && tx.project) {
+                                contextParts.push(tx.project.poNumber || tx.project.name);
+                              } else if (tx.movementType === "receive" && tx.supplierName) {
+                                contextParts.push(tx.supplierName);
+                              }
+                              if (tx.createdByName) contextParts.push(tx.createdByName);
+                              return contextParts.length > 0 ? (
+                                <div
+                                  data-testid={`tx-context-${tx.id}`}
+                                  style={{ marginTop: 2, fontSize: 9, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 88 }}
+                                  title={contextParts.join(" · ")}
+                                >
+                                  {contextParts.join(" · ")}
+                                </div>
+                              ) : null;
+                            })()}
                             {isEdited && (
                               <TooltipProvider delayDuration={100}>
                                 <Tooltip>
@@ -748,8 +766,8 @@ export default function Transactions() {
                             data-testid={`input-qty-${tx.id}`}
                           />
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                            <span className="font-semibold">
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                            <span className="font-semibold whitespace-nowrap">
                               {tx.movementType === "issue" ? (
                                 <span className="text-rose-600">-{tx.quantity}</span>
                               ) : (
@@ -760,15 +778,9 @@ export default function Transactions() {
                             {reelLines.length > 0 && (
                               <span
                                 data-testid={`reel-count-${tx.id}`}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", gap: 3,
-                                  background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.22)",
-                                  color: "#4f46e5", padding: "1px 5px", borderRadius: 3,
-                                  fontSize: 9, fontWeight: 700, letterSpacing: "0.04em",
-                                  whiteSpace: "nowrap",
-                                }}
+                                style={{ fontSize: 9, color: "#6366f1", fontWeight: 600, whiteSpace: "nowrap" }}
                               >
-                                {reelLines.length} {reelLines.length === 1 ? "reel" : "reels"}
+                                · {reelLines.length} {reelLines.length === 1 ? "reel" : "reels"}
                               </span>
                             )}
                           </div>

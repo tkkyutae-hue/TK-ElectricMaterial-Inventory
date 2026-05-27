@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { users } from "@shared/models/auth";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
@@ -824,6 +825,7 @@ export class DatabaseStorage implements IStorage {
     const dstLoc = alias(locations, "dst_loc");
     const firstImg = alias(itemImages, "first_img");
     const movSup = alias(suppliers, "mov_sup");
+    const createdByUser = alias(users, "created_by_user");
 
     const rows = await db.select({
       movement: inventoryMovements,
@@ -833,6 +835,10 @@ export class DatabaseStorage implements IStorage {
       sourceLocation: srcLoc,
       destinationLocation: dstLoc,
       supplierName: movSup.name,
+      userName: createdByUser.name,
+      userFirstName: createdByUser.firstName,
+      userLastName: createdByUser.lastName,
+      userEmail: createdByUser.email,
     })
     .from(inventoryMovements)
     .leftJoin(items, eq(inventoryMovements.itemId, items.id))
@@ -841,16 +847,21 @@ export class DatabaseStorage implements IStorage {
     .leftJoin(srcLoc, eq(inventoryMovements.sourceLocationId, srcLoc.id))
     .leftJoin(dstLoc, eq(inventoryMovements.destinationLocationId, dstLoc.id))
     .leftJoin(movSup, eq(inventoryMovements.supplierId, movSup.id))
+    .leftJoin(createdByUser, eq(inventoryMovements.createdBy, createdByUser.id))
     .orderBy(desc(inventoryMovements.createdAt), asc(firstImg.sortOrder));
 
-    let result = rows.map(r => ({
-      ...r.movement,
-      item: r.item ? { ...r.item, imageUrl: r.itemImageUrl || null } : null,
-      project: r.project,
-      sourceLocation: r.sourceLocation,
-      destinationLocation: r.destinationLocation,
-      supplierName: r.supplierName ?? null,
-    }));
+    let result = rows.map(r => {
+      const u = r.userName || (r.userFirstName && r.userLastName ? `${r.userFirstName} ${r.userLastName}` : null) || r.userEmail || null;
+      return {
+        ...r.movement,
+        item: r.item ? { ...r.item, imageUrl: r.itemImageUrl || null } : null,
+        project: r.project,
+        sourceLocation: r.sourceLocation,
+        destinationLocation: r.destinationLocation,
+        supplierName: r.supplierName ?? null,
+        createdByName: u,
+      };
+    });
 
     if (filters?.itemId) result = result.filter(r => r.itemId === filters.itemId);
     if (filters?.projectId) result = result.filter(r => r.projectId === filters.projectId);

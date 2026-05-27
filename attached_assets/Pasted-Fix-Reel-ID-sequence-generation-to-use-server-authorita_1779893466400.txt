@@ -1,0 +1,278 @@
+Fix Reel ID sequence generation to use server-authoritative next-id endpoint.
+
+Context:
+Reel ID Modernization is mostly complete.
+
+Completed:
+- New Reel ID format is implemented:
+  R-{SC|MC}-{SIZE}-{CONFIG}-{SEQ}
+- Reel ID Cleanup preview/apply backend exists.
+- getReelIdPreview() includes active + inactive reels.
+- renameReelIds(reelIds) is transaction-safe.
+- PATCH /api/admin/reel-id-rename uses { reelIds }.
+- ReelIdCleanup admin UI exists.
+- ItemDetails and WireItemReelSection were updated for new Reel ID UX.
+- Phase 1 display columns are complete:
+  Core Type, Size, Conductors/Color.
+
+Remaining issue:
+New reel creation still calculates sequence numbers from the client-side visible active reel list in:
+- client/src/components/category/WireItemReelSection.tsx
+- client/src/pages/ItemDetails.tsx
+
+This is unsafe because soft-deleted/inactive reels are not visible in those client lists.
+That can cause sequence reuse.
+
+Example:
+Existing reels:
+R-MC-008-4CG-001
+R-MC-008-4CG-002
+R-MC-008-4CG-003 ← soft-deleted / inactive
+
+Client sees only active reels:
+001, 002
+
+Client may generate:
+R-MC-008-4CG-003
+
+But 003 already exists in inactive reels.
+This creates duplicate or confusing Reel IDs.
+
+Backend already has the correct source of truth:
+GET /api/wire-reels/:itemId/next-id
+
+This endpoint includes all reels, active + inactive, and should be used for new reel creation.
+
+Goal:
+Update ItemDetails and WireItemReelSection so new Reel ID sequence generation uses the server-authoritative next-id endpoint.
+
+Do not:
+- Do not change database schema.
+- Do not change movement deduction logic.
+- Do not change wire_reels.length_ft.
+- Do not change syncItemQtyFromReels().
+- Do not change confirmDraft().
+- Do not change items.quantityOnHand sync.
+- Do not change Reel ID Cleanup preview/apply logic unless required for query invalidation.
+- Do not rename existing reels in this task.
+- Do not change delete/restore behavior.
+- Do not change transaction history.
+
+Files likely involved:
+- client/src/pages/ItemDetails.tsx
+- client/src/components/category/WireItemReelSection.tsx
+- client/src/lib/reel-utils.ts only if types/helpers are needed
+- server/storage.ts only if next-id response shape needs inspection
+- server/routes.ts only if next-id response shape needs inspection
+
+Part 1 — Inspect existing endpoint
+
+Inspect:
+GET /api/wire-reels/:itemId/next-id
+
+Confirm response shape.
+
+Expected possible shapes:
+- { nextSeq: number }
+or
+- { nextId: string, nextSeq: number }
+
+Use the actual existing response shape.
+Do not invent a new endpoint unless absolutely required.
+
+Part 2 — WireItemReelSection
+
+In:
+client/src/components/category/WireItemReelSection.tsx
+
+Replace local sequence calculation like:
+const nextSeq = getNextReelSeq(reels);
+const autoId = generateReelId(item, "", nextSeq);
+
+With a React Query call to:
+GET /api/wire-reels/${item.id}/next-id
+
+Use credentials: "include".
+
+Example pattern:
+useQuery({
+  queryKey: ["/api/wire-reels", item.id, "next-id"],
+  queryFn: async () => {
+    const res = await fetch(`/api/wire-reels/${item.id}/next-id`, {
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to load next reel id");
+    return res.json();
+  },
+  enabled: Boolean(item?.id),
+});
+
+Then use server-provided nextSeq to generate:
+generateReelId(item, brand, nextSeq)
+
+If the endpoint already returns nextId, use nextId directly if that is safer and consistent with existing backend logic.
+
+Behavior:
+- When opening add reel form, auto Reel ID should use the server sequence.
+- If next-id is loading, show loading state or disable Add/Save until ready.
+- If next-id fails, show a clear error and do not create a reel with a guessed sequence.
+
+Important:
+Do not fallback to active-reels-only sequence calculation.
+A fallback that guesses from active reels reintroduces the bug.
+
+Part 3 — ItemDetails
+
+In:
+client/src/pages/ItemDetails.tsx
+
+Find current logic that calculates maxReelSeq from local reels, such as:
+- reels.reduce(...)
+- extractSeq(...)
+- maxReelSeq
+- generateReelId(item, row.brand, maxReelSeq + i + 1)
+
+Replace it with server next-id.
+
+For single add row:
+Use:
+generateReelId(item, row.brand, serverNextSeq)
+
+For multiple draft rows / bulk add rows:
+If serverNextSeq is 4 and there are 3 new rows:
+row 1 → sequence 4 → R-...-004
+row 2 → sequence 5 → R-...-005
+row 3 → sequence 6 → R-...-006
+
+So:
+generateReelId(item, row.brand, serverNextSeq + index)
+
+Do not calculate from active local reels.
+
+If next-id is loading:
+- Disable save/add
+or
+- Show "Loading next Reel ID..."
+Do not generate a guessed Reel ID.
+
+If next-id fails:
+- Show a visible error
+- Do not submit a reel with stale or guessed ID
+
+Part 4 — Query invalidation
+
+After any action that can affect reel IDs or sequences, invalidate the next-id query.
+
+Add invalidation to existing reel data invalidation helpers.
+
+Invalidate:
+queryClient.invalidateQueries({
+  queryKey: ["/api/wire-reels", item.id, "next-id"]
+});
+
+Do this after:
+- reel create success
+- reel delete success
+- reel restore success, if restore exists
+- reel rename success, if current page can trigger rename or if global invalidation helper handles it
+- Reel ID Cleanup rename success, if it affects currently viewed item data
+
+Also keep existing invalidations for:
+- item details
+- wire reels list
+- inventory item data
+- category data if already present
+
+Part 5 — Remove or isolate local sequence helpers
+
+Remove or stop using local active-list sequence calculations in these creation flows:
+- getNextReelSeq(reels)
+- maxReelSeq from active reels
+- extractSeq used only for client-side next ID generation
+
+If helper functions are still useful for display or cleanup preview, keep them.
+But they must not be used as the source of truth for new reel creation.
+
+Part 6 — CategoryDetail consistency
+
+WireItemReelSection currently has AUTO badge / manual edit toggle.
+
+Keep that UX.
+
+But the AUTO-generated value must come from the server-authoritative next-id sequence.
+
+If user manually edits Reel ID:
+- Preserve existing manual override behavior.
+- Do not overwrite manual value on brand change.
+- Do not force server next-id when user intentionally switches to manual.
+
+If AUTO mode is on:
+- Use server next-id based generated ID.
+
+Part 7 — Safety requirements
+
+This task must only fix sequence source.
+
+Do not change:
+- reel length calculations
+- item quantity sync
+- movement issue/receive
+- movement draft logic
+- transaction history
+- delete/restore semantics
+- Reel ID Cleanup rename algorithm
+- DB schema
+
+Part 8 — Manual verification
+
+1. Create test item with reel tracking.
+2. Add reels:
+   R-MC-008-4CG-001
+   R-MC-008-4CG-002
+   R-MC-008-4CG-003
+
+3. Soft-delete / deactivate reel 003.
+
+4. Add a new reel.
+
+Expected:
+New reel should be:
+R-MC-008-4CG-004
+
+Not:
+R-MC-008-4CG-003
+
+5. Test ItemDetails add reel flow.
+Expected:
+Uses server next-id.
+
+6. Test WireItemReelSection add reel flow.
+Expected:
+Uses server next-id.
+
+7. Test multiple draft rows in ItemDetails.
+If server nextSeq is 4:
+Rows should generate:
+004, 005, 006
+
+8. Test manual Reel ID override in WireItemReelSection.
+Expected:
+Manual override still works and is not overwritten unexpectedly.
+
+9. Test after Reel ID Cleanup rename.
+Expected:
+Reel list refreshes correctly.
+Next new reel uses the correct next sequence.
+
+10. Confirm no movement or quantity behavior changed:
+- reel length unchanged
+- item quantityOnHand unchanged except normal reel create/delete behavior
+- issue/receive movement still works
+- transaction history still loads
+
+Output:
+Please summarize:
+- which local sequence calculations were removed
+- where server next-id is now used
+- what query keys are invalidated
+- manual verification results

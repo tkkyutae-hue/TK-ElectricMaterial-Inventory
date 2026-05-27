@@ -749,34 +749,42 @@ function WireReelInlineInner(
     },
   });
 
+  const { data: nextSeqData, isLoading: nextSeqLoading } = useQuery<{ nextSeq: number }>({
+    queryKey: ["/api/wire-reels", item.id, "next-id"],
+    queryFn: async () => {
+      const res = await fetch(`/api/wire-reels/${item.id}/next-id`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load next reel id");
+      return res.json();
+    },
+    enabled: Boolean(item?.id),
+  });
+
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
-  const maxReelSeq = reels.reduce((max, r) => {
-    const n = r.reelId.match(/-(\d{3})$/);
-    if (n) return Math.max(max, parseInt(n[1], 10));
-    const o = r.reelId.match(/R(\d+)$/i);
-    if (o) return Math.max(max, parseInt(o[1], 10));
-    return max;
-  }, 0);
   const wireConfig = parseWireConfig(item);
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+    qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id, "next-id"] });
     qc.invalidateQueries({ queryKey: [api.items.get.path, item.id] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
   };
 
   const addMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/wire-reels/bulk", {
-      reels: rows.map((row, i) => ({
-        itemId: item.id,
-        reelId: generateReelId(item, row.brand, maxReelSeq + i + 1),
-        lengthFt: parseInt(row.lengthFt) || 0,
-        brand: row.brand.trim() || null,
-        locationId: row.locationId ? parseInt(row.locationId) : null,
-        status: row.status,
-      })),
-    }),
+    mutationFn: async () => {
+      const firstSeq = nextSeqData?.nextSeq;
+      if (firstSeq == null) throw new Error("Next reel sequence not loaded yet");
+      return apiRequest("POST", "/api/wire-reels/bulk", {
+        reels: rows.map((row, i) => ({
+          itemId: item.id,
+          reelId: generateReelId(item, row.brand, firstSeq + i),
+          lengthFt: parseInt(row.lengthFt) || 0,
+          brand: row.brand.trim() || null,
+          locationId: row.locationId ? parseInt(row.locationId) : null,
+          status: row.status,
+        })),
+      });
+    },
     onSuccess: () => {
       invalidateAll();
       setShowAdd(false);
@@ -937,7 +945,7 @@ function WireReelInlineInner(
             {rows.map((row, i) => (
               <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
                 <Input
-                  value={generateReelId(item, row.brand, maxReelSeq + i + 1)}
+                  value={nextSeqData?.nextSeq != null ? generateReelId(item, row.brand, nextSeqData.nextSeq + i) : (nextSeqLoading ? "Loading…" : "—")}
                   readOnly
                   className="h-8 text-xs bg-slate-50 text-slate-400 font-mono cursor-default"
                   data-testid={`input-reel-id-${item.id}-${i}`}
@@ -996,7 +1004,7 @@ function WireReelInlineInner(
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setRows([{ ...BLANK_REEL_DRAFT }]); }}>{t.cmnCancel}</Button>
                 <Button size="sm" className="bg-brand-700 hover:bg-brand-800 text-white"
-                  disabled={rows.every(r => !r.lengthFt) || addMutation.isPending}
+                  disabled={rows.every(r => !r.lengthFt) || addMutation.isPending || nextSeqLoading || nextSeqData?.nextSeq == null}
                   onClick={() => addMutation.mutate()}
                   data-testid={`button-save-reel-${item.id}`}
                 >

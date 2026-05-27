@@ -56,17 +56,6 @@ const REEL_STATUS_LABELS: Record<string, string> = {
   new: "New", used: "Used",
 };
 
-function _extractSeq(reelId: string): number | null {
-  const n = reelId.match(/-(\d{3})$/);
-  if (n) return parseInt(n[1], 10);
-  const o = reelId.match(/R(\d+)$/i);
-  if (o) return parseInt(o[1], 10);
-  return null;
-}
-function getNextReelSeq(reels: { reelId: string }[]): number {
-  const seqs = reels.map(r => _extractSeq(r.reelId) ?? 0);
-  return Math.max(0, ...seqs) + 1;
-}
 
 const BLANK_REEL_DRAFT: AddReelDraft = {
   reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new", notes: ""
@@ -118,11 +107,22 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
     },
   });
 
+  const { data: nextSeqData, isLoading: nextSeqLoading } = useQuery<{ nextSeq: number }>({
+    queryKey: ["/api/wire-reels", item.id, "next-id"],
+    queryFn: async () => {
+      const res = await fetch(`/api/wire-reels/${item.id}/next-id`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load next reel id");
+      return res.json();
+    },
+    enabled: Boolean(item?.id),
+  });
+
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
   const wireConfig = parseWireConfig(item);
 
   const invalidateReelData = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
+    qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id, "next-id"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
     qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
   };
@@ -234,8 +234,11 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
               setDraft(BLANK_REEL_DRAFT);
               setReelIdIsAuto(false);
             } else {
-              const nextSeq = getNextReelSeq(reels);
-              const autoId = generateReelId(item, "", nextSeq);
+              if (nextSeqLoading || nextSeqData?.nextSeq == null) {
+                toast({ title: "Loading next Reel ID…", description: "Please wait a moment and try again.", variant: "destructive" });
+                return;
+              }
+              const autoId = generateReelId(item, "", nextSeqData.nextSeq);
               const hasUnk = autoId.includes("UNK");
               setDraft({ ...BLANK_REEL_DRAFT, reelId: autoId });
               setReelIdIsAuto(!hasUnk);

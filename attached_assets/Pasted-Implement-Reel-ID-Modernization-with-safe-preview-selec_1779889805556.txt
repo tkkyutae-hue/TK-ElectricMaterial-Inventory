@@ -1,0 +1,430 @@
+Implement Reel ID Modernization with safe preview + selected rename.
+
+Context:
+Phase 1 is already complete.
+The app now displays Core Type, Size, and Conductors/Color in Reel Inventory tables using:
+client/src/lib/wire-config-utils.ts
+
+Current issue:
+Existing Reel IDs like:
+MCCT6-#8-XX-R001
+THHN-1/0-SW-R003
+
+are not clear for field/admin users.
+
+Goal:
+Modernize Reel IDs using this format:
+
+R-{SC|MC}-{SIZE}-{CONFIG}-{SEQ}
+
+Examples:
+- R-MC-008-4CG-001
+- R-MC-010-3CG-001
+- R-SC-012-GRN-001
+- R-SC-500-BLK-001
+
+Important:
+Do not blindly rename all existing reels.
+Existing reels must be reviewed through a preview first.
+Only allow selected safe rows to be renamed.
+
+Absolutely do not change:
+- movement deduction logic
+- wire_reels.length_ft
+- syncItemQtyFromReels()
+- confirmDraft()
+- items.quantityOnHand sync
+- soft delete / restore flow
+- reel quantity calculations
+- database schema unless absolutely required
+- existing movement history
+- transaction logic
+
+No DB migration in this task.
+
+Files likely involved:
+- client/src/lib/reel-utils.ts
+- client/src/lib/wire-config-utils.ts
+- server/storage.ts
+- server/routes.ts
+- shared/schema.ts only for type reference, no schema change
+- client/src/pages/ItemDetails.tsx
+- client/src/components/category/WireItemReelSection.tsx
+- admin cleanup page area, similar to SKU Cleanup if one exists
+
+Part 1 — Update new Reel ID generator
+
+Update generateReelId() in:
+client/src/lib/reel-utils.ts
+
+Current old format:
+{ItemAbbr}-{Size}-{BrandAbbr}-R{seq}
+
+Replace for newly created reels with:
+R-{SC|MC}-{SIZE}-{CONFIG}-{SEQ}
+
+Generation rules:
+
+1. Core code:
+- MC if item name/config contains:
+  - 4C+G
+  - 3C+G
+  - 2C+G
+  - 4C
+  - 3C
+  - 2C
+- Otherwise SC for reel-eligible wire/cable items.
+
+2. Size code:
+Use item.sizeLabel first.
+
+Normalize:
+- #8 → 008
+- 8 → 008
+- #12 → 012
+- 12 → 012
+- #1 → 001
+- 1/0 → 10
+- 2/0 → 20
+- 3/0 → 30
+- 4/0 → 40
+- 250 → 250
+- 350 → 350
+- 500 → 500
+
+Remove #, spaces, quotes, and unsafe characters.
+
+3. Config code:
+For Multi Core:
+- 4C+G → 4CG
+- 3C+G → 3CG
+- 2C+G → 2CG
+- 4C → 4C
+- 3C → 3C
+- 2C → 2C
+
+For Single Core:
+Detect color/config from item.name:
+- Green, GRN, Ground → GRN
+- Black, BLK → BLK
+- White, WHT → WHT
+- Red → RED
+- Blue, BLU → BLU
+- Brown → BRN
+- Orange → ORG
+- Yellow → YEL
+- Gray, Grey → GRY
+
+If no config/color is detected:
+- Use UNK for new reel creation only if the UI currently requires a Reel ID.
+- But show a warning/helper text if possible:
+  "Color/config could not be detected. Please verify Reel ID."
+
+4. Sequence:
+Use 3 digits:
+001, 002, 003
+
+Final examples:
+#8(4C+G) THHN/THWN-2 600V → R-MC-008-4CG-001
+#12 Ground Wire THHN/THWN-2 → R-SC-012-GRN-001
+500 kcmil Black THHN → R-SC-500-BLK-001
+
+Do not include brand in the new Reel ID.
+Brand remains stored in wire_reels.brand.
+
+Part 2 — Update getNextReelSeq compatibility
+
+In server/storage.ts, update getNextReelSeq(itemId).
+
+Current logic likely parses old IDs ending in:
+R001
+
+It must support both:
+Old:
+MCCT6-#8-XX-R001
+
+New:
+R-MC-008-4CG-001
+
+Requirement:
+- Extract the last 3-digit sequence at the end of reel_id.
+- Support both R001 and -001 endings.
+- Continue including soft-deleted reels when calculating max sequence, so sequence numbers are not reused.
+
+Recommended logic:
+const match = reel.reelId.match(/(?:R|-)?(\d{3})$/i);
+
+If no match, skip that reel.
+Return max + 1.
+
+Be careful:
+Do not change reel length logic.
+Do not change quantity sync.
+Do not change movement logic.
+
+Part 3 — Existing Reel ID Rename Preview
+
+Add an admin-only preview feature.
+
+Preferred location:
+- If there is an Admin Cleanup / SKU Cleanup area, add a new tab:
+  Reel ID Cleanup
+- Otherwise add a small admin-only section/page reachable from Admin tools.
+
+Create backend preview endpoint:
+
+GET /api/admin/reel-id-preview
+
+This endpoint should return existing reels with:
+- reelDbId
+- itemId
+- itemName
+- sizeLabel
+- currentReelId
+- proposedReelId
+- coreCode
+- sizeCode
+- configCode
+- sequence
+- status
+- reason
+
+Preview status values:
+- ready
+- already_new_format
+- ambiguous
+- conflict
+- invalid_sequence
+- missing_item
+- skipped
+
+Rules:
+
+1. Already new format:
+If currentReelId already matches:
+R-SC-...
+or
+R-MC-...
+Then status = already_new_format.
+Do not offer Apply.
+
+2. Sequence:
+For existing reels, preserve the old sequence if possible.
+
+Examples:
+MCCT6-#8-XX-R001 → sequence 001
+THHN-1/0-SW-R003 → sequence 003
+
+If sequence cannot be parsed:
+status = invalid_sequence
+Do not offer Apply.
+
+3. Config:
+If proposed config is UNK:
+status = ambiguous
+Do not offer Apply.
+
+Reason:
+Do not convert unclear old IDs into unclear new IDs like:
+R-SC-008-UNK-001
+
+4. Conflict:
+If proposedReelId already exists on another reel:
+status = conflict
+Do not offer Apply.
+
+Check uniqueness according to the current DB constraint.
+If reel_id is globally unique, check globally.
+If reel_id is only unique per item, check per item.
+Inspect shared/schema.ts before deciding.
+
+5. Missing item:
+If reel has no valid joined item:
+status = missing_item
+Do not offer Apply.
+
+6. Ready:
+Only when:
+- old sequence parsed
+- coreCode found
+- sizeCode found
+- configCode found and not UNK
+- proposedReelId does not conflict
+Then:
+status = ready
+
+Part 4 — Existing Reel ID Rename Apply
+
+Create backend apply endpoint:
+
+PATCH /api/admin/reel-id-rename
+
+Body:
+{
+  reelIds: number[]
+}
+
+Requirements:
+- Admin/manager permission only. Use the strongest existing admin permission available.
+- Server must recalculate proposed IDs again.
+- Do not trust client-provided proposedReelId.
+- Only rename rows whose recalculated preview status is ready.
+- If any selected reel is not ready, return a clear error and do not partially rename unless existing app patterns support partial results.
+- Prefer transaction-safe update.
+- After rename, return summary:
+  - updated count
+  - skipped count
+  - errors if any
+
+Important:
+Do not rename all reels automatically.
+Only rename selected ready rows.
+
+Part 5 — Preserve old Reel ID for traceability
+
+When renaming:
+- Preserve old Reel ID somewhere.
+
+Preferred:
+If the app has an audit log table for admin actions, use it.
+
+If not:
+Append to wire_reels.notes safely:
+"Reel ID renamed from {oldId} to {newId} on {YYYY-MM-DD}."
+
+Do not overwrite existing notes.
+Append below existing notes.
+
+Example:
+Existing notes:
+"Stored near Rack A"
+
+After rename:
+"Stored near Rack A
+
+Reel ID renamed from MCCT6-#8-XX-R001 to R-MC-008-4CG-001 on 2026-05-27."
+
+Part 6 — Admin UI for Reel ID Cleanup
+
+Create UI table:
+
+Columns:
+- Select checkbox
+- Status
+- Current Reel ID
+- Proposed Reel ID
+- Item
+- Core
+- Size
+- Config
+- Reason
+
+Behavior:
+- Only rows with status = ready can be selected.
+- Header checkbox selects only ready rows.
+- Show counts:
+  - Ready
+  - Already New
+  - Ambiguous
+  - Conflicts
+  - Invalid Sequence
+
+Actions:
+- Refresh Preview
+- Rename Selected
+
+Confirmation dialog:
+Title:
+Rename selected Reel IDs?
+
+Description:
+This will rename {count} existing Reel IDs to the new format.
+Inventory quantities and movement history will not be changed.
+Existing old Reel IDs will be preserved in notes/audit log.
+
+Buttons:
+- Cancel
+- Rename
+
+After success:
+- Refetch preview
+- Show toast:
+"{count} Reel IDs renamed."
+
+Part 7 — Safety labels
+
+In the UI, add a clear note:
+
+"This tool only renames Reel ID labels. It does not change reel length, inventory quantity, movement history, or transaction records."
+
+Part 8 — CategoryDetail consistency
+
+Audit:
+client/src/components/category/WireItemReelSection.tsx
+
+If new reel creation there still uses manual Reel ID input:
+- If safe, switch it to the same generateReelId() function.
+- If not safe, leave manual input but show suggested Reel ID using the new generator.
+
+Do not break existing add reel form.
+
+Part 9 — Tests / Manual Verification
+
+Manual verification:
+
+1. New reel creation:
+Open multi-core item:
+#8(4C+G) THHN/THWN-2 600V
+Add a new reel.
+Expected:
+R-MC-008-4CG-001
+
+Add another reel.
+Expected:
+R-MC-008-4CG-002
+
+2. Single core:
+Open:
+#12 Ground Wire THHN/THWN-2
+Add a reel.
+Expected:
+R-SC-012-GRN-001
+
+3. Large conductor:
+Open:
+500 kcmil Black THHN
+Add a reel.
+Expected:
+R-SC-500-BLK-001
+
+4. Existing preview:
+Open Admin Reel ID Cleanup.
+Rows with clear config show ready.
+Rows with UNK show ambiguous.
+Rows already in new format show already_new_format.
+Conflict rows show conflict.
+
+5. Apply:
+Select only ready rows.
+Click Rename Selected.
+Confirm.
+Expected:
+- Reel IDs update.
+- Old IDs are appended to notes or audit log.
+- Preview refreshes.
+- Updated rows become already_new_format.
+
+6. Safety:
+After rename:
+- Reel length is unchanged.
+- Item quantityOnHand is unchanged.
+- Movement issue/receive still works.
+- Transaction history still displays.
+- Existing deleted/inactive reels are not accidentally restored.
+- No bulk auto-rename happens without user confirmation.
+
+7. Regression:
+- ItemDetails Reel Inventory still loads.
+- WireItemReelSection still loads.
+- Field Mode reel display still loads.
+- Excel export still works if it includes reel_id.

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMovements, useBulkDeleteMovements, useBulkRestoreMovements } from "@/hooks/use-transactions";
@@ -10,7 +10,7 @@ import FieldRequestsList from "./FieldRequestsList";
 import {
   Search, ClipboardList, ImageOff, CalendarDays,
   Trash2, X, AlertTriangle, FileText, Pencil,
-  ClipboardCheck, SlidersHorizontal, Undo2,
+  ClipboardCheck, SlidersHorizontal, Undo2, ChevronDown,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -199,6 +199,12 @@ export default function FieldTransactions() {
   const [dateFrom,      setDateFrom]      = useState("");
   const [dateTo,        setDateTo]        = useState("");
 
+  // ── Reel expansion ──
+  const [expandedIds,   setExpandedIds]   = useState<Set<number>>(new Set());
+  function toggleExpand(id: number) {
+    setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
   // ── Selection (always-on; checkbox column is the affordance) ──
   const [selectedIds,   setSelectedIds]   = useState<Set<number>>(new Set());
   const [confirmOpen,   setConfirmOpen]   = useState(false);
@@ -366,7 +372,7 @@ export default function FieldTransactions() {
   const hasActiveFilters = typeFilter !== "all" || fromFilter !== "all" || toFilter !== "all" || projectFilter !== "all" || !!dateFrom || !!dateTo;
   const secondaryFilterCount = [fromFilter !== "all", toFilter !== "all", projectFilter !== "all", !!dateFrom, !!dateTo].filter(Boolean).length;
 
-  const COLS_COUNT = 12;
+  const COLS_COUNT = 13;
 
   return (
     <div className="space-y-4 pt-5 pb-8">
@@ -729,6 +735,8 @@ export default function FieldTransactions() {
                   const toLoc = mx.destinationLocation;
                   const project = mx.project;
                   const isSelected = selectedIds.has(m.id);
+                  const isExpanded = expandedIds.has(m.id);
+                  const reelLines: any[] = mx.reelLines ?? [];
                   const isEdited = !!(mx.editedAt);
                   const editHistory: any[] = Array.isArray(mx.editHistory) ? mx.editHistory : [];
                   const lastEdit = editHistory[editHistory.length - 1];
@@ -855,6 +863,77 @@ export default function FieldTransactions() {
                           "{m.note}"
                         </p>
                       )}
+
+                      {/* Row 7: reel expand toggle (only for items with reel lines) */}
+                      {reelLines.length > 0 && (
+                        <button
+                          type="button"
+                          data-testid={`field-btn-expand-${m.id}`}
+                          onClick={e => { e.stopPropagation(); toggleExpand(m.id); }}
+                          style={{
+                            marginTop: 8, display: "flex", alignItems: "center", gap: 5,
+                            background: isExpanded ? "rgba(167,139,250,0.12)" : "rgba(167,139,250,0.06)",
+                            border: `1px solid ${isExpanded ? "rgba(167,139,250,0.35)" : "rgba(167,139,250,0.18)"}`,
+                            borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                            fontSize: 10, fontWeight: 700, color: "#a78bfa",
+                            fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em",
+                            width: "100%", justifyContent: "space-between",
+                          }}
+                        >
+                          <span>
+                            {reelLines.length} {reelLines.length === 1 ? "REEL" : "REELS"}
+                          </span>
+                          <ChevronDown
+                            style={{
+                              width: 12, height: 12,
+                              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                              transition: "transform 0.2s",
+                            }}
+                          />
+                        </button>
+                      )}
+
+                      {/* Row 8: reel expansion panel */}
+                      {isExpanded && reelLines.length > 0 && (
+                        <div
+                          data-testid={`field-expand-panel-${m.id}`}
+                          style={{
+                            marginTop: 6, padding: "8px 10px",
+                            background: "rgba(167,139,250,0.06)",
+                            border: "1px dashed rgba(167,139,250,0.22)",
+                            borderRadius: 7,
+                          }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <p style={{ fontSize: 9, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+                            Reel Details
+                          </p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {reelLines.map((rl: any, rlIdx: number) => (
+                              <div
+                                key={rlIdx}
+                                data-testid={`field-reel-line-${m.id}-${rlIdx}`}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 6,
+                                  background: F.surface, border: "1px solid rgba(167,139,250,0.18)",
+                                  borderRadius: 5, padding: "4px 8px",
+                                  fontSize: 11, color: F.text,
+                                }}
+                              >
+                                <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#a78bfa", flexShrink: 0 }}>{rl.reelIdText}</span>
+                                <span style={{ color: F.textDim, flexShrink: 0 }}>·</span>
+                                <span style={{ fontWeight: 600, flexShrink: 0 }}>{rl.quantityFt.toLocaleString()} FT</span>
+                                {rl.manufacturerSnapshot && (
+                                  <>
+                                    <span style={{ color: F.textDim, flexShrink: 0 }}>·</span>
+                                    <span style={{ color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rl.manufacturerSnapshot}</span>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -863,7 +942,7 @@ export default function FieldTransactions() {
               /* ── Desktop: existing table (unchanged) ── */
               <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <colgroup>
-                  {/* Select, #, Type, Photo, Size, Item, Qty, From→To, Project, Supplier, Date, Note */}
+                  {/* Select, #, Type, Photo, Size, Item, Qty, From→To, Project, Supplier, Date, Note, Expand */}
                   <col style={{ width: 32 }} />
                   <col style={{ width: 36 }} />
                   <col style={{ width: 82 }} />
@@ -876,6 +955,7 @@ export default function FieldTransactions() {
                   <col style={{ width: "10%" }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 70 }} />
+                  <col style={{ width: 32 }} />
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${F.borderStrong}` }}>
@@ -902,6 +982,7 @@ export default function FieldTransactions() {
                     <th style={{ ...TH, textAlign: "center" }}>{t.colSupplier}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colDate}</th>
                     <th style={{ ...TH, textAlign: "center" }}>{t.colNote}</th>
+                    <th style={{ ...TH, textAlign: "center" }}></th>
                   </tr>
                 </thead>
 
@@ -921,6 +1002,8 @@ export default function FieldTransactions() {
                     const toLoc     = mx.destinationLocation;
                     const project   = mx.project;
                     const isSelected = selectedIds.has(m.id);
+                    const isExpanded = expandedIds.has(m.id);
+                    const reelLines: any[] = mx.reelLines ?? [];
                     const isEdited   = !!(mx.editedAt);
                     const editHistory: any[] = Array.isArray(mx.editHistory) ? mx.editHistory : [];
                     const lastEdit = editHistory[editHistory.length - 1];
@@ -929,8 +1012,8 @@ export default function FieldTransactions() {
                       : "edited";
 
                     return (
+                      <Fragment key={m.id}>
                       <tr
-                        key={m.id}
                         data-testid={`field-tx-row-${m.id}`}
                         style={{
                           background: isSelected ? F.accentBg : F.surface2,
@@ -996,6 +1079,14 @@ export default function FieldTransactions() {
                           {item?.unitOfMeasure && (
                             <span style={{ marginLeft: 4, fontSize: 9, color: F.textMuted, textTransform: "uppercase" }}>
                               {item.unitOfMeasure}
+                            </span>
+                          )}
+                          {reelLines.length > 0 && (
+                            <span
+                              data-testid={`field-reel-count-${m.id}`}
+                              style={{ display: "block", fontSize: 9, color: "#a78bfa", fontWeight: 600, marginTop: 1 }}
+                            >
+                              · {reelLines.length} {reelLines.length === 1 ? "reel" : "reels"}
                             </span>
                           )}
                         </td>
@@ -1075,7 +1166,68 @@ export default function FieldTransactions() {
                         <td style={{ padding: "12px 8px", fontSize: 11, color: F.textMuted, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {m.note || <span style={{ color: F.textDim }}>—</span>}
                         </td>
+
+                        {/* Expand chevron */}
+                        <td
+                          style={{ padding: "12px 6px", textAlign: "center", verticalAlign: "middle", cursor: "pointer" }}
+                          onClick={e => { e.stopPropagation(); toggleExpand(m.id); }}
+                        >
+                          <ChevronDown
+                            data-testid={`field-btn-expand-${m.id}`}
+                            style={{
+                              width: 14, height: 14,
+                              color: isExpanded ? "#a78bfa" : F.textDim,
+                              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                              transition: "transform 0.2s, color 0.2s",
+                              display: "block", margin: "0 auto",
+                            }}
+                          />
+                        </td>
                       </tr>
+
+                      {/* Expansion row — reel details */}
+                      {isExpanded && (
+                        <tr data-testid={`field-expand-row-${m.id}`} style={{ background: "rgba(167,139,250,0.04)" }}>
+                          <td colSpan={COLS_COUNT} style={{ padding: "10px 48px 14px 48px", borderTop: "1px dashed rgba(167,139,250,0.18)" }}>
+                            {reelLines.length === 0 ? (
+                              <p style={{ fontSize: 11, color: F.textDim, fontStyle: "italic" }}>
+                                Reel breakdown is not available for this movement.
+                              </p>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <p style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>
+                                  Reel Details
+                                </p>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
+                                  {reelLines.map((rl: any, rlIdx: number) => (
+                                    <div
+                                      key={rlIdx}
+                                      data-testid={`field-reel-line-${m.id}-${rlIdx}`}
+                                      style={{
+                                        display: "inline-flex", alignItems: "center", gap: 6,
+                                        background: F.surface, border: "1px solid rgba(167,139,250,0.22)",
+                                        borderRadius: 5, padding: "3px 8px",
+                                        fontSize: 11, color: F.text,
+                                      }}
+                                    >
+                                      <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#a78bfa" }}>{rl.reelIdText}</span>
+                                      <span style={{ color: F.textDim }}>·</span>
+                                      <span style={{ fontWeight: 600 }}>{rl.quantityFt.toLocaleString()} FT</span>
+                                      {rl.manufacturerSnapshot && (
+                                        <>
+                                          <span style={{ color: F.textDim }}>·</span>
+                                          <span style={{ color: F.textMuted }}>{rl.manufacturerSnapshot}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

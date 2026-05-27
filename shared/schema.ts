@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -232,6 +232,30 @@ export const movementDrafts = pgTable("movement_drafts", {
   status: text("status").notNull().default("draft"),
   savedAt: timestamp("saved_at").defaultNow(),
 });
+
+// ─── Wire Reel Movement Lines ─────────────────────────────────────────────────
+// Child records for each reel involved in an inventory movement.
+// Written inside confirmDraft() for issue/receive/return on reel-tracked items.
+// Older movements have zero lines — no backfill.
+export const wireReelMovementLines = pgTable("wire_reel_movement_lines", {
+  id: serial("id").primaryKey(),
+  movementId: integer("movement_id").notNull().references(() => inventoryMovements.id),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  wireReelId: integer("wire_reel_id").references(() => wireReels.id),
+  reelIdText: text("reel_id_text").notNull(),
+  actionType: text("action_type").notNull(), // "issue" | "receive" | "return"
+  quantityFt: integer("quantity_ft").notNull(),
+  manufacturerSnapshot: text("manufacturer_snapshot"),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  projectId: integer("project_id").references(() => projects.id),
+  fromLocationId: integer("from_location_id").references(() => locations.id),
+  toLocationId: integer("to_location_id").references(() => locations.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  index("wrml_movement_id_idx").on(t.movementId),
+  index("wrml_item_id_idx").on(t.itemId),
+  index("wrml_wire_reel_id_idx").on(t.wireReelId),
+]);
 
 // ─── Zod Insert Schemas ───────────────────────────────────────────────────────
 
@@ -604,6 +628,9 @@ export const insertRmsExportHistorySchema = createInsertSchema(rmsExportHistory)
 export const insertRmsExportHistoryItemSchema = createInsertSchema(rmsExportHistoryItems).omit({
   id: true,
 });
+export const insertWireReelMovementLineSchema = createInsertSchema(wireReelMovementLines).omit({
+  id: true, createdAt: true,
+});
 
 export type RmsExportHistory = typeof rmsExportHistory.$inferSelect;
 export type RmsExportHistoryItem = typeof rmsExportHistoryItems.$inferSelect;
@@ -611,3 +638,6 @@ export type CreateRmsExportHistory = z.infer<typeof insertRmsExportHistorySchema
 export type CreateRmsExportHistoryItem = z.infer<typeof insertRmsExportHistoryItemSchema>;
 export type RmsExportHistoryLineWithImage = RmsExportHistoryItem & { itemImageUrl: string | null };
 export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHistoryLineWithImage[] };
+
+export type WireReelMovementLine = typeof wireReelMovementLines.$inferSelect;
+export type CreateWireReelMovementLineRequest = z.infer<typeof insertWireReelMovementLineSchema>;

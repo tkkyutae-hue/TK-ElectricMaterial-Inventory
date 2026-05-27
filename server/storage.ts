@@ -27,6 +27,7 @@ import {
   rmsExportHistory, rmsExportHistoryItems,
   type RmsExportHistory, type RmsExportHistoryItem, type RmsExportHistoryWithLines,
   type CreateRmsExportHistory, type CreateRmsExportHistoryItem,
+  wireReelMovementLines,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -2812,17 +2813,46 @@ export class DatabaseStorage implements IStorage {
             } else {
               await tx.update(wireReels).set({ lengthFt: newLength, status: "used", updatedAt: new Date() }).where(eq(wireReels.id, reelId));
             }
+            // Record reel-level movement line (snapshot at time of issue)
+            await tx.insert(wireReelMovementLines).values({
+              movementId: created.id,
+              itemId: itemRow.id,
+              wireReelId: reelId,
+              reelIdText: reelRow.reelId,
+              actionType: "issue",
+              quantityFt: ftUsed,
+              manufacturerSnapshot: reelRow.brand ?? null,
+              supplierId: null,
+              projectId: draft.projectId ?? null,
+              fromLocationId: draft.sourceLocationId ?? null,
+              toLocationId: draft.destinationLocationId ?? null,
+            });
           }
         }
         if ((movementType === "receive" || movementType === "return") && di.newReels?.length) {
           for (const nr of di.newReels) {
-            await tx.insert(wireReels).values({
+            const destLocationId = nr.locationId ?? draft.destinationLocationId ?? draft.sourceLocationId ?? null;
+            const [insertedReel] = await tx.insert(wireReels).values({
               itemId: itemRow.id,
               reelId: nr.reelId,
               lengthFt: nr.lengthFt,
               brand: nr.brand ?? null,
-              locationId: nr.locationId ?? draft.destinationLocationId ?? draft.sourceLocationId ?? null,
+              locationId: destLocationId,
               status: (nr.status ?? "full") as any,
+            }).returning();
+            // Record reel-level movement line
+            await tx.insert(wireReelMovementLines).values({
+              movementId: created.id,
+              itemId: itemRow.id,
+              wireReelId: insertedReel?.id ?? null,
+              reelIdText: nr.reelId,
+              actionType: movementType, // "receive" or "return"
+              quantityFt: nr.lengthFt,
+              manufacturerSnapshot: nr.brand ?? null,
+              supplierId: null, // draft does not carry supplierId; stored on wire_reels.supplierId per reel
+              projectId: movementType === "return" ? (draft.projectId ?? null) : null,
+              fromLocationId: movementType === "return" ? (draft.sourceLocationId ?? null) : null,
+              toLocationId: destLocationId,
             });
           }
         }

@@ -1,0 +1,85 @@
+Add compact reel details expansion to Admin Transaction History.
+
+Context:
+wire_reel_movement_lines now records reel-level details for new reel-tracked movements.
+
+Goal:
+Keep Transaction History rows compact by default.
+Show total FT on the row.
+When the user clicks the row or Details button, show reel-level details.
+
+Do not:
+- Do not change movement creation logic.
+- Do not change quantity calculations.
+- Do not change delete/edit behavior.
+- Do not fake reel details for old movements.
+- Do not change database schema.
+
+Files likely involved:
+- server/storage.ts
+- server/routes.ts
+- client/src/pages/Transactions.tsx or admin transaction page component
+
+Backend:
+Update the Transaction History query/API to include reel movement lines for each movement if available.
+
+Return each movement with:
+- existing movement fields
+- project name/code if available
+- supplier name if available
+- source/destination location names if available
+- user display name if available
+- reelLines: array
+
+Each reelLine should include:
+- reelIdText
+- quantityFt
+- actionType
+- manufacturerSnapshot
+
+For older movements with no lines:
+reelLines = []
+
+Frontend:
+Default row should remain compact:
+
+Example:
+RETURNED   +622 FT   ·   2 reels
+From Project: TK1002009 · HWASHIN
+May 20, 2026 · KyungMoo Ahn
+
+RECEIVED   +5,000 FT   ·   1 reel
+Supplier: Kendall
+Apr 28, 2026
+
+ISSUED   -300 FT   ·   2 reels
+To Project: TK1001007 · Welding Shop
+May 2, 2026
+
+Rules:
+- Show reel count only when reelLines.length > 0.
+- Do not show “0 reels” for older movements.
+- Do not fake count from total FT.
+- Keep total FT as the main value.
+
+Expanded details:
+When expanded, show:
+
+Reel details
+- R-MC-010-2CG-004 · 500 FT · Southwire
+- R-MC-010-2CG-005 · 122 FT · Encore
+
+For old movements with no reelLines:
+Show:
+Reel breakdown is not available for this movement.
+
+Do not show this warning by default.
+Only show it inside Details.
+
+Manual verification:
+1. New receive movement with two reels shows total FT and “2 reels”.
+2. Clicking row shows both reel lines.
+3. Old movement shows total FT only.
+4. Clicking old movement shows unavailable message.
+5. Filters/search/pagination still work.
+6. Edit/Delete behavior unchanged.

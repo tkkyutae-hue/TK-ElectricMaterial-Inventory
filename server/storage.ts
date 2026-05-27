@@ -3390,9 +3390,11 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
-    const existingNewIds = new Set(
-      interim.filter(r => r.status === "already_new_format").map(r => r.currentReelId)
-    );
+    // Fetch ALL reel IDs globally (active + inactive) for complete conflict detection
+    const allReelIdRows = await db.select({ id: wireReels.id, reelId: wireReels.reelId }).from(wireReels);
+    const globalReelIds = new Map<string, number>(); // reelId → dbId
+    for (const r of allReelIdRows) globalReelIds.set(r.reelId, r.id);
+
     const proposedCount = new Map<string, number>();
     for (const r of interim) {
       if (r.status === "ready" || r.status === "ambiguous") {
@@ -3405,7 +3407,8 @@ export class DatabaseStorage implements IStorage {
         const { _proposed, ...rest } = r; return rest;
       }
       const dupCount = proposedCount.get(r._proposed) ?? 1;
-      const conflictsWithExisting = existingNewIds.has(r._proposed);
+      const existingDbId = globalReelIds.get(r._proposed);
+      const conflictsWithExisting = existingDbId !== undefined && existingDbId !== r.reelDbId;
       if (dupCount > 1 || conflictsWithExisting) {
         const { _proposed, ...rest } = r;
         return { ...rest, status: "conflict" as const,
@@ -3422,51 +3425,63 @@ export class DatabaseStorage implements IStorage {
     let updated = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const today = new Date().toISOString().slice(0, 10);
 
-    for (const reelDbId of reelDbIds) {
-      try {
-        const [reel] = await db
-          .select()
-          .from(wireReels)
-          .leftJoin(items, eq(wireReels.itemId, items.id))
-          .where(eq(wireReels.id, reelDbId));
+    await db.transaction(async (tx) => {
+      for (const reelDbId of reelDbIds) {
+        try {
+          const [reel] = await tx
+            .select()
+            .from(wireReels)
+            .leftJoin(items, eq(wireReels.itemId, items.id))
+            .where(eq(wireReels.id, reelDbId));
 
-        if (!reel) { errors.push(`Reel #${reelDbId} not found`); skipped++; continue; }
-        const currentId = reel.wire_reels.reelId;
-        const itemName = reel.items?.name ?? "";
-        const sizeLabel = reel.items?.sizeLabel ?? null;
+          if (!reel) { errors.push(`Reel #${reelDbId} not found`); skipped++; continue; }
+          const currentId = reel.wire_reels.reelId;
+          const itemName = reel.items?.name ?? "";
+          const sizeLabel = reel.items?.sizeLabel ?? null;
 
-        if (NEW_REEL_FORMAT.test(currentId)) { skipped++; continue; }
+          if (NEW_REEL_FORMAT.test(currentId)) { skipped++; continue; }
 
-        const seq = _extractSeqFromReelId(currentId);
-        if (seq === null) { errors.push(`${currentId}: cannot extract sequence`); skipped++; continue; }
+          if (!itemName) {
+            errors.push(`${currentId}: item record not found — cannot rename`);
+            skipped++; continue;
+          }
 
-        const { coreCode, sizeCode, configCode } = _deriveReelIdParts(itemName, sizeLabel);
-        const seqStr = String(seq).padStart(3, "0");
-        const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
+          const seq = _extractSeqFromReelId(currentId);
+          if (seq === null) { errors.push(`${currentId}: cannot extract sequence`); skipped++; continue; }
 
-        const [existing] = await db
-          .select({ id: wireReels.id })
-          .from(wireReels)
-          .where(and(eq(wireReels.reelId, proposed), ne(wireReels.id, reelDbId)));
-        if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
+          const { coreCode, sizeCode, configCode } = _deriveReelIdParts(itemName, sizeLabel);
+          if (sizeCode === "UNK" || configCode === "UNK") {
+            errors.push(`${currentId}: ambiguous (size or config unknown) — skipped`);
+            skipped++; continue;
+          }
 
-        const existingNotes = reel.wire_reels.notes || "";
-        const newNotes = existingNotes
-          ? `${existingNotes} [renamed from ${currentId}]`
-          : `[renamed from ${currentId}]`;
+          const seqStr = String(seq).padStart(3, "0");
+          const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
 
-        await db
-          .update(wireReels)
-          .set({ reelId: proposed, notes: newNotes })
-          .where(eq(wireReels.id, reelDbId));
+          const [existing] = await tx
+            .select({ id: wireReels.id })
+            .from(wireReels)
+            .where(and(eq(wireReels.reelId, proposed), ne(wireReels.id, reelDbId)));
+          if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
 
-        updated++;
-      } catch (err: any) {
-        errors.push(`Reel #${reelDbId}: ${err?.message ?? "unknown error"}`);
-        skipped++;
+          const existingNotes = (reel.wire_reels.notes || "").trim();
+          const note = `[renamed from ${currentId} → ${proposed} on ${today}]`;
+          const newNotes = existingNotes ? `${existingNotes}\n${note}` : note;
+
+          await tx
+            .update(wireReels)
+            .set({ reelId: proposed, notes: newNotes })
+            .where(eq(wireReels.id, reelDbId));
+
+          updated++;
+        } catch (err: any) {
+          errors.push(`Reel #${reelDbId}: ${err?.message ?? "unknown error"}`);
+          skipped++;
+        }
       }
-    }
+    });
 
     return { updated, skipped, errors };
   }

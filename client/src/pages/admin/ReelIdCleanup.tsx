@@ -44,20 +44,32 @@ type ReelIdPreviewRow = {
 
 // ── Status badge config ────────────────────────────────────────────────────
 
-const STATUS_STYLE: Record<string, { label: string; className: string }> = {
-  ready: { label: "Ready", className: "text-green-700 border-green-300 bg-green-50" },
-  already_new_format: { label: "Already New", className: "text-slate-500 border-slate-300 bg-slate-100" },
-  ambiguous: { label: "Ambiguous", className: "text-amber-700 border-amber-300 bg-amber-50" },
-  conflict: { label: "Conflict", className: "text-red-700 border-red-300 bg-red-50" },
-  invalid_sequence: { label: "Invalid Seq", className: "text-purple-700 border-purple-300 bg-purple-50" },
-  missing_item: { label: "Missing Item", className: "text-rose-700 border-rose-300 bg-rose-50" },
+const STATUS_STYLE: Record<string, { className: string }> = {
+  ready:             { className: "text-green-700 border-green-300 bg-green-50" },
+  already_new_format:{ className: "text-slate-500 border-slate-300 bg-slate-100" },
+  ambiguous:         { className: "text-amber-700 border-amber-300 bg-amber-50" },
+  conflict:          { className: "text-red-700 border-red-300 bg-red-50" },
+  invalid_sequence:  { className: "text-purple-700 border-purple-300 bg-purple-50" },
+  missing_item:      { className: "text-rose-700 border-rose-300 bg-rose-50" },
 };
 
-function StatusBadge({ status }: { status: ReelIdPreviewRow["status"] }) {
+function getStatusLabel(status: ReelIdPreviewRow["status"], t: ReturnType<typeof useLanguage>["t"]): string {
+  const map: Record<string, string> = {
+    ready:              t.adminReelIdStatusReady,
+    already_new_format: t.adminReelIdStatusAlreadyNew,
+    ambiguous:          t.adminReelIdStatusAmbiguous,
+    conflict:           t.adminReelIdStatusConflict,
+    invalid_sequence:   t.adminReelIdStatusInvalidSeq,
+    missing_item:       t.adminReelIdStatusMissingItem,
+  };
+  return map[status] ?? status;
+}
+
+function StatusBadge({ status, t }: { status: ReelIdPreviewRow["status"]; t: ReturnType<typeof useLanguage>["t"] }) {
   const cfg = STATUS_STYLE[status] ?? STATUS_STYLE.ready;
   return (
     <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${cfg.className}`}>
-      {cfg.label}
+      {getStatusLabel(status, t)}
     </Badge>
   );
 }
@@ -76,16 +88,12 @@ export default function ReelIdCleanup() {
 
   const rows = data?.rows ?? [];
 
-  // Count by status
   const counts = useMemo(() => {
     const c = { ready: 0, already_new_format: 0, ambiguous: 0, conflict: 0, invalid_sequence: 0, missing_item: 0 };
-    for (const r of rows) {
-      if (r.status in c) (c as any)[r.status]++;
-    }
+    for (const r of rows) if (r.status in c) (c as any)[r.status]++;
     return c;
   }, [rows]);
 
-  // Only "ready" rows are selectable
   const readyRows = useMemo(() => rows.filter(r => r.status === "ready"), [rows]);
   const allReadySelected = readyRows.length > 0 && readyRows.every(r => selectedIds.has(r.reelDbId));
   const someReadySelected = readyRows.some(r => selectedIds.has(r.reelDbId));
@@ -93,19 +101,10 @@ export default function ReelIdCleanup() {
   const toggleRow = useCallback((id: number, checked: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
+      if (checked) next.add(id); else next.delete(id);
       return next;
     });
   }, []);
-
-  const handleSelectAll = () => {
-    if (allReadySelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(readyRows.map(r => r.reelDbId)));
-    }
-  };
 
   const renameMutation = useMutation({
     mutationFn: async (reelDbIds: number[]) => {
@@ -178,30 +177,31 @@ export default function ReelIdCleanup() {
         <div className="flex items-center gap-2">
           {readyRows.length > 0 && (
             <>
-              <Button variant="outline" size="sm" onClick={handleSelectAll} className="gap-1.5 text-xs h-8" data-testid="btn-select-all-ready">
+              <Button variant="outline" size="sm"
+                onClick={() => {
+                  if (allReadySelected) setSelectedIds(new Set());
+                  else setSelectedIds(new Set(readyRows.map(r => r.reelDbId)));
+                }}
+                className="gap-1.5 text-xs h-8"
+                data-testid="btn-select-all-ready"
+              >
                 {allReadySelected ? t.adminReelIdClearAll : t.adminReelIdSelectAll}
               </Button>
               {someReadySelected && (
-                <span className="text-xs text-slate-500">{selectedIds.size} selected</span>
+                <span className="text-xs text-slate-500">{selectedIds.size} {t.adminReelIdSelected}</span>
               )}
             </>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="gap-1.5 text-xs h-8"
-            data-testid="btn-refresh-preview"
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}
+            className="gap-1.5 text-xs h-8" data-testid="btn-refresh-preview"
           >
             <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
             {t.adminReelIdRefreshBtn}
           </Button>
           {selectedIds.size > 0 && (
-            <Button
-              size="sm"
+            <Button size="sm"
               className="gap-1.5 bg-brand-700 hover:bg-brand-800 text-white h-8 text-xs"
               onClick={() => setConfirmOpen(true)}
               disabled={renameMutation.isPending}
@@ -218,7 +218,7 @@ export default function ReelIdCleanup() {
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-700 mr-3" />
-          Loading…
+          {t.adminReelIdLoading}
         </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
@@ -242,19 +242,28 @@ export default function ReelIdCleanup() {
                     aria-label="Select all ready"
                   />
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                   {t.adminReelIdColCurrentId}
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                   {t.adminReelIdColProposedId}
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                   {t.adminReelIdColItem}
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider">
-                  Status
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  {t.adminReelIdColCore}
                 </th>
-                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider">
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  {t.adminReelIdColSize}
+                </th>
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  {t.adminReelIdColConfig}
+                </th>
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                  {t.adminReelIdColStatus}
+                </th>
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                   {t.adminReelIdColReason}
                 </th>
               </tr>
@@ -317,17 +326,55 @@ export default function ReelIdCleanup() {
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="text-slate-700 truncate max-w-[180px]" title={row.itemName}>
+                      <div className="text-slate-700 truncate max-w-[140px]" title={row.itemName}>
                         {row.itemName}
                         {row.sizeLabel && (
                           <span className="ml-1 text-slate-400">({row.sizeLabel})</span>
                         )}
                       </div>
                     </td>
+                    {/* Core */}
                     <td className="px-3 py-2.5 whitespace-nowrap">
-                      <StatusBadge status={row.status} />
+                      {row.coreCode ? (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                          row.coreCode === "MC"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-sky-100 text-sky-700"
+                        }`}>
+                          {row.coreCode}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
-                    <td className="px-3 py-2.5 text-slate-500 max-w-[220px] truncate" title={row.reason}>
+                    {/* Size */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {row.sizeCode ? (
+                        <code className={`text-[10px] font-mono ${
+                          row.sizeCode === "UNK" ? "text-amber-600" : "text-slate-600"
+                        }`}>
+                          {row.sizeCode || "—"}
+                        </code>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    {/* Config */}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {row.configCode ? (
+                        <code className={`text-[10px] font-mono ${
+                          row.configCode === "UNK" ? "text-amber-600" : "text-slate-600"
+                        }`}>
+                          {row.configCode || "—"}
+                        </code>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <StatusBadge status={row.status} t={t} />
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 max-w-[180px] truncate" title={row.reason}>
                       {isAmbiguous ? (
                         <span className="flex items-center gap-1 text-amber-700">
                           <Info className="w-3 h-3 flex-shrink-0" />
@@ -368,19 +415,19 @@ export default function ReelIdCleanup() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                Renaming <strong>{selectedIds.size}</strong> reel{selectedIds.size !== 1 ? "s" : ""}.
+                {selectedIds.size} {t.adminReelIdSelected}
               </span>
               <span className="block text-sm">{t.adminReelIdDialogDesc}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="btn-rename-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="btn-rename-cancel">{t.adminReelIdCancelBtn}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-brand-700 hover:bg-brand-800 text-white"
               onClick={() => renameMutation.mutate(Array.from(selectedIds))}
               data-testid="btn-rename-confirm"
             >
-              {renameMutation.isPending ? "Renaming…" : t.adminReelIdConfirmBtn}
+              {renameMutation.isPending ? t.adminReelIdRenaming : t.adminReelIdConfirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -55,6 +55,18 @@ const REEL_STATUS_LABELS: Record<string, string> = {
   new: "New", used: "Used",
 };
 
+function _extractSeq(reelId: string): number | null {
+  const n = reelId.match(/-(\d{3})$/);
+  if (n) return parseInt(n[1], 10);
+  const o = reelId.match(/R(\d+)$/i);
+  if (o) return parseInt(o[1], 10);
+  return null;
+}
+function getNextReelSeq(reels: { reelId: string }[]): number {
+  const seqs = reels.map(r => _extractSeq(r.reelId) ?? 0);
+  return Math.max(0, ...seqs) + 1;
+}
+
 const BLANK_REEL_DRAFT: AddReelDraft = {
   reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new", notes: ""
 };
@@ -91,6 +103,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
   const { data: supplierList = [] } = useSuppliers();
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState<AddReelDraft>(BLANK_REEL_DRAFT);
+  const [reelIdIsAuto, setReelIdIsAuto] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<EditReelDraft>({ reelId: "", lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new", notes: "" });
 
@@ -217,10 +230,13 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
             if (showAdd) {
               setShowAdd(false);
               setDraft(BLANK_REEL_DRAFT);
+              setReelIdIsAuto(false);
             } else {
-              const nextSeq = reels.length + 1;
+              const nextSeq = getNextReelSeq(reels);
               const autoId = generateReelId(item, "", nextSeq);
+              const hasUnk = autoId.includes("UNK");
               setDraft({ ...BLANK_REEL_DRAFT, reelId: autoId });
+              setReelIdIsAuto(!hasUnk);
               setShowAdd(true);
             }
           }}
@@ -234,9 +250,32 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
         <div className="mb-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
             <div>
-              <label className="text-[11px] text-slate-500 font-medium block mb-1">Reel ID <span className="text-red-400">*</span></label>
-              <Input value={draft.reelId} onChange={e => setDraft(d => ({ ...d, reelId: e.target.value }))}
-                placeholder="e.g. R-001" className="h-8 text-sm" data-testid={`input-reel-id-${item.id}`} />
+              <label className="text-[11px] text-slate-500 font-medium block mb-1">
+                Reel ID <span className="text-red-400">*</span>
+                {reelIdIsAuto && (
+                  <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded font-semibold tracking-wide">AUTO</span>
+                )}
+              </label>
+              {reelIdIsAuto ? (
+                <div className="flex items-center gap-1.5">
+                  <Input value={draft.reelId} readOnly
+                    className="h-8 text-xs font-mono bg-slate-50 text-slate-600 cursor-default flex-1"
+                    data-testid={`input-reel-id-${item.id}`} />
+                  <button type="button"
+                    className="text-[10px] text-slate-400 hover:text-slate-600 underline whitespace-nowrap"
+                    onClick={() => setReelIdIsAuto(false)}>Edit</button>
+                </div>
+              ) : (
+                <>
+                  <Input value={draft.reelId}
+                    onChange={e => setDraft(d => ({ ...d, reelId: e.target.value }))}
+                    placeholder="e.g. R-SC-008-BLK-001" className="h-8 text-sm font-mono"
+                    data-testid={`input-reel-id-${item.id}`} />
+                  {draft.reelId.includes("UNK") && (
+                    <p className="text-[10px] text-amber-600 mt-0.5 leading-tight">Color or size unknown — please edit before saving.</p>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <label className="text-[11px] text-slate-500 font-medium block mb-1">Length (FT) <span className="text-red-400">*</span></label>

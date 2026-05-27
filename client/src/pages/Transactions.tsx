@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { useMovements, useBulkDeleteMovements, useUpdateMovement } from "@/hooks/use-transactions";
 import { useProjects, useLocations } from "@/hooks/use-reference-data";
 import { TransactionTypeBadge } from "@/components/StatusBadge";
@@ -52,6 +52,16 @@ export default function Transactions() {
   const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
   const [editDrafts, setEditDrafts] = useState<Record<number, EditDraft>>({});
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+
+  // Expanded reel details
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  function toggleExpand(id: number) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   // Toast
   const [toast, setToast] = useState<{ txId: number } | null>(null);
@@ -519,13 +529,14 @@ export default function Transactions() {
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[160px] min-w-[160px]">{t.txAdminColProject}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide w-[120px]">{t.colSupplier}</TableHead>
                 <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.txAdminColNote}</TableHead>
+                <TableHead style={{ width: 32, minWidth: 32, padding: 0 }} />
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    {[...Array(11)].map((__, j) => (
+                    {[...Array(12)].map((__, j) => (
                       <TableCell key={j}><div className="h-4 bg-slate-100 rounded animate-pulse" /></TableCell>
                     ))}
                   </TableRow>
@@ -533,7 +544,7 @@ export default function Transactions() {
 
               ) : !filtered?.length ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={12} className="text-center py-12 text-slate-500">
                     <ArrowRightLeft className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                     <p className="font-medium text-slate-900">{t.txAdminNoneFound}</p>
                     <p className="text-sm">{t.txAdminTryAdjusting}</p>
@@ -544,12 +555,14 @@ export default function Transactions() {
                   const isSelected = selectedIds.has(tx.id);
                   const isEditing = editingIds.has(tx.id);
                   const isSaving  = savingIds.has(tx.id);
+                  const isExpanded = expandedIds.has(tx.id);
                   const draft     = editDrafts[tx.id];
                   const isEdited  = !!tx.editedAt;
                   const lastEditor = isEdited ? (tx.editHistory as any[])?.[((tx.editHistory as any[])?.length ?? 1) - 1] : null;
                   const editLabel = lastEditor
                     ? `${t.txAdminEditedBy} ${lastEditor.editedBy?.replace("@tkelectricllc.us","").split("_").map((p: string) => p[0]?.toUpperCase() + p.slice(1)).join(" ")} · ${formatDistanceToNow(new Date(lastEditor.editedAt), { addSuffix: true, locale: dfLocale })}`
                     : t.txAdminEditedTag.toLowerCase();
+                  const reelLines: any[] = tx.reelLines ?? [];
 
                   const cellInput: React.CSSProperties = {
                     fontSize: 11, padding: "3px 5px", height: 26, borderRadius: 4,
@@ -558,14 +571,16 @@ export default function Transactions() {
                   const cellSelect: React.CSSProperties = { ...cellInput, cursor: "pointer" };
 
                   return (
+                    <Fragment key={tx.id}>
                     <TableRow
-                      key={tx.id}
                       data-testid={`row-tx-${tx.id}`}
                       style={{
                         ...(isEditing ? { background: "rgba(234,179,8,0.05)", outline: "1px solid rgba(234,179,8,0.20)" } : isSelected ? selectedRowStyle : {}),
                         transition: "background 0.1s",
+                        cursor: isEditing ? "default" : "pointer",
                       }}
                       className={isEditing || isSelected ? "" : "hover:bg-slate-50/60"}
+                      onClick={() => { if (!isEditing) toggleExpand(tx.id); }}
                     >
                       {/* Leftmost: select checkbox or Save/Cancel when editing */}
                       <TableCell
@@ -733,14 +748,30 @@ export default function Transactions() {
                             data-testid={`input-qty-${tx.id}`}
                           />
                         ) : (
-                          <span className="font-semibold">
-                            {tx.movementType === "issue" ? (
-                              <span className="text-rose-600">-{tx.quantity}</span>
-                            ) : (
-                              <span className="text-emerald-600">+{tx.quantity}</span>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                            <span className="font-semibold">
+                              {tx.movementType === "issue" ? (
+                                <span className="text-rose-600">-{tx.quantity}</span>
+                              ) : (
+                                <span className="text-emerald-600">+{tx.quantity}</span>
+                              )}
+                              <span className="text-slate-400 text-xs ml-1">{tx.item?.unitOfMeasure}</span>
+                            </span>
+                            {reelLines.length > 0 && (
+                              <span
+                                data-testid={`reel-count-${tx.id}`}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 3,
+                                  background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.22)",
+                                  color: "#4f46e5", padding: "1px 5px", borderRadius: 3,
+                                  fontSize: 9, fontWeight: 700, letterSpacing: "0.04em",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {reelLines.length} {reelLines.length === 1 ? "reel" : "reels"}
+                              </span>
                             )}
-                            <span className="text-slate-400 text-xs ml-1">{tx.item?.unitOfMeasure}</span>
-                          </span>
+                          </div>
                         )}
                       </TableCell>
 
@@ -858,7 +889,69 @@ export default function Transactions() {
                         )}
                       </TableCell>
 
+                      {/* Expand chevron */}
+                      <TableCell
+                        style={{ verticalAlign: "middle", width: 32, minWidth: 32, padding: "0 6px", textAlign: "center" }}
+                        onClick={(e) => { e.stopPropagation(); if (!isEditing) toggleExpand(tx.id); }}
+                      >
+                        {!isEditing && (
+                          <ChevronDown
+                            data-testid={`btn-expand-${tx.id}`}
+                            style={{
+                              width: 14, height: 14, color: "#94a3b8",
+                              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                              transition: "transform 0.2s",
+                              display: "block", margin: "0 auto",
+                            }}
+                          />
+                        )}
+                      </TableCell>
+
                     </TableRow>
+
+                    {/* Expansion row — reel details */}
+                    {isExpanded && !isEditing && (
+                      <TableRow data-testid={`expand-row-${tx.id}`} style={{ background: "rgba(99,102,241,0.03)" }}>
+                        <TableCell colSpan={12} style={{ padding: "10px 48px 14px 48px", borderTop: "1px dashed rgba(99,102,241,0.15)" }}>
+                          {reelLines.length === 0 ? (
+                            <p style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>
+                              Reel breakdown is not available for this movement.
+                            </p>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <p style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>
+                                Reel Details
+                              </p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px" }}>
+                                {reelLines.map((rl: any, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    data-testid={`reel-line-${tx.id}-${idx}`}
+                                    style={{
+                                      display: "inline-flex", alignItems: "center", gap: 6,
+                                      background: "white", border: "1px solid rgba(99,102,241,0.18)",
+                                      borderRadius: 5, padding: "3px 8px",
+                                      fontSize: 11, color: "#1e293b",
+                                    }}
+                                  >
+                                    <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#4f46e5" }}>{rl.reelIdText}</span>
+                                    <span style={{ color: "#94a3b8" }}>·</span>
+                                    <span style={{ fontWeight: 600 }}>{rl.quantityFt.toLocaleString()} FT</span>
+                                    {rl.manufacturerSnapshot && (
+                                      <>
+                                        <span style={{ color: "#94a3b8" }}>·</span>
+                                        <span style={{ color: "#64748b" }}>{rl.manufacturerSnapshot}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   );
                 })
               )}

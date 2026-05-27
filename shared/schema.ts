@@ -323,12 +323,20 @@ export type ItemWithRelations = Item & {
   lastIssueAt?: string | null;
 };
 
+export type ReelMovementLine = {
+  reelIdText: string;
+  quantityFt: number;
+  actionType: string;
+  manufacturerSnapshot: string | null;
+};
+
 export type InventoryMovementWithRelations = InventoryMovement & {
   item?: Item | null;
   sourceLocation?: Location | null;
   destinationLocation?: Location | null;
   project?: Project | null;
   supplierName?: string | null;
+  reelLines?: ReelMovementLine[];
 };
 
 export type ProjectWithStats = Project & {

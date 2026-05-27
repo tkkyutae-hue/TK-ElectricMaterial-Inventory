@@ -856,7 +856,32 @@ export class DatabaseStorage implements IStorage {
     if (filters?.projectId) result = result.filter(r => r.projectId === filters.projectId);
     if (filters?.movementType) result = result.filter(r => r.movementType === filters.movementType);
 
-    return result;
+    // Batch-fetch wire reel movement lines for all returned movements
+    const movementIds = result.map(r => r.id);
+    const reelLinesByMovement: Record<number, { reelIdText: string; quantityFt: number; actionType: string; manufacturerSnapshot: string | null }[]> = {};
+    if (movementIds.length > 0) {
+      const lines = await db.select({
+        movementId: wireReelMovementLines.movementId,
+        reelIdText: wireReelMovementLines.reelIdText,
+        quantityFt: wireReelMovementLines.quantityFt,
+        actionType: wireReelMovementLines.actionType,
+        manufacturerSnapshot: wireReelMovementLines.manufacturerSnapshot,
+      })
+      .from(wireReelMovementLines)
+      .where(inArray(wireReelMovementLines.movementId, movementIds));
+
+      for (const line of lines) {
+        if (!reelLinesByMovement[line.movementId]) reelLinesByMovement[line.movementId] = [];
+        reelLinesByMovement[line.movementId].push({
+          reelIdText: line.reelIdText,
+          quantityFt: line.quantityFt,
+          actionType: line.actionType,
+          manufacturerSnapshot: line.manufacturerSnapshot,
+        });
+      }
+    }
+
+    return result.map(r => ({ ...r, reelLines: reelLinesByMovement[r.id] ?? [] }));
   }
 
   async createInventoryMovement(

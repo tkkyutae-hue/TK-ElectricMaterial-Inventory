@@ -107,8 +107,8 @@ export default function ReelIdCleanup() {
   }, []);
 
   const renameMutation = useMutation({
-    mutationFn: async (reelDbIds: number[]) => {
-      const res = await apiRequest("PATCH", "/api/admin/reel-id-rename", { reelDbIds });
+    mutationFn: async (reelIds: number[]) => {
+      const res = await apiRequest("PATCH", "/api/admin/reel-id-rename", { reelIds });
       return res.json() as Promise<{ updated: number; skipped: number; errors: string[] }>;
     },
     onSuccess: (result) => {

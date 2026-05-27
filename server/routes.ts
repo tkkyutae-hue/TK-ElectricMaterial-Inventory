@@ -4066,11 +4066,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/admin/reel-id-rename", isAuthenticated, requireAdmin, async (req, res) => {
     try {
-      const { reelDbIds } = req.body;
-      if (!Array.isArray(reelDbIds) || reelDbIds.length === 0) {
-        return res.status(400).json({ message: "reelDbIds must be a non-empty array" });
+      const { reelIds } = req.body;
+      if (!Array.isArray(reelIds) || reelIds.length === 0) {
+        return res.status(400).json({ message: "reelIds must be a non-empty array" });
       }
-      const ids = reelDbIds.map(Number).filter(n => !isNaN(n) && n > 0);
+      const ids = reelIds.map(Number).filter(n => !isNaN(n) && n > 0);
       if (ids.length === 0) return res.status(400).json({ message: "No valid reel IDs provided" });
       const result = await storage.renameReelIds(ids);
       res.json(result);

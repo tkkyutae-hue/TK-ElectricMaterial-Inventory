@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocations, useSuppliers } from "@/hooks/use-reference-data";
+import { useLanguage } from "@/hooks/use-language";
 import { apiRequest } from "@/lib/queryClient";
 import type { CategoryGroupedItem } from "./types";
 import { parseWireConfig } from "@/lib/wire-config-utils";
@@ -97,6 +98,7 @@ interface WireItemReelSectionProps {
 }
 
 export function WireItemReelSection({ item }: WireItemReelSectionProps) {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
@@ -253,7 +255,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
               <label className="text-[11px] text-slate-500 font-medium block mb-1">
                 Reel ID <span className="text-red-400">*</span>
                 {reelIdIsAuto && (
-                  <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded font-semibold tracking-wide">AUTO</span>
+                  <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded font-semibold tracking-wide">{t.reelAutoLabel}</span>
                 )}
               </label>
               {reelIdIsAuto ? (
@@ -272,7 +274,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
                     placeholder="e.g. R-SC-008-BLK-001" className="h-8 text-sm font-mono"
                     data-testid={`input-reel-id-${item.id}`} />
                   {draft.reelId.includes("UNK") && (
-                    <p className="text-[10px] text-amber-600 mt-0.5 leading-tight">Color or size unknown — please edit before saving.</p>
+                    <p className="text-[10px] text-amber-600 mt-0.5 leading-tight">{t.reelUnkHint}</p>
                   )}
                 </>
               )}

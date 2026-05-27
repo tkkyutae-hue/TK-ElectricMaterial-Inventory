@@ -214,7 +214,7 @@ export interface IStorage {
   getNextRmsSeq(poNumber: string | null | undefined): Promise<number>;
   // Reel ID Cleanup
   getReelIdPreview(): Promise<ReelIdPreviewRow[]>;
-  renameReelIds(reelDbIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }>;
+  renameReelIds(reelIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3421,65 +3421,77 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async renameReelIds(reelDbIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }> {
+  async renameReelIds(reelIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }> {
     let updated = 0;
     let skipped = 0;
     const errors: string[] = [];
     const today = new Date().toISOString().slice(0, 10);
 
+    type PendingRename = {
+      reelDbId: number;
+      currentId: string;
+      proposed: string;
+      notes: string | null;
+    };
+
     await db.transaction(async (tx) => {
-      for (const reelDbId of reelDbIds) {
-        try {
-          const [reel] = await tx
-            .select()
-            .from(wireReels)
-            .leftJoin(items, eq(wireReels.itemId, items.id))
-            .where(eq(wireReels.id, reelDbId));
+      // ── Phase 1: classify all submitted reels (mirrors preview "ready" logic) ──
+      const pending: PendingRename[] = [];
+      const proposalCount = new Map<string, number>(); // proposed ID → count within batch
 
-          if (!reel) { errors.push(`Reel #${reelDbId} not found`); skipped++; continue; }
-          const currentId = reel.wire_reels.reelId;
-          const itemName = reel.items?.name ?? "";
-          const sizeLabel = reel.items?.sizeLabel ?? null;
+      for (const reelDbId of reelIds) {
+        const [reel] = await tx
+          .select()
+          .from(wireReels)
+          .leftJoin(items, eq(wireReels.itemId, items.id))
+          .where(eq(wireReels.id, reelDbId));
 
-          if (NEW_REEL_FORMAT.test(currentId)) { skipped++; continue; }
+        if (!reel) { errors.push(`Reel #${reelDbId} not found`); skipped++; continue; }
+        const currentId = reel.wire_reels.reelId;
+        const itemName = reel.items?.name ?? "";
+        const sizeLabel = reel.items?.sizeLabel ?? null;
 
-          if (!itemName) {
-            errors.push(`${currentId}: item record not found — cannot rename`);
-            skipped++; continue;
-          }
+        if (NEW_REEL_FORMAT.test(currentId)) { skipped++; continue; }
+        if (!itemName) { errors.push(`${currentId}: item record not found — cannot rename`); skipped++; continue; }
 
-          const seq = _extractSeqFromReelId(currentId);
-          if (seq === null) { errors.push(`${currentId}: cannot extract sequence`); skipped++; continue; }
+        const seq = _extractSeqFromReelId(currentId);
+        if (seq === null) { errors.push(`${currentId}: cannot extract sequence`); skipped++; continue; }
 
-          const { coreCode, sizeCode, configCode } = _deriveReelIdParts(itemName, sizeLabel);
-          if (sizeCode === "UNK" || configCode === "UNK") {
-            errors.push(`${currentId}: ambiguous (size or config unknown) — skipped`);
-            skipped++; continue;
-          }
-
-          const seqStr = String(seq).padStart(3, "0");
-          const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
-
-          const [existing] = await tx
-            .select({ id: wireReels.id })
-            .from(wireReels)
-            .where(and(eq(wireReels.reelId, proposed), ne(wireReels.id, reelDbId)));
-          if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
-
-          const existingNotes = (reel.wire_reels.notes || "").trim();
-          const note = `[renamed from ${currentId} → ${proposed} on ${today}]`;
-          const newNotes = existingNotes ? `${existingNotes}\n${note}` : note;
-
-          await tx
-            .update(wireReels)
-            .set({ reelId: proposed, notes: newNotes })
-            .where(eq(wireReels.id, reelDbId));
-
-          updated++;
-        } catch (err: any) {
-          errors.push(`Reel #${reelDbId}: ${err?.message ?? "unknown error"}`);
-          skipped++;
+        const { coreCode, sizeCode, configCode } = _deriveReelIdParts(itemName, sizeLabel);
+        if (sizeCode === "UNK" || configCode === "UNK") {
+          errors.push(`${currentId}: ambiguous (size or config unknown) — skipped`);
+          skipped++; continue;
         }
+
+        const seqStr = String(seq).padStart(3, "0");
+        const proposed = `R-${coreCode}-${sizeCode}-${configCode}-${seqStr}`;
+        pending.push({ reelDbId, currentId, proposed, notes: reel.wire_reels.notes });
+        proposalCount.set(proposed, (proposalCount.get(proposed) ?? 0) + 1);
+      }
+
+      // ── Phase 2: apply renames (skip batch dups + global conflicts) ──
+      for (const { reelDbId, currentId, proposed, notes } of pending) {
+        if ((proposalCount.get(proposed) ?? 1) > 1) {
+          errors.push(`${currentId}: proposed ${proposed} conflicts with another reel in this batch — skipped`);
+          skipped++; continue;
+        }
+
+        const [existing] = await tx
+          .select({ id: wireReels.id })
+          .from(wireReels)
+          .where(and(eq(wireReels.reelId, proposed), ne(wireReels.id, reelDbId)));
+        if (existing) { errors.push(`${currentId}: proposed ${proposed} already in use`); skipped++; continue; }
+
+        const existingNotes = (notes || "").trim();
+        const note = `[renamed from ${currentId} → ${proposed} on ${today}]`;
+        const newNotes = existingNotes ? `${existingNotes}\n${note}` : note;
+
+        await tx
+          .update(wireReels)
+          .set({ reelId: proposed, notes: newNotes })
+          .where(eq(wireReels.id, reelDbId));
+
+        updated++;
       }
     });
 

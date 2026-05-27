@@ -748,7 +748,7 @@ export default function FieldTransactions() {
                     <div
                       key={m.id}
                       data-testid={`field-tx-row-${m.id}`}
-                      onClick={() => toggleRow(m.id)}
+                      onClick={() => toggleExpand(m.id)}
                       style={{
                         padding: "10px 14px",
                         background: isSelected ? F.accentBg : idx % 2 === 0 ? F.surface2 : F.bg,
@@ -773,16 +773,24 @@ export default function FieldTransactions() {
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {m.createdAt && (
-                            <span style={{ fontSize: 10, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif" }}>
-                              {format(new Date(m.createdAt), "MMM d")} · {format(new Date(m.createdAt), "HH:mm")}
-                            </span>
-                          )}
+                          <div style={{ textAlign: "right" }}>
+                            {m.createdAt && (
+                              <span style={{ fontSize: 10, color: F.textMuted, fontFamily: "'Barlow Condensed', sans-serif", display: "block" }}>
+                                {format(new Date(m.createdAt), "MMM d")} · {format(new Date(m.createdAt), "HH:mm")}
+                              </span>
+                            )}
+                            {mx.createdByName && (
+                              <span style={{ fontSize: 9, color: F.textDim, display: "block" }}>
+                                {mx.createdByName}
+                              </span>
+                            )}
+                          </div>
                           <div
                             role="checkbox"
                             aria-checked={isSelected}
                             data-testid={`field-checkbox-sel-${m.id}`}
-                            style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                            onClick={e => { e.stopPropagation(); toggleRow(m.id); }}
+                            style={{ width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${isSelected ? F.accent : F.textDim}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                           >
                             {isSelected && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke={F.accentText} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
@@ -807,6 +815,14 @@ export default function FieldTransactions() {
                           {item?.unitOfMeasure && (
                             <span style={{ display: "block", fontSize: 9, color: F.textMuted, textTransform: "uppercase", marginTop: 1 }}>
                               {item.unitOfMeasure}
+                            </span>
+                          )}
+                          {reelLines.length > 0 && (
+                            <span
+                              data-testid={`field-reel-count-mobile-${m.id}`}
+                              style={{ display: "block", fontSize: 9, color: "#a78bfa", fontWeight: 600, marginTop: 1 }}
+                            >
+                              · {reelLines.length} {reelLines.length === 1 ? "reel" : "reels"}
                             </span>
                           )}
                         </div>
@@ -864,37 +880,38 @@ export default function FieldTransactions() {
                         </p>
                       )}
 
-                      {/* Row 7: reel expand toggle (only for items with reel lines) */}
-                      {reelLines.length > 0 && (
-                        <button
-                          type="button"
-                          data-testid={`field-btn-expand-${m.id}`}
-                          onClick={e => { e.stopPropagation(); toggleExpand(m.id); }}
+                      {/* Row 7: reel expand toggle — always visible */}
+                      <button
+                        type="button"
+                        data-testid={`field-btn-expand-${m.id}`}
+                        onClick={e => { e.stopPropagation(); toggleExpand(m.id); }}
+                        style={{
+                          marginTop: 8, display: "flex", alignItems: "center", gap: 5,
+                          background: isExpanded ? "rgba(167,139,250,0.12)" : "rgba(167,139,250,0.06)",
+                          border: `1px solid ${isExpanded ? "rgba(167,139,250,0.35)" : "rgba(167,139,250,0.15)"}`,
+                          borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                          fontSize: 10, fontWeight: 700, color: isExpanded ? "#a78bfa" : F.textDim,
+                          fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em",
+                          width: "100%", justifyContent: "space-between",
+                          transition: "background 0.15s, border-color 0.15s, color 0.15s",
+                        }}
+                      >
+                        <span>
+                          {reelLines.length > 0
+                            ? `${reelLines.length} ${reelLines.length === 1 ? "REEL" : "REELS"}`
+                            : "REEL DETAILS"}
+                        </span>
+                        <ChevronDown
                           style={{
-                            marginTop: 8, display: "flex", alignItems: "center", gap: 5,
-                            background: isExpanded ? "rgba(167,139,250,0.12)" : "rgba(167,139,250,0.06)",
-                            border: `1px solid ${isExpanded ? "rgba(167,139,250,0.35)" : "rgba(167,139,250,0.18)"}`,
-                            borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                            fontSize: 10, fontWeight: 700, color: "#a78bfa",
-                            fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em",
-                            width: "100%", justifyContent: "space-between",
+                            width: 12, height: 12,
+                            transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.2s",
                           }}
-                        >
-                          <span>
-                            {reelLines.length} {reelLines.length === 1 ? "REEL" : "REELS"}
-                          </span>
-                          <ChevronDown
-                            style={{
-                              width: 12, height: 12,
-                              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                              transition: "transform 0.2s",
-                            }}
-                          />
-                        </button>
-                      )}
+                        />
+                      </button>
 
                       {/* Row 8: reel expansion panel */}
-                      {isExpanded && reelLines.length > 0 && (
+                      {isExpanded && (
                         <div
                           data-testid={`field-expand-panel-${m.id}`}
                           style={{
@@ -905,33 +922,41 @@ export default function FieldTransactions() {
                           }}
                           onClick={e => e.stopPropagation()}
                         >
-                          <p style={{ fontSize: 9, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-                            Reel Details
-                          </p>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            {reelLines.map((rl: any, rlIdx: number) => (
-                              <div
-                                key={rlIdx}
-                                data-testid={`field-reel-line-${m.id}-${rlIdx}`}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: 6,
-                                  background: F.surface, border: "1px solid rgba(167,139,250,0.18)",
-                                  borderRadius: 5, padding: "4px 8px",
-                                  fontSize: 11, color: F.text,
-                                }}
-                              >
-                                <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#a78bfa", flexShrink: 0 }}>{rl.reelIdText}</span>
-                                <span style={{ color: F.textDim, flexShrink: 0 }}>·</span>
-                                <span style={{ fontWeight: 600, flexShrink: 0 }}>{rl.quantityFt.toLocaleString()} FT</span>
-                                {rl.manufacturerSnapshot && (
-                                  <>
+                          {reelLines.length === 0 ? (
+                            <p style={{ fontSize: 11, color: F.textDim, fontStyle: "italic", margin: 0 }}>
+                              Reel breakdown is not available for this movement.
+                            </p>
+                          ) : (
+                            <>
+                              <p style={{ fontSize: 9, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+                                Reel Details
+                              </p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                {reelLines.map((rl: any, rlIdx: number) => (
+                                  <div
+                                    key={rlIdx}
+                                    data-testid={`field-reel-line-${m.id}-${rlIdx}`}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 6,
+                                      background: F.surface, border: "1px solid rgba(167,139,250,0.18)",
+                                      borderRadius: 5, padding: "4px 8px",
+                                      fontSize: 11, color: F.text,
+                                    }}
+                                  >
+                                    <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#a78bfa", flexShrink: 0 }}>{rl.reelIdText}</span>
                                     <span style={{ color: F.textDim, flexShrink: 0 }}>·</span>
-                                    <span style={{ color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rl.manufacturerSnapshot}</span>
-                                  </>
-                                )}
+                                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{rl.quantityFt.toLocaleString()} FT</span>
+                                    {rl.manufacturerSnapshot && (
+                                      <>
+                                        <span style={{ color: F.textDim, flexShrink: 0 }}>·</span>
+                                        <span style={{ color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rl.manufacturerSnapshot}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1015,11 +1040,13 @@ export default function FieldTransactions() {
                       <Fragment key={m.id}>
                       <tr
                         data-testid={`field-tx-row-${m.id}`}
+                        onClick={() => toggleExpand(m.id)}
                         style={{
                           background: isSelected ? F.accentBg : F.surface2,
                           borderBottom: `1px solid ${F.border}`,
                           borderLeft: isSelected ? `3px solid ${F.accent}` : "3px solid transparent",
                           transition: "background 0.1s",
+                          cursor: "pointer",
                         }}
                         onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface; }}
                         onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = F.surface2; }}
@@ -1156,6 +1183,11 @@ export default function FieldTransactions() {
                                   style={{ marginTop: 3, display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.28)", color: "#a78bfa", padding: "1px 5px", borderRadius: 3, fontSize: 7, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "default" }}
                                 >
                                   ✎ {t.fieldTxnEditedTag}
+                                </span>
+                              )}
+                              {mx.createdByName && (
+                                <span style={{ fontSize: 9, color: F.textDim, marginTop: 2, display: "block" }}>
+                                  {mx.createdByName}
                                 </span>
                               )}
                             </div>

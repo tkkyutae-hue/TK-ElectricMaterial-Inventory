@@ -1,5 +1,6 @@
 import { useRoute } from "wouter";
 import { BRAND_ABBREV, abbreviateWord, generateReelId } from "@/lib/reel-utils";
+import { parseWireConfig } from "@/lib/wire-config-utils";
 import { shouldShowReelUI } from "@/lib/reelEligibility";
 import { useItem, useDeleteItem, useUpdateItem } from "@/hooks/use-items";
 import { useCategories, useLocations, useSuppliers } from "@/hooks/use-reference-data";
@@ -708,6 +709,16 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
+function WireConfigBadge({ coreType }: { coreType: string | null }) {
+  if (!coreType) return <span className="text-slate-300 text-xs">—</span>;
+  const isMulti = coreType === "Multi Core";
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${isMulti ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>
+      {coreType}
+    </span>
+  );
+}
+
 type WireReelInlineHandle = {
   saveAll: () => Promise<void>;
   discardAll: () => void;
@@ -739,6 +750,7 @@ function WireReelInlineInner(
   });
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
+  const wireConfig = parseWireConfig(item);
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
@@ -1012,8 +1024,8 @@ function WireReelInlineInner(
             <table className="w-full text-sm" style={{ tableLayout: "auto" }}>
               <thead>
                 <tr className="bg-white border-b border-slate-100">
-                  {[t.itemDetailReelHeader, t.itemDetailLengthFt, t.itemDetailBrand, t.itemDetailLocation, t.itemDetailStatusCol, ""].map((h, idx) => (
-                    <th key={idx} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${idx === 1 ? "text-right" : idx === 4 ? "text-center" : idx === 5 ? "" : "text-left"}`}>{h}</th>
+                  {[t.itemDetailReelHeader, "Core Type", "Size", "Conductors / Color", t.itemDetailLengthFt, t.itemDetailBrand, t.itemDetailLocation, t.itemDetailStatusCol, ""].map((h, idx) => (
+                    <th key={idx} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${idx === 4 ? "text-right" : idx === 7 ? "text-center" : idx === 8 ? "" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1027,6 +1039,9 @@ function WireReelInlineInner(
                       {isBulkEdit && draft ? (
                         <>
                           <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-400 whitespace-nowrap">{draft.reelId}</td>
+                          <td className="px-3 py-1.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.sizeLabel || "—"}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.conductorColorLabel || "—"}</td>
                           <td className="px-3 py-1.5">
                             <Input type="number" min={0} value={draft.lengthFt} onChange={e => updateRowDraft(reel.id, "lengthFt", e.target.value)} className="h-7 text-xs text-right w-20" data-testid={`input-bulk-reel-length-${reel.id}`} />
                           </td>
@@ -1071,6 +1086,9 @@ function WireReelInlineInner(
                           <td className="px-3 py-1.5">
                             <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-28" data-testid={`input-edit-reel-id-${reel.id}`} />
                           </td>
+                          <td className="px-3 py-1.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.sizeLabel || "—"}</td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.conductorColorLabel || "—"}</td>
                           <td className="px-3 py-1.5">
                             <Input type="number" min={0} value={editDraft.lengthFt} onChange={e => setEditDraft(d => ({ ...d, lengthFt: e.target.value }))} className="h-7 text-xs text-right w-20" data-testid={`input-edit-reel-length-${reel.id}`} />
                           </td>
@@ -1109,6 +1127,9 @@ function WireReelInlineInner(
                       ) : (
                         <>
                           <td className="px-4 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
+                          <td className="px-3 py-2.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
+                          <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{wireConfig.sizeLabel || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{wireConfig.conductorColorLabel || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
@@ -1127,6 +1148,7 @@ function WireReelInlineInner(
               <tfoot>
                 <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
                   <td className="px-4 py-2.5 font-semibold text-brand-700 text-sm">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
+                  <td colSpan={3} />
                   <td className="px-4 py-2.5 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
                   <td colSpan={4} />
                 </tr>

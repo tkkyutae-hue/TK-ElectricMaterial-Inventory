@@ -1,0 +1,126 @@
+Implement Phase 1 of Reel Inventory readability improvement.
+
+Context:
+Replit audit confirmed:
+- wire_reels stores reel_id, length_ft, brand, supplier_id, location_id, status, notes, is_active, timestamps.
+- items stores sizeLabel and name.
+- There are no structured DB columns yet for core type, conductor count/configuration, or color.
+- Movement logic uses wire_reels.id numeric DB primary key, not reel_id string.
+- Therefore changing display columns is safe, but do not change reel quantity or movement logic.
+
+Goal:
+Improve Reel Inventory table readability by showing:
+- Core Type
+- Size
+- Conductors / Color
+
+This phase is read-only UI only.
+No DB migration.
+No Reel ID format change.
+No movement or quantity logic change.
+
+Files likely involved:
+- client/src/pages/ItemDetails.tsx
+- client/src/components/category/WireItemReelSection.tsx
+- client/src/pages/field/FieldInventory.tsx only if it already displays reel details
+- optionally add client/src/lib/wire-config-utils.ts
+
+Do not:
+- Do not change shared/schema.ts.
+- Do not add DB columns.
+- Do not change generateReelId().
+- Do not change getNextReelSeq().
+- Do not change wire_reels.length_ft.
+- Do not change syncItemQtyFromReels().
+- Do not change confirmDraft() movement deduction.
+- Do not change items.quantityOnHand sync.
+- Do not rename existing reel_id values.
+- Do not change reel create/update/delete behavior.
+
+Add a client-side helper:
+parseWireConfig(item)
+
+Input:
+- item.name
+- item.sizeLabel
+- item.baseItemName if useful
+
+Output:
+{
+  coreTypeLabel: string | null,
+  sizeLabel: string | null,
+  conductorColorLabel: string | null
+}
+
+Parsing rules:
+1. Size:
+- Prefer item.sizeLabel.
+- Display with # prefix for AWG if needed.
+- Keep 1/0, 2/0, 3/0, 4/0 readable.
+- Keep 250, 350, 500 as kcmil if item name implies kcmil or large conductor.
+
+2. Multi Core:
+If item.name contains patterns like:
+- (4C+G)
+- 4C+G
+- 3C+G
+- 2C
+- 3C
+- 4C
+Then:
+- coreTypeLabel = "Multi Core"
+- conductorColorLabel = matched config, e.g. "4C+G"
+
+3. Single Core:
+If no multi-core conductor config is found:
+- coreTypeLabel = "Single Core" for wire/cable items where unit is FT or reel UI is shown.
+- conductorColorLabel can be detected from color words:
+  - Green / GRN / Ground → "Green" or "Ground"
+  - Black / BLK → "Black"
+  - White / WHT → "White"
+  - Red → "Red"
+  - Blue / BLU → "Blue"
+  - Brown, Orange, Yellow, Gray if found
+- If no color is found, show "—".
+
+4. Fallback:
+If parsing fails:
+- show "—"
+- do not crash
+- do not block reel display
+
+Update ItemDetails Reel Inventory table:
+Current columns:
+REEL ID | LENGTH (FT) | BRAND | LOCATION | STATUS
+
+New columns:
+REEL ID | CORE TYPE | SIZE | CONDUCTORS / COLOR | LENGTH (FT) | BRAND | LOCATION | STATUS
+
+Keep table compact.
+Use overflow-x-auto if needed.
+Core Type can be a small badge:
+- Single Core
+- Multi Core
+Size should be clear, e.g. #8, #12, 500 kcmil.
+Conductors / Color should show 4C+G, 3C, Green, Black, etc.
+
+Update WireItemReelSection similarly if it has a reel table:
+REEL ID | CORE TYPE | SIZE | CONDUCTORS / COLOR | LENGTH (FT) | BRAND | SUPPLIER | LOCATION | STATUS | NOTES
+
+Do not make the table visually crowded.
+Keep columns narrow and readable.
+
+Manual verification:
+1. Open a multi-core item like #8(4C+G) THHN/THWN-2 600V.
+   - Core Type shows Multi Core.
+   - Size shows #8.
+   - Conductors / Color shows 4C+G.
+2. Open a single-core ground wire item.
+   - Core Type shows Single Core.
+   - Size shows correct size.
+   - Conductors / Color shows Green/Ground if detectable.
+3. Existing reel_id values display unchanged.
+4. Reel lengths and totals unchanged.
+5. Add/Edit/Delete reel behavior unchanged.
+6. Movement issue/receive behavior unchanged.
+7. No DB migration is created.

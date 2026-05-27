@@ -1,0 +1,156 @@
+Audit the current Reel Inventory / Wire Reel implementation and tell me how to redesign Reel ID so single-core, multi-core, size, and conductor configuration are visible at a glance.
+
+Context:
+This is an electrical material inventory app.
+For cable/wire items, each item can have reel inventory.
+Current Item Detail screen shows a Reel Inventory table with columns like:
+- Reel ID
+- Length (FT)
+- Brand
+- Location
+- Status
+
+Example current Reel ID:
+MC T6-#8-XX-R001
+
+Problem:
+The current Reel ID does not clearly show:
+- Single-core vs multi-core
+- Wire/cable size
+- Number of conductors
+- Ground included or not
+- Color/configuration where relevant
+
+I want Reel Inventory to be easier to read for field/admin users.
+
+Desired direction:
+Reel Inventory should display information like this:
+
+For multi-core cable:
+Reel ID: R-MC-008-4CG-001
+Core Type: Multi Core
+Size: #8
+Conductors: 4C+G
+Length: 1,480 FT
+Location: Warehouse
+Status: New
+
+For single-core wire:
+Reel ID: R-SC-012-GRN-001
+Core Type: Single Core
+Size: #12
+Conductors/Color: 1C Green
+Length: 500 FT
+Location: Warehouse
+Status: New
+
+For large wire:
+Reel ID: R-SC-500-BLK-001
+Core Type: Single Core
+Size: 500 kcmil
+Conductors/Color: 1C Black
+
+Important:
+Do NOT implement changes yet.
+This is an audit / planning task only.
+I want to understand the current code and DB structure first.
+
+Please inspect:
+- shared/schema.ts
+- server/storage.ts
+- server/routes.ts
+- Item Detail page reel inventory UI
+- any wire reel / reel inventory related components
+- any movement logic that uses reels
+- any export/report logic that uses reels
+
+Questions to answer:
+
+1. Current data model
+- What table stores reel inventory?
+- What columns exist now?
+- Is Reel ID stored as a string only?
+- Does the DB already store item size, conductor count, color, core type, or cable configuration separately?
+- Are those values only available from item name / sizeLabel parsing?
+
+2. Current Reel ID generation
+- Where is Reel ID generated?
+- Is it automatic or manual?
+- What format is currently used?
+- Does the app rely on Reel ID format for any logic, or is it just display/search?
+
+3. Current UI
+- Where is the Reel Inventory table rendered?
+- Can we add columns without breaking layout?
+- Recommended new columns:
+  - Reel ID
+  - Core Type
+  - Size
+  - Conductors / Color
+  - Length
+  - Brand
+  - Location
+  - Status
+
+4. Recommended design
+Propose the safest way to support readable reel information.
+
+Preferred:
+- Do not rely only on parsing Reel ID strings.
+- Store structured fields if needed:
+  - coreType: single_core | multi_core
+  - wireSize
+  - conductorConfig
+  - color
+  - reelSequence
+- Keep Reel ID as a generated/display/search identifier.
+- Allow manual override only if currently supported safely.
+
+5. Migration risk
+If new columns are needed:
+- Explain which table needs columns.
+- Explain how to backfill existing reels.
+- Explain whether existing Reel IDs can be parsed safely.
+- Identify any data that cannot be reliably inferred.
+
+6. Backward compatibility
+- Existing reels must not break.
+- Existing Reel IDs should continue to display.
+- If structured fields are missing, UI should fallback gracefully.
+- Do not change movement quantity logic.
+- Do not change inventory totals.
+- Do not change wire reel length calculations.
+
+7. Suggested phased plan
+Provide a phased implementation plan:
+Phase 1:
+- Add UI columns using parsed/fallback values if possible, no DB migration if safe.
+
+Phase 2:
+- Add structured DB fields for coreType, wireSize, conductorConfig, color if needed.
+
+Phase 3:
+- Add improved Reel ID generator:
+  R-[SC/MC]-[SIZE]-[CONFIG]-[SEQ]
+
+Phase 4:
+- Add validation and cleanup tools for existing reels.
+
+8. Risks
+List risks:
+- parsing item names incorrectly
+- changing Reel ID format and breaking existing references
+- movement logic depending on current Reel ID
+- duplicate Reel IDs
+- confusing 1/0, 2/0, 3/0 notation
+- barcode/search compatibility
+
+Output:
+Please return:
+- Current implementation summary
+- Relevant file paths and functions
+- Whether DB migration is required
+- Recommended Reel ID format
+- Recommended UI table columns
+- Suggested safe implementation phases
+- What NOT to change

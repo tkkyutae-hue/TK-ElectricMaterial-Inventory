@@ -17,6 +17,7 @@ import { FilterChip } from "@/components/shared/FilterChip";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveReelMode } from "@/lib/reelEligibility";
+import { parseWireConfig } from "@/lib/wire-config-utils";
 import { useFieldTheme } from "@/hooks/use-field-theme";
 import type { FieldToken } from "@/lib/fieldTokens";
 import FieldCartReview from "./FieldCartReview";
@@ -207,7 +208,7 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
 
 // ─── Reel Row ────────────────────────────────────────────────────────────────
 
-function ReelRow({ reel }: { reel: FieldWireReel }) {
+function ReelRow({ reel, coreType, conductorColor }: { reel: FieldWireReel; coreType?: string | null; conductorColor?: string | null }) {
   const { F } = useFieldTheme();
   const REEL_STATUS_DOT: Record<string, { color: string }> = {
     new:      { color: F.accent  },
@@ -215,15 +216,25 @@ function ReelRow({ reel }: { reel: FieldWireReel }) {
     depleted: { color: F.danger  },
   };
   const dot = REEL_STATUS_DOT[reel.status || ""] || { color: F.textMuted };
+  const configLabel = coreType
+    ? `${coreType === "Multi Core" ? "MC" : "SC"}${conductorColor ? ` · ${conductorColor}` : ""}`
+    : null;
   return (
     <div style={{
       background: F.surface2, border: `1px solid ${F.border}`, borderRadius: 9,
       padding: "9px 12px", display: "flex", alignItems: "center", gap: 10,
     }}>
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: dot.color, flexShrink: 0, boxShadow: `0 0 5px ${dot.color}80` }} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: F.text, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5, flex: "0 0 auto", minWidth: 64 }}>
-        {reel.reelId}
-      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: "0 0 auto", minWidth: 64 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: F.text, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.5 }}>
+          {reel.reelId}
+        </span>
+        {configLabel && (
+          <span style={{ fontSize: 9, color: F.textDim, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 0.3 }}>
+            {configLabel}
+          </span>
+        )}
+      </div>
       <span style={{ fontSize: 15, fontWeight: 700, color: F.accent, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>
         {reel.lengthFt.toLocaleString()} FT
       </span>
@@ -250,6 +261,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
   const [, navigate] = useLocation();
   const { isManagerOrAbove, canDoMovements } = useAuth();
   const isReelItem = resolveReelMode(item);
+  const wireConfig = parseWireConfig(item);
   const isMobile = useIsMobile();
   const [imgEnlarged, setImgEnlarged] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
@@ -536,7 +548,7 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {reels.map(reel => <ReelRow key={reel.id} reel={reel} />)}
+                  {reels.map(reel => <ReelRow key={reel.id} reel={reel} coreType={wireConfig.coreTypeLabel} conductorColor={wireConfig.conductorColorLabel} />)}
                 </div>
               )}
             </div>

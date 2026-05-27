@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocations, useSuppliers } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 import type { CategoryGroupedItem } from "./types";
+import { parseWireConfig } from "@/lib/wire-config-utils";
 
 // ── Local types ───────────────────────────────────────────────────────────────
 
@@ -66,6 +67,16 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
+function WireConfigBadge({ coreType }: { coreType: string | null }) {
+  if (!coreType) return <span className="text-slate-300 text-xs">—</span>;
+  const isMulti = coreType === "Multi Core";
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${isMulti ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>
+      {coreType}
+    </span>
+  );
+}
+
 // ── WireItemReelSection ───────────────────────────────────────────────────────
 
 interface WireItemReelSectionProps {
@@ -92,6 +103,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
   });
 
   const totalFt = reels.reduce((s, r) => s + r.lengthFt, 0);
+  const wireConfig = parseWireConfig(item);
 
   const invalidateReelData = () => {
     qc.invalidateQueries({ queryKey: ["/api/wire-reels", item.id] });
@@ -283,7 +295,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
           <table className="w-full text-xs" style={{ tableLayout: "auto" }}>
             <thead>
               <tr className="bg-white border-b border-slate-100">
-                {["Reel ID", "Length (FT)", "Brand", "Supplier", "Location", "Status", "Notes", ""].map(h => (
+                {["Reel ID", "Core Type", "Size", "Conductors / Color", "Length (FT)", "Brand", "Supplier", "Location", "Status", "Notes", ""].map(h => (
                   <th key={h} className={`px-3 py-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] ${h === "Length (FT)" ? "text-right" : h === "Status" ? "text-center" : h === "" ? "" : "text-left"}`}>{h}</th>
                 ))}
               </tr>
@@ -298,6 +310,9 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
                         <td className="px-2 py-1">
                           <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-24" data-testid={`input-edit-reel-id-${reel.id}`} />
                         </td>
+                        <td className="px-2 py-1"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
+                        <td className="px-2 py-1 text-xs text-slate-400 whitespace-nowrap">{wireConfig.sizeLabel || "—"}</td>
+                        <td className="px-2 py-1 text-xs text-slate-400 whitespace-nowrap">{wireConfig.conductorColorLabel || "—"}</td>
                         <td className="px-2 py-1">
                           <Input type="number" min={0} value={editDraft.lengthFt} onChange={e => setEditDraft(d => ({ ...d, lengthFt: e.target.value }))} className="h-7 text-xs text-right w-16" data-testid={`input-edit-reel-length-${reel.id}`} />
                         </td>
@@ -348,6 +363,9 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
                     ) : (
                       <>
                         <td className="px-3 py-2 font-mono font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
+                        <td className="px-2 py-2"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
+                        <td className="px-2 py-2 text-slate-600 whitespace-nowrap">{wireConfig.sizeLabel || <span className="text-slate-300">—</span>}</td>
+                        <td className="px-2 py-2 text-slate-600 whitespace-nowrap">{wireConfig.conductorColorLabel || <span className="text-slate-300">—</span>}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
                         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
                         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
@@ -373,6 +391,7 @@ export function WireItemReelSection({ item }: WireItemReelSectionProps) {
             <tfoot>
               <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
                 <td className="px-3 py-2 font-semibold text-brand-700 text-[11px]">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
+                <td colSpan={3} />
                 <td className="px-3 py-2 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
                 <td colSpan={6} />
               </tr>

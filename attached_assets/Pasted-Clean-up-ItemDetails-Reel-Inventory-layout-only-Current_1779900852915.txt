@@ -1,0 +1,112 @@
+Clean up ItemDetails Reel Inventory layout only.
+
+Current issue:
+The ItemDetails Reel Inventory table is too wide and has horizontal scrolling.
+It repeats item-level information on every reel row:
+- Core Type
+- Size
+- Conductors / Color
+
+These values are the same for every reel under the same item, so they should not be repeated as table columns.
+
+Goal:
+Make the Reel Inventory section compact and easier to read.
+
+Files likely involved:
+- client/src/pages/ItemDetails.tsx
+- client/src/lib/wire-config-utils.ts
+- client/src/lib/reel-utils.ts
+
+Do not:
+- Do not change database schema.
+- Do not change reel_id values.
+- Do not change Reel ID Cleanup logic.
+- Do not change movement logic.
+- Do not change quantity sync.
+- Do not change wire_reels.length_ft.
+- Do not change add/delete/restore reel behavior.
+
+Required changes:
+
+1. Reel Inventory section header
+
+Show item-level wire metadata once in the section header.
+
+Example:
+REEL INVENTORY · 3 reels · 5,622 FT total
+Multi Core · #10 · 2C+G
+
+Use existing parseWireConfig() from:
+client/src/lib/wire-config-utils.ts
+
+If a value is missing, show only the available values.
+
+2. Remove repeated table columns
+
+Remove these columns from the reel table:
+- Core Type
+- Size
+- Conductors / Color
+
+3. Compact reel table columns
+
+Use this table structure:
+- Reel ID
+- Length
+- Manufacturer
+- Supplier
+- Location
+- Status
+
+Important label rule:
+- wire_reels.brand should display as Manufacturer
+- supplier should display as Supplier
+
+Do not call manufacturer "supplier."
+Do not call supplier "brand."
+
+4. Reel ID badges
+
+Keep the new/legacy badge next to the Reel ID.
+
+Examples:
+R-MC-010-2CG-004  NEW
+MCCT6-#10-XX-R002 LEGACY
+
+NEW = subtle green badge
+LEGACY = subtle amber badge
+
+Do not make LEGACY look like an error.
+
+5. Horizontal scroll
+
+Avoid horizontal scroll on normal desktop width.
+If needed, reduce column spacing or allow text wrapping.
+On smaller screens, responsive wrapping/card layout is acceptable.
+
+6. Add Reel form
+
+Keep Add Reel form compact.
+
+Fields:
+- Reel ID
+- Length FT
+- Manufacturer
+- Supplier if currently supported
+- Location
+- Status
+- Notes if already supported
+
+Do not put Manufacturer into the Reel ID.
+Do not regenerate Reel ID when Manufacturer changes.
+
+Manual verification:
+1. Open ItemDetails for a reel-tracked cable/wire item.
+2. Header shows item-level metadata once:
+   Multi Core · #10 · 2C+G
+3. Table no longer has Core Type / Size / Conductors columns.
+4. Table shows Reel ID, Length, Manufacturer, Supplier, Location, Status.
+5. New/Legacy badge still appears.
+6. Horizontal scroll is gone on normal desktop width.
+7. Add Reel still works.
+8. Reel length and quantity totals are unchanged.

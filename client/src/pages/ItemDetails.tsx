@@ -675,6 +675,7 @@ type WireReelLocal = {
 type AddReelDraft = {
   lengthFt: string;
   brand: string;
+  supplierId: string;
   locationId: string;
   status: "new" | "used";
 };
@@ -696,8 +697,12 @@ const REEL_STATUS_LABELS: Record<string, string> = {
 };
 
 const BLANK_REEL_DRAFT: AddReelDraft = {
-  lengthFt: "", brand: "", locationId: "", status: "new",
+  lengthFt: "", brand: "", supplierId: "", locationId: "", status: "new",
 };
+
+function isNewReelId(reelId: string): boolean {
+  return /^R-(SC|MC)-[A-Z0-9]+-[A-Z0-9]+-\d{3}$/.test(reelId);
+}
 
 
 function ReelStatusBadge({ status }: { status: string | null }) {
@@ -709,15 +714,6 @@ function ReelStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function WireConfigBadge({ coreType }: { coreType: string | null }) {
-  if (!coreType) return <span className="text-slate-300 text-xs">—</span>;
-  const isMulti = coreType === "Multi Core";
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${isMulti ? "bg-amber-100 text-amber-700" : "bg-sky-100 text-sky-700"}`}>
-      {coreType}
-    </span>
-  );
-}
 
 type WireReelInlineHandle = {
   saveAll: () => Promise<void>;
@@ -780,6 +776,7 @@ function WireReelInlineInner(
           reelId: generateReelId(item, row.brand, firstSeq + i),
           lengthFt: parseInt(row.lengthFt) || 0,
           brand: row.brand.trim() || null,
+          supplierId: row.supplierId ? parseInt(row.supplierId) : null,
           locationId: row.locationId ? parseInt(row.locationId) : null,
           status: row.status,
         })),
@@ -910,14 +907,22 @@ function WireReelInlineInner(
     <div data-testid={`wire-reel-section-${item.id}`}>
       {/* Inline header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-brand-600" />
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t.itemDetailReelInventory}</span>
-          {!isLoading && reels.length > 0 && (
-            <span className="text-xs text-slate-400 font-normal">
-              {reels.length} {reels.length !== 1 ? t.itemDetailReels : t.itemDetailReel} · {totalFt.toLocaleString()} {t.itemDetailFtTotal}
-            </span>
-          )}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-brand-600" />
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{t.itemDetailReelInventory}</span>
+            {!isLoading && reels.length > 0 && (
+              <span className="text-xs text-slate-400 font-normal">
+                {reels.length} {reels.length !== 1 ? t.itemDetailReels : t.itemDetailReel} · {totalFt.toLocaleString()} {t.itemDetailFtTotal}
+              </span>
+            )}
+          </div>
+          {(() => {
+            const parts = [wireConfig.coreTypeLabel, wireConfig.sizeLabel, wireConfig.conductorColorLabel].filter(Boolean);
+            return parts.length > 0 ? (
+              <span className="text-[11px] text-slate-400 ml-6">{parts.join(" · ")}</span>
+            ) : null;
+          })()}
         </div>
         <button
           className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-800 transition-colors"
@@ -933,17 +938,18 @@ function WireReelInlineInner(
         {showAdd && (
           <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-3">
             {/* Column headers */}
-            <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
+            <div className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 80px 100px 110px 110px 80px 28px" }}>
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailReelHeader}</span>
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailLengthFt}</span>
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailBrand}</span>
+              <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailSupplier}</span>
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailLocation}</span>
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">{t.itemDetailStatusCol}</span>
               <span />
             </div>
 
             {rows.map((row, i) => (
-              <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 90px 110px 130px 90px 28px" }}>
+              <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 80px 100px 110px 110px 80px 28px" }}>
                 <Input
                   value={nextSeqData?.nextSeq != null ? generateReelId(item, row.brand, nextSeqData.nextSeq + i) : (nextSeqLoading ? "Loading…" : "—")}
                   readOnly
@@ -962,6 +968,16 @@ function WireReelInlineInner(
                   placeholder={t.itemDetailReelBrandPh} className="h-8 text-sm"
                   data-testid={`input-reel-brand-${item.id}-${i}`}
                 />
+                <Select
+                  value={row.supplierId || "__none__"}
+                  onValueChange={v => setRows(rs => rs.map((r, j) => j === i ? { ...r, supplierId: v === "__none__" ? "" : v } : r))}
+                >
+                  <SelectTrigger className="h-8 text-sm" data-testid={`select-reel-supplier-${item.id}-${i}`}><SelectValue placeholder={t.itemDetailNoneDash} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{t.itemDetailNoneDash}</SelectItem>
+                    {(suppliers as any[] ?? []).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 <Select
                   value={row.locationId || "__none__"}
                   onValueChange={v => setRows(rs => rs.map((r, j) => j === i ? { ...r, locationId: v === "__none__" ? "" : v } : r))}
@@ -1033,8 +1049,8 @@ function WireReelInlineInner(
             <table className="w-full text-sm" style={{ tableLayout: "auto" }}>
               <thead>
                 <tr className="bg-white border-b border-slate-100">
-                  {[t.itemDetailReelHeader, "Core Type", "Size", "Conductors / Color", t.itemDetailLengthFt, t.itemDetailBrand, t.itemDetailLocation, t.itemDetailStatusCol, ""].map((h, idx) => (
-                    <th key={idx} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${idx === 4 ? "text-right" : idx === 7 ? "text-center" : idx === 8 ? "" : "text-left"}`}>{h}</th>
+                  {[t.itemDetailReelHeader, t.itemDetailLengthFt, t.itemDetailBrand, t.itemDetailSupplier, t.itemDetailLocation, t.itemDetailStatusCol, ""].map((h, idx) => (
+                    <th key={idx} className={`px-4 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[11px] ${idx === 1 ? "text-right" : idx === 5 ? "text-center" : idx === 6 ? "" : "text-left"}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1047,16 +1063,17 @@ function WireReelInlineInner(
                     <tr key={reel.id} className={`transition-colors ${isBulkEdit || isRowEdit ? "bg-slate-50" : "hover:bg-slate-50"}`} data-testid={`row-reel-${reel.id}`}>
                       {isBulkEdit && draft ? (
                         <>
-                          <td className="px-3 py-1.5 font-mono text-xs font-semibold text-slate-400 whitespace-nowrap">{draft.reelId}</td>
-                          <td className="px-3 py-1.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
-                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.sizeLabel || "—"}</td>
-                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.conductorColorLabel || "—"}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            <span className="font-mono text-xs font-semibold text-slate-400">{draft.reelId}</span>
+                            {isNewReelId(draft.reelId) ? <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded font-semibold tracking-wide">NEW</span> : <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-amber-100 text-amber-700 rounded font-semibold tracking-wide">LEGACY</span>}
+                          </td>
                           <td className="px-3 py-1.5">
                             <Input type="number" min={0} value={draft.lengthFt} onChange={e => updateRowDraft(reel.id, "lengthFt", e.target.value)} className="h-7 text-xs text-right w-20" data-testid={`input-bulk-reel-length-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
                             <Input value={draft.brand} onChange={e => updateRowDraft(reel.id, "brand", e.target.value)} placeholder={t.itemDetailBrandColPh} className="h-7 text-xs w-24" data-testid={`input-bulk-reel-brand-${reel.id}`} />
                           </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-1.5">
                             <Select value={draft.locationId || "__none__"} onValueChange={v => updateRowDraft(reel.id, "locationId", v === "__none__" ? "" : v)}>
                               <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-bulk-reel-location-${reel.id}`}><SelectValue placeholder={t.itemDetailNoneDash} /></SelectTrigger>
@@ -1093,22 +1110,20 @@ function WireReelInlineInner(
                       ) : isRowEdit ? (
                         <>
                           <td className="px-3 py-1.5">
-                            <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-28" data-testid={`input-edit-reel-id-${reel.id}`} />
+                            <Input value={editDraft.reelId} onChange={e => setEditDraft(d => ({ ...d, reelId: e.target.value }))} className="h-7 text-xs font-mono w-36" data-testid={`input-edit-reel-id-${reel.id}`} />
                           </td>
-                          <td className="px-3 py-1.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
-                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.sizeLabel || "—"}</td>
-                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{wireConfig.conductorColorLabel || "—"}</td>
                           <td className="px-3 py-1.5">
                             <Input type="number" min={0} value={editDraft.lengthFt} onChange={e => setEditDraft(d => ({ ...d, lengthFt: e.target.value }))} className="h-7 text-xs text-right w-20" data-testid={`input-edit-reel-length-${reel.id}`} />
                           </td>
                           <td className="px-3 py-1.5">
                             <Input value={editDraft.brand} onChange={e => setEditDraft(d => ({ ...d, brand: e.target.value }))} placeholder={t.itemDetailBrandColPh} className="h-7 text-xs w-24" data-testid={`input-edit-reel-brand-${reel.id}`} />
                           </td>
+                          <td className="px-3 py-1.5 text-xs text-slate-400 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-3 py-1.5">
                             <Select value={editDraft.locationId || "__none__"} onValueChange={v => setEditDraft(d => ({ ...d, locationId: v === "__none__" ? "" : v }))}>
-                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-edit-reel-location-${reel.id}`}><SelectValue placeholder="— None —" /></SelectTrigger>
+                              <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-edit-reel-location-${reel.id}`}><SelectValue placeholder={t.itemDetailNoneDash} /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__none__">— None —</SelectItem>
+                                <SelectItem value="__none__">{t.itemDetailNoneDash}</SelectItem>
                                 {(locationList as any[]).map((l: any) => <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>)}
                               </SelectContent>
                             </Select>
@@ -1117,8 +1132,8 @@ function WireReelInlineInner(
                             <Select value={editDraft.status} onValueChange={v => setEditDraft(d => ({ ...d, status: v }))}>
                               <SelectTrigger className="h-7 text-xs w-20" data-testid={`select-edit-reel-status-${reel.id}`}><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="used">Used</SelectItem>
+                                <SelectItem value="new">{t.itemDetailStatusNew}</SelectItem>
+                                <SelectItem value="used">{t.itemDetailStatusUsed}</SelectItem>
                               </SelectContent>
                             </Select>
                           </td>
@@ -1135,12 +1150,13 @@ function WireReelInlineInner(
                         </>
                       ) : (
                         <>
-                          <td className="px-4 py-2.5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{reel.reelId}</td>
-                          <td className="px-3 py-2.5"><WireConfigBadge coreType={wireConfig.coreTypeLabel} /></td>
-                          <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{wireConfig.sizeLabel || <span className="text-slate-300">—</span>}</td>
-                          <td className="px-3 py-2.5 text-xs text-slate-600 whitespace-nowrap">{wireConfig.conductorColorLabel || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            <span className="font-mono text-xs font-semibold text-slate-700">{reel.reelId}</span>
+                            {isNewReelId(reel.reelId) ? <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded font-semibold tracking-wide">NEW</span> : <span className="ml-1.5 px-1 py-0.5 text-[9px] bg-amber-100 text-amber-700 rounded font-semibold tracking-wide">LEGACY</span>}
+                          </td>
                           <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-slate-800 whitespace-nowrap">{reel.lengthFt.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.brand || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.supplier?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{reel.location?.name || <span className="text-slate-300">—</span>}</td>
                           <td className="px-4 py-2.5 text-center"><ReelStatusBadge status={reel.status} /></td>
                           <td className="px-4 py-2.5">
@@ -1157,9 +1173,8 @@ function WireReelInlineInner(
               <tfoot>
                 <tr className="bg-[#EAF7EE] border-t border-[#D9E7DD]">
                   <td className="px-4 py-2.5 font-semibold text-brand-700 text-sm">{reels.length} reel{reels.length !== 1 ? "s" : ""}</td>
-                  <td colSpan={3} />
                   <td className="px-4 py-2.5 text-right tabular-nums font-bold text-brand-800">{totalFt.toLocaleString()} FT</td>
-                  <td colSpan={4} />
+                  <td colSpan={5} />
                 </tr>
               </tfoot>
             </table>

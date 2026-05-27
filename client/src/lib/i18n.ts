@@ -1309,13 +1309,14 @@ const en = {
   itemDetailAddRow:                "Add Row",
   itemDetailReelHeader:            "Reel ID",
   itemDetailLengthFt:              "Length (FT)",
-  itemDetailBrand:                 "Brand",
+  itemDetailBrand:                 "Manufacturer",
+  itemDetailSupplier:              "Supplier",
   itemDetailLocation:              "Location",
   itemDetailStatusCol:             "Status",
   itemDetailStatusNew:             "New",
   itemDetailStatusUsed:            "Used",
   itemDetailReelLengthPh:          "500",
-  itemDetailReelBrandPh:           "Southwire",
+  itemDetailReelBrandPh:           "e.g. Southwire, Cerrowire",
   itemDetailRemoveRow:             "Remove row",
   itemDetailRemoveReel:            "Remove reel",
   itemDetailLoadingReels:          "Loading reels…",
@@ -1637,7 +1638,7 @@ const en = {
   itemDetailPhotoCount:            "{current} / 4",
   itemDetailReelAddedSuffix:       "reel added",
   itemDetailReelsAddedSuffix2:     "reels added",
-  itemDetailBrandColPh:            "Brand",
+  itemDetailBrandColPh:            "Manufacturer",
   itemDetailNoneDash:              "— None —",
 
   // ── CategoryDetail extras (validation, filters, draft, empty states) ─────
@@ -3594,7 +3595,8 @@ const ko: Translations = {
   itemDetailAddRow:                "행 추가",
   itemDetailReelHeader:            "릴 ID",
   itemDetailLengthFt:              "길이 (FT)",
-  itemDetailBrand:                 "브랜드",
+  itemDetailBrand:                 "제조사",
+  itemDetailSupplier:              "공급업체",
   itemDetailLocation:              "위치",
   itemDetailStatusCol:             "상태",
   itemDetailStatusNew:             "신품",
@@ -3922,7 +3924,7 @@ const ko: Translations = {
   itemDetailPhotoCount:            "{current} / 4",
   itemDetailReelAddedSuffix:       "릴 추가됨",
   itemDetailReelsAddedSuffix2:     "릴 추가됨",
-  itemDetailBrandColPh:            "브랜드",
+  itemDetailBrandColPh:            "제조사",
   itemDetailNoneDash:              "— 없음 —",
 
   // ── CategoryDetail extras (validation, filters, draft, empty states) ─────
@@ -5879,7 +5881,8 @@ const es: Translations = {
   itemDetailAddRow:                "Agregar fila",
   itemDetailReelHeader:            "ID de carrete",
   itemDetailLengthFt:              "Largo (FT)",
-  itemDetailBrand:                 "Marca",
+  itemDetailBrand:                 "Fabricante",
+  itemDetailSupplier:              "Proveedor",
   itemDetailLocation:              "Ubicación",
   itemDetailStatusCol:             "Estado",
   itemDetailStatusNew:             "Nuevo",
@@ -6284,7 +6287,7 @@ const es: Translations = {
   itemDetailPhotoCount:            "{current} / 4",
   itemDetailReelAddedSuffix:       "carrete añadido",
   itemDetailReelsAddedSuffix2:     "carretes añadidos",
-  itemDetailBrandColPh:            "Marca",
+  itemDetailBrandColPh:            "Fabricante",
   itemDetailNoneDash:              "— Ninguno —",
 
   // ── CategoryDetail extras (validation, filters, draft, empty states) ─────

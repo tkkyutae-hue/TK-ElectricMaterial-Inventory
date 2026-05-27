@@ -1,0 +1,203 @@
+Implement reel-level movement line recording for wire/cable reel-tracked items.
+
+Context:
+In Field Mode, users already receive/return/issue cable and wire by reel.
+However, Transaction History and ItemDetails Recent History currently store/display only the total FT amount in inventory_movements.quantity.
+
+Problem:
+We need to keep the total FT summary, but also store reel-level details for future movements:
+- how many reels were involved
+- which reel ID was involved
+- how many FT per reel
+- manufacturer/brand snapshot
+- project/supplier/location context if available
+
+Important:
+Past movements do not have reel-level breakdown data.
+Do not try to reconstruct old reel details.
+Only record reel-level lines for new movements going forward.
+
+Goal:
+Add a child table for reel movement lines and write to it inside confirmDraft() whenever a reel-tracked item movement is confirmed.
+
+Do not:
+- Do not change existing inventory_movements.quantity meaning.
+- Do not change movement total FT behavior.
+- Do not change wire_reels.length_ft calculations.
+- Do not change syncItemQtyFromReels().
+- Do not change items.quantityOnHand sync.
+- Do not change delete/restore behavior.
+- Do not rename existing reel IDs.
+- Do not fake historical reel details.
+
+Files likely involved:
+- shared/schema.ts
+- server/storage.ts
+- server/routes.ts only if needed
+- migration file if this project uses explicit migrations
+- confirmDraft() logic
+
+Part 1 — Add table
+
+Add a new table:
+
+wire_reel_movement_lines
+
+Recommended columns:
+- id serial primary key
+- movementId integer not null references inventory_movements.id
+- itemId integer not null references items.id
+- wireReelId integer nullable references wire_reels.id
+- reelIdText text not null
+- actionType text not null
+  examples: issue, receive, return, transfer, adjust
+- quantityFt integer not null
+  Store positive FT amount. Use actionType/movementType to decide display sign.
+- manufacturerSnapshot text nullable
+  Snapshot from wire_reels.brand or new reel brand at time of movement.
+- supplierId integer nullable
+- projectId integer nullable
+- fromLocationId integer nullable
+- toLocationId integer nullable
+- createdAt timestamp default now()
+
+Indexes:
+- movementId
+- itemId
+- wireReelId
+
+Reason:
+reelIdText is a snapshot. If the reel ID is renamed later, old transaction detail still shows what was recorded at the time.
+
+Part 2 — Record lines in confirmDraft()
+
+Find confirmDraft() or the movement finalize logic.
+
+When creating inventory_movements rows for reel-tracked items, after the movement row is created, insert wire_reel_movement_lines rows.
+
+ISSUE:
+If the draft item has reelSelections like:
+Record<wireReelId, ftUsed>
+
+For each selected reel:
+- movementId = created movement id
+- itemId = item id
+- wireReelId = selected reel DB id
+- reelIdText = current wire_reels.reel_id at time of confirmation
+- actionType = "issue"
+- quantityFt = ft used from that reel
+- manufacturerSnapshot = wire_reels.brand
+- projectId = movement projectId if available
+- fromLocationId / toLocationId from movement if available
+
+RECEIVE:
+If the draft item has newReels:
+After inserting each new wire_reels row, insert a movement line:
+- movementId = created movement id
+- itemId = item id
+- wireReelId = newly created reel DB id
+- reelIdText = newly created reel_id
+- actionType = "receive"
+- quantityFt = new reel length
+- manufacturerSnapshot = new reel brand
+- supplierId = movement supplierId if available
+- toLocationId = destination location if available
+
+RETURN:
+If the draft item has newReels or returned reel records:
+After inserting/restoring/updating reels, insert movement lines:
+- movementId = created movement id
+- itemId = item id
+- wireReelId = related reel DB id if available
+- reelIdText = reel_id snapshot
+- actionType = "return"
+- quantityFt = returned FT for that reel
+- manufacturerSnapshot = reel brand
+- projectId = movement projectId if available
+- fromLocationId / toLocationId if available
+
+If a movement is not reel-tracked:
+Do nothing.
+
+Part 3 — Transaction safety
+
+All movement creation, reel update/insert, quantity sync, and wire_reel_movement_lines inserts must be in the same DB transaction if the current flow already uses a transaction.
+
+If line insert fails, the movement should fail instead of silently creating incomplete history.
+
+Do not silently swallow errors.
+
+Part 4 — Storage helper
+
+Add a helper if appropriate:
+createWireReelMovementLines(lines)
+
+Or keep inline if consistent with current storage style.
+
+Part 5 — Backward compatibility
+
+Older movements will have zero lines.
+This is expected.
+
+Do not backfill old movement lines.
+
+Part 6 — Verification
+
+Manual verification:
+
+1. Field Mode Receive:
+Receive one item with two new reels:
+- Reel A: 500 FT
+- Reel B: 700 FT
+
+Expected:
+inventory_movements has one total movement:
++1200 FT
+
+wire_reel_movement_lines has two rows:
+- Reel A 500 FT
+- Reel B 700 FT
+
+2. Field Mode Return:
+Return two reels:
+- Reel A: 122 FT
+- Reel B: 500 FT
+
+Expected:
+inventory_movements total:
++622 FT
+
+wire_reel_movement_lines:
+- Reel A 122 FT
+- Reel B 500 FT
+
+3. Field Mode Issue:
+Issue from two reels:
+- Reel A: 300 FT
+- Reel B: 200 FT
+
+Expected:
+inventory_movements total:
+-500 FT
+
+wire_reel_movement_lines:
+- Reel A 300 FT
+- Reel B 200 FT
+
+4. Existing old movements:
+Expected:
+No reel lines.
+No errors.
+
+5. Confirm:
+- reel lengths update correctly
+- item quantityOnHand sync still works
+- transaction history total FT still works
+- no existing movement behavior changed
+
+Output:
+Summarize:
+- new table fields
+- where line records are inserted
+- how issue/receive/return are handled
+- confirmation that old movements are not backfilled

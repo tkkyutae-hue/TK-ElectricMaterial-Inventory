@@ -1,0 +1,85 @@
+Audit Recent History data availability for reel-tracked items.
+
+Context:
+ItemDetails Recent History currently shows total FT changes only, such as:
+- RETURNED +622 FT
+- RECEIVED +5000 FT
+
+For reel-tracked cable/wire items, we want to know if the app has enough data to show:
+- reel count per movement
+- each reel ID involved
+- each reel FT amount
+- project related to issue/return
+- supplier related to received material
+- manufacturer/brand if available
+
+Important:
+Do not implement UI changes yet.
+This is an audit only.
+
+Files likely involved:
+- client/src/pages/ItemDetails.tsx
+- server/routes.ts
+- server/storage.ts
+- shared/schema.ts
+- movement-related tables and queries
+- wire reel movement logic
+- confirmDraft or movement finalize logic
+
+Questions to answer:
+
+1. Current Recent History source
+- Which API or query powers ItemDetails Recent History?
+- What fields are currently returned?
+- Does it include movement id?
+- Does it include project id, project code, or project name?
+- Does it include supplier id or supplier name?
+- Does it include from/to location?
+- Does it include user name?
+- Does it include notes?
+
+2. Reel-level breakdown
+Check whether each movement stores reel-level detail.
+
+Can we know:
+- which wire_reels.id was used?
+- which reel_id was used?
+- how many FT came from each reel?
+- how many FT were returned to each reel?
+- whether a received movement created one or more reels?
+
+3. Data reliability
+Classify what is available:
+
+Available now:
+- list fields that already exist and can be displayed safely
+
+Not available:
+- list fields that are not stored or cannot be reliably reconstructed
+
+4. Important rule
+Do not fake reel breakdown.
+
+If only total FT is stored, say clearly:
+"Per-reel breakdown is not available for past movements."
+
+5. Recommended next step
+Based on the audit, recommend one of these:
+
+Option A:
+Data exists, so compact history with expandable details can be implemented now.
+
+Option B:
+Only partial data exists, so show project/supplier summary now, but not reel breakdown.
+
+Option C:
+Data does not exist, so future movement creation must start storing reel breakdown before UI can show it.
+
+Output:
+Return:
+- Current API/query name
+- Relevant file paths/functions
+- Available fields
+- Missing fields
+- Whether reel breakdown can be shown now
+- Safe implementation recommendation

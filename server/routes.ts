@@ -2161,8 +2161,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           cell.border    = { bottom: { style: "thin", color: { argb: C.white } } };
         });
 
-        // ── Sort: manufacturer (branded first, alpha) → subcategory → detailType → drag-and-drop → size ──
+        // ── Sort: subcategory (family) → manufacturer (branded first, alpha) → detailType → drag-and-drop → size ──
         const sorted = [...catItems].sort((a, b) => {
+          const fa = (a.subcategory || "\uFFFF").toLowerCase();
+          const fb = (b.subcategory || "\uFFFF").toLowerCase();
+          if (fa !== fb) return fa.localeCompare(fb);
           const ma = a.manufacturer?.trim() || null;
           const mb = b.manufacturer?.trim() || null;
           if (ma !== mb) {
@@ -2170,9 +2173,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             if (ma && !mb) return -1;  // branded before unbranded
             return ma!.localeCompare(mb!);
           }
-          const fa = (a.subcategory  || "\uFFFF").toLowerCase();
-          const fb = (b.subcategory  || "\uFFFF").toLowerCase();
-          if (fa !== fb) return fa.localeCompare(fb);
           const ta = a.detailType || "";
           const tb = b.detailType || "";
           if (ta !== tb) {
@@ -2188,7 +2188,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const sb = itemGroupSortOrderMap.get(`${cat.id}:${nb}`) ?? 1_000_000;
           if (sa !== sb) return sa - sb;
           if (na.toLowerCase() !== nb.toLowerCase()) return na.toLowerCase().localeCompare(nb.toLowerCase());
-          // Within same family: size small → large
+          // Within same base: size small → large
           return exportSizeKey(a) - exportSizeKey(b);
         });
 
@@ -2401,20 +2401,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const typeKey   = type   ?? "";
           const baseKey   = base   ?? "";
 
-          // Manufacturer brand header — only when manufacturer is set and changes
-          if (mfrKey !== lastManufacturer) {
-            lastManufacturer = mfrKey;
-            lastFamily = SENTINEL;
-            lastType   = SENTINEL;
-            lastBase   = SENTINEL;
-            if (mfr) addMfrRow(mfr);
+          // Family (subcategory) header — outermost group; resets all inner sentinels
+          if (familyKey !== lastFamily) {
+            lastFamily       = familyKey;
+            lastManufacturer = SENTINEL;
+            lastType         = SENTINEL;
+            lastBase         = SENTINEL;
+            addGroupRow(family || "(No Family)", 1);
           }
 
-          if (familyKey !== lastFamily) {
-            lastFamily = familyKey;
-            lastType   = SENTINEL;
-            lastBase   = SENTINEL;
-            addGroupRow(family || "(No Family)", 1);
+          // Manufacturer brand header — sub-header within family; only emitted when mfr is set
+          if (mfrKey !== lastManufacturer) {
+            lastManufacturer = mfrKey;
+            lastType         = SENTINEL;
+            lastBase         = SENTINEL;
+            if (mfr) addMfrRow(mfr);
           }
           if (typeKey !== lastType) {
             lastType = typeKey;

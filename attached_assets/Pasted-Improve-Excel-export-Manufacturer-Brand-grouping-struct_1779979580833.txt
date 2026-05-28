@@ -1,0 +1,157 @@
+Improve Excel export Manufacturer / Brand grouping structure.
+
+Context:
+The web app source data manages items by category and item.
+Some items will have manufacturerName, such as:
+- Eaton
+- LS Electric
+- Siemens
+- MP Husky
+- Southwire
+
+Some items will not have manufacturerName, such as:
+- EMT Conduit
+- EMT Connector
+- Generic conduit fittings
+
+Goal:
+Update Excel export grouping so Manufacturer / Brand is used cleanly without changing app data or inventory logic.
+
+Important grouping rule:
+Category remains the primary grouping level.
+Manufacturer is only a secondary grouping level inside each category or sheet.
+
+Do NOT globally merge different categories just because they share the same manufacturer.
+
+Example:
+Eaton breakers, Eaton panels, and Eaton disconnects should NOT be merged into one global Eaton section.
+
+Correct structure:
+Circuit Breakers
+  Eaton
+    1P Circuit Breaker / Type BA
+    3P Circuit Breaker / Type BA
+
+Panels
+  Eaton
+    200A Main Lug Panel
+    Temporary Panel
+
+Disconnects
+  Eaton
+    60A Fusible Disconnect
+
+Cable Tray
+  MP Husky
+    Cable Tray Cover
+    Cable Tray Horizontal Elbow
+
+  Eaton
+    Cable Tray Cover
+    Cable Tray Tee
+
+Files likely involved:
+- server/routes.ts
+- server/storage.ts
+- Excel export helper
+- inventory export route
+
+Do not:
+- Do not change database schema.
+- Do not change inventory quantities.
+- Do not change movement logic.
+- Do not change SKU.
+- Do not add manufacturer into item.name.
+- Do not create Generic / Unspecified / No Brand headers.
+- Do not change web app grouping logic in this task.
+
+Required behavior:
+
+1. Add Manufacturer column
+
+Add Manufacturer column to export rows.
+
+Recommended column order:
+PHOTO | Material Name | Size | Category | Manufacturer | Family / Series | Type | Quantity | Unit | Status | Last Updated
+
+Rules:
+- Manufacturer value comes from item.manufacturerName.
+- If manufacturerName is blank/null, export empty cell.
+- Do not export “—”, “No Brand”, “Generic”, or “Unspecified”.
+
+2. Manufacturer header
+
+If manufacturerName exists, create a beige/tan Manufacturer header inside the current category/sheet section.
+
+Example:
+Circuit Breakers
+
+Eaton
+  1P Circuit Breaker / Type BA
+  3P Circuit Breaker / Type BA
+
+LS Electric
+  1P Circuit Breaker / Type HACR
+
+3. Unbranded items
+
+If manufacturerName is blank/null, keep the current export structure.
+
+Example:
+CONDUIT & FITTINGS
+
+EMT
+
+Conduit
+  EMT Conduit
+
+Connector
+  EMT Set Screw Connector
+
+Do NOT create:
+Unspecified
+  EMT Conduit
+
+Generic
+  EMT Conduit
+
+No Brand
+  EMT Conduit
+
+4. Mixed category behavior
+
+If a category has both branded and unbranded items:
+- Branded items go under Manufacturer headers.
+- Unbranded items stay in the existing family/type grouping.
+- Do not force unbranded items into a fake brand group.
+
+5. Column meaning
+
+Use these meanings:
+
+Category:
+Cable Tray, Circuit Breakers, Conduit & Fittings, etc.
+
+Manufacturer:
+Eaton, LS Electric, Siemens, MP Husky, Southwire, etc.
+
+Family / Series:
+Type BA, Type HACR, EMT, Ladder Tray, THHN/THWN-2, etc.
+
+Type:
+Covers, Connector, Conduit, 1 Pole Breaker, 3 Pole Breaker, Fittings, etc.
+
+Material Name:
+Brand-free material description.
+
+SKU:
+Internal SKU only.
+
+Manual verification:
+1. Circuit Breakers groups Eaton / LS Electric under the Circuit Breakers section only.
+2. Panels can also have Eaton, but it stays under Panels, not merged with Circuit Breakers.
+3. Cable Tray groups MP Husky / Eaton under Cable Tray only.
+4. EMT items without manufacturerName keep the current structure.
+5. No Generic / Unspecified / No Brand header appears.
+6. Manufacturer column exists and is blank for unbranded items.
+7. SKU and Material Name do not get bracketed brand text.

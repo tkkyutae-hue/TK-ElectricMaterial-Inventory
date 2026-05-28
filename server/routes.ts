@@ -1970,6 +1970,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const C = {
         headerBg:  "FF1A2E44",  // dark navy   – header row
         l1Bg:      "FF2D3748",  // dark slate  – level-1 group (subcategory)
+        mfrBg:     "FFF5DEB3",  // warm wheat  – manufacturer brand header
+        mfrText:   "FF5C3B00",  // dark amber  – manufacturer brand text
         l2Bg:      "FFF0E6D3",  // light beige – level-2 group (detailType)
         l3Bg:      "FFE8F0FD",  // pale blue   – level-3 group (baseItemName)
         l3Text:    "FF1E3A5F",  // dark blue   – level-3 text
@@ -2065,10 +2067,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return String.fromCharCode(64 + Math.floor((n - 1) / 26)) + String.fromCharCode(64 + ((n - 1) % 26 + 1));
       };
 
-      // ── 8 base export columns ─────────────────────────────────────────────────────
+      // ── 9 base export columns (Manufacturer inserted between Size and Family) ──────
       const COLS = [
         { key: "matName",   header: "Material Name", width: 36 },
         { key: "size",      header: "Size",          width: 14 },
+        { key: "mfr",       header: "Manufacturer",  width: 22 },
         { key: "family",    header: "Family",        width: 22 },
         { key: "type",      header: "Type",          width: 20 },
         { key: "qty",       header: "Quantity",      width: 12 },
@@ -2148,8 +2151,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           cell.border    = { bottom: { style: "thin", color: { argb: C.white } } };
         });
 
-        // ── Sort: subcategory → detailType → drag-and-drop order → size asc ────────
+        // ── Sort: manufacturer (branded first, alpha) → subcategory → detailType → drag-and-drop → size ──
         const sorted = [...catItems].sort((a, b) => {
+          const ma = a.manufacturer?.trim() || null;
+          const mb = b.manufacturer?.trim() || null;
+          if (ma !== mb) {
+            if (!ma && mb) return 1;   // unbranded after branded
+            if (ma && !mb) return -1;  // branded before unbranded
+            return ma!.localeCompare(mb!);
+          }
           const fa = (a.subcategory  || "\uFFFF").toLowerCase();
           const fb = (b.subcategory  || "\uFFFF").toLowerCase();
           if (fa !== fb) return fa.localeCompare(fb);
@@ -2205,8 +2215,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           ws.mergeCells(gRow.number, 2, gRow.number, totalCols + 1);
         };
 
+        // ── Manufacturer brand header row ─────────────────────────────────────────
+        // Emitted only when the item has a non-blank manufacturer value.
+        // Uses a warm wheat/tan background to visually separate brand sections.
+        const addMfrRow = (mfrName: string) => {
+          const mRow = ws.addRow(["", mfrName]);
+          mRow.height = 19;
+          mRow.eachCell({ includeEmpty: true }, cell => {
+            cell.font      = { bold: true, size: 10, color: { argb: C.mfrText } };
+            cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: C.mfrBg } };
+            cell.alignment = { vertical: "middle", indent: 1 };
+            cell.border    = { top: { style: "thin", color: { argb: C.mfrBg } } };
+          });
+          ws.mergeCells(mRow.number, 2, mRow.number, totalCols + 1);
+        };
+
         // ── Add grouped data rows ─────────────────────────────────────────────────
         const SENTINEL = "\x00__sentinel__";
+        let lastManufacturer: string = SENTINEL;
         let lastFamily: string = SENTINEL;
         let lastType:   string = SENTINEL;
         let lastBase:   string = SENTINEL;
@@ -2341,15 +2367,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         };
 
         for (const item of sorted) {
+          const mfr     = item.manufacturer?.trim() || null;
           const family  = item.subcategory ?? null;
           const type    = item.detailType  ?? null;
           const base    = item.baseItemName || item.name || null;
           const status  = itemStatus(item);
           const qty     = item.quantityOnHand ?? 0;
 
+          const mfrKey    = mfr    ?? "";
           const familyKey = family ?? "";
           const typeKey   = type   ?? "";
           const baseKey   = base   ?? "";
+
+          // Manufacturer brand header — only when manufacturer is set and changes
+          if (mfrKey !== lastManufacturer) {
+            lastManufacturer = mfrKey;
+            lastFamily = SENTINEL;
+            lastType   = SENTINEL;
+            lastBase   = SENTINEL;
+            if (mfr) addMfrRow(mfr);
+          }
 
           if (familyKey !== lastFamily) {
             lastFamily = familyKey;
@@ -2383,6 +2420,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const rowData: Record<string, any> = {
             matName:   cat.code === "CW" ? (item.name || "") : (item.baseItemName || item.name || ""),
             size:      item.sizeLabel   ?? "",
+            mfr:       mfr              ?? "",
             family:    family           ?? "",
             type:      type             ?? "",
             qty,

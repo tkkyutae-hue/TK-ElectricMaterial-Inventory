@@ -1970,9 +1970,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const C = {
         headerBg:  "FF1A2E44",  // dark navy   – header row
         l1Bg:      "FF2D3748",  // dark slate  – level-1 group (subcategory)
-        mfrBg:     "FFF5DEB3",  // warm wheat  – manufacturer brand header
-        mfrText:   "FF5C3B00",  // dark amber  – manufacturer brand text
-        l2Bg:      "FFF0E6D3",  // light beige – level-2 group (detailType)
+        mfrBg:     "FF2D6E8E",  // medium teal-blue – manufacturer brand header
+        mfrText:   "FFFFFFFF",  // white            – manufacturer brand text
+        l2Bg:      "FFFFF2CC",  // soft golden-yellow – level-2 group (detailType)
         l3Bg:      "FFE8F0FD",  // pale blue   – level-3 group (baseItemName)
         l3Text:    "FF1E3A5F",  // dark blue   – level-3 text
         white:     "FFFFFFFF",

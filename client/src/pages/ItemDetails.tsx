@@ -61,6 +61,7 @@ const makeEditSchema = (t: Translations) => z.object({
   statusOverride:    z.string().optional(),
   notes:             z.string().optional(),
   brand:             z.string().optional(),
+  manufacturer:      z.string().optional(),
 });
 
 type EditFormData = z.infer<ReturnType<typeof makeEditSchema>>;
@@ -92,6 +93,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
     statusOverride:    i.statusOverride || "auto",
     notes:             i.notes || "",
     brand:             i.brand || "",
+    manufacturer:      i.manufacturer || "",
   });
 
   const form = useForm<EditFormData>({
@@ -116,6 +118,7 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
         statusOverride:    (data.statusOverride && data.statusOverride !== "auto") ? data.statusOverride : null,
         notes:             data.notes || null,
         brand:             data.brand || null,
+        manufacturer:      data.manufacturer?.trim() || null,
         sizeLabel:         data.sizeLabel || null,
       });
       toast({ title: t.itemDetailUpdatedToast, description: `${data.name} ${t.itemDetailSavedSuffix}` });
@@ -184,6 +187,13 @@ function EditItemDialog({ item, open, onClose }: { item: any; open: boolean; onC
                 <FormItem>
                   <FormLabel>{t.itemDetailFieldBrand}</FormLabel>
                   <FormControl><Input placeholder={t.itemDetailBrandPh} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="manufacturer" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.itemDetailFieldManufacturer}</FormLabel>
+                  <FormControl><Input placeholder={t.itemDetailManufacturerPh} {...field} data-testid="edit-manufacturer" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -1560,6 +1570,16 @@ export default function ItemDetails() {
                 )}
               </div>
             </dl>
+
+            {item.manufacturer && (
+              <>
+                <div className="h-px bg-slate-100" />
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{t.itemDetailFieldManufacturer}</p>
+                  <p className="text-sm text-slate-700" data-testid="item-manufacturer">{item.manufacturer}</p>
+                </div>
+              </>
+            )}
 
             {item.notes && (
               <>

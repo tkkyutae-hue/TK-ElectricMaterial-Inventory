@@ -109,10 +109,26 @@ export function FamilyGroupCard({
             {group.representativeImage ? <img src={group.representativeImage} alt={group.baseItemName} className="w-full h-full object-cover" /> : <Package className="w-5 h-5 text-slate-300" />}
           </div>
           <div className="min-w-0 flex-1">
-            <h3
-              className="!text-base font-semibold text-slate-900 leading-snug truncate"
-              style={{ fontSize: "1rem", fontWeight: 600 }}
-            >{group.baseItemName}</h3>
+            {(() => {
+              const mfr = group.items[0]?.manufacturer?.trim() || null;
+              // Strip leading [BrandName] bracket if manufacturer is known
+              const cleanTitle = mfr
+                ? group.baseItemName.replace(/^\[.*?\]\s*/, "").trim()
+                : group.baseItemName;
+              return (
+                <h3
+                  className="!text-base leading-snug truncate text-slate-900"
+                  style={{ fontSize: "1rem" }}
+                  data-testid={`family-title-${group.baseItemName.replace(/\s+/g, "-")}`}
+                >
+                  {mfr ? (
+                    <><strong style={{ fontWeight: 700 }}>{mfr}</strong>{" "}<span style={{ fontWeight: 400 }}>{cleanTitle}</span></>
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>{cleanTitle}</span>
+                  )}
+                </h3>
+              );
+            })()}
             <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider leading-none mt-0.5">
               {group.items.length} {group.items.length === 1 ? "size" : "sizes"}
               {isDraftConfirmed && <span className="ml-2 text-brand-500 normal-case tracking-normal">New family</span>}

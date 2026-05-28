@@ -1,0 +1,80 @@
+Display Manufacturer / Brand in Admin Inventory grouped headers only.
+
+Context:
+Admin Inventory currently groups items by shared item family/spec.
+The group header currently may show item names like:
+[Siemens] Temporary Panel - 480/277V 3P4W / MAIN LUG / Type PL / NEMA1
+
+Goal:
+Show manufacturer/brand in the group header in a Home Depot-like style:
+- Brand appears naturally at the beginning of the title
+- Brand text is bold
+- No brackets like [Siemens]
+- Brand is not repeated in every size row
+
+Example with manufacturerName:
+Siemens Temporary Panel
+480/277V · 3P4W · Main Lug · Type PL · NEMA 1
+2 sizes
+
+Example without manufacturerName:
+Temporary Panel
+480/277V · 3P4W · Main Lug · Type PL · NEMA 1
+2 sizes
+
+Files likely involved:
+- Admin Inventory page/component
+- category item group component
+- inventory grouped row/header component
+- item display helper if one exists
+
+Do not:
+- Do not change SKU.
+- Do not add manufacturer to SKU.
+- Do not modify item.name in DB.
+- Do not repeat manufacturer in every child row if the group header already shows it.
+- Do not show “No Brand”, “—”, or blank chip.
+- Do not change quantity, movement, or status logic.
+
+Display rules:
+1. Group header:
+If manufacturerName exists:
+- Render manufacturerName first.
+- Make only manufacturerName bold.
+- Then render clean group title after it.
+
+Example:
+<strong>Siemens</strong> Temporary Panel
+
+2. If manufacturerName is empty:
+- Render existing group title normally.
+- Do not leave extra spacing.
+
+3. Child size rows:
+Keep rows compact.
+Do not repeat manufacturer in each row.
+
+Current row structure can remain:
+SKU | Photo | Size | Item | On Hand | Usage Pattern | Status
+
+4. Existing bracket names:
+If item.name or group title still contains [Siemens], do not write cleanup migration in this task.
+But if manufacturerName is present, avoid displaying duplicate bracket brand.
+
+Example:
+manufacturerName = Siemens
+raw title = [Siemens] Temporary Panel - 480/277V...
+display title should be:
+Siemens Temporary Panel - 480/277V...
+
+Not:
+Siemens [Siemens] Temporary Panel...
+
+Manual verification:
+1. Item group with manufacturerName = Siemens shows:
+   Siemens Temporary Panel...
+2. Siemens is bold.
+3. No [Siemens] bracket appears if manufacturerName is present.
+4. Child rows do not repeat Siemens.
+5. Item group without manufacturerName looks unchanged.
+6. SKU remains unchanged.

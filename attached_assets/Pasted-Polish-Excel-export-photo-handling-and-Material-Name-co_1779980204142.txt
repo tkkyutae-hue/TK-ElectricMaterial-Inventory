@@ -1,0 +1,96 @@
+Polish Excel export photo handling and Material Name column width.
+
+Context:
+After Manufacturer grouping is applied, Excel export must stay lightweight and readable.
+The file should not become heavy because of repeated photos.
+Material Name column should be wide enough per sheet.
+
+Goal:
+Improve Excel export layout quality:
+- Avoid unnecessary photo duplication.
+- Auto-size Material Name column per sheet.
+- Keep current visual style.
+
+Files likely involved:
+- Excel export helper
+- XLSX generation utility
+- server/routes.ts if export logic is there
+
+Do not:
+- Do not change database schema.
+- Do not change inventory quantities.
+- Do not change movement logic.
+- Do not change SKU.
+- Do not change Manufacturer grouping rules from the previous task.
+- Do not create different custom designs per category.
+
+Required behavior:
+
+1. Photo handling
+
+Avoid making the Excel file unnecessarily large.
+
+Rules:
+- Do not duplicate the same representative photo for every manufacturer row if the material group is visually the same.
+- Prefer one representative photo per material group where possible.
+- If existing export already avoids photo duplication, preserve that behavior.
+- Do not duplicate full category sections just to show different manufacturers.
+- Keep image sizing consistent with current export style.
+
+Recommended:
+For repeated material groups, show photo on the first relevant row/header only.
+Leave repeated photo cells blank where appropriate.
+
+2. Material Name column auto width
+
+For each sheet, auto-size the Material Name column independently.
+
+Rules:
+- Find the Material Name column in each sheet.
+- Calculate the longest text length in that column for that sheet.
+- Include category rows, manufacturer rows, family/type rows, and item rows if they use the Material Name column.
+- Set width with padding.
+- Minimum width: 28
+- Maximum width: 60
+- If text exceeds max width, enable wrapText for Material Name cells.
+
+Suggested logic:
+width = Math.min(Math.max(longestMaterialNameLength + 4, 28), 60)
+
+Important:
+- Apply this separately per sheet.
+- Do not use one global width for all sheets.
+- Do not resize photo, quantity, unit, or status columns using this logic.
+
+3. Keep existing style
+
+Preserve current Excel visual style:
+- Dark category header
+- Beige Manufacturer header
+- Light blue family/type/material group rows
+- Existing stock status colors
+- Existing image sizing
+- Existing borders/alignment as much as possible
+
+4. Manual verification
+
+Check:
+- Circuit Breakers sheet
+- Cable Tray sheet
+- Conduit & Fittings sheet
+
+Verify:
+1. Photos are not duplicated excessively.
+2. Export file size does not balloon unnecessarily.
+3. Material Name column is readable on each sheet.
+4. Long names wrap instead of making the sheet extremely wide.
+5. Material Name width does not exceed 60.
+6. EMT / unbranded sheets still look like the current export.
+7. Branded categories still show Manufacturer headers correctly.
+8. SKU, quantities, and item data remain unchanged.
+
+Output summary:
+- How photo duplication is avoided
+- How Material Name width is calculated
+- Which sheets were manually checked
+- Confirmation that database, quantity, movement, and SKU logic were not changed

@@ -17,6 +17,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import sharp from "sharp";
 import crypto from "crypto";
 // ─── Upload magic-bytes validator ─────────────────────────────────────────────
 // Verifies that file content matches the declared MIME type's signature.
@@ -1671,7 +1672,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       fs.unlink(req.file.path, () => {});
       return res.status(500).json({ message: "Failed to validate uploaded file." });
     }
-    res.json({ url: `/uploads/${req.file.filename}` });
+    // Convert to a self-contained JPEG base64 data URI so the image survives
+    // server restarts and redeployments (no filesystem dependency).
+    // sharp also corrects EXIF orientation and resizes to max 1200×1200.
+    try {
+      const jpegBuf = await sharp(req.file.path)
+        .rotate()
+        .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+      const dataUri = `data:image/jpeg;base64,${jpegBuf.toString("base64")}`;
+      res.json({ url: dataUri });
+    } catch {
+      return res.status(500).json({ message: "Failed to process uploaded image." });
+    } finally {
+      fs.unlink(req.file.path, () => {});
+    }
   });
 
   app.patch("/api/inventory/:id/image", isAuthenticated, requireManager, async (req, res) => {
@@ -2289,7 +2305,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
                     console.warn("[export] PHOTO: malformed data URI, skipping:", srcUrl.slice(0, 60));
                   } else {
                     const mime    = srcUrl.slice("data:image/".length, semicolon).toLowerCase();
-                    const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg" : mime === "png" ? "png" : null;
+                    const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg"
+                                  : mime === "png" ? "png"
+                                  : mime === "webp" ? "webp"
+                                  : null;
                     if (!rawExt) {
                       console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
                     } else {

@@ -31,6 +31,7 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
 
   const [familyName, setFamilyName] = useState(group.baseItemName);
   const [imageUrl, setImageUrl] = useState(group.representativeImage ?? "");
+  const [manufacturer, setManufacturer] = useState(group.items[0]?.manufacturer ?? "");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [moveTarget, setMoveTarget] = useState("");
   const [showMoveInput, setShowMoveInput] = useState(false);
@@ -41,6 +42,7 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
     if (open) {
       setFamilyName(group.baseItemName);
       setImageUrl(group.representativeImage ?? "");
+      setManufacturer(group.items[0]?.manufacturer ?? "");
       setSelectedIds(new Set());
       setShowMoveInput(false);
       setConfirmDelete(false);
@@ -102,22 +104,26 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
         baseItemName: group.baseItemName, imageUrl: imageUrl || null,
         newName: familyName !== group.baseItemName ? familyName : undefined,
       });
+      const mfrTrimmed = manufacturer.trim() || null;
+      const mfrChanged = mfrTrimmed !== (group.items[0]?.manufacturer ?? null);
       const changedItems = group.items.filter(item => {
         const d = itemDrafts[item.id];
-        if (!d) return false;
-        return d.name !== item.name ||
+        if (!d) return mfrChanged;
+        return mfrChanged ||
+          d.name !== item.name ||
           d.subcategory !== (item.subcategory ?? "") ||
           d.detailType !== (item.detailType ?? "") ||
           d.subType !== ((item as any).subType ?? "");
       });
       if (changedItems.length > 0) {
         await Promise.all(changedItems.map(item => {
-          const d = itemDrafts[item.id];
+          const d = itemDrafts[item.id] ?? { name: item.name, subcategory: item.subcategory ?? "", detailType: item.detailType ?? "", subType: (item as any).subType ?? "" };
           return apiRequest("PUT", `/api/items/${item.id}`, {
             name: d.name,
             subcategory: d.subcategory || null,
             detailType: d.detailType || null,
             subType: d.subType || null,
+            manufacturer: mfrTrimmed,
           }).then(r => r.json());
         }));
       }
@@ -192,9 +198,14 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
               <Input value={familyName} onChange={e => setFamilyName(e.target.value)} placeholder="e.g. EMT Conduit" data-testid="input-family-name" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Representative Image URL</label>
-              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…" data-testid="input-family-image-url" />
+              <label className="text-sm font-medium text-slate-700">Manufacturer / Brand</label>
+              <Input value={manufacturer} onChange={e => setManufacturer(e.target.value)} placeholder="e.g. Schneider Electric" data-testid="input-family-manufacturer" />
+              <p className="text-[11px] text-slate-400 leading-tight">Applied to all items in this family on save.</p>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Representative Image URL</label>
+            <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…" data-testid="input-family-image-url" />
           </div>
           {imageUrl && (
             <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-2">

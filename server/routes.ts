@@ -2088,6 +2088,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Keys: "${categoryId}:${baseItemName}" → sortOrder (lower = higher up)
       const itemGroupSortOrderMap = await storage.getItemGroupSortOrders();
 
+      // ── Workbook-level image cache ────────────────────────────────────────────
+      // Maps image URL → ExcelJS imageId so the same URL is fetched/decoded and
+      // added to the workbook only once, even when it appears in multiple cells
+      // or on multiple sheets. Reusing an existing imageId is free.
+      const imageIdCache = new Map<string, number>();
+
       // ── Build one worksheet per category ─────────────────────────────────────────
       for (const cat of allCategories) {
         const catItems = byCategoryId.get(cat.id);
@@ -2135,6 +2141,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
         ws.columns = wsColDefs;
+
+        // ── Per-sheet Material Name width tracking ────────────────────────────────
+        // Seeded with the header text length (13) so header is never clipped.
+        let maxMatNameLen = 13;
 
         // ── Header row ────────────────────────────────────────────────────────────
         const headerValues: string[] = ["PHOTO", ...COLS.map(c => c.header)];
@@ -2258,105 +2268,117 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           if (photoBaseImageUrl) {
             const srcUrl = photoBaseImageUrl;
             try {
-              let buf: Buffer | null = null;
-              let ext: "jpeg" | "png" | null = null;
-
-              if (srcUrl.startsWith("data:image/")) {
-                // ── base64 data URI ─────────────────────────────────────────────
-                const semicolon = srcUrl.indexOf(";");
-                const comma     = srcUrl.indexOf(",");
-                if (semicolon === -1 || comma === -1) {
-                  console.warn("[export] PHOTO: malformed data URI, skipping:", srcUrl.slice(0, 60));
-                } else {
-                  const mime    = srcUrl.slice("data:image/".length, semicolon).toLowerCase();
-                  const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg" : mime === "png" ? "png" : null;
-                  if (!rawExt) {
-                    console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
-                  } else {
-                    ext = rawExt;
-                    buf = Buffer.from(srcUrl.slice(comma + 1), "base64");
-                  }
-                }
-              } else if (srcUrl.startsWith("https://")) {
-                // ── remote https:// image — fetch with timeout + size cap ────────
-                try {
-                  const controller = new AbortController();
-                  const timer = setTimeout(() => controller.abort(), 5000);
-                  const fetchRes = await fetch(srcUrl, {
-                    signal: controller.signal,
-                    headers: { "User-Agent": "VoltStock-Export/1.0" },
-                  });
-                  clearTimeout(timer);
-                  if (fetchRes.ok) {
-                    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-                    const ct = fetchRes.headers.get("content-type") ?? "";
-                    const remoteExt: "jpeg" | "png" | null =
-                      ct.includes("png") ? "png" :
-                      ct.includes("jpeg") || ct.includes("jpg") ? "jpeg" :
-                      null;
-                    if (remoteExt) {
-                      const arrayBuf = await fetchRes.arrayBuffer();
-                      if (arrayBuf.byteLength <= MAX_BYTES) {
-                        buf = Buffer.from(arrayBuf);
-                        ext = remoteExt;
-                      } else {
-                        console.warn("[export] PHOTO: remote image too large, skipping:", srcUrl.slice(0, 80));
-                      }
-                    } else {
-                      // Try to infer extension from URL when Content-Type is generic
-                      const urlLower = srcUrl.split("?")[0].toLowerCase();
-                      const inferredExt: "jpeg" | "png" | null =
-                        urlLower.endsWith(".png") ? "png" :
-                        urlLower.endsWith(".jpg") || urlLower.endsWith(".jpeg") ? "jpeg" :
-                        null;
-                      if (inferredExt) {
-                        const arrayBuf = await fetchRes.arrayBuffer();
-                        if (arrayBuf.byteLength <= MAX_BYTES) {
-                          buf = Buffer.from(arrayBuf);
-                          ext = inferredExt;
-                        }
-                      } else {
-                        // Default to jpeg for unknown types (Google thumbnails etc.)
-                        const arrayBuf = await fetchRes.arrayBuffer();
-                        if (arrayBuf.byteLength > 0 && arrayBuf.byteLength <= MAX_BYTES) {
-                          buf = Buffer.from(arrayBuf);
-                          ext = "jpeg";
-                        }
-                      }
-                    }
-                  } else {
-                    console.warn("[export] PHOTO: remote fetch returned", fetchRes.status, "—", srcUrl.slice(0, 80));
-                  }
-                } catch (fetchErr: any) {
-                  console.warn("[export] PHOTO: remote fetch failed:", fetchErr?.message ?? fetchErr, "—", srcUrl.slice(0, 80));
-                }
-              } else if (srcUrl.startsWith("/uploads/")) {
-                // ── local /uploads/ file ────────────────────────────────────────
-                const filename = srcUrl.slice("/uploads/".length);
-                const fsPath   = path.join(process.cwd(), "uploads", filename);
-                if (fs.existsSync(fsPath)) {
-                  const raw = path.extname(fsPath).slice(1).toLowerCase();
-                  const localExt = raw === "jpg" || raw === "jpeg" ? "jpeg" : raw === "png" ? "png" : null;
-                  if (!localExt) {
-                    console.warn("[export] PHOTO: unsupported local file extension", raw, "—", fsPath);
-                  } else {
-                    buf = fs.readFileSync(fsPath);
-                    ext = localExt;
-                  }
-                } else {
-                  console.warn("[export] PHOTO: local file not found:", fsPath);
-                }
-              } else {
-                console.warn("[export] PHOTO: unrecognised image source format, skipping:", srcUrl.slice(0, 80));
-              }
-
-              if (buf && ext) {
-                const imageId = wb.addImage({ buffer: buf, extension: ext });
-                ws.addImage(imageId, {
+              // ── Cache hit: reuse existing imageId without re-fetching ──────────
+              const cachedId = imageIdCache.get(srcUrl);
+              if (cachedId !== undefined) {
+                ws.addImage(cachedId, {
                   tl: { col: 0, row: startRow - 1 },
                   br: { col: 1, row: endRow },
                   editAs: "oneCell",
                 });
+              } else {
+                // ── Cache miss: fetch / decode, then store in cache ──────────────
+                let buf: Buffer | null = null;
+                let ext: "jpeg" | "png" | null = null;
+
+                if (srcUrl.startsWith("data:image/")) {
+                  // ── base64 data URI ───────────────────────────────────────────
+                  const semicolon = srcUrl.indexOf(";");
+                  const comma     = srcUrl.indexOf(",");
+                  if (semicolon === -1 || comma === -1) {
+                    console.warn("[export] PHOTO: malformed data URI, skipping:", srcUrl.slice(0, 60));
+                  } else {
+                    const mime    = srcUrl.slice("data:image/".length, semicolon).toLowerCase();
+                    const rawExt  = mime === "jpg" || mime === "jpeg" ? "jpeg" : mime === "png" ? "png" : null;
+                    if (!rawExt) {
+                      console.warn("[export] PHOTO: unsupported data URI mime type:", mime, "— skipping");
+                    } else {
+                      ext = rawExt;
+                      buf = Buffer.from(srcUrl.slice(comma + 1), "base64");
+                    }
+                  }
+                } else if (srcUrl.startsWith("https://")) {
+                  // ── remote https:// image — fetch with timeout + size cap ──────
+                  try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 5000);
+                    const fetchRes = await fetch(srcUrl, {
+                      signal: controller.signal,
+                      headers: { "User-Agent": "VoltStock-Export/1.0" },
+                    });
+                    clearTimeout(timer);
+                    if (fetchRes.ok) {
+                      const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+                      const ct = fetchRes.headers.get("content-type") ?? "";
+                      const remoteExt: "jpeg" | "png" | null =
+                        ct.includes("png") ? "png" :
+                        ct.includes("jpeg") || ct.includes("jpg") ? "jpeg" :
+                        null;
+                      if (remoteExt) {
+                        const arrayBuf = await fetchRes.arrayBuffer();
+                        if (arrayBuf.byteLength <= MAX_BYTES) {
+                          buf = Buffer.from(arrayBuf);
+                          ext = remoteExt;
+                        } else {
+                          console.warn("[export] PHOTO: remote image too large, skipping:", srcUrl.slice(0, 80));
+                        }
+                      } else {
+                        // Try to infer extension from URL when Content-Type is generic
+                        const urlLower = srcUrl.split("?")[0].toLowerCase();
+                        const inferredExt: "jpeg" | "png" | null =
+                          urlLower.endsWith(".png") ? "png" :
+                          urlLower.endsWith(".jpg") || urlLower.endsWith(".jpeg") ? "jpeg" :
+                          null;
+                        if (inferredExt) {
+                          const arrayBuf = await fetchRes.arrayBuffer();
+                          if (arrayBuf.byteLength <= MAX_BYTES) {
+                            buf = Buffer.from(arrayBuf);
+                            ext = inferredExt;
+                          }
+                        } else {
+                          // Default to jpeg for unknown types (Google thumbnails etc.)
+                          const arrayBuf = await fetchRes.arrayBuffer();
+                          if (arrayBuf.byteLength > 0 && arrayBuf.byteLength <= MAX_BYTES) {
+                            buf = Buffer.from(arrayBuf);
+                            ext = "jpeg";
+                          }
+                        }
+                      }
+                    } else {
+                      console.warn("[export] PHOTO: remote fetch returned", fetchRes.status, "—", srcUrl.slice(0, 80));
+                    }
+                  } catch (fetchErr: any) {
+                    console.warn("[export] PHOTO: remote fetch failed:", fetchErr?.message ?? fetchErr, "—", srcUrl.slice(0, 80));
+                  }
+                } else if (srcUrl.startsWith("/uploads/")) {
+                  // ── local /uploads/ file ──────────────────────────────────────
+                  const filename = srcUrl.slice("/uploads/".length);
+                  const fsPath   = path.join(process.cwd(), "uploads", filename);
+                  if (fs.existsSync(fsPath)) {
+                    const raw = path.extname(fsPath).slice(1).toLowerCase();
+                    const localExt = raw === "jpg" || raw === "jpeg" ? "jpeg" : raw === "png" ? "png" : null;
+                    if (!localExt) {
+                      console.warn("[export] PHOTO: unsupported local file extension", raw, "—", fsPath);
+                    } else {
+                      buf = fs.readFileSync(fsPath);
+                      ext = localExt;
+                    }
+                  } else {
+                    console.warn("[export] PHOTO: local file not found:", fsPath);
+                  }
+                } else {
+                  console.warn("[export] PHOTO: unrecognised image source format, skipping:", srcUrl.slice(0, 80));
+                }
+
+                if (buf && ext) {
+                  const imageId = wb.addImage({ buffer: buf, extension: ext });
+                  imageIdCache.set(srcUrl, imageId);
+                  ws.addImage(imageId, {
+                    tl: { col: 0, row: startRow - 1 },
+                    br: { col: 1, row: endRow },
+                    editAs: "oneCell",
+                  });
+                }
               }
             } catch (err) {
               console.warn("[export] PHOTO: unexpected error embedding image from", srcUrl.slice(0, 80), "—", err);
@@ -2449,9 +2471,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             }
           }
 
+          // Track the longest Material Name text on this sheet
+          const matNameText = rowData.matName as string;
+          if (matNameText.length > maxMatNameLen) maxMatNameLen = matNameText.length;
+
           const dataRow = ws.addRow(rowData);
           dataRow.height = 16;
-          dataRow.getCell("matName").alignment = { vertical: "middle", indent: 4 };
+          const matNameCell = dataRow.getCell("matName");
+          matNameCell.alignment = {
+            vertical: "middle",
+            indent:   4,
+            // wrapText when the name would overflow even the widest allowed column
+            ...(matNameText.length > 56 ? { wrapText: true } : {}),
+          };
 
           // ── PHOTO block: advance end-row + capture first available image ─────
           photoBaseEndRow = dataRow.number;
@@ -2510,6 +2542,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         // ── Finalize the last base-item block for this sheet ─────────────────────
         await finalizePhotoBlock();
+
+        // ── Apply dynamic Material Name column width ──────────────────────────────
+        // min=28, max=60; +4 padding so text never sits flush against cell edge.
+        ws.getColumn("matName").width = Math.min(Math.max(maxMatNameLen + 4, 28), 60);
 
         // ── Freeze pane: header row + PHOTO column frozen ────────────────────────
         ws.views = [{ state: "frozen", xSplit: 1, ySplit: 1, topLeftCell: "B2", activeCell: "B2" }];

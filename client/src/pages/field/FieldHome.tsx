@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
 import { useFieldTheme } from "@/hooks/use-field-theme";
+import { useAuth } from "@/hooks/use-auth";
 import type { FieldToken } from "@/lib/fieldTokens";
 
 const CSS = `
@@ -101,8 +102,9 @@ export default function FieldHome() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { F, theme: fieldTheme } = useFieldTheme();
+  const { canDoMovements } = useAuth();
 
-  const CARDS: CardDef[] = [
+  const ALL_CARDS: (CardDef & { requiresMovements?: boolean })[] = [
     {
       testId: "tile-receive",
       emoji: "📦",
@@ -116,6 +118,7 @@ export default function FieldHome() {
         color: F.accent,
       },
       route: "/field/movement?type=receive",
+      requiresMovements: true,
     },
     {
       testId: "tile-issue",
@@ -130,6 +133,7 @@ export default function FieldHome() {
         color: F.warning,
       },
       route: "/field/movement?type=issue",
+      requiresMovements: true,
     },
     {
       testId: "tile-inventory",
@@ -172,8 +176,11 @@ export default function FieldHome() {
         color: F.warning,
       },
       route: "/field/transactions?tab=drafts",
+      requiresMovements: true,
     },
   ];
+
+  const CARDS = ALL_CARDS.filter(c => !c.requiresMovements || canDoMovements);
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: "40px 20px 48px" }}>

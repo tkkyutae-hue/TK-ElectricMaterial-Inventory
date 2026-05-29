@@ -118,6 +118,7 @@ export const itemGroups = pgTable("item_groups", {
   id: serial("id").primaryKey(),
   categoryId: integer("category_id").notNull().references(() => categories.id),
   baseItemName: text("base_item_name").notNull(),
+  manufacturerName: text("manufacturer_name"),
   imageUrl: text("image_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),

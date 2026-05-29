@@ -157,10 +157,14 @@ export default function CategoryDetail() {
     const next = arrayMove(orderedGroupNames, oldIndex, newIndex);
     setOrderedGroupNames(next);
     apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
-      orders: next.map((compositeKey, i) => ({
-        baseItemName: compositeKey.includes("::") ? compositeKey.split("::").slice(1).join("::") : compositeKey,
-        sortOrder: i,
-      })),
+      orders: next.map((compositeKey, i) => {
+        const hasMfr = compositeKey.includes("::");
+        return {
+          baseItemName: hasMfr ? compositeKey.split("::").slice(1).join("::") : compositeKey,
+          manufacturerName: hasMfr ? compositeKey.split("::")[0] : null,
+          sortOrder: i,
+        };
+      }),
     }).catch(() => {
       setOrderedGroupNames(previous);
       toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });

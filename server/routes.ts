@@ -898,14 +898,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, requireManager, async (req, res) => {
     try {
       const categoryId = Number(req.params.categoryId);
-      const { baseItemName, imageUrl, newName } = req.body;
+      const { baseItemName, imageUrl, newName, manufacturerName } = req.body;
       if (!baseItemName) return res.status(400).json({ message: "baseItemName is required" });
+      const mfr = manufacturerName?.trim() || null;
       if (newName && newName !== baseItemName) {
-        await storage.renameFamily(categoryId, baseItemName, newName);
-        await storage.upsertItemGroup(categoryId, newName, { imageUrl: imageUrl ?? null });
+        await storage.renameFamily(categoryId, baseItemName, newName, mfr);
+        await storage.upsertItemGroup(categoryId, newName, mfr, { imageUrl: imageUrl ?? null });
         return res.json({ success: true });
       }
-      const updated = await storage.upsertItemGroup(categoryId, baseItemName, { imageUrl: imageUrl ?? null });
+      const updated = await storage.upsertItemGroup(categoryId, baseItemName, mfr, { imageUrl: imageUrl ?? null });
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ message: err.message });

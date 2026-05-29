@@ -93,9 +93,9 @@ export interface IStorage {
   updateItem(id: number, item: UpdateItemRequest): Promise<Item>;
   deleteItem(id: number): Promise<void>;
   restoreItems(ids: number[]): Promise<void>;
-  upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup>;
-  updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; sortOrder: number }[]): Promise<void>;
-  renameFamily(categoryId: number, oldName: string, newName: string): Promise<void>;
+  upsertItemGroup(categoryId: number, baseItemName: string, manufacturerName: string | null, data: { imageUrl?: string | null }): Promise<ItemGroup>;
+  updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; manufacturerName: string | null; sortOrder: number }[]): Promise<void>;
+  renameFamily(categoryId: number, oldName: string, newName: string, manufacturerName?: string | null): Promise<void>;
   moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void>;
   bulkSoftDeleteItems(itemIds: number[]): Promise<void>;
 
@@ -1460,8 +1460,9 @@ export class DatabaseStorage implements IStorage {
     const groupImageMap = new Map<string, string | null>();
     const groupSortOrderMap = new Map<string, number>();
     for (const g of groupRecords) {
-      groupImageMap.set(g.baseItemName, g.imageUrl ?? null);
-      groupSortOrderMap.set(g.baseItemName, g.sortOrder ?? 0);
+      const gKey = g.manufacturerName ? `${g.manufacturerName}::${g.baseItemName}` : g.baseItemName;
+      groupImageMap.set(gKey, g.imageUrl ?? null);
+      groupSortOrderMap.set(gKey, g.sortOrder ?? 0);
     }
 
     // Override quantityOnHand with live reel sum for reel-tracked items
@@ -1528,8 +1529,8 @@ export class DatabaseStorage implements IStorage {
       const base = item.baseItemName || item.name;
       const key  = mfr ? `${mfr}::${base}` : base;
       if (!groupMap.has(key)) {
-        // Priority: custom group image keyed by original base name, then first item image
-        const customImage = groupImageMap.get(base) ?? null;
+        // Priority: custom group image keyed by composite key, then first item image
+        const customImage = groupImageMap.get(key) ?? null;
         groupMap.set(key, { items: [], representativeImage: customImage, baseItemName: base, manufacturerName: mfr });
       }
       const group = groupMap.get(key)!;
@@ -1541,23 +1542,25 @@ export class DatabaseStorage implements IStorage {
 
     // Clean up orphaned item_groups rows (families whose items were all
     // soft-deleted or moved to another family / category since last save).
-    // Use original base names (not composite keys) for comparison against item_groups table.
-    const activeBaseNames = new Set(Array.from(groupMap.values()).map(v => v.baseItemName));
+    const activeGroupKeys = new Set(groupMap.keys());
     const orphanedGroupIds = groupRecords
-      .filter(g => !activeBaseNames.has(g.baseItemName))
+      .filter(g => {
+        const gKey = g.manufacturerName ? `${g.manufacturerName}::${g.baseItemName}` : g.baseItemName;
+        return !activeGroupKeys.has(gKey);
+      })
       .map(g => g.id);
     if (orphanedGroupIds.length > 0) {
       await db.delete(itemGroups).where(inArray(itemGroups.id, orphanedGroupIds));
     }
 
-    const groups = Array.from(groupMap.values())
-      .map(data => ({
+    const groups = Array.from(groupMap.entries())
+      .map(([key, data]) => ({
         baseItemName: data.baseItemName,
         manufacturerName: data.manufacturerName || null,
         items: data.items,
         representativeImage: data.representativeImage,
-        customImageUrl: groupImageMap.get(data.baseItemName) ?? null,
-        sortOrder: groupSortOrderMap.has(data.baseItemName) ? groupSortOrderMap.get(data.baseItemName)! : 1_000_000,
+        customImageUrl: groupImageMap.get(key) ?? null,
+        sortOrder: groupSortOrderMap.has(key) ? groupSortOrderMap.get(key)! : 1_000_000,
       }))
       .sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
@@ -1966,9 +1969,11 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Item Groups (family metadata) ────────────────────────────────────────────
 
-  async upsertItemGroup(categoryId: number, baseItemName: string, data: { imageUrl?: string | null }): Promise<ItemGroup> {
-    const [existing] = await db.select().from(itemGroups)
-      .where(and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, baseItemName)));
+  async upsertItemGroup(categoryId: number, baseItemName: string, manufacturerName: string | null, data: { imageUrl?: string | null }): Promise<ItemGroup> {
+    const conditions = manufacturerName
+      ? and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, baseItemName), eq(itemGroups.manufacturerName, manufacturerName))
+      : and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, baseItemName), isNull(itemGroups.manufacturerName));
+    const [existing] = await db.select().from(itemGroups).where(conditions);
     if (existing) {
       const [updated] = await db.update(itemGroups)
         .set({ imageUrl: data.imageUrl ?? null, updatedAt: new Date() })
@@ -1977,33 +1982,40 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
     const [created] = await db.insert(itemGroups)
-      .values({ categoryId, baseItemName, imageUrl: data.imageUrl ?? null })
+      .values({ categoryId, baseItemName, manufacturerName, imageUrl: data.imageUrl ?? null, sortOrder: 999_999 })
       .returning();
     return created;
   }
 
-  async updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; sortOrder: number }[]): Promise<void> {
+  async updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; manufacturerName: string | null; sortOrder: number }[]): Promise<void> {
     const existing = await db.select().from(itemGroups).where(eq(itemGroups.categoryId, categoryId));
-    const existingMap = new Map<string, typeof existing[0]>(existing.map(g => [g.baseItemName, g]));
-    for (const { baseItemName, sortOrder } of orders) {
-      const rec = existingMap.get(baseItemName);
+    for (const { baseItemName, manufacturerName, sortOrder } of orders) {
+      const rec = existing.find(g =>
+        g.baseItemName === baseItemName &&
+        (manufacturerName ? g.manufacturerName === manufacturerName : !g.manufacturerName)
+      );
       if (rec) {
         await db.update(itemGroups)
           .set({ sortOrder, updatedAt: new Date() })
           .where(eq(itemGroups.id, rec.id));
       } else {
         await db.insert(itemGroups)
-          .values({ categoryId, baseItemName, sortOrder, imageUrl: null });
+          .values({ categoryId, baseItemName, manufacturerName, sortOrder, imageUrl: null });
       }
     }
   }
 
-  async renameFamily(categoryId: number, oldName: string, newName: string): Promise<void> {
+  async renameFamily(categoryId: number, oldName: string, newName: string, manufacturerName?: string | null): Promise<void> {
+    const itemWhere = manufacturerName
+      ? and(eq(items.categoryId, categoryId), eq(items.baseItemName, oldName), eq(items.isActive, true), eq(items.manufacturer, manufacturerName))
+      : and(eq(items.categoryId, categoryId), eq(items.baseItemName, oldName), eq(items.isActive, true));
     await db.update(items)
       .set({ baseItemName: newName, updatedAt: new Date() })
-      .where(and(eq(items.categoryId, categoryId), eq(items.baseItemName, oldName), eq(items.isActive, true)));
-    const [existing] = await db.select().from(itemGroups)
-      .where(and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, oldName)));
+      .where(itemWhere);
+    const groupWhere = manufacturerName
+      ? and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, oldName), eq(itemGroups.manufacturerName, manufacturerName))
+      : and(eq(itemGroups.categoryId, categoryId), eq(itemGroups.baseItemName, oldName), isNull(itemGroups.manufacturerName));
+    const [existing] = await db.select().from(itemGroups).where(groupWhere);
     if (existing) {
       await db.update(itemGroups)
         .set({ baseItemName: newName, updatedAt: new Date() })

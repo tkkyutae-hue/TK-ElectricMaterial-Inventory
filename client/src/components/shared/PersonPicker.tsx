@@ -314,26 +314,48 @@ export function PersonPicker({
   return (
     <div ref={triggerRef} style={{ position: "relative" }}>
 
-      {/* Trigger / display field — clicking always opens the picker */}
-      <div style={triggerStyle} onClick={openPicker} data-testid={testId}>
+      {/* Trigger / display field */}
+      <div style={triggerStyle} onClick={() => { if (!open) openPicker(); }} data-testid={testId}>
         <div style={{ padding: "0 8px", display: "flex", alignItems: "center", flexShrink: 0, pointerEvents: "none" }}>
           <User style={{ width: 13, height: 13, color: iconColor }} />
         </div>
 
-        <span style={{
-          flex: 1, fontSize: 13,
-          fontFamily: dark ? FONT_COND : undefined,
-          fontWeight: selected ? 700 : 400,
-          color: selected
-            ? (dark ? F.text : "#0f172a")
-            : (dark ? F.textDim : "#94a3b8"),
-          padding: "9px 0",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {value?.name || ph}
-        </span>
+        {open && !isMobile ? (
+          /* Desktop open: trigger converts to inline search input */
+          <input
+            ref={searchRef}
+            type="text"
+            inputMode="search"
+            autoComplete="off"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            placeholder={ph}
+            data-testid={`${testId}-search`}
+            style={{
+              flex: 1, border: "none", outline: "none",
+              background: "transparent", fontSize: 13,
+              fontFamily: dark ? FONT_COND : undefined,
+              color: dark ? F.text : "#0f172a",
+              padding: "9px 0", cursor: "text",
+            }}
+          />
+        ) : (
+          <span style={{
+            flex: 1, fontSize: 13,
+            fontFamily: dark ? FONT_COND : undefined,
+            fontWeight: selected ? 700 : 400,
+            color: selected
+              ? (dark ? F.text : "#0f172a")
+              : (dark ? F.textDim : "#94a3b8"),
+            padding: "9px 0",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {value?.name || ph}
+          </span>
+        )}
 
-        {selected && (
+        {selected && !(open && !isMobile) && (
           <button
             type="button"
             onClick={clearSelection}
@@ -375,45 +397,10 @@ export function PersonPicker({
               borderRadius: 10,
               boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
               zIndex: 200,
-              minHeight: 240, maxHeight: 300,
+              minHeight: 180, maxHeight: 300,
               display: "flex", flexDirection: "column",
               overflow: "hidden",
             }}>
-              {/* Search row — flexShrink:0 keeps it fixed while list filters */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "9px 12px 8px",
-                borderBottom: "1px solid #f1f5f9",
-                flexShrink: 0,
-              }}>
-                <Search style={{ width: 13, height: 13, flexShrink: 0, color: "#94a3b8" }} />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  inputMode="search"
-                  autoComplete="off"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={ph}
-                  data-testid={`${testId}-search`}
-                  style={{
-                    flex: 1, border: "none", outline: "none",
-                    background: "transparent", fontSize: 13, color: "#0f172a",
-                  }}
-                />
-                <button
-                  type="button"
-                  onMouseDown={e => { e.preventDefault(); closePicker(); }}
-                  style={{
-                    flexShrink: 0, background: "none",
-                    border: "1px solid #e2e8f0", borderRadius: 6,
-                    cursor: "pointer", color: "#64748b",
-                    padding: "3px 10px", fontSize: 12, fontWeight: 600,
-                  }}
-                >
-                  {tv.done ?? "Done"}
-                </button>
-              </div>
               {/* Scrollable list — minHeight:0 allows flex child to scroll */}
               <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
                 {renderRows(false, 13)}
@@ -505,50 +492,11 @@ export function PersonPicker({
               border: `1px solid ${F.borderStrong}`,
               borderRadius: 10,
               boxShadow: "0 8px 28px rgba(0,0,0,0.55)",
-              minHeight: 240, maxHeight: 300,
+              minHeight: 180, maxHeight: 300,
               display: "flex", flexDirection: "column",
               overflow: "hidden",
             }}
           >
-            {/* Search + Done — fixed at top */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "10px 12px 8px",
-              borderBottom: `1px solid ${F.borderStrong}`,
-              flexShrink: 0,
-            }}>
-              <Search style={{ width: 13, height: 13, flexShrink: 0, color: F.textDim }} />
-              <input
-                ref={searchRef}
-                type="text"
-                inputMode="search"
-                autoComplete="off"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder={ph}
-                data-testid={`${testId}-search`}
-                style={{
-                  flex: 1, border: "none", outline: "none",
-                  background: "transparent",
-                  fontSize: 13, fontFamily: FONT_COND, color: F.text,
-                }}
-              />
-              <button
-                type="button"
-                onMouseDown={e => { e.preventDefault(); closePicker(); }}
-                style={{
-                  flexShrink: 0, background: "none",
-                  border: `1px solid ${F.borderStrong}`,
-                  borderRadius: 6, cursor: "pointer",
-                  color: F.textMuted, padding: "3px 10px",
-                  fontSize: 12, fontWeight: 700, fontFamily: FONT_COND,
-                  letterSpacing: "0.04em",
-                }}
-              >
-                {tv.done ?? "Done"}
-              </button>
-            </div>
-
             {/* Scrollable list — minHeight:0 allows flex child to scroll */}
             <div style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
               {renderRows(true, 13)}

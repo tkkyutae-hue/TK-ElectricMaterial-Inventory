@@ -3597,6 +3597,10 @@ export class DatabaseStorage implements IStorage {
 // a useless sentinel into the DB.
 // Called once at server startup; subsequent calls are near-zero-cost because
 // the WHERE clause matches nothing once all items are backfilled.
+export async function runItemGroupsMigration(): Promise<void> {
+  await db.execute(sql`ALTER TABLE item_groups ADD COLUMN IF NOT EXISTS manufacturer_name TEXT`);
+}
+
 export async function backfillSizeSortValues(): Promise<void> {
   const rows = await db
     .select({ id: items.id, sizeLabel: items.sizeLabel })

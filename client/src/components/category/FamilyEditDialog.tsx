@@ -110,6 +110,7 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
         baseItemName: group.baseItemName, imageUrl: imageUrl || null,
         newName: familyName !== group.baseItemName ? familyName : undefined,
         manufacturerName: manufacturer.trim() || null,
+        originalManufacturerName: group.manufacturerName || null,
       });
       const mfrTrimmed = manufacturer.trim() || null;
       const mfrChanged = mfrTrimmed !== (group.items[0]?.manufacturer ?? null);

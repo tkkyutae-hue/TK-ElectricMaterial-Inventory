@@ -898,11 +898,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.put("/api/inventory/category/:categoryId/item-groups", isAuthenticated, requireManager, async (req, res) => {
     try {
       const categoryId = Number(req.params.categoryId);
-      const { baseItemName, imageUrl, newName, manufacturerName } = req.body;
+      const { baseItemName, imageUrl, newName, manufacturerName, originalManufacturerName } = req.body;
       if (!baseItemName) return res.status(400).json({ message: "baseItemName is required" });
       const mfr = manufacturerName?.trim() || null;
+      const originalMfr = originalManufacturerName?.trim() || null;
       if (newName && newName !== baseItemName) {
-        await storage.renameFamily(categoryId, baseItemName, newName, mfr);
+        await storage.renameFamily(categoryId, baseItemName, newName, originalMfr);
         await storage.upsertItemGroup(categoryId, newName, mfr, { imageUrl: imageUrl ?? null });
         return res.json({ success: true });
       }

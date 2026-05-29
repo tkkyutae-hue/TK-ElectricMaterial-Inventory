@@ -5,7 +5,7 @@ import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
 import { pool } from "./db";
 import { runSeed } from "./seed";
-import { backfillSizeSortValues } from "./storage";
+import { backfillSizeSortValues, runItemGroupsMigration } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -87,6 +87,13 @@ app.use((req, res, next) => {
     await runSeed();
   } catch (err: any) {
     console.error("[seed] seed failed (non-fatal):", err.message);
+  }
+
+  // ─── Schema migrations (idempotent) ──────────────────────────────────────
+  try {
+    await runItemGroupsMigration();
+  } catch (err: any) {
+    console.error("[migration] item_groups migration failed (non-fatal):", err.message);
   }
 
   // ─── Backfill sizeSortValue for items missing it (idempotent) ────────────

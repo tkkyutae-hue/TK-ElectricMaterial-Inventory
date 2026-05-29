@@ -1648,14 +1648,19 @@ export default function FieldInventory() {
                   </div>
                   {/* Text info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {item.manufacturer?.trim() && (
-                        <span style={{ fontWeight: 700, color: F.accent, fontSize: 11, marginRight: 6 }}>{item.manufacturer.trim()}</span>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                        {item.manufacturer?.trim() && (
+                          <span style={{ fontWeight: 700, color: F.accent, fontSize: 11, marginRight: 5 }}>{item.manufacturer.trim()}</span>
+                        )}
+                        {item.name}
+                      </p>
+                      {item.sizeLabel && (
+                        <span style={{ fontSize: 10, color: F.textMuted, flexShrink: 0, whiteSpace: "nowrap" }}>{item.sizeLabel}</span>
                       )}
-                      {item.name}
-                    </p>
+                    </div>
                     <p style={{ fontSize: 11, color: F.textMuted, margin: "1px 0 0", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {[item.sizeLabel, item.location?.name].filter(Boolean).join("  ·  ") || item.category?.name || ""}
+                      {item.location?.name || item.category?.name || ""}
                     </p>
                   </div>
                   {/* Qty + status */}

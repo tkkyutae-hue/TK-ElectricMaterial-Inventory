@@ -21,6 +21,7 @@ import { parseWireConfig } from "@/lib/wire-config-utils";
 import { useFieldTheme } from "@/hooks/use-field-theme";
 import type { FieldToken } from "@/lib/fieldTokens";
 import FieldCartReview from "./FieldCartReview";
+import { ImageLightbox } from "@/components/ImageLightbox";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ function PillBar({
 
 // ─── Photo Cell ─────────────────────────────────────────────────────────────
 
-function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string }) {
+function PhotoCell({ imageUrl, name, onClick }: { imageUrl?: string | null; name: string; onClick?: (e: React.MouseEvent) => void }) {
   const { F } = useFieldTheme();
   if (!imageUrl) {
     return (
@@ -191,7 +192,11 @@ function PhotoCell({ imageUrl, name }: { imageUrl?: string | null; name: string 
     );
   }
   return (
-    <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div
+      style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center", cursor: onClick ? "zoom-in" : undefined }}
+      onClick={onClick}
+      data-testid="photo-cell-thumb"
+    >
       <img
         src={imageUrl}
         alt={name}
@@ -688,25 +693,19 @@ function FieldItemDetailPanel({ item, onClose }: { item: FieldItem; onClose: () 
         )}
       </div>
 
-      {/* Enlarged image overlay */}
-      {imgEnlarged && (() => {
+      {/* Lightbox for enlarged image view */}
+      {(() => {
         const imgs = galleryImages.length > 0
-          ? galleryImages
-          : item.imageUrl ? [{ id: -1, imageUrl: item.imageUrl }] : [];
-        const cur = imgs[galleryIdx] ?? null;
-        return cur ? (
-          <div
-            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3, cursor: "zoom-out" }}
-            onClick={() => setImgEnlarged(false)}
-            data-testid="img-enlarged-overlay"
-          >
-            <img
-              src={cur.imageUrl}
-              alt={item.name}
-              style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 10 }}
-            />
-          </div>
-        ) : null;
+          ? galleryImages.map(g => g.imageUrl)
+          : item.imageUrl ? [item.imageUrl] : [];
+        return (
+          <ImageLightbox
+            images={imgs}
+            initialIndex={galleryIdx}
+            open={imgEnlarged}
+            onClose={() => setImgEnlarged(false)}
+          />
+        );
       })()}
     </div>,
     document.body
@@ -1000,6 +999,7 @@ export default function FieldInventory() {
   const [selectedItem, setSelectedItem] = useState<FieldItem | null>(null);
   const [cartPanelOpen, setCartPanelOpen] = useState(() => urlParams.get("cart") === "open");
   const [catGridCollapsed, setCatGridCollapsed] = useState(false);
+  const [thumbLightbox, setThumbLightbox] = useState<string | null>(null);
   const filterAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-collapse on mobile if a category was pre-selected via URL
@@ -1633,8 +1633,12 @@ export default function FieldInventory() {
                   {/* Photo — larger on mobile for easier scanning */}
                   <div style={{ flexShrink: 0 }}>
                     {item.imageUrl ? (
-                      <div style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <img src={item.imageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div
+                        style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-in" }}
+                        onClick={e => { e.stopPropagation(); setThumbLightbox(item.imageUrl!); }}
+                        data-testid={`thumb-photo-${item.id}`}
+                      >
+                        <img src={item.imageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
                       </div>
                     ) : (
                       <div style={{ width: 44, height: 44, borderRadius: 10, background: F.surface2, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1741,9 +1745,12 @@ export default function FieldInventory() {
                     <td className="px-3 py-3 align-middle whitespace-nowrap">
                       <span style={{ fontFamily: "monospace", fontSize: 10, color: F.textMuted }}>{item.sku}</span>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td
+                      className="px-3 py-3 align-middle"
+                      onClick={e => { if (item.imageUrl) { e.stopPropagation(); setThumbLightbox(item.imageUrl); } }}
+                    >
                       <div className="flex items-center justify-center">
-                        <PhotoCell imageUrl={item.imageUrl} name={item.name} />
+                        <PhotoCell imageUrl={item.imageUrl} name={item.name} onClick={item.imageUrl ? e => { e.stopPropagation(); setThumbLightbox(item.imageUrl!); } : undefined} />
                       </div>
                     </td>
                     <td className="px-3 py-3 align-middle">
@@ -1848,6 +1855,13 @@ export default function FieldInventory() {
       {selectedItem && (
         <FieldItemDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
+
+      {/* Thumbnail lightbox — opens when tapping a photo thumbnail in the list */}
+      <ImageLightbox
+        images={thumbLightbox ? [thumbLightbox] : []}
+        open={!!thumbLightbox}
+        onClose={() => setThumbLightbox(null)}
+      />
 
       {/* Sticky cart bar — shown when cart has items */}
       <FieldCartBar onReviewCart={() => setCartPanelOpen(true)} />

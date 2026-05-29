@@ -35,10 +35,14 @@ export type ItemClassDraft = {
 
 export type CategoryItemGroup = {
   baseItemName: string;
+  manufacturerName?: string | null;
   items: CategoryGroupedItem[];
   representativeImage?: string | null;
   customImageUrl?: string | null;
 };
+
+export const getGroupId = (g: Pick<CategoryItemGroup, "manufacturerName" | "baseItemName">) =>
+  g.manufacturerName ? `${g.manufacturerName}::${g.baseItemName}` : g.baseItemName;
 
 export type CategoryGroupedDetail = {
   category: {

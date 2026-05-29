@@ -32,6 +32,7 @@ import type {
   CategoryGroupedDetail, CategoryGroupedItem, CategoryItemGroup,
   EditDraft, NewRowDraft, DraftFamily,
 } from "@/components/category/types";
+import { getGroupId } from "@/components/category/types";
 import { FamilyEditDialog } from "@/components/category/FamilyEditDialog";
 import { FamilyGroupCard } from "@/components/category/FamilyGroupCard";
 import { MoveCategoryDialog } from "@/components/category/MoveCategoryDialog";
@@ -96,7 +97,7 @@ export default function CategoryDetail() {
   // Sync orderedGroupNames from server data (only when names change, not on every refetch)
   useEffect(() => {
     if (!data?.groups) return;
-    const incoming = data.groups.map(g => g.baseItemName);
+    const incoming = data.groups.map(g => getGroupId(g));
     setOrderedGroupNames(prev => {
       // Keep existing order, append new names, remove deleted names
       const incomingSet = new Set(incoming);
@@ -111,8 +112,8 @@ export default function CategoryDetail() {
     if (orderedGroupNames.length === 0) return data.groups;
     const nameIndex = new Map(orderedGroupNames.map((n, i) => [n, i]));
     return [...data.groups].sort((a, b) => {
-      const ai = nameIndex.has(a.baseItemName) ? nameIndex.get(a.baseItemName)! : 9999;
-      const bi = nameIndex.has(b.baseItemName) ? nameIndex.get(b.baseItemName)! : 9999;
+      const ai = nameIndex.has(getGroupId(a)) ? nameIndex.get(getGroupId(a))! : 9999;
+      const bi = nameIndex.has(getGroupId(b)) ? nameIndex.get(getGroupId(b))! : 9999;
       return ai - bi;
     });
   }, [data, orderedGroupNames]);
@@ -128,7 +129,7 @@ export default function CategoryDetail() {
     if (!data) return [];
     const tokens = search.trim().toLowerCase().split(/\s+/).filter(t => t.length > 0);
     return orderedGroups
-      .filter(g => familyFilter === "all" || g.baseItemName === familyFilter)
+      .filter(g => familyFilter === "all" || getGroupId(g) === familyFilter)
       .map(g => ({
         ...g,
         items: g.items.filter(item => {
@@ -137,11 +138,11 @@ export default function CategoryDetail() {
           const matchesLocation = locationFilter === "all" || (item.location?.name ?? "") === locationFilter;
           if (!matchesLocation) return false;
           if (tokens.length === 0) return true;
-          const haystack = [item.sku, item.name, item.sizeLabel || "", g.baseItemName, item.location?.name || ""].join(" ").toLowerCase();
+          const haystack = [item.sku, item.name, item.sizeLabel || "", g.baseItemName, g.manufacturerName || "", item.location?.name || ""].join(" ").toLowerCase();
           return tokens.every(t => haystack.includes(t));
         }),
       }))
-      .filter(g => g.items.length > 0 || inlineEditFamily === g.baseItemName);
+      .filter(g => g.items.length > 0 || inlineEditFamily === getGroupId(g));
   }, [data, orderedGroups, search, statusFilter, familyFilter, locationFilter, inlineEditFamily]);
 
   function handleDragEnd(event: DragEndEvent) {
@@ -156,7 +157,10 @@ export default function CategoryDetail() {
     const next = arrayMove(orderedGroupNames, oldIndex, newIndex);
     setOrderedGroupNames(next);
     apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
-      orders: next.map((name, i) => ({ baseItemName: name, sortOrder: i })),
+      orders: next.map((compositeKey, i) => ({
+        baseItemName: compositeKey.includes("::") ? compositeKey.split("::").slice(1).join("::") : compositeKey,
+        sortOrder: i,
+      })),
     }).catch(() => {
       setOrderedGroupNames(previous);
       toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });
@@ -221,7 +225,7 @@ export default function CategoryDetail() {
     });
     setEditDrafts(drafts);
     setEditNewRows([]);
-    setInlineEditFamily(group.baseItemName);
+    setInlineEditFamily(getGroupId(group));
   }, [locations]);
 
   const cancelInlineEdit = useCallback(() => {
@@ -478,7 +482,12 @@ export default function CategoryDetail() {
         <SearchableSelect
           value={familyFilter}
           onChange={setFamilyFilter}
-          options={groups.map(g => ({ value: g.baseItemName, label: g.baseItemName }))}
+          options={groups.map(g => ({
+            value: getGroupId(g),
+            label: g.manufacturerName
+              ? `${g.manufacturerName} ${g.baseItemName.replace(/^\[.*?\]\s*/, "").trim()}`
+              : g.baseItemName,
+          }))}
           resetOption={{ value: "all", label: t.catAllFamilies }}
           placeholder={t.catDetailFilterFamilyPh}
           searchPlaceholder={t.comboboxSearchPlaceholder}
@@ -576,11 +585,11 @@ export default function CategoryDetail() {
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={displayGroups.map(g => g.baseItemName)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={displayGroups.map(g => getGroupId(g))} strategy={verticalListSortingStrategy}>
             <div className="space-y-4">
               {displayGroups.map((group) => (
                 <FamilyGroupCard
-                  key={group.baseItemName}
+                  key={getGroupId(group)}
                   group={group}
                   draftFamily={draftFamily}
                   inlineEditFamily={inlineEditFamily}
@@ -604,7 +613,7 @@ export default function CategoryDetail() {
                   onMoveCategory={setMoveCategoryGroup}
                   onAdjustStock={setAdjustingItem}
                   isAdmin={isAdminRole}
-                  isCollapsed={collapsedFamilies.has(group.baseItemName)}
+                  isCollapsed={collapsedFamilies.has(getGroupId(group))}
                   onToggleCollapsed={toggleFamilyCollapsed}
                   isDraggable={!hasActiveFilters && !inlineEditFamily}
                 />

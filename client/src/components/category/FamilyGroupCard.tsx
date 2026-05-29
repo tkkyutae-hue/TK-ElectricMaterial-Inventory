@@ -8,7 +8,7 @@ import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { useLanguage } from "@/hooks/use-language";
 import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, DraftFamily, CategoryGroupedDetail } from "./types";
-import { sortItems } from "./types";
+import { sortItems, getGroupId } from "./types";
 import { InlineEditRow, InlineNewRow } from "./InlineEditRow";
 
 interface FamilyGroupCardProps {
@@ -48,21 +48,22 @@ export function FamilyGroupCard({
   onToggleSort, onOpenSettings, onMoveCategory, onAdjustStock, isAdmin,
   isCollapsed, onToggleCollapsed, isDraggable,
 }: FamilyGroupCardProps) {
+  const gid = getGroupId(group);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: group.baseItemName,
+    id: gid,
     disabled: !isDraggable,
   });
   const { t } = useLanguage();
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
-  const isEditingThis = inlineEditFamily === group.baseItemName;
-  const sortDir = familySortDir[group.baseItemName] ?? "asc";
+  const isEditingThis = inlineEditFamily === gid;
+  const sortDir = familySortDir[gid] ?? "asc";
   const sortedItems = sortItems(group.items, sortDir);
 
   const collapseDisabled = isEditingThis || !!isDraftConfirmed;
   const effectivelyCollapsed = !collapseDisabled && !!isCollapsed;
   const handleToggleCollapsed = () => {
     if (collapseDisabled) return;
-    onToggleCollapsed?.(group.baseItemName);
+    onToggleCollapsed?.(gid);
   };
 
   const groupLowStock = group.items.filter(i => i.status === "low_stock").length;
@@ -110,7 +111,7 @@ export function FamilyGroupCard({
           </div>
           <div className="min-w-0 flex-1">
             {(() => {
-              const mfr = group.items[0]?.manufacturer?.trim() || null;
+              const mfr = group.manufacturerName?.trim() || group.items[0]?.manufacturer?.trim() || null;
               // Strip leading [BrandName] bracket if manufacturer is known
               const cleanTitle = mfr
                 ? group.baseItemName.replace(/^\[.*?\]\s*/, "").trim()
@@ -268,7 +269,7 @@ export function FamilyGroupCard({
                 <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
                 <TableHead className="h-9 pl-2 pr-3">
                   <button
-                    onClick={() => onToggleSort(group.baseItemName)}
+                    onClick={() => onToggleSort(gid)}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
                     title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
                     data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}

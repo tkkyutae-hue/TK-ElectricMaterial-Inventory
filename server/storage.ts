@@ -1520,14 +1520,17 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    // Group by baseItemName (fall back to name if not set)
-    const groupMap = new Map<string, { items: typeof enriched, representativeImage: string | null }>();
+    // Group by manufacturer + baseItemName so items with the same family name
+    // but different manufacturers appear as separate groups.
+    const groupMap = new Map<string, { items: typeof enriched, representativeImage: string | null, baseItemName: string, manufacturerName: string }>();
     for (const item of enriched) {
-      const key = item.baseItemName || item.name;
+      const mfr  = (item.manufacturer || "").trim();
+      const base = item.baseItemName || item.name;
+      const key  = mfr ? `${mfr}::${base}` : base;
       if (!groupMap.has(key)) {
-        // Priority: custom group image, then first item image
-        const customImage = groupImageMap.get(key) ?? null;
-        groupMap.set(key, { items: [], representativeImage: customImage });
+        // Priority: custom group image keyed by original base name, then first item image
+        const customImage = groupImageMap.get(base) ?? null;
+        groupMap.set(key, { items: [], representativeImage: customImage, baseItemName: base, manufacturerName: mfr });
       }
       const group = groupMap.get(key)!;
       group.items.push(item);
@@ -1538,25 +1541,29 @@ export class DatabaseStorage implements IStorage {
 
     // Clean up orphaned item_groups rows (families whose items were all
     // soft-deleted or moved to another family / category since last save).
-    const activeFamilyNames = new Set(groupMap.keys());
+    // Use original base names (not composite keys) for comparison against item_groups table.
+    const activeBaseNames = new Set(Array.from(groupMap.values()).map(v => v.baseItemName));
     const orphanedGroupIds = groupRecords
-      .filter(g => !activeFamilyNames.has(g.baseItemName))
+      .filter(g => !activeBaseNames.has(g.baseItemName))
       .map(g => g.id);
     if (orphanedGroupIds.length > 0) {
       await db.delete(itemGroups).where(inArray(itemGroups.id, orphanedGroupIds));
     }
 
-    const groups = Array.from(groupMap.entries())
-      .map(([baseItemName, data]) => ({
-        baseItemName,
+    const groups = Array.from(groupMap.values())
+      .map(data => ({
+        baseItemName: data.baseItemName,
+        manufacturerName: data.manufacturerName || null,
         items: data.items,
         representativeImage: data.representativeImage,
-        customImageUrl: groupImageMap.get(baseItemName) ?? null,
-        sortOrder: groupSortOrderMap.has(baseItemName) ? groupSortOrderMap.get(baseItemName)! : 1_000_000,
+        customImageUrl: groupImageMap.get(data.baseItemName) ?? null,
+        sortOrder: groupSortOrderMap.has(data.baseItemName) ? groupSortOrderMap.get(data.baseItemName)! : 1_000_000,
       }))
       .sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-        return a.baseItemName.localeCompare(b.baseItemName);
+        const aKey = a.manufacturerName ? `${a.manufacturerName} ${a.baseItemName}` : a.baseItemName;
+        const bKey = b.manufacturerName ? `${b.manufacturerName} ${b.baseItemName}` : b.baseItemName;
+        return aKey.localeCompare(bKey);
       });
 
     const totalQuantity = enriched.reduce((s, i) => s + i.quantityOnHand, 0);

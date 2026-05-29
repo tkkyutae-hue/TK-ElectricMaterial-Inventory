@@ -1646,7 +1646,21 @@ export default function FieldInventory() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.manufacturer?.trim() && (
-                        <strong style={{ fontWeight: 800, marginRight: 5 }}>{item.manufacturer.trim()}</strong>
+                        <span style={{
+                          display: "inline-block",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: F.accent,
+                          background: "rgba(45,219,111,0.13)",
+                          border: "1px solid rgba(45,219,111,0.3)",
+                          borderRadius: 3,
+                          padding: "1px 5px",
+                          marginRight: 6,
+                          letterSpacing: 0.3,
+                          verticalAlign: "middle",
+                          lineHeight: 1.6,
+                          flexShrink: 0,
+                        }}>{item.manufacturer.trim()}</span>
                       )}
                       {item.name}
                     </p>
@@ -1740,7 +1754,20 @@ export default function FieldInventory() {
                     <td className="px-3 py-3 align-middle">
                       <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>
                         {item.manufacturer?.trim() && (
-                          <strong style={{ fontWeight: 800, marginRight: 5 }}>{item.manufacturer.trim()}</strong>
+                          <span style={{
+                            display: "inline-block",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: F.accent,
+                            background: "rgba(45,219,111,0.13)",
+                            border: "1px solid rgba(45,219,111,0.3)",
+                            borderRadius: 3,
+                            padding: "1px 5px",
+                            marginRight: 6,
+                            letterSpacing: 0.3,
+                            verticalAlign: "middle",
+                            lineHeight: 1.6,
+                          }}>{item.manufacturer.trim()}</span>
                         )}
                         {item.name}
                       </p>

@@ -1,0 +1,160 @@
+Persist Admin Inventory group and item ordering.
+
+Scope:
+Admin Inventory only.
+
+Current issues:
+1. After editing Family Settings, the family/group sometimes moves to the bottom of the inventory list.
+2. Drag & Drop order does not reliably persist after leaving and returning to the page.
+3. Collapsing and expanding cards should not change order.
+4. Updating family metadata should not change the visible order.
+
+Goal:
+Admin Inventory order should be stable and user-controlled.
+
+Do not:
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change movement logic.
+- Do not change quantity logic.
+- Do not change SKU.
+- Do not change supplier logic.
+- Do not change manufacturerName semantics.
+- Do not reorder items based on updatedAt after Family Settings save.
+
+Important:
+Before adding new DB fields, inspect current schema.
+If displayOrder / sortOrder / groupOrder already exists, reuse it.
+Only add new nullable/default order fields if no suitable field exists.
+
+Required behavior:
+
+1. Family/group order persistence
+
+Admin Inventory family/group card order must persist after:
+- page refresh
+- navigating away and back
+- opening/closing Family Settings
+- saving Family Settings
+- collapsing/expanding cards
+- drag and drop reorder
+
+Family Settings save must not push the edited family to the bottom.
+
+2. Item row order persistence
+
+If row drag/drop exists inside a family group:
+- item row order must persist after refresh/navigation
+- collapse/expand must preserve row order
+- Family Settings save must not reorder rows
+
+If row drag/drop is not currently implemented, do not invent a full new row DnD system in this task.
+Only preserve existing drag/drop behavior.
+
+3. Sorting priority
+
+Admin Inventory should use this order:
+
+Primary:
+saved display order / sort order
+
+Fallback only when no saved order exists:
+manufacturerName
+family/group name
+size sort
+sku or name
+
+Do not use updatedAt as the primary order for Admin Inventory groups.
+
+4. Save order endpoint
+
+If there is already a reorder endpoint, use it.
+
+If not, add a minimal Admin Inventory reorder endpoint.
+
+Example:
+PATCH /api/admin/inventory/group-order
+
+Body:
+{
+  groups: [
+    {
+      groupKey: string,
+      sortOrder: number
+    }
+  ]
+}
+
+For item row order if supported:
+PATCH /api/admin/inventory/item-order
+
+Body:
+{
+  items: [
+    {
+      itemId: number,
+      sortOrder: number
+    }
+  ]
+}
+
+Use existing auth/permission patterns.
+
+5. Group key stability
+
+Because manufacturerName is now part of Admin Inventory grouping when present, the order key must distinguish:
+
+ABB + 600V Indoor Non-Fused Disconnect Switch
+Square D + 600V Indoor Non-Fused Disconnect Switch
+
+Do not let those groups overwrite each other's order.
+
+6. Family Settings save
+
+When saving:
+- family name
+- manufacturerName
+- representative image
+- item metadata
+
+preserve the current display order unless the user explicitly drags/reorders.
+
+7. Collapse state
+
+Collapse/expand state may remain local UI state if currently local.
+But collapse/expand must not change order.
+
+8. Error handling
+
+If order save fails:
+- show visible error/toast
+- do not silently pretend it saved
+- keep UI from becoming inconsistent if possible
+
+Manual verification:
+1. Drag a family/group card to a new position.
+2. Refresh page.
+3. Group remains in that position.
+
+4. Navigate away and return.
+5. Group remains in that position.
+
+6. Open Family Settings for that group.
+7. Save settings.
+8. Group stays in the same position, not bottom.
+
+9. Collapse and expand the card.
+10. Order remains unchanged.
+
+11. If item row drag/drop exists:
+    reorder rows, refresh, confirm row order persists.
+
+12. Groups with same family name but different manufacturerName keep independent order.
+
+Output:
+Summarize:
+- whether existing order fields were reused or new fields were added
+- what endpoint saves group order
+- what endpoint saves item order, if applicable
+- how Family Settings save preserves order
+- confirmation that updatedAt is not used as primary Admin Inventory order

@@ -157,9 +157,22 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
   });
 
   const moveItems = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/inventory/items/move-family`, { itemIds: [...selectedIds], newBaseItemName: moveTarget.trim() }),
+    mutationFn: () => {
+      const hasMfr = moveTarget.includes("::");
+      const newBaseItemName = hasMfr ? moveTarget.split("::").slice(1).join("::") : moveTarget;
+      const newManufacturerName = hasMfr ? moveTarget.split("::")[0] : null;
+      return apiRequest("POST", `/api/inventory/items/move-family`, {
+        itemIds: [...selectedIds],
+        newBaseItemName: newBaseItemName.trim(),
+        newManufacturerName,
+      });
+    },
     onSuccess: () => {
-      toast({ title: `${selectedIds.size} item(s) moved to "${moveTarget}"` });
+      const hasMfr = moveTarget.includes("::");
+      const label = hasMfr
+        ? `${moveTarget.split("::")[0]} ${moveTarget.split("::").slice(1).join("::")}`
+        : moveTarget;
+      toast({ title: `${selectedIds.size} item(s) moved to "${label}"` });
       invalidate(); setSelectedIds(new Set()); setShowMoveInput(false); setMoveTarget(""); onClose();
     },
     onError: (err: any) => toast({ title: "Move failed", description: err.message, variant: "destructive" }),
@@ -209,8 +222,8 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
     !(f.baseItemName === group.baseItemName && f.manufacturerName === currentMfr)
   );
   const moveOptions = otherFamilies.map(f => ({
-    value: f.baseItemName,
-    label: f.manufacturerName ? `${f.manufacturerName} — ${f.baseItemName}` : f.baseItemName,
+    value: f.manufacturerName ? `${f.manufacturerName}::${f.baseItemName}` : f.baseItemName,
+    label: f.manufacturerName ? `${f.manufacturerName} ${f.baseItemName}` : f.baseItemName,
   }));
 
   return (

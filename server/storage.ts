@@ -2023,10 +2023,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void> {
+  async moveFamilyItems(itemIds: number[], newBaseItemName: string, newManufacturerName: string | null = null): Promise<void> {
     if (itemIds.length === 0) return;
     await db.update(items)
-      .set({ baseItemName: newBaseItemName, updatedAt: new Date() })
+      .set({ baseItemName: newBaseItemName, manufacturer: newManufacturerName, updatedAt: new Date() })
       .where(inArray(items.id, itemIds));
   }
 

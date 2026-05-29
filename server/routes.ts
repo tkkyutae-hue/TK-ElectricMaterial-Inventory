@@ -916,10 +916,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/inventory/items/move-family", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const { itemIds, newBaseItemName } = req.body;
+      const { itemIds, newBaseItemName, newManufacturerName } = req.body;
       if (!Array.isArray(itemIds) || itemIds.length === 0) return res.status(400).json({ message: "itemIds required" });
       if (!newBaseItemName) return res.status(400).json({ message: "newBaseItemName required" });
-      await storage.moveFamilyItems(itemIds.map(Number), newBaseItemName);
+      await storage.moveFamilyItems(itemIds.map(Number), newBaseItemName, newManufacturerName ?? null);
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });

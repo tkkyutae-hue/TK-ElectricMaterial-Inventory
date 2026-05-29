@@ -174,7 +174,16 @@ export function SearchableItemSelect({
             </span>
             <div className="flex-1 min-w-0">
               <p style={D ? { fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 } : undefined}
-                className={D ? undefined : "text-sm font-medium text-slate-900 truncate leading-tight"}>{item.name}</p>
+                className={D ? undefined : "text-sm font-medium text-slate-900 truncate leading-tight"}>
+                {item.manufacturer?.trim() && (
+                  D ? (
+                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, verticalAlign: "middle", lineHeight: 1.6 }}>{item.manufacturer.trim()}</span>
+                  ) : (
+                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 mr-1.5 align-middle leading-relaxed">{item.manufacturer.trim()}</span>
+                  )
+                )}
+                {item.name}
+              </p>
               {item.sizeLabel && (
                 <p style={D ? { fontSize: 11, color: F.textMuted, lineHeight: 1.3, margin: 0 } : undefined}
                   className={D ? undefined : "text-xs text-slate-400 leading-tight"}>{item.sizeLabel}</p>
@@ -223,8 +232,17 @@ export function SearchableItemSelect({
                     className={D ? undefined : "w-4 h-4 text-slate-300"} />
                 )}
               </span>
-              <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: F.text, fontSize: 13 } : undefined}
-                className={D ? undefined : "truncate text-slate-900 text-sm"}>{selected.name}</span>
+              <span style={D ? { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: F.text, fontSize: 13, display: "flex", alignItems: "center", gap: 0 } : undefined}
+                className={D ? undefined : "truncate text-slate-900 text-sm flex items-center"}>
+                {selected.manufacturer?.trim() && (
+                  D ? (
+                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, flexShrink: 0, lineHeight: 1.6 }}>{selected.manufacturer.trim()}</span>
+                  ) : (
+                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 mr-1.5 shrink-0 leading-relaxed">{selected.manufacturer.trim()}</span>
+                  )
+                )}
+                {selected.name}
+              </span>
             </span>
             <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }}
               className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />

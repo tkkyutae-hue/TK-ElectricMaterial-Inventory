@@ -802,6 +802,9 @@ export default function FieldTransactions() {
                         <PhotoCell imageUrl={item?.imageUrl} name={item?.name ?? ""} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 }}>
+                            {item?.manufacturer?.trim() && (
+                              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, verticalAlign: "middle", lineHeight: 1.6 }}>{item.manufacturer.trim()}</span>
+                            )}
                             {item?.name ?? `#${m.itemId}`}
                           </p>
                           {item?.sizeLabel && (
@@ -1089,6 +1092,9 @@ export default function FieldTransactions() {
                         {/* Item name + subcategory (highest priority) */}
                         <td style={{ padding: "12px 8px" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: F.text, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item?.manufacturer?.trim() && (
+                              <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, verticalAlign: "middle", lineHeight: 1.6 }}>{item.manufacturer.trim()}</span>
+                            )}
                             {item?.name ?? `#${m.itemId}`}
                           </p>
                           {item?.extractedSubcategory && (

@@ -170,6 +170,7 @@ export default function CategoryDetail() {
     const previous = orderedGroupNames;
     const next = arrayMove(orderedGroupNames, oldIndex, newIndex);
     setOrderedGroupNames(next);
+    const orderMap = new Map(next.map((key, i) => [key, i]));
     apiRequest("PATCH", `/api/inventory/category/${id}/family-order`, {
       orders: next.map((compositeKey, i) => {
         const hasMfr = compositeKey.includes("::");
@@ -179,6 +180,16 @@ export default function CategoryDetail() {
           sortOrder: i,
         };
       }),
+    }).then(() => {
+      qc.setQueryData(["/api/inventory/category", id, "grouped"], (old: any) => {
+        if (!old?.groups) return old;
+        const sorted = [...old.groups].sort((a: any, b: any) => {
+          const ai = orderMap.get(getGroupId(a)) ?? 9999;
+          const bi = orderMap.get(getGroupId(b)) ?? 9999;
+          return ai - bi;
+        });
+        return { ...old, groups: sorted };
+      });
     }).catch(() => {
       setOrderedGroupNames(previous);
       toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });

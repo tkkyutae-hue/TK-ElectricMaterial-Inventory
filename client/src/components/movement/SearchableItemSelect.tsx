@@ -128,8 +128,38 @@ export function SearchableItemSelect({
     ? Math.min(264, window.innerHeight - dropdownPos.top - 24)
     : 264;
 
+  // Field Mode column widths (px) — shared between header and rows
+  const COL = { sku: 58, brand: 74, photo: 28, size: 54, qty: 66 } as const;
+
+  const HDR: React.CSSProperties = {
+    fontSize: 9, fontWeight: 700, color: F.textDim,
+    textTransform: "uppercase", letterSpacing: 1,
+    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+    flexShrink: 0,
+  };
+
   const itemList = (listStyle: React.CSSProperties = {}) => (
     <div style={{ overflowY: "auto", ...listStyle }}>
+
+      {/* ── Field Mode column header ── */}
+      {D && !isLoading && !errorMessage && filtered.length > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "5px 12px",
+          borderBottom: `1px solid ${F.borderStrong}`,
+          background: F.surface,
+          position: "sticky", top: 0, zIndex: 1,
+          flexShrink: 0,
+        }}>
+          <span style={{ ...HDR, width: COL.sku, fontFamily: "monospace" }}>SKU</span>
+          <span style={{ ...HDR, width: COL.brand }}>브랜드</span>
+          <span style={{ ...HDR, width: COL.photo, textAlign: "center" }}>사진</span>
+          <span style={{ ...HDR, width: COL.size }}>사이즈</span>
+          <span style={{ ...HDR, flex: 1, minWidth: 0 }}>자재명</span>
+          <span style={{ ...HDR, width: COL.qty, textAlign: "right" }}>재고</span>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-11">
           <p style={D ? { fontSize: 12, color: F.textMuted } : undefined}
@@ -152,18 +182,29 @@ export function SearchableItemSelect({
             type="button"
             onClick={() => handleSelect(item.id)}
             style={D ? {
-              minHeight: 44, width: "100%", display: "flex", alignItems: "center", gap: 8,
+              height: 40, width: "100%", display: "flex", alignItems: "center", gap: 8,
               padding: "0 12px", textAlign: "left", background: item.id === value ? F.surface : "transparent",
               borderBottom: `1px solid ${F.border}`, cursor: "pointer", border: "none",
+              flexShrink: 0,
             } : { height: "44px", minHeight: "44px" }}
             className={D ? undefined : `w-full flex items-center gap-2 px-3 text-left hover:bg-brand-50 transition-colors border-b border-slate-50 last:border-0 ${item.id === value ? "bg-brand-50" : ""}`}
             data-testid={`item-option-${item.id}`}
             onMouseEnter={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = F.surface; } : undefined}
             onMouseLeave={D ? e => { (e.currentTarget as HTMLButtonElement).style.background = item.id === value ? F.surface : "transparent"; } : undefined}
           >
-            <span style={D ? { color: F.textMuted, fontSize: 11, width: 64, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
+            {/* SKU */}
+            <span style={D ? { color: F.textMuted, fontSize: 11, width: COL.sku, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
               className={D ? undefined : "font-mono text-xs text-slate-400 w-16 shrink-0 truncate"}>{item.sku}</span>
-            <span style={D ? { width: 28, height: 28, flexShrink: 0, borderRadius: 5, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface, display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
+
+            {/* Brand — Field Mode: bold text column; Admin Mode: handled inside name div below */}
+            {D && (
+              <span style={{ width: COL.brand, flexShrink: 0, fontSize: 11, fontWeight: 700, color: item.manufacturer?.trim() ? F.accent : "transparent", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.manufacturer?.trim() || "·"}
+              </span>
+            )}
+
+            {/* Photo */}
+            <span style={D ? { width: COL.photo, height: COL.photo, flexShrink: 0, borderRadius: 5, overflow: "hidden", border: `1px solid ${F.borderStrong}`, background: F.surface, display: "flex", alignItems: "center", justifyContent: "center" } : undefined}
               className={D ? undefined : "w-8 h-8 shrink-0 rounded overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center"}>
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -172,24 +213,35 @@ export function SearchableItemSelect({
                   className={D ? undefined : "w-4 h-4 text-slate-300"} />
               )}
             </span>
-            <div className="flex-1 min-w-0">
-              <p style={D ? { fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3, margin: 0 } : undefined}
-                className={D ? undefined : "text-sm font-medium text-slate-900 truncate leading-tight"}>
-                {item.manufacturer?.trim() && (
-                  D ? (
-                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, verticalAlign: "middle", lineHeight: 1.6 }}>{item.manufacturer.trim()}</span>
-                  ) : (
-                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 mr-1.5 align-middle leading-relaxed">{item.manufacturer.trim()}</span>
-                  )
-                )}
+
+            {/* Size — Field Mode: fixed column; Admin Mode: inside name div */}
+            {D && (
+              <span style={{ width: COL.size, flexShrink: 0, fontSize: 11, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.sizeLabel || ""}
+              </span>
+            )}
+
+            {/* Name */}
+            {D ? (
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {item.name}
-              </p>
-              {item.sizeLabel && (
-                <p style={D ? { fontSize: 11, color: F.textMuted, lineHeight: 1.3, margin: 0 } : undefined}
-                  className={D ? undefined : "text-xs text-slate-400 leading-tight"}>{item.sizeLabel}</p>
-              )}
-            </div>
-            <span style={D ? { fontSize: 11, color: F.textMuted, flexShrink: 0, whiteSpace: "nowrap" } : undefined}
+              </span>
+            ) : (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate leading-tight">
+                  {item.manufacturer?.trim() && (
+                    <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 mr-1.5 align-middle leading-relaxed">{item.manufacturer.trim()}</span>
+                  )}
+                  {item.name}
+                </p>
+                {item.sizeLabel && (
+                  <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>
+                )}
+              </div>
+            )}
+
+            {/* Qty */}
+            <span style={D ? { fontSize: 11, color: F.textMuted, flexShrink: 0, whiteSpace: "nowrap", width: COL.qty, textAlign: "right" } : undefined}
               className={D ? undefined : "text-xs text-slate-400 shrink-0 whitespace-nowrap"}>{item.quantityOnHand} {item.unitOfMeasure}</span>
           </button>
         ))
@@ -236,7 +288,7 @@ export function SearchableItemSelect({
                 className={D ? undefined : "truncate text-slate-900 text-sm flex items-center"}>
                 {selected.manufacturer?.trim() && (
                   D ? (
-                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: F.accent, background: "rgba(45,219,111,0.13)", border: "1px solid rgba(45,219,111,0.3)", borderRadius: 3, padding: "1px 5px", marginRight: 6, letterSpacing: 0.3, flexShrink: 0, lineHeight: 1.6 }}>{selected.manufacturer.trim()}</span>
+                    <span style={{ fontWeight: 700, color: F.accent, fontSize: 12, flexShrink: 0, marginRight: 6, whiteSpace: "nowrap" }}>{selected.manufacturer.trim()}</span>
                   ) : (
                     <span className="inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 mr-1.5 shrink-0 leading-relaxed">{selected.manufacturer.trim()}</span>
                   )

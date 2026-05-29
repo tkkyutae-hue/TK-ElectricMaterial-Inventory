@@ -151,12 +151,12 @@ export function SearchableItemSelect({
           position: "sticky", top: 0, zIndex: 1,
           flexShrink: 0,
         }}>
-          <span style={{ ...HDR, width: COL.sku, fontFamily: "monospace" }}>SKU</span>
-          <span style={{ ...HDR, width: COL.brand }}>브랜드</span>
-          <span style={{ ...HDR, width: COL.photo, textAlign: "center" }}>사진</span>
-          <span style={{ ...HDR, width: COL.size }}>사이즈</span>
-          <span style={{ ...HDR, flex: 1, minWidth: 0 }}>자재명</span>
-          <span style={{ ...HDR, width: COL.qty, textAlign: "right" }}>재고</span>
+          <span style={{ ...HDR, width: COL.sku, fontFamily: "monospace" }}>{t.colSku}</span>
+          <span style={{ ...HDR, width: COL.brand }}>{t.colBrand}</span>
+          <span style={{ ...HDR, width: COL.photo, textAlign: "center" }}>{t.invPhotoCol}</span>
+          <span style={{ ...HDR, flex: 1, minWidth: 0 }}>{t.colItem}</span>
+          <span style={{ ...HDR, width: COL.size }}>{t.invSizeCol}</span>
+          <span style={{ ...HDR, width: COL.qty, textAlign: "right" }}>{t.colStock}</span>
         </div>
       )}
 
@@ -214,13 +214,6 @@ export function SearchableItemSelect({
               )}
             </span>
 
-            {/* Size — Field Mode: fixed column; Admin Mode: inside name div */}
-            {D && (
-              <span style={{ width: COL.size, flexShrink: 0, fontSize: 11, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {item.sizeLabel || ""}
-              </span>
-            )}
-
             {/* Name */}
             {D ? (
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -238,6 +231,13 @@ export function SearchableItemSelect({
                   <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>
                 )}
               </div>
+            )}
+
+            {/* Size — Field Mode: fixed column after Name; Admin Mode: inside name div above */}
+            {D && (
+              <span style={{ width: COL.size, flexShrink: 0, fontSize: 11, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.sizeLabel || ""}
+              </span>
             )}
 
             {/* Qty */}

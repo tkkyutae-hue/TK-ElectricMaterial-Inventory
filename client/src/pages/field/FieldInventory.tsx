@@ -1227,8 +1227,8 @@ export default function FieldInventory() {
   const TABLE_COLS = useMemo(() => [
     { label: t.colSku,      align: "left"   },
     { label: t.colPhoto,    align: "left"   },
-    { label: t.colSize,     align: "left"   },
     { label: t.colItem,     align: "left"   },
+    { label: t.colSize,     align: "left"   },
     { label: t.colCategory, align: "left",  cls: "hidden sm:table-cell" },
     { label: t.colQtyUnit,  align: "right"  },
     { label: t.colLocation, align: "left",  cls: "hidden md:table-cell" },
@@ -1650,21 +1650,7 @@ export default function FieldInventory() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.manufacturer?.trim() && (
-                        <span style={{
-                          display: "inline-block",
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: F.accent,
-                          background: "rgba(45,219,111,0.13)",
-                          border: "1px solid rgba(45,219,111,0.3)",
-                          borderRadius: 3,
-                          padding: "1px 5px",
-                          marginRight: 6,
-                          letterSpacing: 0.3,
-                          verticalAlign: "middle",
-                          lineHeight: 1.6,
-                          flexShrink: 0,
-                        }}>{item.manufacturer.trim()}</span>
+                        <span style={{ fontWeight: 700, color: F.accent, fontSize: 11, marginRight: 6 }}>{item.manufacturer.trim()}</span>
                       )}
                       {item.name}
                     </p>
@@ -1693,8 +1679,8 @@ export default function FieldInventory() {
               <colgroup>
                 <col style={{ width: "120px" }} />
                 <col style={{ width: "52px" }} />
-                <col style={{ width: "80px" }} />
                 <col />
+                <col style={{ width: "80px" }} />
                 <col style={{ width: "140px" }} />
                 <col style={{ width: "110px" }} />
                 <col style={{ width: "130px" }} />
@@ -1754,33 +1740,20 @@ export default function FieldInventory() {
                       </div>
                     </td>
                     <td className="px-3 py-3 align-middle">
-                      <span style={{ fontSize: 11, fontWeight: 500, color: F.textMuted, whiteSpace: "nowrap" }}>
-                        {item.sizeLabel ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 align-middle">
                       <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>
                         {item.manufacturer?.trim() && (
-                          <span style={{
-                            display: "inline-block",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: F.accent,
-                            background: "rgba(45,219,111,0.13)",
-                            border: "1px solid rgba(45,219,111,0.3)",
-                            borderRadius: 3,
-                            padding: "1px 5px",
-                            marginRight: 6,
-                            letterSpacing: 0.3,
-                            verticalAlign: "middle",
-                            lineHeight: 1.6,
-                          }}>{item.manufacturer.trim()}</span>
+                          <span style={{ fontWeight: 700, color: F.accent, fontSize: 11, marginRight: 6 }}>{item.manufacturer.trim()}</span>
                         )}
                         {item.name}
                       </p>
                       {item.extractedSubcategory && (
                         <p style={{ fontSize: 10, color: F.textDim, lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
                       )}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <span style={{ fontSize: 11, fontWeight: 500, color: F.textMuted, whiteSpace: "nowrap" }}>
+                        {item.sizeLabel ?? "—"}
+                      </span>
                     </td>
                     <td className="px-3 py-3 align-middle hidden sm:table-cell">
                       <span style={{ fontSize: 11, color: F.textMuted, lineHeight: 1.3 }}>{item.category?.name ?? "—"}</span>

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ItemStatusBadge } from "@/components/StatusBadge";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { CategoryItemGroup, ItemClassDraft } from "./types";
 
 const FAMILY_TABLE_COLS = "1.2rem 4.5rem 2fr 1fr 1fr 1fr 6.5rem";
@@ -17,7 +18,7 @@ interface FamilyEditDialogProps {
   onClose: () => void;
   categoryId: number;
   group: CategoryItemGroup;
-  allFamilies: string[];
+  allFamilies: Array<{ baseItemName: string; manufacturerName: string | null }>;
 }
 
 export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies }: FamilyEditDialogProps) {
@@ -35,6 +36,8 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [moveTarget, setMoveTarget] = useState("");
   const [showMoveInput, setShowMoveInput] = useState(false);
+  const [useNewFamily, setUseNewFamily] = useState(false);
+  const [newFamilyText, setNewFamilyText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [itemDrafts, setItemDrafts] = useState<Record<number, ItemClassDraft>>({});
 
@@ -45,6 +48,9 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
       setManufacturer(group.items[0]?.manufacturer ?? "");
       setSelectedIds(new Set());
       setShowMoveInput(false);
+      setMoveTarget("");
+      setUseNewFamily(false);
+      setNewFamilyText("");
       setConfirmDelete(false);
       const drafts: Record<number, ItemClassDraft> = {};
       for (const item of group.items) {
@@ -184,7 +190,14 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
 
   const toggleItem = (id: number) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleAll = () => { if (selectedIds.size === group.items.length) setSelectedIds(new Set()); else setSelectedIds(new Set(group.items.map(i => i.id))); };
-  const otherFamilies = allFamilies.filter(f => f !== group.baseItemName);
+  const currentMfr = (group.manufacturerName ?? group.items[0]?.manufacturer ?? "").trim() || null;
+  const otherFamilies = allFamilies.filter(f =>
+    !(f.baseItemName === group.baseItemName && f.manufacturerName === currentMfr)
+  );
+  const moveOptions = otherFamilies.map(f => ({
+    value: f.baseItemName,
+    label: f.manufacturerName ? `${f.manufacturerName} — ${f.baseItemName}` : f.baseItemName,
+  }));
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -313,13 +326,49 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
                 </Button>
               </div>
               {showMoveInput && (
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-1">
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1 space-y-1.5">
                     <label className="text-xs text-slate-600 font-medium">Target family name</label>
-                    <Input value={moveTarget} onChange={e => setMoveTarget(e.target.value)} placeholder="Existing or new family name…" list="move-target-suggestions" data-testid="input-move-target" />
-                    <datalist id="move-target-suggestions">{otherFamilies.map(f => <option key={f} value={f} />)}</datalist>
+                    {!useNewFamily ? (
+                      <>
+                        <SearchableSelect
+                          value={moveTarget}
+                          onChange={v => { setMoveTarget(v); setNewFamilyText(""); }}
+                          options={moveOptions}
+                          placeholder="Select an existing family…"
+                          searchPlaceholder="Search families…"
+                          emptyText="No families found"
+                          data-testid="select-move-target"
+                        />
+                        <button
+                          type="button"
+                          className="text-xs text-brand-600 hover:text-brand-800 underline-offset-2 hover:underline"
+                          onClick={() => { setUseNewFamily(true); setMoveTarget(""); }}
+                          data-testid="link-use-new-family"
+                        >
+                          Create a new family instead →
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          value={newFamilyText}
+                          onChange={e => { setNewFamilyText(e.target.value); setMoveTarget(e.target.value); }}
+                          placeholder="New family name…"
+                          data-testid="input-move-target-new"
+                        />
+                        <button
+                          type="button"
+                          className="text-xs text-brand-600 hover:text-brand-800 underline-offset-2 hover:underline"
+                          onClick={() => { setUseNewFamily(false); setNewFamilyText(""); setMoveTarget(""); }}
+                          data-testid="link-use-existing-family"
+                        >
+                          ← Select an existing family instead
+                        </button>
+                      </>
+                    )}
                   </div>
-                  <Button type="button" size="sm" className="bg-brand-700 hover:bg-brand-800" onClick={() => moveItems.mutate()} disabled={!moveTarget.trim() || moveItems.isPending} data-testid="button-confirm-move">
+                  <Button type="button" size="sm" className="bg-brand-700 hover:bg-brand-800 mt-6" onClick={() => moveItems.mutate()} disabled={!moveTarget.trim() || moveItems.isPending} data-testid="button-confirm-move">
                     {moveItems.isPending ? "Moving…" : "Move"}
                   </Button>
                 </div>

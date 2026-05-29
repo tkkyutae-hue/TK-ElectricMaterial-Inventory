@@ -410,7 +410,9 @@ export default function CategoryDetail() {
   const { category, skuCount, totalQuantity, lowStockCount, outOfStockCount, groups } = data;
   const gradientClass = getCategoryGradient(category.code);
   const hasActiveFilters = search.trim() !== "" || statusFilter !== "all" || familyFilter !== "all" || locationFilter !== "all";
-  const existingFamilies = groups.map(g => g.baseItemName).filter(Boolean) as string[];
+  const existingFamilies = groups
+    .filter(g => !!g.baseItemName)
+    .map(g => ({ baseItemName: g.baseItemName, manufacturerName: g.manufacturerName ?? null }));
   const uniqueLocationNames = Array.from(
     new Set(groups.flatMap(g => g.items.map(i => i.location?.name).filter((n): n is string => !!n)))
   ).sort();

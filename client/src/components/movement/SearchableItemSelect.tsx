@@ -270,7 +270,30 @@ export function SearchableItemSelect({
         onClick={() => { if (!open) handleOpen(); }}
         data-testid="item-select-trigger"
       >
-        {selected ? (
+        {open && !isMobile ? (
+          /* Desktop open: trigger always becomes the inline search input */
+          <>
+            <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
+              className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClick={e => e.stopPropagation()}
+              style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none", marginLeft: 6 } : undefined}
+              className={D ? undefined : "flex-1 py-1 mx-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
+              data-testid="item-search-input"
+            />
+            {search && (
+              <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
+                <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
+                  className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
+              </button>
+            )}
+          </>
+        ) : selected ? (
           <>
             <span className="flex items-center gap-2.5 min-w-0 flex-1 py-1">
               <span style={D ? { color: F.textMuted, fontSize: 11, flexShrink: 0, width: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "monospace" } : undefined}
@@ -298,29 +321,6 @@ export function SearchableItemSelect({
             </span>
             <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }}
               className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
-          </>
-        ) : open && !isMobile ? (
-          /* When open on desktop: trigger becomes the search input */
-          <>
-            <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
-              className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onClick={e => e.stopPropagation()}
-              style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none", marginLeft: 6 } : undefined}
-              className={D ? undefined : "flex-1 py-1 mx-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
-              data-testid="item-search-input"
-            />
-            {search && (
-              <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
-                <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
-                  className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
-              </button>
-            )}
           </>
         ) : (
           <>
@@ -421,32 +421,7 @@ export function SearchableItemSelect({
             }}
             className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
           >
-            {/* Search bar — only shown when an item is already selected so user can search to replace it */}
-            {selected && (
-              <div style={D ? { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}` } : undefined}
-                className={D ? undefined : "flex items-center gap-2 px-3 py-2 border-b border-slate-100"}>
-                <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
-                  className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onClick={e => e.stopPropagation()}
-                  style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
-                  className={D ? undefined : "flex-1 py-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
-                  data-testid="item-search-input"
-                />
-                {search && (
-                  <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
-                    <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
-                      className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
-                  </button>
-                )}
-              </div>
-            )}
-            {itemList({ maxHeight: `${selected ? maxDropdownH - 42 : maxDropdownH}px` })}
+            {itemList({ maxHeight: `${maxDropdownH}px` })}
           </div>
         ),
         document.body

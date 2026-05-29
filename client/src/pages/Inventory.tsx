@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/use-reference-data";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsagePatternBadge } from "@/components/UsagePatternBadge";
-import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown, Rows3 } from "lucide-react";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { Search, Filter, AlertTriangle, XCircle, Package, ChevronLeft, ChevronRight, FileDown, ChevronsUpDown, ChevronUp, ChevronDown, Rows3, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -143,6 +144,7 @@ export default function Inventory() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [exporting, setExporting] = useState(false);
   const [previewItem, setPreviewItem] = useState<any>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const { isAdminRole } = useAuth();
   const { toast } = useToast();
@@ -442,10 +444,20 @@ export default function Inventory() {
                       <span className="font-mono text-[11px] text-slate-500 whitespace-nowrap">{item.sku}</span>
                     </td>
                     {/* Photo */}
-                    <td className="px-3 py-3 align-middle">
-                      <div className="w-9 h-9 rounded-md overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                    <td className="px-3 py-3 align-middle" onClick={e => e.stopPropagation()}>
+                      <div
+                        className="w-9 h-9 rounded-md overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center relative group/photo"
+                        style={item.imageUrl ? { cursor: "zoom-in" } : undefined}
+                        onClick={() => { if (item.imageUrl) setLightboxUrl(item.imageUrl); }}
+                        data-testid={`photo-thumb-${item.id}`}
+                      >
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                          <>
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center">
+                              <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover/photo:opacity-100 transition-opacity drop-shadow" />
+                            </div>
+                          </>
                         ) : (
                           <Package className="w-4 h-4 text-slate-300" />
                         )}
@@ -589,6 +601,14 @@ export default function Inventory() {
         </div>
       </div>
 
+      {/* ── Photo Lightbox ── */}
+      <ImageLightbox
+        images={lightboxUrl ? [lightboxUrl] : []}
+        initialIndex={0}
+        open={!!lightboxUrl}
+        onClose={() => setLightboxUrl(null)}
+      />
+
       {/* ── Quick View Drawer ── */}
       <Sheet open={!!previewItem} onOpenChange={open => { if (!open) setPreviewItem(null); }}>
         <SheetContent
@@ -615,12 +635,19 @@ export default function Inventory() {
 
               {/* Photo */}
               {previewItem.imageUrl && (
-                <div className="mx-5 mt-4 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 h-36 flex items-center justify-center">
+                <div
+                  className="mx-5 mt-4 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 h-36 flex items-center justify-center cursor-zoom-in relative group/drawer-photo"
+                  onClick={() => setLightboxUrl(previewItem.imageUrl)}
+                  data-testid="drawer-photo-zoom"
+                >
                   <img
                     src={previewItem.imageUrl}
                     alt={previewItem.name}
                     className="max-w-full max-h-full object-contain p-2"
                   />
+                  <div className="absolute inset-0 bg-black/0 group-hover/drawer-photo:bg-black/15 transition-colors flex items-center justify-center">
+                    <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover/drawer-photo:opacity-80 transition-opacity drop-shadow" />
+                  </div>
                 </div>
               )}
 

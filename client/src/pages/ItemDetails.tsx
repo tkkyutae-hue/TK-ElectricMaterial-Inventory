@@ -14,8 +14,9 @@ import {
   ArrowLeft, Edit, Trash2, Tag, Save, X as XIcon,
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
   ClipboardList, Layers, Plus, Pencil, Check,
-  ChevronLeft, ChevronRight, Star, Camera, Eye,
+  ChevronLeft, ChevronRight, Star, Camera, Eye, Maximize2,
 } from "lucide-react";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -339,6 +340,7 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data: images = [] } = useQuery<ItemImage[]>({
     queryKey: ["/api/inventory", itemId, "images"],
@@ -452,25 +454,38 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
       >
         {activeImage ? (
           <>
-            <img
-              src={activeImage.imageUrl}
-              alt={(activeImage as any).altText ?? item.name}
-              className="w-full h-full object-contain p-3"
-              data-testid="img-gallery-main"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
+            {/* Clickable main image → opens lightbox */}
+            <div
+              className="w-full h-full group/main cursor-zoom-in"
+              onClick={() => setLightboxOpen(true)}
+              data-testid="img-gallery-main-wrapper"
+            >
+              <img
+                src={activeImage.imageUrl}
+                alt={(activeImage as any).altText ?? item.name}
+                className="w-full h-full object-contain p-3"
+                data-testid="img-gallery-main"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+              {/* Zoom hint overlay */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/main:bg-black/10 transition-colors rounded-2xl pointer-events-none">
+                <div className="bg-black/0 group-hover/main:bg-black/40 rounded-full p-2 transition-colors">
+                  <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover/main:opacity-80 transition-opacity drop-shadow" />
+                </div>
+              </div>
+            </div>
             {images.length > 1 && (
               <>
                 <button
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm opacity-70 hover:opacity-100 transition-opacity"
-                  onClick={() => setActiveIdx(i => (i - 1 + images.length) % images.length)}
+                  onClick={e => { e.stopPropagation(); setActiveIdx(i => (i - 1 + images.length) % images.length); }}
                   data-testid="btn-gallery-prev"
                 >
                   <ChevronLeft className="w-4 h-4 text-slate-700" />
                 </button>
                 <button
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm opacity-70 hover:opacity-100 transition-opacity"
-                  onClick={() => setActiveIdx(i => (i + 1) % images.length)}
+                  onClick={e => { e.stopPropagation(); setActiveIdx(i => (i + 1) % images.length); }}
                   data-testid="btn-gallery-next"
                 >
                   <ChevronRight className="w-4 h-4 text-slate-700" />
@@ -662,6 +677,14 @@ function ItemGalleryPanel({ item, itemId }: { item: any; itemId: number }) {
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden" onChange={handleFileInput} data-testid="file-input-gallery" />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileInput} data-testid="file-input-camera" />
+
+      {/* Lightbox */}
+      <ImageLightbox
+        images={images.map(img => img.imageUrl)}
+        initialIndex={activeIdx}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }

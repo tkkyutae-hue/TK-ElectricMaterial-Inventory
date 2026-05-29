@@ -123,12 +123,14 @@ export interface IStorage {
   getReportUsageByProject(): Promise<any>;
 
   getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]>;
+  getFieldBrands(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]>;
   getFieldSizes(params: { categoryId?: number; family?: string; detailType?: string; subcategory?: string; status?: string; search?: string }): Promise<string[]>;
-  getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]>;
+  getFieldTypes(params: { categoryId?: number; family?: string; brand?: string }): Promise<{ name: string; count: number }[]>;
   getFieldSubcategories(params: { categoryId?: number; family?: string; detailType?: string }): Promise<{ name: string; count: number }[]>;
   getFieldItems(params: {
     categoryId?: number;
     family?: string;
+    brand?: string;
     detailType?: string;
     subcategory?: string;
     size?: string;
@@ -136,7 +138,7 @@ export interface IStorage {
     search?: string;
     page?: number;
     perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string })[]; total: number }>;
+  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string; manufacturer: string | null })[]; total: number }>;
   getClassificationOptions(categoryId: number): Promise<{ subcategories: string[]; detailTypes: string[]; subTypes: string[] }>;
 
   getWireReels(itemId: number): Promise<WireReelWithRelations[]>;
@@ -2280,6 +2282,34 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Field Inventory ─────────────────────────────────────────────────────────
 
+  async getFieldBrands(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]> {
+    const rows = await db.select({
+      manufacturer: items.manufacturer,
+      subcategory: items.subcategory,
+      detailType: items.detailType,
+      baseItemName: items.baseItemName,
+      name: items.name,
+      categoryId: items.categoryId,
+    }).from(items).where(eq(items.isActive, true));
+
+    let filtered = rows as any[];
+    if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
+    if (params.family) {
+      filtered = filtered.filter(i =>
+        derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
+      );
+    }
+
+    const counts: Record<string, number> = {};
+    for (const i of filtered) {
+      const mfr = (i.manufacturer || '').trim();
+      if (mfr) counts[mfr] = (counts[mfr] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
   async getFieldFamilies(params: { categoryId?: number }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
       name: items.name,
@@ -2383,21 +2413,25 @@ export class DatabaseStorage implements IStorage {
     return result.map(r => r.label);
   }
 
-  async getFieldTypes(params: { categoryId?: number; family?: string }): Promise<{ name: string; count: number }[]> {
+  async getFieldTypes(params: { categoryId?: number; family?: string; brand?: string }): Promise<{ name: string; count: number }[]> {
     const allItems = await db.select({
       name: items.name,
       detailType: items.detailType,
       subcategory: items.subcategory,
       baseItemName: items.baseItemName,
+      manufacturer: items.manufacturer,
       categoryId: items.categoryId,
     }).from(items).where(eq(items.isActive, true));
 
-    let filtered = allItems;
+    let filtered = allItems as any[];
     if (params.categoryId) filtered = filtered.filter(i => i.categoryId === params.categoryId);
     if (params.family) {
       filtered = filtered.filter(i =>
         derivedFamily(i.subcategory, i.detailType, i.name || '', i.baseItemName) === params.family
       );
+    }
+    if (params.brand) {
+      filtered = filtered.filter(i => (i.manufacturer || '').trim() === params.brand);
     }
 
     const counts: Record<string, number> = {};
@@ -2513,6 +2547,7 @@ export class DatabaseStorage implements IStorage {
   async getFieldItems(params: {
     categoryId?: number;
     family?: string;
+    brand?: string;
     type?: string;
     subcategory?: string;
     size?: string;
@@ -2520,7 +2555,7 @@ export class DatabaseStorage implements IStorage {
     search?: string;
     page?: number;
     perPage?: number;
-  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string; derivedFamilyName: string; derivedTypeName: string })[]; total: number }> {
+  }): Promise<{ items: (ItemWithRelations & { status: string; extractedSubcategory: string; derivedFamilyName: string; derivedTypeName: string; manufacturer: string | null })[]; total: number }> {
     const results = await db.select({
       item: items,
       category: categories,
@@ -2567,6 +2602,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (params.family) {
       mapped = mapped.filter(i => i.derivedFamilyName === params.family);
+    }
+    if (params.brand) {
+      mapped = mapped.filter(i => ((i as any).manufacturer || '').trim() === params.brand);
     }
     if (params.type) {
       mapped = mapped.filter(i => i.derivedTypeName === params.type);

@@ -48,6 +48,7 @@ type FieldItem = {
   subcategory?: string | null;
   detailType?: string | null;
   extractedSubcategory?: string;
+  manufacturer?: string | null;
   imageUrl?: string | null;
   location?: { name: string } | null;
   category?: { name: string } | null;
@@ -986,6 +987,7 @@ export default function FieldInventory() {
     () => urlParams.get("category") ? Number(urlParams.get("category")) : null
   );
   const [selectedFamily, setSelectedFamily] = useState(() => urlParams.get("family") || "all");
+  const [selectedBrand, setSelectedBrand] = useState(() => urlParams.get("brand") || "all");
   const [selectedType, setSelectedType] = useState(() => urlParams.get("type") || "all");
   const [selectedSubcategory, setSelectedSubcategory] = useState(() => urlParams.get("subcategory") || "all");
   const [selectedSize, setSelectedSize] = useState(() => urlParams.get("size") || "all");
@@ -1022,6 +1024,7 @@ export default function FieldInventory() {
     const next = new URLSearchParams();
     if (selectedCatId) next.set("category", String(selectedCatId));
     if (selectedFamily !== "all") next.set("family", selectedFamily);
+    if (selectedBrand !== "all") next.set("brand", selectedBrand);
     if (selectedType !== "all") next.set("type", selectedType);
     if (selectedSubcategory !== "all") next.set("subcategory", selectedSubcategory);
     if (selectedSize !== "all") next.set("size", selectedSize);
@@ -1031,7 +1034,7 @@ export default function FieldInventory() {
     if (pageSize !== 10) next.set("perPage", String(pageSize));
     const qs = next.toString();
     navigate("/field/inventory" + (qs ? "?" + qs : ""), { replace: true });
-  }, [selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
+  }, [selectedCatId, selectedFamily, selectedBrand, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize, navigate]);
 
   // ── Queries ──
 
@@ -1053,13 +1056,27 @@ export default function FieldInventory() {
     },
   });
 
-  const { data: types = [] } = useQuery<PillEntry[]>({
-    queryKey: ["/api/field/types", selectedCatId, selectedFamily],
+  const { data: brands = [] } = useQuery<PillEntry[]>({
+    queryKey: ["/api/field/brands", selectedCatId, selectedFamily],
     queryFn: async () => {
       if (!selectedCatId || selectedFamily === "all") return [];
       const p = new URLSearchParams();
       p.set("category", String(selectedCatId));
       p.set("family", selectedFamily);
+      const r = await fetch("/api/field/brands?" + p, { credentials: "include" });
+      return r.json();
+    },
+    enabled: selectedCatId !== null && selectedFamily !== "all",
+  });
+
+  const { data: types = [] } = useQuery<PillEntry[]>({
+    queryKey: ["/api/field/types", selectedCatId, selectedFamily, selectedBrand],
+    queryFn: async () => {
+      if (!selectedCatId || selectedFamily === "all") return [];
+      const p = new URLSearchParams();
+      p.set("category", String(selectedCatId));
+      p.set("family", selectedFamily);
+      if (selectedBrand !== "all") p.set("brand", selectedBrand);
       const r = await fetch("/api/field/types?" + p, { credentials: "include" });
       return r.json();
     },
@@ -1103,11 +1120,12 @@ export default function FieldInventory() {
   }, [sizes, selectedSize]);
 
   const { data: fieldData, isLoading, isError: itemsError } = useQuery<FieldItemsResponse>({
-    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
+    queryKey: ["/api/field/items", selectedCatId, selectedFamily, selectedBrand, selectedType, selectedSubcategory, selectedSize, selectedStatus, debouncedSearch, page, pageSize],
     queryFn: async () => {
       const p = new URLSearchParams();
       if (selectedCatId) p.set("category", String(selectedCatId));
       if (selectedFamily !== "all") p.set("family", selectedFamily);
+      if (selectedBrand !== "all") p.set("brand", selectedBrand);
       if (selectedType !== "all") p.set("type", selectedType);
       if (selectedSubcategory !== "all") p.set("subcategory", selectedSubcategory);
       if (selectedSize !== "all") p.set("size", selectedSize);
@@ -1124,6 +1142,7 @@ export default function FieldInventory() {
   const totalItems = fieldData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
+  const showBrandPills = selectedFamily !== "all" && brands.length >= 2;
   const showTypePills = selectedFamily !== "all" && types.length >= 1;
   const showSubcategoryPills = selectedType !== "all" && !subcatFetching && subcategories.length >= 1;
 
@@ -1147,6 +1166,15 @@ export default function FieldInventory() {
 
   function handleFamilyChange(v: string) {
     setSelectedFamily(v);
+    setSelectedBrand("all");
+    setSelectedType("all");
+    setSelectedSubcategory("all");
+    setSelectedSize("all");
+    setPage(1);
+  }
+
+  function handleBrandChange(v: string) {
+    setSelectedBrand(v);
     setSelectedType("all");
     setSelectedSubcategory("all");
     setSelectedSize("all");
@@ -1183,6 +1211,7 @@ export default function FieldInventory() {
   function clearAll() {
     setSelectedCatId(null);
     setSelectedFamily("all");
+    setSelectedBrand("all");
     setSelectedType("all");
     setSelectedSubcategory("all");
     setSelectedSize("all");
@@ -1192,7 +1221,7 @@ export default function FieldInventory() {
     setCatGridCollapsed(false);
   }
 
-  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedType !== "all" || selectedSubcategory !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
+  const hasFilters = selectedCatId !== null || selectedFamily !== "all" || selectedBrand !== "all" || selectedType !== "all" || selectedSubcategory !== "all" || selectedSize !== "all" || selectedStatus !== "all" || searchInput !== "";
 
   // Table column definitions (translated)
   const TABLE_COLS = useMemo(() => [
@@ -1366,7 +1395,21 @@ export default function FieldInventory() {
         </div>
       )}
 
-      {/* ── Level 3: Type ── */}
+      {/* ── Level 3: Brand ── */}
+      {showBrandPills && (
+        <div className="filter-fade-in">
+          <PillBar
+            label="BRAND"
+            entries={brands}
+            selected={selectedBrand}
+            onSelect={handleBrandChange}
+            testIdPrefix="chip-brand"
+            allLabel={t.allFilter}
+          />
+        </div>
+      )}
+
+      {/* ── Level 4: Type ── */}
       {showTypePills && (
         <div className="filter-fade-in">
           <PillBar
@@ -1511,7 +1554,10 @@ export default function FieldInventory() {
             <FilterChip label={selectedCat.name} onRemove={() => { setSelectedCatId(null); setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedFamily !== "all" && (
-            <FilterChip label={getFamilyDisplay(selectedFamily)} onRemove={() => { setSelectedFamily("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
+            <FilterChip label={getFamilyDisplay(selectedFamily)} onRemove={() => { setSelectedFamily("all"); setSelectedBrand("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
+          )}
+          {selectedBrand !== "all" && (
+            <FilterChip label={selectedBrand} onRemove={() => { setSelectedBrand("all"); setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
           )}
           {selectedType !== "all" && (
             <FilterChip label={selectedType} onRemove={() => { setSelectedType("all"); setSelectedSubcategory("all"); setSelectedSize("all"); setPage(1); }} />
@@ -1599,6 +1645,9 @@ export default function FieldInventory() {
                   {/* Text info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.manufacturer?.trim() && (
+                        <strong style={{ fontWeight: 800, marginRight: 5 }}>{item.manufacturer.trim()}</strong>
+                      )}
                       {item.name}
                     </p>
                     <p style={{ fontSize: 11, color: F.textMuted, margin: "1px 0 0", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1689,7 +1738,12 @@ export default function FieldInventory() {
                       </span>
                     </td>
                     <td className="px-3 py-3 align-middle">
-                      <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>{item.name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: F.text, lineHeight: 1.3 }}>
+                        {item.manufacturer?.trim() && (
+                          <strong style={{ fontWeight: 800, marginRight: 5 }}>{item.manufacturer.trim()}</strong>
+                        )}
+                        {item.name}
+                      </p>
                       {item.extractedSubcategory && (
                         <p style={{ fontSize: 10, color: F.textDim, lineHeight: 1.3, marginTop: 2 }}>{item.extractedSubcategory}</p>
                       )}

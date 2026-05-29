@@ -232,6 +232,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(await storage.getFieldFamilies({ categoryId }));
   });
 
+  app.get("/api/field/brands", isAuthenticated, async (req, res) => {
+    const categoryId = req.query.category ? Number(req.query.category) : undefined;
+    const family = req.query.family as string | undefined;
+    res.json(await storage.getFieldBrands({ categoryId, family }));
+  });
+
   app.get("/api/field/sizes", isAuthenticated, async (req, res) => {
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
     const family = req.query.family as string | undefined;
@@ -245,7 +251,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/field/types", isAuthenticated, async (req, res) => {
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
     const family = req.query.family as string | undefined;
-    res.json(await storage.getFieldTypes({ categoryId, family }));
+    const brand = req.query.brand as string | undefined;
+    res.json(await storage.getFieldTypes({ categoryId, family, brand }));
   });
 
   app.get("/api/field/subcategories", isAuthenticated, async (req, res) => {
@@ -258,6 +265,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/field/items", isAuthenticated, async (req, res) => {
     const categoryId = req.query.category ? Number(req.query.category) : undefined;
     const family = req.query.family as string | undefined;
+    const brand = req.query.brand as string | undefined;
     const type = req.query.type as string | undefined;
     const subcategory = req.query.subcategory as string | undefined;
     const size = req.query.size as string | undefined;
@@ -265,7 +273,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const search = req.query.q as string | undefined;
     const page = req.query.page ? Number(req.query.page) : 1;
     const perPage = req.query.perPage ? Number(req.query.perPage) : 10;
-    res.json(await storage.getFieldItems({ categoryId, family, type, subcategory, size, status, search, page, perPage }));
+    res.json(await storage.getFieldItems({ categoryId, family, brand, type, subcategory, size, status, search, page, perPage }));
   });
 
   // ─── Locations ──────────────────────────────────────────────────────────────

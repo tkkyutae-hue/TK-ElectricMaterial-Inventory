@@ -1,0 +1,146 @@
+Fix Admin Inventory manufacturer search and grouping.
+
+Scope:
+Admin Inventory only.
+
+Current issue:
+Manufacturer / Brand is now displayed in the group header, which is good.
+However, two problems remain:
+
+1. Searching by manufacturer name does not work.
+Example:
+Searching "ABB", "Siemens", "Eaton", or "LS Electric" should return matching inventory groups/items.
+
+2. Items with the same group/family name but different manufacturers are still grouped under the same header.
+Example:
+ABB 600V Indoor Non-Fused Disconnect Switch
+Siemens 600V Indoor Non-Fused Disconnect Switch
+
+These should be separate Admin Inventory groups, not merged into one group.
+
+Do not:
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change database schema.
+- Do not change supplier logic.
+- Do not change quantity logic.
+- Do not change movement logic.
+- Do not change SKU.
+- Do not add manufacturer into item.name.
+- Do not create Generic / Unspecified / No Brand groups.
+
+Files likely involved:
+- Admin Inventory page/component
+- inventory grouping helper
+- inventory search/filter logic
+- item family/group rendering component
+
+Required changes:
+
+1. Search should include manufacturerName
+
+Update Admin Inventory search logic so the search query checks:
+- SKU
+- item name
+- size
+- family/group name
+- type/subcategory if currently searched
+- manufacturerName
+
+Examples:
+Search "ABB" should show ABB items/groups.
+Search "Siemens" should show Siemens items/groups.
+Search "LS Electric" should show LS Electric items/groups.
+
+Search should be case-insensitive.
+
+2. Grouping key should include manufacturerName when present
+
+Current grouping likely uses only family/group name.
+
+Update Admin Inventory grouping only:
+
+If manufacturerName exists:
+groupKey = manufacturerName + family/group identifier
+
+If manufacturerName is blank/null:
+groupKey = existing family/group identifier
+
+This prevents different manufacturers with the same item/family name from being merged.
+
+Example:
+manufacturerName = ABB
+familyName = 600V Indoor Non-Fused Disconnect Switch
+→ group should be:
+ABB 600V Indoor Non-Fused Disconnect Switch
+
+manufacturerName = Siemens
+familyName = 600V Indoor Non-Fused Disconnect Switch
+→ separate group:
+Siemens 600V Indoor Non-Fused Disconnect Switch
+
+3. Header display
+
+If manufacturerName exists:
+- Show manufacturerName at the beginning of the group header.
+- Make only manufacturerName bold.
+- Then show the existing group title.
+
+Example:
+ABB 600V Indoor Non-Fused Disconnect Switch
+
+If manufacturerName is blank:
+- Keep the current header display unchanged.
+- Do not show Generic, Unspecified, No Brand, or a dash.
+
+4. Child rows
+
+Do not repeat manufacturerName in every child size row if the group header already shows it.
+
+Rows should stay compact.
+
+5. Existing bracket cleanup in display only
+
+If a group title already contains bracketed brand text like:
+[Siemens] Temporary Panel
+
+and manufacturerName = Siemens,
+display should avoid duplication:
+
+Correct:
+Siemens Temporary Panel
+
+Wrong:
+Siemens [Siemens] Temporary Panel
+
+This should be display-only.
+Do not mutate item.name in the database.
+
+Manual verification:
+1. Add or edit two item groups with same family/group name but different manufacturerName:
+   ABB
+   Siemens
+
+2. Admin Inventory should show two separate groups:
+   ABB 600V Indoor Non-Fused Disconnect Switch
+   Siemens 600V Indoor Non-Fused Disconnect Switch
+
+3. Search "ABB":
+   only ABB matching groups/items appear.
+
+4. Search "Siemens":
+   only Siemens matching groups/items appear.
+
+5. EMT Conduit or other items without manufacturerName:
+   existing grouping/header stays unchanged.
+
+6. No Generic / Unspecified / No Brand header appears.
+
+7. SKU, item name, quantity, stock status, movement logic are unchanged.
+
+Output:
+After implementation, summarize:
+- where manufacturerName was added to search
+- how the Admin Inventory groupKey changed
+- how blank manufacturerName is handled
+- confirmation that Field Mode, Excel export, DB schema, SKU, and movement logic were not changed

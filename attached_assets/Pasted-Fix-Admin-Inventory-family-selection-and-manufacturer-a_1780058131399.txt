@@ -1,0 +1,140 @@
+Fix Admin Inventory family selection and manufacturer-aware grouping.
+
+Scope:
+Admin Inventory only.
+
+Current issues:
+1. In Family Settings → Move to family dropdown, target family names only show the family name.
+   If multiple manufacturers have the same or similar family name, the user cannot tell which one to select.
+
+2. Admin Inventory grouping can still merge items with the same family/group name even when manufacturerName is different.
+
+Goal:
+Make manufacturerName visible and usable in Admin Inventory family selection and grouping.
+
+Do not:
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change movement logic.
+- Do not change quantity logic.
+- Do not change SKU.
+- Do not add manufacturer into item.name.
+- Do not create Generic / Unspecified / No Brand groups.
+- Do not change supplier logic.
+
+Files likely involved:
+- Admin Inventory page/component
+- Family Settings modal/component
+- inventory grouping helper
+- family move dropdown logic
+- search/filter logic if family list is filtered
+
+Required changes:
+
+1. Family move dropdown display
+
+In the "Target family name" dropdown, show manufacturerName when it exists.
+
+Display format:
+Manufacturer — Family Name
+
+Examples:
+ABB — 600V Indoor Non-Fused Disconnect Switch
+Square D — 600V Indoor Non-Fused Disconnect Switch
+Siemens — Temporary Panel - 480/277V 3P4W / MAIN LUG / Type PL / NEMA1
+LS Electric — 1Pole Circuit Breaker / Type HACR
+
+If manufacturerName is blank:
+show only the existing family name.
+
+Example:
+EMT Conduit
+EMT Set Screw Connector
+
+Do not show:
+Unspecified — EMT Conduit
+Generic — EMT Conduit
+No Brand — EMT Conduit
+
+2. Family move target value
+
+The dropdown option must internally distinguish families by manufacturerName + family/group identifier.
+
+Do not use only familyName as the unique target if manufacturerName exists.
+
+Example:
+ABB + 600V Indoor Non-Fused Disconnect Switch
+and
+Square D + 600V Indoor Non-Fused Disconnect Switch
+
+must be separate move targets.
+
+3. Admin Inventory grouping
+
+Update Admin Inventory grouping logic only:
+
+If manufacturerName exists:
+groupKey should include manufacturerName + family/group identifier.
+
+If manufacturerName is blank/null:
+keep existing grouping behavior.
+
+Example:
+ABB 600V Indoor Non-Fused Disconnect Switch
+Square D 600V Indoor Non-Fused Disconnect Switch
+
+These should be separate groups.
+
+4. Header display
+
+If manufacturerName exists:
+- show manufacturerName at the beginning of the group header
+- make only manufacturerName bold
+- then show the existing family/group title
+
+Example:
+ABB 600V Indoor Non-Fused Disconnect Switch
+
+If manufacturerName is blank:
+- keep the current header display unchanged
+
+5. Avoid duplicate bracket brand in display
+
+If raw title contains bracket brand like:
+[Siemens] Temporary Panel
+
+and manufacturerName = Siemens,
+
+display:
+Siemens Temporary Panel
+
+not:
+Siemens [Siemens] Temporary Panel
+
+This is display-only.
+Do not mutate item.name in DB.
+
+Manual verification:
+1. Create or edit two families with same family name but different manufacturerName:
+   ABB
+   Square D
+
+2. Admin Inventory shows separate groups:
+   ABB 600V Indoor Non-Fused Disconnect Switch
+   Square D 600V Indoor Non-Fused Disconnect Switch
+
+3. Open Family Settings.
+4. Move to family dropdown shows:
+   ABB — 600V Indoor Non-Fused Disconnect Switch
+   Square D — 600V Indoor Non-Fused Disconnect Switch
+
+5. EMT or brandless items still display normally without fake brand labels.
+
+6. SKU, item name, quantity, status, movement logic are unchanged.
+
+Output:
+Summarize:
+- how dropdown labels were changed
+- how dropdown target values distinguish manufacturer
+- how Admin Inventory groupKey was changed
+- confirmation that only Admin Inventory was affected

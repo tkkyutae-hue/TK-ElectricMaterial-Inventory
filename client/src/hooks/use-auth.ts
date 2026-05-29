@@ -35,11 +35,13 @@ export function useAuth() {
     isAuthenticated: !!user,
     // Admin Tools access (User Approvals, Export Backup) — admin only
     isAdminRole: role === "admin",
-    // Admin Mode access (all normal admin pages) — admin + manager
-    canAccessAdminMode: role === "admin" || role === "manager",
-    // Can perform field movements — staff, manager, admin (not viewer)
+    // Admin Mode access — admin + manager + manager_viewer (read-only for manager_viewer)
+    canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer",
+    // Read-only admin mode (no edit/add/delete buttons shown)
+    isManagerViewer: role === "manager_viewer",
+    // Can perform field movements — staff, manager, admin (not viewer or manager_viewer)
     canDoMovements: role === "staff" || role === "manager" || role === "admin",
-    // Can edit/modify data in admin mode — manager + admin
+    // Can edit/modify data in admin mode — manager + admin (excludes manager_viewer)
     isManagerOrAbove: role === "manager" || role === "admin",
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,

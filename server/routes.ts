@@ -77,11 +77,13 @@ async function loadCurrentUser(req: any, _res: any, next: any) {
 }
 
 // Admin Tools only (User Approvals, Export)
-const requireAdmin   = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
-// Normal admin operations (inventory CRUD, suppliers, projects, reports, etc.)
-const requireManager = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
+const requireAdmin       = (req: any, res: any, next: any) => requireRole("admin", req, res, next);
+// Normal admin write operations (inventory CRUD, suppliers, projects, etc.)
+const requireManager     = (req: any, res: any, next: any) => requireRole(["admin", "manager"], req, res, next);
+// Read-only admin operations — manager_viewer can also access these GET routes
+const requireManagerRead = (req: any, res: any, next: any) => requireRole(["admin", "manager", "manager_viewer"], req, res, next);
 // Field operations (movements, transactions, drafts)
-const requireStaff   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
+const requireStaff       = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
 
 // ─── Route param helpers ──────────────────────────────────────────────────────
 function parseIntParam(val: any, name: string, res: any): number | null {
@@ -380,11 +382,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Projects ───────────────────────────────────────────────────────────────
-  app.get("/api/projects", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/projects", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getProjects());
   });
 
-  app.get("/api/projects/:id", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/projects/:id", isAuthenticated, requireManagerRead, async (req, res) => {
     const data = await storage.getProject(Number(req.params.id));
     if (!data) return res.status(404).json({ message: "Not found" });
     res.json(data);
@@ -968,7 +970,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder / Purchasing ─────────────────────────────────────────────────────
-  app.get("/api/reorder/recommendations", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reorder/recommendations", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getPurchaseRecommendations());
   });
 
@@ -1251,7 +1253,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder: RMS export history ────────────────────────────────────────────
-  app.get("/api/reorder/next-seq", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/reorder/next-seq", isAuthenticated, requireManagerRead, async (req, res) => {
     try {
       const po = (req.query.po as string | undefined) || null;
       const nextSeq = await storage.getNextRmsSeq(po);
@@ -1261,7 +1263,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/reorder/history", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reorder/history", isAuthenticated, requireManagerRead, async (_req, res) => {
     try {
       const rows = await storage.listRmsExportHistory(200);
       res.json(rows);
@@ -1274,7 +1276,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/reorder/history is the official save endpoint; delegates to shared handler.
   app.post("/api/reorder/history", isAuthenticated, requireManager, handleSaveRmsPending);
 
-  app.get("/api/reorder/history/:id", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/reorder/history/:id", isAuthenticated, requireManagerRead, async (req, res) => {
     const id = parseIntParam(req.params.id, "id", res);
     if (id == null) return;
     try {
@@ -1311,7 +1313,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reorder: Download Excel from existing history record ────────────────────
-  app.post("/api/reorder/history/:id/download", isAuthenticated, requireManager, async (req, res) => {
+  app.post("/api/reorder/history/:id/download", isAuthenticated, requireManagerRead, async (req, res) => {
     const id = parseIntParam(req.params.id, "id", res);
     if (id == null) return;
     try {
@@ -1522,19 +1524,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
-  app.get("/api/reports/low-stock", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reports/low-stock", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getReportLowStock());
   });
 
-  app.get("/api/reports/by-location", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reports/by-location", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getReportByLocation());
   });
 
-  app.get("/api/reports/valuation", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reports/valuation", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getReportValuation());
   });
 
-  app.get("/api/reports/usage-by-project", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/reports/usage-by-project", isAuthenticated, requireManagerRead, async (_req, res) => {
     res.json(await storage.getReportUsageByProject());
   });
 
@@ -1830,7 +1832,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const { role, status } = req.body ?? {};
       const allowed: Record<string, string[]> = {
-        role: ["admin", "manager", "staff", "viewer"],
+        role: ["admin", "manager", "manager_viewer", "staff", "viewer"],
         status: ["active", "pending", "rejected"],
       };
       const update: Record<string, string> = {};
@@ -1857,7 +1859,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { authStorage } = await import("./replit_integrations/auth/storage");
       const { role } = req.body ?? {};
       const update: any = { status: "active" };
-      if (role && ["admin", "manager", "staff", "viewer"].includes(role)) update.role = role;
+      if (role && ["admin", "manager", "manager_viewer", "staff", "viewer"].includes(role)) update.role = role;
       const user = await authStorage.updateUser(req.params.id, update);
       if (!user) return res.status(404).json({ message: "User not found" });
       const { passwordHash: _ph, ...safe } = user as any;

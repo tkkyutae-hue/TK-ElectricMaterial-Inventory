@@ -21,6 +21,7 @@ export default function UserApprovals() {
   const ROLE_LABELS: Record<string, string> = {
     admin: t.adminUserApprovRoleAdmin,
     manager: t.adminUserApprovRoleManager,
+    manager_viewer: t.adminUserApprovRoleManagerViewer,
     staff: t.adminUserApprovRoleStaff,
     viewer: t.adminUserApprovRoleViewer,
   };
@@ -91,9 +92,10 @@ export default function UserApprovals() {
 
   function roleBadge(role: string | null | undefined) {
     const r = role ?? "viewer";
-    const cls = r === "admin"   ? "border-amber-300 text-amber-700 bg-amber-50"
-      : r === "manager" ? "border-purple-200 text-purple-700 bg-purple-50"
-      : r === "staff"   ? "border-blue-200 text-blue-700 bg-blue-50"
+    const cls = r === "admin"          ? "border-amber-300 text-amber-700 bg-amber-50"
+      : r === "manager"                ? "border-purple-200 text-purple-700 bg-purple-50"
+      : r === "manager_viewer"         ? "border-teal-200 text-teal-700 bg-teal-50"
+      : r === "staff"                  ? "border-blue-200 text-blue-700 bg-blue-50"
       : "border-slate-200 text-slate-600 bg-slate-50";
     return <Badge variant="outline" className={cls}>{ROLE_LABELS[r] ?? r}</Badge>;
   }
@@ -187,6 +189,7 @@ export default function UserApprovals() {
                         <SelectContent>
                           <SelectItem value="viewer">{t.adminUserApprovRoleViewer}</SelectItem>
                           <SelectItem value="staff">{t.adminUserApprovRoleStaff}</SelectItem>
+                          <SelectItem value="manager_viewer">{t.adminUserApprovRoleManagerViewer}</SelectItem>
                           <SelectItem value="manager">{t.adminUserApprovRoleManager}</SelectItem>
                           <SelectItem value="admin">{t.adminUserApprovRoleAdmin}</SelectItem>
                         </SelectContent>
@@ -228,6 +231,7 @@ export default function UserApprovals() {
                         <SelectContent>
                           <SelectItem value="viewer">{t.adminUserApprovRoleViewer}</SelectItem>
                           <SelectItem value="staff">{t.adminUserApprovRoleStaff}</SelectItem>
+                          <SelectItem value="manager_viewer">{t.adminUserApprovRoleManagerViewer}</SelectItem>
                           <SelectItem value="manager">{t.adminUserApprovRoleManager}</SelectItem>
                           <SelectItem value="admin">{t.adminUserApprovRoleAdmin}</SelectItem>
                         </SelectContent>

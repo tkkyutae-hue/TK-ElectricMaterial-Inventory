@@ -60,12 +60,26 @@ export default function CategoryDetail() {
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
-  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
+  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(() => {
+    if (!id) return new Set<string>();
+    try {
+      const raw = localStorage.getItem(`voltstock_collapsed_cat_${id}`);
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch {}
+    return new Set<string>();
+  });
   const [orderedGroupNames, setOrderedGroupNames] = useState<string[]>([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  useEffect(() => {
+    if (!id) return;
+    try {
+      localStorage.setItem(`voltstock_collapsed_cat_${id}`, JSON.stringify([...collapsedFamilies]));
+    } catch {}
+  }, [id, collapsedFamilies]);
 
   const toggleFamilyCollapsed = useCallback((familyName: string) => {
     setCollapsedFamilies(prev => {

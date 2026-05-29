@@ -129,7 +129,7 @@ export function SearchableItemSelect({
     : 264;
 
   // Field Mode column widths (px) — shared between header and rows
-  const COL = { sku: 58, brand: 74, photo: 28, size: 54, qty: 66 } as const;
+  const COL = { sku: 58, brand: 74, photo: 44, size: 54, qty: 66 } as const;
 
   const HDR: React.CSSProperties = {
     fontSize: 9, fontWeight: 700, color: F.textDim,
@@ -154,8 +154,8 @@ export function SearchableItemSelect({
           <span style={{ ...HDR, width: COL.sku, fontFamily: "monospace" }}>{t.colSku}</span>
           <span style={{ ...HDR, width: COL.brand }}>{t.colBrand}</span>
           <span style={{ ...HDR, width: COL.photo, textAlign: "center" }}>{t.invPhotoCol}</span>
-          <span style={{ ...HDR, flex: 1, minWidth: 0 }}>{t.colItem}</span>
           <span style={{ ...HDR, width: COL.size }}>{t.invSizeCol}</span>
+          <span style={{ ...HDR, flex: 1, minWidth: 0 }}>{t.colItem}</span>
           <span style={{ ...HDR, width: COL.qty, textAlign: "right" }}>{t.colStock}</span>
         </div>
       )}
@@ -214,6 +214,13 @@ export function SearchableItemSelect({
               )}
             </span>
 
+            {/* Size — Field Mode: fixed column after Photo; Admin Mode: inside name div below */}
+            {D && (
+              <span style={{ width: COL.size, flexShrink: 0, fontSize: 11, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.sizeLabel || ""}
+              </span>
+            )}
+
             {/* Name */}
             {D ? (
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: item.id === value ? F.accent : F.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -231,13 +238,6 @@ export function SearchableItemSelect({
                   <p className="text-xs text-slate-400 leading-tight">{item.sizeLabel}</p>
                 )}
               </div>
-            )}
-
-            {/* Size — Field Mode: fixed column after Name; Admin Mode: inside name div above */}
-            {D && (
-              <span style={{ width: COL.size, flexShrink: 0, fontSize: 11, color: F.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {item.sizeLabel || ""}
-              </span>
             )}
 
             {/* Qty */}
@@ -267,7 +267,7 @@ export function SearchableItemSelect({
         className={D ? undefined : `w-full flex items-center justify-between px-3 text-sm border rounded-md bg-background min-h-[42px] cursor-pointer transition-colors ${
           open ? "border-brand-400 ring-1 ring-brand-300 bg-white" : "border-input hover:bg-slate-50"
         }`}
-        onClick={handleOpen}
+        onClick={() => { if (!open) handleOpen(); }}
         data-testid="item-select-trigger"
       >
         {selected ? (
@@ -298,6 +298,29 @@ export function SearchableItemSelect({
             </span>
             <ChevronDown style={{ width: 14, height: 14, color: D ? F.textMuted : undefined, flexShrink: 0, marginLeft: 8 }}
               className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0 ml-2"} />
+          </>
+        ) : open && !isMobile ? (
+          /* When open on desktop: trigger becomes the search input */
+          <>
+            <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
+              className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClick={e => e.stopPropagation()}
+              style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none", marginLeft: 6 } : undefined}
+              className={D ? undefined : "flex-1 py-1 mx-2 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
+              data-testid="item-search-input"
+            />
+            {search && (
+              <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
+                <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
+                  className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -398,30 +421,32 @@ export function SearchableItemSelect({
             }}
             className={D ? undefined : "bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden"}
           >
-            {/* Inline search bar for desktop only (trigger is a div, not input) */}
-            <div style={D ? { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}` } : undefined}
-              className={D ? undefined : "flex items-center gap-2 px-3 py-2 border-b border-slate-100"}>
-              <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
-                className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder={searchPlaceholder}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                onClick={e => e.stopPropagation()}
-                style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
-                className={D ? undefined : "flex-1 py-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
-                data-testid="item-search-input"
-              />
-              {search && (
-                <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
-                  <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
-                    className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
-                </button>
-              )}
-            </div>
-            {itemList({ maxHeight: `${maxDropdownH - 42}px` })}
+            {/* Search bar — only shown when an item is already selected so user can search to replace it */}
+            {selected && (
+              <div style={D ? { display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${F.borderStrong}` } : undefined}
+                className={D ? undefined : "flex items-center gap-2 px-3 py-2 border-b border-slate-100"}>
+                <Search style={{ width: 13, height: 13, color: D ? F.textMuted : undefined, flexShrink: 0 }}
+                  className={D ? undefined : "w-4 h-4 text-slate-400 shrink-0"} />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={D ? { flex: 1, fontSize: 13, outline: "none", background: "transparent", color: F.text, border: "none" } : undefined}
+                  className={D ? undefined : "flex-1 py-1 text-sm outline-none bg-transparent text-slate-900 placeholder:text-slate-400"}
+                  data-testid="item-search-input"
+                />
+                {search && (
+                  <button type="button" onClick={e => { e.stopPropagation(); setSearch(""); inputRef.current?.focus(); }} className="p-0.5">
+                    <X style={{ width: 13, height: 13, color: D ? F.textMuted : undefined }}
+                      className={D ? undefined : "w-3.5 h-3.5 text-slate-400 hover:text-slate-600"} />
+                  </button>
+                )}
+              </div>
+            )}
+            {itemList({ maxHeight: `${selected ? maxDropdownH - 42 : maxDropdownH}px` })}
           </div>
         ),
         document.body

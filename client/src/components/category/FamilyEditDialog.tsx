@@ -147,7 +147,13 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
       qc.invalidateQueries({ queryKey: ["/api/field/sizes"] });
       onClose();
     },
-    onError: (err: any) => toast({ title: "Failed to save", description: err.message, variant: "destructive" }),
+    onError: (err: any) => {
+      const raw = err?.message ?? "";
+      const description = raw.includes("<!") || raw.includes("<html") || raw.includes("403") || raw.includes("Forbidden")
+        ? "저장에 실패했습니다. 이미지 URL이 너무 크거나 잘못된 형식입니다. https:// 링크를 사용해 주세요."
+        : raw;
+      toast({ title: "Failed to save", description, variant: "destructive" });
+    },
   });
 
   const moveItems = useMutation({
@@ -190,6 +196,12 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
     onError: (err: any) => toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
   });
 
+  const imageUrlError = imageUrl && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")
+    ? imageUrl.startsWith("data:")
+      ? "이미지 URL은 https:// 링크만 사용 가능합니다. (data: URL은 너무 커서 저장할 수 없습니다)"
+      : "올바른 URL 형식이 아닙니다. https://로 시작하는 링크를 입력해 주세요."
+    : null;
+
   const toggleItem = (id: number) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleAll = () => { if (selectedIds.size === group.items.length) setSelectedIds(new Set()); else setSelectedIds(new Set(group.items.map(i => i.id))); };
   const currentMfr = (group.manufacturerName ?? group.items[0]?.manufacturer ?? "").trim() || null;
@@ -220,7 +232,16 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700">Representative Image URL</label>
-            <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://…" data-testid="input-family-image-url" />
+            <Input
+              value={imageUrl}
+              onChange={e => setImageUrl(e.target.value)}
+              placeholder="https://…"
+              data-testid="input-family-image-url"
+              className={imageUrlError ? "border-red-400 focus-visible:ring-red-300" : ""}
+            />
+            {imageUrlError && (
+              <p className="text-xs text-red-500 leading-tight">{imageUrlError}</p>
+            )}
           </div>
           {imageUrl && (
             <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-2">
@@ -389,7 +410,7 @@ export function FamilyEditDialog({ open, onClose, categoryId, group, allFamilies
 
           <div className="flex justify-end gap-3 pt-1 border-t border-slate-100">
             <Button type="button" variant="outline" onClick={onClose} disabled={saveMeta.isPending}>Cancel</Button>
-            <Button type="button" className="bg-brand-700 hover:bg-brand-800" onClick={() => saveMeta.mutate()} disabled={saveMeta.isPending || !familyName.trim()} data-testid="button-save-family">
+            <Button type="button" className="bg-brand-700 hover:bg-brand-800" onClick={() => saveMeta.mutate()} disabled={saveMeta.isPending || !familyName.trim() || !!imageUrlError} data-testid="button-save-family">
               {saveMeta.isPending ? "Saving…" : "Save Settings"}
             </Button>
           </div>

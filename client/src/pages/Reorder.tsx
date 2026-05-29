@@ -17,6 +17,7 @@ import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 import { parseSizeToNumber } from "@/components/category/types";
 
 async function fetchJson(url: string) {
@@ -63,6 +64,7 @@ type CatGroup = { key: string; id: number | null; name: string; families: Family
 export default function Reorder() {
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { isManagerViewer } = useAuth();
   const qc = useQueryClient();
 
   const [search, setSearch]                       = useState(DEFAULTS.search);
@@ -403,15 +405,17 @@ export default function Reorder() {
               />
               <span>{t.reorderNeedsReorderOnly}</span>
             </label>
-            <Button
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
-              className="ml-auto h-9 bg-brand-700 hover:bg-brand-800 text-white shadow-sm whitespace-nowrap shrink-0"
-              data-testid="button-refresh-recommendations"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 flex-shrink-0 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-              {t.reorderRefresh}
-            </Button>
+            {!isManagerViewer && (
+              <Button
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending}
+                className="ml-auto h-9 bg-brand-700 hover:bg-brand-800 text-white shadow-sm whitespace-nowrap shrink-0"
+                data-testid="button-refresh-recommendations"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 flex-shrink-0 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+                {t.reorderRefresh}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -433,9 +437,11 @@ export default function Reorder() {
             <ShoppingCart className="w-12 h-12 mx-auto text-slate-300 mb-3" />
             <p className="font-semibold text-slate-900" data-testid="text-no-recommendations">{t.reorderNoneFound}</p>
             <p className="text-sm mt-1">{t.reorderAllAboveReorder}</p>
-            <Button variant="outline" className="mt-4" onClick={() => generateMutation.mutate()} data-testid="button-check-now">
-              {t.reorderCheckNow}
-            </Button>
+            {!isManagerViewer && (
+              <Button variant="outline" className="mt-4" onClick={() => generateMutation.mutate()} data-testid="button-check-now">
+                {t.reorderCheckNow}
+              </Button>
+            )}
           </div>
         ) : showFilteredEmpty ? (
           <div className="text-center py-16 text-slate-500">
@@ -568,9 +574,8 @@ export default function Reorder() {
         )}
       </div>
 
-      {/* Floating bottom action bar — portal'd to body so it always appears
-          above the page's scrolling main, regardless of ancestor overflow. */}
-      {selectedTotalCount > 0 && typeof document !== "undefined" && createPortal(
+      {/* Floating bottom action bar — portal'd to body; hidden for read-only manager_viewer */}
+      {selectedTotalCount > 0 && !isManagerViewer && typeof document !== "undefined" && createPortal(
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4">
           <div
             className="flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2"
@@ -610,11 +615,13 @@ export default function Reorder() {
         document.body,
       )}
 
-      <ExportRmsDialog
-        open={rmsOpen}
-        onOpenChange={setRmsOpen}
-        initialItems={selectedRmsItems}
-      />
+      {!isManagerViewer && (
+        <ExportRmsDialog
+          open={rmsOpen}
+          onOpenChange={setRmsOpen}
+          initialItems={selectedRmsItems}
+        />
+      )}
     </div>
   );
 }

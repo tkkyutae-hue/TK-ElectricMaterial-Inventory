@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -194,6 +195,7 @@ function OverlayItemRow({ line, index }: { line: EditableLine; index: number }) 
 function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; onDownloaded: () => void }) {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { isManagerViewer } = useAuth();
   const [lines, setLines] = useState<EditableLine[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [headerFields, setHeaderFields] = useState({ requestFrom: "", poNumber: "", projectName: "", deliveryTo: "" });
@@ -775,30 +777,34 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
           </div>
         </div>
       ) : (
-        <div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setShowAddPanel(true); setTimeout(() => addSearchRef.current?.focus(), 50); }}
-            data-testid={`button-additem-open-${historyId}`}
-          >
-            <Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItem}
-          </Button>
-        </div>
+        !isManagerViewer && (
+          <div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowAddPanel(true); setTimeout(() => addSearchRef.current?.focus(), 50); }}
+              data-testid={`button-additem-open-${historyId}`}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />{t.reorderHistoryAddItem}
+            </Button>
+          </div>
+        )
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => saveItemsMutation.mutate()}
-          disabled={saveItemsMutation.isPending || downloadMutation.isPending}
-          data-testid={`button-pending-save-${historyId}`}
-        >
-          {saveItemsMutation.isPending ? (
-            <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
-          ) : t.reorderHistorySaveItems}
-        </Button>
+        {!isManagerViewer && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => saveItemsMutation.mutate()}
+            disabled={saveItemsMutation.isPending || downloadMutation.isPending}
+            data-testid={`button-pending-save-${historyId}`}
+          >
+            {saveItemsMutation.isPending ? (
+              <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t.cmnSaving}</>
+            ) : t.reorderHistorySaveItems}
+          </Button>
+        )}
         <Button
           size="sm"
           onClick={() => downloadMutation.mutate()}
@@ -819,6 +825,7 @@ function PendingInlineEditor({ historyId, onDownloaded }: { historyId: number; o
 export default function ReorderHistory() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { isManagerViewer } = useAuth();
   const [openId, setOpenId] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editId, setEditId] = useState<number | null>(null);
@@ -1126,17 +1133,19 @@ export default function ReorderHistory() {
                         <TableCell>
                           {isPending ? (
                             <div className="flex items-center gap-0.5">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => togglePending(r.id)}
-                                data-testid={`button-history-pending-toggle-${r.id}`}
-                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                              >
-                                {isExpanded
-                                  ? <ChevronDown className="w-4 h-4" />
-                                  : <ChevronRight className="w-4 h-4" />}
-                              </Button>
+                              {!isManagerViewer && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => togglePending(r.id)}
+                                  data-testid={`button-history-pending-toggle-${r.id}`}
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                >
+                                  {isExpanded
+                                    ? <ChevronDown className="w-4 h-4" />
+                                    : <ChevronRight className="w-4 h-4" />}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1199,7 +1208,7 @@ export default function ReorderHistory() {
         <div className="px-4 py-2 text-xs text-slate-400">{t.cmnLoading}</div>
       )}
 
-      {selectedCount > 0 && typeof document !== "undefined" && createPortal(
+      {selectedCount > 0 && !isManagerViewer && typeof document !== "undefined" && createPortal(
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4">
           <div
             className="flex items-center gap-2 bg-slate-900 text-white rounded-full shadow-lg pl-5 pr-2 py-2"

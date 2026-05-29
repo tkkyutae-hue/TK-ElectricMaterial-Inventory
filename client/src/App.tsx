@@ -126,9 +126,9 @@ function DailyReportWorkspaceRouter() {
   );
 }
 
-// Allows admin + manager into Daily Report; staff/viewer are redirected to /home
+// Allows admin + manager into Daily Report; staff/viewer/manager_viewer are redirected to /home
 function ManagerGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, canAccessAdminMode } = useAuth();
+  const { user, isLoading, canAccessDailyReport } = useAuth();
 
   if (isLoading) {
     return (
@@ -139,7 +139,7 @@ function ManagerGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Redirect to="/login" />;
-  if (!canAccessAdminMode) return <Redirect to="/home" />;
+  if (!canAccessDailyReport) return <Redirect to="/home" />;
   return <>{children}</>;
 }
 

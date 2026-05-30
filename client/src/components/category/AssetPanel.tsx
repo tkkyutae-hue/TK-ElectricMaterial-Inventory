@@ -18,22 +18,6 @@ type ToolAssetEntry = {
   project?: { id: number; name: string } | null;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  available: "In Stock",
-  in_use: "In Use",
-  repair_needed: "Repair Needed",
-  under_repair: "Under Repair",
-  out_of_service: "Out of Service",
-  lost: "Lost",
-  retired: "Retired",
-};
-
-const CONDITION_LABELS: Record<string, string> = {
-  good: "Good",
-  fair: "Fair",
-  damaged: "Damaged",
-  needs_repair: "Needs Repair",
-};
 
 interface AssetPanelProps {
   item: CategoryGroupedItem;
@@ -45,7 +29,7 @@ export function AssetPanel({ item, isAdmin }: AssetPanelProps) {
   const qc = useQueryClient();
   const [showGenerate, setShowGenerate] = useState(false);
 
-  const { data: assets = [], isLoading } = useQuery<ToolAssetEntry[]>({
+  const { data: assets = [] } = useQuery<ToolAssetEntry[]>({
     queryKey: ["/api/items", item.id, "assets"],
     queryFn: () => fetch(`/api/items/${item.id}/assets`).then(r => r.json()),
     staleTime: 30_000,
@@ -112,58 +96,6 @@ export function AssetPanel({ item, isAdmin }: AssetPanelProps) {
             >
               <Wand2 className="w-3 h-3" />Generate Asset IDs
             </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Asset Roster table */}
-      <div className="px-5 pb-4">
-        <p className="text-[11px] font-semibold text-violet-700 uppercase tracking-wider mb-2">
-          Asset Roster — {item.name}
-        </p>
-        {isLoading ? (
-          <p className="text-xs text-slate-400">Loading…</p>
-        ) : assets.length === 0 ? (
-          <p className="text-xs text-slate-400 italic">
-            No asset IDs generated yet.{hasSku && isAdmin ? ' Click "Generate Asset IDs" to create them.' : ""}
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-violet-200">
-            <table className="w-full text-xs">
-              <thead className="bg-violet-100/60">
-                <tr>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide whitespace-nowrap">Asset ID</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide">Condition</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide">Location</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide">Project</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide whitespace-nowrap">Assigned To</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-800 uppercase tracking-wide whitespace-nowrap">Repair Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map(a => (
-                  <tr key={a.id} className="border-t border-violet-100 hover:bg-violet-50/50" data-testid={`row-asset-${a.id}`}>
-                    <td className="px-3 py-1.5 font-mono font-semibold text-slate-800 whitespace-nowrap">{a.assetTag}</td>
-                    <td className="px-3 py-1.5 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                        a.status === "available" ? "bg-emerald-100 text-emerald-800" :
-                        a.status === "in_use" ? "bg-blue-100 text-blue-800" :
-                        a.status === "repair_needed" || a.status === "under_repair" ? "bg-amber-100 text-amber-800" :
-                        "bg-slate-100 text-slate-600"
-                      }`}>
-                        {STATUS_LABELS[a.status] ?? a.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap">{CONDITION_LABELS[a.condition ?? ""] ?? a.condition ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap">{a.location?.name ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap">{a.project?.name ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-slate-600 whitespace-nowrap">{a.assignedTo ?? "—"}</td>
-                    <td className="px-3 py-1.5 text-slate-600 max-w-[160px] truncate" title={a.repairNote ?? ""}>{a.repairNote || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>

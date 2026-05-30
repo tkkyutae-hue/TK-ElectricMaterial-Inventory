@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical, Cpu } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,93 @@ import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, Dr
 import { sortItems, getGroupId } from "./types";
 import { InlineEditRow, InlineNewRow } from "./InlineEditRow";
 import { AssetPanel } from "./AssetPanel";
+
+// ── Asset row expansion ──────────────────────────────────────────────────────
+type ToolAssetEntry = {
+  id: number;
+  assetTag: string;
+  status: string;
+  condition: string | null;
+  repairNote: string | null;
+  assignedTo: string | null;
+  location?: { id: number; name: string } | null;
+  project?: { id: number; name: string } | null;
+};
+
+const ASSET_STATUS_LABELS: Record<string, string> = {
+  available: "In Stock",
+  in_use: "In Use",
+  repair_needed: "Repair Needed",
+  under_repair: "Under Repair",
+  out_of_service: "Out of Service",
+  lost: "Lost",
+  retired: "Retired",
+};
+
+const ASSET_CONDITION_LABELS: Record<string, string> = {
+  good: "Good",
+  fair: "Fair",
+  damaged: "Damaged",
+  needs_repair: "Needs Repair",
+};
+
+function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number }) {
+  const { data: assets = [], isLoading } = useQuery<ToolAssetEntry[]>({
+    queryKey: ["/api/items", itemId, "assets"],
+    queryFn: () => fetch(`/api/items/${itemId}/assets`).then(r => r.json()),
+    staleTime: 30_000,
+  });
+
+  return (
+    <TableRow className="hover:bg-violet-50/20 border-0">
+      <TableCell colSpan={colSpan} className="p-0">
+        <div className="bg-violet-50/40 border-t border-violet-100">
+          {isLoading ? (
+            <div className="px-8 py-3 text-xs text-slate-400">Loading assets…</div>
+          ) : assets.length === 0 ? (
+            <div className="px-8 py-3 text-xs text-slate-400 italic">
+              No asset records yet. Use "Generate Asset IDs" below to create them.
+            </div>
+          ) : (
+            <table className="w-full text-xs border-b border-violet-100">
+              <thead>
+                <tr className="border-b border-violet-100">
+                  <th className="text-left pl-10 pr-3 py-2 font-semibold text-violet-700 uppercase tracking-wide whitespace-nowrap">Asset ID</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[130px]">Status</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[100px]">Condition</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[150px]">Location</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[150px]">Project</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide">Assigned To</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide pr-5">Repair Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assets.map(a => (
+                  <tr key={a.id} className="border-t border-violet-100/70 hover:bg-violet-100/40 transition-colors" data-testid={`row-asset-expanded-${a.id}`}>
+                    <td className="pl-10 pr-3 py-2 font-mono font-semibold text-slate-700 whitespace-nowrap">{a.assetTag}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        a.status === "available" ? "bg-emerald-100 text-emerald-800" :
+                        a.status === "in_use" ? "bg-blue-100 text-blue-800" :
+                        a.status === "repair_needed" || a.status === "under_repair" ? "bg-amber-100 text-amber-800" :
+                        "bg-slate-100 text-slate-600"
+                      }`}>{ASSET_STATUS_LABELS[a.status] ?? a.status}</span>
+                    </td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{ASSET_CONDITION_LABELS[a.condition ?? ""] ?? a.condition ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.location?.name ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.project?.name ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.assignedTo ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-600 pr-5 max-w-[180px] truncate" title={a.repairNote ?? ""}>{a.repairNote || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 interface FamilyGroupCardProps {
   group: CategoryItemGroup;
@@ -73,6 +160,12 @@ export function FamilyGroupCard({
 
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [expandedItemIds, setExpandedItemIds] = useState<Set<number>>(new Set());
+  const toggleExpand = (itemId: number) => setExpandedItemIds(prev => {
+    const next = new Set(prev);
+    if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+    return next;
+  });
 
   const collapseDisabled = isEditingThis || !!isDraftConfirmed;
   const effectivelyCollapsed = !collapseDisabled && !!isCollapsed;
@@ -343,65 +436,85 @@ export function FamilyGroupCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedItems.map(item => (
-                  <TableRow
-                    key={item.id}
-                    className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
-                    data-testid={`row-item-${item.id}`}
-                  >
-                    <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
-                      <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
-                    </TableCell>
-                    <TableCell className="h-10 px-2">
-                      <div className="flex items-center">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt="" className="w-9 h-9 object-cover rounded border border-slate-200 block"
-                            onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
-                        ) : null}
-                        <div className={`w-9 h-9 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
-                          <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
-                      <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
-                    </TableCell>
-                    <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
-                      <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
-                    </TableCell>
-                    <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
-                        <span className="text-slate-400 font-normal text-[11px]">{item.unitOfMeasure}</span>
-                        {isAdmin && onAdjustStock && (
-                          <button
-                            type="button"
-                            onClick={() => onAdjustStock(item)}
-                            disabled={!!inlineEditFamily}
-                            className="ml-1 p-1 rounded text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Adjust on-hand stock"
-                            data-testid={`button-adjust-stock-${item.id}`}
-                          >
-                            <SlidersHorizontal className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="h-10 px-3 overflow-hidden">
-                      <div className="flex items-center justify-center">
-                        <UsagePatternBadge
-                          issueCount30d={item.issueCount30d ?? 0}
-                          issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
-                          lastIssueAt={item.lastIssueAt}
-                          testId={`chip-usage-pattern-${item.id}`}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="h-10 px-3 overflow-hidden">
-                      <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sortedItems.map(item => {
+                  const isAsset = item.trackingMode === "asset";
+                  const isExpanded = expandedItemIds.has(item.id);
+                  return [
+                    <TableRow
+                      key={`item-${item.id}`}
+                      onClick={isAsset ? () => toggleExpand(item.id) : undefined}
+                      className={`transition-colors border-b border-slate-50 last:border-0
+                        ${isAsset ? `cursor-pointer hover:bg-violet-50/50 select-none${isExpanded ? " bg-violet-50/30" : ""}` : `hover:bg-slate-50/70 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}`}
+                      data-testid={`row-item-${item.id}`}
+                    >
+                        <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
+                          <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
+                        </TableCell>
+                        <TableCell className="h-10 px-2">
+                          <div className="flex items-center">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt="" className="w-9 h-9 object-cover rounded border border-slate-200 block"
+                                onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
+                            ) : null}
+                            <div className={`w-9 h-9 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
+                              <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
+                          <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
+                        </TableCell>
+                        <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
+                          <Link
+                            href={`/inventory/${item.id}`}
+                            onClick={isAsset ? (e: React.MouseEvent) => e.stopPropagation() : undefined}
+                            className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate"
+                            data-testid={`link-item-name-${item.id}`}
+                            title={item.name}
+                          >{item.name}</Link>
+                        </TableCell>
+                        <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden">
+                          <div className="flex items-center justify-end gap-1">
+                            <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
+                            <span className="text-slate-400 font-normal text-[11px]">{item.unitOfMeasure}</span>
+                            {isAdmin && onAdjustStock && (
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); onAdjustStock(item); }}
+                                disabled={!!inlineEditFamily}
+                                className="ml-1 p-1 rounded text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Adjust on-hand stock"
+                                data-testid={`button-adjust-stock-${item.id}`}
+                              >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="h-10 px-3 overflow-hidden">
+                          <div className="flex items-center justify-center">
+                            <UsagePatternBadge
+                              issueCount30d={item.issueCount30d ?? 0}
+                              issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
+                              lastIssueAt={item.lastIssueAt}
+                              testId={`chip-usage-pattern-${item.id}`}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="h-10 px-3 overflow-hidden">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <ItemStatusBadge status={item.status} />
+                            {isAsset && (
+                              <ChevronRight className={`w-3.5 h-3.5 text-violet-400 flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>,
+                    isAsset && isExpanded
+                      ? <AssetExpandedRow key={`expand-${item.id}`} itemId={item.id} colSpan={7} />
+                      : null,
+                  ];
+                })}
                 {group.items.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
@@ -416,7 +529,7 @@ export function FamilyGroupCard({
             </Table>
           </div>
 
-          {/* Part 2 & 3: Asset panels — one per asset-tracked item */}
+          {/* Asset summary + Generate button — one per asset-tracked item */}
           {sortedItems
             .filter(item => item.trackingMode === "asset")
             .map(item => (

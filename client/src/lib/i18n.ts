@@ -1797,6 +1797,11 @@ const en = {
   movItemAdding:           "Adding",
   movItemNewReelsCountFt:  "{n} new reel(s) · {ft} FT",
   movItemReelsCountFt:     "{n} reel(s) · {ft} FT",
+  movItemAssets:           "Assets on Hand",
+  movItemAssetsInUse:      "Assets in Use",
+  movItemNoAvailableAssets:"No available assets to issue.",
+  movItemNoInUseAssets:    "No assets currently in use.",
+  movItemAssetsSelected:   "{n} asset(s) selected",
 
   // ── Movement: Searchable Selects ──
   movSearchDone:              "Done",
@@ -4165,6 +4170,11 @@ const ko: Translations = {
   supplierAddressPh:               "예: 서울시 강남구 …",
   movItemNewReelsCountFt:  "신규 릴 {n}개 · {ft} FT",
   movItemReelsCountFt:     "릴 {n}개 · {ft} FT",
+  movItemAssets:           "보유 자산",
+  movItemAssetsInUse:      "사용 중인 자산",
+  movItemNoAvailableAssets:"반출 가능한 자산 없음.",
+  movItemNoInUseAssets:    "현재 사용 중인 자산 없음.",
+  movItemAssetsSelected:   "자산 {n}개 선택됨",
 
   // ── 입출고: 검색 선택 ──
   movSearchDone:              "완료",
@@ -6456,6 +6466,11 @@ const es: Translations = {
   movItemAdding:           "Agregando",
   movItemNewReelsCountFt:  "{n} carrete(s) nuevo(s) · {ft} FT",
   movItemReelsCountFt:     "{n} carrete(s) · {ft} FT",
+  movItemAssets:           "Activos disponibles",
+  movItemAssetsInUse:      "Activos en uso",
+  movItemNoAvailableAssets:"No hay activos disponibles para emitir.",
+  movItemNoInUseAssets:    "No hay activos actualmente en uso.",
+  movItemAssetsSelected:   "{n} activo(s) seleccionado(s)",
 
   // ── Movimiento: Búsquedas ──
   movSearchDone:              "Listo",

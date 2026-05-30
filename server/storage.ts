@@ -238,6 +238,11 @@ export interface IStorage {
     qty: number,
     opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
   ): Promise<void>;
+  applyAssetMovementByIds(
+    ids: number[],
+    movementType: "issue" | "return",
+    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+  ): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3813,6 +3818,37 @@ export class DatabaseStorage implements IStorage {
 
       if (inUse.length < qty) return;
       const ids = inUse.map((a) => a.id);
+      await db
+        .update(toolAssets)
+        .set({
+          status: "available",
+          projectId: null,
+          assignedTo: null,
+          locationId: opts.locationId ?? null,
+          updatedAt: new Date(),
+        })
+        .where(inArray(toolAssets.id, ids));
+    }
+  }
+
+  async applyAssetMovementByIds(
+    ids: number[],
+    movementType: "issue" | "return",
+    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+  ): Promise<void> {
+    if (ids.length === 0) return;
+    if (movementType === "issue") {
+      await db
+        .update(toolAssets)
+        .set({
+          status: "in_use",
+          projectId: opts.projectId ?? null,
+          locationId: opts.locationId ?? null,
+          assignedTo: opts.assignedTo ?? null,
+          updatedAt: new Date(),
+        })
+        .where(inArray(toolAssets.id, ids));
+    } else {
       await db
         .update(toolAssets)
         .set({

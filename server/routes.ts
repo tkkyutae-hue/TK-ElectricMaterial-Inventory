@@ -731,11 +731,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (movementType === "issue" || movementType === "return") {
         try {
-          await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
-            projectId: movement.projectId ?? null,
-            locationId: movement.destinationLocationId ?? null,
-            assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
-          });
+          const explicitIds = Array.isArray(body.assetIds) && body.assetIds.length > 0
+            ? (body.assetIds as any[]).map(Number)
+            : null;
+          if (explicitIds) {
+            await storage.applyAssetMovementByIds(explicitIds, movementType as "issue" | "return", {
+              projectId: movement.projectId ?? null,
+              locationId: movement.destinationLocationId ?? null,
+              assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+            });
+          } else {
+            await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
+              projectId: movement.projectId ?? null,
+              locationId: movement.destinationLocationId ?? null,
+              assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+            });
+          }
         } catch (_) { /* non-fatal: asset sync failure does not roll back the movement */ }
       }
 
@@ -805,11 +816,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         if (type === "issue" || type === "return") {
           try {
-            await storage.syncAssetStatusOnMovement(item.id, type, qty, {
-              projectId: movement.projectId ?? null,
-              locationId: movement.destinationLocationId ?? null,
-              assignedTo: type === "issue" ? getUserDisplayName(req) : null,
-            });
+            const explicitIds = Array.isArray(req.body.assetIds) && req.body.assetIds.length > 0
+              ? (req.body.assetIds as any[]).map(Number)
+              : null;
+            if (explicitIds) {
+              await storage.applyAssetMovementByIds(explicitIds, type as "issue" | "return", {
+                projectId: movement.projectId ?? null,
+                locationId: movement.destinationLocationId ?? null,
+                assignedTo: type === "issue" ? getUserDisplayName(req) : null,
+              });
+            } else {
+              await storage.syncAssetStatusOnMovement(item.id, type, qty, {
+                projectId: movement.projectId ?? null,
+                locationId: movement.destinationLocationId ?? null,
+                assignedTo: type === "issue" ? getUserDisplayName(req) : null,
+              });
+            }
           } catch (_) { /* non-fatal */ }
         }
 
@@ -869,11 +891,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (movementType === "issue" || movementType === "return") {
         try {
-          await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
-            projectId: movement.projectId ?? null,
-            locationId: movement.destinationLocationId ?? null,
-            assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
-          });
+          const explicitIds = Array.isArray(req.body.assetIds) && req.body.assetIds.length > 0
+            ? (req.body.assetIds as any[]).map(Number)
+            : null;
+          if (explicitIds) {
+            await storage.applyAssetMovementByIds(explicitIds, movementType as "issue" | "return", {
+              projectId: movement.projectId ?? null,
+              locationId: movement.destinationLocationId ?? null,
+              assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+            });
+          } else {
+            await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
+              projectId: movement.projectId ?? null,
+              locationId: movement.destinationLocationId ?? null,
+              assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+            });
+          }
         } catch (_) { /* non-fatal */ }
       }
 
@@ -1718,11 +1751,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const assignedTo = draftMT === "issue" ? getUserDisplayName(req) : null;
         for (const di of draftItems) {
           try {
-            await storage.syncAssetStatusOnMovement(di.itemId, draftMT, di.qty, {
-              projectId: draftMT === "issue" ? ((draft as any).projectId ?? null) : null,
-              locationId: (draft as any).destinationLocationId ?? null,
-              assignedTo,
-            });
+            const explicitIds = Array.isArray((di as any).assetIds) && (di as any).assetIds.length > 0
+              ? ((di as any).assetIds as any[]).map(Number)
+              : null;
+            if (explicitIds) {
+              await storage.applyAssetMovementByIds(explicitIds, draftMT, {
+                projectId: draftMT === "issue" ? ((draft as any).projectId ?? null) : null,
+                locationId: (draft as any).destinationLocationId ?? null,
+                assignedTo,
+              });
+            } else {
+              await storage.syncAssetStatusOnMovement(di.itemId, draftMT, di.qty, {
+                projectId: draftMT === "issue" ? ((draft as any).projectId ?? null) : null,
+                locationId: (draft as any).destinationLocationId ?? null,
+                assignedTo,
+              });
+            }
           } catch (_) { /* non-fatal */ }
         }
       }

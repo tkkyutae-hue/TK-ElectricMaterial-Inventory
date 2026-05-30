@@ -1414,6 +1414,7 @@ export default function ItemDetails() {
   const updateMutation = useUpdateItem();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { isManagerOrAbove } = useAuth();
 
   // Invalidate inventory caches on unmount so the list always shows fresh data when
   // the user clicks Back — covers both the category grouped rows and the summary cards.
@@ -1667,7 +1668,7 @@ export default function ItemDetails() {
             {/* Asset Tracking — inline for asset-tracked items */}
             {item.trackingMode === "asset" && (
               <>
-                <AssetTrackingSection item={item} isAdmin={!!isAdmin} />
+                <AssetTrackingSection item={item} isAdmin={isManagerOrAbove} />
                 <div className="h-px bg-slate-100" />
               </>
             )}

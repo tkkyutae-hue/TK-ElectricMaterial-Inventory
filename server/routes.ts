@@ -124,6 +124,13 @@ function getUserId(req: any): string | null {
   return (req.session as any)?.userId ?? null;
 }
 
+function getUserDisplayName(req: any): string | null {
+  const u = (req as any).currentUser;
+  if (!u) return null;
+  const full = [u.firstName, u.lastName].filter(Boolean).join(" ");
+  return full || u.name || null;
+}
+
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
 
@@ -722,6 +729,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         createdBy: getUserId(req),
       });
 
+      if (movementType === "issue" || movementType === "return") {
+        try {
+          await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
+            projectId: movement.projectId ?? null,
+            locationId: movement.destinationLocationId ?? null,
+            assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+          });
+        } catch (_) { /* non-fatal: asset sync failure does not roll back the movement */ }
+      }
+
       res.status(201).json(movement);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Internal error" });
@@ -786,6 +803,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           createdBy: getUserId(req),
         });
 
+        if (type === "issue" || type === "return") {
+          try {
+            await storage.syncAssetStatusOnMovement(item.id, type, qty, {
+              projectId: movement.projectId ?? null,
+              locationId: movement.destinationLocationId ?? null,
+              assignedTo: type === "issue" ? getUserDisplayName(req) : null,
+            });
+          } catch (_) { /* non-fatal */ }
+        }
+
         res.status(201).json(movement);
       } catch (err: any) {
         res.status(500).json({ message: err.message || "Internal error" });
@@ -839,6 +866,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         note: req.body.note ?? null,
         createdBy: getUserId(req),
       });
+
+      if (movementType === "issue" || movementType === "return") {
+        try {
+          await storage.syncAssetStatusOnMovement(item.id, movementType, qty, {
+            projectId: movement.projectId ?? null,
+            locationId: movement.destinationLocationId ?? null,
+            assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
+          });
+        } catch (_) { /* non-fatal */ }
+      }
+
       res.status(201).json(movement);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Internal error" });
@@ -1673,6 +1711,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const movementIds = await storage.confirmDraft(draftId, getUserId(req));
+
+      // Sync asset status for each asset-tracked item in the draft
+      const draftMT = draft.movementType;
+      if (draftMT === "issue" || draftMT === "return") {
+        const assignedTo = draftMT === "issue" ? getUserDisplayName(req) : null;
+        for (const di of draftItems) {
+          try {
+            await storage.syncAssetStatusOnMovement(di.itemId, draftMT, di.qty, {
+              projectId: draftMT === "issue" ? ((draft as any).projectId ?? null) : null,
+              locationId: (draft as any).destinationLocationId ?? null,
+              assignedTo,
+            });
+          } catch (_) { /* non-fatal */ }
+        }
+      }
+
       res.json({ ok: true, movementIds });
     } catch (err: any) {
       res.status(400).json({ message: err.message });

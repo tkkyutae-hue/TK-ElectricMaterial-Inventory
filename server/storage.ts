@@ -232,6 +232,12 @@ export interface IStorage {
   updateToolAsset(assetId: number, data: UpdateToolAssetRequest): Promise<ToolAssetWithRelations>;
   deactivateToolAsset(assetId: number): Promise<void>;
   generateAssetsFromQuantity(itemId: number, prefix: string, missingCount: number): Promise<ToolAsset[]>;
+  syncAssetStatusOnMovement(
+    itemId: number,
+    movementType: string,
+    qty: number,
+    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+  ): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3748,6 +3754,76 @@ export class DatabaseStorage implements IStorage {
     }));
     const created = await db.insert(toolAssets).values(toInsert).returning();
     return created;
+  }
+
+  async syncAssetStatusOnMovement(
+    itemId: number,
+    movementType: string,
+    qty: number,
+    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+  ): Promise<void> {
+    if (movementType !== "issue" && movementType !== "return") return;
+
+    const [itemRow] = await db
+      .select({ trackingMode: items.trackingMode })
+      .from(items)
+      .where(eq(items.id, itemId))
+      .limit(1);
+    if (!itemRow || itemRow.trackingMode !== "asset") return;
+
+    if (movementType === "issue") {
+      const available = await db
+        .select({ id: toolAssets.id })
+        .from(toolAssets)
+        .where(
+          and(
+            eq(toolAssets.itemId, itemId),
+            eq(toolAssets.isActive, true),
+            eq(toolAssets.status, "available")
+          )
+        )
+        .orderBy(asc(toolAssets.assetTag))
+        .limit(qty);
+
+      if (available.length === 0) return;
+      const ids = available.map((a) => a.id);
+      await db
+        .update(toolAssets)
+        .set({
+          status: "in_use",
+          projectId: opts.projectId ?? null,
+          locationId: opts.locationId ?? null,
+          assignedTo: opts.assignedTo ?? null,
+          updatedAt: new Date(),
+        })
+        .where(inArray(toolAssets.id, ids));
+    } else {
+      const inUse = await db
+        .select({ id: toolAssets.id })
+        .from(toolAssets)
+        .where(
+          and(
+            eq(toolAssets.itemId, itemId),
+            eq(toolAssets.isActive, true),
+            eq(toolAssets.status, "in_use")
+          )
+        )
+        .orderBy(asc(toolAssets.assetTag))
+        .limit(qty);
+
+      if (inUse.length === 0) return;
+      const ids = inUse.map((a) => a.id);
+      await db
+        .update(toolAssets)
+        .set({
+          status: "available",
+          projectId: null,
+          assignedTo: null,
+          locationId: opts.locationId ?? null,
+          updatedAt: new Date(),
+        })
+        .where(inArray(toolAssets.id, ids));
+    }
   }
 }
 

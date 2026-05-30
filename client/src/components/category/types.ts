@@ -19,7 +19,7 @@ export type CategoryGroupedItem = {
   location?: { id?: number; name: string } | null;
   primaryLocationId?: number | null;
   supplier?: { name: string } | null;
-  trackingMode?: "standard" | "reel" | null;
+  trackingMode?: "standard" | "reel" | "asset" | null;
   manufacturer?: string | null;
   issueCount30d?: number;
   issueCount90d?: number;
@@ -68,7 +68,7 @@ export type EditDraft = {
   primaryLocationId: number | null;
   imageUrl: string | null;
   _deleted?: boolean;
-  trackingMode?: "standard" | "reel" | null;
+  trackingMode?: "standard" | "reel" | "asset" | null;
   trackingModeError?: string;
 };
 
@@ -86,7 +86,7 @@ export type NewRowDraft = {
   skuManuallyEdited: boolean;
   subcategoryOverride: string | null;
   detailTypeOverride: string | null;
-  trackingMode?: "standard" | "reel" | null;
+  trackingMode?: "standard" | "reel" | "asset" | null;
   trackingModeError?: string;
 };
 

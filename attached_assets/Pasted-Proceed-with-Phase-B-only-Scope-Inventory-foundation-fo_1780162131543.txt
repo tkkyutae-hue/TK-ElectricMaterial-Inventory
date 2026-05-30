@@ -1,0 +1,99 @@
+Proceed with Phase B only.
+
+Scope:
+Inventory foundation for TOOLS & ASSETS.
+
+Do not implement tool_assets table yet.
+Do not implement asset movement yet.
+Do not modify Field Mode yet.
+Do not modify Equipment page.
+Do not modify Excel export.
+Do not change existing material/reel quantity logic.
+
+Phase B requirements:
+
+1. Add the new category:
+TOOLS & ASSETS
+
+It should appear in the Inventory category grid.
+Use the existing categories table pattern.
+Set a reasonable sortOrder near the end of the inventory categories.
+
+2. Add/support trackingMode = "asset"
+
+Current trackingMode supports:
+- standard
+- reel
+- null legacy
+
+Add support for:
+- asset
+
+Do not break standard or reel behavior.
+
+3. TOOLS & ASSETS default tracking mode
+
+When creating items under TOOLS & ASSETS, default trackingMode should be "asset".
+
+4. Allow sizeLabel to be optional for asset-tracked items
+
+Current client validation blocks saving when sizeLabel is blank.
+
+Update the validation so blank sizeLabel is allowed only when:
+trackingMode === "asset"
+
+Do not save fake values like:
+N/A
+Standard
+None
+
+Blank size should stay blank/null.
+
+5. SKU and item name remain required
+
+Asset items still need:
+- SKU
+- item name / base item name
+- unitOfMeasure
+
+Unit should usually be EA for asset items.
+
+6. Admin Inventory display for Phase B
+
+Since tool_assets table does not exist yet, do not build asset rows yet.
+
+For trackingMode = "asset", show a simple placeholder inside the item/group:
+
+"Asset tracking will be managed per individual tool."
+
+or
+
+"No assets added yet. Asset roster will be added in the next phase."
+
+Keep this minimal.
+
+7. Existing categories must remain unchanged
+
+Verify:
+- standard material items still save normally
+- reel items still work
+- cable/wire reel behavior is unchanged
+- CategoryDetail still loads
+- no movement logic changed
+
+Manual verification:
+1. TOOLS & ASSETS appears in Inventory category grid.
+2. Create Tool Cart under TOOLS & ASSETS with blank size.
+3. Save succeeds.
+4. SKU is still required.
+5. Item name is still required.
+6. Existing EMT / Cable Tray / Cable Wire items still behave the same.
+7. Reel-tracked cable/wire still works.
+8. No DB schema for tool_assets was added in this phase.
+
+Output:
+After implementation, summarize:
+- how TOOLS & ASSETS category was added
+- where trackingMode = asset was added
+- where sizeLabel validation was changed
+- confirmation that Field Mode, Equipment page, Excel export, movement logic, reel logic, and quantity sync were not changed

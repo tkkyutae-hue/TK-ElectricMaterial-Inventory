@@ -58,6 +58,8 @@ export function FamilyGroupCard({
   const isEditingThis = inlineEditFamily === gid;
   const sortDir = familySortDir[gid] ?? "asc";
   const sortedItems = sortItems(group.items, sortDir);
+  const isAssetCategory = data.category.name === "TOOLS & ASSETS";
+  const isAssetGroup = isAssetCategory || group.items.some(i => i.trackingMode === "asset");
 
   const collapseDisabled = isEditingThis || !!isDraftConfirmed;
   const effectivelyCollapsed = !collapseDisabled && !!isCollapsed;
@@ -131,7 +133,10 @@ export function FamilyGroupCard({
               );
             })()}
             <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider leading-none mt-0.5">
-              {group.items.length} {group.items.length === 1 ? "size" : "sizes"}
+              {isAssetGroup
+                ? <span className="text-violet-600 normal-case tracking-normal font-semibold">Asset tracked</span>
+                : <>{group.items.length} {group.items.length === 1 ? "size" : "sizes"}</>
+              }
               {isDraftConfirmed && <span className="ml-2 text-brand-500 normal-case tracking-normal">New family</span>}
               {isEditingThis && <span className="ml-2 text-amber-600 normal-case tracking-normal font-semibold">● Editing</span>}
             </p>
@@ -222,7 +227,8 @@ export function FamilyGroupCard({
                   if (editDrafts[item.id]._deleted) return null;
                   return (
                     <InlineEditRow key={item.id} item={item} draft={editDrafts[item.id]}
-                      locations={locations} onChange={patch => onUpdateDraft(item.id, patch)} onDelete={() => onDeleteRow(item.id)} />
+                      locations={locations} onChange={patch => onUpdateDraft(item.id, patch)} onDelete={() => onDeleteRow(item.id)}
+                      isAssetCategory={isAssetCategory} />
                   );
                 }
                 return null;
@@ -239,6 +245,7 @@ export function FamilyGroupCard({
                   locations={locations}
                   onChange={patch => onUpdateNewRow(row.tmpId, patch)}
                   onRemove={() => onRemoveNewRow(row.tmpId)}
+                  isAssetCategory={isAssetCategory}
                 />
               ))}
               {group.items.length === 0 && editNewRows.length === 0 && (
@@ -250,6 +257,20 @@ export function FamilyGroupCard({
               )}
             </TableBody>
           </Table>
+        </div>
+      ) : isAssetGroup && group.items.length === 0 ? (
+        <div className="px-6 py-5 flex items-center gap-3 text-sm text-slate-400 border-t border-slate-100">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-violet-50 border border-violet-200 shrink-0">
+            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </span>
+          <span>No assets added yet. Asset roster will be managed per individual unit in the next phase.</span>
+        </div>
+      ) : isAssetGroup ? (
+        <div className="px-6 py-5 flex items-center gap-3 text-sm text-slate-400 border-t border-slate-100">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-violet-50 border border-violet-200 shrink-0">
+            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </span>
+          <span>Asset tracking will be managed per individual tool. Asset roster coming in a future phase.</span>
         </div>
       ) : (
         <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>

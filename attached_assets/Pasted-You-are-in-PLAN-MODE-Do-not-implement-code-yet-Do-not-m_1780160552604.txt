@@ -1,0 +1,99 @@
+You are in PLAN MODE.
+
+Do not implement code yet.
+Do not modify files yet.
+Do not run migrations yet.
+
+We are planning to add asset tracking inside the existing Inventory system.
+
+Goal:
+Add a new inventory category:
+
+TOOLS & ASSETS
+
+This category should not work like normal quantity-based material inventory.
+
+Normal materials:
+- quantity tracking
+- size rows
+- receive / issue by quantity
+
+Tools & Assets:
+- individual asset tracking
+- each tool has its own Asset ID
+- status, condition, location, project, repair status, and history must be tracked per asset
+
+Desired structure:
+
+Inventory
+  TOOLS & ASSETS
+    Tool Storage
+      Tool Cart
+        TC-001 · Available · Warehouse · Good
+        TC-002 · In Use · HMGMA · Good
+        TC-003 · Repair Needed · Warehouse · Broken wheel
+
+    Power Tools
+      Hammer Drill
+        HD-001 · In Use · HMGMA
+        HD-002 · Under Repair · Warehouse
+
+Tracking modes should eventually support:
+- quantity
+- reel
+- asset
+
+TOOLS & ASSETS should default to trackingMode = asset.
+
+Important:
+This must be implemented in phases.
+Do not implement everything at once.
+
+Do not change:
+- existing material quantity logic
+- reel logic
+- wire reel movement logic
+- transaction history behavior for normal materials
+- Field Mode material movement logic
+- existing SKU logic unless explicitly required
+- Excel export in the first phases
+
+Needed phases:
+
+Phase A:
+Audit current inventory category, item, trackingMode, movement, and UI structure.
+
+Phase B:
+Add TOOLS & ASSETS category and allow sizeLabel to be optional for asset-tracked items.
+
+Phase C:
+Add asset tracking data model:
+tool_assets table or equivalent asset table.
+
+Phase D:
+Admin Inventory UI:
+For trackingMode = asset, show asset rows instead of size rows.
+
+Phase E:
+Asset create/edit/deactivate UI:
+Asset ID, manufacturer, model, serial, location, project, assignedTo, status, condition, repair note, photo.
+
+Phase F:
+Field Mode asset actions:
+Check Out, Return, Transfer, Report Repair.
+
+Phase G:
+Asset movement history:
+Show per-asset history.
+
+Before coding, inspect the current repo and return:
+1. Current item/category schema
+2. Existing trackingMode support
+3. Where sizeLabel is required
+4. Current Admin Inventory item rendering path
+5. Current Field Mode movement path
+6. Whether existing Equipment page can be reused or should stay separate
+7. Recommended safest implementation sequence
+8. Files likely involved
+
+Wait for approval before implementing.

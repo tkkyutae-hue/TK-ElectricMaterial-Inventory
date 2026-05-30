@@ -313,13 +313,14 @@ export default function CategoryDetail() {
     setDraftFamily(prev => prev ? { ...prev, name: trimmed, confirmed: true } : null);
     setInlineEditFamily(trimmed);
     setEditDrafts({});
+    const isAssetCat = data?.category.name === "TOOLS & ASSETS";
     setEditNewRows([{
       tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
       skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
       subcategoryOverride: null, detailTypeOverride: null,
-      trackingMode: null, trackingModeError: "",
+      trackingMode: isAssetCat ? "asset" : null, trackingModeError: "",
     }]);
   }, [draftFamily, data, toast]);
 
@@ -369,15 +370,16 @@ export default function CategoryDetail() {
   }, []);
 
   const addNewRow = useCallback(() => {
+    const isAssetCat = data?.category.name === "TOOLS & ASSETS";
     setEditNewRows(prev => [...prev, {
       tmpId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sku: "", sizeLabel: "", name: "", quantityOnHand: 0,
       unitOfMeasure: "EA", primaryLocationId: null, imageUrl: null,
       skuError: "", nameManuallyEdited: false, skuManuallyEdited: false,
       subcategoryOverride: null, detailTypeOverride: null,
-      trackingMode: null, trackingModeError: "",
+      trackingMode: isAssetCat ? "asset" : null, trackingModeError: "",
     }]);
-  }, []);
+  }, [data]);
 
   const updateNewRow = useCallback((tmpId: string, patch: Partial<NewRowDraft>) => {
     setEditNewRows(prev => prev.map(r => r.tmpId === tmpId ? { ...r, ...patch } : r));
@@ -407,7 +409,7 @@ export default function CategoryDetail() {
       const sku = row.sku.trim().toUpperCase();
       if (!sku) { toast({ title: t.catDetailValidationError, description: t.catSkuRequiredForNew, variant: "destructive" }); return; }
       if (!row.name.trim()) { toast({ title: t.catDetailValidationError, description: `${t.catItemNameRequired} ${sku}`, variant: "destructive" }); return; }
-      if (!row.sizeLabel.trim()) { toast({ title: t.catDetailValidationError, description: `${t.catSizeRequiredFor} ${sku}`, variant: "destructive" }); return; }
+      if (!row.sizeLabel.trim() && row.trackingMode !== "asset") { toast({ title: t.catDetailValidationError, description: `${t.catSizeRequiredFor} ${sku}`, variant: "destructive" }); return; }
       if (allCurrentSkus.has(sku) || newSkusSeen.has(sku)) { toast({ title: t.catInlineEditDuplicateSku, description: `${sku} ${t.catSkuAlreadyExists}`, variant: "destructive" }); return; }
       if (row.trackingModeError) { toast({ title: t.catTrackingModeError, description: `${sku}: ${row.trackingModeError}`, variant: "destructive" }); return; }
       if (row.trackingMode === "reel" && !isReelEligible({ name: row.name, subcategory: row.subcategoryOverride || null, detailType: row.detailTypeOverride || null, unitOfMeasure: row.unitOfMeasure })) {

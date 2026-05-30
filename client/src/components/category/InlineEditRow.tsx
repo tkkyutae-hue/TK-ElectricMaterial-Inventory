@@ -8,30 +8,33 @@ import { isReelEligible } from "@/lib/reelEligibility";
 import { useLanguage } from "@/hooks/use-language";
 
 // ── Tracking Mode Pills ───────────────────────────────────────────────────────
-type TrackingModeValue = "standard" | "reel" | null;
+type TrackingModeValue = "standard" | "reel" | "asset" | null;
 
 function TrackingModePills({
   value,
   reelAllowed,
+  assetAllowed,
   error,
   onChange,
 }: {
   value: TrackingModeValue;
   reelAllowed: boolean;
+  assetAllowed?: boolean;
   error?: string;
   onChange: (mode: TrackingModeValue, err: string) => void;
 }) {
   const { t } = useLanguage();
-  const options: { mode: TrackingModeValue; label: string }[] = [
-    { mode: null,       label: t.catInlineEditAuto  },
-    { mode: "standard", label: t.catInlineEditStd   },
-    { mode: "reel",     label: t.catInlineEditReel  },
+  const options: { mode: TrackingModeValue; label: string; show: boolean }[] = [
+    { mode: null,       label: t.catInlineEditAuto,  show: true },
+    { mode: "standard", label: t.catInlineEditStd,   show: true },
+    { mode: "reel",     label: t.catInlineEditReel,  show: true },
+    { mode: "asset",    label: "Asset",               show: !!assetAllowed },
   ];
   return (
     <div className="mt-1.5">
       <div className="flex items-center gap-1">
         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mr-0.5">{t.catInlineEditMode}</span>
-        {options.map(({ mode, label }) => {
+        {options.filter(o => o.show).map(({ mode, label }) => {
           const isActive = (value ?? null) === mode;
           const isInvalid = mode === "reel" && !reelAllowed;
           return (
@@ -46,6 +49,7 @@ function TrackingModePills({
               }}
               className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition-all
                 ${isActive && isInvalid ? "bg-red-500 text-white" :
+                  isActive && mode === "asset" ? "bg-violet-600 text-white" :
                   isActive ? "bg-brand-600 text-white" :
                   "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
               data-testid={`tracking-mode-${String(mode)}`}
@@ -69,7 +73,7 @@ interface InlineEditRowProps {
   onDelete: () => void;
 }
 
-export function InlineEditRow({ item, draft, locations, onChange, onDelete }: InlineEditRowProps) {
+export function InlineEditRow({ item, draft, locations, onChange, onDelete, isAssetCategory }: InlineEditRowProps & { isAssetCategory?: boolean }) {
   const { t } = useLanguage();
   const [showImageInput, setShowImageInput] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -106,6 +110,7 @@ export function InlineEditRow({ item, draft, locations, onChange, onDelete }: In
         <TrackingModePills
           value={(draft.trackingMode ?? null) as TrackingModeValue}
           reelAllowed={isReelEligible({ name: draft.name, sku: item.sku, subcategory: item.subcategory, detailType: item.detailType, baseItemName: item.baseItemName, unitOfMeasure: draft.unitOfMeasure })}
+          assetAllowed={isAssetCategory}
           error={draft.trackingModeError}
           onChange={(mode, err) => onChange({ trackingMode: mode, trackingModeError: err })}
         />
@@ -158,7 +163,7 @@ interface InlineNewRowProps {
   onRemove: () => void;
 }
 
-export function InlineNewRow({ draft, familyName, categoryId, existingItems, existingSkus, locations, onChange, onRemove }: InlineNewRowProps) {
+export function InlineNewRow({ draft, familyName, categoryId, existingItems, existingSkus, locations, onChange, onRemove, isAssetCategory }: InlineNewRowProps & { isAssetCategory?: boolean }) {
   const { t } = useLanguage();
   const [preview, setPreview] = useState<ClassifyPreview | null>(null);
   const [showOverride, setShowOverride] = useState(false);
@@ -331,6 +336,7 @@ export function InlineNewRow({ draft, familyName, categoryId, existingItems, exi
         <TrackingModePills
           value={(draft.trackingMode ?? null) as TrackingModeValue}
           reelAllowed={reelAllowedForNew}
+          assetAllowed={isAssetCategory}
           error={draft.trackingModeError}
           onChange={(mode, err) => onChange({ trackingMode: mode, trackingModeError: err })}
         />

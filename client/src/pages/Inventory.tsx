@@ -389,15 +389,15 @@ export default function Inventory() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse" style={{ tableLayout: "fixed", minWidth: 1000 }}>
             <colgroup>
-              <col style={{ width: "120px" }} /> {/* SKU */}
-              <col style={{ width: "52px" }} />  {/* Photo */}
-              <col style={{ width: "80px" }} />  {/* Size */}
-              <col />                             {/* Item — widest */}
-              <col style={{ width: "140px" }} /> {/* Category */}
-              <col style={{ width: "110px" }} /> {/* Qty/Unit */}
-              <col style={{ width: "112px" }} /> {/* Usage Pattern */}
-              <col style={{ width: "110px" }} /> {/* Status */}
-              <col style={{ width: "32px" }} />  {/* Row affordance */}
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "52px" }} />
+              <col style={{ width: "80px" }} />
+              <col />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "112px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "32px" }} />
             </colgroup>
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-100">

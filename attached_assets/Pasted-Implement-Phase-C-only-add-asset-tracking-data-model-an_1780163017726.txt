@@ -1,0 +1,115 @@
+Implement Phase C only: add asset tracking data model and basic APIs.
+
+Context:
+Phase B is complete.
+TOOLS & ASSETS category exists.
+trackingMode = "asset" exists.
+Asset items can be created without sizeLabel.
+
+Goal:
+Add the database/API foundation for individual tool asset tracking.
+
+Scope:
+TOOLS & ASSETS / asset tracking only.
+
+Do not:
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change normal material quantity logic.
+- Do not change reel logic.
+- Do not change wire reel movement logic.
+- Do not change existing inventory_movements behavior.
+- Do not change Equipment page.
+- Do not change SKU logic.
+
+Required DB table:
+tool_assets
+
+Recommended columns:
+- id serial primary key
+- itemId integer not null references items.id
+- assetTag text not null unique
+- manufacturerName text nullable
+- model text nullable
+- serialNumber text nullable
+- locationId integer nullable references locations.id
+- projectId integer nullable references projects.id
+- assignedTo text nullable
+- status text not null default 'available'
+- condition text nullable default 'good'
+- repairNote text nullable
+- photoUrl text nullable
+- isActive boolean default true
+- createdAt timestamp default now()
+- updatedAt timestamp default now()
+
+Status values:
+- available
+- in_use
+- repair_needed
+- under_repair
+- out_of_service
+- lost
+- retired
+
+Condition values:
+- good
+- fair
+- damaged
+- needs_repair
+
+Indexes:
+- itemId
+- assetTag
+- status
+- locationId
+- projectId
+- isActive
+
+Add Zod schemas and TypeScript types:
+- insertToolAssetSchema
+- ToolAsset
+- CreateToolAssetRequest
+- UpdateToolAssetRequest
+
+Add storage functions:
+- getToolAssetsByItem(itemId)
+- getToolAssetById(assetId)
+- createToolAsset(data)
+- updateToolAsset(assetId, data)
+- deactivateToolAsset(assetId)
+
+Add API routes:
+GET /api/items/:itemId/assets
+POST /api/items/:itemId/assets
+PATCH /api/tool-assets/:assetId
+DELETE /api/tool-assets/:assetId
+
+Delete should be soft-delete:
+- set isActive = false
+- do not hard delete
+
+Validation:
+- assetTag is required
+- assetTag must be unique
+- status must be one of allowed values
+- condition must be one of allowed values if provided
+- itemId must exist
+- item should ideally be trackingMode = asset; reject or warn if not asset-tracked
+
+Manual verification:
+1. DB migration creates tool_assets table.
+2. Create Tool Cart item under TOOLS & ASSETS.
+3. POST asset TC-001 under Tool Cart.
+4. GET item assets returns TC-001.
+5. PATCH TC-001 status to in_use.
+6. DELETE TC-001 soft-deactivates it.
+7. Existing material and reel inventory still works.
+
+Output:
+Summarize:
+- new table fields
+- new API routes
+- storage functions added
+- validation rules
+- confirmation that Field Mode, Equipment, Excel, normal quantity logic, and reel logic were not changed

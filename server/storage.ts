@@ -29,6 +29,8 @@ import {
   type RmsExportHistory, type RmsExportHistoryItem, type RmsExportHistoryWithLines,
   type CreateRmsExportHistory, type CreateRmsExportHistoryItem,
   wireReelMovementLines,
+  toolAssets,
+  type ToolAsset, type CreateToolAssetRequest, type UpdateToolAssetRequest, type ToolAssetWithRelations,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -221,6 +223,14 @@ export interface IStorage {
   // Reel ID Cleanup
   getReelIdPreview(): Promise<ReelIdPreviewRow[]>;
   renameReelIds(reelIds: number[]): Promise<{ updated: number; skipped: number; errors: string[] }>;
+
+  // Tool Assets
+  findToolAssetByTag(assetTag: string): Promise<ToolAsset | undefined>;
+  getToolAssetsByItem(itemId: number): Promise<ToolAssetWithRelations[]>;
+  getToolAssetById(assetId: number): Promise<ToolAssetWithRelations | undefined>;
+  createToolAsset(data: CreateToolAssetRequest): Promise<ToolAssetWithRelations>;
+  updateToolAsset(assetId: number, data: UpdateToolAssetRequest): Promise<ToolAssetWithRelations>;
+  deactivateToolAsset(assetId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3650,6 +3660,67 @@ export class DatabaseStorage implements IStorage {
     });
 
     return { updated, skipped, errors };
+  }
+
+  // ─── Tool Assets ─────────────────────────────────────────────────────────────
+
+  private async _resolveToolAsset(row: ToolAsset): Promise<ToolAssetWithRelations> {
+    const [locationRow] = row.locationId
+      ? await db.select({ id: locations.id, name: locations.name }).from(locations).where(eq(locations.id, row.locationId))
+      : [];
+    const [projectRow] = row.projectId
+      ? await db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.id, row.projectId))
+      : [];
+    return {
+      ...row,
+      location: locationRow ?? null,
+      project: projectRow ?? null,
+    };
+  }
+
+  async findToolAssetByTag(assetTag: string): Promise<ToolAsset | undefined> {
+    const [row] = await db.select().from(toolAssets).where(eq(toolAssets.assetTag, assetTag));
+    return row;
+  }
+
+  async getToolAssetsByItem(itemId: number): Promise<ToolAssetWithRelations[]> {
+    const rows = await db
+      .select()
+      .from(toolAssets)
+      .where(and(eq(toolAssets.itemId, itemId), eq(toolAssets.isActive, true)))
+      .orderBy(asc(toolAssets.assetTag));
+    return Promise.all(rows.map(r => this._resolveToolAsset(r)));
+  }
+
+  async getToolAssetById(assetId: number): Promise<ToolAssetWithRelations | undefined> {
+    const [row] = await db.select().from(toolAssets).where(eq(toolAssets.id, assetId));
+    if (!row) return undefined;
+    return this._resolveToolAsset(row);
+  }
+
+  async createToolAsset(data: CreateToolAssetRequest): Promise<ToolAssetWithRelations> {
+    const [row] = await db.insert(toolAssets).values({
+      ...data,
+      updatedAt: new Date(),
+    }).returning();
+    return this._resolveToolAsset(row);
+  }
+
+  async updateToolAsset(assetId: number, data: UpdateToolAssetRequest): Promise<ToolAssetWithRelations> {
+    const [row] = await db
+      .update(toolAssets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(toolAssets.id, assetId))
+      .returning();
+    if (!row) throw new Error(`Tool asset ${assetId} not found`);
+    return this._resolveToolAsset(row);
+  }
+
+  async deactivateToolAsset(assetId: number): Promise<void> {
+    await db
+      .update(toolAssets)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(toolAssets.id, assetId));
   }
 }
 

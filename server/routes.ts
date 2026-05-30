@@ -4173,6 +4173,113 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Tool Assets ─────────────────────────────────────────────────────────────
+  // GET /api/items/:itemId/assets — list active assets for an item
+  app.get("/api/items/:itemId/assets", isAuthenticated, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
+      const assets = await storage.getToolAssetsByItem(itemId);
+      res.json(assets);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/items/:itemId/assets — create a new asset under an item
+  app.post("/api/items/:itemId/assets", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
+
+      const item = await storage.getItem(itemId);
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      if (item.trackingMode !== "asset") {
+        return res.status(400).json({ message: "Item is not asset-tracked. Only items with trackingMode='asset' can have assets." });
+      }
+
+      const { assetTag, status, condition, ...rest } = req.body;
+      if (!assetTag || !String(assetTag).trim()) {
+        return res.status(400).json({ message: "assetTag is required" });
+      }
+
+      const VALID_STATUSES = ["available", "in_use", "repair_needed", "under_repair", "out_of_service", "lost", "retired"];
+      const VALID_CONDITIONS = ["good", "fair", "damaged", "needs_repair"];
+
+      const resolvedStatus = status ?? "available";
+      const resolvedCondition = condition ?? "good";
+
+      if (!VALID_STATUSES.includes(resolvedStatus)) {
+        return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` });
+      }
+      if (resolvedCondition && !VALID_CONDITIONS.includes(resolvedCondition)) {
+        return res.status(400).json({ message: `Invalid condition. Must be one of: ${VALID_CONDITIONS.join(", ")}` });
+      }
+
+      const tagStr = String(assetTag).trim();
+      const existing = await storage.findToolAssetByTag(tagStr);
+      if (existing) {
+        return res.status(409).json({ message: `Asset tag '${tagStr}' already exists` });
+      }
+
+      const asset = await storage.createToolAsset({
+        itemId,
+        assetTag: tagStr,
+        status: resolvedStatus,
+        condition: resolvedCondition,
+        ...rest,
+      });
+      res.status(201).json(asset);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // PATCH /api/tool-assets/:assetId — update an asset
+  app.patch("/api/tool-assets/:assetId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const assetId = parseInt(req.params.assetId);
+      if (isNaN(assetId)) return res.status(400).json({ message: "Invalid assetId" });
+
+      const VALID_STATUSES = ["available", "in_use", "repair_needed", "under_repair", "out_of_service", "lost", "retired"];
+      const VALID_CONDITIONS = ["good", "fair", "damaged", "needs_repair"];
+
+      const { status, condition, itemId: _itemId, createdAt: _c, updatedAt: _u, ...rest } = req.body;
+
+      if (status !== undefined && !VALID_STATUSES.includes(status)) {
+        return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` });
+      }
+      if (condition !== undefined && condition !== null && !VALID_CONDITIONS.includes(condition)) {
+        return res.status(400).json({ message: `Invalid condition. Must be one of: ${VALID_CONDITIONS.join(", ")}` });
+      }
+
+      const patch: Record<string, any> = { ...rest };
+      if (status !== undefined) patch.status = status;
+      if (condition !== undefined) patch.condition = condition;
+
+      const updated = await storage.updateToolAsset(assetId, patch);
+      res.json(updated);
+    } catch (err: any) {
+      if (err.message?.includes("not found")) return res.status(404).json({ message: err.message });
+      if ((err.code ?? err.cause?.code) === "23505") {
+        return res.status(409).json({ message: `Asset tag already exists` });
+      }
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // DELETE /api/tool-assets/:assetId — soft-delete (isActive = false)
+  app.delete("/api/tool-assets/:assetId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const assetId = parseInt(req.params.assetId);
+      if (isNaN(assetId)) return res.status(400).json({ message: "Invalid assetId" });
+      await storage.deactivateToolAsset(assetId);
+      res.json({ success: true, message: "Asset deactivated" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // ── Reel ID Cleanup ─────────────────────────────────────────────────────────
   app.get("/api/admin/reel-id-preview", isAuthenticated, requireAdmin, async (_req, res) => {
     try {

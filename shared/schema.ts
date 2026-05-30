@@ -576,6 +576,46 @@ export const insertEquipmentSchema = createInsertSchema(equipment).omit({
 export type Equipment = typeof equipment.$inferSelect;
 export type EquipmentWithProject = Equipment & { project?: Project | null };
 
+// ─── Tool Assets ─────────────────────────────────────────────────────────────
+// Individual asset-unit tracking for trackingMode="asset" items (TOOLS & ASSETS).
+// Each row = one physical tool with its own Tag, status, and location.
+
+export const TOOL_ASSET_STATUSES = ["available", "in_use", "repair_needed", "under_repair", "out_of_service", "lost", "retired"] as const;
+export const TOOL_ASSET_CONDITIONS = ["good", "fair", "damaged", "needs_repair"] as const;
+export type ToolAssetStatus = typeof TOOL_ASSET_STATUSES[number];
+export type ToolAssetCondition = typeof TOOL_ASSET_CONDITIONS[number];
+
+export const toolAssets = pgTable("tool_assets", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+  assetTag: text("asset_tag").notNull().unique(),
+  manufacturerName: text("manufacturer_name"),
+  model: text("model"),
+  serialNumber: text("serial_number"),
+  locationId: integer("location_id").references(() => locations.id, { onDelete: "set null" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  assignedTo: text("assigned_to"),
+  status: text("status").notNull().default("available"),
+  condition: text("condition").default("good"),
+  repairNote: text("repair_note"),
+  photoUrl: text("photo_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertToolAssetSchema = createInsertSchema(toolAssets).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type ToolAsset = typeof toolAssets.$inferSelect;
+export type CreateToolAssetRequest = z.infer<typeof insertToolAssetSchema>;
+export type UpdateToolAssetRequest = Partial<Omit<CreateToolAssetRequest, "itemId">>;
+export type ToolAssetWithRelations = ToolAsset & {
+  location?: { id: number; name: string } | null;
+  project?: { id: number; name: string } | null;
+};
+
 // ─── Material Requests ────────────────────────────────────────────────────────
 // Submitted by field workers to request materials from the warehouse.
 // These are NOT inventory movements — no quantities change until pickup.

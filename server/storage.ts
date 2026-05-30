@@ -3785,7 +3785,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(asc(toolAssets.assetTag))
         .limit(qty);
 
-      if (available.length === 0) return;
+      if (available.length < qty) return;
       const ids = available.map((a) => a.id);
       await db
         .update(toolAssets)
@@ -3811,7 +3811,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(asc(toolAssets.assetTag))
         .limit(qty);
 
-      if (inUse.length === 0) return;
+      if (inUse.length < qty) return;
       const ids = inUse.map((a) => a.id);
       await db
         .update(toolAssets)

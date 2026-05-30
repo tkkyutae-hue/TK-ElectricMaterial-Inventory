@@ -499,6 +499,7 @@ export function MovementForm({
         if (row.itemId) {
           await qc.invalidateQueries({ queryKey: [api.items.get.path, row.itemId] });
           await qc.invalidateQueries({ queryKey: ["/api/wire-reels", row.itemId] });
+          await qc.invalidateQueries({ queryKey: ["/api/items", row.itemId, "assets"] });
         }
       }
 
@@ -543,6 +544,11 @@ export function MovementForm({
                       await qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
                       await qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
                       await qc.invalidateQueries({ queryKey: ["/api/field/items"] });
+                      for (const row of validRows) {
+                        if (row.itemId) {
+                          await qc.invalidateQueries({ queryKey: ["/api/items", row.itemId, "assets"] });
+                        }
+                      }
                       toast({ title: t.movementUndone });
                     } catch (err: any) {
                       toast({ title: t.undoFailed, description: err.message, variant: "destructive" });

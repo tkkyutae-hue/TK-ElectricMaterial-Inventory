@@ -104,6 +104,11 @@ export type DraftFamily = {
   confirmed: boolean;
 };
 
+export type FamilyHeaderGroup = {
+  subcategory: string;
+  groups: CategoryItemGroup[];
+};
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const UOM_OPTIONS = ["EA", "FT", "LF", "PR", "PKG", "BOX", "CTN", "LB", "ROLL"];

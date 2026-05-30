@@ -10,9 +10,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
   arrayMove,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
@@ -30,11 +28,11 @@ import { isReelEligible } from "@/lib/reelEligibility";
 
 import type {
   CategoryGroupedDetail, CategoryGroupedItem, CategoryItemGroup,
-  EditDraft, NewRowDraft, DraftFamily,
+  EditDraft, NewRowDraft, DraftFamily, FamilyHeaderGroup,
 } from "@/components/category/types";
 import { getGroupId } from "@/components/category/types";
 import { FamilyEditDialog } from "@/components/category/FamilyEditDialog";
-import { FamilyGroupCard } from "@/components/category/FamilyGroupCard";
+import { FamilyHeaderCard } from "@/components/category/FamilyHeaderCard";
 import { MoveCategoryDialog } from "@/components/category/MoveCategoryDialog";
 import { AdjustStockDialog } from "@/components/category/AdjustStockDialog";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -70,6 +68,15 @@ export default function CategoryDetail() {
   });
   const [orderedGroupNames, setOrderedGroupNames] = useState<string[]>([]);
 
+  const [collapsedFamilyHeaders, setCollapsedFamilyHeaders] = useState<Set<string>>(() => {
+    if (!id) return new Set<string>();
+    try {
+      const raw = localStorage.getItem(`voltstock_collapsed_families_cat_${id}`);
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch {}
+    return new Set<string>();
+  });
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -81,11 +88,27 @@ export default function CategoryDetail() {
     } catch {}
   }, [id, collapsedFamilies]);
 
+  useEffect(() => {
+    if (!id) return;
+    try {
+      localStorage.setItem(`voltstock_collapsed_families_cat_${id}`, JSON.stringify([...collapsedFamilyHeaders]));
+    } catch {}
+  }, [id, collapsedFamilyHeaders]);
+
   const toggleFamilyCollapsed = useCallback((familyName: string) => {
     setCollapsedFamilies(prev => {
       const next = new Set(prev);
       if (next.has(familyName)) next.delete(familyName);
       else next.add(familyName);
+      return next;
+    });
+  }, []);
+
+  const toggleFamilyHeaderCollapsed = useCallback((subcategory: string) => {
+    setCollapsedFamilyHeaders(prev => {
+      const next = new Set(prev);
+      if (next.has(subcategory)) next.delete(subcategory);
+      else next.add(subcategory);
       return next;
     });
   }, []);
@@ -205,6 +228,23 @@ export default function CategoryDetail() {
       ...filteredGroups,
     ];
   }, [filteredGroups, draftFamily]);
+
+  const familyHeaderGroups = useMemo((): FamilyHeaderGroup[] => {
+    const familyMap = new Map<string, CategoryItemGroup[]>();
+    for (const group of displayGroups) {
+      const subcategory = group.items[0]?.subcategory?.trim() || "Uncategorized";
+      if (!familyMap.has(subcategory)) familyMap.set(subcategory, []);
+      familyMap.get(subcategory)!.push(group);
+    }
+    // Sort: by insertion order (first child's position in displayGroups), Uncategorized always last
+    return Array.from(familyMap.entries())
+      .map(([subcategory, groups]) => ({ subcategory, groups }))
+      .sort((a, b) => {
+        if (a.subcategory === "Uncategorized" && b.subcategory !== "Uncategorized") return 1;
+        if (b.subcategory === "Uncategorized" && a.subcategory !== "Uncategorized") return -1;
+        return 0;
+      });
+  }, [displayGroups]);
 
   const handleConfirmDraftFamily = useCallback(() => {
     if (!draftFamily?.name.trim()) return;
@@ -603,8 +643,8 @@ export default function CategoryDetail() {
         </div>
       )}
 
-      {/* Family groups */}
-      {displayGroups.length === 0 && !draftFamily ? (
+      {/* Family groups — 3-level: Family Header → Item Header → Size Rows */}
+      {familyHeaderGroups.length === 0 && !draftFamily ? (
         <div className="text-center py-16 text-slate-500 bg-white border border-slate-200 rounded-xl">
           <Package className="w-12 h-12 mx-auto mb-3 text-slate-300" />
           {hasActiveFilters ? (
@@ -616,41 +656,42 @@ export default function CategoryDetail() {
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={displayGroups.map(g => getGroupId(g))} strategy={verticalListSortingStrategy}>
-            <div className="space-y-4">
-              {displayGroups.map((group) => (
-                <FamilyGroupCard
-                  key={getGroupId(group)}
-                  group={group}
-                  draftFamily={draftFamily}
-                  inlineEditFamily={inlineEditFamily}
-                  editDrafts={editDrafts}
-                  editNewRows={editNewRows}
-                  savingInline={savingInline}
-                  familySortDir={familySortDir}
-                  locations={locations || []}
-                  allSkus={allSkus}
-                  data={data}
-                  onEnterEdit={enterInlineEdit}
-                  onCancelEdit={cancelInlineEdit}
-                  onSaveEdit={saveInlineEdits}
-                  onAddRow={addNewRow}
-                  onUpdateDraft={updateDraft}
-                  onDeleteRow={deleteRow}
-                  onUpdateNewRow={updateNewRow}
-                  onRemoveNewRow={removeNewRow}
-                  onToggleSort={toggleFamilySort}
-                  onOpenSettings={setEditingGroup}
-                  onMoveCategory={setMoveCategoryGroup}
-                  onAdjustStock={setAdjustingItem}
-                  isAdmin={isAdminRole}
-                  isCollapsed={collapsedFamilies.has(getGroupId(group))}
-                  onToggleCollapsed={toggleFamilyCollapsed}
-                  isDraggable={!hasActiveFilters && !inlineEditFamily}
-                />
-              ))}
-            </div>
-          </SortableContext>
+          <div className="space-y-3">
+            {familyHeaderGroups.map(family => (
+              <FamilyHeaderCard
+                key={family.subcategory}
+                family={family}
+                isCollapsed={collapsedFamilyHeaders.has(family.subcategory)}
+                hasActiveFilters={hasActiveFilters}
+                onToggleCollapsed={toggleFamilyHeaderCollapsed}
+                draftFamily={draftFamily}
+                inlineEditFamily={inlineEditFamily}
+                editDrafts={editDrafts}
+                editNewRows={editNewRows}
+                savingInline={savingInline}
+                familySortDir={familySortDir}
+                locations={locations || []}
+                allSkus={allSkus}
+                data={data}
+                onEnterEdit={enterInlineEdit}
+                onCancelEdit={cancelInlineEdit}
+                onSaveEdit={saveInlineEdits}
+                onAddRow={addNewRow}
+                onUpdateDraft={updateDraft}
+                onDeleteRow={deleteRow}
+                onUpdateNewRow={updateNewRow}
+                onRemoveNewRow={removeNewRow}
+                onToggleSort={toggleFamilySort}
+                onOpenSettings={setEditingGroup}
+                onMoveCategory={setMoveCategoryGroup}
+                onAdjustStock={setAdjustingItem}
+                isAdmin={isAdminRole}
+                collapsedItemHeaders={collapsedFamilies}
+                onToggleItemHeaderCollapsed={toggleFamilyCollapsed}
+                isDraggableItemHeaders={!hasActiveFilters && !inlineEditFamily}
+              />
+            ))}
+          </div>
         </DndContext>
       )}
 

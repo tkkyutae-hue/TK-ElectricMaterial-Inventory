@@ -15,8 +15,6 @@ import { apiRequest } from "@/lib/queryClient";
 import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, DraftFamily, CategoryGroupedDetail } from "./types";
 import { sortItems, getGroupId } from "./types";
 import { InlineEditRow, InlineNewRow } from "./InlineEditRow";
-import { AssetPanel } from "./AssetPanel";
-
 // ── Asset row expansion ──────────────────────────────────────────────────────
 type ToolAssetEntry = {
   id: number;
@@ -529,13 +527,6 @@ export function FamilyGroupCard({
             </Table>
           </div>
 
-          {/* Asset summary + Generate button — one per asset-tracked item */}
-          {sortedItems
-            .filter(item => item.trackingMode === "asset")
-            .map(item => (
-              <AssetPanel key={item.id} item={item} isAdmin={!!isAdmin} />
-            ))
-          }
         </>
       )}
 

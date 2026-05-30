@@ -15,6 +15,7 @@ import {
   ImageIcon, UploadCloud, PackageOpen, DollarSign, RefreshCw, Activity,
   ClipboardList, Layers, Plus, Pencil, Check,
   ChevronLeft, ChevronRight, Star, Camera, Eye, Maximize2,
+  Wand2, Cpu,
 } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import {
@@ -1219,6 +1220,137 @@ function WireReelInlineInner(
 }
 const WireReelInline = forwardRef(WireReelInlineInner);
 
+type AssetEntry = {
+  id: number; assetTag: string; status: string;
+  condition: string | null; repairNote: string | null; assignedTo: string | null;
+  location?: { id: number; name: string } | null;
+  project?: { id: number; name: string } | null;
+};
+const ASSET_STATUS_LABELS: Record<string, string> = {
+  available: "In Stock", in_use: "In Use", repair_needed: "Repair Needed",
+  under_repair: "Under Repair", out_of_service: "Out of Service", lost: "Lost", retired: "Retired",
+};
+
+function AssetTrackingSection({ item, isAdmin }: { item: any; isAdmin: boolean }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [showGenerate, setShowGenerate] = useState(false);
+
+  const { data: assets = [] } = useQuery<AssetEntry[]>({
+    queryKey: ["/api/items", item.id, "assets"],
+    queryFn: () => fetch(`/api/items/${item.id}/assets`).then(r => r.json()),
+    staleTime: 30_000,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/items/${item.id}/assets/generate-from-quantity`, {}),
+    onSuccess: async (res) => {
+      const result = await res.json();
+      qc.invalidateQueries({ queryKey: ["/api/items", item.id, "assets"] });
+      qc.invalidateQueries({ queryKey: ["/api/items", item.id] });
+      setShowGenerate(false);
+      const generated = result.summary?.generated ?? result.created?.length ?? 0;
+      if (generated === 0) {
+        toast({ title: "Already complete", description: "All asset IDs are already generated." });
+      } else {
+        toast({ title: `Generated ${generated} asset IDs`, description: `${item.name} asset roster updated.` });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "Generation failed", description: err.message ?? "Unknown error", variant: "destructive" });
+    },
+  });
+
+  const qty = item.quantityOnHand ?? 0;
+  const activeCount = assets.length;
+  const missingCount = Math.max(0, qty - activeCount);
+  const hasSku = !!item.sku?.trim();
+  const statusCounts = assets.reduce((acc: Record<string, number>, a) => {
+    acc[a.status] = (acc[a.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div data-testid={`asset-tracking-section-${item.id}`}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <Cpu className="w-4 h-4 text-violet-600" />
+          <span className="text-sm font-semibold text-slate-700">Asset Tracking</span>
+        </div>
+        {isAdmin && hasSku && (
+          <Button variant="outline" size="sm"
+            className="h-7 px-3 text-xs border-violet-300 text-violet-700 hover:bg-violet-100 gap-1"
+            onClick={() => setShowGenerate(true)}
+            data-testid={`button-generate-assets-${item.id}`}
+          >
+            <Wand2 className="w-3 h-3" />Generate Asset IDs
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <span className="text-[11px] px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 font-medium">
+          Registered {activeCount} / {qty}
+        </span>
+        {missingCount > 0 && (
+          <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+            {missingCount} unregistered
+          </span>
+        )}
+        {Object.entries(statusCounts).map(([st, cnt]) => (
+          <span key={st} className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 font-medium">
+            {ASSET_STATUS_LABELS[st] ?? st} {cnt as number}
+          </span>
+        ))}
+      </div>
+
+      <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="w-4 h-4 text-violet-600" />Generate Asset IDs
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm pt-1">
+            {missingCount === 0 ? (
+              <p className="text-emerald-700 font-medium text-xs bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                All {qty} assets are already registered for {item.name}.
+              </p>
+            ) : (
+              <>
+                <p className="text-slate-700">
+                  Create <strong>{missingCount}</strong> new asset record{missingCount !== 1 ? "s" : ""} for <strong>{item.name}</strong>.
+                </p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1 text-xs text-slate-600">
+                  <div className="flex justify-between"><span>Qty on hand:</span><span className="font-semibold">{qty}</span></div>
+                  <div className="flex justify-between"><span>Already registered:</span><span className="font-semibold">{activeCount}</span></div>
+                  <div className="flex justify-between text-violet-700 font-semibold border-t border-slate-200 pt-1 mt-1">
+                    <span>Will generate:</span><span>{missingCount}</span>
+                  </div>
+                </div>
+                <p className="text-slate-400 text-xs">
+                  IDs use format <code className="bg-slate-100 px-1 rounded">{item.sku}-001</code>, continuing from the last existing number.
+                </p>
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button variant="outline" size="sm" onClick={() => setShowGenerate(false)} disabled={generateMutation.isPending}>
+                Cancel
+              </Button>
+              <Button size="sm" className="bg-violet-700 hover:bg-violet-800"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending || missingCount === 0}
+                data-testid={`button-confirm-generate-assets-${item.id}`}
+              >
+                {generateMutation.isPending ? "Generating…" : missingCount === 0 ? "Already complete" : `Generate ${missingCount}`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function StockStatusBar({ qty, minStock }: { qty: number; minStock: number }) {
   let label: string;
   let cls: string;
@@ -1528,6 +1660,14 @@ export default function ItemDetails() {
             {shouldShowReelUI(item) && (
               <>
                 <WireReelInline ref={wireReelRef} item={item} editModeActive={inlineEdit} />
+                <div className="h-px bg-slate-100" />
+              </>
+            )}
+
+            {/* Asset Tracking — inline for asset-tracked items */}
+            {item.trackingMode === "asset" && (
+              <>
+                <AssetTrackingSection item={item} isAdmin={!!isAdmin} />
                 <div className="h-px bg-slate-100" />
               </>
             )}

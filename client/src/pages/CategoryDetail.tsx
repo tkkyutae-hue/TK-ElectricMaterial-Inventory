@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useLocations } from "@/hooks/use-reference-data";
 import { apiRequest } from "@/lib/queryClient";
 import { getCategoryGradient } from "@/lib/categoryUtils";
@@ -57,6 +58,41 @@ export default function CategoryDetail() {
   const [editingGroup, setEditingGroup] = useState<CategoryItemGroup | null>(null);
   const [moveCategoryGroup, setMoveCategoryGroup] = useState<CategoryItemGroup | null>(null);
   const [adjustingItem, setAdjustingItem] = useState<CategoryGroupedItem | null>(null);
+
+  const handleMoveSuccess = useCallback((info: {
+    group: CategoryItemGroup;
+    fromCategoryId: number;
+    toCategoryId: number;
+    toCategoryName: string;
+  }) => {
+    setMoveCategoryGroup(null);
+    toast({
+      title: `Moved to ${info.toCategoryName}`,
+      description: `"${info.group.baseItemName}" (${info.group.items.length} item${info.group.items.length !== 1 ? "s" : ""}) moved.`,
+      action: (
+        <ToastAction
+          altText="Undo move"
+          onClick={() => {
+            apiRequest("POST", "/api/inventory/items/move-family-to-category", {
+              fromCategoryId: info.toCategoryId,
+              baseItemName: info.group.baseItemName,
+              toCategoryId: info.fromCategoryId,
+            }).then(() => {
+              qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(id), "grouped"] });
+              qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
+              qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(info.toCategoryId), "grouped"] });
+              qc.invalidateQueries({ queryKey: ["/api/field/families"] });
+              toast({ title: "Undo successful", description: `"${info.group.baseItemName}" moved back.` });
+            }).catch(() => {
+              toast({ title: "Undo failed", description: "Could not move back. Please try manually.", variant: "destructive" });
+            });
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+    });
+  }, [id, qc, toast]);
   const [draftFamily, setDraftFamily] = useState<DraftFamily | null>(null);
 
   const [familySortDir, setFamilySortDir] = useState<Record<string, "asc" | "desc">>({});
@@ -771,6 +807,7 @@ export default function CategoryDetail() {
           categoryId={data.category.id}
           categoryName={data.category.name}
           group={moveCategoryGroup}
+          onMoveSuccess={handleMoveSuccess}
         />
       )}
 

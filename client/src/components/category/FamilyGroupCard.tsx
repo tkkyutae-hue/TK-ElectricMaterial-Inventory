@@ -1,15 +1,21 @@
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical } from "lucide-react";
+import { useState } from "react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical, Cpu } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsagePatternBadge } from "@/components/UsagePatternBadge";
 import { useLanguage } from "@/hooks/use-language";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { CategoryItemGroup, CategoryGroupedItem, EditDraft, NewRowDraft, DraftFamily, CategoryGroupedDetail } from "./types";
 import { sortItems, getGroupId } from "./types";
 import { InlineEditRow, InlineNewRow } from "./InlineEditRow";
+import { AssetPanel } from "./AssetPanel";
 
 interface FamilyGroupCardProps {
   group: CategoryItemGroup;
@@ -54,12 +60,19 @@ export function FamilyGroupCard({
     disabled: !isDraggable,
   });
   const { t } = useLanguage();
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const isDraftConfirmed = draftFamily?.confirmed && draftFamily.name === group.baseItemName;
   const isEditingThis = inlineEditFamily === gid;
   const sortDir = familySortDir[gid] ?? "asc";
   const sortedItems = sortItems(group.items, sortDir);
-  const isAssetCategory = data.category.name === "TOOLS & ASSETS";
-  const isAssetGroup = isAssetCategory || group.items.some(i => i.trackingMode === "asset");
+
+  // ── Part 1 fix: isAssetGroup purely based on trackingMode, never on category name ──
+  const isAssetCategory = data.category.name === "TOOLS & ASSETS"; // kept only for InlineEditRow/InlineNewRow
+  const isAssetGroup = group.items.some(i => i.trackingMode === "asset");
+
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   const collapseDisabled = isEditingThis || !!isDraftConfirmed;
   const effectivelyCollapsed = !collapseDisabled && !!isCollapsed;
@@ -73,6 +86,25 @@ export function FamilyGroupCard({
 
   const skusForNewRowCheck = new Set(allSkus);
   editNewRows.forEach(r => { if (r.sku.trim()) skusForNewRowCheck.add(r.sku.trim().toUpperCase()); });
+
+  // ── Part 10: Convert all items in group to asset tracking ──────────────────
+  const handleConvertToAsset = async () => {
+    setIsConverting(true);
+    try {
+      await Promise.all(
+        group.items.map(item =>
+          apiRequest("PUT", `/api/items/${item.id}`, { trackingMode: "asset" })
+        )
+      );
+      qc.invalidateQueries({ queryKey: ["/api/inventory/category"] });
+      setShowConvertDialog(false);
+      toast({ title: "Converted to Asset Tracking", description: `"${group.baseItemName}" items are now asset-tracked.` });
+    } catch (err: any) {
+      toast({ title: "Conversion failed", description: err?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   return (
     <div
@@ -114,7 +146,6 @@ export function FamilyGroupCard({
           <div className="min-w-0 flex-1">
             {(() => {
               const mfr = group.manufacturerName?.trim() || group.items[0]?.manufacturer?.trim() || null;
-              // Strip leading [BrandName] bracket if manufacturer is known
               const cleanTitle = mfr
                 ? group.baseItemName.replace(/^\[.*?\]\s*/, "").trim()
                 : group.baseItemName;
@@ -168,6 +199,18 @@ export function FamilyGroupCard({
                   <FolderInput className="w-3 h-3" />이동
                 </Button>
               )}
+              {/* Part 10: Convert to Asset Tracking — only for admins, only when no asset items yet */}
+              {isAdmin && !isAssetGroup && group.items.length > 0 && (
+                <Button variant="ghost" size="sm"
+                  className="h-7 px-2 text-xs text-violet-600 hover:text-violet-800 hover:bg-violet-50 gap-1"
+                  onClick={() => setShowConvertDialog(true)}
+                  disabled={!!inlineEditFamily}
+                  data-testid={`button-convert-asset-${group.baseItemName.replace(/\s+/g, "-")}`}
+                  title="Convert to Asset Tracking"
+                >
+                  <Cpu className="w-3 h-3" />Asset
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 gap-1"
                 onClick={() => onEnterEdit(group)} disabled={!!inlineEditFamily} data-testid={`button-edit-family-${group.baseItemName.replace(/\s+/g, "-")}`}>
                 <Pencil className="w-3 h-3" />Edit
@@ -193,7 +236,7 @@ export function FamilyGroupCard({
         </div>
       </div>
 
-      {/* Items — edit mode table or view mode table */}
+      {/* Items — edit mode or view mode */}
       {effectivelyCollapsed ? null : isEditingThis ? (
         <div className="overflow-x-auto">
           <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "780px" }}>
@@ -258,129 +301,166 @@ export function FamilyGroupCard({
             </TableBody>
           </Table>
         </div>
-      ) : isAssetGroup && group.items.length === 0 ? (
-        <div className="px-6 py-5 flex items-center gap-3 text-sm text-slate-400 border-t border-slate-100">
-          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-violet-50 border border-violet-200 shrink-0">
-            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </span>
-          <span>No assets added yet. Asset roster will be managed per individual unit in the next phase.</span>
-        </div>
-      ) : isAssetGroup ? (
-        <div className="px-6 py-5 flex items-center gap-3 text-sm text-slate-400 border-t border-slate-100">
-          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-violet-50 border border-violet-200 shrink-0">
-            <svg className="w-3.5 h-3.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </span>
-          <span>Asset tracking will be managed per individual tool. Asset roster coming in a future phase.</span>
-        </div>
       ) : (
-        <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>
-          <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "750px" }}>
-            <colgroup>
-              <col style={{ width: "120px" }} />
-              <col style={{ width: "55px" }} />
-              <col style={{ width: "90px" }} />
-              <col style={{ width: "260px" }} />
-              <col style={{ width: "100px" }} />
-              <col style={{ width: "110px" }} />
-              <col style={{ width: "120px" }} />
-            </colgroup>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2">SKU</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
-                <TableHead className="h-9 pl-2 pr-3">
-                  <button
-                    onClick={() => onToggleSort(gid)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
-                    title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
-                    data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
+        /* ── View mode: always show inventory table, then AssetPanels for asset items ── */
+        <>
+          <div className="overflow-x-auto" id={`family-table-${group.baseItemName.replace(/\s+/g, "-")}`}>
+            <Table style={{ tableLayout: "fixed", width: "100%", minWidth: "750px" }}>
+              <colgroup>
+                <col style={{ width: "120px" }} />
+                <col style={{ width: "55px" }} />
+                <col style={{ width: "90px" }} />
+                <col style={{ width: "260px" }} />
+                <col style={{ width: "100px" }} />
+                <col style={{ width: "110px" }} />
+                <col style={{ width: "120px" }} />
+              </colgroup>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent bg-transparent border-b border-slate-100">
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-5 pr-2">SKU</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2">Photo</TableHead>
+                  <TableHead className="h-9 pl-2 pr-3">
+                    {isAssetGroup ? (
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Size / Model</span>
+                    ) : (
+                      <button
+                        onClick={() => onToggleSort(gid)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 transition-colors"
+                        title={sortDir === "asc" ? "Sorted small→large (click for large→small)" : "Sorted large→small (click for small→large)"}
+                        data-testid={`button-sort-size-${group.baseItemName.replace(/\s+/g, "-")}`}
+                      >
+                        Size
+                        {sortDir === "asc"
+                          ? <ArrowUp className="w-3 h-3 text-brand-500" />
+                          : <ArrowDown className="w-3 h-3 text-brand-500" />}
+                      </button>
+                    )}
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-3">Item</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="On Hand — current stock quantity">On Hand</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsagePattern}</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedItems.map(item => (
+                  <TableRow
+                    key={item.id}
+                    className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
+                    data-testid={`row-item-${item.id}`}
                   >
-                    Size
-                    {sortDir === "asc"
-                      ? <ArrowUp className="w-3 h-3 text-brand-500" />
-                      : <ArrowDown className="w-3 h-3 text-brand-500" />}
-                  </button>
-                </TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 pl-2 pr-3">Item</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-2 text-right whitespace-nowrap" title="On Hand — current stock quantity">On Hand</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">{t.reorderColUsagePattern}</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-400 uppercase tracking-wide h-9 px-3 text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedItems.map(item => (
-                <TableRow
-                  key={item.id}
-                  className={`hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-0 ${item.status === "out_of_stock" ? "bg-red-50/20" : item.status === "low_stock" ? "bg-amber-50/20" : ""}`}
-                  data-testid={`row-item-${item.id}`}
-                >
-                  <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
-                    <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
-                  </TableCell>
-                  <TableCell className="h-10 px-2">
-                    <div className="flex items-center">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt="" className="w-9 h-9 object-cover rounded border border-slate-200 block"
-                          onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
-                      ) : null}
-                      <div className={`w-9 h-9 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
-                        <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                    <TableCell className="h-10 pl-5 pr-2 overflow-hidden">
+                      <div className="font-mono text-[11px] leading-tight text-slate-500 truncate" title={item.sku}>{item.sku}</div>
+                    </TableCell>
+                    <TableCell className="h-10 px-2">
+                      <div className="flex items-center">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" className="w-9 h-9 object-cover rounded border border-slate-200 block"
+                            onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove("hidden"); }} />
+                        ) : null}
+                        <div className={`w-9 h-9 rounded border border-slate-100 bg-slate-50 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
+                          <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
-                    <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
-                  </TableCell>
-                  <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
-                    <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
-                  </TableCell>
-                  <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden">
-                    <div className="flex items-center justify-end gap-1">
-                      <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
-                      <span className="text-slate-400 font-normal text-[11px]">{item.unitOfMeasure}</span>
-                      {isAdmin && onAdjustStock && (
-                        <button
-                          type="button"
-                          onClick={() => onAdjustStock(item)}
-                          disabled={!!inlineEditFamily}
-                          className="ml-1 p-1 rounded text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                          title="Adjust on-hand stock"
-                          data-testid={`button-adjust-stock-${item.id}`}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-10 px-3 overflow-hidden">
-                    <div className="flex items-center justify-center">
-                      <UsagePatternBadge
-                        issueCount30d={item.issueCount30d ?? 0}
-                        issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
-                        lastIssueAt={item.lastIssueAt}
-                        testId={`chip-usage-pattern-${item.id}`}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="h-10 px-3 overflow-hidden">
-                    <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {group.items.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
-                    No items yet.{" "}
-                    <button className="text-brand-600 hover:underline" onClick={() => onEnterEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
-                      Click Edit to add items.
-                    </button>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                    </TableCell>
+                    <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
+                      <div className="font-semibold text-slate-800 text-sm truncate">{item.sizeLabel || "—"}</div>
+                    </TableCell>
+                    <TableCell className="h-10 pl-2 pr-3 overflow-hidden">
+                      <Link href={`/inventory/${item.id}`} className="text-slate-700 text-sm hover:text-brand-600 hover:underline transition-colors block truncate" data-testid={`link-item-name-${item.id}`} title={item.name}>{item.name}</Link>
+                    </TableCell>
+                    <TableCell className="h-10 px-2 text-right tabular-nums overflow-hidden">
+                      <div className="flex items-center justify-end gap-1">
+                        <span className="font-semibold text-slate-900 text-sm">{item.quantityOnHand.toLocaleString()}</span>
+                        <span className="text-slate-400 font-normal text-[11px]">{item.unitOfMeasure}</span>
+                        {isAdmin && onAdjustStock && (
+                          <button
+                            type="button"
+                            onClick={() => onAdjustStock(item)}
+                            disabled={!!inlineEditFamily}
+                            className="ml-1 p-1 rounded text-slate-300 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Adjust on-hand stock"
+                            data-testid={`button-adjust-stock-${item.id}`}
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="h-10 px-3 overflow-hidden">
+                      <div className="flex items-center justify-center">
+                        <UsagePatternBadge
+                          issueCount30d={item.issueCount30d ?? 0}
+                          issueCount90d={item.issueCount90d ?? item.issueCount30d ?? 0}
+                          lastIssueAt={item.lastIssueAt}
+                          testId={`chip-usage-pattern-${item.id}`}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="h-10 px-3 overflow-hidden">
+                      <div className="flex items-center justify-center"><ItemStatusBadge status={item.status} /></div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {group.items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6 text-slate-400 text-sm">
+                      No items yet.{" "}
+                      <button className="text-brand-600 hover:underline" onClick={() => onEnterEdit(group)} data-testid={`link-add-first-item-${group.baseItemName.replace(/\s+/g, "-")}`}>
+                        Click Edit to add items.
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Part 2 & 3: Asset panels — one per asset-tracked item */}
+          {sortedItems
+            .filter(item => item.trackingMode === "asset")
+            .map(item => (
+              <AssetPanel key={item.id} item={item} isAdmin={!!isAdmin} />
+            ))
+          }
+        </>
       )}
+
+      {/* Part 10: Convert to Asset Tracking confirmation dialog */}
+      <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-violet-600" />Convert to Asset Tracking?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm pt-1">
+            <p className="text-slate-700">
+              Convert all items in <strong>"{group.baseItemName}"</strong> to asset tracking mode.
+            </p>
+            <ul className="text-xs text-slate-500 space-y-1 list-disc list-inside">
+              <li>Current quantities will not change</li>
+              <li>Each item will get its own asset roster</li>
+              <li>Asset IDs are <strong>not</strong> generated automatically — use "Generate Asset IDs" after</li>
+            </ul>
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              This action cannot be undone through the UI.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button variant="outline" size="sm" onClick={() => setShowConvertDialog(false)} disabled={isConverting}>
+                Cancel
+              </Button>
+              <Button size="sm" className="bg-violet-700 hover:bg-violet-800"
+                onClick={handleConvertToAsset}
+                disabled={isConverting}
+                data-testid={`button-confirm-convert-asset-${group.baseItemName.replace(/\s+/g, "-")}`}
+              >
+                {isConverting ? "Converting…" : "Convert to Asset Tracking"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

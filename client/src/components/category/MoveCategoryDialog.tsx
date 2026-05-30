@@ -15,17 +15,25 @@ interface Category {
   code: string;
 }
 
+interface MoveSuccessInfo {
+  group: CategoryItemGroup;
+  fromCategoryId: number;
+  toCategoryId: number;
+  toCategoryName: string;
+}
+
 interface MoveCategoryDialogProps {
   open: boolean;
   onClose: () => void;
   categoryId: number;
   categoryName: string;
   group: CategoryItemGroup;
+  onMoveSuccess?: (info: MoveSuccessInfo) => void;
 }
 
-export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, group }: MoveCategoryDialogProps) {
-  const { toast } = useToast();
+export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, group, onMoveSuccess }: MoveCategoryDialogProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const qc = useQueryClient();
   const [targetCategoryId, setTargetCategoryId] = useState<string>("");
 
@@ -59,16 +67,21 @@ export function MoveCategoryDialog({ open, onClose, categoryId, categoryName, gr
       return res.json();
     },
     onSuccess: (data: { moved: number }) => {
-      toast({
-        title: t.catMoveSuccessTitle,
-        description: `"${group.baseItemName}" (${data.moved} ${t.catMoveItemsCountSuffix}) → ${selectedCategory?.name}`,
-      });
       qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(categoryId), "grouped"] });
       qc.invalidateQueries({ queryKey: ["/api/inventory/categories/summary"] });
       if (selectedCategory) {
         qc.invalidateQueries({ queryKey: ["/api/inventory/category", String(selectedCategory.id), "grouped"] });
       }
       qc.invalidateQueries({ queryKey: ["/api/field/families"] });
+
+      if (onMoveSuccess && selectedCategory) {
+        onMoveSuccess({
+          group,
+          fromCategoryId: categoryId,
+          toCategoryId: Number(targetCategoryId),
+          toCategoryName: selectedCategory.name,
+        });
+      }
       onClose();
     },
     onError: (err: unknown) => {

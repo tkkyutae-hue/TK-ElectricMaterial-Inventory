@@ -4186,6 +4186,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/items/:itemId/assets/generate-from-quantity — bulk-generate missing asset IDs
+  app.post("/api/items/:itemId/assets/generate-from-quantity", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      if (isNaN(itemId)) return res.status(400).json({ message: "Invalid itemId" });
+      const item = await storage.getItem(itemId);
+      if (!item) return res.status(404).json({ message: "Item not found" });
+      if (item.trackingMode !== "asset") {
+        return res.status(400).json({ message: "Item is not asset-tracked" });
+      }
+      const sku = (item.sku ?? "").trim();
+      if (!sku) return res.status(400).json({ message: "Item must have a SKU to generate asset IDs" });
+      const qty = item.quantityOnHand ?? 0;
+      if (qty <= 0) return res.status(400).json({ message: "quantityOnHand must be a positive number" });
+      const prefix = sku.toUpperCase().replace(/[^A-Z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+      const activeAssets = await storage.getToolAssetsByItem(itemId);
+      const activeCount = activeAssets.length;
+      const missingCount = qty - activeCount;
+      if (missingCount <= 0) {
+        return res.json({ created: [], summary: { targetCount: qty, activeCount, missingCount: 0, generated: 0 } });
+      }
+      const created = await storage.generateAssetsFromQuantity(itemId, prefix, missingCount);
+      res.json({ created, summary: { targetCount: qty, activeCount, missingCount, generated: created.length } });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // POST /api/items/:itemId/assets — create a new asset under an item
   app.post("/api/items/:itemId/assets", isAuthenticated, requireManager, async (req, res) => {
     try {

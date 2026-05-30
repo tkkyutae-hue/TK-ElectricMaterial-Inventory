@@ -231,6 +231,7 @@ export interface IStorage {
   createToolAsset(data: CreateToolAssetRequest): Promise<ToolAssetWithRelations>;
   updateToolAsset(assetId: number, data: UpdateToolAssetRequest): Promise<ToolAssetWithRelations>;
   deactivateToolAsset(assetId: number): Promise<void>;
+  generateAssetsFromQuantity(itemId: number, prefix: string, missingCount: number): Promise<ToolAsset[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3721,6 +3722,32 @@ export class DatabaseStorage implements IStorage {
       .update(toolAssets)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(toolAssets.id, assetId));
+  }
+
+  async generateAssetsFromQuantity(itemId: number, prefix: string, missingCount: number): Promise<ToolAsset[]> {
+    if (missingCount <= 0) return [];
+    const existing = await db
+      .select({ assetTag: toolAssets.assetTag })
+      .from(toolAssets)
+      .where(like(toolAssets.assetTag, `${prefix}-%`));
+    let maxSeq = 0;
+    for (const row of existing) {
+      const m = row.assetTag.match(/-(\d+)$/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > maxSeq) maxSeq = n;
+      }
+    }
+    const toInsert = Array.from({ length: missingCount }, (_, i) => ({
+      itemId,
+      assetTag: `${prefix}-${String(maxSeq + i + 1).padStart(3, "0")}`,
+      status: "available" as const,
+      condition: "good" as const,
+      isActive: true,
+      updatedAt: new Date(),
+    }));
+    const created = await db.insert(toolAssets).values(toInsert).returning();
+    return created;
   }
 }
 

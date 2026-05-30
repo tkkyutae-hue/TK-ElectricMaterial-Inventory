@@ -1,0 +1,441 @@
+Fix TOOLS & ASSETS asset display, preserve accidental category moves, add Undo, and add quantity-based Asset ID generation.
+
+Context:
+- TOOLS & ASSETS category already exists.
+- trackingMode = "asset" already exists.
+- tool_assets table/API may already exist.
+- Current issue: after moving existing items into TOOLS & ASSETS, existing quantity rows are hidden and only the asset placeholder is shown.
+- Users need existing quantity visible because asset IDs should be generated from current quantity.
+- Users may accidentally move items into TOOLS & ASSETS, so moving categories must be reversible and non-destructive.
+
+Main rule:
+Category move is NOT asset conversion.
+Asset conversion is NOT asset ID generation.
+These must be separate explicit actions.
+
+Do not:
+- Do not delete existing items.
+- Do not change existing quantityOnHand values.
+- Do not auto-convert items to asset tracking just because they are moved into TOOLS & ASSETS.
+- Do not auto-generate asset IDs during category move.
+- Do not change normal material quantity logic.
+- Do not change reel logic.
+- Do not change wire reel movement logic.
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change Equipment page.
+- Do not hard-delete tool assets.
+
+------------------------------------------------------------
+PART 1 — Fix TOOLS & ASSETS display logic
+------------------------------------------------------------
+
+Current bug:
+FamilyGroupCard currently treats the whole TOOLS & ASSETS category as asset mode.
+
+Bad logic example:
+const isAssetCategory = data.category.name === "TOOLS & ASSETS";
+const isAssetGroup = isAssetCategory || group.items.some(i => i.trackingMode === "asset");
+
+This hides existing size/quantity rows.
+
+Required fix:
+Do not treat every item in TOOLS & ASSETS as asset-tracked only because the category name is TOOLS & ASSETS.
+
+Use item trackingMode.
+
+Rules:
+1. If trackingMode === "asset":
+   - show asset management UI
+   - show legacy quantity reference
+   - show existing inventory rows
+   - show asset roster if assets exist
+
+2. If trackingMode === "standard" or null:
+   - show normal quantity/size rows
+   - do not show asset roster
+   - do not show Generate Asset IDs button
+
+3. If trackingMode === "reel":
+   - keep existing reel behavior unchanged
+
+4. TOOLS & ASSETS may contain both:
+   - asset-tracked items
+   - standard quantity items
+
+Example:
+TOOLS & ASSETS
+  Ladders
+    A Type Ladder 10FT
+      trackingMode = asset
+      Qty 10 EA
+      Asset IDs LAD-A10-001 ~ LAD-A10-010
+
+  Safety / PPE
+    Gloves
+      trackingMode = standard
+      Qty 200 EA
+      No asset roster
+
+------------------------------------------------------------
+PART 2 — Asset item display
+------------------------------------------------------------
+
+For trackingMode = "asset", show this information:
+
+Asset summary:
+Legacy Qty: 10 EA
+Assets Registered: 0 / 10
+Needs Registration: 10
+
+After assets exist:
+Legacy Qty: 10 EA
+Assets Registered: 7 / 10
+Needs Registration: 3
+In Stock 5 · In Use 1 · Repair Needed 1
+
+Existing Inventory Rows:
+Show existing SKU / Size / Qty / Unit / Status rows as reference.
+
+Example:
+Existing Inventory Rows
+SKU        Size     Qty     Unit     Status
+LAD-A10    10FT     10      EA       In Stock
+
+Important:
+Do not hide existing quantity rows.
+These rows are the source used to know how many asset IDs must be generated.
+
+Asset Roster:
+Show active tool_assets for the item.
+
+Columns:
+- Asset ID
+- Status
+- Condition
+- Location
+- Project
+- Assigned To
+- Repair Note
+
+If no assets exist:
+Show:
+No asset IDs generated yet.
+
+------------------------------------------------------------
+PART 3 — Generate Asset IDs from current quantity
+------------------------------------------------------------
+
+Add an Admin Inventory button for asset-tracked items:
+
+Generate Asset IDs
+
+This should generate missing asset rows based on current quantityOnHand.
+
+Example:
+A Type Ladder 10FT
+SKU = LAD-A10
+quantityOnHand = 10
+
+Generate:
+LAD-A10-001
+LAD-A10-002
+LAD-A10-003
+...
+LAD-A10-010
+
+Default values:
+- status = available
+- condition = good
+- locationId = item's primary/current location if safely available, otherwise null
+- projectId = null
+- assignedTo = null
+
+Display labels:
+available → In Stock
+in_use → In Use
+repair_needed → Repair Needed
+under_repair → Under Repair
+out_of_service → Out of Service
+lost → Lost
+retired → Retired
+
+------------------------------------------------------------
+PART 4 — Asset ID prefix and numbering
+------------------------------------------------------------
+
+Use the item SKU as the default Asset ID prefix.
+
+Example:
+SKU = LAD-A10
+Asset IDs:
+LAD-A10-001
+LAD-A10-002
+
+Normalize prefix:
+- uppercase
+- trim spaces
+- replace unsafe characters with hyphen
+- collapse repeated hyphens
+
+If SKU is missing, do not generate assets.
+SKU should already be required.
+
+Numbering rules:
+- Check existing active and inactive tool_assets.
+- Find the highest existing sequence for that prefix.
+- Generate from max + 1.
+- Do not reuse deleted, retired, or deactivated numbers.
+
+Example:
+Existing:
+LAD-A10-001
+LAD-A10-002
+LAD-A10-003 inactive
+
+Next generated asset must be:
+LAD-A10-004
+
+Do not reuse:
+LAD-A10-003
+
+------------------------------------------------------------
+PART 5 — Generation count
+------------------------------------------------------------
+
+Calculate:
+
+targetCount = item.quantityOnHand
+currentActiveAssetCount = active assets for this item
+missingCount = targetCount - currentActiveAssetCount
+
+If missingCount <= 0:
+Show:
+All assets are already generated.
+
+If missingCount > 0:
+Generate exactly missingCount new assets.
+
+Example:
+quantityOnHand = 10
+active assets = 7
+
+Generate 3 assets:
+LAD-A10-008
+LAD-A10-009
+LAD-A10-010
+
+Do not change quantityOnHand.
+
+------------------------------------------------------------
+PART 6 — Backend endpoint
+------------------------------------------------------------
+
+Add this endpoint if it does not already exist:
+
+POST /api/items/:itemId/assets/generate-from-quantity
+
+Server must:
+- validate item exists
+- validate item.trackingMode === "asset"
+- validate quantityOnHand is a positive integer
+- use item.sku as the prefix
+- normalize prefix safely
+- calculate missingCount
+- check existing active + inactive assets
+- avoid duplicate sequence numbers
+- insert generated assets
+- return created assets and summary
+
+Do not trust client-generated asset IDs.
+Asset ID generation must happen server-side.
+
+------------------------------------------------------------
+PART 7 — Confirmation dialog
+------------------------------------------------------------
+
+Before generation, show confirmation:
+
+Title:
+Generate Asset IDs?
+
+Description:
+This will create {missingCount} asset records for {itemName}.
+Existing quantity will not be changed.
+Generated assets will start at the next available number.
+
+Buttons:
+Cancel
+Generate
+
+After generation:
+- refetch item assets
+- update asset summary
+- keep existing quantity rows visible
+- show success toast:
+Generated {count} asset IDs.
+
+If generation fails:
+- show visible error toast
+- do not silently fail
+
+------------------------------------------------------------
+PART 8 — Category move safety
+------------------------------------------------------------
+
+Category move must be non-destructive.
+
+When an item/group is moved to another category:
+- update categoryId only
+- preserve trackingMode
+- preserve quantityOnHand
+- preserve sizeLabel
+- preserve SKU
+- preserve manufacturerName
+- preserve existing item data
+
+Moving to TOOLS & ASSETS must NOT automatically mean asset tracking.
+
+Example:
+Before move:
+Gloves
+trackingMode = standard
+Qty = 200
+
+Move to TOOLS & ASSETS:
+Gloves remains standard.
+Qty remains 200.
+No asset roster.
+No asset IDs generated.
+
+Example:
+Before move:
+A Type Ladder
+trackingMode = standard
+Qty = 10
+
+Move to TOOLS & ASSETS:
+A Type Ladder remains standard unless user explicitly converts it.
+
+------------------------------------------------------------
+PART 9 — Undo toast after category move
+------------------------------------------------------------
+
+After successful move, show toast:
+
+Moved to {newCategoryName}. [Undo]
+
+Undo should restore:
+- previous categoryId
+- previous category name
+- previous trackingMode if the move operation changed it
+- previous subcategory/family position if safely available
+
+Since normal move should not change trackingMode, restoring previous categoryId is usually enough.
+
+Client should store previous values before move:
+- item/group id
+- previousCategoryId
+- previousCategoryName
+- previousTrackingMode
+- previousSubcategory if applicable
+
+When Undo is clicked:
+- call the existing move/update endpoint to restore previous category
+- refresh inventory data
+- show success toast:
+Move undone.
+
+If Undo fails:
+- show visible error toast
+- do not silently fail
+
+------------------------------------------------------------
+PART 10 — Convert to Asset Tracking must be separate
+------------------------------------------------------------
+
+If user wants an item to become asset-tracked, provide a separate explicit action:
+
+Convert to Asset Tracking
+
+This action must:
+- require confirmation
+- set trackingMode = "asset"
+- not generate asset IDs automatically
+- keep quantityOnHand unchanged
+- keep existing inventory rows visible
+
+After conversion, user can manually click:
+
+Generate Asset IDs
+
+Do not generate asset IDs during:
+- category move
+- conversion to asset tracking
+- item save
+
+Asset generation must always require separate confirmation.
+
+------------------------------------------------------------
+PART 11 — Manual verification
+------------------------------------------------------------
+
+Test A — accidental move:
+1. Move Ladder from another category into TOOLS & ASSETS.
+2. Confirm trackingMode did not change automatically.
+3. Confirm Qty still displays.
+4. Click Undo.
+5. Confirm Ladder returns to previous category.
+6. Confirm Qty and trackingMode are unchanged.
+
+Test B — standard item inside TOOLS & ASSETS:
+1. Move Gloves into TOOLS & ASSETS.
+2. Do not convert.
+3. Confirm Gloves remains standard quantity item.
+4. Confirm normal quantity rows display.
+5. Confirm no asset roster and no Generate Asset IDs button.
+
+Test C — intentional asset conversion:
+1. Move Ladder into TOOLS & ASSETS.
+2. Click Convert to Asset Tracking.
+3. Confirm conversion.
+4. Confirm Qty remains unchanged.
+5. Confirm Legacy Qty and Existing Inventory Rows display.
+6. Confirm no asset IDs are generated automatically.
+
+Test D — asset generation:
+1. Use A Type Ladder 10FT with SKU LAD-A10 and Qty 10 EA.
+2. Click Generate Asset IDs.
+3. Confirm dialog appears.
+4. Confirm generation.
+5. Confirm assets created:
+   LAD-A10-001 through LAD-A10-010
+6. Confirm summary updates:
+   Assets Registered: 10 / 10
+7. Confirm existing quantity remains unchanged.
+
+Test E — no number reuse:
+1. Deactivate LAD-A10-010.
+2. Increase quantity or require one more asset.
+3. Generate again.
+4. Confirm new asset does not reuse 010.
+5. New generated number should continue from highest existing sequence.
+
+Test F — regression:
+1. EMT / Cable Tray / normal material categories still work.
+2. Cable/Wire reel items still work.
+3. Field Mode unchanged.
+4. Excel export unchanged.
+5. Equipment page unchanged.
+
+Output:
+After implementation, summarize:
+- how asset display logic was fixed
+- how existing quantity rows remain visible
+- how category move was made non-destructive
+- how Undo toast works
+- how Convert to Asset Tracking is separated from category move
+- how Asset ID generation works
+- how numbering avoids reuse
+- backend endpoint added or reused
+- confirmation that quantity, movement, reel, Field Mode, Equipment, and Excel logic were not changed

@@ -330,7 +330,7 @@ function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number
               <thead>
                 <tr className="border-b border-violet-100">
                   <th className="text-left pl-10 pr-3 py-2 font-semibold text-violet-700 uppercase tracking-wide whitespace-nowrap">Asset ID</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[52px]">Photo</th>
+                  <th className="text-center px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[52px]">Photo</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[130px]">Status</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[100px]">Condition</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[150px]">Location</th>
@@ -345,25 +345,27 @@ function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number
                   <tr key={a.id} className="border-t border-violet-100/70 hover:bg-violet-100/40 transition-colors" data-testid={`row-asset-expanded-${a.id}`}>
                     <td className="pl-10 pr-3 py-2 font-mono font-semibold text-slate-700 whitespace-nowrap">{a.assetTag}</td>
                     {/* Photo thumbnail */}
-                    <td className="px-3 py-1.5">
-                      {a.photoUrl ? (
-                        <img
-                          src={a.photoUrl}
-                          alt={a.assetTag}
-                          className="w-8 h-8 rounded object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setEditingAsset(a)}
-                          data-testid={`img-asset-thumb-${a.id}`}
-                        />
-                      ) : (
-                        <div
-                          className="w-8 h-8 rounded border border-dashed border-slate-200 flex items-center justify-center bg-slate-50 cursor-pointer hover:border-violet-400 transition-colors"
-                          onClick={() => setEditingAsset(a)}
-                          data-testid={`img-asset-thumb-${a.id}`}
-                          title="Add photo"
-                        >
-                          <Camera className="w-3.5 h-3.5 text-slate-300" />
-                        </div>
-                      )}
+                    <td className="px-3 py-1.5 text-center">
+                      <div className="flex justify-center">
+                        {a.photoUrl ? (
+                          <img
+                            src={a.photoUrl}
+                            alt={a.assetTag}
+                            className="w-8 h-8 rounded object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setEditingAsset(a)}
+                            data-testid={`img-asset-thumb-${a.id}`}
+                          />
+                        ) : (
+                          <div
+                            className="w-8 h-8 rounded border border-dashed border-slate-200 flex items-center justify-center bg-slate-50 cursor-pointer hover:border-violet-400 transition-colors"
+                            onClick={() => setEditingAsset(a)}
+                            data-testid={`img-asset-thumb-${a.id}`}
+                            title="Add photo"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-slate-300" />
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${

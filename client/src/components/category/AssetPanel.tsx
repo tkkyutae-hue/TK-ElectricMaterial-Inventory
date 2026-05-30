@@ -17,7 +17,15 @@ type ToolAssetEntry = {
   location?: { id: number; name: string } | null;
   project?: { id: number; name: string } | null;
 };
-
+const STATUS_LABELS: Record<string, string> = {
+  available: "In Stock",
+  in_use: "In Use",
+  repair_needed: "Repair Needed",
+  under_repair: "Under Repair",
+  out_of_service: "Out of Service",
+  lost: "Lost",
+  retired: "Retired",
+};
 
 interface AssetPanelProps {
   item: CategoryGroupedItem;

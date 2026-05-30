@@ -536,26 +536,6 @@ export function ItemRowField({
   const showReceiveReelUI = (isReceive || isReturn) && !!row.itemId && isReelItem;
   const showIssueReelUI = movementType === "issue" && isReelItem && hasReels;
 
-  const isAssetItem = selectedItem?.trackingMode === "asset";
-  const showAssetIssueUI  = movementType === "issue"  && isAssetItem && !!row.itemId;
-  const showAssetReturnUI = movementType === "return"  && isAssetItem && !!row.itemId;
-  const showAssetUI = showAssetIssueUI || showAssetReturnUI;
-
-  const { data: assetsRaw = [] } = useQuery<any[]>({
-    queryKey: ["/api/items", row.itemId, "assets"],
-    queryFn: () => fetch(`/api/items/${row.itemId}/assets`, { credentials: "include" }).then(r => r.json()),
-    enabled: !!row.itemId && isAssetItem,
-  });
-
-  const assetsForUI = useMemo(() => {
-    if (!showAssetUI) return [] as any[];
-    return (assetsRaw as any[]).filter(a =>
-      a.isActive !== false && (showAssetIssueUI ? a.status === "available" : a.status === "in_use")
-    );
-  }, [assetsRaw, showAssetIssueUI, showAssetUI]);
-
-  const assetSelections = row.assetSelections ?? [];
-
   const selections = row.reelSelections ?? {};
   const snapshots = row.reelSnapshots ?? {};
   const selectedCount = Object.keys(selections).length;
@@ -578,13 +558,6 @@ export function ItemRowField({
       onUpdate(row.rowId, { quantity: 0, newReels: [] });
     }
   }, [showReceiveReelUI]);
-
-  useEffect(() => {
-    if (showAssetUI && !didInitRef.current) {
-      didInitRef.current = true;
-      onUpdate(row.rowId, { quantity: 0, assetSelections: [] });
-    }
-  }, [showAssetUI]);
 
   function toggleReel(reel: any) {
     const newSel = { ...selections };
@@ -625,14 +598,7 @@ export function ItemRowField({
     onUpdate(row.rowId, { newReels: updated, quantity: total });
   }
 
-  function toggleAsset(assetId: number) {
-    const newSel = assetSelections.includes(assetId)
-      ? assetSelections.filter(id => id !== assetId)
-      : [...assetSelections, assetId];
-    onUpdate(row.rowId, { assetSelections: newSel, quantity: newSel.length });
-  }
-
-  const showQtyStepper = !showReceiveReelUI && !showIssueReelUI && !showAssetUI;
+  const showQtyStepper = !showReceiveReelUI && !showIssueReelUI;
 
   return (
     <div
@@ -645,7 +611,7 @@ export function ItemRowField({
             value={row.itemId}
             onChange={(id) => {
               didInitRef.current = false;
-              onUpdate(row.rowId, { itemId: id, reelSelections: {}, reelSnapshots: {}, quantity: 1, newReels: [], assetSelections: [] });
+              onUpdate(row.rowId, { itemId: id, reelSelections: {}, reelSnapshots: {}, quantity: 1, newReels: [] });
             }}
             items={items || []}
             dark={true}
@@ -809,59 +775,6 @@ export function ItemRowField({
         </div>
       )}
 
-      {/* ── Asset Selection UI ───────────────────────────────────────── */}
-      {showAssetUI && (
-        <div style={{ marginTop: 10, borderTop: `1px solid ${F.borderStrong}`, paddingTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: F.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6, fontFamily: "Barlow Condensed, sans-serif" }}>
-            {showAssetIssueUI ? t.movItemAssets : t.movItemAssetsInUse}
-          </div>
-          {assetsForUI.length === 0 ? (
-            <div style={{ fontSize: 11, color: F.textDim, padding: "4px 0 8px", fontStyle: "italic" }}>
-              {showAssetIssueUI ? t.movItemNoAvailableAssets : t.movItemNoInUseAssets}
-            </div>
-          ) : (
-            assetsForUI.map((asset: any) => {
-              const isSelected = assetSelections.includes(asset.id);
-              return (
-                <div
-                  key={asset.id}
-                  onClick={() => toggleAsset(asset.id)}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", marginBottom: 4, borderRadius: 8, borderLeft: `3px solid ${isSelected ? F.accent : "transparent"}`, background: isSelected ? F.accentBg : "transparent", cursor: "pointer", userSelect: "none" }}
-                  data-testid={`asset-row-${asset.id}`}
-                >
-                  <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${isSelected ? F.accent : F.borderStrong}`, background: isSelected ? F.accent : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {isSelected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: F.accentText }} />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 12, color: F.text, fontFamily: "Barlow Condensed, sans-serif" }}>{asset.assetTag}</span>
-                      {asset.condition && (
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 10, background: F.surface, color: F.textMuted }}>
-                          {asset.condition}
-                        </span>
-                      )}
-                      {asset.location?.name && (
-                        <span style={{ fontSize: 11, color: F.textMuted }}>{asset.location.name}</span>
-                      )}
-                      {asset.assignedTo && (
-                        <span style={{ fontSize: 11, color: F.warning }}>{asset.assignedTo}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-          {assetSelections.length > 0 && (
-            <div style={{ textAlign: "right", marginTop: 4, fontSize: 12, color: F.textMuted }}>
-              {t.movItemAssetsSelected.replace("{n}", String(assetSelections.length))}
-            </div>
-          )}
-          {row.errors.quantity && (
-            <p style={{ fontSize: 10, color: F.danger, marginTop: 3, marginLeft: 2 }} data-testid={`error-qty-${idx}`}>{row.errors.quantity}</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

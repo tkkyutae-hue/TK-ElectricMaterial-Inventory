@@ -241,7 +241,7 @@ export interface IStorage {
   applyAssetMovementByIds(
     ids: number[],
     movementType: "issue" | "return",
-    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+    opts: { itemId: number; projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
   ): Promise<void>;
 }
 
@@ -3834,9 +3834,16 @@ export class DatabaseStorage implements IStorage {
   async applyAssetMovementByIds(
     ids: number[],
     movementType: "issue" | "return",
-    opts: { projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
+    opts: { itemId: number; projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
   ): Promise<void> {
     if (ids.length === 0) return;
+    const expectedStatus = movementType === "issue" ? "available" : "in_use";
+    const safeCondition = and(
+      inArray(toolAssets.id, ids),
+      eq(toolAssets.itemId, opts.itemId),
+      eq(toolAssets.status, expectedStatus),
+      eq(toolAssets.isActive, true)
+    );
     if (movementType === "issue") {
       await db
         .update(toolAssets)
@@ -3847,7 +3854,7 @@ export class DatabaseStorage implements IStorage {
           assignedTo: opts.assignedTo ?? null,
           updatedAt: new Date(),
         })
-        .where(inArray(toolAssets.id, ids));
+        .where(safeCondition);
     } else {
       await db
         .update(toolAssets)
@@ -3858,7 +3865,7 @@ export class DatabaseStorage implements IStorage {
           locationId: opts.locationId ?? null,
           updatedAt: new Date(),
         })
-        .where(inArray(toolAssets.id, ids));
+        .where(safeCondition);
     }
   }
 }

@@ -27,5 +27,4 @@ export type ItemRow = {
   reelSelections: Record<number, number>;
   reelSnapshots: Record<number, ReelSnapshot>;
   newReels?: NewReel[];
-  assetSelections?: number[];
 };

@@ -118,7 +118,7 @@ function getMovementTypes(t: Record<string, string>) {
 }
 
 function makeRow(): ItemRow {
-  return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {}, reelSelections: {}, reelSnapshots: {}, assetSelections: [] };
+  return { rowId: crypto.randomUUID(), itemId: null, quantity: 1, errors: {}, reelSelections: {}, reelSnapshots: {} };
 }
 
 // ── Admin item row (light mode) ───────────────────────────────────────────────
@@ -366,7 +366,6 @@ export function MovementForm({
           reelIds: Object.entries(row.reelSelections ?? {}).filter(([, v]) => v > 0).map(([k]) => Number(k)),
           reelSelections: row.reelSelections ?? {},
           newReels: row.newReels ?? [],
-          assetIds: row.assetSelections ?? [],
         };
       });
 
@@ -438,7 +437,6 @@ export function MovementForm({
               projectId: shared.projectId || null,
               note: shared.note || null,
               reason: shared.personName || null,
-              assetIds: (row.assetSelections ?? []).length > 0 ? row.assetSelections : undefined,
             }),
           }).then(async res => {
             if (!res.ok) {

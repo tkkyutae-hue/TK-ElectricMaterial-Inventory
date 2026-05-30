@@ -736,6 +736,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             : null;
           if (explicitIds) {
             await storage.applyAssetMovementByIds(explicitIds, movementType as "issue" | "return", {
+              itemId: item.id,
               projectId: movement.projectId ?? null,
               locationId: movement.destinationLocationId ?? null,
               assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
@@ -821,6 +822,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               : null;
             if (explicitIds) {
               await storage.applyAssetMovementByIds(explicitIds, type as "issue" | "return", {
+                itemId: item.id,
                 projectId: movement.projectId ?? null,
                 locationId: movement.destinationLocationId ?? null,
                 assignedTo: type === "issue" ? getUserDisplayName(req) : null,
@@ -896,6 +898,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             : null;
           if (explicitIds) {
             await storage.applyAssetMovementByIds(explicitIds, movementType as "issue" | "return", {
+              itemId: item.id,
               projectId: movement.projectId ?? null,
               locationId: movement.destinationLocationId ?? null,
               assignedTo: movementType === "issue" ? getUserDisplayName(req) : null,
@@ -1756,6 +1759,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               : null;
             if (explicitIds) {
               await storage.applyAssetMovementByIds(explicitIds, draftMT, {
+                itemId: di.itemId,
                 projectId: draftMT === "issue" ? ((draft as any).projectId ?? null) : null,
                 locationId: (draft as any).destinationLocationId ?? null,
                 assignedTo,

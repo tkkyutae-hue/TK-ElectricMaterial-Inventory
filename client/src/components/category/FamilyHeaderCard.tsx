@@ -92,11 +92,16 @@ export function FamilyHeaderCard({
       {/* ── Family Header row ─────────────────────────────────────────────── */}
       <button
         type="button"
-        onClick={() => onToggleCollapsed(family.subcategory)}
+        onClick={() => {
+          // Never mutate persisted collapse state while filters/search are active.
+          // effectivelyCollapsed is already forced-false in that case, so the
+          // visual state is correct without touching localStorage.
+          if (!hasActiveFilters) onToggleCollapsed(family.subcategory);
+        }}
         aria-expanded={!effectivelyCollapsed}
-        className="w-full flex items-center gap-3 px-5 py-3 bg-slate-100/80 hover:bg-slate-100 transition-colors text-left min-h-[56px]"
+        className={`w-full flex items-center gap-3 px-5 py-3 bg-slate-100/80 transition-colors text-left min-h-[56px] ${hasActiveFilters ? "cursor-default" : "hover:bg-slate-100 cursor-pointer"}`}
         data-testid={`button-toggle-family-header-${safeId}`}
-        title={effectivelyCollapsed ? "Expand" : "Collapse"}
+        title={hasActiveFilters ? undefined : (effectivelyCollapsed ? "Expand" : "Collapse")}
       >
         <ChevronRight
           className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${effectivelyCollapsed ? "" : "rotate-90"}`}

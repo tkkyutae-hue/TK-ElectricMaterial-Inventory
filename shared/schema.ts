@@ -258,6 +258,16 @@ export const wireReelMovementLines = pgTable("wire_reel_movement_lines", {
   index("wrml_wire_reel_id_idx").on(t.wireReelId),
 ]);
 
+// ─── Category Subcategory Order ───────────────────────────────────────────────
+// Stores explicit sort order for subcategory (family header) sections per category
+export const categorySubcategoryOrder = pgTable("category_subcategory_order", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+  subcategory: text("subcategory").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // ─── Zod Insert Schemas ───────────────────────────────────────────────────────
 
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true, updatedAt: true });

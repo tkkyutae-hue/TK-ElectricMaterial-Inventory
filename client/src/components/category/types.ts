@@ -57,6 +57,7 @@ export type CategoryGroupedDetail = {
   lowStockCount: number;
   outOfStockCount: number;
   groups: CategoryItemGroup[];
+  familyHeaderOrder?: { subcategory: string; sortOrder: number }[];
 };
 
 export type EditDraft = {

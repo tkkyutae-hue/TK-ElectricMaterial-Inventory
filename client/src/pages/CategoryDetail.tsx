@@ -11,6 +11,8 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
   ArrowLeft, Package, AlertTriangle, XCircle, CheckCircle2, ChevronRight,
@@ -67,6 +69,7 @@ export default function CategoryDetail() {
     return new Set<string>();
   });
   const [orderedGroupNames, setOrderedGroupNames] = useState<string[]>([]);
+  const [orderedFamilyHeaderNames, setOrderedFamilyHeaderNames] = useState<string[]>([]);
 
   const [collapsedFamilyHeaders, setCollapsedFamilyHeaders] = useState<Set<string>>(() => {
     if (!id) return new Set<string>();
@@ -140,6 +143,35 @@ export default function CategoryDetail() {
       const incomingSet = new Set(incoming);
       const kept = prev.filter(n => incomingSet.has(n));
       const added = incoming.filter(n => !kept.includes(n));
+      return [...kept, ...added];
+    });
+  }, [data?.groups]);
+
+  // Sync orderedFamilyHeaderNames from server data
+  useEffect(() => {
+    if (!data?.groups) return;
+    // Collect all unique subcategories present in the data
+    const allSubs = new Set<string>();
+    for (const g of data.groups) {
+      const sub = (g as any).items?.[0]?.subcategory?.trim() || "Uncategorized";
+      allSubs.add(sub);
+    }
+    const serverOrder: { subcategory: string; sortOrder: number }[] = (data as any).familyHeaderOrder || [];
+    setOrderedFamilyHeaderNames(prev => {
+      const kept = prev.filter(n => allSubs.has(n));
+      const added = [...allSubs].filter(n => !kept.includes(n));
+      if (kept.length === 0 && serverOrder.length > 0) {
+        // First load with server order — apply it
+        const serverMap = new Map(serverOrder.map(o => [o.subcategory, o.sortOrder]));
+        return [...allSubs].sort((a, b) => {
+          const ao = serverMap.has(a) ? serverMap.get(a)! : 9999;
+          const bo = serverMap.has(b) ? serverMap.get(b)! : 9999;
+          if (ao !== bo) return ao - bo;
+          if (a === "Uncategorized") return 1;
+          if (b === "Uncategorized") return -1;
+          return a.localeCompare(b);
+        });
+      }
       return [...kept, ...added];
     });
   }, [data?.groups]);
@@ -219,6 +251,25 @@ export default function CategoryDetail() {
     });
   }
 
+  function handleFamilyHeaderDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    const oldIndex = orderedFamilyHeaderNames.indexOf(activeId);
+    const newIndex = orderedFamilyHeaderNames.indexOf(overId);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const previous = orderedFamilyHeaderNames;
+    const next = arrayMove(orderedFamilyHeaderNames, oldIndex, newIndex);
+    setOrderedFamilyHeaderNames(next);
+    apiRequest("PATCH", `/api/inventory/category/${id}/family-header-order`, {
+      orders: next.map((subcategory, i) => ({ subcategory, sortOrder: i })),
+    }).catch(() => {
+      setOrderedFamilyHeaderNames(previous);
+      toast({ title: "순서 저장 실패", description: "다시 시도해 주세요.", variant: "destructive" });
+    });
+  }
+
   const displayGroups = useMemo(() => {
     if (!draftFamily?.confirmed) return filteredGroups;
     const draftInReal = filteredGroups.some(g => g.baseItemName === draftFamily.name);
@@ -230,9 +281,6 @@ export default function CategoryDetail() {
   }, [filteredGroups, draftFamily]);
 
   const familyHeaderGroups = useMemo((): FamilyHeaderGroup[] => {
-    // Position map: group ID → index in displayGroups (which already reflects sortOrder / DnD order)
-    const positionMap = new Map(displayGroups.map((g, i) => [getGroupId(g), i]));
-
     const familyMap = new Map<string, CategoryItemGroup[]>();
     for (const group of displayGroups) {
       const subcategory = group.items[0]?.subcategory?.trim() || "Uncategorized";
@@ -240,23 +288,20 @@ export default function CategoryDetail() {
       familyMap.get(subcategory)!.push(group);
     }
 
+    const nameIndex = new Map(orderedFamilyHeaderNames.map((n, i) => [n, i]));
+
     return Array.from(familyMap.entries())
-      .map(([subcategory, groups]) => ({
-        subcategory,
-        groups,
-        minPosition: Math.min(...groups.map(g => positionMap.get(getGroupId(g)) ?? 9999)),
-      }))
+      .map(([subcategory, groups]) => ({ subcategory, groups }))
       .sort((a, b) => {
-        // "Uncategorized" always last
-        if (a.subcategory === "Uncategorized" && b.subcategory !== "Uncategorized") return 1;
-        if (b.subcategory === "Uncategorized" && a.subcategory !== "Uncategorized") return -1;
-        // Sort by minimum child sortOrder position
-        if (a.minPosition !== b.minPosition) return a.minPosition - b.minPosition;
-        // Fallback: alphabetical by subcategory name
+        // "Uncategorized" always last when no explicit order assigns it
+        const ai = nameIndex.has(a.subcategory) ? nameIndex.get(a.subcategory)! : 9998;
+        const bi = nameIndex.has(b.subcategory) ? nameIndex.get(b.subcategory)! : 9998;
+        if (a.subcategory === "Uncategorized" && !nameIndex.has(a.subcategory)) return 1;
+        if (b.subcategory === "Uncategorized" && !nameIndex.has(b.subcategory)) return -1;
+        if (ai !== bi) return ai - bi;
         return a.subcategory.localeCompare(b.subcategory);
-      })
-      .map(({ subcategory, groups }) => ({ subcategory, groups }));
-  }, [displayGroups]);
+      });
+  }, [displayGroups, orderedFamilyHeaderNames]);
 
   const handleConfirmDraftFamily = useCallback(() => {
     if (!draftFamily?.name.trim()) return;
@@ -667,43 +712,47 @@ export default function CategoryDetail() {
           )}
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div className="space-y-3">
-            {familyHeaderGroups.map(family => (
-              <FamilyHeaderCard
-                key={family.subcategory}
-                family={family}
-                isCollapsed={collapsedFamilyHeaders.has(family.subcategory)}
-                hasActiveFilters={hasActiveFilters}
-                onToggleCollapsed={toggleFamilyHeaderCollapsed}
-                draftFamily={draftFamily}
-                inlineEditFamily={inlineEditFamily}
-                editDrafts={editDrafts}
-                editNewRows={editNewRows}
-                savingInline={savingInline}
-                familySortDir={familySortDir}
-                locations={locations || []}
-                allSkus={allSkus}
-                data={data}
-                onEnterEdit={enterInlineEdit}
-                onCancelEdit={cancelInlineEdit}
-                onSaveEdit={saveInlineEdits}
-                onAddRow={addNewRow}
-                onUpdateDraft={updateDraft}
-                onDeleteRow={deleteRow}
-                onUpdateNewRow={updateNewRow}
-                onRemoveNewRow={removeNewRow}
-                onToggleSort={toggleFamilySort}
-                onOpenSettings={setEditingGroup}
-                onMoveCategory={setMoveCategoryGroup}
-                onAdjustStock={setAdjustingItem}
-                isAdmin={isAdminRole}
-                collapsedItemHeaders={collapsedFamilies}
-                onToggleItemHeaderCollapsed={toggleFamilyCollapsed}
-                isDraggableItemHeaders={!hasActiveFilters && !inlineEditFamily}
-              />
-            ))}
-          </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFamilyHeaderDragEnd}>
+          <SortableContext items={familyHeaderGroups.map(f => f.subcategory)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {familyHeaderGroups.map(family => (
+                <FamilyHeaderCard
+                  key={family.subcategory}
+                  family={family}
+                  isCollapsed={collapsedFamilyHeaders.has(family.subcategory)}
+                  hasActiveFilters={hasActiveFilters}
+                  onToggleCollapsed={toggleFamilyHeaderCollapsed}
+                  draftFamily={draftFamily}
+                  inlineEditFamily={inlineEditFamily}
+                  editDrafts={editDrafts}
+                  editNewRows={editNewRows}
+                  savingInline={savingInline}
+                  familySortDir={familySortDir}
+                  locations={locations || []}
+                  allSkus={allSkus}
+                  data={data}
+                  onEnterEdit={enterInlineEdit}
+                  onCancelEdit={cancelInlineEdit}
+                  onSaveEdit={saveInlineEdits}
+                  onAddRow={addNewRow}
+                  onUpdateDraft={updateDraft}
+                  onDeleteRow={deleteRow}
+                  onUpdateNewRow={updateNewRow}
+                  onRemoveNewRow={removeNewRow}
+                  onToggleSort={toggleFamilySort}
+                  onOpenSettings={setEditingGroup}
+                  onMoveCategory={setMoveCategoryGroup}
+                  onAdjustStock={setAdjustingItem}
+                  isAdmin={isAdminRole}
+                  collapsedItemHeaders={collapsedFamilies}
+                  onToggleItemHeaderCollapsed={toggleFamilyCollapsed}
+                  isDraggableItemHeaders={!hasActiveFilters && !inlineEditFamily}
+                  isDraggable={isAdminRole && !hasActiveFilters && !inlineEditFamily}
+                  onGroupDragEnd={handleDragEnd}
+                />
+              ))}
+            </div>
+          </SortableContext>
         </DndContext>
       )}
 

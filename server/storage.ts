@@ -5,7 +5,7 @@ import { users } from "@shared/models/auth";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
-  wireReels, movementDrafts, dailyReports, projectScopeItems,
+  wireReels, movementDrafts, dailyReports, projectScopeItems, categorySubcategoryOrder,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
@@ -95,6 +95,7 @@ export interface IStorage {
   restoreItems(ids: number[]): Promise<void>;
   upsertItemGroup(categoryId: number, baseItemName: string, manufacturerName: string | null, data: { imageUrl?: string | null }): Promise<ItemGroup>;
   updateFamilyGroupOrder(categoryId: number, orders: { baseItemName: string; manufacturerName: string | null; sortOrder: number }[]): Promise<void>;
+  updateFamilyHeaderOrder(categoryId: number, orders: { subcategory: string; sortOrder: number }[]): Promise<void>;
   renameFamily(categoryId: number, oldName: string, newName: string, manufacturerName?: string | null): Promise<void>;
   moveFamilyItems(itemIds: number[], newBaseItemName: string): Promise<void>;
   bulkSoftDeleteItems(itemIds: number[]): Promise<void>;
@@ -1575,6 +1576,11 @@ export class DatabaseStorage implements IStorage {
     const lowStockCount = enriched.filter(i => i.status === "low_stock").length;
     const outOfStockCount = enriched.filter(i => i.status === "out_of_stock").length;
 
+    const familyHeaderOrderRows = await db.select()
+      .from(categorySubcategoryOrder)
+      .where(eq(categorySubcategoryOrder.categoryId, categoryId))
+      .orderBy(asc(categorySubcategoryOrder.sortOrder));
+
     return {
       category: cat,
       skuCount: enriched.length,
@@ -1582,6 +1588,7 @@ export class DatabaseStorage implements IStorage {
       lowStockCount,
       outOfStockCount,
       groups,
+      familyHeaderOrder: familyHeaderOrderRows.map(r => ({ subcategory: r.subcategory, sortOrder: r.sortOrder })),
     };
   }
 
@@ -2003,6 +2010,25 @@ export class DatabaseStorage implements IStorage {
       } else {
         await db.insert(itemGroups)
           .values({ categoryId, baseItemName, manufacturerName, sortOrder, imageUrl: null });
+      }
+    }
+  }
+
+  async updateFamilyHeaderOrder(categoryId: number, orders: { subcategory: string; sortOrder: number }[]): Promise<void> {
+    for (const { subcategory, sortOrder } of orders) {
+      const [existing] = await db.select()
+        .from(categorySubcategoryOrder)
+        .where(and(
+          eq(categorySubcategoryOrder.categoryId, categoryId),
+          eq(categorySubcategoryOrder.subcategory, subcategory),
+        ));
+      if (existing) {
+        await db.update(categorySubcategoryOrder)
+          .set({ sortOrder, updatedAt: new Date() })
+          .where(eq(categorySubcategoryOrder.id, existing.id));
+      } else {
+        await db.insert(categorySubcategoryOrder)
+          .values({ categoryId, subcategory, sortOrder });
       }
     }
   }

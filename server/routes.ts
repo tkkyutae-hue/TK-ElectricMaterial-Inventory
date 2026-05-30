@@ -220,6 +220,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/inventory/category/:id/family-header-order", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const categoryId = parseIntParam(req.params.id, "id", res);
+      if (categoryId === null) return;
+      const { orders } = req.body;
+      if (!Array.isArray(orders)) return res.status(400).json({ message: "orders must be an array" });
+      await storage.updateFamilyHeaderOrder(categoryId, orders);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/inventory/category/:id/classification-options", isAuthenticated, async (req, res) => {
     try {
       res.json(await storage.getClassificationOptions(Number(req.params.id)));

@@ -1,0 +1,157 @@
+Implement Phase B only: 3-level collapsible Admin Inventory UI.
+
+Use the Phase A audit findings.
+
+Scope:
+Admin Inventory only.
+
+Goal:
+Change display structure from current:
+
+Category
+  Item Header
+    Size Rows
+
+to:
+
+Category
+  Family Header
+    Item Header
+      Size Rows
+
+Important mapping:
+- Family Header = existing items.subcategory value
+- Item Header = current FamilyGroupCard / existing baseItemName + manufacturerName group
+- Size Rows = existing InlineEditRow size rows
+
+Do not:
+- Do not change database schema.
+- Do not implement Family Header drag-and-drop yet.
+- Do not implement Item Header drag-and-drop changes yet.
+- Do not change Field Mode.
+- Do not change Excel export.
+- Do not change movement logic.
+- Do not change quantity logic.
+- Do not change SKU.
+- Do not change item names.
+- Do not change existing order persistence in this task.
+
+Required behavior:
+
+1. Family Header generation
+Group current Item Headers by items.subcategory inside the current category.
+
+Example:
+CONDUIT & FITTINGS
+
+EMT
+  EMT Conduit
+    size rows
+  EMT Set Screw Connector
+    size rows
+  EMT Compression Connector
+    size rows
+
+Rigid
+  Rigid Conduit
+    size rows
+  Rigid Coupling
+    size rows
+
+2. Uncategorized fallback
+If subcategory is blank/null, place those Item Headers under:
+Uncategorized
+
+Do not create Generic / No Brand / Unspecified manufacturer headers.
+
+3. Collapse behavior
+Family Headers must be collapsible.
+
+Collapsed Family Header:
+- show only Family Header row/card
+- do not render child Item Headers or Size Rows if possible
+
+Expanded Family Header:
+- show child Item Headers
+
+Item Headers should keep existing collapse/expand behavior.
+
+4. Collapse state persistence
+Use localStorage unless an existing safer pattern exists.
+
+Suggested keys:
+- adminInventoryCollapsedFamilies
+- existing item collapse key can remain for Item Headers
+
+Collapse state should survive:
+- refresh
+- navigating away and back
+- collapse/expand actions
+
+5. Family Header summary
+Show compact summary on Family Header if available:
+- item header count
+- SKU/size row count
+- total quantity if already easy and safe
+- low stock count if already available
+
+Do not fake totals.
+
+Example:
+EMT · 4 items · 18 SKUs
+
+6. Family Header image
+Do not add DB image storage in this phase.
+
+Use fallback only:
+1. first child Item Header representative image
+2. first child item image
+3. placeholder
+
+Do not duplicate or copy image files.
+
+7. Manufacturer behavior
+Keep manufacturerName display on Item Header, not Family Header.
+
+Example:
+Disconnect Switches
+  ABB 600V Indoor Non-Fused Disconnect Switch
+  Siemens 600V Indoor Non-Fused Disconnect Switch
+
+8. Search behavior
+Search must still work.
+
+If search matches an Item Header or Size Row:
+- show the matching Family Header
+- preferably auto-expand matching Family Headers during active search
+- do not hide matching results inside collapsed families in a confusing way
+
+9. Ordering
+Do not change ordering persistence in this phase.
+
+Use current order for Item Headers within each Family Header.
+Family Header order can use stable fallback order for now:
+- existing order if available
+- otherwise alphabetical by subcategory
+
+Do not use updatedAt as primary order.
+
+Manual verification:
+1. Open Admin Inventory category.
+2. Family Headers appear based on subcategory.
+3. Expanding a Family Header shows current Item Headers.
+4. Expanding an Item Header shows existing size rows.
+5. Collapse/expand state survives refresh.
+6. Search still finds items.
+7. Manufacturer display on Item Header remains.
+8. Quantity/status/stock logic unchanged.
+9. No DB migration was added.
+10. Field Mode and Excel export unchanged.
+
+Output:
+Summarize:
+- how Family Headers are generated
+- how Uncategorized items are handled
+- how collapse state is stored
+- how Family Header image fallback works
+- confirmation that no DB/schema/movement/quantity changes were made

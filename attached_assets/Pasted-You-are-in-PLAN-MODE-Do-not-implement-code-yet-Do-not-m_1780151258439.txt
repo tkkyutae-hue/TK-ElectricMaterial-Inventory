@@ -1,0 +1,147 @@
+You are in PLAN MODE.
+
+Do not implement code yet.
+Do not modify files yet.
+Do not run migrations yet.
+
+We are planning a major Admin Inventory UI structure improvement.
+
+Current problem:
+Admin Inventory currently shows many item/family cards in one long list.
+As the number of items grows, it becomes difficult to manually organize related items using drag-and-drop.
+
+Goal:
+Refactor Admin Inventory display into a 3-level collapsible structure:
+
+Category
+  Family Header
+    Item Header
+      Size Rows
+
+Example:
+
+CONDUIT & FITTINGS
+
+▸ EMT
+    ▸ EMT Conduit
+        1/2"
+        3/4"
+        1"
+    ▸ EMT Set Screw Connector
+        1/2"
+        3/4"
+        1"
+
+▸ Rigid
+    ▸ Rigid Conduit
+    ▸ Rigid Coupling
+
+Important clarification:
+Do NOT create a new Section Group concept.
+Family Header should be generated from the existing Family value/data.
+This is not a new taxonomy system.
+This is an Admin Inventory display/grouping improvement.
+
+Final desired behavior:
+1. Existing family values automatically become collapsible Family Headers.
+2. When all Family Headers are collapsed, only Family Headers are visible.
+3. Clicking a Family Header expands it and shows Item Headers inside.
+4. Clicking an Item Header expands it and shows existing size rows.
+5. Family Headers should support drag-and-drop ordering.
+6. Item Headers should support drag-and-drop ordering only within the same Family Header.
+7. Size Rows should not use drag-and-drop. Keep existing size sort.
+8. Collapse/expand should not change ordering.
+9. Family Settings save should not move the group to the bottom.
+10. Drag-and-drop order should persist after refresh, navigation, collapse/expand, and settings save.
+11. New Family values should automatically create new Family Headers.
+12. New Family Headers should appear at the bottom of the category until manually reordered.
+13. Empty Family Headers should not display.
+14. Family Header representative image should use this fallback:
+    - explicit family representative image if available
+    - first child item header image
+    - first child item image
+    - placeholder
+
+Scope:
+Admin Inventory only.
+
+Do not change:
+- Field Mode
+- Excel export
+- movement logic
+- quantity calculations
+- SKU logic
+- supplier logic
+- item names
+- database schema unless a later approved phase requires minimal order persistence fields
+
+Manufacturer behavior:
+- Existing manufacturerName behavior should remain.
+- Item Headers with manufacturerName should still display manufacturerName in bold.
+- Same family/item name with different manufacturerName must remain distinguishable.
+- Manufacturer should not be moved to Family Header unless current logic already does so.
+- Do not create Generic / Unspecified / No Brand headers.
+
+Ordering rules:
+Family Header order:
+1. saved family header sort order
+2. stable fallback by family name
+
+Item Header order inside Family:
+1. saved item header sort order
+2. stable fallback by manufacturerName + item/group name
+
+Never use updatedAt as the primary Admin Inventory order.
+
+Implementation must be split into phases.
+Do not implement all at once.
+
+Planned phases:
+
+Phase A — Audit only
+Inspect current Admin Inventory grouping, order persistence, collapse state, drag-and-drop logic, Family Settings save behavior, and schema.
+Return findings and safest implementation plan.
+No code changes.
+
+Phase B — 3-level collapsible UI
+Implement:
+Category → Family Header → Item Header → Size Rows
+No drag-and-drop changes yet.
+Use existing family values to generate Family Headers.
+Add collapse/expand behavior and localStorage persistence if safe.
+No DB schema changes unless already existing fields can be reused.
+
+Phase C — Family Header drag-and-drop
+Add DnD ordering for Family Headers within the same category.
+Persist order.
+Do not implement Item Header DnD yet.
+
+Phase D — Item Header drag-and-drop
+Add DnD ordering for Item Headers only inside the same Family Header.
+Do not allow cross-family item dragging.
+Moving items to another Family should continue through the existing Move to Family function.
+Size rows remain automatically sorted by size.
+
+Phase E — Hardening / cleanup if needed
+Fix ordering edge cases:
+- Family Settings save must preserve order
+- renamed family keeps position if possible
+- new family appears at bottom
+- collapse/expand does not reorder
+- search does not break grouping
+- no silent failures on order save
+
+Before implementing anything:
+Please inspect the current code and return:
+1. Current Admin Inventory hierarchy mapping
+2. Current grouping keys
+3. Current sort/order persistence fields or tables
+4. Current drag-and-drop implementation
+5. Current collapse state behavior
+6. Current Family Settings save behavior
+7. Whether existing item_groups/order tables can support Family Header and Item Header ordering
+8. Risks
+9. Recommended implementation sequence
+10. Files likely involved
+
+Wait for approval before coding.

@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical, Cpu } from "lucide-react";
+import { useState, useRef } from "react";
+import { Package, XCircle, AlertTriangle, Pencil, Plus, X as XIcon, Save, ArrowUp, ArrowDown, ImageIcon, FolderInput, SlidersHorizontal, ChevronRight, GripVertical, Cpu, Camera, Upload } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ItemStatusBadge } from "@/components/StatusBadge";
 import { UsagePatternBadge } from "@/components/UsagePatternBadge";
@@ -23,6 +27,7 @@ type ToolAssetEntry = {
   condition: string | null;
   repairNote: string | null;
   assignedTo: string | null;
+  photoUrl: string | null;
   location?: { id: number; name: string } | null;
   project?: { id: number; name: string } | null;
 };
@@ -44,10 +49,269 @@ const ASSET_CONDITION_LABELS: Record<string, string> = {
   needs_repair: "Needs Repair",
 };
 
+// ── Asset edit dialog ─────────────────────────────────────────────────────────
+function AssetEditDialog({
+  asset,
+  itemId,
+  open,
+  onClose,
+}: {
+  asset: ToolAssetEntry;
+  itemId: number;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [status, setStatus] = useState(asset.status);
+  const [condition, setCondition] = useState(asset.condition ?? "good");
+  const [locationId, setLocationId] = useState<string>(asset.location?.id ? String(asset.location.id) : "none");
+  const [projectId, setProjectId] = useState<string>(asset.project?.id ? String(asset.project.id) : "none");
+  const [assignedTo, setAssignedTo] = useState(asset.assignedTo ?? "");
+  const [repairNote, setRepairNote] = useState(asset.repairNote ?? "");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(asset.photoUrl ?? null);
+  const [uploading, setUploading] = useState(false);
+
+  const { data: locations = [] } = useQuery<any[]>({
+    queryKey: ["/api/locations"],
+    staleTime: 60_000,
+  });
+  const { data: projects = [] } = useQuery<any[]>({
+    queryKey: ["/api/projects"],
+    staleTime: 60_000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const patch: Record<string, any> = {
+        status,
+        condition,
+        assignedTo: assignedTo.trim() || null,
+        repairNote: repairNote.trim() || null,
+        photoUrl: photoUrl ?? null,
+        locationId: locationId !== "none" ? parseInt(locationId) : null,
+        projectId: projectId !== "none" ? parseInt(projectId) : null,
+      };
+      const res = await fetch(`/api/tool-assets/${asset.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? "Save failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/items", itemId, "assets"] });
+      toast({ title: "Asset updated", description: asset.assetTag });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/item-image", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? "Upload failed");
+      const { url } = await res.json();
+      setPhotoUrl(url);
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-sm">Edit Asset — {asset.assetTag}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-4 py-2">
+          {/* Photo */}
+          <div className="col-span-2">
+            <Label className="text-xs text-slate-500 mb-1.5 block">Photo</Label>
+            <div className="flex items-center gap-4">
+              <div
+                className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden cursor-pointer hover:border-violet-400 transition-colors flex-shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="asset-photo-upload-area"
+              >
+                {photoUrl ? (
+                  <img src={photoUrl} alt="asset" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera className="w-7 h-7 text-slate-300" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="button-asset-upload-photo"
+                  className="text-xs"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                  {uploading ? "Uploading…" : photoUrl ? "Change Photo" : "Upload Photo"}
+                </Button>
+                {photoUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="text-xs text-slate-400 hover:text-red-500"
+                    onClick={() => setPhotoUrl(null)}
+                    data-testid="button-asset-remove-photo"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePhotoChange}
+                data-testid="input-asset-photo-file"
+              />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <Label className="text-xs text-slate-500 mb-1.5 block">Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="h-8 text-sm" data-testid="select-asset-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="available">In Stock</SelectItem>
+                <SelectItem value="in_use">In Use</SelectItem>
+                <SelectItem value="repair_needed">Repair Needed</SelectItem>
+                <SelectItem value="under_repair">Under Repair</SelectItem>
+                <SelectItem value="out_of_service">Out of Service</SelectItem>
+                <SelectItem value="lost">Lost</SelectItem>
+                <SelectItem value="retired">Retired</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Condition */}
+          <div>
+            <Label className="text-xs text-slate-500 mb-1.5 block">Condition</Label>
+            <Select value={condition} onValueChange={setCondition}>
+              <SelectTrigger className="h-8 text-sm" data-testid="select-asset-condition">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="good">Good</SelectItem>
+                <SelectItem value="fair">Fair</SelectItem>
+                <SelectItem value="damaged">Damaged</SelectItem>
+                <SelectItem value="needs_repair">Needs Repair</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Location */}
+          <div>
+            <Label className="text-xs text-slate-500 mb-1.5 block">Location</Label>
+            <Select value={locationId} onValueChange={setLocationId}>
+              <SelectTrigger className="h-8 text-sm" data-testid="select-asset-location">
+                <SelectValue placeholder="— None —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+                {locations.map((l: any) => (
+                  <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Project */}
+          <div>
+            <Label className="text-xs text-slate-500 mb-1.5 block">Project</Label>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger className="h-8 text-sm" data-testid="select-asset-project">
+                <SelectValue placeholder="— None —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+                {projects.map((p: any) => (
+                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Assigned To */}
+          <div className="col-span-2">
+            <Label className="text-xs text-slate-500 mb-1.5 block">Assigned To</Label>
+            <Input
+              value={assignedTo}
+              onChange={e => setAssignedTo(e.target.value)}
+              placeholder="Worker name…"
+              className="h-8 text-sm"
+              data-testid="input-asset-assigned-to"
+            />
+          </div>
+
+          {/* Repair Note */}
+          <div className="col-span-2">
+            <Label className="text-xs text-slate-500 mb-1.5 block">Repair Note</Label>
+            <Textarea
+              value={repairNote}
+              onChange={e => setRepairNote(e.target.value)}
+              placeholder="Describe repair or issue…"
+              rows={2}
+              className="text-sm resize-none"
+              data-testid="input-asset-repair-note"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saveMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || uploading}
+            data-testid="button-asset-save"
+          >
+            {saveMutation.isPending ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Asset expanded row ────────────────────────────────────────────────────────
 function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number }) {
+  const [editingAsset, setEditingAsset] = useState<ToolAssetEntry | null>(null);
+
   const { data: assets = [], isLoading } = useQuery<ToolAssetEntry[]>({
     queryKey: ["/api/items", itemId, "assets"],
-    queryFn: () => fetch(`/api/items/${itemId}/assets`).then(r => r.json()),
+    queryFn: () => fetch(`/api/items/${itemId}/assets`, { credentials: "include" }).then(r => r.json()),
     staleTime: 30_000,
   });
 
@@ -66,18 +330,41 @@ function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number
               <thead>
                 <tr className="border-b border-violet-100">
                   <th className="text-left pl-10 pr-3 py-2 font-semibold text-violet-700 uppercase tracking-wide whitespace-nowrap">Asset ID</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[52px]">Photo</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[130px]">Status</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[100px]">Condition</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[150px]">Location</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide w-[150px]">Project</th>
                   <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide">Assigned To</th>
-                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide pr-5">Repair Note</th>
+                  <th className="text-left px-3 py-2 font-semibold text-violet-700 uppercase tracking-wide pr-2">Repair Note</th>
+                  <th className="w-8 pr-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {assets.map(a => (
                   <tr key={a.id} className="border-t border-violet-100/70 hover:bg-violet-100/40 transition-colors" data-testid={`row-asset-expanded-${a.id}`}>
                     <td className="pl-10 pr-3 py-2 font-mono font-semibold text-slate-700 whitespace-nowrap">{a.assetTag}</td>
+                    {/* Photo thumbnail */}
+                    <td className="px-3 py-1.5">
+                      {a.photoUrl ? (
+                        <img
+                          src={a.photoUrl}
+                          alt={a.assetTag}
+                          className="w-8 h-8 rounded object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setEditingAsset(a)}
+                          data-testid={`img-asset-thumb-${a.id}`}
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded border border-dashed border-slate-200 flex items-center justify-center bg-slate-50 cursor-pointer hover:border-violet-400 transition-colors"
+                          onClick={() => setEditingAsset(a)}
+                          data-testid={`img-asset-thumb-${a.id}`}
+                          title="Add photo"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-slate-300" />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${
                         a.status === "available" ? "bg-emerald-100 text-emerald-800" :
@@ -90,13 +377,33 @@ function AssetExpandedRow({ itemId, colSpan }: { itemId: number; colSpan: number
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.location?.name ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.project?.name ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{a.assignedTo ?? "—"}</td>
-                    <td className="px-3 py-2 text-slate-600 pr-5 max-w-[180px] truncate" title={a.repairNote ?? ""}>{a.repairNote || "—"}</td>
+                    <td className="px-3 py-2 text-slate-600 pr-2 max-w-[180px] truncate" title={a.repairNote ?? ""}>{a.repairNote || "—"}</td>
+                    {/* Edit button */}
+                    <td className="pr-3 py-2 text-right">
+                      <button
+                        className="p-1 rounded hover:bg-violet-200 text-violet-400 hover:text-violet-700 transition-colors"
+                        onClick={() => setEditingAsset(a)}
+                        data-testid={`button-edit-asset-${a.id}`}
+                        title="Edit asset"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
+
+        {editingAsset && (
+          <AssetEditDialog
+            asset={editingAsset}
+            itemId={itemId}
+            open={!!editingAsset}
+            onClose={() => setEditingAsset(null)}
+          />
+        )}
       </TableCell>
     </TableRow>
   );

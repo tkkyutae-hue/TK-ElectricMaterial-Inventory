@@ -230,20 +230,32 @@ export default function CategoryDetail() {
   }, [filteredGroups, draftFamily]);
 
   const familyHeaderGroups = useMemo((): FamilyHeaderGroup[] => {
+    // Position map: group ID → index in displayGroups (which already reflects sortOrder / DnD order)
+    const positionMap = new Map(displayGroups.map((g, i) => [getGroupId(g), i]));
+
     const familyMap = new Map<string, CategoryItemGroup[]>();
     for (const group of displayGroups) {
       const subcategory = group.items[0]?.subcategory?.trim() || "Uncategorized";
       if (!familyMap.has(subcategory)) familyMap.set(subcategory, []);
       familyMap.get(subcategory)!.push(group);
     }
-    // Sort: by insertion order (first child's position in displayGroups), Uncategorized always last
+
     return Array.from(familyMap.entries())
-      .map(([subcategory, groups]) => ({ subcategory, groups }))
+      .map(([subcategory, groups]) => ({
+        subcategory,
+        groups,
+        minPosition: Math.min(...groups.map(g => positionMap.get(getGroupId(g)) ?? 9999)),
+      }))
       .sort((a, b) => {
+        // "Uncategorized" always last
         if (a.subcategory === "Uncategorized" && b.subcategory !== "Uncategorized") return 1;
         if (b.subcategory === "Uncategorized" && a.subcategory !== "Uncategorized") return -1;
-        return 0;
-      });
+        // Sort by minimum child sortOrder position
+        if (a.minPosition !== b.minPosition) return a.minPosition - b.minPosition;
+        // Fallback: alphabetical by subcategory name
+        return a.subcategory.localeCompare(b.subcategory);
+      })
+      .map(({ subcategory, groups }) => ({ subcategory, groups }));
   }, [displayGroups]);
 
   const handleConfirmDraftFamily = useCallback(() => {

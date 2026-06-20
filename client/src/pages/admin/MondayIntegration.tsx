@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
   RefreshCw, Unplug, Plug, AlertCircle, CheckCircle2, ExternalLink, Info,
+  Settings, ChevronDown, ChevronUp, AlertTriangle, Save,
 } from "lucide-react";
 
 type Status = {
@@ -21,45 +22,105 @@ type Status = {
 };
 
 type Board = { id: string; name: string };
+type Column = { id: string; title: string; type: string };
+
+type ColumnMapping = {
+  projectNameColumnId?: string | null;
+  statusColumnId?: string | null;
+  contactColumnId?: string | null;
+  timelineColumnId?: string | null;
+  locationColumnId?: string | null;
+  notesColumnId?: string | null;
+};
+
+const REQUIRED_MAPPING_KEYS: (keyof ColumnMapping)[] = [
+  "projectNameColumnId",
+  "statusColumnId",
+  "contactColumnId",
+  "timelineColumnId",
+  "locationColumnId",
+];
+
+const FIELD_LABELS: Record<keyof ColumnMapping, string> = {
+  projectNameColumnId: "프로젝트명 (PROJECT NAME / REMARK)",
+  statusColumnId: "상태 (Status)",
+  contactColumnId: "담당자 / 연락처 (Contact)",
+  timelineColumnId: "일정 / 기간 (Timeline / Date)",
+  locationColumnId: "위치 / 현장 (Location)",
+  notesColumnId: "메모 / 노트 (Notes) — 선택",
+};
+
+function isMappingComplete(m: ColumnMapping | null | undefined): boolean {
+  if (!m) return false;
+  return REQUIRED_MAPPING_KEYS.every(k => !!(m as any)[k]);
+}
 
 export default function MondayIntegration() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [selectedBoardName, setSelectedBoardName] = useState<string>("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [localMapping, setLocalMapping] = useState<ColumnMapping>({});
+  const [mappingDirty, setMappingDirty] = useState(false);
 
+  // ── Status ────────────────────────────────────────────────────────────────
   const { data: statusData, isLoading: statusLoading } = useQuery<Status>({
     queryKey: ["/api/monday/status"],
   });
-
   const isConnected = statusData?.isConnected ?? false;
 
+  // ── Boards list ───────────────────────────────────────────────────────────
   const { data: boardsData, isLoading: boardsLoading, refetch: refetchBoards } = useQuery<{ boards: Board[] }>({
     queryKey: ["/api/monday/boards"],
     enabled: !!(statusData?.hasToken && !isConnected),
   });
 
+  // ── Column list ───────────────────────────────────────────────────────────
+  const { data: columnsData, isLoading: columnsLoading, refetch: refetchColumns } = useQuery<{ columns: Column[] }>({
+    queryKey: ["/api/monday/columns"],
+    enabled: !!(isConnected && showSettings),
+  });
+  const columns = columnsData?.columns ?? [];
+
+  // ── Saved mapping ─────────────────────────────────────────────────────────
+  const { data: savedMappingData } = useQuery<{ mapping: ColumnMapping | null }>({
+    queryKey: ["/api/monday/column-mapping"],
+    enabled: isConnected,
+  });
+
+  useEffect(() => {
+    if (savedMappingData?.mapping && !mappingDirty) {
+      setLocalMapping(savedMappingData.mapping);
+    }
+  }, [savedMappingData]);
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
   const connectMutation = useMutation({
     mutationFn: async () => {
       const webhookBaseUrl = window.location.origin;
-      return apiRequest("POST", "/api/monday/connect", {
-        boardId: selectedBoardId,
-        boardName: selectedBoardName,
-        webhookBaseUrl,
-      });
+      return apiRequest("POST", "/api/monday/connect", { boardId: selectedBoardId, boardName: selectedBoardName, webhookBaseUrl });
     },
     onSuccess: async (res: any) => {
       const data = await res.json();
-      toast({
-        title: "Monday.com 연결 완료",
-        description: `${data.synced}개 프로젝트 동기화, Webhook ${data.webhookCount}개 등록됨`,
-      });
+      toast({ title: "Monday.com 연결 완료", description: `${data.synced}개 프로젝트 동기화, Webhook ${data.webhookCount}개 등록됨` });
+      if (data.columnMapping) setLocalMapping(data.columnMapping);
       qc.invalidateQueries({ queryKey: ["/api/monday/status"] });
+      qc.invalidateQueries({ queryKey: ["/api/monday/column-mapping"] });
       qc.invalidateQueries({ queryKey: ["/api/projects"] });
     },
-    onError: (err: any) => {
-      toast({ variant: "destructive", title: "연결 실패", description: err.message });
+    onError: (err: any) => toast({ variant: "destructive", title: "연결 실패", description: err.message }),
+  });
+
+  const saveMappingMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/monday/column-mapping", { mapping: localMapping }),
+    onSuccess: async (res: any) => {
+      const data = await res.json();
+      toast({ title: "매핑 저장됨", description: data.complete ? "필수 매핑 완료 — Sync Now 사용 가능" : "일부 필수 매핑이 누락되어 있습니다" });
+      setMappingDirty(false);
+      qc.invalidateQueries({ queryKey: ["/api/monday/column-mapping"] });
     },
+    onError: (err: any) => toast({ variant: "destructive", title: "저장 실패", description: err.message }),
   });
 
   const syncMutation = useMutation({
@@ -69,7 +130,14 @@ export default function MondayIntegration() {
       toast({ title: "동기화 완료", description: `${data.synced}개 항목 업데이트됨` });
       qc.invalidateQueries({ queryKey: ["/api/projects"] });
     },
-    onError: (err: any) => {
+    onError: async (err: any) => {
+      try {
+        const body = await (err as any).response?.json?.();
+        if (body?.mappingIncomplete) {
+          toast({ variant: "destructive", title: "동기화 불가", description: "컬럼 매핑을 먼저 완료해주세요 (Settings → Column Mapping)" });
+          return;
+        }
+      } catch {}
       toast({ variant: "destructive", title: "동기화 실패", description: err.message });
     },
   });
@@ -81,10 +149,36 @@ export default function MondayIntegration() {
       qc.invalidateQueries({ queryKey: ["/api/monday/status"] });
       setSelectedBoardId("");
     },
-    onError: (err: any) => {
-      toast({ variant: "destructive", title: "해제 실패", description: err.message });
-    },
+    onError: (err: any) => toast({ variant: "destructive", title: "해제 실패", description: err.message }),
   });
+
+  function autoSuggest() {
+    if (!columns.length) return;
+    const suggested: ColumnMapping = {};
+    for (const col of columns) {
+      const title = col.title.toLowerCase();
+      const type = col.type.toLowerCase();
+      if (!suggested.projectNameColumnId && (title.includes("project name") || title.includes("remark") || (title.includes("name") && !title.includes("person")))) {
+        suggested.projectNameColumnId = col.id;
+      } else if (!suggested.statusColumnId && (type === "color" || type === "status" || title === "status" || title.includes("status"))) {
+        suggested.statusColumnId = col.id;
+      } else if (!suggested.contactColumnId && (type === "multiple-person" || type === "person" || title.includes("contact") || title.includes("assign") || title.includes("owner"))) {
+        suggested.contactColumnId = col.id;
+      } else if (!suggested.timelineColumnId && (type === "timeline" || type === "date" || title.includes("timeline") || title.includes("date") || title.includes("due"))) {
+        suggested.timelineColumnId = col.id;
+      } else if (!suggested.locationColumnId && (title.includes("location") || title.includes("address") || title.includes("site") || title.includes("city"))) {
+        suggested.locationColumnId = col.id;
+      } else if (!suggested.notesColumnId && (type === "long-text" || title.includes("note") || title.includes("memo") || title.includes("remark"))) {
+        suggested.notesColumnId = col.id;
+      }
+    }
+    setLocalMapping(prev => ({ ...prev, ...suggested }));
+    setMappingDirty(true);
+    toast({ title: "자동 제안 적용됨", description: "매핑을 확인하고 저장하세요" });
+  }
+
+  const mappingComplete = isMappingComplete(localMapping);
+  const missingFields = REQUIRED_MAPPING_KEYS.filter(k => !(localMapping as any)[k]);
 
   if (statusLoading) {
     return (
@@ -126,12 +220,7 @@ export default function MondayIntegration() {
                 Monday.com → 프로필 → Developers → My Access Tokens에서 Personal API Token을 발급 후
                 Replit Secrets에 <code className="bg-slate-100 px-1 rounded">MONDAY_API_TOKEN</code>으로 추가하세요.
                 <br />
-                <a
-                  href="https://developer.monday.com/api-reference/docs/authentication"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-1"
-                >
+                <a href="https://developer.monday.com/api-reference/docs/authentication" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-1">
                   Monday.com API 토큰 발급 안내 <ExternalLink className="w-3 h-3" />
                 </a>
               </AlertDescription>
@@ -146,7 +235,7 @@ export default function MondayIntegration() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">보드 연결</CardTitle>
             <CardDescription>
-              동기화할 Monday.com 보드를 선택합니다. 각 보드 Item이 하나의 프로젝트로 생성됩니다.
+              동기화할 Monday.com 보드를 선택합니다. 그룹 = 고객사, Item = 프로젝트로 가져옵니다.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -156,49 +245,51 @@ export default function MondayIntegration() {
                   <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-green-800">연결됨</p>
-                    <p className="text-xs text-green-700 truncate">
-                      보드: <strong>{statusData.boardName}</strong> (ID: {statusData.boardId})
-                    </p>
+                    <p className="text-xs text-green-700 truncate">보드: <strong>{statusData.boardName}</strong> (ID: {statusData.boardId})</p>
                     <p className="text-xs text-green-600">Webhook {statusData.webhookCount}개 활성</p>
                   </div>
                 </div>
 
+                {!mappingComplete && (
+                  <Alert className="border-amber-200 bg-amber-50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-xs text-amber-800">
+                      컬럼 매핑이 완료되지 않았습니다. Settings → Column Mapping을 완료해야 Sync Now를 사용할 수 있습니다.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Webhook이 활성화되어 Monday.com에서 항목 생성·수정·삭제 시 자동으로 동기화됩니다.
-                    Webhook은 배포된(Published) 앱에서만 정상 동작합니다.
+                    Webhook이 활성화되어 Monday.com에서 항목 생성·수정 시 자동으로 동기화됩니다.
                     Dev 환경에서는 수동 동기화를 사용하세요.
                   </AlertDescription>
                 </Alert>
 
                 <Separator />
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => syncMutation.mutate()}
-                    disabled={syncMutation.isPending}
+                    disabled={syncMutation.isPending || !mappingComplete}
+                    title={!mappingComplete ? "컬럼 매핑을 먼저 완료하세요" : undefined}
                     data-testid="button-monday-sync"
                   >
-                    {syncMutation.isPending ? (
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                    )}
-                    수동 전체 동기화
+                    {syncMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                    Sync Now
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => disconnectMutation.mutate()}
-                    disabled={disconnectMutation.isPending}
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                    data-testid="button-monday-disconnect"
+                    onClick={() => { setShowSettings(v => !v); if (!showSettings) refetchColumns(); }}
+                    data-testid="button-monday-settings"
                   >
-                    <Unplug className="w-3.5 h-3.5 mr-1.5" />
-                    연결 해제
+                    <Settings className="w-3.5 h-3.5 mr-1.5" />
+                    Settings
+                    {showSettings ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
                   </Button>
                 </div>
               </div>
@@ -206,61 +297,28 @@ export default function MondayIntegration() {
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <Select
-                      value={selectedBoardId}
-                      onValueChange={(v) => {
-                        const board = boardsData?.boards.find(b => b.id === v);
-                        setSelectedBoardId(v);
-                        setSelectedBoardName(board?.name ?? v);
-                      }}
-                      data-testid="select-monday-board"
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="보드 선택..." />
-                      </SelectTrigger>
+                    <Select value={selectedBoardId} onValueChange={(v) => { const board = boardsData?.boards.find(b => b.id === v); setSelectedBoardId(v); setSelectedBoardName(board?.name ?? v); }} data-testid="select-monday-board">
+                      <SelectTrigger><SelectValue placeholder="보드 선택..." /></SelectTrigger>
                       <SelectContent>
-                        {boardsLoading && (
-                          <SelectItem value="__loading" disabled>
-                            불러오는 중...
-                          </SelectItem>
-                        )}
+                        {boardsLoading && <SelectItem value="__loading" disabled>불러오는 중...</SelectItem>}
                         {boardsData?.boards.map((board) => (
-                          <SelectItem key={board.id} value={board.id}>
-                            {board.name}
-                          </SelectItem>
+                          <SelectItem key={board.id} value={board.id}>{board.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => refetchBoards()}
-                    disabled={boardsLoading}
-                    title="보드 목록 새로고침"
-                  >
+                  <Button variant="outline" size="icon" onClick={() => refetchBoards()} disabled={boardsLoading} title="보드 목록 새로고침">
                     <RefreshCw className={`w-4 h-4 ${boardsLoading ? "animate-spin" : ""}`} />
                   </Button>
                 </div>
-
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    연결 시 선택한 보드의 모든 Item이 프로젝트로 가져와지며, 이후 변경사항은 Webhook으로 자동 동기화됩니다.
-                    Webhook 요청은 연결 시 생성되는 비밀 토큰으로 서명 검증됩니다.
+                    연결 시 보드의 모든 Item이 프로젝트로 가져와집니다. 보드 그룹 = VoltStock 고객사 그룹으로 매핑됩니다.
                   </AlertDescription>
                 </Alert>
-
-                <Button
-                  onClick={() => connectMutation.mutate()}
-                  disabled={!selectedBoardId || connectMutation.isPending}
-                  data-testid="button-monday-connect"
-                >
-                  {connectMutation.isPending ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Plug className="w-4 h-4 mr-2" />
-                  )}
+                <Button onClick={() => connectMutation.mutate()} disabled={!selectedBoardId || connectMutation.isPending} data-testid="button-monday-connect">
+                  {connectMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Plug className="w-4 h-4 mr-2" />}
                   보드 연결 및 동기화
                 </Button>
               </div>
@@ -269,19 +327,169 @@ export default function MondayIntegration() {
         </Card>
       )}
 
+      {/* Settings panel */}
+      {isConnected && showSettings && (
+        <>
+          {/* Column Mapping */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                컬럼 매핑
+                {mappingComplete
+                  ? <Badge className="bg-green-100 text-green-700 border-green-200">완료</Badge>
+                  : <Badge className="bg-amber-100 text-amber-700 border-amber-200">미완료</Badge>}
+              </CardTitle>
+              <CardDescription>
+                Monday.com 컬럼과 VoltStock 필드를 연결합니다. PO/CODE는 item.name에서 자동으로 가져옵니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => refetchColumns()} disabled={columnsLoading} data-testid="button-refresh-columns">
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${columnsLoading ? "animate-spin" : ""}`} />
+                  컬럼 목록 새로고침
+                </Button>
+                {columns.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={autoSuggest} data-testid="button-auto-suggest">
+                    자동 제안
+                  </Button>
+                )}
+              </div>
+
+              {columns.length === 0 && !columnsLoading && (
+                <p className="text-sm text-slate-500">컬럼 목록을 불러오려면 위 버튼을 클릭하세요.</p>
+              )}
+
+              {columns.length > 0 && (
+                <div className="space-y-3">
+                  {/* PO/CODE — system field, not configurable */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-slate-600 block mb-1">PO / CODE (고정)</label>
+                      <div className="h-9 px-3 flex items-center text-sm text-slate-500 bg-slate-50 rounded-md border border-slate-200">
+                        item.name (Monday Item 제목)
+                      </div>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-green-500 mt-5 flex-shrink-0" />
+                  </div>
+
+                  {(Object.keys(FIELD_LABELS) as (keyof ColumnMapping)[]).map(key => {
+                    const isRequired = REQUIRED_MAPPING_KEYS.includes(key);
+                    const value = (localMapping as any)[key] ?? "";
+                    const isFilled = !!value;
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-slate-600 block mb-1">
+                            {FIELD_LABELS[key]}
+                            {isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                          </label>
+                          <Select
+                            value={value || "__none__"}
+                            onValueChange={v => {
+                              setLocalMapping(prev => ({ ...prev, [key]: v === "__none__" ? null : v }));
+                              setMappingDirty(true);
+                            }}
+                            data-testid={`select-mapping-${key}`}
+                          >
+                            <SelectTrigger className={!isFilled && isRequired ? "border-amber-300 bg-amber-50/50" : ""}>
+                              <SelectValue placeholder="컬럼 선택..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— 매핑 없음 —</SelectItem>
+                              {columns.map(col => (
+                                <SelectItem key={col.id} value={col.id}>
+                                  {col.title} <span className="text-slate-400 text-xs ml-1">({col.type})</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {isFilled
+                          ? <CheckCircle2 className="w-4 h-4 text-green-500 mt-5 flex-shrink-0" />
+                          : isRequired
+                            ? <AlertTriangle className="w-4 h-4 text-amber-500 mt-5 flex-shrink-0" />
+                            : <div className="w-4 mt-5 flex-shrink-0" />}
+                      </div>
+                    );
+                  })}
+
+                  {!mappingComplete && missingFields.length > 0 && (
+                    <Alert className="border-amber-200 bg-amber-50">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-xs text-amber-800">
+                        필수 매핑 누락: {missingFields.map(k => FIELD_LABELS[k].split(" (")[0]).join(", ")}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => saveMappingMutation.mutate()}
+                      disabled={saveMappingMutation.isPending || !mappingDirty}
+                      data-testid="button-save-mapping"
+                    >
+                      {saveMappingMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                      저장
+                    </Button>
+                    {mappingComplete && mappingDirty && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          saveMappingMutation.mutate(undefined, {
+                            onSuccess: () => syncMutation.mutate(),
+                          });
+                        }}
+                        disabled={saveMappingMutation.isPending || syncMutation.isPending}
+                        data-testid="button-save-and-sync"
+                      >
+                        저장 후 전체 동기화
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Advanced */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-red-700">고급 설정</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => disconnectMutation.mutate()}
+                disabled={disconnectMutation.isPending}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                data-testid="button-monday-disconnect"
+              >
+                <Unplug className="w-3.5 h-3.5 mr-1.5" />
+                연결 해제 (Webhook 삭제)
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
       {/* Status mapping reference */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">상태 매핑</CardTitle>
-          <CardDescription>Monday.com 컬럼 값이 VoltStock 상태로 변환됩니다.</CardDescription>
+          <CardDescription>Monday.com 상태 레이블이 VoltStock 상태로 변환됩니다.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             {[
-              { monday: "Done / Completed / Complete", voltstock: "completed", color: "bg-green-100 text-green-700" },
-              { monday: "Stuck / On Hold / Waiting / Paused", voltstock: "on_hold", color: "bg-yellow-100 text-yellow-700" },
-              { monday: "Cancelled", voltstock: "cancelled", color: "bg-red-100 text-red-700" },
-              { monday: "Working on it (그 외 모든 값)", voltstock: "active", color: "bg-blue-100 text-blue-700" },
+              { monday: "Working on it", voltstock: "active", color: "bg-blue-100 text-blue-700" },
+              { monday: "Quote Only", voltstock: "on_hold", color: "bg-yellow-100 text-yellow-700" },
+              { monday: "Done", voltstock: "completed", color: "bg-green-100 text-green-700" },
+              { monday: "Cancelled / Canceled", voltstock: "cancelled", color: "bg-red-100 text-red-700" },
+              { monday: "알 수 없는 상태", voltstock: "on_hold + warning", color: "bg-slate-100 text-slate-600" },
             ].map(row => (
               <div key={row.voltstock} className="flex items-center gap-3">
                 <span className="text-slate-600 flex-1">{row.monday}</span>

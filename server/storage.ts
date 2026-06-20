@@ -264,6 +264,8 @@ export interface IStorage {
     mondayGroupTitle?: string | null;
     mondayBoardId?: string | null;
     mondayUrl?: string | null;
+    mondaySyncStatus?: string | null;
+    mondaySyncError?: string | null;
   }): Promise<void>;
   deleteProjectByMondayId(mondayItemId: string): Promise<void>;
   getProjectByMondayId(mondayItemId: string): Promise<Project | undefined>;
@@ -3934,52 +3936,128 @@ export class DatabaseStorage implements IStorage {
     mondayGroupTitle?: string | null;
     mondayBoardId?: string | null;
     mondayUrl?: string | null;
+    mondaySyncStatus?: string | null;
+    mondaySyncError?: string | null;
   }): Promise<void> {
-    const existing = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
-    if (existing.length > 0) {
+    const incomingCode = data.code?.trim() || null;
+    const incomingGroupId = data.mondayGroupId?.trim() || null;
+    const incomingCustomerName = (data.customerName ?? data.mondayGroupTitle)?.trim() || null;
+
+    // Helper: apply all mapped fields onto a matched row (link + update)
+    const applyUpdate = async (projectId: number, existing: any) => {
       await db.update(projects).set({
-        name: data.name,
-        status: data.status,
-        code: data.code ?? existing[0].code,
-        ownerName: data.ownerName ?? existing[0].ownerName,
-        startDate: data.startDate ?? existing[0].startDate,
-        endDate: data.endDate ?? existing[0].endDate,
-        jobLocation: data.jobLocation ?? existing[0].jobLocation,
-        notes: data.notes ?? existing[0].notes,
-        customerName: data.customerName ?? existing[0].customerName,
-        mondayGroupId: data.mondayGroupId ?? existing[0].mondayGroupId,
-        mondayGroupTitle: data.mondayGroupTitle ?? existing[0].mondayGroupTitle,
-        mondayBoardId: data.mondayBoardId ?? existing[0].mondayBoardId,
-        mondayUrl: data.mondayUrl ?? existing[0].mondayUrl,
-        source: "monday",
-        archived: false,
-        mondaySyncStatus: "ok",
-        mondaySyncError: null,
-        updatedAt: new Date(),
-      }).where(eq(projects.mondayItemId, mondayItemId));
-    } else {
-      // Phase 3 smart matching goes here; for now create with MON- prefix if no code
-      const code = data.code || `MON-${mondayItemId}`;
-      await db.insert(projects).values({
         mondayItemId,
-        code,
+        mondayBoardId: data.mondayBoardId ?? existing.mondayBoardId,
+        mondayGroupId: incomingGroupId ?? existing.mondayGroupId,
+        mondayGroupTitle: data.mondayGroupTitle ?? existing.mondayGroupTitle,
+        mondayUrl: data.mondayUrl ?? existing.mondayUrl,
+        source: "monday",
         name: data.name,
         status: data.status,
-        ownerName: data.ownerName ?? null,
-        startDate: data.startDate ?? null,
-        endDate: data.endDate ?? null,
-        jobLocation: data.jobLocation ?? null,
-        notes: data.notes ?? null,
-        customerName: data.customerName ?? null,
-        mondayGroupId: data.mondayGroupId ?? null,
-        mondayGroupTitle: data.mondayGroupTitle ?? null,
-        mondayBoardId: data.mondayBoardId ?? null,
-        mondayUrl: data.mondayUrl ?? null,
-        source: "monday",
+        code: incomingCode ?? existing.code,
+        ownerName: data.ownerName ?? existing.ownerName,
+        startDate: data.startDate ?? existing.startDate,
+        endDate: data.endDate ?? existing.endDate,
+        jobLocation: data.jobLocation ?? existing.jobLocation,
+        notes: data.notes ?? existing.notes,
+        customerName: incomingCustomerName ?? existing.customerName,
         archived: false,
-        mondaySyncStatus: "ok",
-      });
+        mondaySyncStatus: data.mondaySyncStatus ?? "ok",
+        mondaySyncError: data.mondaySyncError ?? null,
+        updatedAt: new Date(),
+      }).where(eq(projects.id, projectId));
+    };
+
+    // ── Step 1: exact monday_item_id match → update ────────────────────────────
+    const [byItemId] = await db.select().from(projects)
+      .where(eq(projects.mondayItemId, mondayItemId));
+    if (byItemId) {
+      await applyUpdate(byItemId.id, byItemId);
+      return;
     }
+
+    // ── Step 2: same group_id + PO/CODE → link ────────────────────────────────
+    if (incomingGroupId && incomingCode) {
+      const byGroupCode = await db.select().from(projects)
+        .where(and(
+          eq(projects.mondayGroupId, incomingGroupId),
+          eq(projects.code, incomingCode),
+          isNull(projects.mondayItemId),
+        ));
+      if (byGroupCode.length === 1) {
+        console.log(`[monday sync] Step2 link: groupId=${incomingGroupId} code=${incomingCode} → project id=${byGroupCode[0].id}`);
+        await applyUpdate(byGroupCode[0].id, byGroupCode[0]);
+        return;
+      }
+    }
+
+    // ── Step 3: customerName + PO/CODE, single match → link ───────────────────
+    if (incomingCustomerName && incomingCode) {
+      const byCustomerCode = await db.select().from(projects)
+        .where(and(
+          eq(projects.customerName, incomingCustomerName),
+          eq(projects.code, incomingCode),
+          isNull(projects.mondayItemId),
+        ));
+      if (byCustomerCode.length === 1) {
+        console.log(`[monday sync] Step3 link: customer="${incomingCustomerName}" code=${incomingCode} → project id=${byCustomerCode[0].id}`);
+        await applyUpdate(byCustomerCode[0].id, byCustomerCode[0]);
+        return;
+      }
+    }
+
+    // ── Step 4: PO/CODE alone, global single match → fallback link ────────────
+    if (incomingCode) {
+      const byCode = await db.select().from(projects)
+        .where(and(
+          eq(projects.code, incomingCode),
+          isNull(projects.mondayItemId),
+        ));
+
+      if (byCode.length === 1) {
+        console.log(`[monday sync] Step4 fallback link: code=${incomingCode} → project id=${byCode[0].id}`);
+        await applyUpdate(byCode[0].id, byCode[0]);
+        return;
+      }
+
+      // ── Step 5: multiple matches → conflict, mark needs_manual_resolution ───
+      if (byCode.length > 1) {
+        const conflictIds = byCode.map(p => p.id).join(", ");
+        console.warn(`[monday sync] Step5 conflict: code=${incomingCode} matches ${byCode.length} projects (ids: ${conflictIds}) — not auto-linking`);
+        // Mark all matching unlinked projects as needing resolution
+        for (const p of byCode) {
+          await db.update(projects).set({
+            mondaySyncStatus: "needs_manual_resolution",
+            mondaySyncError: `Monday item ${mondayItemId} (code=${incomingCode}) matches multiple unlinked projects`,
+            updatedAt: new Date(),
+          }).where(eq(projects.id, p.id));
+        }
+        return;
+      }
+    }
+
+    // ── Step 6: no safe match → create new project ────────────────────────────
+    const code = incomingCode || `MON-${mondayItemId}`;
+    await db.insert(projects).values({
+      mondayItemId,
+      code,
+      name: data.name,
+      status: data.status,
+      ownerName: data.ownerName ?? null,
+      startDate: data.startDate ?? null,
+      endDate: data.endDate ?? null,
+      jobLocation: data.jobLocation ?? null,
+      notes: data.notes ?? null,
+      customerName: incomingCustomerName,
+      mondayGroupId: incomingGroupId,
+      mondayGroupTitle: data.mondayGroupTitle ?? null,
+      mondayBoardId: data.mondayBoardId ?? null,
+      mondayUrl: data.mondayUrl ?? null,
+      source: "monday",
+      archived: false,
+      mondaySyncStatus: data.mondaySyncStatus ?? "ok",
+      mondaySyncError: data.mondaySyncError ?? null,
+    });
   }
 
   async deleteProjectByMondayId(mondayItemId: string): Promise<void> {

@@ -4477,13 +4477,58 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/monday/columns — fetch board column schema from Monday (admin only)
+  app.get("/api/monday/columns", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const boardId = await storage.getAppSetting("monday_board_id");
+      if (!boardId) return res.status(400).json({ message: "No board configured" });
+      const { fetchBoardColumns } = await import("./services/monday");
+      const columns = await fetchBoardColumns(boardId);
+      res.json({ columns });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/monday/column-mapping — return saved mapping (admin only)
+  app.get("/api/monday/column-mapping", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const raw = await storage.getAppSetting("monday_column_mapping");
+      const mapping = raw ? JSON.parse(raw) : null;
+      res.json({ mapping });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/monday/column-mapping — validate and save mapping (admin only)
+  app.post("/api/monday/column-mapping", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { mapping } = req.body;
+      if (!mapping || typeof mapping !== "object") {
+        return res.status(400).json({ message: "mapping object is required" });
+      }
+      // Validate that values are strings or null
+      const allowed = ["projectNameColumnId", "statusColumnId", "contactColumnId", "timelineColumnId", "locationColumnId", "notesColumnId", "depositColumnId", "fileColumnIds"];
+      const cleaned: Record<string, any> = {};
+      for (const key of allowed) {
+        if (key in mapping) cleaned[key] = mapping[key];
+      }
+      await storage.setAppSetting("monday_column_mapping", JSON.stringify(cleaned));
+      const { isMappingComplete } = await import("./services/monday");
+      res.json({ success: true, complete: isMappingComplete(cleaned) });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // POST /api/monday/connect — save board_id, register webhooks, initial sync
   app.post("/api/monday/connect", isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const { boardId, boardName, webhookBaseUrl } = req.body;
       if (!boardId) return res.status(400).json({ message: "boardId is required" });
 
-      const { registerWebhooks, deleteWebhooks, fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+      const { registerWebhooks, deleteWebhooks, fetchBoardItems, fetchBoardColumns, mapMondayItemToProject, isMappingComplete, autoSuggestMapping } = await import("./services/monday");
 
       // If already connected, clean up old webhooks first
       const existingIdsRaw = await storage.getAppSetting("monday_webhook_ids");
@@ -4518,33 +4563,67 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       await storage.setAppSetting("monday_webhook_ids", JSON.stringify(webhookEntries));
 
-      // Initial full sync
+      // Auto-suggest column mapping from board columns if no mapping saved yet
+      const existingMappingRaw = await storage.getAppSetting("monday_column_mapping");
+      let columnMapping = existingMappingRaw ? JSON.parse(existingMappingRaw) : null;
+      if (!columnMapping) {
+        try {
+          const columns = await fetchBoardColumns(boardId);
+          columnMapping = autoSuggestMapping(columns);
+          if (Object.keys(columnMapping).length > 0) {
+            await storage.setAppSetting("monday_column_mapping", JSON.stringify(columnMapping));
+          }
+        } catch (colErr: any) {
+          console.warn("[monday] failed to auto-suggest column mapping:", colErr.message);
+        }
+      }
+
+      // Initial full sync — use mapping if complete, otherwise auto-detect fallback
       const items = await fetchBoardItems(boardId);
+      const mappingForSync = isMappingComplete(columnMapping) ? columnMapping : null;
       let synced = 0;
       for (const item of items) {
-        const mapped = mapMondayItemToProject(item);
-        await storage.upsertProjectByMondayId(item.id, mapped);
+        const mapped = mapMondayItemToProject(item, mappingForSync);
+        await storage.upsertProjectByMondayId(item.id, { ...mapped, mondayBoardId: boardId });
         synced++;
       }
 
-      res.json({ success: true, synced, webhookCount: webhookEntries.length });
+      res.json({
+        success: true,
+        synced,
+        webhookCount: webhookEntries.length,
+        mappingComplete: isMappingComplete(columnMapping),
+        columnMapping,
+      });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
   // POST /api/monday/sync — manual full sync (admin only)
+  // Returns 400 if required column mapping is incomplete
   app.post("/api/monday/sync", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const boardId = await storage.getAppSetting("monday_board_id");
       if (!boardId) return res.status(400).json({ message: "No board configured" });
 
-      const { fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+      const { fetchBoardItems, mapMondayItemToProject, isMappingComplete } = await import("./services/monday");
+
+      // Load and validate column mapping
+      const mappingRaw = await storage.getAppSetting("monday_column_mapping");
+      const columnMapping = mappingRaw ? JSON.parse(mappingRaw) : null;
+      if (!isMappingComplete(columnMapping)) {
+        return res.status(400).json({
+          message: "Column mapping is incomplete. Configure required mappings (Project Name, Status, Contact, Timeline, Location) before syncing.",
+          mappingIncomplete: true,
+        });
+      }
+
       const items = await fetchBoardItems(boardId);
       let synced = 0;
       for (const item of items) {
-        const mapped = mapMondayItemToProject(item);
-        await storage.upsertProjectByMondayId(item.id, mapped);
+        const mapped = mapMondayItemToProject(item, columnMapping);
+        await storage.upsertProjectByMondayId(item.id, { ...mapped, mondayBoardId: boardId });
         synced++;
       }
       res.json({ success: true, synced });
@@ -4605,14 +4684,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const event = body.event;
       if (!event) return res.status(200).json({ ok: true });
 
+      // Load column mapping once for this webhook event
+      const mappingRaw = await storage.getAppSetting("monday_column_mapping");
+      const columnMapping = mappingRaw ? JSON.parse(mappingRaw) : null;
+
       const pulseId = String(event.pulseId ?? event.itemId ?? "");
       const type = String(event.type ?? "");
 
       if ((type === "create_pulse" || type === "create_item") && pulseId) {
-        // Fetch full item data for complete field population
         const fullItem = await fetchSingleItem(pulseId).catch(() => null);
         if (fullItem) {
-          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
+          const mapped = mapMondayItemToProject(fullItem, columnMapping);
+          await storage.upsertProjectByMondayId(pulseId, { ...mapped, mondayBoardId: configuredBoardId ?? undefined });
         } else {
           await storage.upsertProjectByMondayId(pulseId, {
             name: event.pulseName ?? `Monday Item ${pulseId}`,
@@ -4622,21 +4705,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       } else if ((type === "delete_pulse" || type === "delete_item") && pulseId) {
         await storage.deleteProjectByMondayId(pulseId);
       } else if ((type === "change_column_value" || type === "update_column_value") && pulseId) {
-        // Re-fetch full item to get all fields accurately
         const fullItem = await fetchSingleItem(pulseId).catch(() => null);
         if (fullItem) {
-          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
+          const mapped = mapMondayItemToProject(fullItem, columnMapping);
+          await storage.upsertProjectByMondayId(pulseId, { ...mapped, mondayBoardId: configuredBoardId ?? undefined });
         }
       } else if ((type === "change_name" || type === "update_name") && pulseId) {
-        // Re-fetch full item to get updated name + all other fields
         const fullItem = await fetchSingleItem(pulseId).catch(() => null);
         if (fullItem) {
-          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
+          const mapped = mapMondayItemToProject(fullItem, columnMapping);
+          await storage.upsertProjectByMondayId(pulseId, { ...mapped, mondayBoardId: configuredBoardId ?? undefined });
         } else {
           const existing = await storage.getProjectByMondayId(pulseId);
           if (existing) {
-            const newName = event.value?.name ?? event.value?.text ?? existing.name;
-            await storage.upsertProjectByMondayId(pulseId, { name: newName, status: existing.status });
+            await storage.upsertProjectByMondayId(pulseId, {
+              name: event.value?.name ?? event.value?.text ?? existing.name,
+              status: existing.status,
+            });
           }
         }
       }

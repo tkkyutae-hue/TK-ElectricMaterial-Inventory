@@ -41,6 +41,21 @@ export async function fetchBoards(): Promise<{ id: string; name: string }[]> {
   return data.boards ?? [];
 }
 
+export async function fetchBoardColumns(boardId: string): Promise<{ id: string; title: string; type: string }[]> {
+  const data = await mondayGraphQL(`
+    query($boardId: [ID!]!) {
+      boards(ids: $boardId) {
+        columns {
+          id
+          title
+          type
+        }
+      }
+    }
+  `, { boardId: [boardId] });
+  return data.boards?.[0]?.columns ?? [];
+}
+
 export async function fetchBoardItems(boardId: string): Promise<MondayItem[]> {
   const items: MondayItem[] = [];
   let cursor: string | null = null;
@@ -55,6 +70,11 @@ export async function fetchBoardItems(boardId: string): Promise<MondayItem[]> {
               id
               name
               state
+              url
+              group {
+                id
+                title
+              }
               column_values {
                 id
                 type
@@ -84,6 +104,11 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
         id
         name
         state
+        url
+        group {
+          id
+          title
+        }
         column_values {
           id
           type
@@ -150,34 +175,97 @@ export async function deleteWebhooks(webhookIds: string[]): Promise<void> {
   );
 }
 
-// ── Monday item to VoltStock project mapping ──────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export type MondayItem = {
   id: string;
   name: string;
   state: string;
+  url?: string;
+  group?: { id: string; title: string };
   column_values: { id: string; type: string; text: string; value: string }[];
 };
 
-// Maps Monday status label to VoltStock status enum
-export function mapMondayStatus(statusText: string | null | undefined): string {
-  if (!statusText) return "active";
-  const s = statusText.toLowerCase();
-  if (s.includes("done") || s.includes("completed") || s.includes("complete")) return "completed";
-  if (s.includes("stuck") || s.includes("hold") || s.includes("paused") || s.includes("waiting")) return "on_hold";
-  if (s.includes("cancel")) return "cancelled";
-  return "active";
+export type MondayColumnMapping = {
+  projectNameColumnId?: string | null;
+  statusColumnId?: string | null;
+  contactColumnId?: string | null;
+  timelineColumnId?: string | null;
+  locationColumnId?: string | null;
+  notesColumnId?: string | null;
+  depositColumnId?: string | null;
+  fileColumnIds?: string[];
+};
+
+// Keys that must be present before sync is allowed
+export const REQUIRED_MAPPING_KEYS: (keyof MondayColumnMapping)[] = [
+  "projectNameColumnId",
+  "statusColumnId",
+  "contactColumnId",
+  "timelineColumnId",
+  "locationColumnId",
+];
+
+export function isMappingComplete(mapping: MondayColumnMapping | null | undefined): boolean {
+  if (!mapping) return false;
+  return REQUIRED_MAPPING_KEYS.every(k => !!(mapping as any)[k]);
 }
 
-export function mapMondayItemToProject(item: MondayItem): {
+// ── Status mapping ─────────────────────────────────────────────────────────────
+
+// Maps Monday status labels into VoltStock status enum.
+// Returns { status, warning } — warning is non-null when an unknown label was received.
+export function mapMondayStatus(statusText: string | null | undefined): { status: string; warning: string | null } {
+  if (!statusText) return { status: "active", warning: null };
+  const s = statusText.trim();
+
+  // Exact / case-insensitive matches first (spec-required labels)
+  const lower = s.toLowerCase();
+  if (lower === "working on it") return { status: "active", warning: null };
+  if (lower === "quote only") return { status: "on_hold", warning: null };
+  if (lower === "done") return { status: "completed", warning: null };
+  if (lower === "cancelled" || lower === "canceled") return { status: "cancelled", warning: null };
+
+  // Broader fallback heuristics
+  if (lower.includes("done") || lower.includes("complet")) return { status: "completed", warning: null };
+  if (lower.includes("hold") || lower.includes("pause") || lower.includes("wait") || lower.includes("stuck")) return { status: "on_hold", warning: null };
+  if (lower.includes("cancel")) return { status: "cancelled", warning: null };
+  if (lower.includes("active") || lower.includes("progress") || lower.includes("working")) return { status: "active", warning: null };
+
+  // Unknown status label — return on_hold + warning
+  return { status: "on_hold", warning: `Unknown Monday status label: "${s}"` };
+}
+
+// ── Item → Project mapping ─────────────────────────────────────────────────────
+
+export type MappedProject = {
+  code: string;
   name: string;
   status: string;
+  customerName: string | null;
+  mondayGroupId: string | null;
+  mondayGroupTitle: string | null;
+  mondayUrl: string | null;
   ownerName: string | null;
   startDate: string | null;
   endDate: string | null;
   jobLocation: string | null;
   notes: string | null;
-} {
+  mondaySyncStatus: string;
+  mondaySyncError: string | null;
+};
+
+export function mapMondayItemToProject(item: MondayItem, mapping?: MondayColumnMapping | null): MappedProject {
+  // PO/CODE always comes from item.name — never from a column
+  const code = item.name?.trim() || `MON-${item.id}`;
+
+  // Group info → customer
+  const mondayGroupId = item.group?.id ?? null;
+  const mondayGroupTitle = item.group?.title ?? null;
+  const customerName = mondayGroupTitle;
+  const mondayUrl = item.url ?? null;
+
+  let projectName: string | null = null;
   let statusText: string | null = null;
   let ownerName: string | null = null;
   let startDate: string | null = null;
@@ -185,42 +273,122 @@ export function mapMondayItemToProject(item: MondayItem): {
   let jobLocation: string | null = null;
   let notes: string | null = null;
 
-  for (const col of item.column_values) {
-    const type = col.type?.toLowerCase();
-    const id = col.id?.toLowerCase();
-    const text = col.text?.trim() || null;
+  const colMap = new Map(item.column_values.map(c => [c.id, c]));
 
-    if (type === "color" || id === "status" || id.includes("status")) {
-      if (text) statusText = text;
-    } else if (type === "multiple-person" || type === "person" || id.includes("person") || id.includes("owner") || id.includes("assign")) {
-      if (text) ownerName = text;
-    } else if (id.includes("start")) {
-      if (text) startDate = text;
-    } else if (id.includes("end") || id.includes("due") || id.includes("deadline")) {
-      if (text) endDate = text;
-    } else if (type === "date" || id === "date") {
-      // Generic date column with no start/end hint → treat as deadline (endDate)
-      if (text) endDate = text;
-    } else if (type === "timeline") {
-      try {
-        const parsed = col.value ? JSON.parse(col.value) : null;
-        if (parsed?.from) startDate = parsed.from;
-        if (parsed?.to) endDate = parsed.to;
-      } catch {}
-    } else if (id.includes("location") || id.includes("address") || id.includes("site")) {
-      if (text) jobLocation = text;
-    } else if (type === "long-text" || type === "text" && (id.includes("note") || id.includes("desc"))) {
-      if (text) notes = text;
+  if (mapping && isMappingComplete(mapping)) {
+    // ── Use saved column mapping ───────────────────────────────────────────────
+    if (mapping.projectNameColumnId) {
+      projectName = colMap.get(mapping.projectNameColumnId)?.text?.trim() || null;
+    }
+    if (mapping.statusColumnId) {
+      statusText = colMap.get(mapping.statusColumnId)?.text?.trim() || null;
+    }
+    if (mapping.contactColumnId) {
+      ownerName = colMap.get(mapping.contactColumnId)?.text?.trim() || null;
+    }
+    if (mapping.timelineColumnId) {
+      const timelineCol = colMap.get(mapping.timelineColumnId);
+      if (timelineCol) {
+        if (timelineCol.type === "timeline") {
+          try {
+            const parsed = timelineCol.value ? JSON.parse(timelineCol.value) : null;
+            if (parsed?.from) startDate = parsed.from;
+            if (parsed?.to) endDate = parsed.to;
+          } catch {}
+        } else {
+          // date column
+          endDate = timelineCol.text?.trim() || null;
+        }
+      }
+    }
+    if (mapping.locationColumnId) {
+      jobLocation = colMap.get(mapping.locationColumnId)?.text?.trim() || null;
+    }
+    if (mapping.notesColumnId) {
+      notes = colMap.get(mapping.notesColumnId)?.text?.trim() || null;
+    }
+  } else {
+    // ── Auto-detect fallback (used before mapping is configured) ──────────────
+    for (const col of item.column_values) {
+      const type = col.type?.toLowerCase();
+      const id = col.id?.toLowerCase();
+      const text = col.text?.trim() || null;
+
+      if (!projectName && (id.includes("name") || id.includes("remark") || id.includes("project"))) {
+        if (text) projectName = text;
+      } else if (!statusText && (type === "color" || id === "status" || id.includes("status"))) {
+        if (text) statusText = text;
+      } else if (!ownerName && (type === "multiple-person" || type === "person" || id.includes("person") || id.includes("owner") || id.includes("assign"))) {
+        if (text) ownerName = text;
+      } else if (!startDate && id.includes("start")) {
+        if (text) startDate = text;
+      } else if (!endDate && (id.includes("end") || id.includes("due") || id.includes("deadline"))) {
+        if (text) endDate = text;
+      } else if (!endDate && (type === "date" || id === "date")) {
+        if (text) endDate = text;
+      } else if (!startDate && !endDate && type === "timeline") {
+        try {
+          const parsed = col.value ? JSON.parse(col.value) : null;
+          if (parsed?.from) startDate = parsed.from;
+          if (parsed?.to) endDate = parsed.to;
+        } catch {}
+      } else if (!jobLocation && (id.includes("location") || id.includes("address") || id.includes("site"))) {
+        if (text) jobLocation = text;
+      } else if (!notes && (type === "long-text" || (type === "text" && (id.includes("note") || id.includes("desc"))))) {
+        if (text) notes = text;
+      }
     }
   }
 
+  // Fallback: if no project name column found, use item.name (same as PO/CODE)
+  const name = projectName || code;
+
+  const { status, warning } = item.state === "deleted"
+    ? { status: "cancelled", warning: null }
+    : mapMondayStatus(statusText);
+
   return {
-    name: item.name,
-    status: item.state === "deleted" ? "cancelled" : mapMondayStatus(statusText),
+    code,
+    name,
+    status,
+    customerName,
+    mondayGroupId,
+    mondayGroupTitle,
+    mondayUrl,
     ownerName,
     startDate,
     endDate,
     jobLocation,
     notes,
+    mondaySyncStatus: warning ? "warning" : "ok",
+    mondaySyncError: warning,
   };
+}
+
+// Auto-suggest column mapping from board columns (fuzzy title matching)
+export function autoSuggestMapping(
+  columns: { id: string; title: string; type: string }[]
+): MondayColumnMapping {
+  const mapping: MondayColumnMapping = {};
+
+  for (const col of columns) {
+    const title = col.title.toLowerCase();
+    const type = col.type.toLowerCase();
+
+    if (!mapping.projectNameColumnId && (title.includes("project name") || title.includes("remark") || (title.includes("name") && !title.includes("person")))) {
+      mapping.projectNameColumnId = col.id;
+    } else if (!mapping.statusColumnId && (type === "color" || type === "status" || title === "status" || title.includes("status"))) {
+      mapping.statusColumnId = col.id;
+    } else if (!mapping.contactColumnId && (type === "multiple-person" || type === "person" || title.includes("contact") || title.includes("assign") || title.includes("owner"))) {
+      mapping.contactColumnId = col.id;
+    } else if (!mapping.timelineColumnId && (type === "timeline" || type === "date" || title.includes("timeline") || title.includes("date") || title.includes("due"))) {
+      mapping.timelineColumnId = col.id;
+    } else if (!mapping.locationColumnId && (title.includes("location") || title.includes("address") || title.includes("site") || title.includes("city"))) {
+      mapping.locationColumnId = col.id;
+    } else if (!mapping.notesColumnId && (type === "long-text" || title.includes("note") || title.includes("memo") || title.includes("desc") || title.includes("remark"))) {
+      mapping.notesColumnId = col.id;
+    }
+  }
+
+  return mapping;
 }

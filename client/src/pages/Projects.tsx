@@ -487,13 +487,14 @@ function CustomerGroup({
                     {(project as any).mondayItemId && (
                       <a
                         href={
-                          mondayBoardId
+                          (project as any).mondayUrl ||
+                          (mondayBoardId
                             ? `https://monday.com/boards/${mondayBoardId}/pulses/${(project as any).mondayItemId}`
-                            : `https://monday.com`
+                            : `https://monday.com`)
                         }
                         target="_blank"
                         rel="noreferrer"
-                        title="Monday.com Item에서 동기화됨 — 클릭하여 열기"
+                        title={`Monday.com Item에서 동기화됨${(project as any).mondayGroupTitle ? ` — ${(project as any).mondayGroupTitle}` : ""} — 클릭하여 열기`}
                         className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors"
                         data-testid={`badge-monday-${project.id}`}
                         onClick={(e) => e.stopPropagation()}
@@ -716,6 +717,17 @@ export default function Projects() {
           </SelectContent>
         </Select>
 
+        {allProjects.some((p: any) => p.archived) && (
+          <Button
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            className={`h-9 text-sm shrink-0 ${showArchived ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" : "border-slate-300 text-slate-500 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50"}`}
+            onClick={() => setShowArchived(v => !v)}
+            data-testid="btn-toggle-archived"
+          >
+            {showArchived ? "아카이브 숨기기" : "아카이브 포함"}
+          </Button>
+        )}
         <Button
           variant="outline"
           className="h-9 text-sm border-dashed border-slate-300 text-slate-600 hover:border-brand-400 hover:text-brand-700 hover:bg-brand-50 shrink-0"

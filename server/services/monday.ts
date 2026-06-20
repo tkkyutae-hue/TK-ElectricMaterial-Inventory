@@ -76,39 +76,63 @@ export async function fetchBoardItems(boardId: string): Promise<MondayItem[]> {
   return items;
 }
 
-export async function registerWebhook(boardId: string, webhookUrl: string): Promise<string> {
+// Fetch a single item by ID — used for complete field sync on webhook events
+export async function fetchSingleItem(itemId: string): Promise<MondayItem | null> {
   const data = await mondayGraphQL(`
-    mutation($boardId: ID!, $url: String!, $event: WebhookEventType!) {
-      create_webhook(board_id: $boardId, url: $url, event: $event) {
+    query($itemId: [ID!]!) {
+      items(ids: $itemId, limit: 1) {
         id
+        name
+        state
+        column_values {
+          id
+          type
+          text
+          value
+        }
       }
     }
-  `, { boardId, url: webhookUrl, event: "change_column_value" });
-
-  const webhookId = data.create_webhook?.id;
-
-  // Also register create/delete events separately
-  await mondayGraphQL(`
-    mutation($boardId: ID!, $url: String!, $event: WebhookEventType!) {
-      create_webhook(board_id: $boardId, url: $url, event: $event) { id }
-    }
-  `, { boardId, url: webhookUrl, event: "create_pulse" });
-
-  await mondayGraphQL(`
-    mutation($boardId: ID!, $url: String!, $event: WebhookEventType!) {
-      create_webhook(board_id: $boardId, url: $url, event: $event) { id }
-    }
-  `, { boardId, url: webhookUrl, event: "delete_pulse" });
-
-  return webhookId;
+  `, { itemId: [itemId] });
+  return data.items?.[0] ?? null;
 }
 
-export async function deleteWebhook(webhookId: string): Promise<void> {
-  await mondayGraphQL(`
-    mutation($webhookId: ID!) {
-      delete_webhook(id: $webhookId) { id }
+// Registers webhooks for all relevant event types.
+// Returns array of {id, event} for all created webhooks.
+export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
+  const events = ["create_pulse", "delete_pulse", "change_column_value", "update_name"] as const;
+  const results: Array<{ id: string; event: string }> = [];
+
+  for (const event of events) {
+    try {
+      const data = await mondayGraphQL(`
+        mutation($boardId: ID!, $url: String!, $event: WebhookEventType!) {
+          create_webhook(board_id: $boardId, url: $url, event: $event) {
+            id
+          }
+        }
+      `, { boardId, url: webhookUrl, event });
+      const id = data.create_webhook?.id;
+      if (id) results.push({ id, event });
+    } catch (err: any) {
+      // Log but don't fail entire registration if one event type fails
+      console.warn(`[monday] webhook registration for ${event} failed:`, err.message);
     }
-  `, { webhookId }).catch(() => { /* ignore if already deleted */ });
+  }
+
+  return results;
+}
+
+// Deletes all webhook IDs stored for this board
+export async function deleteWebhooks(webhookIds: string[]): Promise<void> {
+  await Promise.allSettled(
+    webhookIds.map(id =>
+      mondayGraphQL(`
+        mutation($webhookId: ID!) {
+          delete_webhook(id: $webhookId) { id }
+        }
+      `, { webhookId: id })
+    )
+  );
 }
 
 // ── Monday item to VoltStock project mapping ──────────────────────────────────
@@ -155,7 +179,9 @@ export function mapMondayItemToProject(item: MondayItem): {
       if (text) statusText = text;
     } else if (type === "multiple-person" || type === "person" || id.includes("person") || id.includes("owner") || id.includes("assign")) {
       if (text) ownerName = text;
-    } else if (type === "date" || id.includes("start") || id === "date") {
+    } else if (type === "date" || id === "date") {
+      if (!id.includes("end") && !id.includes("due") && text) startDate = text;
+    } else if (id.includes("start")) {
       if (text) startDate = text;
     } else if (id.includes("end") || id.includes("due") || id.includes("deadline")) {
       if (text) endDate = text;
@@ -167,7 +193,7 @@ export function mapMondayItemToProject(item: MondayItem): {
       } catch {}
     } else if (id.includes("location") || id.includes("address") || id.includes("site")) {
       if (text) jobLocation = text;
-    } else if (type === "long-text" || id.includes("note") || id.includes("desc")) {
+    } else if (type === "long-text" || type === "text" && (id.includes("note") || id.includes("desc"))) {
       if (text) notes = text;
     }
   }

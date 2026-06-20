@@ -16,7 +16,8 @@ type Status = {
   hasToken: boolean;
   boardId: string | null;
   boardName: string | null;
-  webhookId: string | null;
+  webhookCount: number;
+  isConnected: boolean;
 };
 
 type Board = { id: string; name: string };
@@ -31,12 +32,12 @@ export default function MondayIntegration() {
     queryKey: ["/api/monday/status"],
   });
 
+  const isConnected = statusData?.isConnected ?? false;
+
   const { data: boardsData, isLoading: boardsLoading, refetch: refetchBoards } = useQuery<{ boards: Board[] }>({
     queryKey: ["/api/monday/boards"],
-    enabled: !!(statusData?.hasToken && !statusData?.boardId),
+    enabled: !!(statusData?.hasToken && !isConnected),
   });
-
-  const isConnected = !!(statusData?.boardId && statusData?.webhookId);
 
   const connectMutation = useMutation({
     mutationFn: async () => {
@@ -49,7 +50,10 @@ export default function MondayIntegration() {
     },
     onSuccess: async (res: any) => {
       const data = await res.json();
-      toast({ title: "Monday.com 연결 완료", description: `${data.synced}개 프로젝트 동기화됨` });
+      toast({
+        title: "Monday.com 연결 완료",
+        description: `${data.synced}개 프로젝트 동기화, Webhook ${data.webhookCount}개 등록됨`,
+      });
       qc.invalidateQueries({ queryKey: ["/api/monday/status"] });
       qc.invalidateQueries({ queryKey: ["/api/projects"] });
     },
@@ -73,7 +77,7 @@ export default function MondayIntegration() {
   const disconnectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/monday/disconnect"),
     onSuccess: () => {
-      toast({ title: "연결 해제됨" });
+      toast({ title: "연결 해제됨", description: "모든 Webhook이 제거됐습니다" });
       qc.invalidateQueries({ queryKey: ["/api/monday/status"] });
       setSelectedBoardId("");
     },
@@ -119,7 +123,7 @@ export default function MondayIntegration() {
               <AlertDescription className="text-sm">
                 <strong>MONDAY_API_TOKEN</strong> 환경 변수가 필요합니다.
                 <br />
-                Monday.com → 프로필 → 개발자 → API v2 토큰에서 Personal API Token을 발급 후
+                Monday.com → 프로필 → Developers → My Access Tokens에서 Personal API Token을 발급 후
                 Replit Secrets에 <code className="bg-slate-100 px-1 rounded">MONDAY_API_TOKEN</code>으로 추가하세요.
                 <br />
                 <a
@@ -155,7 +159,7 @@ export default function MondayIntegration() {
                     <p className="text-xs text-green-700 truncate">
                       보드: <strong>{statusData.boardName}</strong> (ID: {statusData.boardId})
                     </p>
-                    <p className="text-xs text-green-600">Webhook ID: {statusData.webhookId}</p>
+                    <p className="text-xs text-green-600">Webhook {statusData.webhookCount}개 활성</p>
                   </div>
                 </div>
 
@@ -163,7 +167,8 @@ export default function MondayIntegration() {
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
                     Webhook이 활성화되어 Monday.com에서 항목 생성·수정·삭제 시 자동으로 동기화됩니다.
-                    웹훅은 배포된 환경에서만 정상 동작합니다 (Replit Dev 환경에서는 수동 동기화 사용).
+                    Webhook은 배포된(Published) 앱에서만 정상 동작합니다.
+                    Dev 환경에서는 수동 동기화를 사용하세요.
                   </AlertDescription>
                 </Alert>
 
@@ -242,7 +247,7 @@ export default function MondayIntegration() {
                   <Info className="h-4 w-4" />
                   <AlertDescription className="text-xs">
                     연결 시 선택한 보드의 모든 Item이 프로젝트로 가져와지며, 이후 변경사항은 Webhook으로 자동 동기화됩니다.
-                    Webhook URL: <code className="bg-slate-100 px-1 rounded">{window.location.origin}/api/webhooks/monday</code>
+                    Webhook 요청은 연결 시 생성되는 비밀 토큰으로 서명 검증됩니다.
                   </AlertDescription>
                 </Alert>
 
@@ -273,7 +278,7 @@ export default function MondayIntegration() {
         <CardContent>
           <div className="space-y-2 text-sm">
             {[
-              { monday: "Done / Completed", voltstock: "completed", color: "bg-green-100 text-green-700" },
+              { monday: "Done / Completed / Complete", voltstock: "completed", color: "bg-green-100 text-green-700" },
               { monday: "Stuck / On Hold / Waiting / Paused", voltstock: "on_hold", color: "bg-yellow-100 text-yellow-700" },
               { monday: "Cancelled", voltstock: "cancelled", color: "bg-red-100 text-red-700" },
               { monday: "Working on it (그 외 모든 값)", voltstock: "active", color: "bg-blue-100 text-blue-700" },

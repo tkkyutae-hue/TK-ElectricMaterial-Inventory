@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
@@ -483,10 +484,14 @@ function CustomerGroup({
                     <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700 min-w-0 flex-1" />
                     {(project as any).mondayItemId && (
                       <a
-                        href={`https://monday.com`}
+                        href={
+                          mondayBoardId
+                            ? `https://monday.com/boards/${mondayBoardId}/pulses/${(project as any).mondayItemId}`
+                            : `https://monday.com`
+                        }
                         target="_blank"
                         rel="noreferrer"
-                        title="Monday.com에서 동기화된 프로젝트"
+                        title="Monday.com Item에서 동기화됨 — 클릭하여 열기"
                         className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors"
                         data-testid={`badge-monday-${project.id}`}
                         onClick={(e) => e.stopPropagation()}
@@ -566,6 +571,12 @@ function CustomerGroup({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Projects() {
   const { data: projects, isLoading } = useProjects();
+  const { data: mondayBoardData } = useQuery<{ boardId: string | null }>({
+    queryKey: ["/api/monday/board-id"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const mondayBoardId = mondayBoardData?.boardId ?? null;
+
   const createMutation = useCreateProject();
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();

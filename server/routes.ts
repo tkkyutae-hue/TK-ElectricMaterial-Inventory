@@ -4437,23 +4437,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Monday.com Integration ───────────────────────────────────────────────────
 
-  // GET /api/monday/status — check token + board config
+  // GET /api/monday/status — check token + board config (admin only)
   app.get("/api/monday/status", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
-      const settings = await storage.getAppSettings(["monday_board_id", "monday_webhook_id", "monday_board_name"]);
+      const settings = await storage.getAppSettings(["monday_board_id", "monday_webhook_ids", "monday_board_name"]);
       const hasToken = !!process.env.MONDAY_API_TOKEN;
+      let webhookCount = 0;
+      try { webhookCount = JSON.parse(settings["monday_webhook_ids"] ?? "[]").length; } catch {}
       res.json({
         hasToken,
         boardId: settings["monday_board_id"],
         boardName: settings["monday_board_name"],
-        webhookId: settings["monday_webhook_id"],
+        webhookCount,
+        isConnected: !!(settings["monday_board_id"] && settings["monday_webhook_ids"]),
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  // GET /api/monday/boards — list boards
+  // GET /api/monday/board-id — returns boardId to all authenticated users (for deep-link badge)
+  app.get("/api/monday/board-id", isAuthenticated, async (_req, res) => {
+    try {
+      const boardId = await storage.getAppSetting("monday_board_id");
+      res.json({ boardId });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/monday/boards — list boards (admin only)
   app.get("/api/monday/boards", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const { fetchBoards } = await import("./services/monday");
@@ -4464,22 +4477,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/monday/connect — save board_id and register webhook
+  // POST /api/monday/connect — save board_id, register webhooks, initial sync
   app.post("/api/monday/connect", isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const { boardId, boardName, webhookBaseUrl } = req.body;
       if (!boardId) return res.status(400).json({ message: "boardId is required" });
 
-      const { registerWebhook, fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+      const { registerWebhooks, deleteWebhooks, fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+
+      // If already connected, clean up old webhooks first
+      const existingIdsRaw = await storage.getAppSetting("monday_webhook_ids");
+      if (existingIdsRaw) {
+        try {
+          const oldIds = JSON.parse(existingIdsRaw).map((w: any) => String(w.id ?? w));
+          await deleteWebhooks(oldIds);
+        } catch {}
+      }
+
+      // Generate a random secret token for this connection — embedded in webhook URL
+      const crypto = await import("crypto");
+      const webhookSecret = crypto.randomBytes(24).toString("hex");
 
       // Save board config
       await storage.setAppSetting("monday_board_id", boardId);
       await storage.setAppSetting("monday_board_name", boardName || boardId);
+      await storage.setAppSetting("monday_webhook_secret", webhookSecret);
 
-      // Register webhook
-      const webhookUrl = `${webhookBaseUrl}/api/webhooks/monday`;
-      const webhookId = await registerWebhook(boardId, webhookUrl);
-      await storage.setAppSetting("monday_webhook_id", webhookId);
+      // Register webhooks — URL includes secret token for request verification
+      const webhookUrl = `${webhookBaseUrl}/api/webhooks/monday?secret=${webhookSecret}`;
+      const webhookEntries = await registerWebhooks(boardId, webhookUrl);
+      await storage.setAppSetting("monday_webhook_ids", JSON.stringify(webhookEntries));
 
       // Initial full sync
       const items = await fetchBoardItems(boardId);
@@ -4490,13 +4517,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         synced++;
       }
 
-      res.json({ success: true, synced, webhookId });
+      res.json({ success: true, synced, webhookCount: webhookEntries.length });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  // POST /api/monday/sync — manual full sync
+  // POST /api/monday/sync — manual full sync (admin only)
   app.post("/api/monday/sync", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const boardId = await storage.getAppSetting("monday_board_id");
@@ -4516,79 +4543,98 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/monday/disconnect — remove board config and webhook
+  // POST /api/monday/disconnect — remove all webhooks + board config (admin only)
   app.post("/api/monday/disconnect", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
-      const { deleteWebhook } = await import("./services/monday");
-      const webhookId = await storage.getAppSetting("monday_webhook_id");
-      if (webhookId) await deleteWebhook(webhookId);
+      const { deleteWebhooks } = await import("./services/monday");
+      const idsRaw = await storage.getAppSetting("monday_webhook_ids");
+      if (idsRaw) {
+        try {
+          const entries = JSON.parse(idsRaw);
+          const ids = entries.map((w: any) => String(w.id ?? w));
+          await deleteWebhooks(ids);
+        } catch {}
+      }
       await storage.setAppSetting("monday_board_id", null);
       await storage.setAppSetting("monday_board_name", null);
-      await storage.setAppSetting("monday_webhook_id", null);
+      await storage.setAppSetting("monday_webhook_ids", null);
+      await storage.setAppSetting("monday_webhook_secret", null);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  // POST /api/webhooks/monday — receives real-time events from Monday.com (PUBLIC — no auth)
+  // POST /api/webhooks/monday — receives real-time events from Monday.com (PUBLIC — verified by secret token)
   app.post("/api/webhooks/monday", async (req, res) => {
     try {
       const body = req.body;
 
-      // Monday.com challenge verification
+      // Step 1: Monday.com subscription challenge — respond immediately without secret check
       if (body.challenge) {
         return res.json({ challenge: body.challenge });
       }
 
-      const { mapMondayItemToProject } = await import("./services/monday");
+      // Step 2: Verify secret token embedded in URL query param
+      const incomingSecret = String(req.query.secret ?? "");
+      const storedSecret = await storage.getAppSetting("monday_webhook_secret");
+      if (!storedSecret || incomingSecret !== storedSecret) {
+        console.warn("[monday webhook] rejected: invalid secret token");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Step 3: Validate the event's boardId matches configured board
+      const configuredBoardId = await storage.getAppSetting("monday_board_id");
+      const eventBoardId = String(body.event?.boardId ?? body.event?.board_id ?? "");
+      if (configuredBoardId && eventBoardId && eventBoardId !== configuredBoardId) {
+        console.warn(`[monday webhook] rejected: boardId mismatch (got ${eventBoardId}, expected ${configuredBoardId})`);
+        return res.status(200).json({ ok: true }); // Return 200 to avoid Monday retries
+      }
+
+      const { fetchSingleItem, mapMondayItemToProject } = await import("./services/monday");
       const event = body.event;
       if (!event) return res.status(200).json({ ok: true });
 
       const pulseId = String(event.pulseId ?? event.itemId ?? "");
-      const type = event.type ?? "";
+      const type = String(event.type ?? "");
 
       if (type === "create_pulse" && pulseId) {
-        // Minimal create — name only; full data synced on next manual sync
-        await storage.upsertProjectByMondayId(pulseId, {
-          name: event.pulseName ?? event.value?.name ?? `Monday Item ${pulseId}`,
-          status: "active",
-        });
+        // Fetch full item data for complete field population
+        const fullItem = await fetchSingleItem(pulseId).catch(() => null);
+        if (fullItem) {
+          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
+        } else {
+          await storage.upsertProjectByMondayId(pulseId, {
+            name: event.pulseName ?? `Monday Item ${pulseId}`,
+            status: "active",
+          });
+        }
       } else if (type === "delete_pulse" && pulseId) {
         await storage.deleteProjectByMondayId(pulseId);
-      } else if ((type === "update_column_value" || type === "change_column_value") && pulseId) {
-        const existing = await storage.getProjectByMondayId(pulseId);
-        if (existing) {
-          const columnType = event.columnType ?? "";
-          const newValue = event.value?.label?.text ?? event.value?.text ?? event.value?.name ?? "";
-          const update: any = { name: existing.name, status: existing.status };
-          if (columnType === "color" || event.columnId?.toLowerCase().includes("status")) {
-            update.status = (() => {
-              const s = (newValue || "").toLowerCase();
-              if (s.includes("done") || s.includes("complete")) return "completed";
-              if (s.includes("stuck") || s.includes("hold")) return "on_hold";
-              if (s.includes("cancel")) return "cancelled";
-              return "active";
-            })();
-          } else if (columnType === "name") {
-            update.name = newValue || existing.name;
-          }
-          await storage.upsertProjectByMondayId(pulseId, update);
+      } else if ((type === "change_column_value" || type === "update_column_value") && pulseId) {
+        // Re-fetch full item to get all fields accurately
+        const fullItem = await fetchSingleItem(pulseId).catch(() => null);
+        if (fullItem) {
+          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
         }
       } else if (type === "update_name" && pulseId) {
-        const existing = await storage.getProjectByMondayId(pulseId);
-        if (existing) {
-          await storage.upsertProjectByMondayId(pulseId, {
-            name: event.value?.name ?? event.previousValue?.name ?? existing.name,
-            status: existing.status,
-          });
+        // Re-fetch full item to get updated name + all other fields
+        const fullItem = await fetchSingleItem(pulseId).catch(() => null);
+        if (fullItem) {
+          await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
+        } else {
+          const existing = await storage.getProjectByMondayId(pulseId);
+          if (existing) {
+            const newName = event.value?.name ?? event.value?.text ?? existing.name;
+            await storage.upsertProjectByMondayId(pulseId, { name: newName, status: existing.status });
+          }
         }
       }
 
       res.json({ ok: true });
     } catch (err: any) {
       console.error("[monday webhook]", err.message);
-      res.status(200).json({ ok: true }); // always 200 to Monday
+      res.status(200).json({ ok: true }); // always 200 to Monday to prevent retries
     }
   });
 

@@ -260,6 +260,7 @@ export function mapMondayStatus(statusText: string | null | undefined): { status
 
 export type MappedProject = {
   code: string;
+  poNumber: string;
   name: string;
   status: string;
   customerName: string | null;
@@ -369,6 +370,7 @@ export function mapMondayItemToProject(item: MondayItem, mapping?: MondayColumnM
 
   return {
     code,
+    poNumber: code,
     name,
     status,
     customerName,

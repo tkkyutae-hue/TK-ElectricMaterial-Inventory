@@ -4645,13 +4645,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const items = await fetchBoardItems(boardId);
+      const liveItemIds = new Set(items.map(i => i.id));
       let synced = 0;
       for (const item of items) {
         const mapped = mapMondayItemToProject(item, columnMapping);
         await storage.upsertProjectByMondayId(item.id, { ...mapped, mondayBoardId: boardId });
         synced++;
       }
-      res.json({ success: true, synced });
+
+      // Archive Monday-sourced projects that no longer appear in the board
+      let archived = 0;
+      const mondayProjects = await storage.getMondayProjectsByBoardId(boardId);
+      for (const p of mondayProjects) {
+        if (p.mondayItemId && !liveItemIds.has(p.mondayItemId)) {
+          await storage.deleteProjectByMondayId(p.mondayItemId);
+          archived++;
+        }
+      }
+      if (archived > 0) console.log(`[monday sync] archived ${archived} stale project(s) not found on board`);
+
+      res.json({ success: true, synced, archived });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

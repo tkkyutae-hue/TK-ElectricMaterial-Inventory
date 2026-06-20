@@ -517,8 +517,8 @@ export default function MondayIntegration() {
                                   {row.mapped.status}
                                 </span>
                               </td>
-                              <td className="px-3 py-2 text-slate-600">{row.mapped.contactPerson || "—"}</td>
-                              <td className="px-3 py-2 text-slate-600">{row.mapped.location || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{row.mapped.ownerName || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{row.mapped.jobLocation || "—"}</td>
                             </tr>
                           ))}
                         </tbody>

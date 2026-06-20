@@ -269,6 +269,7 @@ export interface IStorage {
   }): Promise<void>;
   deleteProjectByMondayId(mondayItemId: string): Promise<void>;
   getProjectByMondayId(mondayItemId: string): Promise<Project | undefined>;
+  getMondayProjectsByBoardId(boardId: string): Promise<Array<{ id: number; mondayItemId: string | null }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3926,6 +3927,7 @@ export class DatabaseStorage implements IStorage {
     name: string;
     status: string;
     code?: string | null;
+    poNumber?: string | null;
     ownerName?: string | null;
     startDate?: string | null;
     endDate?: string | null;
@@ -3940,6 +3942,7 @@ export class DatabaseStorage implements IStorage {
     mondaySyncError?: string | null;
   }): Promise<void> {
     const incomingCode = data.code?.trim() || null;
+    const incomingPoNumber = data.poNumber?.trim() || incomingCode;
     const incomingGroupId = data.mondayGroupId?.trim() || null;
     const incomingCustomerName = (data.customerName ?? data.mondayGroupTitle)?.trim() || null;
 
@@ -3955,6 +3958,7 @@ export class DatabaseStorage implements IStorage {
         name: data.name,
         status: data.status,
         code: incomingCode ?? existing.code,
+        poNumber: incomingPoNumber ?? existing.poNumber,
         ownerName: data.ownerName ?? existing.ownerName,
         startDate: data.startDate ?? existing.startDate,
         endDate: data.endDate ?? existing.endDate,
@@ -3976,12 +3980,12 @@ export class DatabaseStorage implements IStorage {
       return;
     }
 
-    // ── Step 2: same group_id + PO/CODE → link ────────────────────────────────
+    // ── Step 2: same group_id + PO/CODE → link (check code AND poNumber) ────────
     if (incomingGroupId && incomingCode) {
       const byGroupCode = await db.select().from(projects)
         .where(and(
           eq(projects.mondayGroupId, incomingGroupId),
-          eq(projects.code, incomingCode),
+          or(eq(projects.code, incomingCode), eq(projects.poNumber, incomingCode)),
           isNull(projects.mondayItemId),
         ));
       if (byGroupCode.length === 1) {
@@ -3996,7 +4000,7 @@ export class DatabaseStorage implements IStorage {
       const byCustomerCode = await db.select().from(projects)
         .where(and(
           eq(projects.customerName, incomingCustomerName),
-          eq(projects.code, incomingCode),
+          or(eq(projects.code, incomingCode), eq(projects.poNumber, incomingCode)),
           isNull(projects.mondayItemId),
         ));
       if (byCustomerCode.length === 1) {
@@ -4006,11 +4010,11 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // ── Step 4: PO/CODE alone, global single match → fallback link ────────────
+    // ── Step 4: PO/CODE alone, global single match → fallback link (code OR poNumber) ───
     if (incomingCode) {
       const byCode = await db.select().from(projects)
         .where(and(
-          eq(projects.code, incomingCode),
+          or(eq(projects.code, incomingCode), eq(projects.poNumber, incomingCode)),
           isNull(projects.mondayItemId),
         ));
 
@@ -4041,6 +4045,7 @@ export class DatabaseStorage implements IStorage {
     await db.insert(projects).values({
       mondayItemId,
       code,
+      poNumber: incomingPoNumber ?? code,
       name: data.name,
       status: data.status,
       ownerName: data.ownerName ?? null,
@@ -4075,6 +4080,17 @@ export class DatabaseStorage implements IStorage {
   async getProjectByMondayId(mondayItemId: string): Promise<Project | undefined> {
     const [row] = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
     return row;
+  }
+
+  async getMondayProjectsByBoardId(boardId: string): Promise<Array<{ id: number; mondayItemId: string | null }>> {
+    const rows = await db.select({ id: projects.id, mondayItemId: projects.mondayItemId })
+      .from(projects)
+      .where(and(
+        eq(projects.mondayBoardId, boardId),
+        eq(projects.source, "monday"),
+        eq(projects.archived, false),
+      ));
+    return rows;
   }
 }
 

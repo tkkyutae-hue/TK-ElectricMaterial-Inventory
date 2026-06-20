@@ -17,13 +17,40 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Status config
+// Monday.com status color palette
+// ─────────────────────────────────────────────────────────────────────────────
+const MONDAY_STATUS_BG: Record<string, string> = {
+  active:    "#00C875",
+  on_hold:   "#FDBC64",
+  completed: "#C4C4C4",
+  cancelled: "#E2445C",
+};
+const MONDAY_STATUS_TEXT: Record<string, string> = {
+  on_hold: "#1a1a1a",  // dark text on yellow
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group accent color palette (deterministic hash)
+// ─────────────────────────────────────────────────────────────────────────────
+const GROUP_PALETTE = [
+  "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
+  "#579BFC","#9CD326","#FF9F43","#FF3D57","#7E5CB5",
+];
+function groupAccentColor(name: string): string {
+  if (!name || name === "__none__") return "#C4C4C4";
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h * 31) + name.charCodeAt(i)) | 0;
+  return GROUP_PALETTE[Math.abs(h) % GROUP_PALETTE.length];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status config (kept for label lookups)
 // ─────────────────────────────────────────────────────────────────────────────
 const STATUS_OPTIONS_BASE = [
-  { value: "active",    dotClass: "bg-emerald-500", chipClass: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200" },
-  { value: "on_hold",   dotClass: "bg-amber-500",   chipClass: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200" },
-  { value: "completed", dotClass: "bg-slate-400",   chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" },
-  { value: "cancelled", dotClass: "bg-rose-500",    chipClass: "bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200" },
+  { value: "active",    dotClass: "bg-emerald-500", chipClass: "" },
+  { value: "on_hold",   dotClass: "bg-amber-400",   chipClass: "" },
+  { value: "completed", dotClass: "bg-slate-400",   chipClass: "" },
+  { value: "cancelled", dotClass: "bg-rose-500",    chipClass: "" },
 ];
 const STATUS_ORDER: Record<string, number> = { active: 0, on_hold: 1, completed: 2, cancelled: 3 };
 function statusLabelOf(value: string, t: any): string {
@@ -39,7 +66,7 @@ function getStatusCfg(s: string, t: any) {
   const base = STATUS_OPTIONS_BASE.find(o => o.value === s);
   return base
     ? { ...base, label: statusLabelOf(base.value, t) }
-    : { value: s, label: s, dotClass: "bg-slate-400", chipClass: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200" };
+    : { value: s, label: s, dotClass: "bg-slate-400", chipClass: "" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,7 +94,7 @@ function ResizeHandle({ col, cw, setColWidths }: { col: keyof ColWidths; cw: Col
   }
   return (
     <div className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center group/rh select-none z-10" onMouseDown={onMouseDown} title="Drag to resize">
-      <div className="w-px h-4 rounded-full bg-slate-200 group-hover/rh:bg-brand-400 transition-colors" />
+      <div className="w-px h-4 rounded-full bg-slate-300 group-hover/rh:bg-brand-400 transition-colors" />
     </div>
   );
 }
@@ -96,22 +123,24 @@ function cmpProjects(a: any, b: any, col: SortCol, dir: SortDir): number {
 
 function SortIcon({ col, ss }: { col: SortCol; ss: SortState }) {
   const cls = "w-3 h-3 flex-shrink-0";
-  if (ss.col !== col) return <ChevronsUpDown className={`${cls} text-slate-300 group-hover/hdr:text-slate-400 transition-colors`} />;
+  if (ss.col !== col) return <ChevronsUpDown className={`${cls} text-slate-400 group-hover/hdr:text-slate-600 transition-colors`} />;
   if (ss.dir === "asc")  return <ArrowUp   className={`${cls} text-brand-500`} />;
   return <ArrowDown className={`${cls} text-brand-500`} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline Status Chip + Popover  (overflow fixed by removing overflow-hidden from card)
+// Monday-style full-cell Status (replaces pill StatusChip)
 // ─────────────────────────────────────────────────────────────────────────────
-function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPopoverId }: {
+function MondayStatusCell({ projectId, status, onChangeStart, openPopoverId, setOpenPopoverId }: {
   projectId: number; status: string;
   onChangeStart: (id: number, s: string) => void;
   openPopoverId: number | null; setOpenPopoverId: (id: number | null) => void;
 }) {
   const { t } = useLanguage();
-  const cfg = getStatusCfg(status, t), isOpen = openPopoverId === projectId;
+  const cfg = getStatusCfg(status, t);
+  const isOpen = openPopoverId === projectId;
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!isOpen) return;
     function out(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpenPopoverId(null); }
@@ -119,25 +148,27 @@ function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPo
     return () => document.removeEventListener("mousedown", out);
   }, [isOpen, setOpenPopoverId]);
 
+  const bg   = MONDAY_STATUS_BG[status]   ?? "#C4C4C4";
+  const text = MONDAY_STATUS_TEXT[status] ?? "#ffffff";
+
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative h-full w-full" ref={ref}>
       <button
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border leading-none whitespace-nowrap transition-colors cursor-pointer ${cfg.chipClass}`}
+        className="w-full h-full flex items-center justify-center text-[11px] font-bold cursor-pointer transition-opacity hover:opacity-85 select-none"
+        style={{ backgroundColor: bg, color: text }}
         data-testid={`chip-status-${projectId}`}
         onClick={(e) => { e.stopPropagation(); setOpenPopoverId(isOpen ? null : projectId); }}
       >
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dotClass}`} />
         {cfg.label}
-        <ChevronDown className="w-2.5 h-2.5 ml-0.5 opacity-60" />
       </button>
       {isOpen && (
-        <div className="absolute z-[200] top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute z-[200] top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[148px]" onClick={(e) => e.stopPropagation()}>
           {STATUS_OPTIONS_BASE.map(opt => (
             <button key={opt.value} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left"
               data-testid={`status-option-${opt.value}`}
               onClick={(e) => { e.stopPropagation(); setOpenPopoverId(null); if (opt.value !== status) onChangeStart(projectId, opt.value); }}
             >
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dotClass}`} />
+              <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: MONDAY_STATUS_BG[opt.value] ?? "#C4C4C4" }} />
               <span className="flex-1 font-medium text-slate-700">{statusLabelOf(opt.value, t)}</span>
               {opt.value === status && <Check className="w-3.5 h-3.5 text-brand-600" />}
             </button>
@@ -149,7 +180,7 @@ function StatusChip({ projectId, status, onChangeStart, openPopoverId, setOpenPo
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact suggestion input (self-contained, compact h-7 variant)
+// Compact suggestion input
 // ─────────────────────────────────────────────────────────────────────────────
 function CompactSuggestion({ value, onChange, suggestions, placeholder, testId, className = "" }: {
   value: string; onChange: (v: string) => void; suggestions: string[];
@@ -192,7 +223,7 @@ function CompactSuggestion({ value, onChange, suggestions, placeholder, testId, 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline Editable Cell (with optional suggestion dropdown)
+// Inline Editable Cell
 // ─────────────────────────────────────────────────────────────────────────────
 type EditKey = { id: number; field: string } | null;
 
@@ -256,7 +287,7 @@ function EditableCell({ projectId, field, value, type = "text", editKey, setEdit
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timeline Cell (merged start + end with inline popover editor)
+// Timeline Cell
 // ─────────────────────────────────────────────────────────────────────────────
 function TimelineCell({ projectId, startDate, endDate, onTimelineSave }: {
   projectId: number; startDate: string | null | undefined; endDate: string | null | undefined;
@@ -329,13 +360,10 @@ function TimelineCell({ projectId, startDate, endDate, onTimelineSave }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Column header label
-// ─────────────────────────────────────────────────────────────────────────────
-const CH = "text-[10px] font-bold text-slate-400 uppercase tracking-widest";
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Sortable column header cell
 // ─────────────────────────────────────────────────────────────────────────────
+const CH = "text-[10px] font-bold text-slate-500 uppercase tracking-widest";
+
 function SortableHeader({ label, col, ss, onSort, cw, cwKey, setColWidths, className = "" }: {
   label: string; col: SortCol; ss: SortState; onSort: (c: SortCol) => void;
   cw: ColWidths; cwKey: keyof ColWidths; setColWidths: React.Dispatch<React.SetStateAction<ColWidths>>;
@@ -343,7 +371,7 @@ function SortableHeader({ label, col, ss, onSort, cw, cwKey, setColWidths, class
 }) {
   return (
     <div
-      className={`relative flex-shrink-0 flex items-center gap-1 cursor-pointer group/hdr select-none pr-3 ${className}`}
+      className={`relative flex-shrink-0 flex items-center gap-1 cursor-pointer group/hdr select-none pr-3 border-r border-slate-200 last:border-r-0 ${className}`}
       style={{ width: cw[cwKey] }}
       onClick={() => onSort(col)}
     >
@@ -355,11 +383,12 @@ function SortableHeader({ label, col, ss, onSort, cw, cwKey, setColWidths, class
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline Add-Project Row
+// Inline Add-Project Row (Monday style)
 // ─────────────────────────────────────────────────────────────────────────────
-function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggestions, locationSuggestions }: {
+function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggestions, locationSuggestions, accentColor }: {
   defaultCustomer: string; onCreate: (data: any) => void; onClose: () => void;
   cw: ColWidths; customerSuggestions: string[]; locationSuggestions: string[];
+  accentColor: string;
 }) {
   const { t } = useLanguage();
   const [name, setName]     = useState("");
@@ -381,36 +410,49 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
   const inputCls = "h-7 text-sm px-2 bg-white border border-slate-200 rounded focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-200 w-full";
 
   return (
-    <div className="flex items-center px-4 py-2 gap-2 bg-brand-50/40 border-t border-brand-100" onClick={e => e.stopPropagation()}>
-      <div className="flex-shrink-0 hidden lg:block" style={{ width: cw.po }}>
-        <input className={inputCls} placeholder={t.projAddRowPoPh} value={po} onChange={e => setPo(e.target.value)} onKeyDown={kd} data-testid="add-row-po" />
-      </div>
-      <div className="flex-shrink-0 min-w-0" style={{ width: cw.name }}>
-        <input ref={nameRef} className={inputCls} placeholder={t.projAddRowNamePh} value={name} onChange={e => setName(e.target.value)} onKeyDown={kd} data-testid="add-row-name" />
-      </div>
-      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.customer }}>
-        <CompactSuggestion value={cust} onChange={setCust} suggestions={customerSuggestions} placeholder={t.projAddRowCustomerPh} testId="add-row-customer" className="h-7" />
-      </div>
-      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
-        <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder={t.projAddRowLocationPh} testId="add-row-location" className="h-7" />
-      </div>
-      <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.timeline }} />
-      <div className="flex-shrink-0" style={{ width: cw.status }}>
-        <select className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
-          value={stat} onChange={e => setStat(e.target.value)} data-testid="add-row-status">
-          {STATUS_OPTIONS_BASE.map(o => <option key={o.value} value={o.value}>{statusLabelOf(o.value, t)}</option>)}
-        </select>
-      </div>
-      <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 88 }}>
-        <button className="h-7 px-2.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold disabled:opacity-40 transition-colors" disabled={!name.trim()} onClick={submit} data-testid="add-row-save">{t.projAddRowAddBtn}</button>
-        <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 transition-colors" onClick={onClose} data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
+    <div
+      className="flex items-center py-1.5 gap-0 bg-[#F0F8FF] border-t border-slate-200"
+      style={{ borderLeft: `4px solid ${accentColor}` }}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* chevron spacer */}
+      <div className="w-8 flex-shrink-0" />
+
+      <div className="flex items-center gap-2 flex-1 px-2">
+        <div className="flex-shrink-0 hidden lg:block" style={{ width: cw.po }}>
+          <input className={inputCls} placeholder={t.projAddRowPoPh} value={po} onChange={e => setPo(e.target.value)} onKeyDown={kd} data-testid="add-row-po" />
+        </div>
+        <div className="flex-shrink-0 min-w-0" style={{ width: cw.name }}>
+          <input ref={nameRef} className={inputCls} placeholder={t.projAddRowNamePh} value={name} onChange={e => setName(e.target.value)} onKeyDown={kd} data-testid="add-row-name" />
+        </div>
+        <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.customer }}>
+          <CompactSuggestion value={cust} onChange={setCust} suggestions={customerSuggestions} placeholder={t.projAddRowCustomerPh} testId="add-row-customer" className="h-7" />
+        </div>
+        <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.location }}>
+          <CompactSuggestion value={loc} onChange={setLoc} suggestions={locationSuggestions} placeholder={t.projAddRowLocationPh} testId="add-row-location" className="h-7" />
+        </div>
+        <div className="flex-shrink-0 hidden xl:block" style={{ width: cw.timeline }} />
+        <div className="flex-shrink-0" style={{ width: cw.status }}>
+          <select className="h-7 text-[11px] font-bold rounded border border-slate-200 bg-white px-2 w-full focus:outline-none focus:border-brand-400"
+            value={stat} onChange={e => setStat(e.target.value)} data-testid="add-row-status">
+            {STATUS_OPTIONS_BASE.map(o => <option key={o.value} value={o.value}>{statusLabelOf(o.value, t)}</option>)}
+          </select>
+        </div>
+        <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 88 }}>
+          <button type="button" onClick={submit} disabled={!name.trim()}
+            className="h-7 px-3 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-semibold rounded transition-colors"
+            data-testid="add-row-save">{t.projAddRowSaveBtn}</button>
+          <button type="button" onClick={onClose}
+            className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 transition-colors"
+            data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer Group Section
+// Customer Group Section (Monday flat-table style)
 // ─────────────────────────────────────────────────────────────────────────────
 function CustomerGroup({
   customerName, projects, collapsed, onToggle,
@@ -438,58 +480,73 @@ function CustomerGroup({
   const { t } = useLanguage();
   const isNoCustomer = customerName === "__none__";
   const [showAdd, setShowAdd] = useState(false);
-
-  useEffect(() => { if (autoOpenAdd) setShowAdd(true); }, [autoOpenAdd]);
+  const color = groupAccentColor(customerName);
 
   const isMondaySynced = projects.some((p: any) => p.source === "monday");
+
+  useEffect(() => { if (autoOpenAdd) setShowAdd(true); }, [autoOpenAdd]);
 
   function handleCreate(data: any) { onCreate(data); setShowAdd(false); onAutoAddClosed?.(); }
   function handleClose()           { setShowAdd(false); onAutoAddClosed?.(); }
 
   return (
-    // overflow-hidden removed so status dropdown can escape the card boundary
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div>
+      {/* Group header row */}
       <button
-        className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50/80 hover:bg-slate-100/60 transition-colors border-b border-slate-100 text-left rounded-t-xl"
+        className="w-full flex items-center h-10 bg-[#F5F6F8] hover:bg-[#EEF0F3] transition-colors border-b border-slate-200 text-left select-none"
+        style={{ borderLeft: `4px solid ${color}` }}
         onClick={onToggle}
         data-testid={`group-header-${customerName}`}
       >
-        <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-        <span className="font-semibold text-sm text-slate-700 flex-1 truncate">{isNoCustomer ? t.projNoCustomer : customerName}</span>
-        {isMondaySynced && (
-          <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full shrink-0">Synced from Monday</span>
-        )}
-        <span className="text-[11px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full">{projects.length}</span>
-        {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />}
+        {/* chevron */}
+        <div className="w-8 flex items-center justify-center flex-shrink-0">
+          {collapsed
+            ? <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            : <ChevronDown  className="w-3.5 h-3.5 text-slate-500" />}
+        </div>
+
+        {/* color dot + name */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 pr-3">
+          <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+          <span className="font-semibold text-[13px] text-slate-800 truncate">
+            {isNoCustomer ? t.projNoCustomer : customerName}
+          </span>
+          {isMondaySynced && (
+            <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full shrink-0 ml-1">
+              Synced from Monday
+            </span>
+          )}
+        </div>
+
+        {/* count badge */}
+        <span className="mr-4 text-[11px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full flex-shrink-0">
+          {projects.length}
+        </span>
       </button>
 
+      {/* Project rows */}
       {!collapsed && (
         <>
-          {/* Column headers */}
-          <div className="hidden md:flex items-center px-4 py-2 border-b border-slate-100 bg-white/60 select-none">
-            <SortableHeader label={t.projColPo}       col="po"       ss={ss} onSort={onSort} cw={cw} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
-            <SortableHeader label={t.projColName}     col="name"     ss={ss} onSort={onSort} cw={cw} cwKey="name"     setColWidths={setColWidths} />
-            <SortableHeader label={t.projColCustomer} col="customer" ss={ss} onSort={onSort} cw={cw} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label={t.projColLocation} col="location" ss={ss} onSort={onSort} cw={cw} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label={t.projColTimeline} col="timeline" ss={ss} onSort={onSort} cw={cw} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
-            <SortableHeader label={t.projColStatus}   col="status"   ss={ss} onSort={onSort} cw={cw} cwKey="status"   setColWidths={setColWidths} />
-            <div className="flex-shrink-0" style={{ width: 88 }} />
-          </div>
+          {projects.map(project => (
+            <div
+              key={project.id}
+              className="flex items-stretch border-b border-slate-100 hover:bg-[#E8F5FF] group/row transition-colors"
+              style={{ borderLeft: `4px solid ${color}20` }}
+              data-testid={`row-project-${project.id}`}
+            >
+              {/* chevron spacer */}
+              <div className="w-8 flex-shrink-0" />
 
-          {/* Project rows */}
-          <div className="divide-y divide-slate-50">
-            {projects.map(project => (
-              <div key={project.id} className="flex items-center px-4 py-2.5 hover:bg-slate-50/50 transition-colors group" data-testid={`row-project-${project.id}`}>
+              {/* PO / Code */}
+              <div className="flex-shrink-0 hidden lg:flex items-center pr-2 py-2" style={{ width: cw.po }}>
+                <EditableCell projectId={project.id} field="poNumber" value={project.poNumber} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} />
+              </div>
 
-                {/* PO / Code */}
-                <div className="flex-shrink-0 pr-2 hidden lg:block" style={{ width: cw.po }}>
-                  <EditableCell projectId={project.id} field="poNumber" value={project.poNumber} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} />
-                </div>
-
-                {/* Project Name */}
-                <div className="flex-shrink-0 min-w-0 pr-2" style={{ width: cw.name }}>
+              {/* Project Name */}
+              <div className="flex-shrink-0 min-w-0 flex items-center pr-2 py-2" style={{ width: cw.name }}>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700 min-w-0 flex-1" />
+                    <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 min-w-0 flex-1" />
                     {(project as any).mondayItemId && (
                       <a
                         href={
@@ -511,63 +568,83 @@ function CustomerGroup({
                     )}
                   </div>
                   <EditableCell projectId={project.id} field="ownerName" value={project.ownerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} valueClassName="text-[11px] text-slate-400" className="mt-0.5" />
-                  <div className="flex items-center gap-2 mt-1.5 md:hidden">
-                    <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
+                  {/* Mobile status */}
+                  <div className="flex items-center gap-2 mt-1 md:hidden">
+                    <MondayStatusCell projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
                   </div>
-                </div>
-
-                {/* Customer */}
-                <div className="flex-shrink-0 pr-2 hidden xl:block" style={{ width: cw.customer }}>
-                  <EditableCell projectId={project.id} field="customerName" value={project.customerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={customerSuggestions} />
-                </div>
-
-                {/* Location */}
-                <div className="flex-shrink-0 pr-2 hidden xl:flex items-center gap-1" style={{ width: cw.location }}>
-                  {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0" /> : null}
-                  <div className="flex-1 min-w-0">
-                    <EditableCell projectId={project.id} field="jobLocation" value={project.jobLocation} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={locationSuggestions} />
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="flex-shrink-0 pr-2 hidden xl:block" style={{ width: cw.timeline }}>
-                  <TimelineCell projectId={project.id} startDate={project.startDate} endDate={project.endDate} onTimelineSave={onTimelineSave} />
-                </div>
-
-                {/* Status */}
-                <div className="flex-shrink-0 hidden md:flex pr-2" style={{ width: cw.status }} onClick={e => e.stopPropagation()}>
-                  <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
-                </div>
-
-                {/* Actions: Delete + Open */}
-                <div className="flex-shrink-0 flex items-center justify-end gap-0.5" style={{ width: 88 }}>
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); onDelete(project.id); }}
-                    data-testid={`btn-delete-project-${project.id}`}
-                    className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-opacity"
-                    title={t.projDeleteProjectTooltip}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
-                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors" data-testid={`link-open-project-${project.id}`}>
-                      {t.projOpen} <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
-                  </Link>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Customer */}
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2" style={{ width: cw.customer }}>
+                <EditableCell projectId={project.id} field="customerName" value={project.customerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={customerSuggestions} />
+              </div>
+
+              {/* Location */}
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2 gap-1" style={{ width: cw.location }}>
+                {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0" /> : null}
+                <div className="flex-1 min-w-0">
+                  <EditableCell projectId={project.id} field="jobLocation" value={project.jobLocation} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} suggestions={locationSuggestions} />
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2" style={{ width: cw.timeline }}>
+                <TimelineCell projectId={project.id} startDate={project.startDate} endDate={project.endDate} onTimelineSave={onTimelineSave} />
+              </div>
+
+              {/* Status — self-stretch for full-height colored cell */}
+              <div
+                className="flex-shrink-0 self-stretch hidden md:flex"
+                style={{ width: cw.status }}
+                onClick={e => e.stopPropagation()}
+              >
+                <MondayStatusCell projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
+              </div>
+
+              {/* Actions */}
+              <div className="flex-shrink-0 flex items-center justify-end gap-0.5 px-2" style={{ width: 88 }}>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); onDelete(project.id); }}
+                  data-testid={`btn-delete-project-${project.id}`}
+                  className="opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                  title={t.projDeleteProjectTooltip}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+                <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors" data-testid={`link-open-project-${project.id}`}>
+                    {t.projOpen} <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ))}
 
           {/* Add row — hidden for Monday-synced groups */}
           {!isMondaySynced && (
             showAdd ? (
-              <AddProjectRow defaultCustomer={isNoCustomer ? "" : customerName} onCreate={handleCreate} onClose={handleClose} cw={cw} customerSuggestions={customerSuggestions} locationSuggestions={locationSuggestions} />
+              <AddProjectRow
+                defaultCustomer={isNoCustomer ? "" : customerName}
+                onCreate={handleCreate}
+                onClose={handleClose}
+                cw={cw}
+                customerSuggestions={customerSuggestions}
+                locationSuggestions={locationSuggestions}
+                accentColor={color}
+              />
             ) : (
-              <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 rounded-b-xl"
-                onClick={() => setShowAdd(true)} data-testid={`btn-add-project-${customerName}`}>
-                <Plus className="w-3.5 h-3.5" /><span className="font-medium">{t.projAddProject}</span>
+              <button
+                className="w-full flex items-center gap-1.5 h-9 text-sm text-slate-400 hover:text-[#0073EA] hover:bg-[#E8F5FF] transition-colors border-b border-slate-100"
+                style={{ borderLeft: `4px solid ${color}20` }}
+                onClick={() => setShowAdd(true)}
+                data-testid={`btn-add-project-${customerName}`}
+              >
+                <div className="w-8 flex items-center justify-center">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-medium text-[13px]">{t.projAddProject}</span>
               </button>
             )
           )}
@@ -618,7 +695,6 @@ export default function Projects() {
   const customerSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.customerName).filter(Boolean))] as string[], [allProjects]);
   const locationSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.jobLocation).filter(Boolean))] as string[], [allProjects]);
 
-  // Filter — archived projects hidden by default
   const filtered = useMemo(() => allProjects.filter((p: any) => {
     if (!showArchived && p.archived) return false;
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
@@ -627,20 +703,17 @@ export default function Projects() {
     return matchStatus && (p.name?.toLowerCase().includes(q) || p.customerName?.toLowerCase().includes(q) || p.ownerName?.toLowerCase().includes(q) || p.jobLocation?.toLowerCase().includes(q) || p.poNumber?.toLowerCase().includes(q) || p.status?.toLowerCase().includes(q));
   }), [allProjects, statusFilter, search, showArchived]);
 
-  // Sort
   const sorted = useMemo(() => {
     if (!sortState.col || !sortState.dir) return filtered;
     return [...filtered].sort((a, b) => cmpProjects(a, b, sortState.col!, sortState.dir));
   }, [filtered, sortState]);
 
-  // Group
   const groups = useMemo(() => {
     const map = new Map<string, any[]>();
     sorted.forEach((p: any) => { const k = p.customerName?.trim() || "__none__"; if (!map.has(k)) map.set(k, []); map.get(k)!.push(p); });
     return [...map.entries()].sort(([a], [b]) => { if (a === "__none__") return 1; if (b === "__none__") return -1; return a.localeCompare(b); });
   }, [sorted]);
 
-  // Inject new customer group if needed
   const groupsWithNew = useMemo(() => {
     if (!newCustomerForAdd) return groups;
     if (groups.some(([k]) => k === newCustomerForAdd)) return groups;
@@ -671,11 +744,11 @@ export default function Projects() {
     toast({ variant: "destructive", title: t.projSaveFailed, description: msg });
   }, [toast, t]);
 
-  const handleStatusChange  = useCallback((id: number, s: string)                              => { updateMutation.mutate({ id, status: s },                    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
-  const handleFieldSave     = useCallback((id: number, field: string, val: string | null)      => { updateMutation.mutate({ id, [field]: val },                 { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
-  const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)    => { updateMutation.mutate({ id, startDate: s, endDate: e },    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
-  const handleCreate        = useCallback((data: any)                                           => { createMutation.mutate(data); },                                [createMutation]);
-  const handleDelete        = useCallback((id: number)                                          => { setDeleteConfirmId(id); },                                     []);
+  const handleStatusChange  = useCallback((id: number, s: string)                            => { updateMutation.mutate({ id, status: s },                    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
+  const handleFieldSave     = useCallback((id: number, field: string, val: string | null)    => { updateMutation.mutate({ id, [field]: val },                 { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
+  const handleTimelineSave  = useCallback((id: number, s: string | null, e: string | null)  => { updateMutation.mutate({ id, startDate: s, endDate: e },    { onError: onUpdateError }); }, [updateMutation, onUpdateError]);
+  const handleCreate        = useCallback((data: any)                                         => { createMutation.mutate(data); },                              [createMutation]);
+  const handleDelete        = useCallback((id: number)                                        => { setDeleteConfirmId(id); },                                   []);
   const confirmDelete       = useCallback(() => {
     if (deleteConfirmId == null) return;
     deleteMutation.mutate(deleteConfirmId, {
@@ -695,6 +768,21 @@ export default function Projects() {
     setNewCustInput("");
     setNewCustDialog(false);
   }
+
+  // Global column header row (shared across all groups)
+  const ColumnHeaderRow = (
+    <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none">
+      {/* left accent + chevron spacer */}
+      <div className="w-[calc(4px+32px)] flex-shrink-0" />
+      <SortableHeader label={t.projColPo}       col="po"       ss={sortState} onSort={handleSort} cw={colWidths} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
+      <SortableHeader label={t.projColName}     col="name"     ss={sortState} onSort={handleSort} cw={colWidths} cwKey="name"     setColWidths={setColWidths} />
+      <SortableHeader label={t.projColCustomer} col="customer" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
+      <SortableHeader label={t.projColLocation} col="location" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
+      <SortableHeader label={t.projColTimeline} col="timeline" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
+      <SortableHeader label={t.projColStatus}   col="status"   ss={sortState} onSort={handleSort} cw={colWidths} cwKey="status"   setColWidths={setColWidths} />
+      <div className="flex-shrink-0" style={{ width: 88 }} />
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -755,39 +843,49 @@ export default function Projects() {
         </div>
       )}
 
-      {/* Board */}
+      {/* Board — Monday flat table */}
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+          {/* Skeleton header */}
+          <div className="h-8 bg-[#F5F6F8] border-b border-slate-200" />
           {[1, 2].map(g => (
-            <div key={g} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center gap-3">
+            <div key={g}>
+              <div className="h-10 bg-[#F5F6F8] border-b border-slate-200 flex items-center px-4 gap-3">
                 <div className="h-3 w-32 bg-slate-200 rounded animate-pulse" />
                 <div className="h-3 w-6 bg-slate-200 rounded-full animate-pulse" />
               </div>
               {[1, 2, 3].map(r => (
-                <div key={r} className="px-4 py-3 border-b border-slate-50 flex items-center gap-4">
+                <div key={r} className="h-10 border-b border-slate-100 flex items-center px-4 gap-4">
                   <div className="h-4 flex-1 bg-slate-100 rounded animate-pulse" />
-                  <div className="h-5 w-20 bg-slate-100 rounded-md animate-pulse hidden md:block" />
+                  <div className="h-full w-[128px] bg-slate-100 animate-pulse" />
                 </div>
               ))}
             </div>
           ))}
         </div>
       ) : filtered.length === 0 && !newCustomerForAdd ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4"><Briefcase className="w-7 h-7 text-slate-400" /></div>
-          <p className="font-semibold text-slate-900">{t.projNoneFound}</p>
-          {search
-            ? <p className="text-sm text-slate-500 mt-1">{t.projNoResultsFor} "<span className="font-medium">{search}</span>" — {t.projTryDifferentTerms}</p>
-            : statusFilter !== "all"
-              ? <p className="text-sm text-slate-500 mt-1">{t.projNoMatchStatus}</p>
-              : <p className="text-sm text-slate-500 mt-1">{t.projAppearGrouped}</p>}
-          {(search || statusFilter !== "all") && (
-            <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>{t.projClearFiltersBtn}</button>
-          )}
+        /* Empty state — Monday style */
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+          {ColumnHeaderRow}
+          <div className="p-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-7 h-7 text-slate-400" />
+            </div>
+            <p className="font-semibold text-slate-900">{t.projNoneFound}</p>
+            {search
+              ? <p className="text-sm text-slate-500 mt-1">{t.projNoResultsFor} "<span className="font-medium">{search}</span>" — {t.projTryDifferentTerms}</p>
+              : statusFilter !== "all"
+                ? <p className="text-sm text-slate-500 mt-1">{t.projNoMatchStatus}</p>
+                : <p className="text-sm text-slate-500 mt-1">{t.projAppearGrouped}</p>}
+            {(search || statusFilter !== "all") && (
+              <button className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors" onClick={() => { setSearch(""); setStatusFilter("all"); }}>{t.projClearFiltersBtn}</button>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        /* Main board — single flat container */
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+          {ColumnHeaderRow}
           {groupsWithNew.map(([customerKey, groupProjects]) => (
             <CustomerGroup
               key={customerKey}

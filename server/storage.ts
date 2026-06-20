@@ -3976,9 +3976,14 @@ export async function runItemGroupsMigration(): Promise<void> {
 export async function runMondayMigration(): Promise<void> {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS app_settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT
+      key        TEXT PRIMARY KEY,
+      value      TEXT,
+      updated_at TIMESTAMP DEFAULT NOW()
     )
+  `);
+  // Idempotently add updated_at to existing tables that were created without it
+  await db.execute(sql`
+    ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
   `);
   await db.execute(sql`
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_item_id TEXT

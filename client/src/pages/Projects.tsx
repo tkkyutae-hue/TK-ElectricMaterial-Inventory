@@ -771,7 +771,7 @@ export default function Projects() {
 
   // Global column header row (shared across all groups)
   const ColumnHeaderRow = (
-    <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none">
+    <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none rounded-tl-xl rounded-tr-xl">
       {/* left accent + chevron spacer */}
       <div className="w-[calc(4px+32px)] flex-shrink-0" />
       <SortableHeader label={t.projColPo}       col="po"       ss={sortState} onSort={handleSort} cw={colWidths} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
@@ -845,9 +845,9 @@ export default function Projects() {
 
       {/* Board — Monday flat table */}
       {isLoading ? (
-        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+        <div className="border border-slate-200 rounded-xl bg-white">
           {/* Skeleton header */}
-          <div className="h-8 bg-[#F5F6F8] border-b border-slate-200" />
+          <div className="h-8 bg-[#F5F6F8] border-b border-slate-200 rounded-tl-xl rounded-tr-xl" />
           {[1, 2].map(g => (
             <div key={g}>
               <div className="h-10 bg-[#F5F6F8] border-b border-slate-200 flex items-center px-4 gap-3">
@@ -865,7 +865,7 @@ export default function Projects() {
         </div>
       ) : filtered.length === 0 && !newCustomerForAdd ? (
         /* Empty state — Monday style */
-        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+        <div className="border border-slate-200 rounded-xl bg-white">
           {ColumnHeaderRow}
           <div className="p-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
@@ -884,7 +884,7 @@ export default function Projects() {
         </div>
       ) : (
         /* Main board — single flat container */
-        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+        <div className="border border-slate-200 rounded-xl bg-white">
           {ColumnHeaderRow}
           {groupsWithNew.map(([customerKey, groupProjects]) => (
             <CustomerGroup

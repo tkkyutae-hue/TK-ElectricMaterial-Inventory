@@ -441,7 +441,7 @@ function AddProjectRow({ defaultCustomer, onCreate, onClose, cw, customerSuggest
         <div className="flex-shrink-0 flex items-center gap-1 justify-end" style={{ width: 88 }}>
           <button type="button" onClick={submit} disabled={!name.trim()}
             className="h-7 px-3 text-xs bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-semibold rounded transition-colors"
-            data-testid="add-row-save">{t.projAddRowSaveBtn}</button>
+            data-testid="add-row-save">{t.projAddRowAddBtn}</button>
           <button type="button" onClick={onClose}
             className="h-7 w-7 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100 transition-colors"
             data-testid="add-row-cancel"><X className="w-3.5 h-3.5" /></button>
@@ -534,43 +534,46 @@ function CustomerGroup({
               style={{ borderLeft: `4px solid ${color}20` }}
               data-testid={`row-project-${project.id}`}
             >
-              {/* chevron spacer */}
-              <div className="w-8 flex-shrink-0" />
+              {/* Sticky name group: chevron spacer + PO + Name */}
+              <div className="sticky left-0 z-10 flex items-stretch bg-white group-hover/row:bg-[#E8F5FF] transition-colors">
+                {/* chevron spacer */}
+                <div className="w-8 flex-shrink-0 flex items-center" />
 
-              {/* PO / Code */}
-              <div className="flex-shrink-0 hidden lg:flex items-center pr-2 py-2" style={{ width: cw.po }}>
-                <EditableCell projectId={project.id} field="poNumber" value={project.poNumber} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} />
-              </div>
+                {/* PO / Code */}
+                <div className="flex-shrink-0 hidden lg:flex items-center pr-2 py-2" style={{ width: cw.po }}>
+                  <EditableCell projectId={project.id} field="poNumber" value={project.poNumber} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} />
+                </div>
 
-              {/* Project Name */}
-              <div className="flex-shrink-0 min-w-0 flex items-center pr-2 py-2" style={{ width: cw.name }}>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 min-w-0 flex-1" />
-                    {(project as any).mondayItemId && (
-                      <a
-                        href={
-                          (project as any).mondayUrl ||
-                          (mondayBoardId
-                            ? `https://monday.com/boards/${mondayBoardId}/pulses/${(project as any).mondayItemId}`
-                            : `https://monday.com`)
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        title={`Monday.com Item에서 동기화됨${(project as any).mondayGroupTitle ? ` — ${(project as any).mondayGroupTitle}` : ""} — 클릭하여 열기`}
-                        className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors"
-                        data-testid={`badge-monday-${project.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-2.5 h-2.5" />
-                        Mon
-                      </a>
-                    )}
-                  </div>
-                  <EditableCell projectId={project.id} field="ownerName" value={project.ownerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} valueClassName="text-[11px] text-slate-400" className="mt-0.5" />
-                  {/* Mobile status */}
-                  <div className="flex items-center gap-2 mt-1 md:hidden">
-                    <MondayStatusCell projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
+                {/* Project Name */}
+                <div className="flex-shrink-0 min-w-0 flex items-center pr-2 py-2" style={{ width: cw.name }}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 min-w-0 flex-1" />
+                      {(project as any).mondayItemId && (
+                        <a
+                          href={
+                            (project as any).mondayUrl ||
+                            (mondayBoardId
+                              ? `https://monday.com/boards/${mondayBoardId}/pulses/${(project as any).mondayItemId}`
+                              : `https://monday.com`)
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Monday.com Item에서 동기화됨${(project as any).mondayGroupTitle ? ` — ${(project as any).mondayGroupTitle}` : ""} — 클릭하여 열기`}
+                          className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors"
+                          data-testid={`badge-monday-${project.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-2.5 h-2.5" />
+                          Mon
+                        </a>
+                      )}
+                    </div>
+                    <EditableCell projectId={project.id} field="ownerName" value={project.ownerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} valueClassName="text-[11px] text-slate-400" className="mt-0.5" />
+                    {/* Mobile status */}
+                    <div className="flex items-center gap-2 mt-1 md:hidden">
+                      <MondayStatusCell projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -772,10 +775,13 @@ export default function Projects() {
   // Global column header row (shared across all groups)
   const ColumnHeaderRow = (
     <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none rounded-tl-xl rounded-tr-xl">
-      {/* left accent + chevron spacer */}
-      <div className="w-[calc(4px+32px)] flex-shrink-0" />
-      <SortableHeader label={t.projColPo}       col="po"       ss={sortState} onSort={handleSort} cw={colWidths} cwKey="po"       setColWidths={setColWidths} className="hidden lg:flex" />
-      <SortableHeader label={t.projColName}     col="name"     ss={sortState} onSort={handleSort} cw={colWidths} cwKey="name"     setColWidths={setColWidths} />
+      {/* Sticky name group: chevron spacer + PO + Name */}
+      <div className="sticky left-0 z-20 flex items-center h-8 bg-[#F5F6F8]">
+        <div className="w-[calc(4px+32px)] flex-shrink-0" />
+        <SortableHeader label={t.projColPo}   col="po"   ss={sortState} onSort={handleSort} cw={colWidths} cwKey="po"   setColWidths={setColWidths} className="hidden lg:flex" />
+        <SortableHeader label={t.projColName} col="name" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="name" setColWidths={setColWidths} />
+      </div>
+      {/* Non-sticky columns */}
       <SortableHeader label={t.projColCustomer} col="customer" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="customer" setColWidths={setColWidths} className="hidden xl:flex" />
       <SortableHeader label={t.projColLocation} col="location" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
       <SortableHeader label={t.projColTimeline} col="timeline" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />

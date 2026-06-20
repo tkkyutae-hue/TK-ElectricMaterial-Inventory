@@ -96,11 +96,12 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
   return data.items?.[0] ?? null;
 }
 
-// Registers webhooks for all relevant event types.
-// Returns array of {id, event} for all created webhooks.
+// Registers webhooks for all required event types.
+// Throws if any required event fails — callers should not mark connection active on partial success.
 export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
   const events = ["create_pulse", "delete_pulse", "change_column_value", "update_name"] as const;
   const results: Array<{ id: string; event: string }> = [];
+  const failed: string[] = [];
 
   for (const event of events) {
     try {
@@ -112,11 +113,21 @@ export async function registerWebhooks(boardId: string, webhookUrl: string): Pro
         }
       `, { boardId, url: webhookUrl, event });
       const id = data.create_webhook?.id;
-      if (id) results.push({ id, event });
+      if (id) {
+        results.push({ id, event });
+      } else {
+        failed.push(event);
+      }
     } catch (err: any) {
-      // Log but don't fail entire registration if one event type fails
       console.warn(`[monday] webhook registration for ${event} failed:`, err.message);
+      failed.push(event);
     }
+  }
+
+  if (failed.length > 0) {
+    // Clean up any partially-registered webhooks before throwing
+    await deleteWebhooks(results.map(r => r.id));
+    throw new Error(`Monday.com Webhook 등록 실패 (이벤트: ${failed.join(", ")}). API 토큰 권한을 확인하세요.`);
   }
 
   return results;
@@ -179,11 +190,12 @@ export function mapMondayItemToProject(item: MondayItem): {
       if (text) statusText = text;
     } else if (type === "multiple-person" || type === "person" || id.includes("person") || id.includes("owner") || id.includes("assign")) {
       if (text) ownerName = text;
-    } else if (type === "date" || id === "date") {
-      if (!id.includes("end") && !id.includes("due") && text) startDate = text;
     } else if (id.includes("start")) {
       if (text) startDate = text;
     } else if (id.includes("end") || id.includes("due") || id.includes("deadline")) {
+      if (text) endDate = text;
+    } else if (type === "date" || id === "date") {
+      // Generic date column with no start/end hint → treat as deadline (endDate)
       if (text) endDate = text;
     } else if (type === "timeline") {
       try {

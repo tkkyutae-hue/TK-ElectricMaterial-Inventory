@@ -4504,14 +4504,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.setAppSetting("monday_webhook_secret", webhookSecret);
 
       // Register webhooks — URL includes secret token for request verification
+      // registerWebhooks throws if ANY required event fails (all-or-nothing)
       const webhookUrl = `${webhookBaseUrl}/api/webhooks/monday?secret=${webhookSecret}`;
-      const webhookEntries = await registerWebhooks(boardId, webhookUrl);
-      if (webhookEntries.length === 0) {
-        // Clean up saved settings so we don't record a broken connection
+      let webhookEntries: Array<{ id: string; event: string }>;
+      try {
+        webhookEntries = await registerWebhooks(boardId, webhookUrl);
+      } catch (webhookErr: any) {
+        // Roll back saved board settings so connection is not recorded as active
         await storage.setAppSetting("monday_board_id", null);
         await storage.setAppSetting("monday_board_name", null);
         await storage.setAppSetting("monday_webhook_secret", null);
-        return res.status(502).json({ message: "Monday.com webhook 등록 실패: 등록된 이벤트가 없습니다. API 토큰 권한 또는 보드 설정을 확인하세요." });
+        return res.status(502).json({ message: webhookErr.message });
       }
       await storage.setAppSetting("monday_webhook_ids", JSON.stringify(webhookEntries));
 

@@ -3973,6 +3973,23 @@ export async function runItemGroupsMigration(): Promise<void> {
   await db.execute(sql`ALTER TABLE item_groups ADD COLUMN IF NOT EXISTS manufacturer_name TEXT`);
 }
 
+export async function runMondayMigration(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
+  await db.execute(sql`
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_item_id TEXT
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS projects_monday_item_id_idx
+    ON projects (monday_item_id)
+    WHERE monday_item_id IS NOT NULL
+  `);
+}
+
 export async function backfillSizeSortValues(): Promise<void> {
   const rows = await db
     .select({ id: items.id, sizeLabel: items.sizeLabel })

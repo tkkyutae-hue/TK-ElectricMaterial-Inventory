@@ -4627,7 +4627,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (fullItem) {
           await storage.upsertProjectByMondayId(pulseId, mapMondayItemToProject(fullItem));
         }
-      } else if (type === "update_name" && pulseId) {
+      } else if ((type === "change_name" || type === "update_name") && pulseId) {
         // Re-fetch full item to get updated name + all other fields
         const fullItem = await fetchSingleItem(pulseId).catch(() => null);
         if (fullItem) {

@@ -99,19 +99,21 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
 // Registers webhooks for all required event types.
 // Throws if any required event fails — callers should not mark connection active on partial success.
 export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
-  const events = ["create_pulse", "delete_pulse", "change_column_value", "update_name"] as const;
+  const events = ["create_pulse", "delete_pulse", "change_column_value", "change_name"] as const;
   const results: Array<{ id: string; event: string }> = [];
   const failed: string[] = [];
 
   for (const event of events) {
     try {
+      // Monday.com's API requires enum values to be inlined in the query string,
+      // not passed as typed variables (WebhookEventType is not accepted as a variable type)
       const data = await mondayGraphQL(`
-        mutation($boardId: ID!, $url: String!, $event: WebhookEventType!) {
-          create_webhook(board_id: $boardId, url: $url, event: $event) {
+        mutation($boardId: ID!, $url: String!) {
+          create_webhook(board_id: $boardId, url: $url, event: ${event}) {
             id
           }
         }
-      `, { boardId, url: webhookUrl, event });
+      `, { boardId, url: webhookUrl });
       const id = data.create_webhook?.id;
       if (id) {
         results.push({ id, event });

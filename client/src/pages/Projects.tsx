@@ -418,6 +418,7 @@ function CustomerGroup({
   cw, setColWidths, ss, onSort,
   customerSuggestions, locationSuggestions,
   autoOpenAdd, onAutoAddClosed,
+  mondayBoardId,
 }: {
   customerName: string; projects: any[]; collapsed: boolean; onToggle: () => void;
   openPopoverId: number | null; setOpenPopoverId: (id: number | null) => void;
@@ -431,6 +432,7 @@ function CustomerGroup({
   ss: SortState; onSort: (c: SortCol) => void;
   customerSuggestions: string[]; locationSuggestions: string[];
   autoOpenAdd?: boolean; onAutoAddClosed?: () => void;
+  mondayBoardId: string | null;
 }) {
   const { t } = useLanguage();
   const isNoCustomer = customerName === "__none__";
@@ -787,6 +789,7 @@ export default function Projects() {
               locationSuggestions={locationSuggestions}
               autoOpenAdd={newCustomerForAdd === customerKey}
               onAutoAddClosed={() => setNewCustomerForAdd(null)}
+              mondayBoardId={mondayBoardId}
             />
           ))}
         </div>

@@ -253,11 +253,17 @@ export interface IStorage {
   upsertProjectByMondayId(mondayItemId: string, data: {
     name: string;
     status: string;
+    code?: string | null;
     ownerName?: string | null;
     startDate?: string | null;
     endDate?: string | null;
     jobLocation?: string | null;
     notes?: string | null;
+    customerName?: string | null;
+    mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null;
+    mondayBoardId?: string | null;
+    mondayUrl?: string | null;
   }): Promise<void>;
   deleteProjectByMondayId(mondayItemId: string): Promise<void>;
   getProjectByMondayId(mondayItemId: string): Promise<Project | undefined>;
@@ -3917,26 +3923,43 @@ export class DatabaseStorage implements IStorage {
   async upsertProjectByMondayId(mondayItemId: string, data: {
     name: string;
     status: string;
+    code?: string | null;
     ownerName?: string | null;
     startDate?: string | null;
     endDate?: string | null;
     jobLocation?: string | null;
     notes?: string | null;
+    customerName?: string | null;
+    mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null;
+    mondayBoardId?: string | null;
+    mondayUrl?: string | null;
   }): Promise<void> {
     const existing = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
     if (existing.length > 0) {
       await db.update(projects).set({
         name: data.name,
         status: data.status,
+        code: data.code ?? existing[0].code,
         ownerName: data.ownerName ?? existing[0].ownerName,
         startDate: data.startDate ?? existing[0].startDate,
         endDate: data.endDate ?? existing[0].endDate,
         jobLocation: data.jobLocation ?? existing[0].jobLocation,
         notes: data.notes ?? existing[0].notes,
+        customerName: data.customerName ?? existing[0].customerName,
+        mondayGroupId: data.mondayGroupId ?? existing[0].mondayGroupId,
+        mondayGroupTitle: data.mondayGroupTitle ?? existing[0].mondayGroupTitle,
+        mondayBoardId: data.mondayBoardId ?? existing[0].mondayBoardId,
+        mondayUrl: data.mondayUrl ?? existing[0].mondayUrl,
+        source: "monday",
+        archived: false,
+        mondaySyncStatus: "ok",
+        mondaySyncError: null,
         updatedAt: new Date(),
       }).where(eq(projects.mondayItemId, mondayItemId));
     } else {
-      const code = `MON-${mondayItemId}`;
+      // Phase 3 smart matching goes here; for now create with MON- prefix if no code
+      const code = data.code || `MON-${mondayItemId}`;
       await db.insert(projects).values({
         mondayItemId,
         code,
@@ -3947,12 +3970,28 @@ export class DatabaseStorage implements IStorage {
         endDate: data.endDate ?? null,
         jobLocation: data.jobLocation ?? null,
         notes: data.notes ?? null,
+        customerName: data.customerName ?? null,
+        mondayGroupId: data.mondayGroupId ?? null,
+        mondayGroupTitle: data.mondayGroupTitle ?? null,
+        mondayBoardId: data.mondayBoardId ?? null,
+        mondayUrl: data.mondayUrl ?? null,
+        source: "monday",
+        archived: false,
+        mondaySyncStatus: "ok",
       });
     }
   }
 
   async deleteProjectByMondayId(mondayItemId: string): Promise<void> {
-    await db.delete(projects).where(eq(projects.mondayItemId, mondayItemId));
+    // Never hard-delete monday-synced projects — archive them to preserve history
+    const [row] = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
+    if (!row) return;
+    await db.update(projects).set({
+      archived: true,
+      archivedAt: new Date(),
+      mondaySyncStatus: "archived",
+      updatedAt: new Date(),
+    }).where(eq(projects.mondayItemId, mondayItemId));
   }
 
   async getProjectByMondayId(mondayItemId: string): Promise<Project | undefined> {
@@ -3974,6 +4013,7 @@ export async function runItemGroupsMigration(): Promise<void> {
 }
 
 export async function runMondayMigration(): Promise<void> {
+  // ── app_settings table ──────────────────────────────────────────────────────
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS app_settings (
       key        TEXT PRIMARY KEY,
@@ -3981,10 +4021,11 @@ export async function runMondayMigration(): Promise<void> {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
-  // Idempotently add updated_at to existing tables that were created without it
   await db.execute(sql`
     ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
   `);
+
+  // ── projects: original monday_item_id ───────────────────────────────────────
   await db.execute(sql`
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_item_id TEXT
   `);
@@ -3992,6 +4033,40 @@ export async function runMondayMigration(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS projects_monday_item_id_idx
     ON projects (monday_item_id)
     WHERE monday_item_id IS NOT NULL
+  `);
+
+  // ── projects: Phase 1 new fields ────────────────────────────────────────────
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_board_id TEXT`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_group_id TEXT`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_group_title TEXT`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_url TEXT`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'manual'`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_sync_status TEXT DEFAULT 'ok'`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS monday_sync_error TEXT`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT false`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP`);
+  await db.execute(sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS merged_into_project_id INTEGER`);
+
+  // ── Drop global UNIQUE on projects.code (PO/CODE is customer-scoped, not global) ──
+  // Find the constraint name dynamically to safely drop it if it exists
+  await db.execute(sql`
+    DO $$
+    DECLARE
+      _cname TEXT;
+    BEGIN
+      SELECT conname INTO _cname
+      FROM pg_constraint
+      WHERE conrelid = 'projects'::regclass
+        AND contype = 'u'
+        AND array_length(conkey, 1) = 1
+        AND conkey[1] = (
+          SELECT attnum FROM pg_attribute
+          WHERE attrelid = 'projects'::regclass AND attname = 'code'
+        );
+      IF _cname IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE projects DROP CONSTRAINT %I', _cname);
+      END IF;
+    END $$;
   `);
 }
 

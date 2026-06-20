@@ -1,0 +1,391 @@
+#266 - Monday.com → VoltStock 프로젝트 동기화 고도화
+
+Goal
+
+Establish monday.com as the single source of truth for customer/company groups and project information.
+
+VoltStock Projects tab should mirror monday.com project data.
+
+This version is monday.com → VoltStock only.
+Do not implement VoltStock → monday.com sync.
+
+Core business rules
+
+1. monday.com is the source of truth for:
+
+   * customer/company groups
+   * projects
+   * PO / CODE
+   * project name
+   * status
+   * assigned person/contact
+   * timeline/due date
+   * location
+   * notes/memo if mapped
+
+2. VoltStock should not manage monday-synced customers directly.
+
+   * Hide or disable “New Customer” for the monday-synced workflow.
+   * Customer groups should come from monday group.title.
+   * Stable customer/group key should be monday group.id.
+
+3. PO / CODE is customer-specific, not globally unique.
+
+   * The same PO/CODE may exist under different customers.
+   * Do not enforce global uniqueness on projects.code.
+   * Do not use PO/CODE alone as the permanent sync key.
+   * Use monday item.id as the permanent sync key.
+
+Schema changes
+
+Inspect the existing schema first and make migrations idempotent.
+
+Update projects table if fields are missing:
+
+* monday_item_id TEXT UNIQUE
+* monday_board_id TEXT
+* monday_group_id TEXT
+* monday_group_title TEXT
+* monday_url TEXT
+* source TEXT DEFAULT 'manual'
+* monday_sync_status TEXT DEFAULT 'ok'
+* monday_sync_error TEXT
+* archived BOOLEAN DEFAULT false
+* archived_at TIMESTAMP
+* merged_into_project_id INTEGER
+
+Remove global UNIQUE constraint from code if it exists.
+
+Important:
+
+* code / PO is not globally unique.
+* If uniqueness is needed, use customer/group + code for active projects only.
+* Do not break existing rows or transactions.
+
+Store monday column mapping in app_settings as JSON:
+
+key:
+
+* monday_column_mapping
+
+Example value:
+{
+"projectNameColumnId": "...",
+"locationColumnId": "...",
+"contactColumnId": "...",
+"statusColumnId": "...",
+"timelineColumnId": "...",
+"notesColumnId": "...",
+"depositColumnId": "...",
+"fileColumnIds": []
+}
+
+Add or update runMondayMigration() with idempotent migration logic.
+
+Monday service changes
+
+File:
+
+* server/services/monday.ts
+
+Update fetchBoardItems():
+
+* Return group information:
+
+  * group.id
+  * group.title
+* Return item:
+
+  * id
+  * name
+  * url
+  * state
+  * group
+  * column_values { id, type, text, value }
+
+Add fetchBoardColumns():
+
+* Fetch monday board column schema:
+
+  * id
+  * title
+  * type
+
+Update mapMondayItemToProject():
+
+* Use saved monday_column_mapping config.
+* Do not hard-code column IDs.
+* Auto-detect only as fallback before mapping is saved.
+* Mapping rules:
+
+  * monday item.id -> projects.monday_item_id
+  * monday board id -> projects.monday_board_id
+  * monday item.name -> projects.code / PO / CODE
+  * PROJECT NAME/REMARK mapped column -> projects.name
+  * monday group.id -> projects.monday_group_id
+  * monday group.title -> projects.customerName and projects.monday_group_title
+  * monday item.url -> projects.monday_url
+  * Location mapped column -> project location field
+  * Contact mapped column -> assigned/contact field
+  * Status mapped column -> projects.status
+  * Timeline mapped column -> start_date/end_date or equivalent fields
+  * Notes/Memo mapped column -> notes field if available
+
+Important:
+
+* Do not assume monday item.name is the project name.
+* In this board, monday item.name is PO / CODE.
+* The real project name is the mapped PROJECT NAME/REMARK column.
+* If mapped project name is empty, fallback to monday item.name only as emergency fallback.
+
+Status mapping
+
+Map monday status labels into VoltStock status enum.
+
+Required/default mapping:
+
+* Working on it -> active
+* Quote Only -> on_hold
+* Done -> completed
+* Cancelled / Canceled -> cancelled
+
+If an unknown status label is received:
+
+* keep previous status if available, or use on_hold
+* set monday_sync_status='warning'
+* store warning in monday_sync_error
+* do not fail entire sync
+
+Smart initial sync matching
+
+File:
+
+* server/storage.ts
+
+Update upsertProjectByMondayId(itemId, data) with this priority:
+
+1. If a project exists with the same monday_item_id:
+
+   * update that project.
+
+2. Else, if a project exists with the same monday_group_id + PO/CODE:
+
+   * link that existing project by setting monday_item_id.
+   * update monday_board_id, monday_url, source='monday', monday_group_title.
+   * then update mapped fields.
+
+3. Else, if project has no monday_group_id yet, match by customerName/monday_group_title + PO/CODE:
+
+   * only link if exactly one safe match exists.
+
+4. Else, if PO/CODE alone matches exactly one project globally:
+
+   * link only as fallback.
+   * log this fallback match clearly.
+
+5. If multiple projects match the same PO/CODE:
+
+   * do not auto-link.
+   * do not create another duplicate.
+   * set monday_sync_status='needs_manual_resolution'.
+   * log conflict details.
+   * show it in the Monday Sync issue panel.
+
+6. Only create a new project if no safe match exists.
+
+Deletion/archive behavior
+
+Replace deleteProjectByMondayId() hard delete behavior.
+
+If monday item is deleted/archived:
+
+* do not hard-delete VoltStock project.
+* if source='monday':
+
+  * archived=true
+  * archived_at=now
+  * monday_sync_status='archived'
+* keep project history and transactions.
+* hide archived projects by default in Projects tab.
+
+API route changes
+
+File:
+
+* server/routes.ts
+
+Add/update admin-only routes:
+
+* GET /api/monday/columns
+
+  * return board column list
+
+* GET /api/monday/column-mapping
+
+  * return saved mapping
+
+* POST /api/monday/column-mapping
+
+  * validate and save mapping
+
+* POST /api/monday/sync
+
+  * return 400 if required column mapping is incomplete
+  * otherwise run full sync
+
+* POST /api/webhooks/monday
+
+  * handle challenge
+  * validate webhook secret
+  * verify board id
+  * fetch latest monday item by item ID
+  * handle group changes
+  * apply saved mapping
+  * upsert safely
+
+Webhook handling
+
+Webhook should support:
+
+* item created
+* column value changed
+* name changed
+* item moved to another group
+* item archived/deleted if supported
+
+Important:
+
+* Do not trust webhook payload values directly.
+* Use webhook event only to get board/item/event info.
+* Fetch full latest item from monday before updating DB.
+* Repeated webhook events must not create duplicates.
+
+MondayIntegration UI restructure
+
+File:
+
+* client/src/pages/admin/MondayIntegration.tsx
+
+Keep all monday tools inside one Monday.com Sync card.
+Do not add more top-level admin clutter.
+
+Card default view:
+
+* Connection status
+* Board name
+* Last sync time
+* Last webhook received time
+* Webhook status
+* Issue count
+* Buttons:
+
+  * Sync Now
+  * Settings
+  * View Logs
+
+Settings sections:
+
+1. Connection
+
+   * Existing API token status
+   * Board information
+   * Board selection if supported
+
+2. Column Mapping
+
+   * Auto-fetch monday column list
+   * Required mapping dropdowns:
+
+     * PO/CODE: monday item.name, fixed/system field
+     * Project Name: monday PROJECT NAME/REMARK column
+     * Status
+     * Assigned/Contact
+     * Date/Timeline
+     * Location
+   * Optional mapping:
+
+     * Notes/Memo
+     * Deposit
+     * File columns
+   * Auto-suggest mappings by column title/type
+   * Require admin confirmation before saving
+   * Show saved mapping clearly
+   * Show warning if required mapping is missing
+   * Disable Sync Now until required mapping is complete
+   * Add preview before saving mapping:
+
+     * show 3–5 sample monday items
+     * show how they will map into VoltStock fields
+
+3. Webhook
+
+   * registration status
+   * registered event list
+   * Register / Repair Webhook button
+
+4. Advanced
+
+   * Disconnect monday integration
+   * Force re-discover board columns
+   * Force full re-sync
+
+Projects tab UI changes
+
+File:
+
+* client/src/pages/Projects.tsx
+
+1. For monday-synced customer groups:
+
+   * group name should come from monday_group_title.
+   * hide or disable “New Customer” for monday-synced workflow.
+   * do not allow creating/deleting/renaming monday-synced customers directly in VoltStock.
+
+2. Archived projects:
+
+   * hide archived projects by default.
+   * add admin-only “Include archived” toggle.
+
+3. Monday indicators:
+
+   * keep “Mon” badge.
+   * add Open in Monday link using monday_url.
+   * show “Synced from monday” badge or tooltip.
+
+4. Manual projects:
+
+   * keep existing manual projects.
+   * manual projects should coexist with monday-synced projects.
+   * manual projects must not overwrite monday-synced data.
+
+Column mapping completion requirements
+
+Required before sync:
+
+* projectNameColumnId
+* statusColumnId
+* contactColumnId or assigned/contact mapping
+* timelineColumnId or date mapping
+* locationColumnId
+
+PO/CODE comes from monday item.name and does not require a column mapping.
+
+If required mapping is incomplete:
+
+* disable Sync Now button
+* return 400 from POST /api/monday/sync
+* show clear UI warning
+
+Completion criteria
+
+* Connecting the board causes monday groups to appear as VoltStock customer groups.
+* monday item.name maps to PO / CODE.
+* PROJECT NAME/REMARK column maps to actual project name.
+* Same PO/CODE under different customers syncs without conflict.
+* Same PO/CODE under the same customer uses smart matching and avoids duplicates.
+* monday item archive/delete marks VoltStock project archived instead of hard deleting.
+* Column Mapping UI supports preview before saving.
+* Sync is blocked when required mapping is incomplete.
+* Projects tab keeps existing layout and does not add customer management clutter.
+* All monday tools stay inside one Monday.com Sync card.
+* No VoltStock → monday sync in this version.

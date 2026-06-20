@@ -1,0 +1,156 @@
+Refine the monday.com → VoltStock Projects sync rules.
+
+Important business rule:
+From now on, customer/company management must happen in monday.com only.
+
+monday.com is the source of truth for:
+- Customers / companies / project groups
+- Projects
+- PO / CODE
+- Status
+- Timeline
+- Location
+- Contact
+- Project name
+
+VoltStock should only mirror these values.
+
+Do not let users create, delete, or rename customers directly in VoltStock if the customer/group comes from monday.
+
+Customer / group behavior:
+1. monday group.title represents the customer/company name.
+   Examples:
+   - HMGMA
+   - GLOVIS
+   - HEA
+   - HWASHIN
+   - KDC
+
+2. monday group.id must be stored and used as the stable customer sync key.
+   Do not rely only on group title because the group title can be renamed.
+
+3. Add fields if missing:
+   - monday_group_id
+   - monday_group_title
+   - source
+
+4. In VoltStock Projects tab:
+   - Hide or disable “New Customer” for monday-synced project management.
+   - Do not allow direct customer creation/deletion/rename for monday-synced customer groups.
+   - If manual/local customers still exist, keep them, but do not let them overwrite monday-synced groups.
+   - Show monday-synced customer groups from monday group.title.
+   - If a monday item moves to another group, update the VoltStock project customer/group.
+
+5. If a new customer/group is added in monday:
+   - It should automatically appear in VoltStock after sync/webhook.
+   - Do not require creating that customer manually in VoltStock.
+
+6. If a customer/group is deleted or archived in monday:
+   - Do not hard-delete VoltStock project history.
+   - Mark related monday-synced projects archived or inactive if needed.
+   - Hide archived projects/groups by default.
+   - Keep history and transactions.
+
+PO / CODE matching rules:
+PO / CODE should be treated as customer-specific, not globally unique.
+
+This is very important:
+- The same PO/CODE may exist under different customers/companies.
+- Do not use PO/CODE alone as the unique project key.
+- Use monday item.id as the permanent sync key.
+- For initial matching, use monday_group_id + PO/CODE whenever possible.
+
+Initial sync matching priority:
+1. If project exists with same monday_item_id:
+   - update that project.
+
+2. Else, if a project exists with same monday_group_id and same PO/CODE:
+   - link that existing project by setting monday_item_id.
+
+3. Else, if no monday_group_id exists yet, try matching by customer name/group title + PO/CODE:
+   - only link if exactly one safe match exists.
+
+4. Else, if PO/CODE alone matches exactly one project globally:
+   - link only if safe and no conflict exists.
+   - log that this was a fallback match.
+
+5. If multiple projects have the same PO/CODE:
+   - do not auto-link.
+   - do not create another duplicate.
+   - mark sync status as needs_manual_resolution.
+   - show this in the monday sync issue panel.
+
+6. Only create a new project if there is no safe existing match.
+
+Database / uniqueness:
+Do not enforce global unique PO/CODE across all projects.
+Instead, prevent duplicates by:
+- monday_item_id unique for monday-synced projects
+- optional uniqueness by customer/group + PO/CODE for active projects, if safe
+- never by PO/CODE alone globally
+
+Column mapping:
+Column mapping must be handled carefully because monday column IDs may not match visible names.
+
+Keep or add a monday column mapping UI inside the Monday.com Sync settings.
+
+Required mappings:
+- monday item.id -> projects.monday_item_id
+- monday board id -> projects.monday_board_id
+- monday group.id -> projects.monday_group_id
+- monday group.title -> projects.customer / customerName / group field
+- monday item.name -> projects.po_code or PO / CODE
+- PROJECT NAME/REMARK column -> projects.project_name / name
+- Location column -> projects.location
+- Contact column -> projects.contact / assigned person
+- Status column -> projects.status
+- Timeline column -> projects.start_date and projects.end_date
+- monday item.url -> projects.monday_url
+
+Do not assume monday item.name is the project name.
+In this board, monday item.name is the PO / CODE.
+The real project name is the PROJECT NAME/REMARK column.
+
+Column mapping UI requirements:
+1. Auto-suggest mapping by column title/type.
+2. Require admin confirmation before saving.
+3. Show current saved mapping clearly.
+4. Warn if a required mapping is missing.
+5. Do not run Full Sync if required mapping is incomplete.
+6. Allow re-discovery if monday columns change.
+
+Projects tab UI:
+1. Remove or hide “New Customer” for monday-synced workflow.
+2. If “Add Project” remains, mark it as manual/local only and do not let it create monday-synced customers.
+3. Customer groups shown in Projects tab should come from monday group.title for monday-synced projects.
+4. Show “Synced from monday” badge.
+5. Show “Open in monday” link.
+6. Hide archived projects by default.
+7. Add admin-only “Include archived” toggle.
+
+Duplicate handling:
+If duplicates already exist:
+- Do not hard-delete projects with transactions.
+- Build merge/archive logic.
+- Prefer keeping the project that has inventory transactions, material requests, RMS history, daily reports, or equipment assignments.
+- Move duplicate references to the canonical project if admin confirms merge.
+- Archive duplicate project instead of deleting it.
+- After merge, attach monday_item_id to the canonical project.
+
+Do not rebuild the Projects page.
+Do not add top-level admin clutter.
+Keep all monday tools inside one Monday.com Sync card:
+- Status
+- Sync Now
+- Settings
+- View Logs
+- Issues count
+
+Inside Settings only:
+- Connection
+- Column Mapping
+- Webhook
+- Advanced
+
+Do not implement VoltStock → monday sync.
+This version is monday → VoltStock only.

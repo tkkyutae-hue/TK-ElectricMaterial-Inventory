@@ -50,7 +50,7 @@ export const suppliers = pgTable("suppliers", {
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  code: text("code").notNull().unique(),
+  code: text("code").notNull(), // PO/CODE — NOT globally unique; unique per customer/group only
   name: text("name").notNull(),
   customerName: text("customer_name"),
   addressLine1: text("address_line_1"),
@@ -65,7 +65,18 @@ export const projects = pgTable("projects", {
   startDate: date("start_date"),
   endDate: date("end_date"),
   notes: text("notes"),
+  // Monday.com sync fields
   mondayItemId: text("monday_item_id").unique(),
+  mondayBoardId: text("monday_board_id"),
+  mondayGroupId: text("monday_group_id"),
+  mondayGroupTitle: text("monday_group_title"),
+  mondayUrl: text("monday_url"),
+  source: text("source").default("manual"), // 'manual' | 'monday'
+  mondaySyncStatus: text("monday_sync_status").default("ok"), // 'ok' | 'warning' | 'needs_manual_resolution' | 'archived'
+  mondaySyncError: text("monday_sync_error"),
+  archived: boolean("archived").default(false),
+  archivedAt: timestamp("archived_at"),
+  mergedIntoProjectId: integer("merged_into_project_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

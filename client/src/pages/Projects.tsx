@@ -603,17 +603,19 @@ export default function Projects() {
   }, [colWidths]);
 
   const allProjects: any[] = projects ?? [];
+  const [showArchived, setShowArchived] = useState(false);
 
   const customerSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.customerName).filter(Boolean))] as string[], [allProjects]);
   const locationSuggestions = useMemo(() => [...new Set(allProjects.map((p: any) => p.jobLocation).filter(Boolean))] as string[], [allProjects]);
 
-  // Filter
+  // Filter — archived projects hidden by default
   const filtered = useMemo(() => allProjects.filter((p: any) => {
+    if (!showArchived && p.archived) return false;
     const matchStatus = statusFilter === "all" || p.status === statusFilter;
     if (!search.trim()) return matchStatus;
     const q = search.toLowerCase();
     return matchStatus && (p.name?.toLowerCase().includes(q) || p.customerName?.toLowerCase().includes(q) || p.ownerName?.toLowerCase().includes(q) || p.jobLocation?.toLowerCase().includes(q) || p.poNumber?.toLowerCase().includes(q) || p.status?.toLowerCase().includes(q));
-  }), [allProjects, statusFilter, search]);
+  }), [allProjects, statusFilter, search, showArchived]);
 
   // Sort
   const sorted = useMemo(() => {

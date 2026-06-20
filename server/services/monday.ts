@@ -99,7 +99,9 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
 // Registers webhooks for all required event types.
 // Throws if any required event fails — callers should not mark connection active on partial success.
 export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
-  const events = ["create_item", "delete_item", "change_column_value", "change_name"] as const;
+  // Note: Monday.com does not support a delete_item webhook event type.
+  // Item deletion will not be reflected in real-time; use manual sync to clean up.
+  const events = ["create_item", "change_column_value", "change_name"] as const;
   const results: Array<{ id: string; event: string }> = [];
   const failed: string[] = [];
 

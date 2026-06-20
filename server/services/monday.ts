@@ -99,7 +99,7 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
 // Registers webhooks for all required event types.
 // Throws if any required event fails — callers should not mark connection active on partial success.
 export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
-  const events = ["create_pulse", "delete_pulse", "change_column_value", "change_name"] as const;
+  const events = ["create_item", "delete_item", "change_column_value", "change_name"] as const;
   const results: Array<{ id: string; event: string }> = [];
   const failed: string[] = [];
 

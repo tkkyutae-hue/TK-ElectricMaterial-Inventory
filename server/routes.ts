@@ -4608,7 +4608,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const pulseId = String(event.pulseId ?? event.itemId ?? "");
       const type = String(event.type ?? "");
 
-      if (type === "create_pulse" && pulseId) {
+      if ((type === "create_pulse" || type === "create_item") && pulseId) {
         // Fetch full item data for complete field population
         const fullItem = await fetchSingleItem(pulseId).catch(() => null);
         if (fullItem) {
@@ -4619,7 +4619,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             status: "active",
           });
         }
-      } else if (type === "delete_pulse" && pulseId) {
+      } else if ((type === "delete_pulse" || type === "delete_item") && pulseId) {
         await storage.deleteProjectByMondayId(pulseId);
       } else if ((type === "change_column_value" || type === "update_column_value") && pulseId) {
         // Re-fetch full item to get all fields accurately

@@ -65,7 +65,15 @@ export const projects = pgTable("projects", {
   startDate: date("start_date"),
   endDate: date("end_date"),
   notes: text("notes"),
+  mondayItemId: text("monday_item_id").unique(),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── App Settings (key-value store for integration config) ───────────────────
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -701,3 +709,5 @@ export type RmsExportHistoryWithLines = RmsExportHistory & { lines: RmsExportHis
 
 export type WireReelMovementLine = typeof wireReelMovementLines.$inferSelect;
 export type CreateWireReelMovementLineRequest = z.infer<typeof insertWireReelMovementLineSchema>;
+
+export type AppSetting = typeof appSettings.$inferSelect;

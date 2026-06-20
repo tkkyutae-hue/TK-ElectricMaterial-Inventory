@@ -5,7 +5,7 @@ import { users } from "@shared/models/auth";
 import {
   categories, locations, suppliers, projects, items, inventoryMovements, itemImages, itemGroups,
   inventoryLocationBalances, projectMaterialTransactions, supplierItems, purchaseRecommendations,
-  wireReels, movementDrafts, dailyReports, projectScopeItems, categorySubcategoryOrder,
+  wireReels, movementDrafts, dailyReports, projectScopeItems, categorySubcategoryOrder, appSettings,
   type Category, type Location, type Supplier, type Project, type Item, type InventoryMovement,
   type InventoryLocationBalance, type PurchaseRecommendation, type SupplierItem, type ItemGroup,
   type WireReel, type WireReelWithRelations, type CreateWireReelRequest, type UpdateWireReelRequest,
@@ -243,6 +243,24 @@ export interface IStorage {
     movementType: "issue" | "return",
     opts: { itemId: number; projectId?: number | null; locationId?: number | null; assignedTo?: string | null }
   ): Promise<void>;
+
+  // App Settings (key-value store)
+  getAppSetting(key: string): Promise<string | null>;
+  setAppSetting(key: string, value: string | null): Promise<void>;
+  getAppSettings(keys: string[]): Promise<Record<string, string | null>>;
+
+  // Monday.com sync
+  upsertProjectByMondayId(mondayItemId: string, data: {
+    name: string;
+    status: string;
+    ownerName?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    jobLocation?: string | null;
+    notes?: string | null;
+  }): Promise<void>;
+  deleteProjectByMondayId(mondayItemId: string): Promise<void>;
+  getProjectByMondayId(mondayItemId: string): Promise<Project | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3868,6 +3886,81 @@ export class DatabaseStorage implements IStorage {
         .where(safeCondition);
     }
   }
+
+  // ─── App Settings ─────────────────────────────────────────────────────────────
+
+  async getAppSetting(key: string): Promise<string | null> {
+    const [row] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return row?.value ?? null;
+  }
+
+  async setAppSetting(key: string, value: string | null): Promise<void> {
+    if (value === null) {
+      await db.delete(appSettings).where(eq(appSettings.key, key));
+    } else {
+      await db.insert(appSettings)
+        .values({ key, value, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
+    }
+  }
+
+  async getAppSettings(keys: string[]): Promise<Record<string, string | null>> {
+    const rows = await db.select().from(appSettings).where(inArray(appSettings.key, keys));
+    const result: Record<string, string | null> = {};
+    for (const key of keys) result[key] = null;
+    for (const row of rows) result[row.key] = row.value ?? null;
+    return result;
+  }
+
+  // ─── Monday.com project sync ──────────────────────────────────────────────────
+
+  async upsertProjectByMondayId(mondayItemId: string, data: {
+    name: string;
+    status: string;
+    ownerName?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    jobLocation?: string | null;
+    notes?: string | null;
+  }): Promise<void> {
+    const existing = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
+    if (existing.length > 0) {
+      await db.update(projects).set({
+        name: data.name,
+        status: data.status,
+        ownerName: data.ownerName ?? existing[0].ownerName,
+        startDate: data.startDate ?? existing[0].startDate,
+        endDate: data.endDate ?? existing[0].endDate,
+        jobLocation: data.jobLocation ?? existing[0].jobLocation,
+        notes: data.notes ?? existing[0].notes,
+        updatedAt: new Date(),
+      }).where(eq(projects.mondayItemId, mondayItemId));
+    } else {
+      const code = `MON-${mondayItemId}`;
+      await db.insert(projects).values({
+        mondayItemId,
+        code,
+        name: data.name,
+        status: data.status,
+        ownerName: data.ownerName ?? null,
+        startDate: data.startDate ?? null,
+        endDate: data.endDate ?? null,
+        jobLocation: data.jobLocation ?? null,
+        notes: data.notes ?? null,
+      });
+    }
+  }
+
+  async deleteProjectByMondayId(mondayItemId: string): Promise<void> {
+    await db.update(projects)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(projects.mondayItemId, mondayItemId));
+  }
+
+  async getProjectByMondayId(mondayItemId: string): Promise<Project | undefined> {
+    const [row] = await db.select().from(projects).where(eq(projects.mondayItemId, mondayItemId));
+    return row;
+  }
 }
 
 // ─── One-time sizeSortValue backfill ─────────────────────────────────────────
@@ -4334,4 +4427,5 @@ function _extractSeqFromReelId(reelId: string): number | null {
   if (oldFmt) return parseInt(oldFmt[1], 10);
   return null;
 }
+
 export const storage = new DatabaseStorage();

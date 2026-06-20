@@ -39,6 +39,7 @@ import InactiveItems from "@/pages/admin/InactiveItems";
 import StockPricing from "@/pages/admin/StockPricing";
 import SupplierCleanup from "@/pages/admin/SupplierCleanup";
 import ReelIdCleanup from "@/pages/admin/ReelIdCleanup";
+import MondayIntegration from "@/pages/admin/MondayIntegration";
 
 import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
@@ -203,6 +204,7 @@ function AdminRouter() {
           <Route path="/admin/stock-pricing" component={() => <AdminToolsGuard><StockPricing /></AdminToolsGuard>} />
           <Route path="/admin/supplier-cleanup" component={() => <AdminToolsGuard><SupplierCleanup /></AdminToolsGuard>} />
           <Route path="/admin/reel-id-cleanup" component={() => <AdminToolsGuard><ReelIdCleanup /></AdminToolsGuard>} />
+          <Route path="/admin/monday" component={() => <AdminToolsGuard><MondayIntegration /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

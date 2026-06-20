@@ -4435,5 +4435,162 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Monday.com Integration ───────────────────────────────────────────────────
+
+  // GET /api/monday/status — check token + board config
+  app.get("/api/monday/status", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const settings = await storage.getAppSettings(["monday_board_id", "monday_webhook_id", "monday_board_name"]);
+      const hasToken = !!process.env.MONDAY_API_TOKEN;
+      res.json({
+        hasToken,
+        boardId: settings["monday_board_id"],
+        boardName: settings["monday_board_name"],
+        webhookId: settings["monday_webhook_id"],
+      });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/monday/boards — list boards
+  app.get("/api/monday/boards", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { fetchBoards } = await import("./services/monday");
+      const boards = await fetchBoards();
+      res.json({ boards });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/monday/connect — save board_id and register webhook
+  app.post("/api/monday/connect", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { boardId, boardName, webhookBaseUrl } = req.body;
+      if (!boardId) return res.status(400).json({ message: "boardId is required" });
+
+      const { registerWebhook, fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+
+      // Save board config
+      await storage.setAppSetting("monday_board_id", boardId);
+      await storage.setAppSetting("monday_board_name", boardName || boardId);
+
+      // Register webhook
+      const webhookUrl = `${webhookBaseUrl}/api/webhooks/monday`;
+      const webhookId = await registerWebhook(boardId, webhookUrl);
+      await storage.setAppSetting("monday_webhook_id", webhookId);
+
+      // Initial full sync
+      const items = await fetchBoardItems(boardId);
+      let synced = 0;
+      for (const item of items) {
+        const mapped = mapMondayItemToProject(item);
+        await storage.upsertProjectByMondayId(item.id, mapped);
+        synced++;
+      }
+
+      res.json({ success: true, synced, webhookId });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/monday/sync — manual full sync
+  app.post("/api/monday/sync", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const boardId = await storage.getAppSetting("monday_board_id");
+      if (!boardId) return res.status(400).json({ message: "No board configured" });
+
+      const { fetchBoardItems, mapMondayItemToProject } = await import("./services/monday");
+      const items = await fetchBoardItems(boardId);
+      let synced = 0;
+      for (const item of items) {
+        const mapped = mapMondayItemToProject(item);
+        await storage.upsertProjectByMondayId(item.id, mapped);
+        synced++;
+      }
+      res.json({ success: true, synced });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/monday/disconnect — remove board config and webhook
+  app.post("/api/monday/disconnect", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { deleteWebhook } = await import("./services/monday");
+      const webhookId = await storage.getAppSetting("monday_webhook_id");
+      if (webhookId) await deleteWebhook(webhookId);
+      await storage.setAppSetting("monday_board_id", null);
+      await storage.setAppSetting("monday_board_name", null);
+      await storage.setAppSetting("monday_webhook_id", null);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/webhooks/monday — receives real-time events from Monday.com (PUBLIC — no auth)
+  app.post("/api/webhooks/monday", async (req, res) => {
+    try {
+      const body = req.body;
+
+      // Monday.com challenge verification
+      if (body.challenge) {
+        return res.json({ challenge: body.challenge });
+      }
+
+      const { mapMondayItemToProject } = await import("./services/monday");
+      const event = body.event;
+      if (!event) return res.status(200).json({ ok: true });
+
+      const pulseId = String(event.pulseId ?? event.itemId ?? "");
+      const type = event.type ?? "";
+
+      if (type === "create_pulse" && pulseId) {
+        // Minimal create — name only; full data synced on next manual sync
+        await storage.upsertProjectByMondayId(pulseId, {
+          name: event.pulseName ?? event.value?.name ?? `Monday Item ${pulseId}`,
+          status: "active",
+        });
+      } else if (type === "delete_pulse" && pulseId) {
+        await storage.deleteProjectByMondayId(pulseId);
+      } else if ((type === "update_column_value" || type === "change_column_value") && pulseId) {
+        const existing = await storage.getProjectByMondayId(pulseId);
+        if (existing) {
+          const columnType = event.columnType ?? "";
+          const newValue = event.value?.label?.text ?? event.value?.text ?? event.value?.name ?? "";
+          const update: any = { name: existing.name, status: existing.status };
+          if (columnType === "color" || event.columnId?.toLowerCase().includes("status")) {
+            update.status = (() => {
+              const s = (newValue || "").toLowerCase();
+              if (s.includes("done") || s.includes("complete")) return "completed";
+              if (s.includes("stuck") || s.includes("hold")) return "on_hold";
+              if (s.includes("cancel")) return "cancelled";
+              return "active";
+            })();
+          } else if (columnType === "name") {
+            update.name = newValue || existing.name;
+          }
+          await storage.upsertProjectByMondayId(pulseId, update);
+        }
+      } else if (type === "update_name" && pulseId) {
+        const existing = await storage.getProjectByMondayId(pulseId);
+        if (existing) {
+          await storage.upsertProjectByMondayId(pulseId, {
+            name: event.value?.name ?? event.previousValue?.name ?? existing.name,
+            status: existing.status,
+          });
+        }
+      }
+
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("[monday webhook]", err.message);
+      res.status(200).json({ ok: true }); // always 200 to Monday
+    }
+  });
+
   return httpServer;
 }

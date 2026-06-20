@@ -3,7 +3,7 @@ import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } fro
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
   ChevronDown, ChevronUp, Users, Check, Plus, X,
-  ArrowUp, ArrowDown, ChevronsUpDown, UserPlus, Trash2,
+  ArrowUp, ArrowDown, ChevronsUpDown, UserPlus, Trash2, ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -479,7 +479,23 @@ function CustomerGroup({
 
                 {/* Project Name */}
                 <div className="flex-shrink-0 min-w-0 pr-2" style={{ width: cw.name }}>
-                  <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700" />
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <EditableCell projectId={project.id} field="name" value={project.name} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} className="font-semibold text-slate-900 group-hover:text-brand-700 min-w-0 flex-1" />
+                    {(project as any).mondayItemId && (
+                      <a
+                        href={`https://monday.com`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Monday.com에서 동기화된 프로젝트"
+                        className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors"
+                        data-testid={`badge-monday-${project.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="w-2.5 h-2.5" />
+                        Mon
+                      </a>
+                    )}
+                  </div>
                   <EditableCell projectId={project.id} field="ownerName" value={project.ownerName} editKey={editKey} setEditKey={setEditKey} onSave={onFieldSave} valueClassName="text-[11px] text-slate-400" className="mt-0.5" />
                   <div className="flex items-center gap-2 mt-1.5 md:hidden">
                     <StatusChip projectId={project.id} status={project.status} onChangeStart={onStatusChange} openPopoverId={openPopoverId} setOpenPopoverId={setOpenPopoverId} />

@@ -23,6 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Unlink,
+  LayoutGrid,
   Cable,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -91,6 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/admin/stock-pricing", label: t.navStockPricing, icon: DollarSign },
         { href: "/admin/supplier-cleanup", label: t.navSupplierCleanup, icon: Unlink },
         { href: "/admin/reel-id-cleanup", label: t.navReelIdCleanup, icon: Cable },
+        { href: "/admin/monday", label: "Monday.com", icon: LayoutGrid },
       ],
     }] : []),
   ];

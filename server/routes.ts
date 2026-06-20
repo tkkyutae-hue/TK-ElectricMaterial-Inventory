@@ -4522,6 +4522,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/monday/mapping-preview — fetch up to 5 board items and map them with current mapping (admin only)
+  app.get("/api/monday/mapping-preview", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const boardIdRaw = await storage.getAppSetting("monday_board_id");
+      if (!boardIdRaw) return res.status(400).json({ message: "Monday.com board not connected" });
+      const mappingRaw = await storage.getAppSetting("monday_column_mapping");
+      const columnMapping = mappingRaw ? JSON.parse(mappingRaw) : null;
+      const { fetchBoardItems, mapMondayItemToProject, isMappingComplete } = await import("./services/monday");
+      if (!isMappingComplete(columnMapping)) {
+        return res.status(400).json({ message: "Column mapping is incomplete", mappingIncomplete: true });
+      }
+      const allItems = await fetchBoardItems(boardIdRaw);
+      const samples = allItems.slice(0, 5);
+      const preview = samples.map(item => ({
+        mondayId: item.id,
+        mondayName: item.name,
+        group: item.group?.title ?? "",
+        mapped: mapMondayItemToProject(item, columnMapping),
+      }));
+      res.json({ preview });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // POST /api/monday/connect — save board_id, register webhooks, initial sync
   app.post("/api/monday/connect", isAuthenticated, requireAdmin, async (req, res) => {
     try {
@@ -4723,6 +4748,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               status: existing.status,
             });
           }
+        }
+      } else if (
+        (type === "move_pulse_into_board" || type === "move_pulse_into_group" || type === "move_item_to_group") && pulseId
+      ) {
+        // Item moved to a different group (customer) — re-fetch to capture updated group info
+        const fullItem = await fetchSingleItem(pulseId).catch(() => null);
+        if (fullItem) {
+          const mapped = mapMondayItemToProject(fullItem, columnMapping);
+          await storage.upsertProjectByMondayId(pulseId, { ...mapped, mondayBoardId: configuredBoardId ?? undefined });
+          console.log(`[monday webhook] group-move synced: item ${pulseId} → group "${fullItem.group?.title}"`);
         }
       }
 

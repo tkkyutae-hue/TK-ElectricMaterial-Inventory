@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@/hooks/use-reference-data";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, Search,
   ChevronDown, ChevronUp, Users, Check, Plus, X,
@@ -440,6 +441,8 @@ function CustomerGroup({
 
   useEffect(() => { if (autoOpenAdd) setShowAdd(true); }, [autoOpenAdd]);
 
+  const isMondaySynced = projects.some((p: any) => p.source === "monday");
+
   function handleCreate(data: any) { onCreate(data); setShowAdd(false); onAutoAddClosed?.(); }
   function handleClose()           { setShowAdd(false); onAutoAddClosed?.(); }
 
@@ -453,6 +456,9 @@ function CustomerGroup({
       >
         <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
         <span className="font-semibold text-sm text-slate-700 flex-1 truncate">{isNoCustomer ? t.projNoCustomer : customerName}</span>
+        {isMondaySynced && (
+          <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full shrink-0">Synced from Monday</span>
+        )}
         <span className="text-[11px] font-bold text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-full">{projects.length}</span>
         {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />}
       </button>
@@ -554,14 +560,16 @@ function CustomerGroup({
             ))}
           </div>
 
-          {/* Add row */}
-          {showAdd ? (
-            <AddProjectRow defaultCustomer={isNoCustomer ? "" : customerName} onCreate={handleCreate} onClose={handleClose} cw={cw} customerSuggestions={customerSuggestions} locationSuggestions={locationSuggestions} />
-          ) : (
-            <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 rounded-b-xl"
-              onClick={() => setShowAdd(true)} data-testid={`btn-add-project-${customerName}`}>
-              <Plus className="w-3.5 h-3.5" /><span className="font-medium">{t.projAddProject}</span>
-            </button>
+          {/* Add row — hidden for Monday-synced groups */}
+          {!isMondaySynced && (
+            showAdd ? (
+              <AddProjectRow defaultCustomer={isNoCustomer ? "" : customerName} onCreate={handleCreate} onClose={handleClose} cw={cw} customerSuggestions={customerSuggestions} locationSuggestions={locationSuggestions} />
+            ) : (
+              <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 hover:text-brand-600 hover:bg-brand-50/40 transition-colors border-t border-slate-50 rounded-b-xl"
+                onClick={() => setShowAdd(true)} data-testid={`btn-add-project-${customerName}`}>
+                <Plus className="w-3.5 h-3.5" /><span className="font-medium">{t.projAddProject}</span>
+              </button>
+            )
           )}
         </>
       )}
@@ -573,6 +581,7 @@ function CustomerGroup({
 // Main Page
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Projects() {
+  const { isAdminRole } = useAuth();
   const { data: projects, isLoading } = useProjects();
   const { data: mondayBoardData } = useQuery<{ boardId: string | null }>({
     queryKey: ["/api/monday/board-id"],
@@ -717,7 +726,7 @@ export default function Projects() {
           </SelectContent>
         </Select>
 
-        {allProjects.some((p: any) => p.archived) && (
+        {isAdminRole && allProjects.some((p: any) => p.archived) && (
           <Button
             variant={showArchived ? "default" : "outline"}
             size="sm"

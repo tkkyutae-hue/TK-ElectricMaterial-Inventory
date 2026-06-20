@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
   RefreshCw, Unplug, Plug, AlertCircle, CheckCircle2, ExternalLink, Info,
-  Settings, ChevronDown, ChevronUp, AlertTriangle, Save,
+  Settings, ChevronDown, ChevronUp, AlertTriangle, Save, Eye,
 } from "lucide-react";
 
 type Status = {
@@ -63,6 +63,9 @@ export default function MondayIntegration() {
   const [showSettings, setShowSettings] = useState(false);
   const [localMapping, setLocalMapping] = useState<ColumnMapping>({});
   const [mappingDirty, setMappingDirty] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // ── Status ────────────────────────────────────────────────────────────────
   const { data: statusData, isLoading: statusLoading } = useQuery<Status>({
@@ -423,7 +426,7 @@ export default function MondayIntegration() {
                     </Alert>
                   )}
 
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-1 flex-wrap">
                     <Button
                       size="sm"
                       onClick={() => saveMappingMutation.mutate()}
@@ -433,6 +436,40 @@ export default function MondayIntegration() {
                       {saveMappingMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
                       저장
                     </Button>
+                    {mappingComplete && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          if (showPreview) { setShowPreview(false); return; }
+                          if (mappingDirty) {
+                            await new Promise<void>((resolve) => {
+                              saveMappingMutation.mutate(undefined, { onSuccess: () => resolve(), onError: () => resolve() });
+                            });
+                          }
+                          setPreviewLoading(true);
+                          try {
+                            const res = await fetch("/api/monday/mapping-preview", { credentials: "include" });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setPreviewData(data.preview ?? []);
+                              setShowPreview(true);
+                            } else {
+                              toast({ variant: "destructive", title: "미리보기 실패", description: "보드 데이터를 불러올 수 없습니다" });
+                            }
+                          } catch {
+                            toast({ variant: "destructive", title: "미리보기 실패", description: "네트워크 오류가 발생했습니다" });
+                          } finally {
+                            setPreviewLoading(false);
+                          }
+                        }}
+                        disabled={saveMappingMutation.isPending || previewLoading}
+                        data-testid="button-mapping-preview"
+                      >
+                        {previewLoading ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Eye className="w-3.5 h-3.5 mr-1.5" />}
+                        {showPreview ? "미리보기 닫기" : "미리보기 (샘플 5개)"}
+                      </Button>
+                    )}
                     {mappingComplete && mappingDirty && (
                       <Button
                         size="sm"
@@ -449,6 +486,48 @@ export default function MondayIntegration() {
                       </Button>
                     )}
                   </div>
+
+                  {/* Mapping Preview */}
+                  {showPreview && previewData.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-slate-200 overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">Monday 제목</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">고객 (그룹)</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">프로젝트명</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">상태</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">담당자</th>
+                            <th className="text-left px-3 py-2 font-semibold text-slate-600">위치</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewData.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                              <td className="px-3 py-2 font-mono text-slate-700">{row.mondayName}</td>
+                              <td className="px-3 py-2 text-slate-600">{row.group || "—"}</td>
+                              <td className="px-3 py-2 text-slate-700">{row.mapped.name || "—"}</td>
+                              <td className="px-3 py-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  row.mapped.status === "active" ? "bg-green-100 text-green-700" :
+                                  row.mapped.status === "completed" ? "bg-blue-100 text-blue-700" :
+                                  row.mapped.status === "cancelled" ? "bg-red-100 text-red-700" :
+                                  "bg-amber-100 text-amber-700"
+                                }`}>
+                                  {row.mapped.status}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-slate-600">{row.mapped.contactPerson || "—"}</td>
+                              <td className="px-3 py-2 text-slate-600">{row.mapped.location || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {showPreview && previewData.length === 0 && !previewLoading && (
+                    <p className="text-xs text-slate-500 mt-2">보드에 항목이 없거나 미리보기 데이터를 불러올 수 없습니다.</p>
+                  )}
                 </div>
               )}
             </CardContent>

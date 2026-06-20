@@ -122,26 +122,33 @@ export async function fetchSingleItem(itemId: string): Promise<MondayItem | null
 }
 
 // Registers webhooks for all required event types.
-// Throws if any required event fails — callers should not mark connection active on partial success.
+// Required events: fail-fast if ANY fails (all-or-nothing).
+// Optional events: best-effort only, never cause registration to fail.
 export async function registerWebhooks(boardId: string, webhookUrl: string): Promise<Array<{ id: string; event: string }>> {
-  // Note: Monday.com does not support a delete_item webhook event type.
-  // Item deletion will not be reflected in real-time; use manual sync to clean up.
-  const events = ["create_item", "change_column_value", "change_name"] as const;
+  // Required: all 3 must succeed or the entire connection is rolled back.
+  const requiredEvents = ["create_item", "change_column_value", "change_name"] as const;
+  // Optional: group-move event — graceful degradation if unsupported by the board/plan.
+  const optionalEvents = ["move_pulse_into_board"] as const;
+
   const results: Array<{ id: string; event: string }> = [];
   const failed: string[] = [];
 
-  for (const event of events) {
-    try {
-      // Monday.com's API requires enum values to be inlined in the query string,
-      // not passed as typed variables (WebhookEventType is not accepted as a variable type)
-      const data = await mondayGraphQL(`
-        mutation($boardId: ID!, $url: String!) {
-          create_webhook(board_id: $boardId, url: $url, event: ${event}) {
-            id
-          }
+  const registerOne = async (event: string): Promise<string | null> => {
+    // Monday.com's API requires enum values to be inlined in the query string,
+    // not passed as typed variables (WebhookEventType is not accepted as a variable type)
+    const data = await mondayGraphQL(`
+      mutation($boardId: ID!, $url: String!) {
+        create_webhook(board_id: $boardId, url: $url, event: ${event}) {
+          id
         }
-      `, { boardId, url: webhookUrl });
-      const id = data.create_webhook?.id;
+      }
+    `, { boardId, url: webhookUrl });
+    return data.create_webhook?.id ?? null;
+  };
+
+  for (const event of requiredEvents) {
+    try {
+      const id = await registerOne(event);
       if (id) {
         results.push({ id, event });
       } else {
@@ -154,9 +161,22 @@ export async function registerWebhooks(boardId: string, webhookUrl: string): Pro
   }
 
   if (failed.length > 0) {
-    // Clean up any partially-registered webhooks before throwing
+    // Roll back any partial registrations before throwing
     await deleteWebhooks(results.map(r => r.id));
     throw new Error(`Monday.com Webhook 등록 실패 (이벤트: ${failed.join(", ")}). API 토큰 권한을 확인하세요.`);
+  }
+
+  // Optional events — register if the board/plan supports them; silently skip on error
+  for (const event of optionalEvents) {
+    try {
+      const id = await registerOne(event);
+      if (id) {
+        results.push({ id, event });
+        console.log(`[monday] optional webhook registered: ${event}`);
+      }
+    } catch (err: any) {
+      console.warn(`[monday] optional webhook ${event} not supported (skipping):`, err.message);
+    }
   }
 
   return results;

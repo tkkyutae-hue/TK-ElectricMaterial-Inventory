@@ -3952,9 +3952,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProjectByMondayId(mondayItemId: string): Promise<void> {
-    await db.update(projects)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(projects.mondayItemId, mondayItemId));
+    await db.delete(projects).where(eq(projects.mondayItemId, mondayItemId));
   }
 
   async getProjectByMondayId(mondayItemId: string): Promise<Project | undefined> {

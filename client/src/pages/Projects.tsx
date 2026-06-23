@@ -431,7 +431,7 @@ export default function Projects() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t.projFilterAll}</SelectItem>
+            <SelectItem value="all">{t.projAllStatuses}</SelectItem>
             <SelectItem value="active">{t.projStatusActive}</SelectItem>
             <SelectItem value="on_hold">{t.projStatusOnHold}</SelectItem>
             <SelectItem value="completed">{t.projStatusCompleted}</SelectItem>
@@ -439,13 +439,15 @@ export default function Projects() {
           </SelectContent>
         </Select>
 
-        <button
-          className={`h-8 px-3 text-sm font-medium rounded-md border transition-colors ${showArchived ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
-          onClick={() => setShowArchived(v => !v)}
-          data-testid="btn-toggle-archived"
-        >
-          {t.projArchivedToggle}
-        </button>
+        {isAdminRole && allProjects.some((p: any) => p.archived) && (
+          <button
+            className={`h-9 text-sm shrink-0 px-3 rounded-md border font-medium transition-colors ${showArchived ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" : "border-slate-300 text-slate-500 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50"}`}
+            onClick={() => setShowArchived(v => !v)}
+            data-testid="btn-toggle-archived"
+          >
+            {showArchived ? "아카이브 숨기기" : "아카이브 포함"}
+          </button>
+        )}
       </div>
 
       {/* Active filter summary */}

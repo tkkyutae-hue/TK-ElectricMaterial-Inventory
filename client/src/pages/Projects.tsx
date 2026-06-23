@@ -387,7 +387,7 @@ export default function Projects() {
   }
 
   const ColumnHeaderRow = (
-    <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none rounded-tl-xl rounded-tr-xl">
+    <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-20 select-none">
       <div className="sticky left-0 z-20 flex items-center h-8 bg-[#F5F6F8]">
         <div className="w-[calc(4px+32px)] flex-shrink-0" />
         <SortableHeader label={t.projColPo}   col="po"   ss={sortState} onSort={handleSort} cw={colWidths} cwKey="po"   setColWidths={setColWidths} className="hidden lg:flex" />
@@ -511,7 +511,7 @@ export default function Projects() {
           </div>
         </div>
       ) : (
-        <div className="border border-slate-200 rounded-xl bg-white">
+        <div className="border border-slate-200 rounded-xl bg-white overflow-auto max-h-[calc(100vh-14rem)]">
           {ColumnHeaderRow}
           {groups.map(([customerKey, groupProjects]) => (
             <CustomerGroup

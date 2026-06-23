@@ -4607,22 +4607,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const items = await fetchBoardItems(boardId);
       const mappingForSync = isMappingComplete(columnMapping) ? columnMapping : null;
 
-      // ── Conflict detection for initial connect ───────────────────────────────
-      if (mappingForSync) {
-        const conflictCheckItems = items.map(item => {
-          const mapped = mapMondayItemToProject(item, mappingForSync);
-          return { mondayItemId: item.id, name: mapped.name, code: mapped.code, poNumber: mapped.poNumber };
+      // ── Conflict detection for initial connect (always runs, mapping-complete or fallback) ──
+      const conflictCheckItems = items.map(item => {
+        const mapped = mapMondayItemToProject(item, mappingForSync);
+        return { mondayItemId: item.id, name: mapped.name, code: mapped.code, poNumber: mapped.poNumber };
+      });
+      const conflicts = await storage.detectMondaySyncConflicts(conflictCheckItems);
+      if (conflicts.length > 0) {
+        return res.json({
+          success: true,
+          conflicts,
+          webhookCount: webhookEntries.length,
+          mappingComplete: isMappingComplete(columnMapping),
+          columnMapping,
         });
-        const conflicts = await storage.detectMondaySyncConflicts(conflictCheckItems);
-        if (conflicts.length > 0) {
-          return res.json({
-            success: true,
-            conflicts,
-            webhookCount: webhookEntries.length,
-            mappingComplete: isMappingComplete(columnMapping),
-            columnMapping,
-          });
-        }
       }
       // ────────────────────────────────────────────────────────────────────────
 

@@ -764,6 +764,7 @@ function WireReelInlineInner(
   const { t } = useLanguage();
   const qc = useQueryClient();
   const { data: locationList = [] } = useLocations();
+  const { data: suppliers = [] } = useSuppliers();
   const [showAdd, setShowAdd] = useState(false);
   const [rows, setRows] = useState<AddReelDraft[]>([{ ...BLANK_REEL_DRAFT }]);
   const [editingId, setEditingId] = useState<number | null>(null);

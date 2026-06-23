@@ -130,7 +130,7 @@ export default function MondayIntegration() {
         setConflictData(data.conflicts);
         const init: Record<string, Resolution> = {};
         for (const c of data.conflicts) {
-          init[c.mondayItemId] = { action: "link", existingProjectId: c.existingProjects[0]?.id };
+          init[c.mondayItemId] = { action: "skip" };
         }
         setResolutions(init);
         toast({ title: "PO 충돌 감지됨", description: `${data.conflicts.length}건의 PO 중복을 확인해주세요` });
@@ -161,7 +161,7 @@ export default function MondayIntegration() {
         setConflictData(data.conflicts);
         const init: Record<string, Resolution> = {};
         for (const c of data.conflicts) {
-          init[c.mondayItemId] = { action: "link", existingProjectId: c.existingProjects[0]?.id };
+          init[c.mondayItemId] = { action: "skip" };
         }
         setResolutions(init);
         toast({ title: "PO 충돌 감지됨", description: `${data.conflicts.length}건의 PO 중복을 확인해주세요` });
@@ -659,7 +659,7 @@ export default function MondayIntegration() {
 
           <div className="space-y-5 py-2">
             {(conflictData ?? []).map((conflict, idx) => {
-              const r = resolutions[conflict.mondayItemId] ?? { action: "link", existingProjectId: conflict.existingProjects[0]?.id };
+              const r = resolutions[conflict.mondayItemId] ?? { action: "skip" };
               return (
                 <div key={conflict.mondayItemId} className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
                   {/* Monday item info */}

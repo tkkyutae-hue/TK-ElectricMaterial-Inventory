@@ -16,8 +16,11 @@ import { useLanguage } from "@/hooks/use-language";
 // Status colors — handles both legacy VoltStock enums and raw Monday labels
 // ─────────────────────────────────────────────────────────────────────────────
 const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
-  { keys: ["active", "working on it", "in progress"],          bg: "#0073EA" },
-  { keys: ["on_hold", "quote only", "stuck", "on hold"],       bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["active"],                                          bg: "#00C875" },
+  { keys: ["working on it", "in progress"],                    bg: "#0073EA" },
+  { keys: ["on_hold", "on hold", "quote only"],                bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["stuck"],                                           bg: "#E2445C" },
+  { keys: ["start soon"],                                      bg: "#A25DDC" },
   { keys: ["completed", "done"],                               bg: "#00C875" },
   { keys: ["cancelled", "canceled"],                           bg: "#E2445C" },
 ];

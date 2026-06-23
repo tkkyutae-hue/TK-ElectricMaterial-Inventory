@@ -5,9 +5,10 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Briefcase, MapPin, Calendar, ChevronRight,
   ChevronDown, ArrowUp, ArrowDown, ChevronsUpDown, ExternalLink,
+  Filter, ChevronUp,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { useLanguage } from "@/hooks/use-language";
@@ -36,6 +37,9 @@ function statusTextColor(status: string): string {
 }
 
 const STATUS_ORDER: Record<string, number> = { active: 0, "working on it": 0, on_hold: 1, "quote only": 1, completed: 2, done: 2, cancelled: 3, canceled: 3 };
+
+const ONGOING_STATUSES = new Set(["active", "working on it", "in progress", "start soon", "stuck"]);
+const LS_HIDDEN = "voltstock_hidden_statuses_v1";
 
 function statusLabelOf(value: string, t: any): string {
   switch (value) {
@@ -197,6 +201,10 @@ function CustomerGroup({
   const isNoCustomer = customerName === "__none__";
   const color = groupAccentColor(customerName);
   const isMondaySynced = projects.some((p: any) => p.source === "monday");
+  const [showInactive, setShowInactive] = useState(false);
+
+  const ongoingProjects  = projects.filter(p => ONGOING_STATUSES.has((p.status || "").toLowerCase()));
+  const inactiveProjects = projects.filter(p => !ONGOING_STATUSES.has((p.status || "").toLowerCase()));
 
   return (
     <div>
@@ -229,7 +237,7 @@ function CustomerGroup({
       </button>
 
       {/* Project rows */}
-      {!collapsed && projects.map(project => (
+      {!collapsed && ongoingProjects.map(project => (
         <div
           key={project.id}
           className="flex items-stretch border-b border-slate-100 hover:bg-[#E8F5FF] group/row transition-colors cursor-pointer"
@@ -316,6 +324,67 @@ function CustomerGroup({
           </div>
         </div>
       ))}
+
+      {/* Inactive section toggle */}
+      {!collapsed && inactiveProjects.length > 0 && (
+        <>
+          <button
+            className="w-full flex items-center gap-2 h-8 border-b border-slate-100 hover:bg-slate-50 transition-colors select-none"
+            style={{ borderLeft: `4px solid ${color}10`, paddingLeft: 32 }}
+            onClick={e => { e.stopPropagation(); setShowInactive(v => !v); }}
+            data-testid={`group-inactive-toggle-${customerName}`}
+          >
+            {showInactive
+              ? <ChevronUp className="w-3 h-3 text-slate-400" />
+              : <ChevronDown className="w-3 h-3 text-slate-400" />}
+            <span className="text-[11px] text-slate-400 font-medium">
+              완료 / 견적 ({inactiveProjects.length})
+            </span>
+          </button>
+          {showInactive && inactiveProjects.map(project => (
+            <div
+              key={project.id}
+              className="flex items-stretch border-b border-slate-100 hover:bg-[#E8F5FF] group/row transition-colors cursor-pointer opacity-60"
+              style={{ borderLeft: `4px solid ${color}20` }}
+              data-testid={`row-project-${project.id}`}
+              onClick={() => onRowClick(project.id)}
+            >
+              <div className="sticky left-0 z-10 flex items-stretch bg-white group-hover/row:bg-[#E8F5FF] transition-colors">
+                <div className="w-8 flex-shrink-0 flex items-center" />
+                <div className="flex-shrink-0 hidden lg:flex items-center pr-2 py-2" style={{ width: cw.po }}>
+                  <span className="text-sm text-slate-700 truncate">{project.poNumber || <span className="text-slate-300">—</span>}</span>
+                </div>
+                <div className="flex-shrink-0 min-w-0 flex items-center pr-2 py-2" style={{ width: cw.name }}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-semibold text-slate-900 text-sm truncate">{project.name || <span className="text-slate-300">—</span>}</span>
+                      {project.mondayItemId && (
+                        <a href={project.mondayUrl || (mondayBoardId ? `https://monday.com/boards/${mondayBoardId}/pulses/${project.mondayItemId}` : "https://monday.com")} target="_blank" rel="noreferrer" className="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FF3D57]/10 text-[#FF3D57] hover:bg-[#FF3D57]/20 transition-colors" onClick={e => e.stopPropagation()}>
+                          <ExternalLink className="w-2.5 h-2.5" />Mon
+                        </a>
+                      )}
+                    </div>
+                    {project.ownerName && <span className="text-[11px] text-slate-400 truncate block mt-0.5">{project.ownerName}</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2" style={{ width: cw.customer }}>
+                <span className="text-sm text-slate-700 truncate">{project.customerName || <span className="text-slate-300">—</span>}</span>
+              </div>
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2 gap-1" style={{ width: cw.location }}>
+                {project.jobLocation ? <MapPin className="w-3 h-3 text-slate-300 flex-shrink-0" /> : null}
+                <span className="text-sm text-slate-700 truncate">{project.jobLocation || <span className="text-slate-300">—</span>}</span>
+              </div>
+              <div className="flex-shrink-0 hidden xl:flex items-center pr-2 py-2" style={{ width: cw.timeline }}>
+                <TimelineCell startDate={project.startDate} endDate={project.endDate} />
+              </div>
+              <div className="flex-shrink-0 self-stretch hidden md:flex" style={{ width: cw.status }}>
+                <MondayStatusCell projectId={project.id} status={project.status} />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -335,7 +404,9 @@ export default function Projects() {
   const { t } = useLanguage();
   const [, navigate] = useLocation();
 
-  const [statusFilter,    setStatusFilter]    = useState("all");
+  const [hiddenStatuses,  setHiddenStatuses]  = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem(LS_HIDDEN); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
   const [search,          setSearch]          = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [colWidths,       setColWidths]       = useState<ColWidths>(loadWidths);
@@ -345,15 +416,27 @@ export default function Projects() {
   useEffect(() => {
     try { localStorage.setItem(LS_COL, JSON.stringify(colWidths)); } catch {}
   }, [colWidths]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_HIDDEN, JSON.stringify([...hiddenStatuses])); } catch {}
+  }, [hiddenStatuses]);
+
+  function toggleHiddenStatus(s: string) {
+    setHiddenStatuses(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+  }
 
   const allProjects: any[] = projects ?? [];
 
+  const allStatusOptions = useMemo(
+    () => [...new Set(allProjects.map((p: any) => p.status).filter(Boolean))].sort(),
+    [allProjects],
+  );
+
   const filtered = useMemo(() => allProjects.filter((p: any) => {
     if (!showArchived && p.archived) return false;
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
-    if (!search.trim()) return matchStatus;
+    if (hiddenStatuses.has((p.status || "").toLowerCase())) return false;
+    if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return matchStatus && (
+    return (
       p.name?.toLowerCase().includes(q) ||
       p.customerName?.toLowerCase().includes(q) ||
       p.ownerName?.toLowerCase().includes(q) ||
@@ -361,7 +444,7 @@ export default function Projects() {
       p.poNumber?.toLowerCase().includes(q) ||
       p.status?.toLowerCase().includes(q)
     );
-  }), [allProjects, statusFilter, search, showArchived]);
+  }), [allProjects, hiddenStatuses, search, showArchived]);
 
   const sorted = useMemo(() => {
     if (!sortState.col || !sortState.dir) return filtered;
@@ -435,17 +518,46 @@ export default function Projects() {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-8 w-40 text-sm" data-testid="select-status-filter">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t.projAllStatuses}</SelectItem>
-            {[...new Set(allProjects.map((p: any) => p.status).filter(Boolean))].sort().map((s: string) => (
-              <SelectItem key={s} value={s}>{statusLabelOf(s, t)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`h-8 flex items-center gap-1.5 px-3 rounded-md border text-sm font-medium transition-colors ${hiddenStatuses.size > 0 ? "border-brand-400 bg-brand-50 text-brand-700" : "border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"}`}
+              data-testid="btn-status-filter"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              {hiddenStatuses.size === 0 ? t.projAllStatuses : `${allStatusOptions.length - hiddenStatuses.size} / ${allStatusOptions.length}`}
+              <ChevronDown className="w-3 h-3 ml-0.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52 p-2" align="start">
+            <div className="mb-1.5 flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
+              {hiddenStatuses.size > 0 && (
+                <button className="text-[11px] text-brand-600 hover:text-brand-800 font-medium" onClick={() => setHiddenStatuses(new Set())}>모두 보기</button>
+              )}
+            </div>
+            {allStatusOptions.map((s: string) => {
+              const key = s.toLowerCase();
+              const visible = !hiddenStatuses.has(key);
+              return (
+                <label key={s} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer hover:bg-slate-50 select-none">
+                  <input
+                    type="checkbox"
+                    checked={visible}
+                    onChange={() => toggleHiddenStatus(key)}
+                    className="w-3.5 h-3.5 accent-brand-600 cursor-pointer"
+                  />
+                  <span
+                    className="text-[11px] font-bold px-2 py-0.5 rounded"
+                    style={{ backgroundColor: statusBg(s), color: statusTextColor(s) }}
+                  >
+                    {statusLabelOf(s, t)}
+                  </span>
+                </label>
+              );
+            })}
+          </PopoverContent>
+        </Popover>
 
         {isAdminRole && allProjects.some((p: any) => p.archived) && (
           <button
@@ -459,7 +571,7 @@ export default function Projects() {
       </div>
 
       {/* Active filter summary */}
-      {(search || statusFilter !== "all") && !isLoading && (
+      {(search || hiddenStatuses.size > 0) && !isLoading && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <span>
             {filtered.length === allProjects.length
@@ -468,7 +580,7 @@ export default function Projects() {
           </span>
           <button
             className="text-brand-600 hover:text-brand-800 font-medium text-xs transition-colors"
-            onClick={() => { setSearch(""); setStatusFilter("all"); }}
+            onClick={() => { setSearch(""); setHiddenStatuses(new Set()); }}
             data-testid="btn-clear-filters"
           >
             {t.projClearFiltersBtn}
@@ -505,13 +617,13 @@ export default function Projects() {
             <p className="font-semibold text-slate-900">{t.projNoneFound}</p>
             {search
               ? <p className="text-sm text-slate-500 mt-1">{t.projNoResultsFor} "<span className="font-medium">{search}</span>" — {t.projTryDifferentTerms}</p>
-              : statusFilter !== "all"
+              : hiddenStatuses.size > 0
                 ? <p className="text-sm text-slate-500 mt-1">{t.projNoMatchStatus}</p>
                 : <p className="text-sm text-slate-500 mt-1">{t.projAppearGrouped}</p>}
-            {(search || statusFilter !== "all") && (
+            {(search || hiddenStatuses.size > 0) && (
               <button
                 className="mt-3 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors"
-                onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                onClick={() => { setSearch(""); setHiddenStatuses(new Set()); }}
               >
                 {t.projClearFiltersBtn}
               </button>

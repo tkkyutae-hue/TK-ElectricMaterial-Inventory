@@ -42,19 +42,25 @@ export function SearchableProjectSelect({
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const isMobile = useIsMobileInline();
 
-  const activeProjects = (projects || []).filter(p => p.status === "active");
-  const selected = activeProjects.find(p => p.id === value);
+  const ONGOING = new Set(["active", "working on it", "in progress", "start soon", "stuck"]);
+  const [showAll, setShowAll] = useState(false);
+
+  const allProjects = (projects || []);
+  const ongoingProjects = allProjects.filter(p => ONGOING.has((p.status || "").toLowerCase()));
+  const inactiveProjects = allProjects.filter(p => !ONGOING.has((p.status || "").toLowerCase()));
+  const visiblePool = showAll ? allProjects : ongoingProjects;
+  const selected = allProjects.find(p => p.id === value);
 
   function label(p: any) {
     return p.poNumber ? `${p.poNumber} — ${p.name}` : p.name;
   }
 
   const filtered = search.trim()
-    ? activeProjects.filter(p => {
+    ? visiblePool.filter(p => {
         const q = search.toLowerCase();
         return p.name?.toLowerCase().includes(q) || p.poNumber?.toLowerCase().includes(q);
       })
-    : activeProjects;
+    : visiblePool;
 
   useEffect(() => {
     if (!open) return;
@@ -139,6 +145,25 @@ export function SearchableProjectSelect({
       ))}
       {filtered.length === 0 && (
         <p style={D ? { textAlign: "center", fontSize: 12, color: F.textMuted, padding: "12px 0" } : undefined} className={D ? undefined : "text-center text-sm text-slate-400 py-3"}>{t.movSearchProjNone}</p>
+      )}
+      {inactiveProjects.length > 0 && (
+        <div
+          style={D ? { borderTop: `1px solid ${F.borderStrong}`, padding: "6px 12px" } : undefined}
+          className={D ? undefined : "border-t border-slate-100 px-3 py-1.5"}
+        >
+          <button
+            type="button"
+            onClick={() => setShowAll(v => !v)}
+            style={D ? { display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: F.textMuted, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left" } : undefined}
+            className={D ? undefined : "flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 w-full"}
+            data-testid="project-toggle-inactive"
+          >
+            <span style={D ? { fontSize: 10 } : undefined} className={D ? undefined : "text-[10px]"}>
+              {showAll ? "▲" : "▼"}
+            </span>
+            {showAll ? `진행 중만 보기` : `완료 / 견적 포함 (${inactiveProjects.length})`}
+          </button>
+        </div>
       )}
       {!hideCreate && (
         <div style={D ? { borderTop: `1px solid ${F.borderStrong}`, padding: "8px 12px" } : undefined} className={D ? undefined : "border-t border-slate-100 px-3 py-2"}>

@@ -4716,9 +4716,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { fetchBoardItems, mapMondayItemToProject, isMappingComplete } = await import("./services/monday");
       const mappingRaw = await storage.getAppSetting("monday_column_mapping");
       const columnMapping = mappingRaw ? JSON.parse(mappingRaw) : null;
-      if (!isMappingComplete(columnMapping)) {
-        return res.status(400).json({ message: "Column mapping is incomplete", mappingIncomplete: true });
-      }
+      // Use mapping if complete, otherwise fall back to auto-detect (same as connect endpoint)
+      const mappingForSync = isMappingComplete(columnMapping) ? columnMapping : null;
 
       const items = await fetchBoardItems(boardId);
       const liveItemIds = new Set(items.map(i => i.id));
@@ -4728,7 +4727,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       let synced = 0;
       for (const item of items) {
-        const mapped = mapMondayItemToProject(item, columnMapping);
+        const mapped = mapMondayItemToProject(item, mappingForSync);
         const resolution = resolutionMap.get(item.id);
 
         if (resolution) {

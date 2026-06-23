@@ -4606,6 +4606,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Initial full sync — use mapping if complete, otherwise auto-detect fallback
       const items = await fetchBoardItems(boardId);
       const mappingForSync = isMappingComplete(columnMapping) ? columnMapping : null;
+
+      // ── Conflict detection for initial connect ───────────────────────────────
+      if (mappingForSync) {
+        const conflictCheckItems = items.map(item => {
+          const mapped = mapMondayItemToProject(item, mappingForSync);
+          return { mondayItemId: item.id, name: mapped.name, code: mapped.code, poNumber: mapped.poNumber };
+        });
+        const conflicts = await storage.detectMondaySyncConflicts(conflictCheckItems);
+        if (conflicts.length > 0) {
+          return res.json({
+            success: true,
+            conflicts,
+            webhookCount: webhookEntries.length,
+            mappingComplete: isMappingComplete(columnMapping),
+            columnMapping,
+          });
+        }
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
       let synced = 0;
       for (const item of items) {
         const mapped = mapMondayItemToProject(item, mappingForSync);
@@ -4626,7 +4646,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // POST /api/monday/sync — manual full sync (admin only)
-  // Returns 400 if required column mapping is incomplete
+  // Returns 400 if required column mapping is incomplete.
+  // Returns { conflicts } if PO conflicts detected — caller must resolve via /resolve-conflicts.
   app.post("/api/monday/sync", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const boardId = await storage.getAppSetting("monday_board_id");
@@ -4645,6 +4666,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const items = await fetchBoardItems(boardId);
+
+      // ── Conflict detection ───────────────────────────────────────────────────
+      const conflictCheckItems = items.map(item => {
+        const mapped = mapMondayItemToProject(item, columnMapping);
+        return { mondayItemId: item.id, name: mapped.name, code: mapped.code, poNumber: mapped.poNumber };
+      });
+      const conflicts = await storage.detectMondaySyncConflicts(conflictCheckItems);
+      if (conflicts.length > 0) {
+        return res.json({ conflicts });
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
       const liveItemIds = new Set(items.map(i => i.id));
       let synced = 0;
       for (const item of items) {
@@ -4663,6 +4696,71 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
       if (archived > 0) console.log(`[monday sync] archived ${archived} stale project(s) not found on board`);
+
+      res.json({ success: true, synced, archived });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/monday/sync/resolve-conflicts — apply conflict resolutions + complete sync
+  app.post("/api/monday/sync/resolve-conflicts", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { resolutions } = req.body;
+      // resolutions: Array<{ mondayItemId: string, action: "link"|"create", existingProjectId?: number }>
+      if (!Array.isArray(resolutions)) {
+        return res.status(400).json({ message: "resolutions array is required" });
+      }
+
+      const boardId = await storage.getAppSetting("monday_board_id");
+      if (!boardId) return res.status(400).json({ message: "No board configured" });
+
+      const { fetchBoardItems, mapMondayItemToProject, isMappingComplete } = await import("./services/monday");
+      const mappingRaw = await storage.getAppSetting("monday_column_mapping");
+      const columnMapping = mappingRaw ? JSON.parse(mappingRaw) : null;
+      if (!isMappingComplete(columnMapping)) {
+        return res.status(400).json({ message: "Column mapping is incomplete", mappingIncomplete: true });
+      }
+
+      const items = await fetchBoardItems(boardId);
+      const liveItemIds = new Set(items.map(i => i.id));
+      const resolutionMap = new Map<string, { action: string; existingProjectId?: number }>(
+        resolutions.map((r: any) => [r.mondayItemId, { action: r.action, existingProjectId: r.existingProjectId }])
+      );
+
+      let synced = 0;
+      for (const item of items) {
+        const mapped = mapMondayItemToProject(item, columnMapping);
+        const resolution = resolutionMap.get(item.id);
+
+        if (resolution) {
+          if (resolution.action === "link" && resolution.existingProjectId) {
+            await storage.forceLinkProjectToMonday(
+              resolution.existingProjectId,
+              item.id,
+              { ...mapped, mondayBoardId: boardId }
+            );
+          } else {
+            // "create" — bypass PO matching, insert new project
+            await storage.forceCreateProjectFromMonday(item.id, { ...mapped, mondayBoardId: boardId });
+          }
+        } else {
+          // No conflict for this item — process normally
+          await storage.upsertProjectByMondayId(item.id, { ...mapped, mondayBoardId: boardId });
+        }
+        synced++;
+      }
+
+      // Archive stale Monday-sourced projects
+      let archived = 0;
+      const mondayProjects = await storage.getMondayProjectsByBoardId(boardId);
+      for (const p of mondayProjects) {
+        if (p.mondayItemId && !liveItemIds.has(p.mondayItemId)) {
+          await storage.deleteProjectByMondayId(p.mondayItemId);
+          archived++;
+        }
+      }
+      if (archived > 0) console.log(`[monday sync] archived ${archived} stale project(s) after conflict resolution`);
 
       res.json({ success: true, synced, archived });
     } catch (err: any) {

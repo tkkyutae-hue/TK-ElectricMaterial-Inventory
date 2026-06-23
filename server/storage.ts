@@ -270,6 +270,34 @@ export interface IStorage {
   deleteProjectByMondayId(mondayItemId: string): Promise<void>;
   getProjectByMondayId(mondayItemId: string): Promise<Project | undefined>;
   getMondayProjectsByBoardId(boardId: string): Promise<Array<{ id: number; mondayItemId: string | null }>>;
+
+  detectMondaySyncConflicts(items: Array<{
+    mondayItemId: string;
+    name: string;
+    code?: string | null;
+    poNumber?: string | null;
+  }>): Promise<Array<{
+    mondayItemId: string;
+    mondayName: string;
+    poNumber: string | null;
+    existingProjects: Array<{ id: number; name: string; customerName: string | null }>;
+  }>>;
+
+  forceLinkProjectToMonday(projectId: number, mondayItemId: string, data: {
+    name: string; status: string;
+    code?: string | null; poNumber?: string | null; ownerName?: string | null;
+    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
+    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
+  }): Promise<void>;
+
+  forceCreateProjectFromMonday(mondayItemId: string, data: {
+    name: string; status: string;
+    code?: string | null; poNumber?: string | null; ownerName?: string | null;
+    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
+    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
+  }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4091,6 +4119,140 @@ export class DatabaseStorage implements IStorage {
         eq(projects.archived, false),
       ));
     return rows;
+  }
+
+  async detectMondaySyncConflicts(items: Array<{
+    mondayItemId: string;
+    name: string;
+    code?: string | null;
+    poNumber?: string | null;
+  }>): Promise<Array<{
+    mondayItemId: string;
+    mondayName: string;
+    poNumber: string | null;
+    existingProjects: Array<{ id: number; name: string; customerName: string | null }>;
+  }>> {
+    const results: Array<{
+      mondayItemId: string; mondayName: string; poNumber: string | null;
+      existingProjects: Array<{ id: number; name: string; customerName: string | null }>;
+    }> = [];
+
+    for (const item of items) {
+      // Already linked by mondayItemId → will be updated normally, not a conflict
+      const [existing] = await db.select({ id: projects.id }).from(projects)
+        .where(eq(projects.mondayItemId, item.mondayItemId));
+      if (existing) continue;
+
+      const code = item.code?.trim() || null;
+      const po   = item.poNumber?.trim() || code;
+      if (!code && !po) continue;
+
+      // Collect all values to check against code and poNumber columns
+      const valuesToCheck = [...new Set([code, po].filter(Boolean))] as string[];
+      if (valuesToCheck.length === 0) continue;
+
+      const orConditions = valuesToCheck.flatMap(v => [
+        eq(projects.code, v),
+        eq(projects.poNumber, v),
+      ]);
+
+      const matches = await db.select({
+        id: projects.id,
+        name: projects.name,
+        customerName: projects.customerName,
+      }).from(projects).where(
+        and(
+          orConditions.length === 1 ? orConditions[0] : or(...orConditions),
+          isNull(projects.mondayItemId),
+          eq(projects.archived, false),
+        )
+      );
+
+      if (matches.length > 0) {
+        results.push({
+          mondayItemId: item.mondayItemId,
+          mondayName: item.name,
+          poNumber: po,
+          existingProjects: matches,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  async forceLinkProjectToMonday(projectId: number, mondayItemId: string, data: {
+    name: string; status: string;
+    code?: string | null; poNumber?: string | null; ownerName?: string | null;
+    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
+    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
+  }): Promise<void> {
+    const [existing] = await db.select().from(projects).where(eq(projects.id, projectId));
+    if (!existing) throw new Error(`Project ${projectId} not found`);
+
+    const incomingCode         = data.code?.trim()         || null;
+    const incomingPoNumber     = data.poNumber?.trim()     || incomingCode;
+    const incomingGroupId      = data.mondayGroupId?.trim() || null;
+    const incomingCustomerName = (data.customerName ?? data.mondayGroupTitle)?.trim() || null;
+
+    await db.update(projects).set({
+      mondayItemId,
+      mondayBoardId:    data.mondayBoardId    ?? existing.mondayBoardId,
+      mondayGroupId:    incomingGroupId        ?? existing.mondayGroupId,
+      mondayGroupTitle: data.mondayGroupTitle ?? existing.mondayGroupTitle,
+      mondayUrl:        data.mondayUrl        ?? existing.mondayUrl,
+      source:           "monday",
+      name:             data.name,
+      status:           data.status,
+      code:             incomingCode          ?? existing.code,
+      poNumber:         incomingPoNumber      ?? existing.poNumber,
+      ownerName:        data.ownerName        ?? existing.ownerName,
+      startDate:        data.startDate        ?? existing.startDate,
+      endDate:          data.endDate          ?? existing.endDate,
+      jobLocation:      data.jobLocation      ?? existing.jobLocation,
+      notes:            data.notes            ?? existing.notes,
+      customerName:     incomingCustomerName  ?? existing.customerName,
+      archived:         false,
+      mondaySyncStatus: "ok",
+      mondaySyncError:  null,
+      updatedAt:        new Date(),
+    }).where(eq(projects.id, projectId));
+  }
+
+  async forceCreateProjectFromMonday(mondayItemId: string, data: {
+    name: string; status: string;
+    code?: string | null; poNumber?: string | null; ownerName?: string | null;
+    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
+    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
+    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
+  }): Promise<void> {
+    const incomingCode         = data.code?.trim()         || null;
+    const incomingPoNumber     = data.poNumber?.trim()     || incomingCode;
+    const incomingGroupId      = data.mondayGroupId?.trim() || null;
+    const incomingCustomerName = (data.customerName ?? data.mondayGroupTitle)?.trim() || null;
+    const code = incomingCode || `MON-${mondayItemId}`;
+
+    await db.insert(projects).values({
+      mondayItemId,
+      code,
+      poNumber:         incomingPoNumber    ?? code,
+      name:             data.name,
+      status:           data.status,
+      ownerName:        data.ownerName      ?? null,
+      startDate:        data.startDate      ?? null,
+      endDate:          data.endDate        ?? null,
+      jobLocation:      data.jobLocation    ?? null,
+      notes:            data.notes          ?? null,
+      customerName:     incomingCustomerName,
+      mondayGroupId:    incomingGroupId,
+      mondayGroupTitle: data.mondayGroupTitle ?? null,
+      mondayBoardId:    data.mondayBoardId   ?? null,
+      mondayUrl:        data.mondayUrl       ?? null,
+      source:           "monday",
+      mondaySyncStatus: "ok",
+      mondaySyncError:  null,
+    });
   }
 }
 

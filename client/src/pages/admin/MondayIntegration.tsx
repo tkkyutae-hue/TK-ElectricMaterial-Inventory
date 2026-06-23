@@ -8,10 +8,25 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import {
   RefreshCw, Unplug, Plug, AlertCircle, CheckCircle2, ExternalLink, Info,
-  Settings, ChevronDown, ChevronUp, AlertTriangle, Save, Eye,
+  Settings, ChevronDown, ChevronUp, AlertTriangle, Save, Eye, Link2, FilePlus,
 } from "lucide-react";
+
+type ConflictItem = {
+  mondayItemId: string;
+  mondayName: string;
+  poNumber: string | null;
+  existingProjects: Array<{ id: number; name: string; customerName: string | null }>;
+};
+
+type Resolution = {
+  action: "link" | "create";
+  existingProjectId?: number;
+};
 
 type Status = {
   hasToken: boolean;
@@ -66,6 +81,8 @@ export default function MondayIntegration() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [conflictData, setConflictData] = useState<ConflictItem[] | null>(null);
+  const [resolutions, setResolutions] = useState<Record<string, Resolution>>({});
 
   // ── Status ────────────────────────────────────────────────────────────────
   const { data: statusData, isLoading: statusLoading } = useQuery<Status>({
@@ -106,10 +123,20 @@ export default function MondayIntegration() {
     },
     onSuccess: async (res: any) => {
       const data = await res.json();
-      toast({ title: "Monday.com 연결 완료", description: `${data.synced}개 프로젝트 동기화, Webhook ${data.webhookCount}개 등록됨` });
       if (data.columnMapping) setLocalMapping(data.columnMapping);
       qc.invalidateQueries({ queryKey: ["/api/monday/status"] });
       qc.invalidateQueries({ queryKey: ["/api/monday/column-mapping"] });
+      if (data.conflicts?.length > 0) {
+        setConflictData(data.conflicts);
+        const init: Record<string, Resolution> = {};
+        for (const c of data.conflicts) {
+          init[c.mondayItemId] = { action: "link", existingProjectId: c.existingProjects[0]?.id };
+        }
+        setResolutions(init);
+        toast({ title: "PO 충돌 감지됨", description: `${data.conflicts.length}건의 PO 중복을 확인해주세요` });
+        return;
+      }
+      toast({ title: "Monday.com 연결 완료", description: `${data.synced ?? 0}개 프로젝트 동기화, Webhook ${data.webhookCount}개 등록됨` });
       qc.invalidateQueries({ queryKey: ["/api/projects"] });
     },
     onError: (err: any) => toast({ variant: "destructive", title: "연결 실패", description: err.message }),
@@ -130,6 +157,16 @@ export default function MondayIntegration() {
     mutationFn: () => apiRequest("POST", "/api/monday/sync"),
     onSuccess: async (res: any) => {
       const data = await res.json();
+      if (data.conflicts?.length > 0) {
+        setConflictData(data.conflicts);
+        const init: Record<string, Resolution> = {};
+        for (const c of data.conflicts) {
+          init[c.mondayItemId] = { action: "link", existingProjectId: c.existingProjects[0]?.id };
+        }
+        setResolutions(init);
+        toast({ title: "PO 충돌 감지됨", description: `${data.conflicts.length}건의 PO 중복을 확인해주세요` });
+        return;
+      }
       toast({ title: "동기화 완료", description: `${data.synced}개 항목 업데이트됨` });
       qc.invalidateQueries({ queryKey: ["/api/projects"] });
     },
@@ -144,6 +181,32 @@ export default function MondayIntegration() {
       toast({ variant: "destructive", title: "동기화 실패", description: err.message });
     },
   });
+
+  const resolveConflictsMutation = useMutation({
+    mutationFn: (resolutionList: Array<{ mondayItemId: string; action: string; existingProjectId?: number }>) =>
+      apiRequest("POST", "/api/monday/sync/resolve-conflicts", { resolutions: resolutionList }),
+    onSuccess: async (res: any) => {
+      const data = await res.json();
+      setConflictData(null);
+      setResolutions({});
+      toast({ title: "동기화 완료", description: `${data.synced}개 항목 처리됨` });
+      qc.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: "동기화 실패", description: err.message }),
+  });
+
+  function submitConflictResolutions() {
+    if (!conflictData) return;
+    const list = conflictData.map(c => {
+      const r = resolutions[c.mondayItemId] ?? { action: "create" };
+      return {
+        mondayItemId: c.mondayItemId,
+        action: r.action,
+        existingProjectId: r.action === "link" ? r.existingProjectId : undefined,
+      };
+    });
+    resolveConflictsMutation.mutate(list);
+  }
 
   const disconnectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/monday/disconnect"),
@@ -579,6 +642,130 @@ export default function MondayIntegration() {
           </div>
         </CardContent>
       </Card>
+
+      {/* PO Conflict Resolution Dialog */}
+      <Dialog open={!!conflictData} onOpenChange={open => { if (!open) { setConflictData(null); setResolutions({}); } }}>
+        <DialogContent className="sm:max-w-[580px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              PO 번호 중복 감지됨
+            </DialogTitle>
+            <DialogDescription>
+              아래 Monday.com 항목과 동일한 PO 번호를 가진 VoltStock 프로젝트가 이미 존재합니다.
+              각 항목에 대해 <strong>기존 프로젝트에 연결</strong>하거나 <strong>새 프로젝트로 생성</strong>할지 선택해주세요.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {(conflictData ?? []).map((conflict, idx) => {
+              const r = resolutions[conflict.mondayItemId] ?? { action: "link", existingProjectId: conflict.existingProjects[0]?.id };
+              return (
+                <div key={conflict.mondayItemId} className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  {/* Monday item info */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+                      MON #{idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 truncate">{conflict.mondayName}</p>
+                      {conflict.poNumber && (
+                        <p className="text-xs text-slate-500 mt-0.5">PO: <span className="font-mono font-medium text-slate-700">{conflict.poNumber}</span></p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action choice */}
+                  <RadioGroup
+                    value={r.action}
+                    onValueChange={(val: "link" | "create") => {
+                      setResolutions(prev => ({
+                        ...prev,
+                        [conflict.mondayItemId]: {
+                          action: val,
+                          existingProjectId: val === "link" ? (r.existingProjectId ?? conflict.existingProjects[0]?.id) : undefined,
+                        },
+                      }));
+                    }}
+                    className="space-y-2"
+                  >
+                    {/* Link option */}
+                    <div className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors ${r.action === "link" ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+                      <RadioGroupItem value="link" id={`link-${conflict.mondayItemId}`} className="mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <Label htmlFor={`link-${conflict.mondayItemId}`} className="flex items-center gap-1.5 text-sm font-medium text-slate-800 cursor-pointer">
+                          <Link2 className="w-3.5 h-3.5 text-indigo-500" />
+                          기존 프로젝트에 연결
+                        </Label>
+                        <p className="text-xs text-slate-500 mt-0.5">Monday 데이터로 해당 프로젝트를 업데이트하고 연결합니다.</p>
+                        {r.action === "link" && conflict.existingProjects.length > 1 && (
+                          <Select
+                            value={String(r.existingProjectId ?? conflict.existingProjects[0]?.id)}
+                            onValueChange={v => setResolutions(prev => ({
+                              ...prev,
+                              [conflict.mondayItemId]: { action: "link", existingProjectId: Number(v) },
+                            }))}
+                          >
+                            <SelectTrigger className="mt-2 h-8 text-xs" data-testid={`select-link-project-${conflict.mondayItemId}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {conflict.existingProjects.map(p => (
+                                <SelectItem key={p.id} value={String(p.id)}>
+                                  {p.name}{p.customerName ? ` — ${p.customerName}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {r.action === "link" && conflict.existingProjects.length === 1 && (
+                          <p className="text-xs text-indigo-700 mt-1 font-medium">
+                            → {conflict.existingProjects[0].name}
+                            {conflict.existingProjects[0].customerName ? ` (${conflict.existingProjects[0].customerName})` : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Create new option */}
+                    <div className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors ${r.action === "create" ? "border-emerald-300 bg-emerald-50/60" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+                      <RadioGroupItem value="create" id={`create-${conflict.mondayItemId}`} className="mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <Label htmlFor={`create-${conflict.mondayItemId}`} className="flex items-center gap-1.5 text-sm font-medium text-slate-800 cursor-pointer">
+                          <FilePlus className="w-3.5 h-3.5 text-emerald-500" />
+                          새 프로젝트로 생성
+                        </Label>
+                        <p className="text-xs text-slate-500 mt-0.5">Monday 항목을 별도의 새 프로젝트로 가져옵니다.</p>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="gap-2 pt-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => { setConflictData(null); setResolutions({}); }}
+              disabled={resolveConflictsMutation.isPending}
+              data-testid="btn-cancel-conflict-resolution"
+            >
+              취소
+            </Button>
+            <Button
+              size="sm"
+              onClick={submitConflictResolutions}
+              disabled={resolveConflictsMutation.isPending}
+              data-testid="btn-confirm-conflict-resolution"
+            >
+              {resolveConflictsMutation.isPending
+                ? <><RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />처리 중...</>
+                : <>동기화 완료</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

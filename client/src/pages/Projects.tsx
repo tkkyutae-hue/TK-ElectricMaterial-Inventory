@@ -361,11 +361,12 @@ export default function Projects() {
   }, [filtered, sortState]);
 
   const groups = useMemo(() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, { displayName: string; projects: any[] }>();
     sorted.forEach((p: any) => {
-      const k = p.customerName?.trim() || "__none__";
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(p);
+      const raw = p.customerName?.trim() || "";
+      const k = raw ? raw.toLowerCase() : "__none__";
+      if (!map.has(k)) map.set(k, { displayName: raw || "__none__", projects: [] });
+      map.get(k)!.projects.push(p);
     });
     return [...map.entries()].sort(([a], [b]) => {
       if (a === "__none__") return 1;
@@ -513,10 +514,10 @@ export default function Projects() {
       ) : (
         <div className="border border-slate-200 rounded-xl bg-white overflow-auto max-h-[calc(100vh-14rem)]">
           {ColumnHeaderRow}
-          {groups.map(([customerKey, groupProjects]) => (
+          {groups.map(([customerKey, { displayName, projects: groupProjects }]) => (
             <CustomerGroup
               key={customerKey}
-              customerName={customerKey}
+              customerName={displayName}
               projects={groupProjects}
               collapsed={collapsedGroups.has(customerKey)}
               onToggle={() => toggleGroup(customerKey)}

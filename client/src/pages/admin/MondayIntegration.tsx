@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import {
   RefreshCw, Unplug, Plug, AlertCircle, CheckCircle2, ExternalLink, Info,
-  Settings, ChevronDown, ChevronUp, AlertTriangle, Save, Eye, Link2, FilePlus,
+  Settings, ChevronDown, ChevronUp, AlertTriangle, Save, Eye, Link2, SkipForward,
 } from "lucide-react";
 
 type ConflictItem = {
@@ -24,7 +24,7 @@ type ConflictItem = {
 };
 
 type Resolution = {
-  action: "link" | "create";
+  action: "link" | "skip";
   existingProjectId?: number;
 };
 
@@ -198,7 +198,7 @@ export default function MondayIntegration() {
   function submitConflictResolutions() {
     if (!conflictData) return;
     const list = conflictData.map(c => {
-      const r = resolutions[c.mondayItemId] ?? { action: "create" };
+      const r = resolutions[c.mondayItemId] ?? { action: "skip" };
       return {
         mondayItemId: c.mondayItemId,
         action: r.action,
@@ -653,7 +653,7 @@ export default function MondayIntegration() {
             </DialogTitle>
             <DialogDescription>
               아래 Monday.com 항목과 동일한 PO 번호를 가진 VoltStock 프로젝트가 이미 존재합니다.
-              각 항목에 대해 <strong>기존 프로젝트에 연결</strong>하거나 <strong>새 프로젝트로 생성</strong>할지 선택해주세요.
+              각 항목에 대해 <strong>기존 프로젝트에 연결</strong>하거나 <strong>이번 싱크에서 건너뛰기</strong>를 선택해주세요.
             </DialogDescription>
           </DialogHeader>
 
@@ -678,7 +678,7 @@ export default function MondayIntegration() {
                   {/* Action choice */}
                   <RadioGroup
                     value={r.action}
-                    onValueChange={(val: "link" | "create") => {
+                    onValueChange={(val: "link" | "skip") => {
                       setResolutions(prev => ({
                         ...prev,
                         [conflict.mondayItemId]: {
@@ -727,15 +727,15 @@ export default function MondayIntegration() {
                       </div>
                     </div>
 
-                    {/* Create new option */}
-                    <div className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors ${r.action === "create" ? "border-emerald-300 bg-emerald-50/60" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                      <RadioGroupItem value="create" id={`create-${conflict.mondayItemId}`} className="mt-0.5 shrink-0" />
+                    {/* Skip option */}
+                    <div className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer transition-colors ${r.action === "skip" ? "border-slate-400 bg-slate-100/60" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
+                      <RadioGroupItem value="skip" id={`skip-${conflict.mondayItemId}`} className="mt-0.5 shrink-0" />
                       <div className="min-w-0">
-                        <Label htmlFor={`create-${conflict.mondayItemId}`} className="flex items-center gap-1.5 text-sm font-medium text-slate-800 cursor-pointer">
-                          <FilePlus className="w-3.5 h-3.5 text-emerald-500" />
-                          새 프로젝트로 생성
+                        <Label htmlFor={`skip-${conflict.mondayItemId}`} className="flex items-center gap-1.5 text-sm font-medium text-slate-800 cursor-pointer">
+                          <SkipForward className="w-3.5 h-3.5 text-slate-500" />
+                          Skip (이번 싱크에서 건너뛰기)
                         </Label>
-                        <p className="text-xs text-slate-500 mt-0.5">Monday 항목을 별도의 새 프로젝트로 가져옵니다.</p>
+                        <p className="text-xs text-slate-500 mt-0.5">이 항목은 이번 동기화에서 처리하지 않고 건너뜁니다.</p>
                       </div>
                     </div>
                   </RadioGroup>

@@ -4721,7 +4721,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const items = await fetchBoardItems(boardId);
       const liveItemIds = new Set(items.map(i => i.id));
-      const resolutionMap = new Map<string, { action: string; existingProjectId?: number }>(
+      const resolutionMap = new Map<string, { action: "link" | "skip"; existingProjectId?: number }>(
         resolutions.map((r: any) => [r.mondayItemId, { action: r.action, existingProjectId: r.existingProjectId }])
       );
 
@@ -4737,10 +4737,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               item.id,
               { ...mapped, mondayBoardId: boardId }
             );
-          } else {
-            // "create" — bypass PO matching, insert new project
-            await storage.forceCreateProjectFromMonday(item.id, { ...mapped, mondayBoardId: boardId });
           }
+          // "skip" — no-op: leave this item out of this sync cycle
         } else {
           // No conflict for this item — process normally
           await storage.upsertProjectByMondayId(item.id, { ...mapped, mondayBoardId: boardId });

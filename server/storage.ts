@@ -291,13 +291,6 @@ export interface IStorage {
     mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
   }): Promise<void>;
 
-  forceCreateProjectFromMonday(mondayItemId: string, data: {
-    name: string; status: string;
-    code?: string | null; poNumber?: string | null; ownerName?: string | null;
-    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
-    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
-    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
-  }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4220,40 +4213,6 @@ export class DatabaseStorage implements IStorage {
     }).where(eq(projects.id, projectId));
   }
 
-  async forceCreateProjectFromMonday(mondayItemId: string, data: {
-    name: string; status: string;
-    code?: string | null; poNumber?: string | null; ownerName?: string | null;
-    startDate?: string | null; endDate?: string | null; jobLocation?: string | null;
-    notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
-    mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
-  }): Promise<void> {
-    const incomingCode         = data.code?.trim()         || null;
-    const incomingPoNumber     = data.poNumber?.trim()     || incomingCode;
-    const incomingGroupId      = data.mondayGroupId?.trim() || null;
-    const incomingCustomerName = (data.customerName ?? data.mondayGroupTitle)?.trim() || null;
-    const code = incomingCode || `MON-${mondayItemId}`;
-
-    await db.insert(projects).values({
-      mondayItemId,
-      code,
-      poNumber:         incomingPoNumber    ?? code,
-      name:             data.name,
-      status:           data.status,
-      ownerName:        data.ownerName      ?? null,
-      startDate:        data.startDate      ?? null,
-      endDate:          data.endDate        ?? null,
-      jobLocation:      data.jobLocation    ?? null,
-      notes:            data.notes          ?? null,
-      customerName:     incomingCustomerName,
-      mondayGroupId:    incomingGroupId,
-      mondayGroupTitle: data.mondayGroupTitle ?? null,
-      mondayBoardId:    data.mondayBoardId   ?? null,
-      mondayUrl:        data.mondayUrl       ?? null,
-      source:           "monday",
-      mondaySyncStatus: "ok",
-      mondaySyncError:  null,
-    });
-  }
 }
 
 // ─── One-time sizeSortValue backfill ─────────────────────────────────────────

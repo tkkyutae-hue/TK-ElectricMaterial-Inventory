@@ -364,9 +364,8 @@ export function mapMondayItemToProject(item: MondayItem, mapping?: MondayColumnM
   // Fallback: if no project name column found, use item.name (same as PO/CODE)
   const name = projectName || code;
 
-  const { status, warning } = item.state === "deleted"
-    ? { status: "cancelled", warning: null }
-    : mapMondayStatus(statusText);
+  // Store the raw Monday status label as-is — no conversion to VoltStock enum
+  const status = item.state === "deleted" ? "Cancelled" : (statusText || "");
 
   return {
     code,
@@ -382,8 +381,8 @@ export function mapMondayItemToProject(item: MondayItem, mapping?: MondayColumnM
     endDate,
     jobLocation,
     notes,
-    mondaySyncStatus: warning ? "warning" : "ok",
-    mondaySyncError: warning,
+    mondaySyncStatus: "ok",
+    mondaySyncError: null,
   };
 }
 

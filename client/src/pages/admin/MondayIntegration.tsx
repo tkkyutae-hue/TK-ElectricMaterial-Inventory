@@ -618,31 +618,6 @@ export default function MondayIntegration() {
         </>
       )}
 
-      {/* Status mapping reference */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">상태 매핑</CardTitle>
-          <CardDescription>Monday.com 상태 레이블이 VoltStock 상태로 변환됩니다.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            {[
-              { monday: "Working on it", voltstock: "active", color: "bg-blue-100 text-blue-700" },
-              { monday: "Quote Only", voltstock: "on_hold", color: "bg-yellow-100 text-yellow-700" },
-              { monday: "Done", voltstock: "completed", color: "bg-green-100 text-green-700" },
-              { monday: "Cancelled / Canceled", voltstock: "cancelled", color: "bg-red-100 text-red-700" },
-              { monday: "알 수 없는 상태", voltstock: "on_hold + warning", color: "bg-slate-100 text-slate-600" },
-            ].map(row => (
-              <div key={row.voltstock} className="flex items-center gap-3">
-                <span className="text-slate-600 flex-1">{row.monday}</span>
-                <span>→</span>
-                <Badge className={`${row.color} border-0`}>{row.voltstock}</Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* PO Conflict Resolution Dialog */}
       <Dialog open={!!conflictData} onOpenChange={open => { if (!open) { setConflictData(null); setResolutions({}); } }}>
         <DialogContent className="sm:max-w-[580px] max-h-[85vh] overflow-y-auto">

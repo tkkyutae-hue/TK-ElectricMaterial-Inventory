@@ -13,19 +13,25 @@ import { format } from "date-fns";
 import { useLanguage } from "@/hooks/use-language";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Status colors (Monday-style)
+// Status colors — handles both legacy VoltStock enums and raw Monday labels
 // ─────────────────────────────────────────────────────────────────────────────
-const MONDAY_STATUS_BG: Record<string, string> = {
-  active:    "#00C875",
-  on_hold:   "#FDBC64",
-  completed: "#C4C4C4",
-  cancelled: "#E2445C",
-};
-const MONDAY_STATUS_TEXT: Record<string, string> = {
-  on_hold: "#1a1a1a",
-};
+const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
+  { keys: ["active", "working on it", "in progress"],          bg: "#0073EA" },
+  { keys: ["on_hold", "quote only", "stuck", "on hold"],       bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["completed", "done"],                               bg: "#00C875" },
+  { keys: ["cancelled", "canceled"],                           bg: "#E2445C" },
+];
 
-const STATUS_ORDER: Record<string, number> = { active: 0, on_hold: 1, completed: 2, cancelled: 3 };
+function statusBg(status: string): string {
+  const lower = (status || "").toLowerCase();
+  return STATUS_COLOR_MAP.find(e => e.keys.includes(lower))?.bg ?? "#C4C4C4";
+}
+function statusTextColor(status: string): string {
+  const lower = (status || "").toLowerCase();
+  return STATUS_COLOR_MAP.find(e => e.keys.includes(lower))?.text ?? "#ffffff";
+}
+
+const STATUS_ORDER: Record<string, number> = { active: 0, "working on it": 0, on_hold: 1, "quote only": 1, completed: 2, done: 2, cancelled: 3, canceled: 3 };
 
 function statusLabelOf(value: string, t: any): string {
   switch (value) {
@@ -115,12 +121,10 @@ function SortIcon({ col, ss }: { col: SortCol; ss: SortState }) {
 // ─────────────────────────────────────────────────────────────────────────────
 function MondayStatusCell({ projectId, status }: { projectId: number; status: string }) {
   const { t } = useLanguage();
-  const bg   = MONDAY_STATUS_BG[status]   ?? "#C4C4C4";
-  const text = MONDAY_STATUS_TEXT[status] ?? "#ffffff";
   return (
     <div
       className="w-full h-full flex items-center justify-center text-[11px] font-bold select-none"
-      style={{ backgroundColor: bg, color: text }}
+      style={{ backgroundColor: statusBg(status), color: statusTextColor(status) }}
       data-testid={`chip-status-${projectId}`}
     >
       {statusLabelOf(status, t)}
@@ -428,15 +432,14 @@ export default function Projects() {
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-8 w-36 text-sm" data-testid="select-status-filter">
+          <SelectTrigger className="h-8 w-40 text-sm" data-testid="select-status-filter">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t.projAllStatuses}</SelectItem>
-            <SelectItem value="active">{t.projStatusActive}</SelectItem>
-            <SelectItem value="on_hold">{t.projStatusOnHold}</SelectItem>
-            <SelectItem value="completed">{t.projStatusCompleted}</SelectItem>
-            <SelectItem value="cancelled">{t.projStatusCancelled}</SelectItem>
+            {[...new Set(allProjects.map((p: any) => p.status).filter(Boolean))].sort().map((s: string) => (
+              <SelectItem key={s} value={s}>{statusLabelOf(s, t)}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

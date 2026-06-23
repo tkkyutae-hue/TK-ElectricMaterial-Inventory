@@ -17,10 +17,11 @@ import { useLanguage } from "@/hooks/use-language";
 // ─────────────────────────────────────────────────────────────────────────────
 const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
   { keys: ["active"],                                          bg: "#00C875" },
-  { keys: ["working on it", "in progress"],                    bg: "#0073EA" },
-  { keys: ["on_hold", "on hold", "quote only"],                bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["working on it", "in progress"],                    bg: "#FDAB3D", text: "#1a1a1a" },
+  { keys: ["on_hold", "on hold"],                              bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["quote only"],                                      bg: "#C4C4C4", text: "#1a1a1a" },
   { keys: ["stuck"],                                           bg: "#E2445C" },
-  { keys: ["start soon"],                                      bg: "#A25DDC" },
+  { keys: ["start soon"],                                      bg: "#00C4F4", text: "#1a1a1a" },
   { keys: ["completed", "done"],                               bg: "#00C875" },
   { keys: ["cancelled", "canceled"],                           bg: "#E2445C" },
 ];

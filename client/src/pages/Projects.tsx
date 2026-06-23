@@ -1,18 +1,15 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useProjects, useDeleteProject } from "@/hooks/use-reference-data";
+import { useProjects } from "@/hooks/use-reference-data";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  Briefcase, MapPin, Calendar, ChevronRight, Search,
-  ChevronDown, ArrowUp, ArrowDown, ChevronsUpDown, Trash2, ExternalLink,
+  Briefcase, MapPin, Calendar, ChevronRight,
+  ChevronDown, ArrowUp, ArrowDown, ChevronsUpDown, ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,12 +178,12 @@ function SortableHeader({ label, col, ss, onSort, cw, cwKey, setColWidths, class
 // ─────────────────────────────────────────────────────────────────────────────
 function CustomerGroup({
   customerName, projects, collapsed, onToggle,
-  onDelete, cw, mondayBoardId,
+  cw, mondayBoardId, onRowClick,
 }: {
   customerName: string; projects: any[]; collapsed: boolean; onToggle: () => void;
-  onDelete: (id: number) => void;
   cw: ColWidths;
   mondayBoardId: string | null;
+  onRowClick: (id: number) => void;
 }) {
   const { t } = useLanguage();
   const isNoCustomer = customerName === "__none__";
@@ -227,9 +224,10 @@ function CustomerGroup({
       {!collapsed && projects.map(project => (
         <div
           key={project.id}
-          className="flex items-stretch border-b border-slate-100 hover:bg-[#E8F5FF] group/row transition-colors"
+          className="flex items-stretch border-b border-slate-100 hover:bg-[#E8F5FF] group/row transition-colors cursor-pointer"
           style={{ borderLeft: `4px solid ${color}20` }}
           data-testid={`row-project-${project.id}`}
+          onClick={() => onRowClick(project.id)}
         >
           {/* Sticky name group */}
           <div className="sticky left-0 z-10 flex items-stretch bg-white group-hover/row:bg-[#E8F5FF] transition-colors">
@@ -308,27 +306,6 @@ function CustomerGroup({
           <div className="flex-shrink-0 self-stretch hidden md:flex" style={{ width: cw.status }}>
             <MondayStatusCell projectId={project.id} status={project.status} />
           </div>
-
-          {/* Actions */}
-          <div className="flex-shrink-0 flex items-center justify-end gap-0.5 px-2" style={{ width: 88 }}>
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onDelete(project.id); }}
-              data-testid={`btn-delete-project-${project.id}`}
-              className="opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto inline-flex items-center justify-center w-7 h-7 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
-              title={t.projDeleteProjectTooltip}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-            <Link href={`/projects/${project.id}`} onClick={e => e.stopPropagation()}>
-              <span
-                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-600 font-medium px-2 py-1 rounded hover:bg-brand-50 transition-colors"
-                data-testid={`link-open-project-${project.id}`}
-              >
-                {t.projOpen} <ChevronRight className="w-3.5 h-3.5" />
-              </span>
-            </Link>
-          </div>
         </div>
       ))}
     </div>
@@ -347,16 +324,14 @@ export default function Projects() {
   });
   const mondayBoardId = mondayBoardData?.boardId ?? null;
 
-  const deleteMutation = useDeleteProject();
-  const { toast } = useToast();
   const { t } = useLanguage();
+  const [, navigate] = useLocation();
 
   const [statusFilter,    setStatusFilter]    = useState("all");
   const [search,          setSearch]          = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [colWidths,       setColWidths]       = useState<ColWidths>(loadWidths);
   const [sortState,       setSortState]       = useState<SortState>({ col: null, dir: null });
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [showArchived,    setShowArchived]    = useState(false);
 
   useEffect(() => {
@@ -411,19 +386,6 @@ export default function Projects() {
     });
   }
 
-  const handleDelete = useCallback((id: number) => setDeleteConfirmId(id), []);
-  const confirmDelete = useCallback(() => {
-    if (deleteConfirmId == null) return;
-    deleteMutation.mutate(deleteConfirmId, {
-      onSuccess: () => setDeleteConfirmId(null),
-      onError: (err: unknown) => {
-        setDeleteConfirmId(null);
-        const msg = err instanceof Error ? err.message : t.projDeleteFailedDesc;
-        toast({ variant: "destructive", title: t.projDeleteFailed, description: msg });
-      },
-    });
-  }, [deleteConfirmId, deleteMutation, toast, t]);
-
   const ColumnHeaderRow = (
     <div className="hidden md:flex items-center h-8 bg-[#F5F6F8] border-b border-slate-200 sticky top-0 z-10 select-none rounded-tl-xl rounded-tr-xl">
       <div className="sticky left-0 z-20 flex items-center h-8 bg-[#F5F6F8]">
@@ -435,7 +397,6 @@ export default function Projects() {
       <SortableHeader label={t.projColLocation} col="location" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="location" setColWidths={setColWidths} className="hidden xl:flex" />
       <SortableHeader label={t.projColTimeline} col="timeline" ss={sortState} onSort={handleSort} cw={colWidths} cwKey="timeline" setColWidths={setColWidths} className="hidden xl:flex" />
       <SortableHeader label={t.projColStatus}   col="status"   ss={sortState} onSort={handleSort} cw={colWidths} cwKey="status"   setColWidths={setColWidths} />
-      <div className="flex-shrink-0" style={{ width: 88 }} />
     </div>
   );
 
@@ -455,23 +416,22 @@ export default function Projects() {
           )}
         </div>
 
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Input
             placeholder={t.projSearchPlaceholder}
-            className="pl-9 bg-white border-slate-200 h-9 text-sm"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            data-testid="input-project-search"
+            className="h-8 text-sm pl-3"
+            data-testid="input-search-projects"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[138px] bg-white h-9 text-sm" data-testid="select-status-filter">
+          <SelectTrigger className="h-8 w-36 text-sm" data-testid="select-status-filter">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t.projAllStatuses}</SelectItem>
+            <SelectItem value="all">{t.projFilterAll}</SelectItem>
             <SelectItem value="active">{t.projStatusActive}</SelectItem>
             <SelectItem value="on_hold">{t.projStatusOnHold}</SelectItem>
             <SelectItem value="completed">{t.projStatusCompleted}</SelectItem>
@@ -479,22 +439,18 @@ export default function Projects() {
           </SelectContent>
         </Select>
 
-        {isAdminRole && allProjects.some((p: any) => p.archived) && (
-          <Button
-            variant={showArchived ? "default" : "outline"}
-            size="sm"
-            className={`h-9 text-sm shrink-0 ${showArchived ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" : "border-slate-300 text-slate-500 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50"}`}
-            onClick={() => setShowArchived(v => !v)}
-            data-testid="btn-toggle-archived"
-          >
-            {showArchived ? "아카이브 숨기기" : "아카이브 포함"}
-          </Button>
-        )}
+        <button
+          className={`h-8 px-3 text-sm font-medium rounded-md border transition-colors ${showArchived ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}
+          onClick={() => setShowArchived(v => !v)}
+          data-testid="btn-toggle-archived"
+        >
+          {t.projArchivedToggle}
+        </button>
       </div>
 
-      {/* Filter summary */}
-      {!isLoading && (search || statusFilter !== "all") && (
-        <div className="flex items-center gap-2 text-sm text-slate-500 -mt-1">
+      {/* Active filter summary */}
+      {(search || statusFilter !== "all") && !isLoading && (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
           <span>
             {filtered.length === allProjects.length
               ? `${allProjects.length} ${allProjects.length !== 1 ? t.projUnitProjects : t.projUnitProject}`
@@ -562,41 +518,13 @@ export default function Projects() {
               projects={groupProjects}
               collapsed={collapsedGroups.has(customerKey)}
               onToggle={() => toggleGroup(customerKey)}
-              onDelete={handleDelete}
+              onRowClick={(id) => navigate(`/projects/${id}`)}
               cw={colWidths}
               mondayBoardId={mondayBoardId}
             />
           ))}
         </div>
       )}
-
-      {/* Delete confirmation */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
-        <DialogContent className="sm:max-w-[360px]">
-          <DialogHeader>
-            <DialogTitle>{t.projDeleteTitle}</DialogTitle>
-            <DialogDescription>{t.projDeleteBody}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 pt-2">
-            <Button
-              variant="outline" size="sm"
-              onClick={() => setDeleteConfirmId(null)}
-              disabled={deleteMutation.isPending}
-              data-testid="btn-cancel-delete-project"
-            >
-              {t.projCancelBtn}
-            </Button>
-            <Button
-              size="sm" variant="destructive"
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-              data-testid="btn-confirm-delete-project"
-            >
-              {deleteMutation.isPending ? t.projDeletingBtn : t.projDeleteBtn}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

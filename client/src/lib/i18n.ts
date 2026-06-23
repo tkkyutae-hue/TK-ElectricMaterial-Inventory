@@ -1982,6 +1982,9 @@ const en = {
   movSearchProjNone:          "No active projects found",
   movSearchProjCreate:        "Create new project",
   movSearchProjDone:          "Done",
+  projInactiveLabel:          "Completed / Quote",
+  projOngoingOnly:            "Show ongoing only",
+  projShowAll:                "Show all",
 
   // ── Field Transactions (additional) ──────────────────────────────────────
   fieldTxnShowing:            "Showing",
@@ -4355,6 +4358,9 @@ const ko: Translations = {
   movSearchProjNone:          "활성 프로젝트가 없습니다",
   movSearchProjCreate:        "새 프로젝트 만들기",
   movSearchProjDone:          "완료",
+  projInactiveLabel:          "완료 / 견적",
+  projOngoingOnly:            "진행 중만 보기",
+  projShowAll:                "모두 보기",
 
   // ── Field Transactions (additional) ──────────────────────────────────────
   fieldTxnShowing:            "표시",
@@ -6651,6 +6657,9 @@ const es: Translations = {
   movSearchProjNone:          "No hay proyectos activos",
   movSearchProjCreate:        "Crear nuevo proyecto",
   movSearchProjDone:          "Listo",
+  projInactiveLabel:          "Completado / Cotización",
+  projOngoingOnly:            "Ver solo activos",
+  projShowAll:                "Ver todo",
 
   // ── Field Transactions (additional) ──────────────────────────────────────
   fieldTxnShowing:            "Mostrando",

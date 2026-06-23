@@ -161,7 +161,7 @@ export function SearchableProjectSelect({
             <span style={D ? { fontSize: 10 } : undefined} className={D ? undefined : "text-[10px]"}>
               {showAll ? "▲" : "▼"}
             </span>
-            {showAll ? `진행 중만 보기` : `완료 / 견적 포함 (${inactiveProjects.length})`}
+            {showAll ? t.projOngoingOnly : `${t.projInactiveLabel} (${inactiveProjects.length})`}
           </button>
         </div>
       )}

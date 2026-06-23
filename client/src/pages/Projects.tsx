@@ -338,7 +338,7 @@ function CustomerGroup({
               ? <ChevronUp className="w-3 h-3 text-slate-400" />
               : <ChevronDown className="w-3 h-3 text-slate-400" />}
             <span className="text-[11px] text-slate-400 font-medium">
-              완료 / 견적 ({inactiveProjects.length})
+              {t.projInactiveLabel} ({inactiveProjects.length})
             </span>
           </button>
           {showInactive && inactiveProjects.map(project => (
@@ -533,7 +533,7 @@ export default function Projects() {
             <div className="mb-1.5 flex items-center justify-between px-1">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
               {hiddenStatuses.size > 0 && (
-                <button className="text-[11px] text-brand-600 hover:text-brand-800 font-medium" onClick={() => setHiddenStatuses(new Set())}>모두 보기</button>
+                <button className="text-[11px] text-brand-600 hover:text-brand-800 font-medium" onClick={() => setHiddenStatuses(new Set())}>{t.projShowAll}</button>
               )}
             </div>
             {allStatusOptions.map((s: string) => {

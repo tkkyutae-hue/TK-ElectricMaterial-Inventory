@@ -31,6 +31,8 @@ import {
   wireReelMovementLines,
   toolAssets,
   type ToolAsset, type CreateToolAssetRequest, type UpdateToolAssetRequest, type ToolAssetWithRelations,
+  completionReports, completionReportPhotos,
+  type CompletionReport, type CompletionReportPhoto, type CompletionReportWithPhotos,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -290,6 +292,13 @@ export interface IStorage {
     notes?: string | null; customerName?: string | null; mondayGroupId?: string | null;
     mondayGroupTitle?: string | null; mondayBoardId?: string | null; mondayUrl?: string | null;
   }): Promise<void>;
+
+  // Completion Reports
+  getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithPhotos>;
+  updateCompletionReport(id: number, data: Partial<Pick<CompletionReport, "contractItem" | "workDescription" | "completionDate" | "quotationImageUrl" | "drawingImageUrl">>): Promise<CompletionReport>;
+  addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number }): Promise<CompletionReportPhoto>;
+  deleteCompletionReportPhoto(photoId: number): Promise<void>;
+  reorderCompletionReportPhotos(reportId: number, orderedIds: number[]): Promise<void>;
 
 }
 
@@ -4211,6 +4220,44 @@ export class DatabaseStorage implements IStorage {
       mondaySyncError:  null,
       updatedAt:        new Date(),
     }).where(eq(projects.id, projectId));
+  }
+
+  // ─── Completion Reports ────────────────────────────────────────────────────────
+
+  async getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithPhotos> {
+    let [report] = await db.select().from(completionReports).where(eq(completionReports.projectId, projectId));
+    if (!report) {
+      [report] = await db.insert(completionReports).values({ projectId }).returning();
+    }
+    const photos = await db.select().from(completionReportPhotos)
+      .where(eq(completionReportPhotos.reportId, report.id))
+      .orderBy(asc(completionReportPhotos.sortOrder), asc(completionReportPhotos.id));
+    return { ...report, photos };
+  }
+
+  async updateCompletionReport(id: number, data: Partial<Pick<CompletionReport, "contractItem" | "workDescription" | "completionDate" | "quotationImageUrl" | "drawingImageUrl">>): Promise<CompletionReport> {
+    const [updated] = await db.update(completionReports)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(completionReports.id, id))
+      .returning();
+    return updated;
+  }
+
+  async addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number }): Promise<CompletionReportPhoto> {
+    const [photo] = await db.insert(completionReportPhotos).values({ reportId, ...data }).returning();
+    return photo;
+  }
+
+  async deleteCompletionReportPhoto(photoId: number): Promise<void> {
+    await db.delete(completionReportPhotos).where(eq(completionReportPhotos.id, photoId));
+  }
+
+  async reorderCompletionReportPhotos(reportId: number, orderedIds: number[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.update(completionReportPhotos)
+        .set({ sortOrder: i })
+        .where(and(eq(completionReportPhotos.id, orderedIds[i]), eq(completionReportPhotos.reportId, reportId)));
+    }
   }
 
 }

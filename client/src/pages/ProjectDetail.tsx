@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowUpRight, Edit, FileBarChart, LayoutList, Package, FileText, TrendingUp } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Edit, FileBarChart, LayoutList, Package, FileText, TrendingUp, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { EditProjectDialog } from "@/components/project/EditProjectDialog";
 import { ScopeItemsTab } from "@/components/project/ScopeItemsTab";
 import { ProgressTab } from "@/components/project/ProgressTab";
 import { OverviewTab, MaterialUsageTab, DailyReportsTab } from "@/components/project/OverviewTab";
+import { CompletionReportTab } from "@/components/project/CompletionReportTab";
 import { useLanguage } from "@/hooks/use-language";
 
 export default function ProjectDetail() {
@@ -94,6 +95,9 @@ export default function ProjectDetail() {
           <TabsTrigger value="progress" className="rounded-lg whitespace-nowrap" data-testid="tab-progress">
             <TrendingUp className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabProgress}
           </TabsTrigger>
+          <TabsTrigger value="completion-report" className="rounded-lg whitespace-nowrap" data-testid="tab-completion-report">
+            <ClipboardCheck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Completion Report
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -114,6 +118,10 @@ export default function ProjectDetail() {
 
         <TabsContent value="progress">
           <ProgressTab projectId={id} />
+        </TabsContent>
+
+        <TabsContent value="completion-report">
+          <CompletionReportTab projectId={id} project={project} />
         </TabsContent>
       </Tabs>
     </div>

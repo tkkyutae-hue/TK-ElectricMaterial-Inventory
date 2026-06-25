@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects } from "../shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import type { Request } from "express";
 import type { User } from "@shared/models/auth";
 
@@ -436,6 +438,109 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ─── Completion Reports ─────────────────────────────────────────────────────
+  app.get("/api/projects/:id/completion-report", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/projects/:id/completion-report", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const { contractItem, workDescription, completionDate, quotationImageUrl, drawingImageUrl } = req.body;
+      const updated = await storage.updateCompletionReport(report.id, {
+        contractItem,
+        workDescription,
+        completionDate,
+        quotationImageUrl,
+        drawingImageUrl,
+      });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      const type = req.body.type as "quotation" | "drawing" | "photo";
+      const url = `/uploads/${req.file.filename}`;
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+
+      if (type === "photo") {
+        const maxOrder = (report.photos ?? []).length;
+        const photo = await storage.addCompletionReportPhoto(report.id, {
+          photoUrl: url,
+          sortOrder: maxOrder,
+        });
+        return res.json(photo);
+      } else {
+        const field = type === "quotation" ? "quotationImageUrl" : "drawingImageUrl";
+        const updated = await storage.updateCompletionReport(report.id, { [field]: url });
+        return res.json(updated);
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const { photoDate, description } = req.body;
+      const [updated] = await db.update(completionReportPhotos)
+        .set({ photoDate: photoDate ?? null, description: description ?? null })
+        .where(eq(completionReportPhotos.id, Number(req.params.photoId)))
+        .returning();
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      await storage.deleteCompletionReportPhoto(Number(req.params.photoId));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/projects/:id/completion-report/reorder", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      await storage.reorderCompletionReportPhotos(report.id, req.body.orderedIds);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/projects/:id/completion-report/export", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = Number(req.params.id);
+      const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+      if (!project) return res.status(404).json({ message: "Project not found" });
+
+      const report = await storage.getOrCreateCompletionReport(projectId);
+      const { generateCompletionReportPptx } = await import("./services/completionReportPptx");
+      const buffer = await generateCompletionReportPptx(project, report);
+
+      const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}_completion_report.pptx"`);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("PPTX export error:", err);
+      res.status(500).json({ message: err.message });
     }
   });
 

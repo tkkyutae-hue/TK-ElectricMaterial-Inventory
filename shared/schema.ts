@@ -722,3 +722,39 @@ export type WireReelMovementLine = typeof wireReelMovementLines.$inferSelect;
 export type CreateWireReelMovementLineRequest = z.infer<typeof insertWireReelMovementLineSchema>;
 
 export type AppSetting = typeof appSettings.$inferSelect;
+
+// ─── Completion Reports ───────────────────────────────────────────────────────
+// One draft per project; stores all data needed to generate the PPTX
+
+export const completionReports = pgTable("completion_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  contractItem: text("contract_item").default("Electric Works"),
+  workDescription: text("work_description"),
+  completionDate: text("completion_date"),
+  quotationImageUrl: text("quotation_image_url"),
+  drawingImageUrl: text("drawing_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const completionReportPhotos = pgTable("completion_report_photos", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  photoUrl: text("photo_url").notNull(),
+  photoDate: text("photo_date"),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCompletionReportSchema = createInsertSchema(completionReports).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export const insertCompletionReportPhotoSchema = createInsertSchema(completionReportPhotos).omit({
+  id: true, createdAt: true,
+});
+
+export type CompletionReport = typeof completionReports.$inferSelect;
+export type CompletionReportPhoto = typeof completionReportPhotos.$inferSelect;
+export type CompletionReportWithPhotos = CompletionReport & { photos: CompletionReportPhoto[] };

@@ -471,7 +471,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file" });
-      const type = req.body.type as "quotation" | "drawing" | "photo";
+      const type = req.body.type as string;
+      if (!["quotation", "drawing", "photo"].includes(type)) {
+        return res.status(400).json({ message: "Invalid upload type. Must be quotation, drawing, or photo." });
+      }
       const url = `/uploads/${req.file.filename}`;
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
 
@@ -494,11 +497,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      const { photoDate, description } = req.body;
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
       const { and: andOp } = await import("drizzle-orm");
+
+      // Only update fields that were actually provided in the request body
+      const updateData: Record<string, unknown> = {};
+      if ("photoDate" in req.body) updateData.photoDate = req.body.photoDate ?? null;
+      if ("description" in req.body) updateData.description = req.body.description ?? null;
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+
       const [updated] = await db.update(completionReportPhotos)
-        .set({ photoDate: photoDate ?? null, description: description ?? null })
+        .set(updateData as any)
         .where(andOp(
           eq(completionReportPhotos.id, Number(req.params.photoId)),
           eq(completionReportPhotos.reportId, report.id),

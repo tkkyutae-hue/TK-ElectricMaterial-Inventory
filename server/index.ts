@@ -5,7 +5,7 @@ import { createServer } from "http";
 import { setupAuth } from "./replit_integrations/auth";
 import { pool } from "./db";
 import { runSeed } from "./seed";
-import { backfillSizeSortValues, runItemGroupsMigration, runMondayMigration } from "./storage";
+import { backfillSizeSortValues, runItemGroupsMigration, runMondayMigration, runCompletionReportMigration } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -100,6 +100,12 @@ app.use((req, res, next) => {
     await runMondayMigration();
   } catch (err: any) {
     console.error("[migration] monday migration failed (non-fatal):", err.message);
+  }
+
+  try {
+    await runCompletionReportMigration();
+  } catch (err: any) {
+    console.error("[migration] completion report migration failed (non-fatal):", err.message);
   }
 
   // ─── Backfill sizeSortValue for items missing it (idempotent) ────────────

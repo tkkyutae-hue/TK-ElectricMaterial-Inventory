@@ -20,9 +20,13 @@ const uploadsDir = path.join(process.cwd(), "uploads");
 
 function imgPath(url: string | null | undefined): string | null {
   if (!url) return null;
-  const filename = url.replace(/^\/uploads\//, "");
-  const p = path.join(uploadsDir, filename);
-  return fs.existsSync(p) ? p : null;
+  // Strip leading /uploads/ prefix, then use path.basename to prevent traversal
+  const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
+  const filename = path.basename(raw); // prevents ../../ traversal
+  const resolved = path.join(uploadsDir, filename);
+  // Ensure resolved path is still under uploads dir
+  if (!resolved.startsWith(uploadsDir + path.sep) && resolved !== uploadsDir) return null;
+  return fs.existsSync(resolved) ? resolved : null;
 }
 
 async function toBase64(filePath: string): Promise<string | null> {

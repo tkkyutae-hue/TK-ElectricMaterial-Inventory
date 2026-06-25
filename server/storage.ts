@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, asc, like, and, or, sql, lt, lte, gte, inArray, isNull, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { users } from "@shared/models/auth";
@@ -4786,3 +4786,28 @@ function _extractSeqFromReelId(reelId: string): number | null {
 }
 
 export const storage = new DatabaseStorage();
+
+// ─── Completion Report Schema Migration (idempotent) ────────────────────────
+export async function runCompletionReportMigration(): Promise<void> {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS completion_reports (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+      contract_item TEXT,
+      work_description TEXT,
+      completion_date TEXT,
+      quotation_image_url TEXT,
+      drawing_image_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS completion_report_photos (
+      id SERIAL PRIMARY KEY,
+      report_id INTEGER NOT NULL REFERENCES completion_reports(id) ON DELETE CASCADE,
+      photo_url TEXT NOT NULL,
+      photo_date TEXT,
+      description TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+}

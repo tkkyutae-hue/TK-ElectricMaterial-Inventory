@@ -4807,7 +4807,13 @@ export async function runCompletionReportMigration(): Promise<void> {
       photo_url TEXT NOT NULL,
       photo_date TEXT,
       description TEXT,
-      sort_order INTEGER NOT NULL DEFAULT 0
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     );
+  `);
+  // Idempotent: add created_at to existing tables that were created without it
+  await pool.query(`
+    ALTER TABLE completion_report_photos
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
   `);
 }

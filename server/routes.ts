@@ -442,7 +442,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Completion Reports ─────────────────────────────────────────────────────
-  app.get("/api/projects/:id/completion-report", isAuthenticated, async (req, res) => {
+  app.get("/api/projects/:id/completion-report", isAuthenticated, requireManagerRead, async (req, res) => {
     try {
       const data = await storage.getOrCreateCompletionReport(Number(req.params.id));
       res.json(data);
@@ -495,10 +495,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.patch("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
     try {
       const { photoDate, description } = req.body;
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const { and: andOp } = await import("drizzle-orm");
       const [updated] = await db.update(completionReportPhotos)
         .set({ photoDate: photoDate ?? null, description: description ?? null })
-        .where(eq(completionReportPhotos.id, Number(req.params.photoId)))
+        .where(andOp(
+          eq(completionReportPhotos.id, Number(req.params.photoId)),
+          eq(completionReportPhotos.reportId, report.id),
+        ))
         .returning();
+      if (!updated) return res.status(404).json({ message: "Photo not found" });
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -507,7 +513,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
     try {
-      await storage.deleteCompletionReportPhoto(Number(req.params.photoId));
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const { and: andOp } = await import("drizzle-orm");
+      const [existing] = await db.select().from(completionReportPhotos)
+        .where(andOp(
+          eq(completionReportPhotos.id, Number(req.params.photoId)),
+          eq(completionReportPhotos.reportId, report.id),
+        ));
+      if (!existing) return res.status(404).json({ message: "Photo not found" });
+      await storage.deleteCompletionReportPhoto(existing.id);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -524,7 +538,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/projects/:id/completion-report/export", isAuthenticated, async (req, res) => {
+  app.post("/api/projects/:id/completion-report/export", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = Number(req.params.id);
       const [project] = await db.select().from(projects).where(eq(projects.id, projectId));

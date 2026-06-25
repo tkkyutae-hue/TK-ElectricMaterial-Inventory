@@ -16,9 +16,11 @@ import { ProgressTab } from "@/components/project/ProgressTab";
 import { OverviewTab, MaterialUsageTab, DailyReportsTab } from "@/components/project/OverviewTab";
 import { CompletionReportTab } from "@/components/project/CompletionReportTab";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProjectDetail() {
   const { t } = useLanguage();
+  const { isManagerOrAbove } = useAuth();
   const [, params] = useRoute("/projects/:id");
   const id = Number(params?.id || "0");
   const { data: project, isLoading } = useProject(id);
@@ -95,9 +97,11 @@ export default function ProjectDetail() {
           <TabsTrigger value="progress" className="rounded-lg whitespace-nowrap" data-testid="tab-progress">
             <TrendingUp className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabProgress}
           </TabsTrigger>
-          <TabsTrigger value="completion-report" className="rounded-lg whitespace-nowrap" data-testid="tab-completion-report">
-            <ClipboardCheck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Completion Report
-          </TabsTrigger>
+          {isManagerOrAbove && (
+            <TabsTrigger value="completion-report" className="rounded-lg whitespace-nowrap" data-testid="tab-completion-report">
+              <ClipboardCheck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Completion Report
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview">
@@ -120,9 +124,11 @@ export default function ProjectDetail() {
           <ProgressTab projectId={id} />
         </TabsContent>
 
-        <TabsContent value="completion-report">
-          <CompletionReportTab projectId={id} project={project} />
-        </TabsContent>
+        {isManagerOrAbove && (
+          <TabsContent value="completion-report">
+            <CompletionReportTab projectId={id} project={project} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

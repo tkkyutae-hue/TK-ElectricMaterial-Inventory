@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
-  ChevronDown, ChevronUp, Loader2, Plus,
+  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown,
 } from "lucide-react";
 
 interface Photo {
@@ -71,6 +71,16 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, {
       [field]: value,
     });
+    invalidate();
+  }
+
+  async function handleReorder(photos: Photo[], fromIdx: number, toIdx: number) {
+    if (toIdx < 0 || toIdx >= photos.length) return;
+    const reordered = [...photos];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const orderedIds = reordered.map(p => p.id);
+    await apiRequest("POST", `/api/projects/${projectId}/completion-report/reorder`, { orderedIds });
     invalidate();
   }
 
@@ -209,13 +219,17 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
                 key={photo.id}
                 photo={photo}
                 index={idx + 1}
+                isFirst={idx === 0}
+                isLast={idx === (report.photos?.length ?? 1) - 1}
                 onDelete={() => deleteMut.mutate(photo.id)}
                 onMetaChange={(field, val) => handlePhotoMeta(photo.id, field, val)}
+                onMoveUp={() => handleReorder(report.photos, idx, idx - 1)}
+                onMoveDown={() => handleReorder(report.photos, idx, idx + 1)}
               />
             ))}
             <AddPhotoBox onAdd={f => handleUpload("photo", f)} />
           </div>
-          <p className="text-xs text-slate-400">Photos are displayed 2 per slide. Add as many as needed.</p>
+          <p className="text-xs text-slate-400">Photos are displayed 2 per slide. Use ↑↓ arrows to reorder. Add as many as needed.</p>
         </div>
       </SlideSection>
 
@@ -315,25 +329,49 @@ function ImageUploadBox({
 }
 
 function PhotoCard({
-  photo, index, onDelete, onMetaChange,
+  photo, index, isFirst, isLast, onDelete, onMetaChange, onMoveUp, onMoveDown,
 }: {
   photo: Photo;
   index: number;
+  isFirst: boolean;
+  isLast: boolean;
   onDelete: () => void;
   onMetaChange: (field: "photoDate" | "description", val: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden bg-white" data-testid={`photo-card-${photo.id}`}>
       <div className="relative">
         <img src={photo.photoUrl} alt={`Photo ${index}`} className="w-full h-44 object-cover" />
         <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
-        <button
-          onClick={onDelete}
-          className="absolute top-2 right-2 bg-white/90 hover:bg-red-50 text-red-600 rounded-full p-1.5 shadow"
-          data-testid={`button-delete-photo-${photo.id}`}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="absolute top-2 right-2 flex gap-1">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
+            data-testid={`button-move-up-${photo.id}`}
+            title="Move up"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
+            data-testid={`button-move-down-${photo.id}`}
+            title="Move down"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="bg-white/90 hover:bg-red-50 text-red-600 rounded-full p-1.5 shadow"
+            data-testid={`button-delete-photo-${photo.id}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
       <div className="p-3 space-y-2">
         <div>

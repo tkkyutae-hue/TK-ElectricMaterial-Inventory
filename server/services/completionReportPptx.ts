@@ -2,6 +2,9 @@ import path from "path";
 import fs from "fs";
 import type { CompletionReportWithPhotos } from "@shared/schema";
 
+// TK Electric logo (from client/public/favicon.png)
+const LOGO_PATH = path.join(process.cwd(), "client", "public", "favicon.png");
+
 const TK_GREEN       = "5D9B3B";
 const TK_GREEN_LIGHT = "D6ECC5";
 const TK_GREEN_MID   = "A8D08A";
@@ -34,17 +37,29 @@ async function toBase64(filePath: string): Promise<string | null> {
   }
 }
 
-function addPageHeader(slide: any, prs: any) {
+async function addPageHeader(slide: any, prs: any) {
   slide.addText("■  PROJECT COMPLETION REPORT", {
-    x: 0.35, y: 0.18, w: 7.5, h: 0.35,
+    x: 0.35, y: 0.18, w: 7.2, h: 0.35,
     fontSize: 13, bold: true, color: DARK,
     fontFace: "Calibri",
   });
-  slide.addText("TK ELECTRIC LLC.\nwww.tkglobal.us", {
-    x: 7.8, y: 0.1, w: 2.1, h: 0.55,
-    fontSize: 8.5, bold: false, color: TK_GREEN,
+
+  // TK logo top-right
+  const logoData = await toBase64(LOGO_PATH);
+  if (logoData) {
+    slide.addImage({ data: logoData, x: 9.05, y: 0.08, w: 0.55, h: 0.55 });
+  }
+  slide.addText("TK ELECTRIC LLC.", {
+    x: 7.4, y: 0.1, w: 1.6, h: 0.3,
+    fontSize: 8, bold: true, color: TK_GREEN,
     fontFace: "Calibri", align: "right",
   });
+  slide.addText("www.tkglobal.us", {
+    x: 7.4, y: 0.38, w: 1.6, h: 0.2,
+    fontSize: 7, bold: false, color: TK_GREEN,
+    fontFace: "Calibri", align: "right",
+  });
+
   slide.addShape(prs.ShapeType.rect, {
     x: 0, y: 0.62, w: SLIDE_W, h: 0.025,
     fill: { color: TK_GREEN }, line: { color: TK_GREEN },
@@ -137,7 +152,7 @@ export async function generateCompletionReportPptx(
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    addPageHeader(slide, prs);
+    await addPageHeader(slide, prs);
 
     // Large bordered frame
     slide.addShape(prs.ShapeType.rect, {
@@ -210,7 +225,7 @@ export async function generateCompletionReportPptx(
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    addPageHeader(slide, prs);
+    await addPageHeader(slide, prs);
 
     const qPath  = imgPath(report.quotationImageUrl);
     const qData  = qPath ? await toBase64(qPath) : null;
@@ -228,7 +243,7 @@ export async function generateCompletionReportPptx(
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    addPageHeader(slide, prs);
+    await addPageHeader(slide, prs);
     addInfoTable(slide, project, report);
 
     slide.addText("Drawing", {
@@ -253,7 +268,7 @@ export async function generateCompletionReportPptx(
   for (let i = 0; i < Math.max(photos.length, 1); i += 2) {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    addPageHeader(slide, prs);
+    await addPageHeader(slide, prs);
     addInfoTable(slide, project, report);
 
     const left  = photos[i];

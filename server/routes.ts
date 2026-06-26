@@ -486,10 +486,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ message: "Invalid upload type. Must be quotation, drawing, or photo." });
       }
 
-      // PDF is only allowed for quotation
+      // PDF is allowed for quotation and drawing
       const isPdf = req.file.mimetype === "application/pdf";
-      if (isPdf && type !== "quotation") {
-        return res.status(400).json({ message: "PDF upload is only supported for quotation." });
+      if (isPdf && !["quotation", "drawing"].includes(type)) {
+        return res.status(400).json({ message: "PDF upload is only supported for quotation and drawing." });
       }
 
       let fileBuffer: Buffer = req.file.buffer;

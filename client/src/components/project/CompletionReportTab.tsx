@@ -239,11 +239,12 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       {/* Slide 4 – Drawing */}
       <SlideSection label="Slide 4" title="Drawing" icon={<Image className="w-4 h-4" />} defaultOpen>
         <ImageUploadBox
-          label="Upload drawing / CAD image (JPG / PNG)"
+          label="Upload drawing / CAD image (JPG / PNG / PDF)"
           currentUrl={report.drawingImageUrl}
           onUpload={f => handleUpload("drawing", f)}
           onRemove={() => updateMut.mutate({ drawingImageUrl: null })}
           testId="upload-drawing"
+          acceptPdf
         />
       </SlideSection>
 

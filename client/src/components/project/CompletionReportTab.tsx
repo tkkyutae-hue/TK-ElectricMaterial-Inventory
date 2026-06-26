@@ -8,8 +8,24 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
-  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown,
+  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Photo {
   id: number;
@@ -84,6 +100,18 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     invalidate();
   }
 
+  async function handleDragEnd(event: DragEndEvent, photos: Photo[]) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = photos.findIndex(p => p.id === active.id);
+    const newIdx = photos.findIndex(p => p.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(photos, oldIdx, newIdx);
+    const orderedIds = reordered.map(p => p.id);
+    await apiRequest("POST", `/api/projects/${projectId}/completion-report/reorder`, { orderedIds });
+    invalidate();
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
@@ -108,6 +136,11 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     }
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+
   if (isLoading) return (
     <div className="flex items-center justify-center py-16 text-slate-400">
       <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading…
@@ -115,6 +148,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   );
 
   if (!report) return null;
+
+  const photos = report.photos ?? [];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -213,23 +248,31 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       {/* Slide 5+ – Photos */}
       <SlideSection label="Slide 5+" title="Test / Work Photos (2 per slide)" icon={<Camera className="w-4 h-4" />} defaultOpen>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {(report.photos ?? []).map((photo, idx) => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                index={idx + 1}
-                isFirst={idx === 0}
-                isLast={idx === (report.photos?.length ?? 1) - 1}
-                onDelete={() => deleteMut.mutate(photo.id)}
-                onMetaChange={(field, val) => handlePhotoMeta(photo.id, field, val)}
-                onMoveUp={() => handleReorder(report.photos, idx, idx - 1)}
-                onMoveDown={() => handleReorder(report.photos, idx, idx + 1)}
-              />
-            ))}
-            <AddPhotoBox onAdd={f => handleUpload("photo", f)} />
-          </div>
-          <p className="text-xs text-slate-400">Photos are displayed 2 per slide. Use ↑↓ arrows to reorder. Add as many as needed.</p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={e => handleDragEnd(e, photos)}
+          >
+            <SortableContext items={photos.map(p => p.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {photos.map((photo, idx) => (
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    index={idx + 1}
+                    isFirst={idx === 0}
+                    isLast={idx === photos.length - 1}
+                    onDelete={() => deleteMut.mutate(photo.id)}
+                    onMetaChange={(field, val) => handlePhotoMeta(photo.id, field, val)}
+                    onMoveUp={() => handleReorder(photos, idx, idx - 1)}
+                    onMoveDown={() => handleReorder(photos, idx, idx + 1)}
+                  />
+                ))}
+                <AddPhotoBox onAdd={f => handleUpload("photo", f)} />
+              </div>
+            </SortableContext>
+          </DndContext>
+          <p className="text-xs text-slate-400">Photos are displayed 2 per slide. Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
         </div>
       </SlideSection>
 
@@ -340,12 +383,35 @@ function PhotoCard({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white" data-testid={`photo-card-${photo.id}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border border-slate-200 rounded-xl overflow-hidden bg-white"
+      data-testid={`photo-card-${photo.id}`}
+    >
       <div className="relative">
         <img src={photo.photoUrl} alt={`Photo ${index}`} className="w-full h-44 object-cover" />
         <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
         <div className="absolute top-2 right-2 flex gap-1">
+          <button
+            {...attributes}
+            {...listeners}
+            className="bg-white/90 hover:bg-slate-100 text-slate-500 rounded-full p-1.5 shadow cursor-grab active:cursor-grabbing"
+            data-testid={`button-drag-${photo.id}`}
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={onMoveUp}
             disabled={isFirst}

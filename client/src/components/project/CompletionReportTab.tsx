@@ -147,12 +147,14 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         credentials: "include",
       });
       if (!res.ok) throw new Error("Export failed");
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="?([^"]+)"?/);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
-      a.download = `${safeName}_completion_report.pptx`;
+      a.download = match?.[1] ?? `${safeName}_completion_report.pptx`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "PPTX exported successfully" });

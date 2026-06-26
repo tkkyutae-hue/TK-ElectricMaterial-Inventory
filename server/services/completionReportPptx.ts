@@ -2,8 +2,8 @@ import path from "path";
 import fs from "fs";
 import type { CompletionReportWithPhotos } from "@shared/schema";
 
-// TK Electric logo (from client/public/favicon.png)
-const LOGO_PATH = path.join(process.cwd(), "client", "public", "favicon.png");
+// TK Electric logo
+const LOGO_PATH = path.join(process.cwd(), "server", "assets", "tk_logo.png");
 
 const TK_GREEN       = "5D9B3B";
 const TK_GREEN_LIGHT = "D6ECC5";
@@ -43,26 +43,29 @@ async function toBase64(filePath: string): Promise<string | null> {
 
 async function addPageHeader(slide: any, prs: any) {
   slide.addText("■  PROJECT COMPLETION REPORT", {
-    x: 0.35, y: 0.18, w: 7.2, h: 0.35,
+    x: 0.35, y: 0.18, w: 7.0, h: 0.35,
     fontSize: 13, bold: true, color: DARK,
     fontFace: "Calibri",
   });
 
-  // TK logo top-right
+  // TK logo top-right (logo image includes company name + URL)
   const logoData = await toBase64(LOGO_PATH);
   if (logoData) {
-    slide.addImage({ data: logoData, x: 9.05, y: 0.08, w: 0.55, h: 0.55 });
+    // Logo aspect ratio ~2.028:1 (2135×1053); w=1.2 → h≈0.59
+    slide.addImage({ data: logoData, x: 8.55, y: 0.02, w: 1.2, h: 0.59 });
+  } else {
+    // Fallback text if image missing
+    slide.addText("TK ELECTRIC LLC.", {
+      x: 7.5, y: 0.1, w: 2.1, h: 0.3,
+      fontSize: 8, bold: true, color: TK_GREEN,
+      fontFace: "Calibri", align: "right",
+    });
+    slide.addText("www.tkglobal.us", {
+      x: 7.5, y: 0.38, w: 2.1, h: 0.2,
+      fontSize: 7, color: TK_GREEN,
+      fontFace: "Calibri", align: "right",
+    });
   }
-  slide.addText("TK ELECTRIC LLC.", {
-    x: 7.4, y: 0.1, w: 1.6, h: 0.3,
-    fontSize: 8, bold: true, color: TK_GREEN,
-    fontFace: "Calibri", align: "right",
-  });
-  slide.addText("www.tkglobal.us", {
-    x: 7.4, y: 0.38, w: 1.6, h: 0.2,
-    fontSize: 7, bold: false, color: TK_GREEN,
-    fontFace: "Calibri", align: "right",
-  });
 
   slide.addShape(prs.ShapeType.rect, {
     x: 0, y: 0.62, w: SLIDE_W, h: 0.025,
@@ -144,12 +147,18 @@ export async function generateCompletionReportPptx(
       fontFace: "Calibri", align: "center", valign: "middle",
     });
 
-    // TK Logo text (bottom-right)
-    slide.addText("TK ELECTRIC LLC.\nwww.tkglobal.us", {
-      x: 7.2, y: 6.5, w: 2.6, h: 0.75,
-      fontSize: 10, bold: true, color: TK_GREEN,
-      fontFace: "Calibri", align: "right",
-    });
+    // TK Logo image (bottom-right) — logo includes company name + URL text
+    const coverLogoData = await toBase64(LOGO_PATH);
+    if (coverLogoData) {
+      // Logo aspect ratio ~2.028:1; w=2.8 → h≈1.38
+      slide.addImage({ data: coverLogoData, x: 7.0, y: 6.1, w: 2.8, h: 1.38 });
+    } else {
+      slide.addText("TK ELECTRIC LLC.\nwww.tkglobal.us", {
+        x: 7.2, y: 6.5, w: 2.6, h: 0.75,
+        fontSize: 10, bold: true, color: TK_GREEN,
+        fontFace: "Calibri", align: "right",
+      });
+    }
   }
 
   // ── Slide 2: Work Final Report ────────────────────────────────────────────

@@ -492,6 +492,24 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/projects/:id/completion-report/pdf-preview", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      if (req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({ message: "File must be a PDF." });
+      }
+      const { pdfFirstPageToPng } = await import("./services/pdfFirstPage");
+      const rawPage = parseInt(req.query.page as string, 10);
+      const pageNumber = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+      const pngBuffer = await pdfFirstPageToPng(req.file.buffer, pageNumber);
+      res.set("Content-Type", "image/png");
+      res.set("Cache-Control", "no-store");
+      return res.send(pngBuffer);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file" });

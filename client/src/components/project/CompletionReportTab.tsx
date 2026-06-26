@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,19 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     if (!res.ok) return 1;
     const data = await res.json();
     return data.pageCount ?? 1;
+  }
+
+  async function getPdfPreview(file: File, page: number): Promise<string> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/projects/${projectId}/completion-report/pdf-preview?page=${page}`, {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+    if (!res.ok) throw new Error("Preview failed");
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
   }
 
   async function handlePhotoMeta(photoId: number, field: "photoDate" | "description", value: string) {
@@ -245,6 +258,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           currentUrl={report.quotationImageUrl}
           onUpload={(f, page) => handleUpload("quotation", f, page)}
           onGetPdfPageCount={getPdfPageCount}
+          onGetPdfPreview={getPdfPreview}
           onRemove={() => updateMut.mutate({ quotationImageUrl: null })}
           testId="upload-quotation"
           acceptPdf
@@ -258,6 +272,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           currentUrl={report.drawingImageUrl}
           onUpload={(f, page) => handleUpload("drawing", f, page)}
           onGetPdfPageCount={getPdfPageCount}
+          onGetPdfPreview={getPdfPreview}
           onRemove={() => updateMut.mutate({ drawingImageUrl: null })}
           testId="upload-drawing"
           acceptPdf
@@ -337,13 +352,14 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function ImageUploadBox({
-  label, hint, currentUrl, onUpload, onGetPdfPageCount, onRemove, testId, acceptPdf = false,
+  label, hint, currentUrl, onUpload, onGetPdfPageCount, onGetPdfPreview, onRemove, testId, acceptPdf = false,
 }: {
   label: string;
   hint?: string;
   currentUrl: string | null | undefined;
   onUpload: (f: File, pdfPage?: number) => Promise<void>;
   onGetPdfPageCount?: (f: File) => Promise<number>;
+  onGetPdfPreview?: (f: File, page: number) => Promise<string>;
   onRemove: () => void;
   testId: string;
   acceptPdf?: boolean;
@@ -353,7 +369,34 @@ function ImageUploadBox({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
   const [selectedPage, setSelectedPage] = useState(1);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevPreviewUrl = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingFile || !onGetPdfPreview) return;
+    setPreviewLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const url = await onGetPdfPreview(pendingFile, selectedPage);
+        if (prevPreviewUrl.current) URL.revokeObjectURL(prevPreviewUrl.current);
+        prevPreviewUrl.current = url;
+        setPreviewUrl(url);
+      } catch {
+        setPreviewUrl(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [pendingFile, selectedPage, onGetPdfPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (prevPreviewUrl.current) URL.revokeObjectURL(prevPreviewUrl.current);
+    };
+  }, []);
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -369,6 +412,7 @@ function ImageUploadBox({
           setPendingFile(file);
           setPdfPageCount(count);
           setSelectedPage(1);
+          setPreviewUrl(null);
           return;
         }
       } finally {
@@ -387,6 +431,7 @@ function ImageUploadBox({
       await onUpload(pendingFile, selectedPage);
       setPendingFile(null);
       setPdfPageCount(null);
+      setPreviewUrl(null);
     } finally {
       setUploading(false);
     }
@@ -396,6 +441,7 @@ function ImageUploadBox({
     setPendingFile(null);
     setPdfPageCount(null);
     setSelectedPage(1);
+    setPreviewUrl(null);
   }
 
   const accept = acceptPdf ? "image/*,.pdf,application/pdf" : "image/*";
@@ -417,46 +463,62 @@ function ImageUploadBox({
 
   if (pendingFile && pdfPageCount !== null) {
     return (
-      <div className="border-2 border-brand-300 bg-brand-50/40 rounded-xl p-5 space-y-3" data-testid={`${testId}-page-picker`}>
+      <div className="border-2 border-brand-300 bg-brand-50/40 rounded-xl p-5 space-y-4" data-testid={`${testId}-page-picker`}>
         <p className="text-sm font-medium text-slate-700">
           <FileText className="w-4 h-4 inline mr-1.5 text-brand-500" />
           <span className="font-semibold text-brand-700">{pendingFile.name}</span>
           {" "}has <span className="font-bold">{pdfPageCount}</span> pages.
         </p>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-slate-600 shrink-0">Use page:</label>
-          <input
-            type="number"
-            min={1}
-            max={pdfPageCount}
-            value={selectedPage}
-            onChange={e => {
-              const v = parseInt(e.target.value, 10);
-              if (!isNaN(v)) setSelectedPage(Math.min(pdfPageCount, Math.max(1, v)));
-            }}
-            className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
-            data-testid={`${testId}-page-input`}
-          />
-          <span className="text-sm text-slate-400">of {pdfPageCount}</span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={confirmPage}
-            disabled={uploading}
-            className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg disabled:opacity-60"
-            data-testid={`${testId}-confirm-page`}
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-slate-600 shrink-0">Use page:</label>
+              <input
+                type="number"
+                min={1}
+                max={pdfPageCount}
+                value={selectedPage}
+                onChange={e => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v)) setSelectedPage(Math.min(pdfPageCount, Math.max(1, v)));
+                }}
+                className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
+                data-testid={`${testId}-page-input`}
+              />
+              <span className="text-sm text-slate-400">of {pdfPageCount}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={confirmPage}
+                disabled={uploading}
+                className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg disabled:opacity-60"
+                data-testid={`${testId}-confirm-page`}
+              >
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload page {selectedPage}
+              </button>
+              <button
+                onClick={cancelPicker}
+                disabled={uploading}
+                className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"
+                data-testid={`${testId}-cancel-page`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div
+            className="w-36 h-24 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0"
+            data-testid={`${testId}-preview`}
           >
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            Upload page {selectedPage}
-          </button>
-          <button
-            onClick={cancelPicker}
-            disabled={uploading}
-            className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"
-            data-testid={`${testId}-cancel-page`}
-          >
-            Cancel
-          </button>
+            {previewLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
+            ) : previewUrl ? (
+              <img src={previewUrl} alt={`Page ${selectedPage} preview`} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-xs text-slate-400 text-center px-2">Preview loading…</span>
+            )}
+          </div>
         </div>
       </div>
     );

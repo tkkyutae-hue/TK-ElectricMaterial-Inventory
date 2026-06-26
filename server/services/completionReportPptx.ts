@@ -8,7 +8,6 @@ const LOGO_PATH = path.join(process.cwd(), "server", "assets", "tk_logo.png");
 const TK_GREEN       = "5D9B3B";
 const TK_GREEN_LIGHT = "D6ECC5";
 const TK_GREEN_MID   = "A8D08A";
-const HEADER_GREEN   = "6BBF4E";
 const WHITE          = "FFFFFF";
 const DARK           = "1A1A1A";
 const GRAY           = "666666";
@@ -41,8 +40,8 @@ async function toBase64(filePath: string): Promise<string | null> {
   }
 }
 
-async function addPageHeader(slide: any, prs: any) {
-  slide.addText("■  PROJECT COMPLETION REPORT", {
+async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
+  slide.addText(`■  ${sectionLabel}`, {
     x: 0.35, y: 0.18, w: 7.0, h: 0.35,
     fontSize: 13, bold: true, color: DARK,
     fontFace: "Calibri",
@@ -161,11 +160,76 @@ export async function generateCompletionReportPptx(
     }
   }
 
-  // ── Slide 2: Work Final Report ────────────────────────────────────────────
+  // ── Slide 2: Table of Contents ────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    await addPageHeader(slide, prs);
+
+    // Header bar
+    slide.addShape(prs.ShapeType.rect, {
+      x: 0, y: 0, w: SLIDE_W, h: 1.1,
+      fill: { color: TK_GREEN }, line: { color: TK_GREEN },
+    });
+    slide.addText("TABLE OF CONTENTS", {
+      x: 0.4, y: 0.1, w: 9.2, h: 0.9,
+      fontSize: 28, bold: true, color: WHITE,
+      fontFace: "Calibri", align: "left", valign: "middle",
+    });
+
+    // TK logo top-right on white area
+    const tocLogoData = await toBase64(LOGO_PATH);
+    if (tocLogoData) {
+      slide.addImage({ data: tocLogoData, x: 7.8, y: 1.25, w: 1.9, h: 0.94 });
+    }
+
+    // TOC items
+    const tocItems = [
+      { num: "01", title: "Work Final Report" },
+      { num: "02", title: "Quotation" },
+      { num: "03", title: "Drawing" },
+      { num: "04", title: "Work Picture" },
+    ];
+
+    const startY = 2.45;
+    const rowH   = 1.05;
+
+    for (let i = 0; i < tocItems.length; i++) {
+      const item = tocItems[i];
+      const y = startY + i * rowH;
+      const isEven = i % 2 === 0;
+
+      // Row background
+      slide.addShape(prs.ShapeType.rect, {
+        x: 0.4, y, w: 9.2, h: rowH - 0.08,
+        fill: { color: isEven ? TK_GREEN_LIGHT : WHITE },
+        line: { color: TK_GREEN_MID, pt: 0.5 },
+      });
+
+      // Number badge
+      slide.addShape(prs.ShapeType.rect, {
+        x: 0.4, y, w: 0.7, h: rowH - 0.08,
+        fill: { color: TK_GREEN }, line: { color: TK_GREEN },
+      });
+      slide.addText(item.num, {
+        x: 0.4, y: y + 0.02, w: 0.7, h: rowH - 0.12,
+        fontSize: 16, bold: true, color: WHITE,
+        fontFace: "Calibri", align: "center", valign: "middle",
+      });
+
+      // Title
+      slide.addText(item.title, {
+        x: 1.3, y: y + 0.02, w: 7.9, h: rowH - 0.12,
+        fontSize: 16, bold: false, color: DARK,
+        fontFace: "Calibri", valign: "middle",
+      });
+    }
+  }
+
+  // ── Slide 3: Work Final Report ────────────────────────────────────────────
+  {
+    const slide = prs.addSlide();
+    slide.background = { color: WHITE };
+    await addPageHeader(slide, prs, "WORK FINAL REPORT");
 
     // Large bordered frame
     slide.addShape(prs.ShapeType.rect, {
@@ -234,16 +298,17 @@ export async function generateCompletionReportPptx(
     });
   }
 
-  // ── Slide 3: Quotation ────────────────────────────────────────────────────
+  // ── Slide 4: Quotation ────────────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    await addPageHeader(slide, prs);
+    await addPageHeader(slide, prs, "QUOTATION");
 
     const qPath  = imgPath(report.quotationImageUrl);
     const qData  = qPath ? await toBase64(qPath) : null;
     if (qData) {
-      slide.addImage({ data: qData, x: 0.3, y: 0.72, w: 9.4, h: 6.6 });
+      // Centered: (10 - 6.85) / 2 = 1.575; tight below header line at y:0.61
+      slide.addImage({ data: qData, x: 1.575, y: 0.61, w: 6.85, h: 6.89 });
     } else {
       slide.addText("[ Quotation image not uploaded ]", {
         x: 0.3, y: 3.5, w: 9.4, h: 0.6,
@@ -252,11 +317,11 @@ export async function generateCompletionReportPptx(
     }
   }
 
-  // ── Slide 4: Drawing ──────────────────────────────────────────────────────
+  // ── Slide 5: Drawing ──────────────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    await addPageHeader(slide, prs);
+    await addPageHeader(slide, prs, "DRAWING");
     addInfoTable(slide, project, report);
 
     slide.addText("Drawing", {
@@ -276,12 +341,12 @@ export async function generateCompletionReportPptx(
     }
   }
 
-  // ── Slide 5+: Photo slides (2 per slide) ──────────────────────────────────
+  // ── Slide 6+: Photo slides (2 per slide) ──────────────────────────────────
   const photos = report.photos ?? [];
   for (let i = 0; i < Math.max(photos.length, 1); i += 2) {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    await addPageHeader(slide, prs);
+    await addPageHeader(slide, prs, "WORK PICTURE");
     addInfoTable(slide, project, report);
 
     const left  = photos[i];

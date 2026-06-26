@@ -122,6 +122,16 @@ const upload = multer({
   },
 });
 
+// Multer for completion-report uploads — also accepts PDF (quotation only; enforced in handler)
+const uploadCompletionReport = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = { ...MIME_TO_EXT, "application/pdf": ".pdf" };
+    cb(null, Object.keys(allowed).includes(file.mimetype));
+  },
+});
+
 function getUserId(req: any): string | null {
   return (req.session as any)?.userId ?? null;
 }
@@ -468,14 +478,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, upload.single("file"), async (req, res) => {
+  app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file" });
       const type = req.body.type as string;
       if (!["quotation", "drawing", "photo"].includes(type)) {
         return res.status(400).json({ message: "Invalid upload type. Must be quotation, drawing, or photo." });
       }
-      const url = `/uploads/${req.file.filename}`;
+
+      // PDF is only allowed for quotation
+      const isPdf = req.file.mimetype === "application/pdf";
+      if (isPdf && type !== "quotation") {
+        return res.status(400).json({ message: "PDF upload is only supported for quotation." });
+      }
+
+      let fileBuffer: Buffer = req.file.buffer;
+      let ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
+
+      if (isPdf) {
+        const { pdfFirstPageToPng } = await import("./services/pdfFirstPage");
+        fileBuffer = await pdfFirstPageToPng(req.file.buffer);
+        ext = ".png";
+      } else {
+        // Validate magic bytes for images
+        if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
+          return res.status(400).json({ message: "File content does not match declared type." });
+        }
+      }
+
+      // Write to uploads dir
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      const destPath = path.join(uploadsDir, filename);
+      await fs.promises.writeFile(destPath, fileBuffer);
+      const url = `/uploads/${filename}`;
+
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
 
       if (type === "photo") {
@@ -491,6 +527,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json(updated);
       }
     } catch (err: any) {
+      console.error("Completion report upload error:", err);
       res.status(500).json({ message: err.message });
     }
   });

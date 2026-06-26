@@ -226,11 +226,13 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       {/* Slide 3 – Quotation */}
       <SlideSection label="Slide 3" title="Quotation" icon={<Image className="w-4 h-4" />} defaultOpen>
         <ImageUploadBox
-          label="Upload quotation image (JPG / PNG)"
+          label="Upload quotation (JPG / PNG / PDF)"
+          hint="PDF: first page will be captured automatically"
           currentUrl={report.quotationImageUrl}
           onUpload={f => handleUpload("quotation", f)}
           onRemove={() => updateMut.mutate({ quotationImageUrl: null })}
           testId="upload-quotation"
+          acceptPdf
         />
       </SlideSection>
 
@@ -318,13 +320,15 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function ImageUploadBox({
-  label, currentUrl, onUpload, onRemove, testId,
+  label, hint, currentUrl, onUpload, onRemove, testId, acceptPdf = false,
 }: {
   label: string;
+  hint?: string;
   currentUrl: string | null | undefined;
   onUpload: (f: File) => Promise<void>;
   onRemove: () => void;
   testId: string;
+  acceptPdf?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -336,6 +340,8 @@ function ImageUploadBox({
     try { await onUpload(file); } finally { setUploading(false); }
     e.target.value = "";
   }
+
+  const accept = acceptPdf ? "image/*,.pdf,application/pdf" : "image/*";
 
   if (currentUrl) {
     return (
@@ -358,12 +364,13 @@ function ImageUploadBox({
       onClick={() => inputRef.current?.click()}
       data-testid={`${testId}-dropzone`}
     >
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={pick} />
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={pick} />
       {uploading
         ? <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-500" />
         : <>
           <Upload className="w-6 h-6 mx-auto mb-2 text-slate-400" />
           <p className="text-sm text-slate-500">{label}</p>
+          {hint && <p className="text-xs text-brand-500 mt-0.5">{hint}</p>}
           <p className="text-xs text-slate-400 mt-1">Click to browse</p>
         </>
       }

@@ -115,12 +115,12 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
 
-    // Decorative arcs (approximated with transparent green circles)
+    // Decorative circles — all coords within slide bounds (0–10 x, 0–7.5 y)
     const arcs = [
-      { x: -1.2, y: -1.2, d: 5.5 },
-      { x: -0.6, y: -0.6, d: 5.5 },
-      { x: 6.5,  y:  3.5, d: 5.5 },
-      { x: 7.1,  y:  4.1, d: 5.5 },
+      { x: 0.0, y: 0.0, d: 4.5 },   // top-left outer
+      { x: 0.5, y: 0.5, d: 4.5 },   // top-left inner
+      { x: 5.5, y: 3.0, d: 4.5 },   // bottom-right outer (5.5+4.5=10, 3.0+4.5=7.5)
+      { x: 6.0, y: 3.5, d: 4.0 },   // bottom-right inner (6.0+4.0=10, 3.5+4.0=7.5)
     ];
     for (const a of arcs) {
       slide.addShape(prs.ShapeType.ellipse, {

@@ -70,10 +70,11 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     onSuccess: invalidate,
   });
 
-  async function handleUpload(type: "quotation" | "drawing" | "photo", file: File) {
+  async function handleUpload(type: "quotation" | "drawing" | "photo", file: File, pdfPage?: number) {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("type", type);
+    if (pdfPage !== undefined) fd.append("pdfPage", String(pdfPage));
     const res = await fetch(`/api/projects/${projectId}/completion-report/upload`, {
       method: "POST",
       credentials: "include",
@@ -81,6 +82,19 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     });
     if (!res.ok) throw new Error("Upload failed");
     invalidate();
+  }
+
+  async function getPdfPageCount(file: File): Promise<number> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/projects/${projectId}/completion-report/pdf-info`, {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+    if (!res.ok) return 1;
+    const data = await res.json();
+    return data.pageCount ?? 1;
   }
 
   async function handlePhotoMeta(photoId: number, field: "photoDate" | "description", value: string) {
@@ -229,7 +243,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           label="Upload quotation (JPG / PNG / PDF)"
           hint="PDF: first page will be captured automatically"
           currentUrl={report.quotationImageUrl}
-          onUpload={f => handleUpload("quotation", f)}
+          onUpload={(f, page) => handleUpload("quotation", f, page)}
+          onGetPdfPageCount={getPdfPageCount}
           onRemove={() => updateMut.mutate({ quotationImageUrl: null })}
           testId="upload-quotation"
           acceptPdf
@@ -241,7 +256,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         <ImageUploadBox
           label="Upload drawing / CAD image (JPG / PNG / PDF)"
           currentUrl={report.drawingImageUrl}
-          onUpload={f => handleUpload("drawing", f)}
+          onUpload={(f, page) => handleUpload("drawing", f, page)}
+          onGetPdfPageCount={getPdfPageCount}
           onRemove={() => updateMut.mutate({ drawingImageUrl: null })}
           testId="upload-drawing"
           acceptPdf
@@ -321,25 +337,65 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function ImageUploadBox({
-  label, hint, currentUrl, onUpload, onRemove, testId, acceptPdf = false,
+  label, hint, currentUrl, onUpload, onGetPdfPageCount, onRemove, testId, acceptPdf = false,
 }: {
   label: string;
   hint?: string;
   currentUrl: string | null | undefined;
-  onUpload: (f: File) => Promise<void>;
+  onUpload: (f: File, pdfPage?: number) => Promise<void>;
+  onGetPdfPageCount?: (f: File) => Promise<number>;
   onRemove: () => void;
   testId: string;
   acceptPdf?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [checkingPages, setCheckingPages] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+  const [selectedPage, setSelectedPage] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (isPdf && onGetPdfPageCount) {
+      setCheckingPages(true);
+      try {
+        const count = await onGetPdfPageCount(file);
+        if (count > 1) {
+          setPendingFile(file);
+          setPdfPageCount(count);
+          setSelectedPage(1);
+          return;
+        }
+      } finally {
+        setCheckingPages(false);
+      }
+    }
+
     setUploading(true);
     try { await onUpload(file); } finally { setUploading(false); }
-    e.target.value = "";
+  }
+
+  async function confirmPage() {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      await onUpload(pendingFile, selectedPage);
+      setPendingFile(null);
+      setPdfPageCount(null);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function cancelPicker() {
+    setPendingFile(null);
+    setPdfPageCount(null);
+    setSelectedPage(1);
   }
 
   const accept = acceptPdf ? "image/*,.pdf,application/pdf" : "image/*";
@@ -359,6 +415,53 @@ function ImageUploadBox({
     );
   }
 
+  if (pendingFile && pdfPageCount !== null) {
+    return (
+      <div className="border-2 border-brand-300 bg-brand-50/40 rounded-xl p-5 space-y-3" data-testid={`${testId}-page-picker`}>
+        <p className="text-sm font-medium text-slate-700">
+          <FileText className="w-4 h-4 inline mr-1.5 text-brand-500" />
+          <span className="font-semibold text-brand-700">{pendingFile.name}</span>
+          {" "}has <span className="font-bold">{pdfPageCount}</span> pages.
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-slate-600 shrink-0">Use page:</label>
+          <input
+            type="number"
+            min={1}
+            max={pdfPageCount}
+            value={selectedPage}
+            onChange={e => {
+              const v = parseInt(e.target.value, 10);
+              if (!isNaN(v)) setSelectedPage(Math.min(pdfPageCount, Math.max(1, v)));
+            }}
+            className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
+            data-testid={`${testId}-page-input`}
+          />
+          <span className="text-sm text-slate-400">of {pdfPageCount}</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={confirmPage}
+            disabled={uploading}
+            className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg disabled:opacity-60"
+            data-testid={`${testId}-confirm-page`}
+          >
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            Upload page {selectedPage}
+          </button>
+          <button
+            onClick={cancelPicker}
+            disabled={uploading}
+            className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"
+            data-testid={`${testId}-cancel-page`}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-colors"
@@ -366,7 +469,7 @@ function ImageUploadBox({
       data-testid={`${testId}-dropzone`}
     >
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={pick} />
-      {uploading
+      {(uploading || checkingPages)
         ? <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-500" />
         : <>
           <Upload className="w-6 h-6 mx-auto mb-2 text-slate-400" />

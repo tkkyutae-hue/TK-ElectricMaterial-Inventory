@@ -478,6 +478,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.post("/api/projects/:id/completion-report/pdf-info", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      if (req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({ message: "File must be a PDF." });
+      }
+      const { pdfPageCount } = await import("./services/pdfFirstPage");
+      const pageCount = await pdfPageCount(req.file.buffer);
+      return res.json({ pageCount });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/projects/:id/completion-report/upload", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file" });
@@ -497,7 +511,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       if (isPdf) {
         const { pdfFirstPageToPng } = await import("./services/pdfFirstPage");
-        fileBuffer = await pdfFirstPageToPng(req.file.buffer);
+        const rawPage = parseInt(req.body.pdfPage ?? "1", 10);
+        const pageNumber = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+        fileBuffer = await pdfFirstPageToPng(req.file.buffer, pageNumber);
         ext = ".png";
       } else {
         // Validate magic bytes for images

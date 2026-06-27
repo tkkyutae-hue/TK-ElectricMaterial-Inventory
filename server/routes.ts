@@ -21,6 +21,7 @@ import fs from "fs";
 import express from "express";
 import sharp from "sharp";
 import crypto from "crypto";
+import { uploadBuffer, downloadBuffer } from "./services/objectStorageUpload";
 // ─── Upload magic-bytes validator ─────────────────────────────────────────────
 // Verifies that file content matches the declared MIME type's signature.
 function isImageMagicBytes(buf: Buffer, mimetype: string): boolean {
@@ -146,18 +147,39 @@ function getUserDisplayName(req: any): string | null {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
 
-  // Only image extensions are served from /uploads — deny everything else (including any
-  // legacy .html or other non-image files that may exist in the directory).
+  // Serve uploaded completion-report images from Object Storage (persistent across deploys)
+  // Falls back to local uploadsDir for dev environments without Object Storage configured.
   const ALLOWED_UPLOAD_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-  app.use("/uploads", (req, res, next) => {
+  const EXT_TO_MIME: Record<string, string> = {
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".png": "image/png", ".webp": "image/webp",
+  };
+  app.use("/uploads", async (req, res) => {
     const ext = path.extname(req.path).toLowerCase();
-    if (!ALLOWED_UPLOAD_EXTS.has(ext)) {
-      return res.status(403).end();
+    if (!ALLOWED_UPLOAD_EXTS.has(ext)) return res.status(403).end();
+    const filename = path.basename(req.path);
+    // Try Object Storage first
+    try {
+      const buf = await downloadBuffer(filename);
+      if (buf) {
+        res.setHeader("Content-Type", EXT_TO_MIME[ext] ?? "image/jpeg");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Disposition", "inline");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        return res.send(buf);
+      }
+    } catch {
+      // fall through to local disk
     }
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Content-Disposition", "inline");
-    next();
-  }, express.static(uploadsDir));
+    // Fallback: local disk (dev only)
+    const localPath = path.join(uploadsDir, filename);
+    if (fs.existsSync(localPath)) {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Disposition", "inline");
+      return res.sendFile(localPath);
+    }
+    return res.status(404).end();
+  });
 
   // ─── Health ─────────────────────────────────────────────────────────────────
   app.get("/api/health", async (_req, res) => {
@@ -540,10 +562,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         }
       }
 
-      // Write to uploads dir
+      // Write to Object Storage (persistent across deploys)
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      const destPath = path.join(uploadsDir, filename);
-      await fs.promises.writeFile(destPath, fileBuffer);
+      const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+      await uploadBuffer(filename, fileBuffer, mimeType);
       const url = `/uploads/${filename}`;
 
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));

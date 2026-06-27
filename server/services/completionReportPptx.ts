@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import type { CompletionReportWithPhotos } from "@shared/schema";
+import { downloadBuffer } from "./objectStorageUpload";
 
 // TK Electric logo
 const LOGO_PATH = path.join(process.cwd(), "server", "assets", "tk_logo.png");
@@ -15,25 +16,45 @@ const GRAY           = "666666";
 const SLIDE_W = 10;
 const SLIDE_H = 7.5;
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-
-function imgPath(url: string | null | undefined): string | null {
+async function imgBase64(url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
-  // Strip leading /uploads/ prefix, then use path.basename to prevent traversal
-  const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
-  const filename = path.basename(raw); // prevents ../../ traversal
-  const resolved = path.join(uploadsDir, filename);
-  // Ensure resolved path is still under uploads dir
-  if (!resolved.startsWith(uploadsDir + path.sep) && resolved !== uploadsDir) return null;
-  return fs.existsSync(resolved) ? resolved : null;
+  try {
+    // Extract bare filename to prevent path traversal
+    const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
+    const filename = path.basename(raw);
+    if (!filename) return null;
+
+    // Try Object Storage first (production)
+    const buf = await downloadBuffer(filename);
+    if (buf) {
+      const ext = path.extname(filename).toLowerCase().replace(".", "");
+      const mimeMap: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" };
+      const mime = mimeMap[ext] ?? "jpeg";
+      return `data:image/${mime};base64,${buf.toString("base64")}`;
+    }
+
+    // Fallback: local disk (dev)
+    const localPath = path.join(process.cwd(), "uploads", filename);
+    if (fs.existsSync(localPath)) {
+      const localBuf = fs.readFileSync(localPath);
+      const ext = path.extname(filename).toLowerCase().replace(".", "");
+      const mimeMap: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" };
+      const mime = mimeMap[ext] ?? "jpeg";
+      return `data:image/${mime};base64,${localBuf.toString("base64")}`;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
-async function toBase64(filePath: string): Promise<string | null> {
+async function localFileBase64(filePath: string): Promise<string | null> {
   try {
     const buf = fs.readFileSync(filePath);
     const ext = path.extname(filePath).toLowerCase().replace(".", "");
     const mimeMap: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" };
-    const mime = mimeMap[ext] || "jpeg";
+    const mime = mimeMap[ext] ?? "jpeg";
     return `data:image/${mime};base64,${buf.toString("base64")}`;
   } catch {
     return null;
@@ -48,7 +69,7 @@ async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
   });
 
   // TK logo top-right (logo image includes company name + URL)
-  const logoData = await toBase64(LOGO_PATH);
+  const logoData = await localFileBase64(LOGO_PATH);
   if (logoData) {
     // Logo aspect ratio ~2.028:1 (2135×1053); w=1.2 → h≈0.59
     slide.addImage({ data: logoData, x: 8.55, y: 0.02, w: 1.2, h: 0.59 });
@@ -147,7 +168,7 @@ export async function generateCompletionReportPptx(
     });
 
     // TK Logo image (bottom-right) — logo includes company name + URL text
-    const coverLogoData = await toBase64(LOGO_PATH);
+    const coverLogoData = await localFileBase64(LOGO_PATH);
     if (coverLogoData) {
       // Logo aspect ratio ~2.028:1; w=2.8 → h≈1.38
       slide.addImage({ data: coverLogoData, x: 7.0, y: 6.1, w: 2.8, h: 1.38 });
@@ -177,7 +198,7 @@ export async function generateCompletionReportPptx(
     });
 
     // TK logo top-right on white area
-    const tocLogoData = await toBase64(LOGO_PATH);
+    const tocLogoData = await localFileBase64(LOGO_PATH);
     if (tocLogoData) {
       slide.addImage({ data: tocLogoData, x: 7.8, y: 1.25, w: 1.9, h: 0.94 });
     }
@@ -304,8 +325,7 @@ export async function generateCompletionReportPptx(
     slide.background = { color: WHITE };
     await addPageHeader(slide, prs, "QUOTATION");
 
-    const qPath  = imgPath(report.quotationImageUrl);
-    const qData  = qPath ? await toBase64(qPath) : null;
+    const qData = await imgBase64(report.quotationImageUrl);
     if (qData) {
       // Centered: (10 - 6.85) / 2 = 1.575; tight below header line at y:0.61
       slide.addImage({ data: qData, x: 1.575, y: 0.61, w: 6.85, h: 6.89 });
@@ -329,8 +349,7 @@ export async function generateCompletionReportPptx(
       fontSize: 13, bold: false, color: DARK, fontFace: "Calibri", align: "center",
     });
 
-    const dPath = imgPath(report.drawingImageUrl);
-    const dData = dPath ? await toBase64(dPath) : null;
+    const dData = await imgBase64(report.drawingImageUrl);
     if (dData) {
       slide.addImage({ data: dData, x: 0.3, y: 2.05, w: 9.4, h: 5.2 });
     } else {
@@ -361,8 +380,7 @@ export async function generateCompletionReportPptx(
       const x = idx === 0 ? 0.3 : 5.15;
       const w = 4.55;
 
-      const pPath = imgPath(photo.photoUrl);
-      const pData = pPath ? await toBase64(pPath) : null;
+      const pData = await imgBase64(photo.photoUrl);
       if (pData) {
         slide.addImage({ data: pData, x, y: photoY, w, h: photoH });
       } else {

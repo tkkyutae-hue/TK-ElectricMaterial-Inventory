@@ -1,5 +1,23 @@
 import { resolve as resolvePath } from "path";
-import { createCanvas, type Canvas } from "@napi-rs/canvas";
+import {
+  createCanvas,
+  type Canvas,
+  Path2D,
+  ImageData,
+  DOMMatrix,
+  DOMPoint,
+  DOMRect,
+} from "@napi-rs/canvas";
+
+// pdfjs-dist relies on several DOM globals that don't exist in Node.js.
+// Register @napi-rs/canvas's implementations so pdfjs-dist can use them
+// when constructing paths, transforms, and image data during rendering.
+// These must be set before pdfjs-dist is imported.
+(globalThis as Record<string, unknown>).Path2D = Path2D;
+(globalThis as Record<string, unknown>).ImageData = ImageData;
+(globalThis as Record<string, unknown>).DOMMatrix = DOMMatrix;
+(globalThis as Record<string, unknown>).DOMPoint = DOMPoint;
+(globalThis as Record<string, unknown>).DOMRect = DOMRect;
 
 // Resolve worker path relative to project root (cwd in prod = project root).
 // Avoids import.meta.url / createRequire incompatibilities across CJS bundle builds.

@@ -146,20 +146,32 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         method: "POST",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(`Server error ${res.status}${msg ? `: ${msg}` : ""}`);
+      }
+      const ct = res.headers.get("Content-Type") ?? "";
+      if (!ct.includes("presentationml")) {
+        throw new Error(`Unexpected content type: ${ct}`);
+      }
       const cd = res.headers.get("Content-Disposition") ?? "";
       const match = cd.match(/filename="?([^"]+)"?/);
       const blob = await res.blob();
+      if (blob.size === 0) throw new Error("Received empty file from server");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
       a.download = match?.[1] ?? `${safeName}_completion_report.pptx`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast({ title: "PPTX exported successfully" });
-    } catch {
-      toast({ title: "Export failed", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Export error:", err);
+      toast({ title: "Export failed", description: msg, variant: "destructive" });
     } finally {
       setExporting(false);
     }

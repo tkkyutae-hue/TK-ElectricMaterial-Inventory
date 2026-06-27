@@ -635,6 +635,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const filename = poNum ? `${poNum}_${safeName}_completion_report.pptx` : `${safeName}_completion_report.pptx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.setHeader("Content-Length", buffer.length);
+      res.setHeader("Cache-Control", "no-store");
       res.send(buffer);
     } catch (err: any) {
       console.error("PPTX export error:", err);

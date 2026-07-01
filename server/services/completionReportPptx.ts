@@ -125,6 +125,7 @@ function addInfoTable(slide: any, project: any, report: CompletionReportWithPhot
 export async function generateCompletionReportPptx(
   project: any,
   report: CompletionReportWithPhotos,
+  photosPerSlide: 2 | 4 = 2,
 ): Promise<Buffer> {
   const pptxgen = (await import("pptxgenjs")).default;
   const prs = new pptxgen();
@@ -378,58 +379,90 @@ export async function generateCompletionReportPptx(
     }
   }
 
-  // ── Slide 6+: Photo slides (2 per slide) ──────────────────────────────────
+  // ── Slide 6+: Photo slides ─────────────────────────────────────────────────
   const photos = report.photos ?? [];
-  for (let i = 0; i < Math.max(photos.length, 1); i += 2) {
+  const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / photosPerSlide);
+
+  for (let i = 0; i < Math.max(photos.length, 1); i += photosPerSlide) {
+    const slideNum = Math.floor(i / photosPerSlide) + 1;
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
-    await addPageHeader(slide, prs, "WORK PICTURE");
+    await addPageHeader(slide, prs, `WORK PICTURE  ${slideNum} / ${totalPhotoSlides}`);
     addInfoTable(slide, project, report);
-
-    const left  = photos[i];
-    const right = photos[i + 1];
-
-    const photoY = 1.72;
-    const photoH = 4.0;
-    const metaH  = 0.8;
-
-    for (const [idx, photo] of [[0, left], [1, right]] as [number, typeof left | undefined][]) {
-      if (!photo) continue;
-      const x = idx === 0 ? 0.3 : 5.15;
-      const w = 4.55;
-
-      const pData = await imgBase64(photo.photoUrl);
-      if (pData) {
-        slide.addImage({ data: pData, x, y: photoY, w, h: photoH });
-      } else {
-        slide.addShape(prs.ShapeType.rect, {
-          x, y: photoY, w, h: photoH,
-          fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
-        });
-      }
-
-      // Meta info below photo
-      slide.addShape(prs.ShapeType.rect, {
-        x, y: photoY + photoH, w, h: metaH,
-        fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
-      });
-      const metaText = [
-        { text: "Date",        options: { bold: true, color: DARK } },
-        { text: `   ${photo.photoDate ?? "—"}`,  options: { color: DARK } },
-        { text: "\nDescription", options: { bold: true, color: DARK } },
-        { text: `   ${photo.description ?? "—"}`, options: { color: DARK } },
-      ];
-      slide.addText(metaText, {
-        x: x + 0.08, y: photoY + photoH + 0.05, w: w - 0.16, h: metaH - 0.1,
-        fontSize: 8.5, fontFace: "Calibri", valign: "top",
-      });
-    }
 
     if (photos.length === 0) {
       slide.addText("[ No photos uploaded ]", {
         x: 0.3, y: 4.0, w: 9.4, h: 0.6,
         fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
       });
+      continue;
+    }
+
+    if (photosPerSlide === 2) {
+      // ── 2-per-slide: side by side ──────────────────────────────────────────
+      const photoY = 1.72;
+      const photoH = 4.05;
+      const metaH  = 0.42;
+      const photoW = 4.55;
+      const colX   = [0.3, 5.15];
+
+      for (let col = 0; col < 2; col++) {
+        const photo = photos[i + col];
+        if (!photo) continue;
+        const x = colX[col];
+
+        const pData = await imgBase64(photo.photoUrl);
+        if (pData) {
+          slide.addImage({ data: pData, x, y: photoY, w: photoW, h: photoH });
+        } else {
+          slide.addShape(prs.ShapeType.rect, {
+            x, y: photoY, w: photoW, h: photoH,
+            fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
+          });
+        }
+        slide.addShape(prs.ShapeType.rect, {
+          x, y: photoY + photoH, w: photoW, h: metaH,
+          fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
+        });
+        slide.addText(photo.description ?? "—", {
+          x: x + 0.08, y: photoY + photoH + 0.04, w: photoW - 0.16, h: metaH - 0.08,
+          fontSize: 8.5, color: DARK, fontFace: "Calibri", valign: "middle",
+        });
+      }
+    } else {
+      // ── 4-per-slide: 2×2 grid ──────────────────────────────────────────────
+      const photoW = 4.55;
+      const photoH = 2.38;
+      const metaH  = 0.3;
+      const colX   = [0.3, 5.15];
+      const rowY   = [1.62, 4.3];
+
+      for (let cell = 0; cell < 4; cell++) {
+        const photo = photos[i + cell];
+        if (!photo) continue;
+        const col = cell % 2;
+        const row = Math.floor(cell / 2);
+        const x = colX[col];
+        const y = rowY[row];
+
+        const pData = await imgBase64(photo.photoUrl);
+        if (pData) {
+          slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
+        } else {
+          slide.addShape(prs.ShapeType.rect, {
+            x, y, w: photoW, h: photoH,
+            fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
+          });
+        }
+        slide.addShape(prs.ShapeType.rect, {
+          x, y: y + photoH, w: photoW, h: metaH,
+          fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
+        });
+        slide.addText(photo.description ?? "—", {
+          x: x + 0.08, y: y + photoH + 0.03, w: photoW - 0.16, h: metaH - 0.06,
+          fontSize: 7.5, color: DARK, fontFace: "Calibri", valign: "middle",
+        });
+      }
     }
   }
 

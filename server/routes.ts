@@ -649,8 +649,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!project) return res.status(404).json({ message: "Project not found" });
 
       const report = await storage.getOrCreateCompletionReport(projectId);
+      const rawPps = Number(req.body?.photosPerSlide);
+      const photosPerSlide: 2 | 4 = rawPps === 4 ? 4 : 2;
       const { generateCompletionReportPptx } = await import("./services/completionReportPptx");
-      const buffer = await generateCompletionReportPptx(project, report);
+      const buffer = await generateCompletionReportPptx(project, report, photosPerSlide);
 
       const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
       const poNum = ((project as any).poNumber ?? (project as any).code ?? "").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);

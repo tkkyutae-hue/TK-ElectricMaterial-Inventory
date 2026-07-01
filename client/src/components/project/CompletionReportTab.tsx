@@ -50,6 +50,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [exporting, setExporting] = useState(false);
+  const [photosPerSlide, setPhotosPerSlide] = useState<2 | 4>(2);
 
   const { data: report, isLoading } = useQuery<ReportData>({
     queryKey: ["/api/projects", projectId, "completion-report"],
@@ -145,6 +146,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       const res = await fetch(`/api/projects/${projectId}/completion-report/export`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photosPerSlide }),
       });
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
@@ -294,7 +297,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       </SlideSection>
 
       {/* Slide 5+ – Photos */}
-      <SlideSection label="Slide 5+" title="Test / Work Photos (2 per slide)" icon={<Camera className="w-4 h-4" />} defaultOpen>
+      <SlideSection label="Slide 5+" title={`Test / Work Photos (${photosPerSlide} per slide)`} icon={<Camera className="w-4 h-4" />} defaultOpen>
         <div className="space-y-4">
           <DndContext
             sensors={sensors}
@@ -320,7 +323,28 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
               </div>
             </SortableContext>
           </DndContext>
-          <p className="text-xs text-slate-400">Photos are displayed 2 per slide. Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-400">Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Photos per slide:</span>
+              <div className="flex rounded border border-slate-200 overflow-hidden">
+                {([2, 4] as const).map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setPhotosPerSlide(n)}
+                    data-testid={`button-photos-per-slide-${n}`}
+                    className={`px-3 py-1 text-xs font-medium transition-colors ${
+                      photosPerSlide === n
+                        ? "bg-brand-700 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </SlideSection>
 

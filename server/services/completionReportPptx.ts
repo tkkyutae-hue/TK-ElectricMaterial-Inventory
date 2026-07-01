@@ -276,36 +276,54 @@ export async function generateCompletionReportPptx(
     const contractIt = report.contractItem  ?? "Electric Works";
     const workDesc   = report.workDescription ?? "";
 
-    const infoLines = [
-      `1.  Project Name:   ${project.name ?? "—"}`,
-      `2.  PO Number:      ${poNumber}`,
-      `3.  Company Name:   TK ELECTRIC LLC.`,
-      `4.  Contract Item:  ${contractIt}`,
-      `5.  Work Description:`,
+    // Items 1-5: individual rows at fixed, evenly-spaced Y positions
+    const itemRowH = 0.36;
+    const itemStartY = 1.57;
+    const infoItems = [
+      { num: "1.", label: "Project Name:",    value: project.name ?? "—" },
+      { num: "2.", label: "PO Number:",       value: poNumber },
+      { num: "3.", label: "Company Name:",    value: "TK ELECTRIC LLC." },
+      { num: "4.", label: "Contract Item:",   value: contractIt },
+      { num: "5.", label: "Work Description:", value: "" },
     ];
+    for (let i = 0; i < infoItems.length; i++) {
+      const item = infoItems[i];
+      const iy = itemStartY + i * itemRowH;
+      slide.addText(
+        [
+          { text: `${item.num}  `, options: { bold: true, color: DARK } },
+          { text: `${item.label}  `, options: { bold: false, color: DARK } },
+          { text: item.value, options: { bold: false, color: DARK } },
+        ],
+        {
+          x: 0.7, y: iy, w: 8.6, h: itemRowH,
+          fontSize: 11, fontFace: "Calibri", valign: "middle",
+        }
+      );
+    }
 
-    slide.addText(infoLines.join("\n"), {
-      x: 0.7, y: 1.55, w: 8.6, h: 1.9,
-      fontSize: 11, color: DARK, fontFace: "Calibri",
-      valign: "top",
-    });
-
+    // Work description lines (indented under item 5)
+    const descStartY = itemStartY + 5 * itemRowH;
     if (workDesc) {
-      const lines = workDesc.split("\n").map((l: string) => `      - ${l.trim()}`).join("\n");
+      const lines = workDesc.split("\n").map((l: string) => `    - ${l.trim()}`).join("\n");
       slide.addText(lines, {
-        x: 0.9, y: 2.85, w: 8.2, h: 1.5,
+        x: 0.9, y: descStartY, w: 8.2, h: 1.4,
         fontSize: 10.5, color: DARK, fontFace: "Calibri",
         valign: "top",
       });
     }
 
-    const statementY = workDesc ? 4.5 : 3.7;
+    const statementY = workDesc ? descStartY + 1.5 : descStartY + 0.2;
     slide.addText(
-      `We hereby report that the above work (${project.name ?? ""}) has been completed as described.`,
+      [
+        { text: "We hereby report that the above work (", options: { bold: false } },
+        { text: project.name ?? "", options: { bold: true } },
+        { text: ") has been completed as described.", options: { bold: false } },
+      ],
       {
         x: 0.9, y: statementY, w: 8.2, h: 0.7,
         fontSize: 11, color: DARK, fontFace: "Calibri",
-        align: "center", italic: false,
+        align: "center",
       }
     );
 

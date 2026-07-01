@@ -31,8 +31,9 @@ import {
   wireReelMovementLines,
   toolAssets,
   type ToolAsset, type CreateToolAssetRequest, type UpdateToolAssetRequest, type ToolAssetWithRelations,
-  completionReports, completionReportPhotos,
+  completionReports, completionReportPhotos, completionReportPhotoSections,
   type CompletionReport, type CompletionReportPhoto, type CompletionReportWithPhotos,
+  type CompletionReportPhotoSection, type CompletionReportSectionWithPhotos, type CompletionReportWithSections,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -294,11 +295,14 @@ export interface IStorage {
   }): Promise<void>;
 
   // Completion Reports
-  getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithPhotos>;
+  getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithSections>;
   updateCompletionReport(id: number, data: Partial<Pick<CompletionReport, "contractItem" | "workDescription" | "completionDate" | "quotationImageUrl" | "drawingImageUrl">>): Promise<CompletionReport>;
-  addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number }): Promise<CompletionReportPhoto>;
+  addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number; sectionId?: number | null }): Promise<CompletionReportPhoto>;
   deleteCompletionReportPhoto(photoId: number): Promise<void>;
   reorderCompletionReportPhotos(reportId: number, orderedIds: number[]): Promise<void>;
+  createCompletionReportSection(reportId: number, data: { title: string; photosPerSlide?: number; sortOrder?: number }): Promise<CompletionReportPhotoSection>;
+  updateCompletionReportSection(id: number, data: Partial<Pick<CompletionReportPhotoSection, "title" | "photosPerSlide" | "sortOrder">>): Promise<CompletionReportPhotoSection>;
+  deleteCompletionReportSection(id: number): Promise<void>;
 
 }
 
@@ -4224,15 +4228,63 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Completion Reports ────────────────────────────────────────────────────────
 
-  async getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithPhotos> {
+  async getOrCreateCompletionReport(projectId: number): Promise<CompletionReportWithSections> {
     let [report] = await db.select().from(completionReports).where(eq(completionReports.projectId, projectId));
     if (!report) {
       [report] = await db.insert(completionReports).values({ projectId }).returning();
     }
-    const photos = await db.select().from(completionReportPhotos)
+
+    // Load sections ordered by sortOrder
+    let sections = await db.select().from(completionReportPhotoSections)
+      .where(eq(completionReportPhotoSections.reportId, report.id))
+      .orderBy(asc(completionReportPhotoSections.sortOrder), asc(completionReportPhotoSections.id));
+
+    // Load all photos for this report
+    const allPhotos = await db.select().from(completionReportPhotos)
       .where(eq(completionReportPhotos.reportId, report.id))
       .orderBy(asc(completionReportPhotos.sortOrder), asc(completionReportPhotos.id));
-    return { ...report, photos };
+
+    // If no sections exist but there are photos (legacy data), create a default section and assign photos
+    if (sections.length === 0 && allPhotos.length > 0) {
+      const [defaultSection] = await db.insert(completionReportPhotoSections)
+        .values({ reportId: report.id, title: "Work Picture", photosPerSlide: 2, sortOrder: 0 })
+        .returning();
+      for (const photo of allPhotos) {
+        await db.update(completionReportPhotos)
+          .set({ sectionId: defaultSection.id } as any)
+          .where(eq(completionReportPhotos.id, photo.id));
+      }
+      sections = [defaultSection];
+      for (const p of allPhotos) (p as any).sectionId = defaultSection.id;
+    }
+
+    // If no sections at all, create one empty default section
+    if (sections.length === 0) {
+      const [defaultSection] = await db.insert(completionReportPhotoSections)
+        .values({ reportId: report.id, title: "Work Picture", photosPerSlide: 2, sortOrder: 0 })
+        .returning();
+      sections = [defaultSection];
+    }
+
+    // Group photos by sectionId
+    const photosBySectionId = new Map<number, CompletionReportPhoto[]>();
+    const unassignedPhotos: CompletionReportPhoto[] = [];
+    for (const photo of allPhotos) {
+      const sid = (photo as any).sectionId as number | null;
+      if (sid != null) {
+        if (!photosBySectionId.has(sid)) photosBySectionId.set(sid, []);
+        photosBySectionId.get(sid)!.push(photo);
+      } else {
+        unassignedPhotos.push(photo);
+      }
+    }
+
+    const sectionsWithPhotos: CompletionReportSectionWithPhotos[] = sections.map(s => ({
+      ...s,
+      photos: photosBySectionId.get(s.id) ?? [],
+    }));
+
+    return { ...report, sections: sectionsWithPhotos, photos: allPhotos };
   }
 
   async updateCompletionReport(id: number, data: Partial<Pick<CompletionReport, "contractItem" | "workDescription" | "completionDate" | "quotationImageUrl" | "drawingImageUrl">>): Promise<CompletionReport> {
@@ -4243,8 +4295,8 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number }): Promise<CompletionReportPhoto> {
-    const [photo] = await db.insert(completionReportPhotos).values({ reportId, ...data }).returning();
+  async addCompletionReportPhoto(reportId: number, data: { photoUrl: string; photoDate?: string | null; description?: string | null; sortOrder?: number; sectionId?: number | null }): Promise<CompletionReportPhoto> {
+    const [photo] = await db.insert(completionReportPhotos).values({ reportId, ...data } as any).returning();
     return photo;
   }
 
@@ -4258,6 +4310,28 @@ export class DatabaseStorage implements IStorage {
         .set({ sortOrder: i })
         .where(and(eq(completionReportPhotos.id, orderedIds[i]), eq(completionReportPhotos.reportId, reportId)));
     }
+  }
+
+  async createCompletionReportSection(reportId: number, data: { title: string; photosPerSlide?: number; sortOrder?: number }): Promise<CompletionReportPhotoSection> {
+    const [section] = await db.insert(completionReportPhotoSections).values({
+      reportId,
+      title: data.title,
+      photosPerSlide: data.photosPerSlide ?? 2,
+      sortOrder: data.sortOrder ?? 0,
+    }).returning();
+    return section;
+  }
+
+  async updateCompletionReportSection(id: number, data: Partial<Pick<CompletionReportPhotoSection, "title" | "photosPerSlide" | "sortOrder">>): Promise<CompletionReportPhotoSection> {
+    const [updated] = await db.update(completionReportPhotoSections)
+      .set(data)
+      .where(eq(completionReportPhotoSections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCompletionReportSection(id: number): Promise<void> {
+    await db.delete(completionReportPhotoSections).where(eq(completionReportPhotoSections.id, id));
   }
 
 }
@@ -4801,6 +4875,14 @@ export async function runCompletionReportMigration(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS completion_report_photo_sections (
+      id SERIAL PRIMARY KEY,
+      report_id INTEGER NOT NULL REFERENCES completion_reports(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT 'Work Picture',
+      photos_per_slide INTEGER NOT NULL DEFAULT 2,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS completion_report_photos (
       id SERIAL PRIMARY KEY,
       report_id INTEGER NOT NULL REFERENCES completion_reports(id) ON DELETE CASCADE,
@@ -4811,9 +4893,11 @@ export async function runCompletionReportMigration(): Promise<void> {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
-  // Idempotent: add created_at to existing tables that were created without it
+  // Idempotent additive columns
   await pool.query(`
     ALTER TABLE completion_report_photos
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+    ALTER TABLE completion_report_photos
+      ADD COLUMN IF NOT EXISTS section_id INTEGER REFERENCES completion_report_photo_sections(id) ON DELETE SET NULL;
   `);
 }

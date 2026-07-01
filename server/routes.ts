@@ -571,10 +571,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
 
       if (type === "photo") {
-        const maxOrder = (report.photos ?? []).length;
+        // Support optional sectionId to add photo directly to a section
+        const rawSid = req.body.sectionId ? Number(req.body.sectionId) : null;
+        const sectionId = rawSid && !isNaN(rawSid) ? rawSid : (report.sections?.[0]?.id ?? null);
+        const sectionPhotos = report.sections?.find(s => s.id === sectionId)?.photos ?? [];
+        const maxOrder = sectionPhotos.length;
         const photo = await storage.addCompletionReportPhoto(report.id, {
           photoUrl: url,
           sortOrder: maxOrder,
+          sectionId,
         });
         return res.json(photo);
       } else {
@@ -584,6 +589,86 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
     } catch (err: any) {
       console.error("Completion report upload error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── Completion Report: Section CRUD ────────────────────────────────────────
+  app.post("/api/projects/:id/completion-report/sections", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const { title, photosPerSlide } = req.body;
+      const sortOrder = report.sections?.length ?? 0;
+      const section = await storage.createCompletionReportSection(report.id, {
+        title: title ?? "Work Picture",
+        photosPerSlide: photosPerSlide === 4 ? 4 : 2,
+        sortOrder,
+      });
+      res.json(section);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/projects/:id/completion-report/sections/:sid", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const { title, photosPerSlide } = req.body;
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      if (photosPerSlide !== undefined) updateData.photosPerSlide = photosPerSlide === 4 ? 4 : 2;
+      const section = await storage.updateCompletionReportSection(Number(req.params.sid), updateData);
+      res.json(section);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/projects/:id/completion-report/sections/:sid", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      await storage.deleteCompletionReportSection(Number(req.params.sid));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Reorder photos within a section
+  app.post("/api/projects/:id/completion-report/sections/:sid/reorder", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      await storage.reorderCompletionReportPhotos(report.id, req.body.orderedIds);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Upload photo directly to a specific section
+  app.post("/api/projects/:id/completion-report/sections/:sid/upload", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      const isPdf = req.file.mimetype === "application/pdf";
+      if (isPdf) return res.status(400).json({ message: "PDF not supported for section photos." });
+
+      let fileBuffer: Buffer = req.file.buffer;
+      const ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
+      if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
+        return res.status(400).json({ message: "File content does not match declared type." });
+      }
+
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+      await uploadBuffer(filename, fileBuffer, mimeType);
+      const url = `/uploads/${filename}`;
+
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const sectionId = Number(req.params.sid);
+      const sectionPhotos = report.sections?.find(s => s.id === sectionId)?.photos ?? [];
+      const maxOrder = sectionPhotos.length;
+      const photo = await storage.addCompletionReportPhoto(report.id, { photoUrl: url, sortOrder: maxOrder, sectionId });
+      return res.json(photo);
+    } catch (err: any) {
+      console.error("Section upload error:", err);
       res.status(500).json({ message: err.message });
     }
   });
@@ -649,10 +734,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!project) return res.status(404).json({ message: "Project not found" });
 
       const report = await storage.getOrCreateCompletionReport(projectId);
-      const rawPps = Number(req.body?.photosPerSlide);
-      const photosPerSlide: 2 | 4 = rawPps === 4 ? 4 : 2;
       const { generateCompletionReportPptx } = await import("./services/completionReportPptx");
-      const buffer = await generateCompletionReportPptx(project, report, photosPerSlide);
+      const buffer = await generateCompletionReportPptx(project, report);
 
       const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
       const poNum = ((project as any).poNumber ?? (project as any).code ?? "").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);

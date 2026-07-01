@@ -738,9 +738,20 @@ export const completionReports = pgTable("completion_reports", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Photo sections — each section generates its own slide group in the PPTX
+export const completionReportPhotoSections = pgTable("completion_report_photo_sections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("Work Picture"),
+  photosPerSlide: integer("photos_per_slide").notNull().default(2),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const completionReportPhotos = pgTable("completion_report_photos", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  sectionId: integer("section_id").references(() => completionReportPhotoSections.id, { onDelete: "set null" }),
   photoUrl: text("photo_url").notNull(),
   photoDate: text("photo_date"),
   description: text("description"),
@@ -754,7 +765,16 @@ export const insertCompletionReportSchema = createInsertSchema(completionReports
 export const insertCompletionReportPhotoSchema = createInsertSchema(completionReportPhotos).omit({
   id: true, createdAt: true,
 });
+export const insertCompletionReportPhotoSectionSchema = createInsertSchema(completionReportPhotoSections).omit({
+  id: true, createdAt: true,
+});
 
 export type CompletionReport = typeof completionReports.$inferSelect;
 export type CompletionReportPhoto = typeof completionReportPhotos.$inferSelect;
+export type CompletionReportPhotoSection = typeof completionReportPhotoSections.$inferSelect;
+export type CompletionReportSectionWithPhotos = CompletionReportPhotoSection & { photos: CompletionReportPhoto[] };
 export type CompletionReportWithPhotos = CompletionReport & { photos: CompletionReportPhoto[] };
+export type CompletionReportWithSections = CompletionReport & {
+  sections: CompletionReportSectionWithPhotos[];
+  photos: CompletionReportPhoto[];
+};

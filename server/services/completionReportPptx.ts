@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import type { CompletionReportWithPhotos } from "@shared/schema";
+import type { CompletionReportWithSections } from "@shared/schema";
 import { downloadBuffer } from "./objectStorageUpload";
 
 // TK Electric logo
@@ -19,12 +19,10 @@ const SLIDE_H = 7.5;
 async function imgBase64(url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
   try {
-    // Extract bare filename to prevent path traversal
     const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
     const filename = path.basename(raw);
     if (!filename) return null;
 
-    // Try Object Storage first (production)
     const buf = await downloadBuffer(filename);
     if (buf) {
       const ext = path.extname(filename).toLowerCase().replace(".", "");
@@ -33,7 +31,6 @@ async function imgBase64(url: string | null | undefined): Promise<string | null>
       return `data:image/${mime};base64,${buf.toString("base64")}`;
     }
 
-    // Fallback: local disk (dev)
     const localPath = path.join(process.cwd(), "uploads", filename);
     if (fs.existsSync(localPath)) {
       const localBuf = fs.readFileSync(localPath);
@@ -68,13 +65,10 @@ async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
     fontFace: "Calibri",
   });
 
-  // TK logo top-right (logo image includes company name + URL)
   const logoData = await localFileBase64(LOGO_PATH);
   if (logoData) {
-    // Logo aspect ratio ~2.028:1 (2135×1053); w=1.2 → h≈0.59
     slide.addImage({ data: logoData, x: 8.55, y: 0.02, w: 1.2, h: 0.59 });
   } else {
-    // Fallback text if image missing
     slide.addText("TK ELECTRIC LLC.", {
       x: 7.5, y: 0.1, w: 2.1, h: 0.3,
       fontSize: 8, bold: true, color: TK_GREEN,
@@ -93,7 +87,7 @@ async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
   });
 }
 
-function addInfoTable(slide: any, project: any, report: CompletionReportWithPhotos) {
+function addInfoTable(slide: any, project: any, report: CompletionReportWithSections) {
   const startDate = project.startDate ?? "";
   const endDate   = project.endDate   ?? report.completionDate ?? "";
   const duration  = (startDate && endDate) ? `${startDate} ~ ${endDate}` : (startDate || endDate || "—");
@@ -124,8 +118,7 @@ function addInfoTable(slide: any, project: any, report: CompletionReportWithPhot
 
 export async function generateCompletionReportPptx(
   project: any,
-  report: CompletionReportWithPhotos,
-  photosPerSlide: 2 | 4 = 2,
+  report: CompletionReportWithSections,
 ): Promise<Buffer> {
   const pptxgen = (await import("pptxgenjs")).default;
   const prs = new pptxgen();
@@ -136,12 +129,11 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
 
-    // Decorative circles — all coords within slide bounds (0–10 x, 0–7.5 y)
     const arcs = [
-      { x: 0.0, y: 0.0, d: 4.5 },   // top-left outer
-      { x: 0.5, y: 0.5, d: 4.5 },   // top-left inner
-      { x: 5.5, y: 3.0, d: 4.5 },   // bottom-right outer (5.5+4.5=10, 3.0+4.5=7.5)
-      { x: 6.0, y: 3.5, d: 4.0 },   // bottom-right inner (6.0+4.0=10, 3.5+4.0=7.5)
+      { x: 0.0, y: 0.0, d: 4.5 },
+      { x: 0.5, y: 0.5, d: 4.5 },
+      { x: 5.5, y: 3.0, d: 4.5 },
+      { x: 6.0, y: 3.5, d: 4.0 },
     ];
     for (const a of arcs) {
       slide.addShape(prs.ShapeType.ellipse, {
@@ -151,7 +143,6 @@ export async function generateCompletionReportPptx(
       });
     }
 
-    // Center rounded box
     slide.addShape(prs.ShapeType.roundRect, {
       x: 1.0, y: 2.5, w: 8.0, h: 1.8,
       fill: { color: TK_GREEN_LIGHT },
@@ -168,10 +159,8 @@ export async function generateCompletionReportPptx(
       fontFace: "Calibri", align: "center", valign: "middle",
     });
 
-    // TK Logo image (bottom-right) — logo includes company name + URL text
     const coverLogoData = await localFileBase64(LOGO_PATH);
     if (coverLogoData) {
-      // Logo aspect ratio ~2.028:1; w=2.8 → h≈1.38
       slide.addImage({ data: coverLogoData, x: 7.0, y: 6.1, w: 2.8, h: 1.38 });
     } else {
       slide.addText("TK ELECTRIC LLC.\nwww.tkglobal.us", {
@@ -187,7 +176,6 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
 
-    // Header bar
     slide.addShape(prs.ShapeType.rect, {
       x: 0, y: 0, w: SLIDE_W, h: 1.1,
       fill: { color: TK_GREEN }, line: { color: TK_GREEN },
@@ -198,36 +186,37 @@ export async function generateCompletionReportPptx(
       fontFace: "Calibri", align: "left", valign: "middle",
     });
 
-    // TK logo top-right on white area
     const tocLogoData = await localFileBase64(LOGO_PATH);
     if (tocLogoData) {
       slide.addImage({ data: tocLogoData, x: 7.8, y: 1.25, w: 1.9, h: 0.94 });
     }
 
-    // TOC items
+    // TOC items: first 4 fixed, then one entry per section
+    const sections = report.sections ?? [];
     const tocItems = [
       { num: "01", title: "Work Final Report" },
       { num: "02", title: "Quotation" },
       { num: "03", title: "Drawing" },
-      { num: "04", title: "Work Picture" },
+      ...sections.map((s, i) => ({
+        num: String(i + 4).padStart(2, "0"),
+        title: s.title || "Work Picture",
+      })),
     ];
 
-    const startY = 2.45;
-    const rowH   = 1.05;
+    const startY = sections.length <= 1 ? 2.45 : 2.0;
+    const rowH   = sections.length <= 4 ? 1.05 : Math.min(1.05, (7.5 - startY - 0.3) / tocItems.length);
 
     for (let i = 0; i < tocItems.length; i++) {
       const item = tocItems[i];
       const y = startY + i * rowH;
       const isEven = i % 2 === 0;
 
-      // Row background
       slide.addShape(prs.ShapeType.rect, {
         x: 0.4, y, w: 9.2, h: rowH - 0.08,
         fill: { color: isEven ? TK_GREEN_LIGHT : WHITE },
         line: { color: TK_GREEN_MID, pt: 0.5 },
       });
 
-      // Number badge
       slide.addShape(prs.ShapeType.rect, {
         x: 0.4, y, w: 0.7, h: rowH - 0.08,
         fill: { color: TK_GREEN }, line: { color: TK_GREEN },
@@ -238,7 +227,6 @@ export async function generateCompletionReportPptx(
         fontFace: "Calibri", align: "center", valign: "middle",
       });
 
-      // Title
       slide.addText(item.title, {
         x: 1.3, y: y + 0.02, w: 7.9, h: rowH - 0.12,
         fontSize: 16, bold: false, color: DARK,
@@ -253,20 +241,17 @@ export async function generateCompletionReportPptx(
     slide.background = { color: WHITE };
     await addPageHeader(slide, prs, "WORK FINAL REPORT");
 
-    // Large bordered frame
     slide.addShape(prs.ShapeType.rect, {
       x: 0.4, y: 0.75, w: 9.2, h: 6.5,
       fill: { color: WHITE },
       line: { color: DARK, pt: 1 },
     });
 
-    // Title inside frame
     slide.addText("Work Final Report", {
       x: 0.6, y: 0.85, w: 8.8, h: 0.65,
       fontSize: 22, bold: false, color: DARK,
       fontFace: "Calibri", align: "center",
     });
-    // Divider
     slide.addShape(prs.ShapeType.line, {
       x: 0.6, y: 1.48, w: 8.8, h: 0,
       line: { color: "C0C0C0", pt: 0.5 },
@@ -277,7 +262,6 @@ export async function generateCompletionReportPptx(
     const contractIt = report.contractItem  ?? "Electric Works";
     const workDesc   = report.workDescription ?? "";
 
-    // Items 1-5: individual rows at fixed, evenly-spaced Y positions
     const itemRowH = 0.36;
     const itemStartY = 1.57;
     const infoItems = [
@@ -303,7 +287,6 @@ export async function generateCompletionReportPptx(
       );
     }
 
-    // Work description lines (indented under item 5)
     const descStartY = itemStartY + 5 * itemRowH;
     if (workDesc) {
       const lines = workDesc.split("\n").map((l: string) => `    - ${l.trim()}`).join("\n");
@@ -346,7 +329,6 @@ export async function generateCompletionReportPptx(
 
     const qData = await imgBase64(report.quotationImageUrl);
     if (qData) {
-      // Centered: (10 - 6.85) / 2 = 1.575; tight below header line at y:0.61
       slide.addImage({ data: qData, x: 1.575, y: 0.61, w: 6.85, h: 6.89 });
     } else {
       slide.addText("[ Quotation image not uploaded ]", {
@@ -379,89 +361,93 @@ export async function generateCompletionReportPptx(
     }
   }
 
-  // ── Slide 6+: Photo slides ─────────────────────────────────────────────────
-  const photos = report.photos ?? [];
-  const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / photosPerSlide);
+  // ── Slide 6+: Photo sections ───────────────────────────────────────────────
+  const sections = report.sections ?? [];
 
-  for (let i = 0; i < Math.max(photos.length, 1); i += photosPerSlide) {
-    const slideNum = Math.floor(i / photosPerSlide) + 1;
-    const slide = prs.addSlide();
-    slide.background = { color: WHITE };
-    await addPageHeader(slide, prs, `WORK PICTURE  ${slideNum} / ${totalPhotoSlides}`);
-    addInfoTable(slide, project, report);
+  for (const section of sections) {
+    const photos = section.photos ?? [];
+    const photosPerSlide = section.photosPerSlide === 4 ? 4 : 2;
+    const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
+    const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / photosPerSlide);
 
-    if (photos.length === 0) {
-      slide.addText("[ No photos uploaded ]", {
-        x: 0.3, y: 4.0, w: 9.4, h: 0.6,
-        fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
-      });
-      continue;
-    }
+    for (let i = 0; i < Math.max(photos.length, 1); i += photosPerSlide) {
+      const slideNum = Math.floor(i / photosPerSlide) + 1;
+      const slide = prs.addSlide();
+      slide.background = { color: WHITE };
+      await addPageHeader(slide, prs, `${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
+      addInfoTable(slide, project, report);
 
-    if (photosPerSlide === 2) {
-      // ── 2-per-slide: side by side ──────────────────────────────────────────
-      const photoY = 1.72;
-      const photoH = 4.05;
-      const metaH  = 0.42;
-      const photoW = 4.55;
-      const colX   = [0.3, 5.15];
-
-      for (let col = 0; col < 2; col++) {
-        const photo = photos[i + col];
-        if (!photo) continue;
-        const x = colX[col];
-
-        const pData = await imgBase64(photo.photoUrl);
-        if (pData) {
-          slide.addImage({ data: pData, x, y: photoY, w: photoW, h: photoH });
-        } else {
-          slide.addShape(prs.ShapeType.rect, {
-            x, y: photoY, w: photoW, h: photoH,
-            fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
-          });
-        }
-        slide.addShape(prs.ShapeType.rect, {
-          x, y: photoY + photoH, w: photoW, h: metaH,
-          fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
+      if (photos.length === 0) {
+        slide.addText("[ No photos uploaded ]", {
+          x: 0.3, y: 4.0, w: 9.4, h: 0.6,
+          fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
         });
-        slide.addText(photo.description ?? "—", {
-          x: x + 0.08, y: photoY + photoH + 0.04, w: photoW - 0.16, h: metaH - 0.08,
-          fontSize: 8.5, color: DARK, fontFace: "Calibri", valign: "middle",
-        });
+        continue;
       }
-    } else {
-      // ── 4-per-slide: 2×2 grid ──────────────────────────────────────────────
-      const photoW = 4.55;
-      const photoH = 2.38;
-      const metaH  = 0.3;
-      const colX   = [0.3, 5.15];
-      const rowY   = [1.62, 4.3];
 
-      for (let cell = 0; cell < 4; cell++) {
-        const photo = photos[i + cell];
-        if (!photo) continue;
-        const col = cell % 2;
-        const row = Math.floor(cell / 2);
-        const x = colX[col];
-        const y = rowY[row];
+      if (photosPerSlide === 2) {
+        const photoY = 1.72;
+        const photoH = 4.05;
+        const metaH  = 0.42;
+        const photoW = 4.55;
+        const colX   = [0.3, 5.15];
 
-        const pData = await imgBase64(photo.photoUrl);
-        if (pData) {
-          slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
-        } else {
+        for (let col = 0; col < 2; col++) {
+          const photo = photos[i + col];
+          if (!photo) continue;
+          const x = colX[col];
+
+          const pData = await imgBase64(photo.photoUrl);
+          if (pData) {
+            slide.addImage({ data: pData, x, y: photoY, w: photoW, h: photoH });
+          } else {
+            slide.addShape(prs.ShapeType.rect, {
+              x, y: photoY, w: photoW, h: photoH,
+              fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
+            });
+          }
           slide.addShape(prs.ShapeType.rect, {
-            x, y, w: photoW, h: photoH,
-            fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
+            x, y: photoY + photoH, w: photoW, h: metaH,
+            fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
+          });
+          slide.addText(photo.description ?? "—", {
+            x: x + 0.08, y: photoY + photoH + 0.04, w: photoW - 0.16, h: metaH - 0.08,
+            fontSize: 8.5, color: DARK, fontFace: "Calibri", valign: "middle",
           });
         }
-        slide.addShape(prs.ShapeType.rect, {
-          x, y: y + photoH, w: photoW, h: metaH,
-          fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
-        });
-        slide.addText(photo.description ?? "—", {
-          x: x + 0.08, y: y + photoH + 0.03, w: photoW - 0.16, h: metaH - 0.06,
-          fontSize: 7.5, color: DARK, fontFace: "Calibri", valign: "middle",
-        });
+      } else {
+        const photoW = 4.55;
+        const photoH = 2.38;
+        const metaH  = 0.3;
+        const colX   = [0.3, 5.15];
+        const rowY   = [1.62, 4.3];
+
+        for (let cell = 0; cell < 4; cell++) {
+          const photo = photos[i + cell];
+          if (!photo) continue;
+          const col = cell % 2;
+          const row = Math.floor(cell / 2);
+          const x = colX[col];
+          const y = rowY[row];
+
+          const pData = await imgBase64(photo.photoUrl);
+          if (pData) {
+            slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
+          } else {
+            slide.addShape(prs.ShapeType.rect, {
+              x, y, w: photoW, h: photoH,
+              fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 },
+            });
+          }
+          slide.addShape(prs.ShapeType.rect, {
+            x, y: y + photoH, w: photoW, h: metaH,
+            fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 },
+          });
+          slide.addText(photo.description ?? "—", {
+            x: x + 0.08, y: y + photoH + 0.03, w: photoW - 0.16, h: metaH - 0.06,
+            fontSize: 7.5, color: DARK, fontFace: "Calibri", valign: "middle",
+          });
+        }
       }
     }
   }

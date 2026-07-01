@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
-  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical,
+  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X,
 } from "lucide-react";
 import {
   DndContext,
@@ -33,6 +33,16 @@ interface Photo {
   photoDate: string | null;
   description: string | null;
   sortOrder: number;
+  sectionId: number | null;
+}
+
+interface PhotoSection {
+  id: number;
+  reportId: number;
+  title: string;
+  photosPerSlide: number;
+  sortOrder: number;
+  photos: Photo[];
 }
 
 interface ReportData {
@@ -43,6 +53,7 @@ interface ReportData {
   completionDate: string | null;
   quotationImageUrl: string | null;
   drawingImageUrl: string | null;
+  sections: PhotoSection[];
   photos: Photo[];
 }
 
@@ -50,7 +61,6 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [exporting, setExporting] = useState(false);
-  const [photosPerSlide, setPhotosPerSlide] = useState<2 | 4>(2);
 
   const { data: report, isLoading } = useQuery<ReportData>({
     queryKey: ["/api/projects", projectId, "completion-report"],
@@ -71,15 +81,41 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     onSuccess: invalidate,
   });
 
-  async function handleUpload(type: "quotation" | "drawing" | "photo", file: File, pdfPage?: number) {
+  const addSectionMut = useMutation({
+    mutationFn: (title: string) =>
+      apiRequest("POST", `/api/projects/${projectId}/completion-report/sections`, { title, photosPerSlide: 2 }),
+    onSuccess: invalidate,
+  });
+
+  const updateSectionMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Pick<PhotoSection, "title" | "photosPerSlide">> }) =>
+      apiRequest("PUT", `/api/projects/${projectId}/completion-report/sections/${id}`, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteSectionMut = useMutation({
+    mutationFn: (sectionId: number) =>
+      apiRequest("DELETE", `/api/projects/${projectId}/completion-report/sections/${sectionId}`),
+    onSuccess: invalidate,
+  });
+
+  async function handleUpload(type: "quotation" | "drawing", file: File, pdfPage?: number) {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("type", type);
     if (pdfPage !== undefined) fd.append("pdfPage", String(pdfPage));
     const res = await fetch(`/api/projects/${projectId}/completion-report/upload`, {
-      method: "POST",
-      credentials: "include",
-      body: fd,
+      method: "POST", credentials: "include", body: fd,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    invalidate();
+  }
+
+  async function handleSectionPhotoUpload(sectionId: number, file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/projects/${projectId}/completion-report/sections/${sectionId}/upload`, {
+      method: "POST", credentials: "include", body: fd,
     });
     if (!res.ok) throw new Error("Upload failed");
     invalidate();
@@ -89,9 +125,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`/api/projects/${projectId}/completion-report/pdf-info`, {
-      method: "POST",
-      credentials: "include",
-      body: fd,
+      method: "POST", credentials: "include", body: fd,
     });
     if (!res.ok) return 1;
     const data = await res.json();
@@ -102,9 +136,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch(`/api/projects/${projectId}/completion-report/pdf-preview?page=${page}`, {
-      method: "POST",
-      credentials: "include",
-      body: fd,
+      method: "POST", credentials: "include", body: fd,
     });
     if (!res.ok) throw new Error("Preview failed");
     const blob = await res.blob();
@@ -112,23 +144,21 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   }
 
   async function handlePhotoMeta(photoId: number, field: "photoDate" | "description", value: string) {
-    await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, {
-      [field]: value,
-    });
+    await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, { [field]: value });
     invalidate();
   }
 
-  async function handleReorder(photos: Photo[], fromIdx: number, toIdx: number) {
+  async function handleReorder(sectionId: number, photos: Photo[], fromIdx: number, toIdx: number) {
     if (toIdx < 0 || toIdx >= photos.length) return;
     const reordered = [...photos];
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
     const orderedIds = reordered.map(p => p.id);
-    await apiRequest("POST", `/api/projects/${projectId}/completion-report/reorder`, { orderedIds });
+    await apiRequest("POST", `/api/projects/${projectId}/completion-report/sections/${sectionId}/reorder`, { orderedIds });
     invalidate();
   }
 
-  async function handleDragEnd(event: DragEndEvent, photos: Photo[]) {
+  async function handleDragEnd(sectionId: number, photos: Photo[], event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = photos.findIndex(p => p.id === active.id);
@@ -136,7 +166,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(photos, oldIdx, newIdx);
     const orderedIds = reordered.map(p => p.id);
-    await apiRequest("POST", `/api/projects/${projectId}/completion-report/reorder`, { orderedIds });
+    await apiRequest("POST", `/api/projects/${projectId}/completion-report/sections/${sectionId}/reorder`, { orderedIds });
     invalidate();
   }
 
@@ -147,7 +177,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photosPerSlide }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
@@ -193,7 +223,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
 
   if (!report) return null;
 
-  const photos = report.photos ?? [];
+  const sections = report.sections ?? [];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -296,13 +326,169 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         />
       </SlideSection>
 
-      {/* Slide 5+ – Photos */}
-      <SlideSection label="Slide 5+" title={`Test / Work Photos (${photosPerSlide} per slide)`} icon={<Camera className="w-4 h-4" />} defaultOpen>
-        <div className="space-y-4">
+      {/* Photo Sections */}
+      {sections.map((section, sIdx) => (
+        <PhotoSectionCard
+          key={section.id}
+          section={section}
+          slideLabel={`Slide ${5 + sIdx}+`}
+          sensors={sensors}
+          onUpload={(file) => handleSectionPhotoUpload(section.id, file)}
+          onDelete={(photoId) => deleteMut.mutate(photoId)}
+          onMetaChange={(photoId, field, val) => handlePhotoMeta(photoId, field, val)}
+          onReorder={(photos, fromIdx, toIdx) => handleReorder(section.id, photos, fromIdx, toIdx)}
+          onDragEnd={(event) => handleDragEnd(section.id, section.photos, event)}
+          onUpdateTitle={(title) => updateSectionMut.mutate({ id: section.id, data: { title } })}
+          onUpdatePhotosPerSlide={(pps) => updateSectionMut.mutate({ id: section.id, data: { photosPerSlide: pps } })}
+          onDeleteSection={() => {
+            if (sections.length <= 1) {
+              toast({ title: "Cannot delete", description: "At least one section is required.", variant: "destructive" });
+              return;
+            }
+            deleteSectionMut.mutate(section.id);
+          }}
+          canDelete={sections.length > 1}
+        />
+      ))}
+
+      {/* Add Section button */}
+      <button
+        onClick={() => addSectionMut.mutate("Work Picture")}
+        disabled={addSectionMut.isPending}
+        data-testid="button-add-section"
+        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-sm text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/30 transition-colors"
+      >
+        {addSectionMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+        Add Photo Section
+      </button>
+
+    </div>
+  );
+}
+
+// ── PhotoSectionCard ────────────────────────────────────────────────────────
+
+function PhotoSectionCard({
+  section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onReorder, onDragEnd,
+  onUpdateTitle, onUpdatePhotosPerSlide, onDeleteSection, canDelete,
+}: {
+  section: PhotoSection;
+  slideLabel: string;
+  sensors: any;
+  onUpload: (file: File) => Promise<void>;
+  onDelete: (photoId: number) => void;
+  onMetaChange: (photoId: number, field: "photoDate" | "description", val: string) => void;
+  onReorder: (photos: Photo[], fromIdx: number, toIdx: number) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  onUpdateTitle: (title: string) => void;
+  onUpdatePhotosPerSlide: (pps: 2 | 4) => void;
+  onDeleteSection: () => void;
+  canDelete: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(section.title);
+  const photos = section.photos ?? [];
+
+  function commitTitle() {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== section.title) onUpdateTitle(trimmed);
+    setEditingTitle(false);
+  }
+
+  function cancelTitle() {
+    setTitleDraft(section.title);
+    setEditingTitle(false);
+  }
+
+  return (
+    <div className="premium-card bg-white border border-slate-200 rounded-xl overflow-hidden">
+      {/* Section header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+        <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100 shrink-0">
+          {slideLabel}
+        </span>
+        <Camera className="w-4 h-4 text-slate-400 shrink-0" />
+
+        {/* Editable title */}
+        {editingTitle ? (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") commitTitle(); if (e.key === "Escape") cancelTitle(); }}
+              className="flex-1 min-w-0 border border-brand-400 rounded px-2 py-0.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              data-testid={`input-section-title-${section.id}`}
+            />
+            <button onClick={commitTitle} className="text-brand-600 hover:text-brand-800 p-0.5" data-testid={`button-section-title-confirm-${section.id}`}><Check className="w-4 h-4" /></button>
+            <button onClick={cancelTitle} className="text-slate-400 hover:text-slate-600 p-0.5" data-testid={`button-section-title-cancel-${section.id}`}><X className="w-4 h-4" /></button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-slate-700 font-semibold text-sm truncate">{section.title}</span>
+            <button
+              onClick={() => { setTitleDraft(section.title); setEditingTitle(true); }}
+              className="text-slate-300 hover:text-slate-500 p-0.5 shrink-0"
+              data-testid={`button-section-title-edit-${section.id}`}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
+          {/* Photos-per-slide toggle */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-400 hidden sm:inline">per slide:</span>
+            <div className="flex rounded border border-slate-200 overflow-hidden">
+              {([2, 4] as const).map(n => (
+                <button
+                  key={n}
+                  onClick={() => onUpdatePhotosPerSlide(n)}
+                  data-testid={`button-section-${section.id}-pps-${n}`}
+                  className={`px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    section.photosPerSlide === n
+                      ? "bg-brand-700 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Delete section */}
+          {canDelete && (
+            <button
+              onClick={onDeleteSection}
+              className="text-slate-300 hover:text-red-500 p-1 transition-colors"
+              data-testid={`button-delete-section-${section.id}`}
+              title="Delete section"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Collapse toggle */}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="text-slate-400 hover:text-slate-600 p-1"
+            data-testid={`button-section-collapse-${section.id}`}
+          >
+            {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Section body */}
+      {open && (
+        <div className="p-4 space-y-3">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragEnd={e => handleDragEnd(e, photos)}
+            onDragEnd={onDragEnd}
           >
             <SortableContext items={photos.map(p => p.id)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -313,44 +499,24 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
                     index={idx + 1}
                     isFirst={idx === 0}
                     isLast={idx === photos.length - 1}
-                    onDelete={() => deleteMut.mutate(photo.id)}
-                    onMetaChange={(field, val) => handlePhotoMeta(photo.id, field, val)}
-                    onMoveUp={() => handleReorder(photos, idx, idx - 1)}
-                    onMoveDown={() => handleReorder(photos, idx, idx + 1)}
+                    onDelete={() => onDelete(photo.id)}
+                    onMetaChange={(field, val) => onMetaChange(photo.id, field, val)}
+                    onMoveUp={() => onReorder(photos, idx, idx - 1)}
+                    onMoveDown={() => onReorder(photos, idx, idx + 1)}
                   />
                 ))}
-                <AddPhotoBox onAdd={f => handleUpload("photo", f)} />
+                <AddPhotoBox onAdd={onUpload} />
               </div>
             </SortableContext>
           </DndContext>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Photos per slide:</span>
-              <div className="flex rounded border border-slate-200 overflow-hidden">
-                {([2, 4] as const).map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setPhotosPerSlide(n)}
-                    data-testid={`button-photos-per-slide-${n}`}
-                    className={`px-3 py-1 text-xs font-medium transition-colors ${
-                      photosPerSlide === n
-                        ? "bg-brand-700 text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <p className="text-xs text-slate-400">Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
         </div>
-      </SlideSection>
-
+      )}
     </div>
   );
 }
+
+// ── SlideSection ────────────────────────────────────────────────────────────
 
 function SlideSection({
   label, title, icon, children, defaultOpen = false,
@@ -388,6 +554,8 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
     </div>
   );
 }
+
+// ── ImageUploadBox ──────────────────────────────────────────────────────────
 
 function ImageUploadBox({
   label, hint, currentUrl, onUpload, onGetPdfPageCount, onGetPdfPreview, onRemove, testId, acceptPdf = false,
@@ -582,6 +750,8 @@ function ImageUploadBox({
   );
 }
 
+// ── PhotoCard ───────────────────────────────────────────────────────────────
+
 function PhotoCard({
   photo, index, isFirst, isLast, onDelete, onMetaChange, onMoveUp, onMoveDown,
 }: {
@@ -643,64 +813,54 @@ function PhotoCard({
           </button>
           <button
             onClick={onDelete}
-            className="bg-white/90 hover:bg-red-50 text-red-600 rounded-full p-1.5 shadow"
+            className="bg-white/90 hover:bg-red-50 text-red-500 rounded-full p-1.5 shadow"
             data-testid={`button-delete-photo-${photo.id}`}
+            title="Delete photo"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-      <div className="p-3 space-y-2">
-        <div>
-          <Label className="text-xs text-slate-500">Date</Label>
-          <Input
-            type="date"
-            defaultValue={photo.photoDate ?? ""}
-            onBlur={e => onMetaChange("photoDate", e.target.value)}
-            className="h-8 text-xs mt-0.5"
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-slate-500">Description</Label>
-          <Input
-            defaultValue={photo.description ?? ""}
-            onBlur={e => onMetaChange("description", e.target.value)}
-            placeholder="e.g. RM-4001A / CKT43 TEST"
-            className="h-8 text-xs mt-0.5"
-          />
-        </div>
+      <div className="p-3 space-y-2 bg-slate-50">
+        <input
+          type="text"
+          defaultValue={photo.description ?? ""}
+          onBlur={e => onMetaChange("description", e.target.value)}
+          placeholder="Description"
+          className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
+          data-testid={`input-photo-desc-${photo.id}`}
+        />
       </div>
     </div>
   );
 }
+
+// ── AddPhotoBox ─────────────────────────────────────────────────────────────
 
 function AddPhotoBox({ onAdd }: { onAdd: (f: File) => Promise<void> }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      for (const f of files) await onAdd(f);
-    } finally { setUploading(false); }
+    const file = e.target.files?.[0];
+    if (!file) return;
     e.target.value = "";
+    setUploading(true);
+    try { await onAdd(file); } finally { setUploading(false); }
   }
 
   return (
     <div
-      className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-colors min-h-[180px]"
+      className="border-2 border-dashed border-slate-200 rounded-xl h-44 flex flex-col items-center justify-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition-colors"
       onClick={() => inputRef.current?.click()}
       data-testid="add-photo-box"
     >
-      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={pick} />
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={pick} />
       {uploading
         ? <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
         : <>
-          <Plus className="w-7 h-7 text-slate-400" />
-          <p className="text-sm text-slate-500 text-center">Add photo(s)</p>
-          <p className="text-xs text-slate-400">Multiple selection allowed</p>
+          <Camera className="w-6 h-6 mb-2 text-slate-300" />
+          <p className="text-sm text-slate-400">Add photo</p>
         </>
       }
     </div>

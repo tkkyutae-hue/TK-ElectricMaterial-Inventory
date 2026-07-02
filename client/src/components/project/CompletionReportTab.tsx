@@ -838,15 +838,22 @@ function PhotoCard({
 // ── AddPhotoBox ─────────────────────────────────────────────────────────────
 
 function AddPhotoBox({ onAdd }: { onAdd: (f: File) => Promise<void> }) {
-  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     e.target.value = "";
-    setUploading(true);
-    try { await onAdd(file); } finally { setUploading(false); }
+    setProgress({ current: 0, total: files.length });
+    try {
+      for (let i = 0; i < files.length; i++) {
+        setProgress({ current: i + 1, total: files.length });
+        await onAdd(files[i]);
+      }
+    } finally {
+      setProgress(null);
+    }
   }
 
   return (
@@ -855,12 +862,16 @@ function AddPhotoBox({ onAdd }: { onAdd: (f: File) => Promise<void> }) {
       onClick={() => inputRef.current?.click()}
       data-testid="add-photo-box"
     >
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={pick} />
-      {uploading
-        ? <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={pick} />
+      {progress
+        ? <>
+          <Loader2 className="w-6 h-6 animate-spin text-brand-500 mb-2" />
+          <p className="text-xs text-brand-500 font-medium">{progress.current} / {progress.total} uploading…</p>
+        </>
         : <>
           <Camera className="w-6 h-6 mb-2 text-slate-300" />
           <p className="text-sm text-slate-400">Add photo</p>
+          <p className="text-xs text-slate-300 mt-0.5">Shift / Ctrl for multiple</p>
         </>
       }
     </div>

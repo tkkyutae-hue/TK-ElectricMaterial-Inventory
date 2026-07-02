@@ -442,7 +442,7 @@ function PhotoSectionCard({
           <div className="flex items-center gap-1">
             <span className="text-xs text-slate-400 hidden sm:inline">per slide:</span>
             <div className="flex rounded border border-slate-200 overflow-hidden">
-              {([2, 4] as const).map(n => (
+              {[2, 4, 6, 8].map(n => (
                 <button
                   key={n}
                   onClick={() => onUpdatePhotosPerSlide(n)}

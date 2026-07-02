@@ -27,7 +27,7 @@ function makePhoto(id: number): CompletionReportPhoto {
 
 function makeSection(
   id: number,
-  photosPerSlide: 2 | 4,
+  photosPerSlide: 2 | 4 | 6 | 8,
   photoCount: number,
 ): CompletionReportSectionWithPhotos {
   const photos = Array.from({ length: photoCount }, (_, i) => makePhoto(i + 1));
@@ -120,6 +120,21 @@ const cases: TestCase[] = [
     label: "4-per-slide, 8 photos → ceil(8/4)=2 photo slides",
     sections: [makeSection(1, 4, 8)],
     expectedPhotoSlides: 2,
+  },
+  {
+    label: "6-per-slide, 7 photos → ceil(7/6)=2 photo slides",
+    sections: [makeSection(1, 6, 7)],
+    expectedPhotoSlides: 2,
+  },
+  {
+    label: "8-per-slide, 9 photos → ceil(9/8)=2 photo slides",
+    sections: [makeSection(1, 8, 9)],
+    expectedPhotoSlides: 2,
+  },
+  {
+    label: "6-per-slide, 5 photos → ceil(5/6)=1 photo slide",
+    sections: [makeSection(1, 6, 5)],
+    expectedPhotoSlides: 1,
   },
   {
     label: "no sections → 0 photo slides",

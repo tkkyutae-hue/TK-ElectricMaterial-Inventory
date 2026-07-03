@@ -339,7 +339,6 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           onReorder={(photos, fromIdx, toIdx) => handleReorder(section.id, photos, fromIdx, toIdx)}
           onDragEnd={(event) => handleDragEnd(section.id, section.photos, event)}
           onUpdateTitle={(title) => updateSectionMut.mutate({ id: section.id, data: { title } })}
-          onUpdatePhotosPerSlide={(pps) => updateSectionMut.mutate({ id: section.id, data: { photosPerSlide: pps } })}
           onDeleteSection={() => {
             if (sections.length <= 1) {
               toast({ title: "Cannot delete", description: "At least one section is required.", variant: "destructive" });
@@ -370,7 +369,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
 
 function PhotoSectionCard({
   section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onReorder, onDragEnd,
-  onUpdateTitle, onUpdatePhotosPerSlide, onDeleteSection, canDelete,
+  onUpdateTitle, onDeleteSection, canDelete,
 }: {
   section: PhotoSection;
   slideLabel: string;
@@ -381,7 +380,6 @@ function PhotoSectionCard({
   onReorder: (photos: Photo[], fromIdx: number, toIdx: number) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onUpdateTitle: (title: string) => void;
-  onUpdatePhotosPerSlide: (pps: 0 | 2 | 4 | 6 | 8) => void;
   onDeleteSection: () => void;
   canDelete: boolean;
 }) {
@@ -438,30 +436,14 @@ function PhotoSectionCard({
         )}
 
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
-          {/* Photos-per-slide toggle */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-400 hidden sm:inline">per slide:</span>
-            <div className="flex rounded border border-slate-200 overflow-hidden">
-              {([0, 2, 4, 6, 8] as const).map(n => {
-                const isActive = section.photosPerSlide === n || (n === 0 && ![2, 4, 6, 8].includes(section.photosPerSlide));
-                return (
-                  <button
-                    key={n}
-                    onClick={() => onUpdatePhotosPerSlide(n)}
-                    data-testid={`button-section-${section.id}-pps-${n}`}
-                    title={n === 0 ? `Auto: fits all photos on 1 slide (${photos.length} photos → ${photos.length <= 2 ? 2 : photos.length <= 4 ? 4 : photos.length <= 6 ? 6 : 8} per slide)` : undefined}
-                    className={`px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                      isActive
-                        ? "bg-brand-700 text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    {n === 0 ? "Auto" : n}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Auto layout indicator */}
+          <span
+            className="text-xs text-slate-400 hidden sm:inline"
+            title={`Layout is auto-calculated from photo count (${photos.length} photos → ${photos.length <= 2 ? 2 : photos.length <= 4 ? 4 : photos.length <= 6 ? 6 : 8} per slide)`}
+            data-testid={`label-section-${section.id}-layout`}
+          >
+            Layout: Auto
+          </span>
 
           {/* Delete section */}
           {canDelete && (

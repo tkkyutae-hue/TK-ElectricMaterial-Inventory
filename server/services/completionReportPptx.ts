@@ -480,15 +480,15 @@ export async function generateCompletionReportPptx(
         const y = rowY[Math.floor(cell / cols)];
 
         const pData = await imgBase64(photo.photoUrl);
+        // Gray background visible in letterbox/pillarbox areas
+        slide.addShape(prs.ShapeType.rect, {
+          x, y, w: photoW, h: photoH,
+          fill: { color: "E8E8E8" }, line: { color: "D0D0D0", pt: 0.5 },
+        });
         if (pData) {
           slide.addImage({
             data: pData, x, y, w: photoW, h: photoH,
-            sizing: { type: "cover", w: photoW, h: photoH },
-          });
-        } else {
-          slide.addShape(prs.ShapeType.rect, {
-            x, y, w: photoW, h: photoH,
-            fill: { color: "F0F0F0" }, line: { color: "E0E0E0", pt: 0.5 },
+            sizing: { type: "contain", w: photoW, h: photoH },
           });
         }
 

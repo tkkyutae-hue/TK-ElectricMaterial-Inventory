@@ -599,9 +599,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
       const { title, photosPerSlide } = req.body;
       const sortOrder = report.sections?.length ?? 0;
+      const defaultTitle = sortOrder === 0 ? "Work Picture" : `Work Picture ${sortOrder + 1}`;
       const section = await storage.createCompletionReportSection(report.id, {
-        title: title ?? "Work Picture",
-        photosPerSlide: [2, 4, 6, 8].includes(photosPerSlide) ? photosPerSlide : 2,
+        title: title || defaultTitle,
+        photosPerSlide: [0, 2, 4, 6, 8].includes(photosPerSlide) ? photosPerSlide : 0,
         sortOrder,
       });
       res.json(section);
@@ -615,7 +616,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { title, photosPerSlide } = req.body;
       const updateData: any = {};
       if (title !== undefined) updateData.title = title;
-      if (photosPerSlide !== undefined) updateData.photosPerSlide = [2, 4, 6, 8].includes(photosPerSlide) ? photosPerSlide : 2;
+      if (photosPerSlide !== undefined) updateData.photosPerSlide = [0, 2, 4, 6, 8].includes(photosPerSlide) ? photosPerSlide : 0;
       const section = await storage.updateCompletionReportSection(Number(req.params.sid), updateData);
       res.json(section);
     } catch (err: any) {

@@ -82,8 +82,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   });
 
   const addSectionMut = useMutation({
-    mutationFn: (title: string) =>
-      apiRequest("POST", `/api/projects/${projectId}/completion-report/sections`, { title, photosPerSlide: 2 }),
+    mutationFn: () =>
+      apiRequest("POST", `/api/projects/${projectId}/completion-report/sections`, { photosPerSlide: 0 }),
     onSuccess: invalidate,
   });
 
@@ -353,7 +353,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
 
       {/* Add Section button */}
       <button
-        onClick={() => addSectionMut.mutate("Work Picture")}
+        onClick={() => addSectionMut.mutate()}
         disabled={addSectionMut.isPending}
         data-testid="button-add-section"
         className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-sm text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/30 transition-colors"
@@ -381,7 +381,7 @@ function PhotoSectionCard({
   onReorder: (photos: Photo[], fromIdx: number, toIdx: number) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onUpdateTitle: (title: string) => void;
-  onUpdatePhotosPerSlide: (pps: 2 | 4) => void;
+  onUpdatePhotosPerSlide: (pps: 0 | 2 | 4 | 6 | 8) => void;
   onDeleteSection: () => void;
   canDelete: boolean;
 }) {
@@ -442,20 +442,24 @@ function PhotoSectionCard({
           <div className="flex items-center gap-1">
             <span className="text-xs text-slate-400 hidden sm:inline">per slide:</span>
             <div className="flex rounded border border-slate-200 overflow-hidden">
-              {[2, 4, 6, 8].map(n => (
-                <button
-                  key={n}
-                  onClick={() => onUpdatePhotosPerSlide(n)}
-                  data-testid={`button-section-${section.id}-pps-${n}`}
-                  className={`px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                    section.photosPerSlide === n
-                      ? "bg-brand-700 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
+              {([0, 2, 4, 6, 8] as const).map(n => {
+                const isActive = section.photosPerSlide === n || (n === 0 && ![2, 4, 6, 8].includes(section.photosPerSlide));
+                return (
+                  <button
+                    key={n}
+                    onClick={() => onUpdatePhotosPerSlide(n)}
+                    data-testid={`button-section-${section.id}-pps-${n}`}
+                    title={n === 0 ? `Auto: fits all photos on 1 slide (${photos.length} photos → ${photos.length <= 2 ? 2 : photos.length <= 4 ? 4 : photos.length <= 6 ? 6 : 8} per slide)` : undefined}
+                    className={`px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "bg-brand-700 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {n === 0 ? "Auto" : n}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

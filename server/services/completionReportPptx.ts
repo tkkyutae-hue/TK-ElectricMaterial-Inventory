@@ -16,6 +16,9 @@ const GRAY           = "666666";
 const SLIDE_W = 10;
 const SLIDE_H = 7.5;
 
+// Header bar height (green bar at top of every slide)
+const HEADER_H = 0.65;
+
 async function imgBase64(url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
   try {
@@ -58,33 +61,55 @@ async function localFileBase64(filePath: string): Promise<string | null> {
   }
 }
 
-async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
-  slide.addText(`■  ${sectionLabel}`, {
-    x: 0.35, y: 0.18, w: 7.0, h: 0.35,
-    fontSize: 13, bold: true, color: DARK,
-    fontFace: "Calibri",
+// ── Auto photos-per-slide: pick tightest layout that fits all photos on 1 slide ──
+function autoPps(photoCount: number): 2 | 4 | 6 | 8 {
+  if (photoCount <= 2) return 2;
+  if (photoCount <= 4) return 4;
+  if (photoCount <= 6) return 6;
+  return 8;
+}
+
+// ── Effective pps: 0 = auto ────────────────────────────────────────────────────
+function effectivePps(section: { photosPerSlide: number; photos?: any[] }): 2 | 4 | 6 | 8 {
+  const pps = section.photosPerSlide;
+  if (pps === 0) return autoPps((section.photos ?? []).length);
+  return ([2, 4, 6, 8] as const).includes(pps as any) ? (pps as 2 | 4 | 6 | 8) : 2;
+}
+
+// ── Page number text at bottom centre ──────────────────────────────────────────
+function addPageNumber(slide: any, num: number, total: number) {
+  slide.addText(`${num} / ${total}`, {
+    x: 0, y: SLIDE_H - 0.22, w: SLIDE_W, h: 0.2,
+    fontSize: 8, color: "AAAAAA", fontFace: "Calibri", align: "center",
   });
+}
 
-  const logoData = await localFileBase64(LOGO_PATH);
-  if (logoData) {
-    slide.addImage({ data: logoData, x: 8.55, y: 0.02, w: 1.2, h: 0.59 });
-  } else {
-    slide.addText("TK ELECTRIC LLC.", {
-      x: 7.5, y: 0.1, w: 2.1, h: 0.3,
-      fontSize: 8, bold: true, color: TK_GREEN,
-      fontFace: "Calibri", align: "right",
-    });
-    slide.addText("www.tkglobal.us", {
-      x: 7.5, y: 0.38, w: 2.1, h: 0.2,
-      fontSize: 7, color: TK_GREEN,
-      fontFace: "Calibri", align: "right",
-    });
-  }
-
+// ── Green header bar + logo (used on all content slides) ──────────────────────
+async function addPageHeader(slide: any, prs: any, sectionLabel: string) {
+  // Green bar
   slide.addShape(prs.ShapeType.rect, {
-    x: 0, y: 0.62, w: SLIDE_W, h: 0.025,
+    x: 0, y: 0, w: SLIDE_W, h: HEADER_H,
     fill: { color: TK_GREEN }, line: { color: TK_GREEN },
   });
+
+  // Section label inside bar
+  slide.addText(`■  ${sectionLabel}`, {
+    x: 0.35, y: 0, w: 7.5, h: HEADER_H,
+    fontSize: 13, bold: true, color: WHITE,
+    fontFace: "Calibri", valign: "middle",
+  });
+
+  // Logo inside bar (right side)
+  const logoData = await localFileBase64(LOGO_PATH);
+  if (logoData) {
+    slide.addImage({ data: logoData, x: 8.1, y: 0.04, w: 1.7, h: 0.57 });
+  } else {
+    slide.addText("TK ELECTRIC LLC.", {
+      x: 7.5, y: 0, w: 2.3, h: HEADER_H,
+      fontSize: 8, bold: true, color: WHITE,
+      fontFace: "Calibri", align: "right", valign: "middle",
+    });
+  }
 }
 
 function addInfoTable(slide: any, project: any, report: CompletionReportWithSections) {
@@ -109,7 +134,7 @@ function addInfoTable(slide: any, project: any, report: CompletionReportWithSect
   ];
 
   slide.addTable(tableData, {
-    x: 0.3, y: 0.75, w: 9.4,
+    x: 0.3, y: HEADER_H + 0.1, w: 9.4,
     fontSize: 9, fontFace: "Calibri",
     border: { pt: 0.5, color: TK_GREEN_MID },
     colW: [1.4, 3.3, 1.3, 3.4],
@@ -124,11 +149,25 @@ export async function generateCompletionReportPptx(
   const prs = new pptxgen();
   prs.layout = "LAYOUT_4x3";
 
+  const sections = report.sections ?? [];
+
+  // ── Pre-calculate total page count ──────────────────────────────────────────
+  const fixedPageCount = 5; // cover + TOC + WFR + Quotation + Drawing
+  const sectionPageCounts = sections.map(s => {
+    const photos = s.photos ?? [];
+    const pps = effectivePps(s);
+    return Math.ceil(Math.max(photos.length, 1) / pps);
+  });
+  const totalPages = fixedPageCount + sectionPageCounts.reduce((a, b) => a + b, 0);
+  let pageNum = 0;
+
   // ── Slide 1: Cover ────────────────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
+    pageNum++;
 
+    // Decorative arcs (drawn first so green bar appears on top)
     const arcs = [
       { x: 0.0, y: 0.0, d: 4.5 },
       { x: 0.5, y: 0.5, d: 4.5 },
@@ -140,6 +179,24 @@ export async function generateCompletionReportPptx(
         x: a.x, y: a.y, w: a.d, h: a.d,
         fill: { color: "F0FAE8" },
         line: { color: TK_GREEN_LIGHT, pt: 2 },
+      });
+    }
+
+    // Green header bar at top
+    slide.addShape(prs.ShapeType.rect, {
+      x: 0, y: 0, w: SLIDE_W, h: HEADER_H,
+      fill: { color: TK_GREEN }, line: { color: TK_GREEN },
+    });
+
+    // Logo inside header bar
+    const coverLogoData = await localFileBase64(LOGO_PATH);
+    if (coverLogoData) {
+      slide.addImage({ data: coverLogoData, x: 8.1, y: 0.04, w: 1.7, h: 0.57 });
+    } else {
+      slide.addText("TK ELECTRIC LLC.", {
+        x: 7.5, y: 0, w: 2.3, h: HEADER_H,
+        fontSize: 8, bold: true, color: WHITE,
+        fontFace: "Calibri", align: "right", valign: "middle",
       });
     }
 
@@ -159,40 +216,39 @@ export async function generateCompletionReportPptx(
       fontFace: "Calibri", align: "center", valign: "middle",
     });
 
-    const coverLogoData = await localFileBase64(LOGO_PATH);
-    if (coverLogoData) {
-      slide.addImage({ data: coverLogoData, x: 7.0, y: 6.1, w: 2.8, h: 1.38 });
-    } else {
-      slide.addText("TK ELECTRIC LLC.\nwww.tkglobal.us", {
-        x: 7.2, y: 6.5, w: 2.6, h: 0.75,
-        fontSize: 10, bold: true, color: TK_GREEN,
-        fontFace: "Calibri", align: "right",
-      });
-    }
+    addPageNumber(slide, pageNum, totalPages);
   }
 
   // ── Slide 2: Table of Contents ────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
+    pageNum++;
 
+    // Green bar (taller for TOC)
     slide.addShape(prs.ShapeType.rect, {
       x: 0, y: 0, w: SLIDE_W, h: 1.1,
       fill: { color: TK_GREEN }, line: { color: TK_GREEN },
     });
     slide.addText("TABLE OF CONTENTS", {
-      x: 0.4, y: 0.1, w: 9.2, h: 0.9,
+      x: 0.4, y: 0.1, w: 7.3, h: 0.9,
       fontSize: 28, bold: true, color: WHITE,
       fontFace: "Calibri", align: "left", valign: "middle",
     });
 
+    // Logo INSIDE the green bar (right side)
     const tocLogoData = await localFileBase64(LOGO_PATH);
     if (tocLogoData) {
-      slide.addImage({ data: tocLogoData, x: 7.8, y: 1.25, w: 1.9, h: 0.94 });
+      slide.addImage({ data: tocLogoData, x: 8.1, y: 0.13, w: 1.7, h: 0.84 });
+    } else {
+      slide.addText("TK ELECTRIC LLC.", {
+        x: 7.5, y: 0.1, w: 2.3, h: 0.9,
+        fontSize: 9, bold: true, color: WHITE,
+        fontFace: "Calibri", align: "right", valign: "middle",
+      });
     }
 
     // TOC items: first 4 fixed, then one entry per section
-    const sections = report.sections ?? [];
     const tocItems = [
       { num: "01", title: "Work Final Report" },
       { num: "02", title: "Quotation" },
@@ -233,27 +289,32 @@ export async function generateCompletionReportPptx(
         fontFace: "Calibri", valign: "middle",
       });
     }
+
+    addPageNumber(slide, pageNum, totalPages);
   }
 
   // ── Slide 3: Work Final Report ────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
+    pageNum++;
     await addPageHeader(slide, prs, "WORK FINAL REPORT");
 
+    const contentTop = HEADER_H + 0.1;
+
     slide.addShape(prs.ShapeType.rect, {
-      x: 0.4, y: 0.75, w: 9.2, h: 6.5,
+      x: 0.4, y: contentTop, w: 9.2, h: 6.5,
       fill: { color: WHITE },
       line: { color: DARK, pt: 1 },
     });
 
     slide.addText("Work Final Report", {
-      x: 0.6, y: 0.85, w: 8.8, h: 0.65,
+      x: 0.6, y: contentTop + 0.1, w: 8.8, h: 0.65,
       fontSize: 22, bold: false, color: DARK,
       fontFace: "Calibri", align: "center",
     });
     slide.addShape(prs.ShapeType.line, {
-      x: 0.6, y: 1.48, w: 8.8, h: 0,
+      x: 0.6, y: contentTop + 0.73, w: 8.8, h: 0,
       line: { color: "C0C0C0", pt: 0.5 },
     });
 
@@ -263,7 +324,7 @@ export async function generateCompletionReportPptx(
     const workDesc   = report.workDescription ?? "";
 
     const itemRowH = 0.36;
-    const itemStartY = 1.57;
+    const itemStartY = contentTop + 0.83;
     const infoItems = [
       { num: "1.", label: "Project Name:",    value: project.name ?? "—" },
       { num: "2.", label: "PO Number:",       value: poNumber },
@@ -319,51 +380,60 @@ export async function generateCompletionReportPptx(
       x: 0.7, y: 6.45, w: 8.6, h: 0.35,
       fontSize: 11, color: DARK, fontFace: "Calibri", align: "right",
     });
+
+    addPageNumber(slide, pageNum, totalPages);
   }
 
   // ── Slide 4: Quotation ────────────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
+    pageNum++;
     await addPageHeader(slide, prs, "QUOTATION");
 
     const qData = await imgBase64(report.quotationImageUrl);
     if (qData) {
-      slide.addImage({ data: qData, x: 1.575, y: 0.61, w: 6.85, h: 6.89 });
+      // Image starts just below green bar, fills remaining height
+      slide.addImage({ data: qData, x: 1.575, y: HEADER_H + 0.05, w: 6.85, h: SLIDE_H - HEADER_H - 0.25 });
     } else {
       slide.addText("[ Quotation image not uploaded ]", {
         x: 0.3, y: 3.5, w: 9.4, h: 0.6,
         fontSize: 14, color: GRAY, fontFace: "Calibri", align: "center",
       });
     }
+
+    addPageNumber(slide, pageNum, totalPages);
   }
 
   // ── Slide 5: Drawing ──────────────────────────────────────────────────────
   {
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
+    pageNum++;
     await addPageHeader(slide, prs, "DRAWING");
     addInfoTable(slide, project, report);
 
+    const infoTableBottom = HEADER_H + 0.1 + 0.7; // approx
     slide.addText("Drawing", {
-      x: 0.3, y: 1.68, w: 9.4, h: 0.35,
+      x: 0.3, y: infoTableBottom + 0.15, w: 9.4, h: 0.35,
       fontSize: 13, bold: false, color: DARK, fontFace: "Calibri", align: "center",
     });
 
     const dData = await imgBase64(report.drawingImageUrl);
     if (dData) {
-      slide.addImage({ data: dData, x: 0.3, y: 2.05, w: 9.4, h: 5.2 });
+      slide.addImage({ data: dData, x: 0.3, y: infoTableBottom + 0.55, w: 9.4, h: 5.0 });
     } else {
       slide.addText("[ Drawing image not uploaded ]", {
         x: 0.3, y: 4.5, w: 9.4, h: 0.6,
         fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
       });
     }
+
+    addPageNumber(slide, pageNum, totalPages);
   }
 
   // ── Slide 6+: Photo sections ───────────────────────────────────────────────
-  // Layout reference grid (all units in inches, slide = 10" × 7.5")
-  const CAP_H = 0.52;  // caption height (inches)
+  const CAP_H = 0.52;
 
   const PHOTO_LAYOUTS: Record<number, { photoW: number; photoH: number; cols: number; colX: number[]; rowY: number[] }> = {
     // 2장: 2col × 1row
@@ -376,11 +446,9 @@ export async function generateCompletionReportPptx(
     8: { photoW: 2.20, photoH: 2.29, cols: 4, colX: [0.45, 2.75, 5.05, 7.35], rowY: [1.58, 4.49] },
   };
 
-  const sections = report.sections ?? [];
-
   for (const section of sections) {
     const photos = section.photos ?? [];
-    const pps = [2, 4, 6, 8].includes(section.photosPerSlide) ? section.photosPerSlide : 2;
+    const pps = effectivePps(section);
     const layout = PHOTO_LAYOUTS[pps];
     const { photoW, photoH, cols, colX, rowY } = layout;
     const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
@@ -390,6 +458,7 @@ export async function generateCompletionReportPptx(
       const slideNum = Math.floor(i / pps) + 1;
       const slide = prs.addSlide();
       slide.background = { color: WHITE };
+      pageNum++;
       await addPageHeader(slide, prs, `${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
       addInfoTable(slide, project, report);
 
@@ -398,6 +467,7 @@ export async function generateCompletionReportPptx(
           x: 0.45, y: 4.0, w: 9.1, h: 0.6,
           fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
         });
+        addPageNumber(slide, pageNum, totalPages);
         continue;
       }
 
@@ -430,6 +500,8 @@ export async function generateCompletionReportPptx(
           fontSize: 9, color: "333333", fontFace: "Calibri", valign: "top",
         });
       }
+
+      addPageNumber(slide, pageNum, totalPages);
     }
   }
 

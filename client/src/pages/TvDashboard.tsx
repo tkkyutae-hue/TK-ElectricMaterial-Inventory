@@ -47,12 +47,10 @@ export default function TvDashboard() {
 
   const { data: allProjects = [] } = useQuery<any[]>({
     queryKey: ["/api/projects"],
-    refetchInterval: 30_000,
   });
 
   const { data: manpowerToday = [] } = useQuery<{ projectId: number; workerCount: number }[]>({
     queryKey: ["/api/tv/today-manpower"],
-    refetchInterval: 30_000,
   });
 
   const manpowerMap = Object.fromEntries(
@@ -63,7 +61,7 @@ export default function TvDashboard() {
     p => ONGOING_STATUSES.has((p.status ?? "").toLowerCase())
   );
 
-  // 30s invalidation for both queries
+  // Single 30s refresh mechanism — invalidates both queries
   useEffect(() => {
     refreshRef.current = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -79,7 +77,8 @@ export default function TvDashboard() {
     return () => window.removeEventListener("keydown", handler);
   }, [navigate]);
 
-  const cols = projects.length <= 2 ? 2 : projects.length <= 4 ? 2 : projects.length <= 6 ? 3 : 4;
+  // Grid: >=5 projects → 3 cols, otherwise 2 cols
+  const cols = projects.length >= 5 ? 3 : 2;
 
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   const dateStr = now.toLocaleDateString("en-US", {
@@ -87,6 +86,7 @@ export default function TvDashboard() {
   });
 
   return (
+    // Click anywhere on the page → exit (ESC or screen click)
     <div
       data-testid="tv-dashboard"
       onClick={() => navigate("/home")}
@@ -98,12 +98,11 @@ export default function TvDashboard() {
         fontFamily: "'Barlow', sans-serif",
         overflow: "hidden",
         userSelect: "none",
-        cursor: "default",
+        cursor: "pointer",
       }}
     >
-      {/* Header — stop click propagation so header clicks don't exit */}
+      {/* Header */}
       <header
-        onClick={e => e.stopPropagation()}
         style={{
           display: "flex",
           alignItems: "center",
@@ -164,7 +163,7 @@ export default function TvDashboard() {
           </div>
           <button
             data-testid="tv-exit-btn"
-            onClick={() => navigate("/home")}
+            onClick={e => { e.stopPropagation(); navigate("/home"); }}
             style={{
               background: "none", border: "1px solid #e2e8f0",
               borderRadius: 8, padding: "6px 14px",
@@ -177,11 +176,8 @@ export default function TvDashboard() {
         </div>
       </header>
 
-      {/* Content — stop propagation so card clicks don't exit */}
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ flex: 1, padding: "32px 40px", overflow: "auto" }}
-      >
+      {/* Content — no stopPropagation; clicks bubble up to root → navigate("/home") */}
+      <div style={{ flex: 1, padding: "32px 40px", overflow: "auto" }}>
         {projects.length === 0 ? (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -315,15 +311,12 @@ export default function TvDashboard() {
       </div>
 
       {/* Footer */}
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          textAlign: "center", padding: "10px", flexShrink: 0,
-          fontSize: 11, color: "#cbd5e1",
-          fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
-          background: "#ffffff", borderTop: "1px solid #f1f5f9",
-        }}
-      >
+      <div style={{
+        textAlign: "center", padding: "10px", flexShrink: 0,
+        fontSize: 11, color: "#cbd5e1",
+        fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
+        background: "#ffffff", borderTop: "1px solid #f1f5f9",
+      }}>
         AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK ANYWHERE TO EXIT
       </div>
     </div>

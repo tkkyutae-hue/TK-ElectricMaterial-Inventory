@@ -560,10 +560,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
           return res.status(400).json({ message: "File content does not match declared type." });
         }
-        // Apply EXIF orientation to pixels so PPTX export shows correct rotation
-        const sharp = (await import("sharp")).default;
-        fileBuffer = await sharp(fileBuffer).rotate().jpeg({ quality: 85 }).toBuffer();
-        ext = ".jpg";
+        // Apply EXIF orientation to pixels for photos so PPTX export shows correct rotation
+        if (type === "photo") {
+          const sharp = (await import("sharp")).default;
+          fileBuffer = await sharp(fileBuffer).rotate().jpeg({ quality: 85 }).toBuffer();
+          ext = ".jpg";
+        }
       }
 
       // Write to Object Storage (persistent across deploys)
@@ -656,13 +658,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (isPdf) return res.status(400).json({ message: "PDF not supported for section photos." });
 
       let fileBuffer: Buffer = req.file.buffer;
-      const ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
+      let ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
       if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
         return res.status(400).json({ message: "File content does not match declared type." });
       }
+      // Apply EXIF orientation to pixels so PPTX export shows correct rotation
+      const sharp = (await import("sharp")).default;
+      fileBuffer = await sharp(fileBuffer).rotate().jpeg({ quality: 85 }).toBuffer();
+      ext = ".jpg";
 
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+      const mimeType = "image/jpeg";
       await uploadBuffer(filename, fileBuffer, mimeType);
       const url = `/uploads/${filename}`;
 

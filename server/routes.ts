@@ -560,6 +560,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
           return res.status(400).json({ message: "File content does not match declared type." });
         }
+        // Apply EXIF orientation to pixels so PPTX export shows correct rotation
+        const sharp = (await import("sharp")).default;
+        fileBuffer = await sharp(fileBuffer).rotate().jpeg({ quality: 85 }).toBuffer();
+        ext = ".jpg";
       }
 
       // Write to Object Storage (persistent across deploys)

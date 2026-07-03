@@ -41,6 +41,7 @@ import SupplierCleanup from "@/pages/admin/SupplierCleanup";
 import ReelIdCleanup from "@/pages/admin/ReelIdCleanup";
 import MondayIntegration from "@/pages/admin/MondayIntegration";
 
+import TvDashboard from "@/pages/TvDashboard";
 import FieldHome from "@/pages/field/FieldHome";
 import FieldMovement from "@/pages/field/FieldMovement";
 import FieldInventory from "@/pages/field/FieldInventory";
@@ -252,6 +253,7 @@ function Router() {
       <Route path="/login" component={() => <Redirect to="/home" />} />
       <Route path="/signup" component={() => <Redirect to="/home" />} />
       <Route path="/home" component={Home} />
+      <Route path="/tv" component={() => <AuthGuard><TvDashboard /></AuthGuard>} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
       <Route path="/daily-report/:projectId" component={DailyReportWorkspaceRouter} />

@@ -431,6 +431,25 @@ export default function Home() {
               hoverShadow={hoverShadow}
               restShadow={restShadow}
             />
+
+            {/* Display Mode — TV/kiosk board */}
+            <WideCard
+              testId="btn-display-mode"
+              onClick={() => navigate("/tv")}
+              accentColor="#818cf8"
+              emoji="📺"
+              emojiBg="rgba(129,140,248,0.10)"
+              title="Display Mode"
+              tags={["Live Board", "TV View", "Auto Refresh"]}
+              tagStyle={{
+                background: "rgba(129,140,248,0.10)",
+                border: "1px solid rgba(129,140,248,0.20)",
+                color: "#818cf8",
+              }}
+              F={F}
+              hoverShadow={hoverShadow}
+              restShadow={restShadow}
+            />
           </div>
         </div>
       </div>

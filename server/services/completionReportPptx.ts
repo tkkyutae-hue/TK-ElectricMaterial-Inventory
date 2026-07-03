@@ -362,16 +362,32 @@ export async function generateCompletionReportPptx(
   }
 
   // ── Slide 6+: Photo sections ───────────────────────────────────────────────
+  // Layout reference grid (all units in inches, slide = 10" × 7.5")
+  const CAP_H = 0.52;  // caption height (inches)
+
+  const PHOTO_LAYOUTS: Record<number, { photoW: number; photoH: number; cols: number; colX: number[]; rowY: number[] }> = {
+    // 2장: 2col × 1row
+    2: { photoW: 4.50, photoH: 5.20, cols: 2, colX: [0.45, 5.05], rowY: [1.58] },
+    // 4장: 2col × 2row
+    4: { photoW: 4.50, photoH: 2.29, cols: 2, colX: [0.45, 5.05], rowY: [1.58, 4.49] },
+    // 6장: 3col × 2row
+    6: { photoW: 2.97, photoH: 2.29, cols: 3, colX: [0.45, 3.52, 6.59], rowY: [1.58, 4.49] },
+    // 8장: 4col × 2row
+    8: { photoW: 2.20, photoH: 2.29, cols: 4, colX: [0.45, 2.75, 5.05, 7.35], rowY: [1.58, 4.49] },
+  };
+
   const sections = report.sections ?? [];
 
   for (const section of sections) {
     const photos = section.photos ?? [];
-    const photosPerSlide = [2, 4, 6, 8].includes(section.photosPerSlide) ? section.photosPerSlide : 2;
+    const pps = [2, 4, 6, 8].includes(section.photosPerSlide) ? section.photosPerSlide : 2;
+    const layout = PHOTO_LAYOUTS[pps];
+    const { photoW, photoH, cols, colX, rowY } = layout;
     const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
-    const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / photosPerSlide);
+    const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / pps);
 
-    for (let i = 0; i < Math.max(photos.length, 1); i += photosPerSlide) {
-      const slideNum = Math.floor(i / photosPerSlide) + 1;
+    for (let i = 0; i < Math.max(photos.length, 1); i += pps) {
+      const slideNum = Math.floor(i / pps) + 1;
       const slide = prs.addSlide();
       slide.background = { color: WHITE };
       await addPageHeader(slide, prs, `${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
@@ -379,103 +395,40 @@ export async function generateCompletionReportPptx(
 
       if (photos.length === 0) {
         slide.addText("[ No photos uploaded ]", {
-          x: 0.3, y: 4.0, w: 9.4, h: 0.6,
+          x: 0.45, y: 4.0, w: 9.1, h: 0.6,
           fontSize: 13, color: GRAY, fontFace: "Calibri", align: "center",
         });
         continue;
       }
 
-      if (photosPerSlide === 2) {
-        // 2열 × 1행
-        const photoY = 1.72;
-        const photoH = 4.05;
-        const metaH  = 0.42;
-        const photoW = 4.55;
-        const colX   = [0.3, 5.15];
+      for (let cell = 0; cell < pps; cell++) {
+        const photo = photos[i + cell];
+        if (!photo) continue;
+        const x = colX[cell % cols];
+        const y = rowY[Math.floor(cell / cols)];
 
-        for (let col = 0; col < 2; col++) {
-          const photo = photos[i + col];
-          if (!photo) continue;
-          const x = colX[col];
-          const pData = await imgBase64(photo.photoUrl);
-          if (pData) {
-            slide.addImage({ data: pData, x, y: photoY, w: photoW, h: photoH });
-          } else {
-            slide.addShape(prs.ShapeType.rect, { x, y: photoY, w: photoW, h: photoH, fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 } });
-          }
-          slide.addShape(prs.ShapeType.rect, { x, y: photoY + photoH, w: photoW, h: metaH, fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 } });
-          slide.addText(photo.description ?? "—", { x: x + 0.08, y: photoY + photoH + 0.04, w: photoW - 0.16, h: metaH - 0.08, fontSize: 8.5, color: DARK, fontFace: "Calibri", valign: "middle" });
+        const pData = await imgBase64(photo.photoUrl);
+        if (pData) {
+          slide.addImage({
+            data: pData, x, y, w: photoW, h: photoH,
+            sizing: { type: "cover", w: photoW, h: photoH },
+          });
+        } else {
+          slide.addShape(prs.ShapeType.rect, {
+            x, y, w: photoW, h: photoH,
+            fill: { color: "F0F0F0" }, line: { color: "E0E0E0", pt: 0.5 },
+          });
         }
 
-      } else if (photosPerSlide === 4) {
-        // 2열 × 2행
-        const photoW = 4.55;
-        const photoH = 2.38;
-        const metaH  = 0.3;
-        const colX   = [0.3, 5.15];
-        const rowY   = [1.62, 4.3];
-
-        for (let cell = 0; cell < 4; cell++) {
-          const photo = photos[i + cell];
-          if (!photo) continue;
-          const x = colX[cell % 2];
-          const y = rowY[Math.floor(cell / 2)];
-          const pData = await imgBase64(photo.photoUrl);
-          if (pData) {
-            slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
-          } else {
-            slide.addShape(prs.ShapeType.rect, { x, y, w: photoW, h: photoH, fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 } });
-          }
-          slide.addShape(prs.ShapeType.rect, { x, y: y + photoH, w: photoW, h: metaH, fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 } });
-          slide.addText(photo.description ?? "—", { x: x + 0.08, y: y + photoH + 0.03, w: photoW - 0.16, h: metaH - 0.06, fontSize: 7.5, color: DARK, fontFace: "Calibri", valign: "middle" });
-        }
-
-      } else if (photosPerSlide === 6) {
-        // 2열 × 3행
-        const photoW = 4.55;
-        const photoH = 1.58;
-        const metaH  = 0.22;
-        const rowGap  = photoH + metaH;
-        const colX   = [0.3, 5.15];
-        const rowY   = [1.62, 1.62 + rowGap, 1.62 + rowGap * 2];
-
-        for (let cell = 0; cell < 6; cell++) {
-          const photo = photos[i + cell];
-          if (!photo) continue;
-          const x = colX[cell % 2];
-          const y = rowY[Math.floor(cell / 2)];
-          const pData = await imgBase64(photo.photoUrl);
-          if (pData) {
-            slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
-          } else {
-            slide.addShape(prs.ShapeType.rect, { x, y, w: photoW, h: photoH, fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 } });
-          }
-          slide.addShape(prs.ShapeType.rect, { x, y: y + photoH, w: photoW, h: metaH, fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 } });
-          slide.addText(photo.description ?? "—", { x: x + 0.06, y: y + photoH + 0.03, w: photoW - 0.12, h: metaH - 0.06, fontSize: 7, color: DARK, fontFace: "Calibri", valign: "middle" });
-        }
-
-      } else {
-        // 8장: 4열 × 2행
-        const photoW = 2.25;
-        const photoH = 2.38;
-        const metaH  = 0.22;
-        const colX   = [0.2, 2.65, 5.1, 7.55];
-        const rowY   = [1.62, 1.62 + photoH + metaH];
-
-        for (let cell = 0; cell < 8; cell++) {
-          const photo = photos[i + cell];
-          if (!photo) continue;
-          const x = colX[cell % 4];
-          const y = rowY[Math.floor(cell / 4)];
-          const pData = await imgBase64(photo.photoUrl);
-          if (pData) {
-            slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
-          } else {
-            slide.addShape(prs.ShapeType.rect, { x, y, w: photoW, h: photoH, fill: { color: "F0F0F0" }, line: { color: "CCCCCC", pt: 0.5 } });
-          }
-          slide.addShape(prs.ShapeType.rect, { x, y: y + photoH, w: photoW, h: metaH, fill: { color: "F8F8F8" }, line: { color: "CCCCCC", pt: 0.5 } });
-          slide.addText(photo.description ?? "—", { x: x + 0.05, y: y + photoH + 0.03, w: photoW - 0.1, h: metaH - 0.06, fontSize: 6.5, color: DARK, fontFace: "Calibri", valign: "middle" });
-        }
+        // Caption bar
+        slide.addShape(prs.ShapeType.rect, {
+          x, y: y + photoH, w: photoW, h: CAP_H,
+          fill: { color: "F4F4F4" }, line: { color: "E0E0E0", pt: 0.5 },
+        });
+        slide.addText(photo.description ?? "—", {
+          x: x + 0.12, y: y + photoH + 0.06, w: photoW - 0.24, h: CAP_H - 0.06,
+          fontSize: 9, color: "333333", fontFace: "Calibri", valign: "top",
+        });
       }
     }
   }

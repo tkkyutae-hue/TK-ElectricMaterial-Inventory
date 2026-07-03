@@ -99,7 +99,7 @@ export default function ProjectDetail() {
           </TabsTrigger>
           {isManagerOrAbove && (
             <TabsTrigger value="completion-report" className="rounded-lg whitespace-nowrap" data-testid="tab-completion-report">
-              <ClipboardCheck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />Completion Report
+              <ClipboardCheck className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />{t.projDetailTabCompletionReport}
             </TabsTrigger>
           )}
         </TabsList>

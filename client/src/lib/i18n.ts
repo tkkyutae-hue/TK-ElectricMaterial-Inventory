@@ -1002,6 +1002,7 @@ const en = {
   projDetailTabMaterialUsage:      "Material Usage",
   projDetailTabReports:            "Daily Reports",
   projDetailTabProgress:           "Progress",
+  projDetailTabCompletionReport:   "Completion Report",
 
   // ── Completion Report Tab ──
   compRptTitle:                    "Work Final Report",
@@ -3346,6 +3347,7 @@ const ko: Translations = {
   projDetailTabMaterialUsage:      "자재 사용",
   projDetailTabReports:            "일일보고서",
   projDetailTabProgress:           "진행률",
+  projDetailTabCompletionReport:   "완료 보고서",
 
   // ── Completion Report Tab ──
   compRptTitle:                    "최종 작업 보고서",
@@ -5690,6 +5692,7 @@ const es: Translations = {
   projDetailTabMaterialUsage:      "Uso de Material",
   projDetailTabReports:            "Reportes Diarios",
   projDetailTabProgress:           "Progreso",
+  projDetailTabCompletionReport:   "Informe de Finalización",
 
   // ── Completion Report Tab ──
   compRptTitle:                    "Informe Final de Trabajo",

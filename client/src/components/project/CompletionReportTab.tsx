@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
   ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X,
@@ -59,6 +60,7 @@ interface ReportData {
 
 export function CompletionReportTab({ projectId, project }: { projectId: number; project: any }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [exporting, setExporting] = useState(false);
 
@@ -204,7 +206,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Export error:", err);
-      toast({ title: "Export failed", description: msg, variant: "destructive" });
+      toast({ title: t.compRptExportFailed, description: msg, variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -231,8 +233,8 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       {/* Export button */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">Work Final Report</h2>
-          <p className="text-sm text-slate-500">Fill in details and upload images, then export as PPTX</p>
+          <h2 className="text-lg font-semibold text-slate-800">{t.compRptTitle}</h2>
+          <p className="text-sm text-slate-500">{t.compRptSubtitle}</p>
         </div>
         <Button
           onClick={handleExport}
@@ -241,30 +243,30 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           data-testid="button-export-pptx"
         >
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Export PPTX
+          {t.compRptExportBtn}
         </Button>
       </div>
 
       {/* Slide 1 – Cover (auto) */}
-      <SlideSection label="Slide 1" title="Cover" icon={<FileText className="w-4 h-4" />} defaultOpen>
+      <SlideSection label={t.compRptSlide1Label} title={t.compRptSlide1Title} icon={<FileText className="w-4 h-4" />} defaultOpen>
         <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-          <InfoRow label="Project Name" value={project.name} />
-          <InfoRow label="PO Number"    value={project.poNumber ?? project.code} />
+          <InfoRow label={t.compRptFieldProjectName} value={project.name} />
+          <InfoRow label={t.compRptFieldPoNumber}    value={project.poNumber ?? project.code} />
         </div>
-        <p className="text-xs text-slate-400 mt-2">Auto-filled from project data. No editing needed.</p>
+        <p className="text-xs text-slate-400 mt-2">{t.compRptAutoFilled}</p>
       </SlideSection>
 
       {/* Slide 2 – Work Final Report */}
-      <SlideSection label="Slide 2" title="Work Final Report" icon={<FileText className="w-4 h-4" />} defaultOpen>
+      <SlideSection label={t.compRptSlide2Label} title={t.compRptSlide2Title} icon={<FileText className="w-4 h-4" />} defaultOpen>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-            <InfoRow label="Project Name" value={project.name} />
-            <InfoRow label="PO Number"    value={project.poNumber ?? project.code} />
-            <InfoRow label="Company Name" value="TK ELECTRIC LLC." />
+            <InfoRow label={t.compRptFieldProjectName} value={project.name} />
+            <InfoRow label={t.compRptFieldPoNumber}    value={project.poNumber ?? project.code} />
+            <InfoRow label={t.compRptFieldCompanyName} value="TK ELECTRIC LLC." />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-600">Contract Item</Label>
+              <Label className="text-xs font-medium text-slate-600">{t.compRptFieldContractItem}</Label>
               <Input
                 defaultValue={report.contractItem ?? "Electric Works"}
                 onBlur={e => updateMut.mutate({ contractItem: e.target.value })}
@@ -273,7 +275,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-600">Completion Date</Label>
+              <Label className="text-xs font-medium text-slate-600">{t.compRptFieldCompletionDate}</Label>
               <Input
                 type="date"
                 defaultValue={report.completionDate ?? ""}
@@ -283,7 +285,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-600">Work Description</Label>
+            <Label className="text-xs font-medium text-slate-600">{t.compRptFieldWorkDesc}</Label>
             <Textarea
               key={report.id}
               defaultValue={report.workDescription ?? ""}
@@ -292,16 +294,16 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
               rows={4}
               data-testid="textarea-work-description"
             />
-            <p className="text-xs text-slate-400">Each line becomes a bullet point in the slide.</p>
+            <p className="text-xs text-slate-400">{t.compRptWorkDescHint}</p>
           </div>
         </div>
       </SlideSection>
 
       {/* Slide 3 – Quotation */}
-      <SlideSection label="Slide 3" title="Quotation" icon={<Image className="w-4 h-4" />} defaultOpen>
+      <SlideSection label={t.compRptSlide3Label} title={t.compRptSlide3Title} icon={<Image className="w-4 h-4" />} defaultOpen>
         <ImageUploadBox
-          label="Upload quotation (JPG / PNG / PDF)"
-          hint="PDF: first page will be captured automatically"
+          label={t.compRptUploadQuotation}
+          hint={t.compRptUploadQuotationHint}
           currentUrl={report.quotationImageUrl}
           onUpload={(f, page) => handleUpload("quotation", f, page)}
           onGetPdfPageCount={getPdfPageCount}
@@ -313,9 +315,9 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       </SlideSection>
 
       {/* Slide 4 – Drawing */}
-      <SlideSection label="Slide 4" title="Drawing" icon={<Image className="w-4 h-4" />} defaultOpen>
+      <SlideSection label={t.compRptSlide4Label} title={t.compRptSlide4Title} icon={<Image className="w-4 h-4" />} defaultOpen>
         <ImageUploadBox
-          label="Upload drawing / CAD image (JPG / PNG / PDF)"
+          label={t.compRptUploadDrawing}
           currentUrl={report.drawingImageUrl}
           onUpload={(f, page) => handleUpload("drawing", f, page)}
           onGetPdfPageCount={getPdfPageCount}
@@ -341,7 +343,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           onUpdateTitle={(title) => updateSectionMut.mutate({ id: section.id, data: { title } })}
           onDeleteSection={() => {
             if (sections.length <= 1) {
-              toast({ title: "Cannot delete", description: "At least one section is required.", variant: "destructive" });
+              toast({ title: t.compRptCannotDelete, description: t.compRptCannotDeleteDesc, variant: "destructive" });
               return;
             }
             deleteSectionMut.mutate(section.id);
@@ -358,7 +360,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-sm text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/30 transition-colors"
       >
         {addSectionMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-        Add Photo Section
+        {t.compRptAddSection}
       </button>
 
     </div>
@@ -383,6 +385,7 @@ function PhotoSectionCard({
   onDeleteSection: () => void;
   canDelete: boolean;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(section.title);
@@ -439,10 +442,10 @@ function PhotoSectionCard({
           {/* Auto layout indicator */}
           <span
             className="text-xs text-slate-400 hidden sm:inline"
-            title={`Layout is auto-calculated from photo count (${photos.length} photos → ${photos.length <= 2 ? 2 : photos.length <= 4 ? 4 : photos.length <= 6 ? 6 : 8} per slide)`}
+            title={t.compRptLayoutAutoTooltip}
             data-testid={`label-section-${section.id}-layout`}
           >
-            Layout: Auto
+            {t.compRptLayoutAuto}
           </span>
 
           {/* Delete section */}
@@ -451,7 +454,7 @@ function PhotoSectionCard({
               onClick={onDeleteSection}
               className="text-slate-300 hover:text-red-500 p-1 transition-colors"
               data-testid={`button-delete-section-${section.id}`}
-              title="Delete section"
+              title={t.compRptDeleteSection}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -495,7 +498,7 @@ function PhotoSectionCard({
               </div>
             </SortableContext>
           </DndContext>
-          <p className="text-xs text-slate-400">Drag to reorder, or use ↑↓ arrows. Add as many as needed.</p>
+          <p className="text-xs text-slate-400">{t.compRptDragHint}</p>
         </div>
       )}
     </div>
@@ -556,6 +559,7 @@ function ImageUploadBox({
   testId: string;
   acceptPdf?: boolean;
 }) {
+  const { t } = useLanguage();
   const [uploading, setUploading] = useState(false);
   const [checkingPages, setCheckingPages] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -659,12 +663,12 @@ function ImageUploadBox({
         <p className="text-sm font-medium text-slate-700">
           <FileText className="w-4 h-4 inline mr-1.5 text-brand-500" />
           <span className="font-semibold text-brand-700">{pendingFile.name}</span>
-          {" "}has <span className="font-bold">{pdfPageCount}</span> pages.
+          {" "}<span className="font-bold">{pdfPageCount}</span> {t.compRptPdfOf}
         </p>
         <div className="flex gap-4 items-start">
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
-              <label className="text-sm text-slate-600 shrink-0">Use page:</label>
+              <label className="text-sm text-slate-600 shrink-0">{t.compRptPdfUsePage}</label>
               <input
                 type="number"
                 min={1}
@@ -677,7 +681,7 @@ function ImageUploadBox({
                 className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
                 data-testid={`${testId}-page-input`}
               />
-              <span className="text-sm text-slate-400">of {pdfPageCount}</span>
+              <span className="text-sm text-slate-400">{t.compRptPdfOf} {pdfPageCount}</span>
             </div>
             <div className="flex gap-2">
               <button
@@ -687,7 +691,7 @@ function ImageUploadBox({
                 data-testid={`${testId}-confirm-page`}
               >
                 {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                Upload page {selectedPage}
+                {t.compRptPdfUsePage} {selectedPage}
               </button>
               <button
                 onClick={cancelPicker}
@@ -695,7 +699,7 @@ function ImageUploadBox({
                 className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50"
                 data-testid={`${testId}-cancel-page`}
               >
-                Cancel
+                {t.compRptPdfCancel}
               </button>
             </div>
           </div>
@@ -708,7 +712,7 @@ function ImageUploadBox({
             ) : previewUrl ? (
               <img src={previewUrl} alt={`Page ${selectedPage} preview`} className="w-full h-full object-contain" />
             ) : (
-              <span className="text-xs text-slate-400 text-center px-2">Preview loading…</span>
+              <span className="text-xs text-slate-400 text-center px-2">{t.compRptPreviewLoading}</span>
             )}
           </div>
         </div>
@@ -729,7 +733,7 @@ function ImageUploadBox({
           <Upload className="w-6 h-6 mx-auto mb-2 text-slate-400" />
           <p className="text-sm text-slate-500">{label}</p>
           {hint && <p className="text-xs text-brand-500 mt-0.5">{hint}</p>}
-          <p className="text-xs text-slate-400 mt-1">Click to browse</p>
+          <p className="text-xs text-slate-400 mt-1">{t.compRptClickToBrowse}</p>
         </>
       }
     </div>
@@ -750,6 +754,7 @@ function PhotoCard({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
 
   const style: React.CSSProperties = {
@@ -775,7 +780,7 @@ function PhotoCard({
             {...listeners}
             className="bg-white/90 hover:bg-slate-100 text-slate-500 rounded-full p-1.5 shadow cursor-grab active:cursor-grabbing"
             data-testid={`button-drag-${photo.id}`}
-            title="Drag to reorder"
+            title={t.compRptDragToReorder}
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
@@ -784,7 +789,7 @@ function PhotoCard({
             disabled={isFirst}
             className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
             data-testid={`button-move-up-${photo.id}`}
-            title="Move up"
+            title={t.compRptMoveUp}
           >
             <ArrowUp className="w-3.5 h-3.5" />
           </button>
@@ -793,7 +798,7 @@ function PhotoCard({
             disabled={isLast}
             className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
             data-testid={`button-move-down-${photo.id}`}
-            title="Move down"
+            title={t.compRptMoveDown}
           >
             <ArrowDown className="w-3.5 h-3.5" />
           </button>
@@ -801,7 +806,7 @@ function PhotoCard({
             onClick={onDelete}
             className="bg-white/90 hover:bg-red-50 text-red-500 rounded-full p-1.5 shadow"
             data-testid={`button-delete-photo-${photo.id}`}
-            title="Delete photo"
+            title={t.compRptDeletePhoto}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -812,7 +817,7 @@ function PhotoCard({
           type="text"
           defaultValue={photo.description ?? ""}
           onBlur={e => onMetaChange("description", e.target.value)}
-          placeholder="Description"
+          placeholder={t.compRptPhotoDesc}
           className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
           data-testid={`input-photo-desc-${photo.id}`}
         />
@@ -824,6 +829,7 @@ function PhotoCard({
 // ── AddPhotoBox ─────────────────────────────────────────────────────────────
 
 function AddPhotoBox({ onAdd }: { onAdd: (f: File) => Promise<void> }) {
+  const { t } = useLanguage();
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -852,12 +858,12 @@ function AddPhotoBox({ onAdd }: { onAdd: (f: File) => Promise<void> }) {
       {progress
         ? <>
           <Loader2 className="w-6 h-6 animate-spin text-brand-500 mb-2" />
-          <p className="text-xs text-brand-500 font-medium">{progress.current} / {progress.total} uploading…</p>
+          <p className="text-xs text-brand-500 font-medium">{progress.current} / {progress.total} {t.compRptUploading}</p>
         </>
         : <>
           <Camera className="w-6 h-6 mb-2 text-slate-300" />
-          <p className="text-sm text-slate-400">Add photo</p>
-          <p className="text-xs text-slate-300 mt-0.5">Shift / Ctrl for multiple</p>
+          <p className="text-sm text-slate-400">{t.compRptAddPhoto}</p>
+          <p className="text-xs text-slate-300 mt-0.5">{t.compRptMultipleHint}</p>
         </>
       }
     </div>

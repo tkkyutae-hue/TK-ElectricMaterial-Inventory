@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports } from "../shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";
@@ -3975,6 +3975,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (isNaN(id)) return res.status(400).json({ message: "Invalid reel ID" });
       await storage.deleteWireReel(id);
       res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── TV Display Mode ────────────────────────────────────────────────────────
+
+  app.get("/api/tv/today-manpower", isAuthenticated, async (_req, res) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const reports = await db.select().from(dailyReports).where(eq(dailyReports.reportDate, today));
+      const map: Record<number, number> = {};
+      for (const r of reports) {
+        const fd = r.formData as any;
+        const count = Array.isArray(fd?.manpower) ? fd.manpower.length : 0;
+        map[r.projectId] = (map[r.projectId] ?? 0) + count;
+      }
+      res.json(Object.entries(map).map(([projectId, workerCount]) => ({
+        projectId: Number(projectId), workerCount,
+      })));
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

@@ -155,7 +155,7 @@ export async function generateCompletionReportPptx(
   const fixedPageCount = 5; // cover + TOC + WFR + Quotation + Drawing
   const sectionPageCounts = sections.map(s => {
     const photos = s.photos ?? [];
-    const pps = effectivePps(s);
+    const pps = autoPps(photos.length);
     return Math.ceil(Math.max(photos.length, 1) / pps);
   });
   const totalPages = fixedPageCount + sectionPageCounts.reduce((a, b) => a + b, 0);
@@ -298,7 +298,7 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
     pageNum++;
-    await addPageHeader(slide, prs, "WORK FINAL REPORT");
+    await addPageHeader(slide, prs, "01  WORK FINAL REPORT");
 
     const contentTop = HEADER_H + 0.1;
 
@@ -389,7 +389,7 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
     pageNum++;
-    await addPageHeader(slide, prs, "QUOTATION");
+    await addPageHeader(slide, prs, "02  QUOTATION");
 
     const qData = await imgBase64(report.quotationImageUrl);
     if (qData) {
@@ -410,7 +410,7 @@ export async function generateCompletionReportPptx(
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
     pageNum++;
-    await addPageHeader(slide, prs, "DRAWING");
+    await addPageHeader(slide, prs, "03  DRAWING");
     addInfoTable(slide, project, report);
 
     const infoTableBottom = HEADER_H + 0.1 + 0.7; // approx
@@ -446,12 +446,14 @@ export async function generateCompletionReportPptx(
     8: { photoW: 2.20, photoH: 2.29, cols: 4, colX: [0.45, 2.75, 5.05, 7.35], rowY: [1.58, 4.49] },
   };
 
-  for (const section of sections) {
+  for (let sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
+    const section = sections[sectionIdx];
     const photos = section.photos ?? [];
-    const pps = effectivePps(section);
+    const pps = autoPps(photos.length);
     const layout = PHOTO_LAYOUTS[pps];
     const { photoW, photoH, cols, colX, rowY } = layout;
     const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
+    const sectionNum = String(sectionIdx + 4).padStart(2, "0");
     const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / pps);
 
     for (let i = 0; i < Math.max(photos.length, 1); i += pps) {
@@ -459,7 +461,7 @@ export async function generateCompletionReportPptx(
       const slide = prs.addSlide();
       slide.background = { color: WHITE };
       pageNum++;
-      await addPageHeader(slide, prs, `${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
+      await addPageHeader(slide, prs, `${sectionNum}  ${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
       addInfoTable(slide, project, report);
 
       if (photos.length === 0) {

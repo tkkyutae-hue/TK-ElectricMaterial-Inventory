@@ -67,7 +67,7 @@ function ColHeader({ color }: { color: string }) {
   );
 }
 
-const SCROLL_PX_PER_SEC = 50; // reading speed ~50px/s
+const SCROLL_PX_PER_SEC = 25; // reading speed ~25px/s
 const PAUSE_AT_BOTTOM_MS = 2500;
 
 export default function TvDashboard() {
@@ -225,7 +225,7 @@ export default function TvDashboard() {
       </header>
 
       {/* ── Content ────────────────────────────────────────────── */}
-      <div ref={scrollRef} style={{ flex: 1, padding: "28px 48px 20px", overflow: "auto" }}>
+      <div ref={scrollRef} className="tv-scroll-area" style={{ flex: 1, padding: "28px 48px 20px", overflow: "auto" }}>
         {projects.length === 0 ? (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",

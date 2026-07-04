@@ -208,12 +208,7 @@ export default function TvDashboard() {
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 28, fontWeight: 800, color: "#1e293b",
             letterSpacing: 1.5, textTransform: "uppercase",
-          }}>TK Electric LLC</span>
-          <span style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 18, fontWeight: 700, color: "#94a3b8",
-            letterSpacing: 2.5, textTransform: "uppercase",
-          }}>{t.tvBranchName}</span>
+          }}>TK Electric LLC <span style={{ color: "#cbd5e1", fontWeight: 400 }}>·</span> {t.tvBranchName}</span>
           <span style={{ width: 1, height: 26, background: "#e2e8f0" }} />
           <span style={{
             fontFamily: "'Barlow Condensed', sans-serif",

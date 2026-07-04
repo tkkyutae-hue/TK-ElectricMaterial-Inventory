@@ -203,7 +203,7 @@ export default function TvDashboard() {
           <span style={{ width: 1, height: 26, background: "#e2e8f0" }} />
           <span style={{
             fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 17, fontWeight: 600, color: "#64748b",
+            fontSize: 30, fontWeight: 800, color: "#5D9B3B",
             letterSpacing: 2, textTransform: "uppercase",
           }}>{t.tvHeaderSubtitle}</span>
           <span style={{

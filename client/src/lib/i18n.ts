@@ -2376,7 +2376,7 @@ const en = {
   tvColStatus:                     "Status",
   tvStatusWorkingOnIt:             "Working on It",
   tvStatusStartSoon:               "Start Soon",
-  tvHeaderSubtitle:                "Working / Start Soon",
+  tvHeaderSubtitle:                "Work Status",
   tvNoProjects:                    "No Working / Start Soon projects right now",
   tvFooter:                        "AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK HEADER TO EXIT",
 };
@@ -4733,7 +4733,7 @@ const ko: Translations = {
   tvColStatus:                     "상태",
   tvStatusWorkingOnIt:             "진행 중",
   tvStatusStartSoon:               "곧 시작",
-  tvHeaderSubtitle:                "진행 중 / 곧 시작",
+  tvHeaderSubtitle:                "작업 현황",
   tvNoProjects:                    "현재 진행 중이거나 곧 시작하는 프로젝트가 없습니다",
   tvFooter:                        "30초마다 자동 새로고침 · ESC 또는 헤더 클릭으로 종료",
 };
@@ -7090,7 +7090,7 @@ const es: Translations = {
   tvColStatus:                     "Estado",
   tvStatusWorkingOnIt:             "En progreso",
   tvStatusStartSoon:               "Próximo inicio",
-  tvHeaderSubtitle:                "En progreso / Próximo inicio",
+  tvHeaderSubtitle:                "Estado de Trabajo",
   tvNoProjects:                    "No hay proyectos en progreso o próximos ahora",
   tvFooter:                        "ACTUALIZACIÓN AUTOMÁTICA CADA 30s · PRESIONA ESC O HAZ CLIC EN EL ENCABEZADO PARA SALIR",
 };

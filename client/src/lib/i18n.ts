@@ -2381,7 +2381,7 @@ const en = {
   tvStatusWorkingOnIt:             "Working on It",
   tvStatusStartSoon:               "Start Soon",
   tvHeaderSubtitle:                "Work Status",
-  tvBranchName:                    "SA",
+  tvBranchName:                    "Savannah",
   tvNoProjects:                    "No Working / Start Soon projects right now",
   tvFooter:                        "AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK HEADER TO EXIT",
 };
@@ -7105,7 +7105,7 @@ const es: Translations = {
   tvStatusWorkingOnIt:             "En progreso",
   tvStatusStartSoon:               "Próximo inicio",
   tvHeaderSubtitle:                "Estado de Trabajo",
-  tvBranchName:                    "SA",
+  tvBranchName:                    "Savannah",
   tvNoProjects:                    "No hay proyectos en progreso o próximos ahora",
   tvFooter:                        "ACTUALIZACIÓN AUTOMÁTICA CADA 30s · PRESIONA ESC O HAZ CLIC EN EL ENCABEZADO PARA SALIR",
 };

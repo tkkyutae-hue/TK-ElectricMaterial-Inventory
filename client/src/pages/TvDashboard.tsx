@@ -75,16 +75,25 @@ function ColHeader({ color, t }: { color: string; t: Translations }) {
   );
 }
 
-const SCROLL_PX_PER_SEC = 30; // reading speed ~30px/s
 const PAUSE_AT_BOTTOM_MS = 2500;
+const LS_SPEED_KEY = "voltstock_tv_speed";
+const DEFAULT_SPEED = 30;
 
 export default function TvDashboard() {
   const [, navigate] = useLocation();
   const now = useClock();
   const { t } = useLanguage();
-  const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const rafRef     = useRef<number | null>(null);
+  const refreshRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef     = useRef<HTMLDivElement>(null);
+  const rafRef        = useRef<number | null>(null);
+
+  const [scrollSpeed, setScrollSpeed] = useState<number>(() => {
+    const stored = localStorage.getItem(LS_SPEED_KEY);
+    const n = stored ? parseInt(stored, 10) : DEFAULT_SPEED;
+    return isNaN(n) ? DEFAULT_SPEED : Math.min(50, Math.max(0, n));
+  });
+  const scrollSpeedRef = useRef(scrollSpeed);
+  useEffect(() => { scrollSpeedRef.current = scrollSpeed; }, [scrollSpeed]);
 
   const { data: allProjects = [] } = useQuery<any[]>({ queryKey: ["/api/projects"] });
 
@@ -131,7 +140,7 @@ export default function TvDashboard() {
             el.scrollTop = 0;
           }
         } else {
-          el.scrollTop += (SCROLL_PX_PER_SEC * dt) / 1000;
+          el.scrollTop += (scrollSpeedRef.current * dt) / 1000;
           if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
             pausing = true;
             pauseStart = ts;
@@ -223,8 +232,30 @@ export default function TvDashboard() {
             }}>{timeStr}</div>
             <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{dateStr}</div>
           </div>
-          <div onClick={e => e.stopPropagation()}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 5 }}
+          >
             <LanguageSwitcher theme="light" />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="range"
+                min={0} max={50} step={5}
+                value={scrollSpeed}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setScrollSpeed(v);
+                  localStorage.setItem(LS_SPEED_KEY, String(v));
+                }}
+                style={{ flex: 1, cursor: "pointer", accentColor: "#5D9B3B", margin: 0 }}
+                data-testid="tv-speed-slider"
+              />
+              <span style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                minWidth: 18, textAlign: "right", lineHeight: 1,
+              }}>{scrollSpeed}</span>
+            </div>
           </div>
         </div>
       </header>

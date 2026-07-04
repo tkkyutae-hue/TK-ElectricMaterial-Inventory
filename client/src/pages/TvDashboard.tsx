@@ -231,13 +231,13 @@ export default function TvDashboard() {
             letterSpacing: 2, textTransform: "uppercase",
           }}>{t.tvHeaderSubtitle}</span>
           <span style={{
-            background: "#5D9B3B", color: "#fff",
+            background: "#FDAB3D", color: "#1a1a1a",
             fontSize: 14, fontWeight: 700,
             padding: "3px 14px", borderRadius: 20,
             fontFamily: "'Barlow Condensed', sans-serif",
           }}>{t.tvStatusWorkingOnIt} {projects.filter(p => p.status?.toLowerCase() === "working on it").length}</span>
           <span style={{
-            background: "#e2e8f0", color: "#475569",
+            background: "#00C4F4", color: "#1a1a1a",
             fontSize: 14, fontWeight: 700,
             padding: "3px 14px", borderRadius: 20,
             fontFamily: "'Barlow Condensed', sans-serif",

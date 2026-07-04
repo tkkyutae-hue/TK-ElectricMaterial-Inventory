@@ -235,7 +235,13 @@ export default function TvDashboard() {
             fontSize: 14, fontWeight: 700,
             padding: "3px 14px", borderRadius: 20,
             fontFamily: "'Barlow Condensed', sans-serif",
-          }}>{projects.length}</span>
+          }}>{t.tvStatusWorkingOnIt} {projects.filter(p => p.status?.toLowerCase() === "working on it").length}</span>
+          <span style={{
+            background: "#e2e8f0", color: "#475569",
+            fontSize: 14, fontWeight: 700,
+            padding: "3px 14px", borderRadius: 20,
+            fontFamily: "'Barlow Condensed', sans-serif",
+          }}>{t.tvStatusStartSoon} {projects.filter(p => p.status?.toLowerCase() === "start soon").length}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>

@@ -204,11 +204,18 @@ export default function TvDashboard() {
             width: 12, height: 12, borderRadius: "50%", background: "#5D9B3B",
             boxShadow: "0 0 0 4px rgba(93,155,59,0.18)", flexShrink: 0,
           }} />
-          <span style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 28, fontWeight: 800, color: "#1e293b",
-            letterSpacing: 1.5, textTransform: "uppercase",
-          }}>TK Electric LLC</span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+            <span style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 28, fontWeight: 800, color: "#1e293b",
+              letterSpacing: 1.5, textTransform: "uppercase",
+            }}>TK Electric LLC</span>
+            <span style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 12, fontWeight: 700, color: "#94a3b8",
+              letterSpacing: 2.5, textTransform: "uppercase",
+            }}>사바나</span>
+          </div>
           <span style={{ width: 1, height: 26, background: "#e2e8f0" }} />
           <span style={{
             fontFamily: "'Barlow Condensed', sans-serif",

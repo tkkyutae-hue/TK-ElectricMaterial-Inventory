@@ -67,10 +67,15 @@ function ColHeader({ color }: { color: string }) {
   );
 }
 
+const SCROLL_PX_PER_SEC = 50; // reading speed ~50px/s
+const PAUSE_AT_BOTTOM_MS = 2500;
+
 export default function TvDashboard() {
   const [, navigate] = useLocation();
   const now = useClock();
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef  = useRef<HTMLDivElement>(null);
+  const rafRef     = useRef<number | null>(null);
 
   const { data: allProjects = [] } = useQuery<any[]>({ queryKey: ["/api/projects"] });
 
@@ -93,6 +98,44 @@ export default function TvDashboard() {
   const projects = (allProjects as any[]).filter(
     p => TV_STATUSES.has((p.status ?? "").toLowerCase())
   );
+
+  // Auto-scroll: slow downward loop, pause at bottom, reset to top
+  useEffect(() => {
+    let lastTs: number | null = null;
+    let pausing = false;
+    let pauseStart = 0;
+
+    function tick(ts: number) {
+      const el = scrollRef.current;
+      if (!el) { rafRef.current = requestAnimationFrame(tick); return; }
+
+      if (lastTs === null) lastTs = ts;
+      const dt = Math.min(ts - lastTs, 100); // cap to avoid jump after tab switch
+      lastTs = ts;
+
+      const overflows = el.scrollHeight > el.clientHeight + 2;
+
+      if (overflows) {
+        if (pausing) {
+          if (ts - pauseStart >= PAUSE_AT_BOTTOM_MS) {
+            pausing = false;
+            el.scrollTop = 0;
+          }
+        } else {
+          el.scrollTop += (SCROLL_PX_PER_SEC * dt) / 1000;
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+            pausing = true;
+            pauseStart = ts;
+          }
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+  }, []);
 
   // Group by customerName, sort groups alphabetically
   const groupMap = new Map<string, any[]>();
@@ -118,7 +161,7 @@ export default function TvDashboard() {
       data-testid="tv-dashboard"
       onClick={() => navigate("/home")}
       style={{
-        minHeight: "100vh",
+        height: "100vh",
         background: "#F5F6F8",
         display: "flex",
         flexDirection: "column",
@@ -182,7 +225,7 @@ export default function TvDashboard() {
       </header>
 
       {/* ── Content ────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: "28px 48px 20px", overflow: "auto" }}>
+      <div ref={scrollRef} style={{ flex: 1, padding: "28px 48px 20px", overflow: "auto" }}>
         {projects.length === 0 ? (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",

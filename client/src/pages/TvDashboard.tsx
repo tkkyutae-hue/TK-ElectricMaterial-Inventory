@@ -234,7 +234,7 @@ export default function TvDashboard() {
           </div>
           <div
             onClick={e => e.stopPropagation()}
-            style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 5 }}
+            style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}
           >
             <LanguageSwitcher theme="light" />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

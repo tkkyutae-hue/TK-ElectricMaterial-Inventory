@@ -2367,6 +2367,18 @@ const en = {
   errBoundaryTitle:                "Something went wrong",
   errBoundaryDesc:                 "An unexpected error occurred. Please reload the page.",
   errBoundaryReload:               "Reload Page",
+
+  // ── TV Dashboard ──
+  tvColPo:                         "PO / Code",
+  tvColProject:                    "Project Name",
+  tvColContact:                    "Contact",
+  tvColLocation:                   "Location",
+  tvColStatus:                     "Status",
+  tvStatusWorkingOnIt:             "Working on It",
+  tvStatusStartSoon:               "Start Soon",
+  tvHeaderSubtitle:                "Working / Start Soon",
+  tvNoProjects:                    "No Working / Start Soon projects right now",
+  tvFooter:                        "AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK HEADER TO EXIT",
 };
 
 const ko: Translations = {
@@ -4712,6 +4724,18 @@ const ko: Translations = {
   errBoundaryTitle:                "문제가 발생했습니다",
   errBoundaryDesc:                 "예기치 않은 오류가 발생했습니다. 페이지를 새로고침해 주세요.",
   errBoundaryReload:               "페이지 새로고침",
+
+  // ── TV Dashboard ──
+  tvColPo:                         "PO / 코드",
+  tvColProject:                    "프로젝트명",
+  tvColContact:                    "컨택트",
+  tvColLocation:                   "위치",
+  tvColStatus:                     "상태",
+  tvStatusWorkingOnIt:             "진행 중",
+  tvStatusStartSoon:               "곧 시작",
+  tvHeaderSubtitle:                "진행 중 / 곧 시작",
+  tvNoProjects:                    "현재 진행 중이거나 곧 시작하는 프로젝트가 없습니다",
+  tvFooter:                        "30초마다 자동 새로고침 · ESC 또는 헤더 클릭으로 종료",
 };
 
 const es: Translations = {
@@ -7057,6 +7081,18 @@ const es: Translations = {
   errBoundaryTitle:                "Algo salió mal",
   errBoundaryDesc:                 "Ocurrió un error inesperado. Por favor recarga la página.",
   errBoundaryReload:               "Recargar página",
+
+  // ── TV Dashboard ──
+  tvColPo:                         "PO / Código",
+  tvColProject:                    "Nombre del proyecto",
+  tvColContact:                    "Contacto",
+  tvColLocation:                   "Ubicación",
+  tvColStatus:                     "Estado",
+  tvStatusWorkingOnIt:             "En progreso",
+  tvStatusStartSoon:               "Próximo inicio",
+  tvHeaderSubtitle:                "En progreso / Próximo inicio",
+  tvNoProjects:                    "No hay proyectos en progreso o próximos ahora",
+  tvFooter:                        "ACTUALIZACIÓN AUTOMÁTICA CADA 30s · PRESIONA ESC O HAZ CLIC EN EL ENCABEZADO PARA SALIR",
 };
 
 export const TRANSLATIONS: Record<Lang, Translations> = { en, ko, es };

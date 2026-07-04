@@ -2,14 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { LanguageSwitcher } from "@/hooks/use-language";
+import { LanguageSwitcher, useLanguage } from "@/hooks/use-language";
+import { Translations } from "@/lib/i18n";
 
 const TV_STATUSES = new Set(["working on it", "start soon"]);
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  "working on it": { bg: "#FDAB3D", text: "#1a1a1a", label: "Working on It" },
-  "start soon":    { bg: "#00C4F4", text: "#1a1a1a", label: "Start Soon"    },
+const STATUS_STYLE_BASE: Record<string, { bg: string; text: string }> = {
+  "working on it": { bg: "#FDAB3D", text: "#1a1a1a" },
+  "start soon":    { bg: "#00C4F4", text: "#1a1a1a" },
 };
+
+function getStatusLabel(key: string, t: Translations): string {
+  if (key === "working on it") return t.tvStatusWorkingOnIt;
+  if (key === "start soon")    return t.tvStatusStartSoon;
+  return key;
+}
 
 const GROUP_PALETTE = [
   "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
@@ -40,7 +47,7 @@ const COL = {
 };
 
 // ─── Column header row ──────────────────────────────────────────────────────
-function ColHeader({ color }: { color: string }) {
+function ColHeader({ color, t }: { color: string; t: Translations }) {
   const cell: React.CSSProperties = {
     fontFamily: "'Barlow Condensed', sans-serif",
     fontSize: 11, fontWeight: 700,
@@ -58,12 +65,12 @@ function ColHeader({ color }: { color: string }) {
       borderBottom: "1px solid #e8ecf0",
       gap: 24,
     }}>
-      <div style={{ ...cell, width: COL.po }}>PO / 코드</div>
+      <div style={{ ...cell, width: COL.po }}>{t.tvColPo}</div>
       <div style={{ width: 1, height: 14, background: "#e2e8f0", flexShrink: 0 }} />
-      <div style={{ ...cell, flex: 1 }}>프로젝트명</div>
-      <div style={{ ...cell, width: COL.contact }}>컨택트</div>
-      <div style={{ ...cell, width: COL.location }}>위치</div>
-      <div style={{ ...cell, width: COL.status, textAlign: "center" }}>상태</div>
+      <div style={{ ...cell, flex: 1 }}>{t.tvColProject}</div>
+      <div style={{ ...cell, width: COL.contact }}>{t.tvColContact}</div>
+      <div style={{ ...cell, width: COL.location }}>{t.tvColLocation}</div>
+      <div style={{ ...cell, width: COL.status, textAlign: "center" }}>{t.tvColStatus}</div>
     </div>
   );
 }
@@ -74,6 +81,7 @@ const PAUSE_AT_BOTTOM_MS = 2500;
 export default function TvDashboard() {
   const [, navigate] = useLocation();
   const now = useClock();
+  const { t } = useLanguage();
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scrollRef  = useRef<HTMLDivElement>(null);
   const rafRef     = useRef<number | null>(null);
@@ -197,7 +205,7 @@ export default function TvDashboard() {
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 17, fontWeight: 600, color: "#64748b",
             letterSpacing: 2, textTransform: "uppercase",
-          }}>Working / Start Soon</span>
+          }}>{t.tvHeaderSubtitle}</span>
           <span style={{
             background: "#5D9B3B", color: "#fff",
             fontSize: 14, fontWeight: 700,
@@ -232,7 +240,7 @@ export default function TvDashboard() {
             <div style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 28, fontWeight: 600,
-            }}>No Working / Start Soon projects right now</div>
+            }}>{t.tvNoProjects}</div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -277,12 +285,13 @@ export default function TvDashboard() {
                   </div>
 
                   {/* Column header row */}
-                  <ColHeader color={color} />
+                  <ColHeader color={color} t={t} />
 
                   {/* Project rows */}
                   {group.items.map((p: any, idx: number) => {
                     const sKey = (p.status ?? "").toLowerCase();
-                    const s = STATUS_STYLE[sKey] ?? { bg: "#C4C4C4", text: "#fff", label: p.status };
+                    const base = STATUS_STYLE_BASE[sKey] ?? { bg: "#C4C4C4", text: "#fff" };
+                    const label = getStatusLabel(sKey, t) || p.status;
                     const isLast = idx === group.items.length - 1;
 
                     return (
@@ -342,7 +351,7 @@ export default function TvDashboard() {
 
                         {/* Status badge */}
                         <div style={{
-                          background: s.bg, color: s.text,
+                          background: base.bg, color: base.text,
                           fontFamily: "'Barlow Condensed', sans-serif",
                           fontSize: 16, fontWeight: 800,
                           letterSpacing: 1.2, textTransform: "uppercase",
@@ -350,7 +359,7 @@ export default function TvDashboard() {
                           width: COL.status, flexShrink: 0,
                           textAlign: "center", whiteSpace: "nowrap",
                         }}>
-                          {s.label}
+                          {label}
                         </div>
                       </div>
                     );
@@ -369,7 +378,7 @@ export default function TvDashboard() {
         fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1.2,
         background: "#ffffff", borderTop: "1px solid #f1f5f9",
       }}>
-        AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK HEADER TO EXIT
+        {t.tvFooter}
       </div>
     </div>
   );

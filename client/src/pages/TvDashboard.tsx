@@ -2,33 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { MapPin, Calendar, HardHat } from "lucide-react";
 
-const ONGOING_STATUSES = new Set(["active", "working on it", "in progress", "start soon", "stuck"]);
+const TV_STATUSES = new Set(["working on it", "start soon"]);
 
-const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
-  { keys: ["active"],                       bg: "#00C875" },
-  { keys: ["working on it", "in progress"], bg: "#FDAB3D", text: "#1a1a1a" },
-  { keys: ["stuck"],                        bg: "#E2445C" },
-  { keys: ["start soon"],                   bg: "#00C4F4", text: "#1a1a1a" },
-  { keys: ["on_hold", "on hold"],           bg: "#FDBC64", text: "#1a1a1a" },
+const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  "working on it": { bg: "#FDAB3D", text: "#1a1a1a", label: "Working on It" },
+  "start soon":    { bg: "#00C4F4", text: "#1a1a1a", label: "Start Soon"    },
+};
+
+const GROUP_PALETTE = [
+  "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
+  "#579BFC","#9CD326","#FF9F43","#FF3D57","#7E5CB5",
 ];
-
-function statusBg(status: string) {
-  const lower = (status || "").toLowerCase();
-  return STATUS_COLOR_MAP.find(e => e.keys.includes(lower))?.bg ?? "#C4C4C4";
-}
-function statusText(status: string) {
-  const lower = (status || "").toLowerCase();
-  return STATUS_COLOR_MAP.find(e => e.keys.includes(lower))?.text ?? "#ffffff";
-}
-
-function timeProgress(start?: string | null, end?: string | null): number | null {
-  if (!start || !end) return null;
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  if (e <= s) return null;
-  return Math.min(100, Math.max(0, Math.round(((Date.now() - s) / (e - s)) * 100)));
+function groupColor(name: string): string {
+  if (!name) return "#C4C4C4";
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h * 31) + name.charCodeAt(i)) | 0;
+  return GROUP_PALETTE[Math.abs(h) % GROUP_PALETTE.length];
 }
 
 function useClock() {
@@ -45,27 +35,12 @@ export default function TvDashboard() {
   const now = useClock();
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: allProjects = [] } = useQuery<any[]>({
-    queryKey: ["/api/projects"],
-  });
+  const { data: allProjects = [] } = useQuery<any[]>({ queryKey: ["/api/projects"] });
 
-  const { data: manpowerToday = [] } = useQuery<{ projectId: number; workerCount: number }[]>({
-    queryKey: ["/api/tv/today-manpower"],
-  });
-
-  const manpowerMap = Object.fromEntries(
-    (manpowerToday as any[]).map((m: any) => [m.projectId, m.workerCount])
-  );
-
-  const projects = (allProjects as any[]).filter(
-    p => ONGOING_STATUSES.has((p.status ?? "").toLowerCase())
-  );
-
-  // Single 30s refresh mechanism — invalidates both queries
+  // Single 30s invalidation mechanism
   useEffect(() => {
     refreshRef.current = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tv/today-manpower"] });
     }, 30_000);
     return () => { if (refreshRef.current) clearInterval(refreshRef.current); };
   }, []);
@@ -77,8 +52,24 @@ export default function TvDashboard() {
     return () => window.removeEventListener("keydown", handler);
   }, [navigate]);
 
-  // Grid: >=5 projects → 3 cols, otherwise 2 cols
-  const cols = projects.length >= 5 ? 3 : 2;
+  // Filter to only TV statuses
+  const projects = (allProjects as any[]).filter(
+    p => TV_STATUSES.has((p.status ?? "").toLowerCase())
+  );
+
+  // Group by customerName, sort groups alphabetically
+  const groupMap = new Map<string, any[]>();
+  for (const p of projects) {
+    const key = (p.customerName || "—").trim();
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key)!.push(p);
+  }
+  const groups = [...groupMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, items]) => ({
+      name,
+      items: [...items].sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    }));
 
   const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   const dateStr = now.toLocaleDateString("en-US", {
@@ -86,7 +77,6 @@ export default function TvDashboard() {
   });
 
   return (
-    // Click anywhere on the page → exit (ESC or screen click)
     <div
       data-testid="tv-dashboard"
       onClick={() => navigate("/home")}
@@ -95,214 +85,186 @@ export default function TvDashboard() {
         background: "#F5F6F8",
         display: "flex",
         flexDirection: "column",
-        fontFamily: "'Barlow', sans-serif",
-        overflow: "hidden",
+        fontFamily: "'Barlow', 'Inter', sans-serif",
         userSelect: "none",
         cursor: "pointer",
       }}
     >
-      {/* Header */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "18px 40px 16px",
-          background: "#ffffff",
-          borderBottom: "3px solid #5D9B3B",
-          flexShrink: 0,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        }}
-      >
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "16px 48px",
+        background: "#ffffff",
+        borderBottom: "3px solid #5D9B3B",
+        flexShrink: 0,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{
-            width: 10, height: 10, borderRadius: "50%",
-            background: "#5D9B3B",
-            boxShadow: "0 0 0 3px rgba(93,155,59,0.2)",
-            flexShrink: 0,
+            width: 12, height: 12, borderRadius: "50%", background: "#5D9B3B",
+            boxShadow: "0 0 0 4px rgba(93,155,59,0.18)", flexShrink: 0,
           }} />
           <span style={{
             fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 26, fontWeight: 800,
-            color: "#1e293b", letterSpacing: 1,
-            textTransform: "uppercase",
-          }}>
-            TK Electric LLC
-          </span>
-          <span style={{ width: 1, height: 24, background: "#e2e8f0", flexShrink: 0 }} />
+            fontSize: 28, fontWeight: 800, color: "#1e293b",
+            letterSpacing: 1.5, textTransform: "uppercase",
+          }}>TK Electric LLC</span>
+          <span style={{ width: 1, height: 26, background: "#e2e8f0" }} />
           <span style={{
             fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 16, fontWeight: 600,
-            color: "#64748b", letterSpacing: 1.5,
-            textTransform: "uppercase",
-          }}>
-            Active Projects
-          </span>
+            fontSize: 17, fontWeight: 600, color: "#64748b",
+            letterSpacing: 2, textTransform: "uppercase",
+          }}>Working / Start Soon</span>
           <span style={{
             background: "#5D9B3B", color: "#fff",
-            fontSize: 13, fontWeight: 700,
-            padding: "3px 12px", borderRadius: 20,
+            fontSize: 14, fontWeight: 700,
+            padding: "3px 14px", borderRadius: 20,
             fontFamily: "'Barlow Condensed', sans-serif",
-          }}>
-            {projects.length}
-          </span>
+          }}>{projects.length}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{
               fontFamily: "'Barlow Condensed', sans-serif",
-              fontSize: 36, fontWeight: 700, lineHeight: 1,
+              fontSize: 40, fontWeight: 700, lineHeight: 1,
               color: "#1e293b", letterSpacing: 1,
-            }}>
-              {timeStr}
-            </div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
-              {dateStr}
-            </div>
+            }}>{timeStr}</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{dateStr}</div>
           </div>
           <button
             data-testid="tv-exit-btn"
             onClick={e => { e.stopPropagation(); navigate("/home"); }}
             style={{
               background: "none", border: "1px solid #e2e8f0",
-              borderRadius: 8, padding: "6px 14px",
-              fontSize: 12, color: "#94a3b8", cursor: "pointer",
-              fontFamily: "'Barlow', sans-serif",
+              borderRadius: 8, padding: "7px 16px",
+              fontSize: 13, color: "#94a3b8", cursor: "pointer",
             }}
-          >
-            ← Exit
-          </button>
+          >← Exit</button>
         </div>
       </header>
 
-      {/* Content — no stopPropagation; clicks bubble up to root → navigate("/home") */}
-      <div style={{ flex: 1, padding: "32px 40px", overflow: "auto" }}>
+      {/* ── Content ────────────────────────────────────────────── */}
+      <div style={{ flex: 1, padding: "28px 48px 20px", overflow: "auto" }}>
         {projects.length === 0 ? (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            height: "100%", flexDirection: "column", gap: 12, color: "#94a3b8",
+            height: "60vh", flexDirection: "column", gap: 16, color: "#94a3b8",
           }}>
-            <div style={{ fontSize: 48 }}>🏗️</div>
+            <div style={{ fontSize: 56 }}>🏗️</div>
             <div style={{
               fontFamily: "'Barlow Condensed', sans-serif",
-              fontSize: 22, fontWeight: 600,
-            }}>
-              No active projects at this time
-            </div>
+              fontSize: 28, fontWeight: 600,
+            }}>No Working / Start Soon projects right now</div>
           </div>
         ) : (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gap: 20,
-          }}>
-            {projects.map((p: any) => {
-              const bg  = statusBg(p.status);
-              const fg  = statusText(p.status);
-              const pct = timeProgress(p.startDate, p.endDate);
-              const barColor = pct !== null && pct > 90 ? "#E2445C" : pct !== null && pct > 70 ? "#FDAB3D" : "#5D9B3B";
-              const workers  = manpowerMap[p.id];
-
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {groups.map(group => {
+              const color = groupColor(group.name);
               return (
                 <div
-                  key={p.id}
-                  data-testid={`tv-project-card-${p.id}`}
+                  key={group.name}
+                  data-testid={`tv-group-${group.name}`}
                   style={{
                     background: "#ffffff",
-                    borderRadius: 12,
+                    borderRadius: 10,
                     overflow: "hidden",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
                     border: "1px solid #e8ecf0",
-                    display: "flex",
-                    flexDirection: "column",
                   }}
                 >
-                  <div style={{ height: 5, background: bg, flexShrink: 0 }} />
-
-                  <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-                    {/* Status + PO */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{
-                        background: bg, color: fg,
-                        fontSize: 11, fontWeight: 700,
-                        letterSpacing: 1, textTransform: "uppercase",
-                        padding: "4px 12px", borderRadius: 20,
-                        fontFamily: "'Barlow Condensed', sans-serif",
-                        whiteSpace: "nowrap",
-                      }}>
-                        {p.status}
-                      </span>
-                      {p.poNumber && (
-                        <span style={{
-                          fontSize: 12, color: "#94a3b8",
-                          fontFamily: "'Barlow Condensed', sans-serif",
-                        }}>
-                          PO: {p.poNumber}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Project name */}
+                  {/* Group header */}
+                  <div style={{
+                    display: "flex", alignItems: "center",
+                    gap: 14, padding: "14px 28px",
+                    background: "#F8F9FB",
+                    borderBottom: "1px solid #edf0f4",
+                    borderLeft: `5px solid ${color}`,
+                  }}>
                     <div style={{
+                      width: 14, height: 14, borderRadius: 3,
+                      background: color, flexShrink: 0,
+                    }} />
+                    <span style={{
                       fontFamily: "'Barlow Condensed', sans-serif",
-                      fontSize: 28, fontWeight: 700,
-                      color: "#1e293b", lineHeight: 1.15,
-                    }}>
-                      {p.name}
-                    </div>
-
-                    {/* Customer */}
-                    {p.customerName && (
-                      <div style={{ fontSize: 13, color: "#64748b" }}>
-                        {p.customerName}
-                      </div>
-                    )}
-
-                    {/* Location */}
-                    {(p.jobLocation || p.city) && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#64748b" }}>
-                        <MapPin style={{ width: 13, height: 13, flexShrink: 0, color: "#94a3b8" }} />
-                        {p.jobLocation ?? p.city}
-                      </div>
-                    )}
-
-                    {/* Timeline */}
-                    {(p.startDate || p.endDate) && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#94a3b8", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                        <Calendar style={{ width: 12, height: 12, flexShrink: 0 }} />
-                        {p.startDate}{p.startDate && p.endDate ? " → " : ""}{p.endDate}
-                      </div>
-                    )}
-
-                    {/* Today's workers */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: workers ? "#1e293b" : "#94a3b8", fontWeight: workers ? 600 : 400 }}>
-                      <HardHat style={{ width: 14, height: 14, flexShrink: 0, color: workers ? "#5D9B3B" : "#cbd5e1" }} />
-                      {workers !== undefined ? `${workers} workers today` : "— no report today"}
-                    </div>
-
-                    {/* Progress bar */}
-                    {pct !== null && (
-                      <div style={{ marginTop: 4 }}>
-                        <div style={{
-                          display: "flex", justifyContent: "space-between",
-                          fontSize: 10, color: "#94a3b8", marginBottom: 5,
-                          fontFamily: "'Barlow Condensed', sans-serif",
-                          letterSpacing: 0.8, textTransform: "uppercase",
-                        }}>
-                          <span>Timeline</span>
-                          <span style={{ color: barColor, fontWeight: 700 }}>{pct}%</span>
-                        </div>
-                        <div style={{ height: 5, borderRadius: 3, background: "#f1f5f9", overflow: "hidden" }}>
-                          <div style={{
-                            height: "100%", width: `${pct}%`,
-                            borderRadius: 3, background: barColor,
-                            transition: "width 0.5s ease",
-                          }} />
-                        </div>
-                      </div>
-                    )}
+                      fontSize: 26, fontWeight: 800,
+                      color: "#1e293b", letterSpacing: 1,
+                      textTransform: "uppercase",
+                      flex: 1,
+                    }}>{group.name}</span>
+                    <span style={{
+                      fontSize: 15, fontWeight: 700, color: "#64748b",
+                      background: "#e2e8f0", borderRadius: 14,
+                      padding: "2px 14px",
+                    }}>{group.items.length}</span>
                   </div>
+
+                  {/* Project rows */}
+                  {group.items.map((p: any, idx: number) => {
+                    const sKey = (p.status ?? "").toLowerCase();
+                    const s = STATUS_STYLE[sKey] ?? { bg: "#C4C4C4", text: "#fff", label: p.status };
+                    const isLast = idx === group.items.length - 1;
+
+                    return (
+                      <div
+                        key={p.id}
+                        data-testid={`tv-project-row-${p.id}`}
+                        style={{
+                          display: "flex", alignItems: "center",
+                          padding: "18px 28px",
+                          borderLeft: `5px solid ${color}22`,
+                          borderBottom: isLast ? "none" : "1px solid #f1f5f9",
+                          gap: 24,
+                        }}
+                      >
+                        {/* PO number */}
+                        <div style={{
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 18, color: "#94a3b8",
+                          letterSpacing: 0.5,
+                          minWidth: 140, flexShrink: 0,
+                        }}>
+                          {p.poNumber || "—"}
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ width: 1, height: 28, background: "#e8ecf0", flexShrink: 0 }} />
+
+                        {/* Project name */}
+                        <div style={{
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 26, fontWeight: 700,
+                          color: "#1e293b", lineHeight: 1.2,
+                          flex: 1, minWidth: 0,
+                        }}>
+                          {p.name}
+                        </div>
+
+                        {/* Location (if any) */}
+                        {p.jobLocation && (
+                          <div style={{
+                            fontSize: 16, color: "#94a3b8",
+                            flexShrink: 0, maxWidth: 220,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {p.jobLocation}
+                          </div>
+                        )}
+
+                        {/* Status badge */}
+                        <div style={{
+                          background: s.bg, color: s.text,
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 17, fontWeight: 800,
+                          letterSpacing: 1.2, textTransform: "uppercase",
+                          padding: "8px 24px", borderRadius: 6,
+                          flexShrink: 0, whiteSpace: "nowrap",
+                        }}>
+                          {s.label}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -310,11 +272,11 @@ export default function TvDashboard() {
         )}
       </div>
 
-      {/* Footer */}
+      {/* ── Footer ─────────────────────────────────────────────── */}
       <div style={{
         textAlign: "center", padding: "10px", flexShrink: 0,
-        fontSize: 11, color: "#cbd5e1",
-        fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1,
+        fontSize: 12, color: "#cbd5e1",
+        fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1.2,
         background: "#ffffff", borderTop: "1px solid #f1f5f9",
       }}>
         AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK ANYWHERE TO EXIT

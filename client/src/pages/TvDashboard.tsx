@@ -247,14 +247,18 @@ export default function TvDashboard() {
                   setScrollSpeed(v);
                   localStorage.setItem(LS_SPEED_KEY, String(v));
                 }}
-                style={{ flex: 1, cursor: "pointer", accentColor: "#5D9B3B", margin: 0 }}
+                style={{ flex: 1, cursor: "pointer", accentColor: scrollSpeed === 0 ? "#F59E0B" : "#5D9B3B", margin: 0 }}
                 data-testid="tv-speed-slider"
               />
               <span style={{
                 fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                fontSize: scrollSpeed === 0 ? 14 : 11,
+                fontWeight: 700,
+                color: scrollSpeed === 0 ? "#F59E0B" : "#94a3b8",
                 minWidth: 18, textAlign: "right", lineHeight: 1,
-              }}>{scrollSpeed}</span>
+              }} data-testid="tv-speed-indicator">
+                {scrollSpeed === 0 ? "⏸" : scrollSpeed}
+              </span>
             </div>
           </div>
         </div>

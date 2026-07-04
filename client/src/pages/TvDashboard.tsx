@@ -30,6 +30,43 @@ function useClock() {
   return now;
 }
 
+// ─── Column widths ──────────────────────────────────────────────────────────
+const COL = {
+  po:      148,
+  contact: 180,
+  location: 210,
+  status:  180,
+};
+
+// ─── Column header row ──────────────────────────────────────────────────────
+function ColHeader({ color }: { color: string }) {
+  const cell: React.CSSProperties = {
+    fontFamily: "'Barlow Condensed', sans-serif",
+    fontSize: 11, fontWeight: 700,
+    color: "#94a3b8",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    flexShrink: 0,
+  };
+  return (
+    <div style={{
+      display: "flex", alignItems: "center",
+      padding: "8px 28px",
+      background: "#F0F2F5",
+      borderLeft: `5px solid ${color}44`,
+      borderBottom: "1px solid #e8ecf0",
+      gap: 24,
+    }}>
+      <div style={{ ...cell, width: COL.po }}>PO / 코드</div>
+      <div style={{ width: 1, height: 14, background: "#e2e8f0", flexShrink: 0 }} />
+      <div style={{ ...cell, flex: 1 }}>프로젝트명</div>
+      <div style={{ ...cell, width: COL.contact }}>컨택트</div>
+      <div style={{ ...cell, width: COL.location }}>위치</div>
+      <div style={{ ...cell, width: COL.status, textAlign: "center" }}>상태</div>
+    </div>
+  );
+}
+
 export default function TvDashboard() {
   const [, navigate] = useLocation();
   const now = useClock();
@@ -60,7 +97,7 @@ export default function TvDashboard() {
   // Group by customerName, sort groups alphabetically
   const groupMap = new Map<string, any[]>();
   for (const p of projects) {
-    const key = (p.customerName || "—").trim();
+    const key = (p.customerName ?? "").trim() || "—";
     if (!groupMap.has(key)) groupMap.set(key, []);
     groupMap.get(key)!.push(p);
   }
@@ -199,6 +236,9 @@ export default function TvDashboard() {
                     }}>{group.items.length}</span>
                   </div>
 
+                  {/* Column header row */}
+                  <ColHeader color={color} />
+
                   {/* Project rows */}
                   {group.items.map((p: any, idx: number) => {
                     const sKey = (p.status ?? "").toLowerCase();
@@ -211,7 +251,7 @@ export default function TvDashboard() {
                         data-testid={`tv-project-row-${p.id}`}
                         style={{
                           display: "flex", alignItems: "center",
-                          padding: "18px 28px",
+                          padding: "16px 28px",
                           borderLeft: `5px solid ${color}22`,
                           borderBottom: isLast ? "none" : "1px solid #f1f5f9",
                           gap: 24,
@@ -222,7 +262,8 @@ export default function TvDashboard() {
                           fontFamily: "'Barlow Condensed', sans-serif",
                           fontSize: 18, color: "#94a3b8",
                           letterSpacing: 0.5,
-                          minWidth: 140, flexShrink: 0,
+                          width: COL.po, flexShrink: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {p.poNumber || "—"}
                         </div>
@@ -236,29 +277,38 @@ export default function TvDashboard() {
                           fontSize: 26, fontWeight: 700,
                           color: "#1e293b", lineHeight: 1.2,
                           flex: 1, minWidth: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {p.name}
                         </div>
 
-                        {/* Location (if any) */}
-                        {p.jobLocation && (
-                          <div style={{
-                            fontSize: 16, color: "#94a3b8",
-                            flexShrink: 0, maxWidth: 220,
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>
-                            {p.jobLocation}
-                          </div>
-                        )}
+                        {/* Contact (ownerName) */}
+                        <div style={{
+                          fontSize: 16, color: "#64748b",
+                          width: COL.contact, flexShrink: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {p.ownerName || "—"}
+                        </div>
+
+                        {/* Location */}
+                        <div style={{
+                          fontSize: 16, color: "#94a3b8",
+                          width: COL.location, flexShrink: 0,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {p.jobLocation || "—"}
+                        </div>
 
                         {/* Status badge */}
                         <div style={{
                           background: s.bg, color: s.text,
                           fontFamily: "'Barlow Condensed', sans-serif",
-                          fontSize: 17, fontWeight: 800,
+                          fontSize: 16, fontWeight: 800,
                           letterSpacing: 1.2, textTransform: "uppercase",
-                          padding: "8px 24px", borderRadius: 6,
-                          flexShrink: 0, whiteSpace: "nowrap",
+                          padding: "8px 0", borderRadius: 6,
+                          width: COL.status, flexShrink: 0,
+                          textAlign: "center", whiteSpace: "nowrap",
                         }}>
                           {s.label}
                         </div>

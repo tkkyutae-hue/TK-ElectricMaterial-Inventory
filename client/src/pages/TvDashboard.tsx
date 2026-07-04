@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { LanguageSwitcher } from "@/hooks/use-language";
 
 const TV_STATUSES = new Set(["working on it", "start soon"]);
 
@@ -33,9 +34,9 @@ function useClock() {
 // ─── Column widths ──────────────────────────────────────────────────────────
 const COL = {
   po:      148,
-  contact: 180,
-  location: 210,
-  status:  180,
+  contact: 140,
+  location: 160,
+  status:  150,
 };
 
 // ─── Column header row ──────────────────────────────────────────────────────
@@ -159,7 +160,6 @@ export default function TvDashboard() {
   return (
     <div
       data-testid="tv-dashboard"
-      onClick={() => navigate("/home")}
       style={{
         height: "100vh",
         background: "#F5F6F8",
@@ -167,18 +167,21 @@ export default function TvDashboard() {
         flexDirection: "column",
         fontFamily: "'Barlow', 'Inter', sans-serif",
         userSelect: "none",
-        cursor: "pointer",
       }}
     >
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "16px 48px",
-        background: "#ffffff",
-        borderBottom: "3px solid #5D9B3B",
-        flexShrink: 0,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-      }}>
+      {/* ── Header (click anywhere to exit) ─────────────────────── */}
+      <header
+        onClick={() => navigate("/home")}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "16px 48px",
+          background: "#ffffff",
+          borderBottom: "3px solid #5D9B3B",
+          flexShrink: 0,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          cursor: "pointer",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{
             width: 12, height: 12, borderRadius: "50%", background: "#5D9B3B",
@@ -212,15 +215,9 @@ export default function TvDashboard() {
             }}>{timeStr}</div>
             <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 3 }}>{dateStr}</div>
           </div>
-          <button
-            data-testid="tv-exit-btn"
-            onClick={e => { e.stopPropagation(); navigate("/home"); }}
-            style={{
-              background: "none", border: "1px solid #e2e8f0",
-              borderRadius: 8, padding: "7px 16px",
-              fontSize: 13, color: "#94a3b8", cursor: "pointer",
-            }}
-          >← Exit</button>
+          <div onClick={e => e.stopPropagation()}>
+            <LanguageSwitcher theme="light" />
+          </div>
         </div>
       </header>
 
@@ -372,7 +369,7 @@ export default function TvDashboard() {
         fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 1.2,
         background: "#ffffff", borderTop: "1px solid #f1f5f9",
       }}>
-        AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK ANYWHERE TO EXIT
+        AUTO-REFRESHES EVERY 30s · PRESS ESC OR CLICK HEADER TO EXIT
       </div>
     </div>
   );

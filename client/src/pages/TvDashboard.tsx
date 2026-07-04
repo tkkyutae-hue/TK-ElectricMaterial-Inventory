@@ -117,11 +117,13 @@ export default function TvDashboard() {
     p => TV_STATUSES.has((p.status ?? "").toLowerCase())
   );
 
-  // Auto-scroll: slow downward loop, pause at bottom, reset to top
+  // Auto-scroll: smooth speed transitions + float accumulation to avoid rounding-to-zero
   useEffect(() => {
     let lastTs: number | null = null;
     let pausing = false;
     let pauseStart = 0;
+    let effectiveSpeed = scrollSpeedRef.current; // lerped toward target
+    let accumulated = 0;                         // fractional pixel buffer
 
     function tick(ts: number) {
       const el = scrollRef.current;
@@ -131,6 +133,11 @@ export default function TvDashboard() {
       const dt = Math.min(ts - lastTs, 100); // cap to avoid jump after tab switch
       lastTs = ts;
 
+      // Smooth speed transition: lerp toward slider target (~300ms to reach new speed)
+      const target = scrollSpeedRef.current;
+      const lerpFactor = Math.min(1, dt / 300);
+      effectiveSpeed += (target - effectiveSpeed) * lerpFactor;
+
       const overflows = el.scrollHeight > el.clientHeight + 2;
 
       if (overflows) {
@@ -138,12 +145,20 @@ export default function TvDashboard() {
           if (ts - pauseStart >= PAUSE_AT_BOTTOM_MS) {
             pausing = false;
             el.scrollTop = 0;
+            accumulated = 0;
           }
-        } else {
-          el.scrollTop += (scrollSpeedRef.current * dt) / 1000;
+        } else if (effectiveSpeed > 0.05) {
+          // Accumulate fractional pixels so small speeds don't round to 0
+          accumulated += (effectiveSpeed * dt) / 1000;
+          if (accumulated >= 1) {
+            const pixels = Math.floor(accumulated);
+            el.scrollTop += pixels;
+            accumulated -= pixels;
+          }
           if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
             pausing = true;
             pauseStart = ts;
+            accumulated = 0;
           }
         }
       }

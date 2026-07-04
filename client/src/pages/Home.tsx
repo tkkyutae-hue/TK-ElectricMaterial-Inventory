@@ -439,8 +439,8 @@ export default function Home() {
               accentColor="#818cf8"
               emoji="📺"
               emojiBg="rgba(129,140,248,0.10)"
-              title="Display Mode"
-              tags={["Live Board", "TV View", "Auto Refresh"]}
+              title={t.displayMode}
+              tags={[t.tagLiveBoard, t.tagTvView, t.tagAutoRefresh]}
               tagStyle={{
                 background: "rgba(129,140,248,0.10)",
                 border: "1px solid rgba(129,140,248,0.20)",

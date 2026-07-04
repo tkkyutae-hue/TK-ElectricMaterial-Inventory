@@ -32,6 +32,7 @@ const en = {
   adminMode:          "Admin Mode",
   inventoryMode:      "Inventory Mode",
   dailyReportMode:    "Daily Report Mode",
+  displayMode:        "Display Mode",
   logout:             "Logout",
   roleNote:           "— Contact an admin for elevated access.",
   role:               "Role",
@@ -48,6 +49,9 @@ const en = {
   tagProjects:        "Projects",
   tagManpower:        "Manpower",
   tagProgress:        "Progress",
+  tagLiveBoard:       "Live Board",
+  tagTvView:          "TV View",
+  tagAutoRefresh:     "Auto Refresh",
 
   // ── Field layout header ──────────────────────────────────────────────────
   fieldModeChip:      "Field Mode",
@@ -2403,6 +2407,7 @@ const ko: Translations = {
   adminMode:          "관리자 모드",
   inventoryMode:      "재고 모드",
   dailyReportMode:    "일일 보고 모드",
+  displayMode:        "디스플레이 모드",
   logout:             "로그아웃",
   roleNote:           "— 더 높은 권한은 관리자에게 문의하세요.",
   role:               "역할",
@@ -2418,6 +2423,9 @@ const ko: Translations = {
   tagProjects:        "프로젝트",
   tagManpower:        "인력",
   tagProgress:        "진행 상황",
+  tagLiveBoard:       "라이브 보드",
+  tagTvView:          "TV 화면",
+  tagAutoRefresh:     "자동 새로고침",
 
   fieldModeChip:      "현장 모드",
   back:               "뒤로",
@@ -4760,6 +4768,7 @@ const es: Translations = {
   adminMode:          "Modo Admin",
   inventoryMode:      "Modo Inventario",
   dailyReportMode:    "Modo Reporte Diario",
+  displayMode:        "Modo Pantalla",
   logout:             "Salir",
   roleNote:           "— Contacta a un admin para mayor acceso.",
   role:               "Rol",
@@ -4775,6 +4784,9 @@ const es: Translations = {
   tagProjects:        "Proyectos",
   tagManpower:        "Mano de Obra",
   tagProgress:        "Progreso",
+  tagLiveBoard:       "Panel en Vivo",
+  tagTvView:          "Vista TV",
+  tagAutoRefresh:     "Actualización Auto",
 
   fieldModeChip:      "Modo Campo",
   back:               "Atrás",

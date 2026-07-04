@@ -75,7 +75,7 @@ function ColHeader({ color, t }: { color: string; t: Translations }) {
   );
 }
 
-const SCROLL_PX_PER_SEC = 50; // reading speed ~50px/s
+const SCROLL_PX_PER_SEC = 40; // reading speed ~40px/s
 const PAUSE_AT_BOTTOM_MS = 2500;
 
 export default function TvDashboard() {

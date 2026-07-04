@@ -150,9 +150,11 @@ export async function generateCompletionReportPptx(
   prs.layout = "LAYOUT_4x3";
 
   const sections = report.sections ?? [];
+  const drawingSections = report.drawingSections ?? [];
 
   // ── Pre-calculate total page count ──────────────────────────────────────────
-  const fixedPageCount = 5; // cover + TOC + WFR + Quotation + Drawing
+  // cover + TOC + WFR + Quotation + N drawing sections + photo sections
+  const fixedPageCount = 4 + Math.max(drawingSections.length, 1); // always at least 1 drawing slot
   const sectionPageCounts = sections.map(s => {
     const photos = s.photos ?? [];
     const pps = autoPps(photos.length);
@@ -248,19 +250,26 @@ export async function generateCompletionReportPptx(
       });
     }
 
-    // TOC items: first 4 fixed, then one entry per section
+    // TOC items: 01 WFR, 02 Quotation, 03..0N drawing sections, then photo sections
+    const drawingTocItems = drawingSections.length > 0
+      ? drawingSections.map((ds, i) => ({
+          num: String(i + 3).padStart(2, "0"),
+          title: ds.title || "도면",
+        }))
+      : [{ num: "03", title: "도면" }];
+    const photoOffset = 2 + drawingTocItems.length + 1;
     const tocItems = [
       { num: "01", title: "Work Final Report" },
       { num: "02", title: "Quotation" },
-      { num: "03", title: "Drawing" },
+      ...drawingTocItems,
       ...sections.map((s, i) => ({
-        num: String(i + 4).padStart(2, "0"),
+        num: String(photoOffset + i).padStart(2, "0"),
         title: s.title || "Work Picture",
       })),
     ];
 
-    const startY = sections.length <= 1 ? 2.45 : 2.0;
-    const rowH   = sections.length <= 4 ? 1.05 : Math.min(1.05, (7.5 - startY - 0.3) / tocItems.length);
+    const startY = tocItems.length <= 3 ? 2.45 : 2.0;
+    const rowH   = tocItems.length <= 4 ? 1.05 : Math.min(1.05, (7.5 - startY - 0.3) / tocItems.length);
 
     for (let i = 0; i < tocItems.length; i++) {
       const item = tocItems[i];
@@ -405,21 +414,27 @@ export async function generateCompletionReportPptx(
     addPageNumber(slide, pageNum, totalPages);
   }
 
-  // ── Slide 5: Drawing ──────────────────────────────────────────────────────
-  {
+  // ── Drawing slides (one per drawing section) ─────────────────────────────
+  const drawingSlides = drawingSections.length > 0
+    ? drawingSections
+    : [{ id: 0, title: "도면", imageUrl: report.drawingImageUrl ?? null, sortOrder: 0, reportId: report.id, createdAt: null }];
+  const infoTableBottom = HEADER_H + 0.1 + 0.7;
+
+  for (let di = 0; di < drawingSlides.length; di++) {
+    const ds = drawingSlides[di];
     const slide = prs.addSlide();
     slide.background = { color: WHITE };
     pageNum++;
-    await addPageHeader(slide, prs, "03  DRAWING");
+    const tocNum = String(di + 3).padStart(2, "0");
+    await addPageHeader(slide, prs, `${tocNum}  ${(ds.title || "도면").toUpperCase()}`);
     addInfoTable(slide, project, report);
 
-    const infoTableBottom = HEADER_H + 0.1 + 0.7; // approx
-    slide.addText("Drawing", {
+    slide.addText(ds.title || "도면", {
       x: 0.3, y: infoTableBottom + 0.15, w: 9.4, h: 0.35,
       fontSize: 13, bold: false, color: DARK, fontFace: "Calibri", align: "center",
     });
 
-    const dData = await imgBase64(report.drawingImageUrl);
+    const dData = await imgBase64(ds.imageUrl);
     if (dData) {
       slide.addImage({ data: dData, x: 0.3, y: infoTableBottom + 0.55, w: 9.4, h: 5.0 });
     } else {
@@ -453,7 +468,7 @@ export async function generateCompletionReportPptx(
     const layout = PHOTO_LAYOUTS[pps];
     const { photoW, photoH, cols, colX, rowY } = layout;
     const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
-    const sectionNum = String(sectionIdx + 4).padStart(2, "0");
+    const sectionNum = String(sectionIdx + 2 + drawingSlides.length + 1).padStart(2, "0");
     const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / pps);
 
     for (let i = 0; i < Math.max(photos.length, 1); i += pps) {

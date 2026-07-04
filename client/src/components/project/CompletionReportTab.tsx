@@ -46,6 +46,14 @@ interface PhotoSection {
   photos: Photo[];
 }
 
+interface DrawingSection {
+  id: number;
+  reportId: number;
+  title: string;
+  imageUrl: string | null;
+  sortOrder: number;
+}
+
 interface ReportData {
   id: number;
   projectId: number;
@@ -56,6 +64,7 @@ interface ReportData {
   drawingImageUrl: string | null;
   sections: PhotoSection[];
   photos: Photo[];
+  drawingSections: DrawingSection[];
 }
 
 export function CompletionReportTab({ projectId, project }: { projectId: number; project: any }) {
@@ -100,6 +109,35 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
       apiRequest("DELETE", `/api/projects/${projectId}/completion-report/sections/${sectionId}`),
     onSuccess: invalidate,
   });
+
+  const addDrawingSectionMut = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", `/api/projects/${projectId}/completion-report/drawing-sections`, {}),
+    onSuccess: invalidate,
+  });
+
+  const updateDrawingSectionMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { title?: string; imageUrl?: string | null } }) =>
+      apiRequest("PUT", `/api/projects/${projectId}/completion-report/drawing-sections/${id}`, data),
+    onSuccess: invalidate,
+  });
+
+  const deleteDrawingSectionMut = useMutation({
+    mutationFn: (sectionId: number) =>
+      apiRequest("DELETE", `/api/projects/${projectId}/completion-report/drawing-sections/${sectionId}`),
+    onSuccess: invalidate,
+  });
+
+  async function handleDrawingSectionUpload(sectionId: number, file: File, pdfPage?: number) {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (pdfPage !== undefined) fd.append("pdfPage", String(pdfPage));
+    const res = await fetch(`/api/projects/${projectId}/completion-report/drawing-sections/${sectionId}/upload`, {
+      method: "POST", credentials: "include", body: fd,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    invalidate();
+  }
 
   async function handleUpload(type: "quotation" | "drawing", file: File, pdfPage?: number) {
     const fd = new FormData();
@@ -226,6 +264,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
   if (!report) return null;
 
   const sections = report.sections ?? [];
+  const drawingSections = report.drawingSections ?? [];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -314,26 +353,39 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         />
       </SlideSection>
 
-      {/* Slide 4 – Drawing */}
-      <SlideSection label={t.compRptSlide4Label} title={t.compRptSlide4Title} icon={<Image className="w-4 h-4" />} defaultOpen>
-        <ImageUploadBox
-          label={t.compRptUploadDrawing}
-          currentUrl={report.drawingImageUrl}
-          onUpload={(f, page) => handleUpload("drawing", f, page)}
+      {/* Drawing Sections (dynamic, one slide each) */}
+      {drawingSections.map((ds, dsIdx) => (
+        <DrawingSectionCard
+          key={ds.id}
+          section={ds}
+          slideLabel={`Slide ${3 + dsIdx + 1}`}
+          canDelete={drawingSections.length > 1}
+          onUpload={(file, page) => handleDrawingSectionUpload(ds.id, file, page)}
           onGetPdfPageCount={getPdfPageCount}
           onGetPdfPreview={getPdfPreview}
-          onRemove={() => updateMut.mutate({ drawingImageUrl: null })}
-          testId="upload-drawing"
-          acceptPdf
+          onRemove={() => updateDrawingSectionMut.mutate({ id: ds.id, data: { imageUrl: null } })}
+          onUpdateTitle={(title) => updateDrawingSectionMut.mutate({ id: ds.id, data: { title } })}
+          onDeleteSection={() => deleteDrawingSectionMut.mutate(ds.id)}
         />
-      </SlideSection>
+      ))}
+
+      {/* Add Drawing Section button */}
+      <button
+        onClick={() => addDrawingSectionMut.mutate()}
+        disabled={addDrawingSectionMut.isPending}
+        data-testid="button-add-drawing-section"
+        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-sm text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/30 transition-colors"
+      >
+        {addDrawingSectionMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+        {t.compRptAddDrawingSection}
+      </button>
 
       {/* Photo Sections */}
       {sections.map((section, sIdx) => (
         <PhotoSectionCard
           key={section.id}
           section={section}
-          slideLabel={`Slide ${5 + sIdx}+`}
+          slideLabel={`Slide ${4 + drawingSections.length + sIdx}+`}
           sensors={sensors}
           onUpload={(file) => handleSectionPhotoUpload(section.id, file)}
           onDelete={(photoId) => deleteMut.mutate(photoId)}
@@ -363,6 +415,110 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
         {t.compRptAddSection}
       </button>
 
+    </div>
+  );
+}
+
+// ── DrawingSectionCard ───────────────────────────────────────────────────────
+
+function DrawingSectionCard({
+  section, slideLabel, canDelete, onUpload, onGetPdfPageCount, onGetPdfPreview,
+  onRemove, onUpdateTitle, onDeleteSection,
+}: {
+  section: DrawingSection;
+  slideLabel: string;
+  canDelete: boolean;
+  onUpload: (f: File, pdfPage?: number) => Promise<void>;
+  onGetPdfPageCount?: (f: File) => Promise<number>;
+  onGetPdfPreview?: (f: File, page: number) => Promise<string>;
+  onRemove: () => void;
+  onUpdateTitle: (title: string) => void;
+  onDeleteSection: () => void;
+}) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(true);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(section.title);
+
+  function commitTitle() {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== section.title) onUpdateTitle(trimmed);
+    setEditingTitle(false);
+  }
+  function cancelTitle() {
+    setTitleDraft(section.title);
+    setEditingTitle(false);
+  }
+
+  return (
+    <div className="premium-card bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+        <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100 shrink-0">
+          {slideLabel}
+        </span>
+        <Image className="w-4 h-4 text-slate-400 shrink-0" />
+
+        {editingTitle ? (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") commitTitle(); if (e.key === "Escape") cancelTitle(); }}
+              className="flex-1 min-w-0 border border-brand-400 rounded px-2 py-0.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              data-testid={`input-drawing-section-title-${section.id}`}
+            />
+            <button onClick={commitTitle} className="text-brand-600 hover:text-brand-800 p-0.5" data-testid={`button-drawing-title-confirm-${section.id}`}><Check className="w-4 h-4" /></button>
+            <button onClick={cancelTitle} className="text-slate-400 hover:text-slate-600 p-0.5" data-testid={`button-drawing-title-cancel-${section.id}`}><X className="w-4 h-4" /></button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-slate-700 font-semibold text-sm truncate">{section.title}</span>
+            <button
+              onClick={() => { setTitleDraft(section.title); setEditingTitle(true); }}
+              className="text-slate-300 hover:text-slate-500 p-0.5 shrink-0"
+              data-testid={`button-drawing-section-title-edit-${section.id}`}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
+          {canDelete && (
+            <button
+              onClick={onDeleteSection}
+              className="text-slate-300 hover:text-red-500 p-1 transition-colors"
+              data-testid={`button-delete-drawing-section-${section.id}`}
+              title={t.compRptDeleteDrawingSection}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="text-slate-400 hover:text-slate-600 p-1"
+            data-testid={`button-drawing-section-collapse-${section.id}`}
+          >
+            {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="p-4">
+          <ImageUploadBox
+            label={t.compRptUploadDrawing}
+            currentUrl={section.imageUrl}
+            onUpload={onUpload}
+            onGetPdfPageCount={onGetPdfPageCount}
+            onGetPdfPreview={onGetPdfPreview}
+            onRemove={onRemove}
+            testId={`upload-drawing-section-${section.id}`}
+            acceptPdf
+          />
+        </div>
+      )}
     </div>
   );
 }

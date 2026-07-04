@@ -31,9 +31,10 @@ import {
   wireReelMovementLines,
   toolAssets,
   type ToolAsset, type CreateToolAssetRequest, type UpdateToolAssetRequest, type ToolAssetWithRelations,
-  completionReports, completionReportPhotos, completionReportPhotoSections,
+  completionReports, completionReportPhotos, completionReportPhotoSections, completionReportDrawingSections,
   type CompletionReport, type CompletionReportPhoto, type CompletionReportWithPhotos,
   type CompletionReportPhotoSection, type CompletionReportSectionWithPhotos, type CompletionReportWithSections,
+  type CompletionReportDrawingSection,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -303,6 +304,9 @@ export interface IStorage {
   createCompletionReportSection(reportId: number, data: { title: string; photosPerSlide?: number; sortOrder?: number }): Promise<CompletionReportPhotoSection>;
   updateCompletionReportSection(id: number, data: Partial<Pick<CompletionReportPhotoSection, "title" | "photosPerSlide" | "sortOrder">>): Promise<CompletionReportPhotoSection>;
   deleteCompletionReportSection(id: number): Promise<void>;
+  createDrawingSection(reportId: number, data: { title: string; sortOrder?: number }): Promise<CompletionReportDrawingSection>;
+  updateDrawingSection(id: number, data: Partial<Pick<CompletionReportDrawingSection, "title" | "imageUrl" | "sortOrder">>): Promise<CompletionReportDrawingSection>;
+  deleteDrawingSection(id: number): Promise<void>;
 
 }
 
@@ -4284,7 +4288,23 @@ export class DatabaseStorage implements IStorage {
       photos: photosBySectionId.get(s.id) ?? [],
     }));
 
-    return { ...report, sections: sectionsWithPhotos, photos: allPhotos };
+    // Load drawing sections
+    let drawingSections = await db.select().from(completionReportDrawingSections)
+      .where(eq(completionReportDrawingSections.reportId, report.id))
+      .orderBy(asc(completionReportDrawingSections.sortOrder), asc(completionReportDrawingSections.id));
+
+    // Migrate old single drawingImageUrl → first drawing section
+    if (drawingSections.length === 0) {
+      const [ds] = await db.insert(completionReportDrawingSections).values({
+        reportId: report.id,
+        title: "도면",
+        imageUrl: report.drawingImageUrl ?? null,
+        sortOrder: 0,
+      }).returning();
+      drawingSections = [ds];
+    }
+
+    return { ...report, sections: sectionsWithPhotos, photos: allPhotos, drawingSections };
   }
 
   async updateCompletionReport(id: number, data: Partial<Pick<CompletionReport, "contractItem" | "workDescription" | "completionDate" | "quotationImageUrl" | "drawingImageUrl">>): Promise<CompletionReport> {
@@ -4332,6 +4352,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCompletionReportSection(id: number): Promise<void> {
     await db.delete(completionReportPhotoSections).where(eq(completionReportPhotoSections.id, id));
+  }
+
+  async createDrawingSection(reportId: number, data: { title: string; sortOrder?: number }): Promise<CompletionReportDrawingSection> {
+    const [section] = await db.insert(completionReportDrawingSections).values({
+      reportId,
+      title: data.title,
+      sortOrder: data.sortOrder ?? 0,
+    }).returning();
+    return section;
+  }
+
+  async updateDrawingSection(id: number, data: Partial<Pick<CompletionReportDrawingSection, "title" | "imageUrl" | "sortOrder">>): Promise<CompletionReportDrawingSection> {
+    const [updated] = await db.update(completionReportDrawingSections)
+      .set(data)
+      .where(eq(completionReportDrawingSections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDrawingSection(id: number): Promise<void> {
+    await db.delete(completionReportDrawingSections).where(eq(completionReportDrawingSections.id, id));
   }
 
 }

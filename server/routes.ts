@@ -684,6 +684,87 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Drawing Section CRUD ───────────────────────────────────────────────────
+  app.post("/api/projects/:id/completion-report/drawing-sections", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
+      const sortOrder = report.drawingSections?.length ?? 0;
+      const defaultTitle = sortOrder === 0 ? "도면" : `도면 ${sortOrder + 1}`;
+      const section = await storage.createDrawingSection(report.id, {
+        title: req.body.title || defaultTitle,
+        sortOrder,
+      });
+      res.json(section);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/projects/:id/completion-report/drawing-sections/:sid", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const { title } = req.body;
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      const section = await storage.updateDrawingSection(Number(req.params.sid), updateData);
+      res.json(section);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/projects/:id/completion-report/drawing-sections/:sid", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      await storage.deleteDrawingSection(Number(req.params.sid));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // Upload image for a specific drawing section (supports JPG/PNG/PDF)
+  app.post("/api/projects/:id/completion-report/drawing-sections/:sid/upload", isAuthenticated, requireManager, uploadCompletionReport.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      const isPdf = req.file.mimetype === "application/pdf";
+      let fileBuffer: Buffer = req.file.buffer;
+      let ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
+
+      if (isPdf) {
+        try {
+          const { fromBuffer } = await import("pdf2pic");
+          const convert = fromBuffer(fileBuffer, { density: 150, format: "jpeg", width: 2480, height: 3508 });
+          const result = await convert(1);
+          if (result?.base64) {
+            fileBuffer = Buffer.from(result.base64, "base64");
+            ext = ".jpg";
+          } else {
+            return res.status(400).json({ message: "Could not convert PDF to image." });
+          }
+        } catch {
+          return res.status(400).json({ message: "PDF conversion failed." });
+        }
+      } else {
+        if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
+          return res.status(400).json({ message: "File content does not match declared type." });
+        }
+        const sharp = (await import("sharp")).default;
+        fileBuffer = await sharp(fileBuffer).rotate().jpeg({ quality: 90 }).toBuffer();
+        ext = ".jpg";
+      }
+
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      await uploadBuffer(filename, fileBuffer, "image/jpeg");
+      const url = `/uploads/${filename}`;
+
+      const sectionId = Number(req.params.sid);
+      const updated = await storage.updateDrawingSection(sectionId, { imageUrl: url });
+      return res.json(updated);
+    } catch (err: any) {
+      console.error("Drawing section upload error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/projects/:id/completion-report/photos/:photoId", isAuthenticated, requireManager, async (req, res) => {
     try {
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));

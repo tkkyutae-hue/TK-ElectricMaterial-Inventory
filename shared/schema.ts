@@ -738,6 +738,16 @@ export const completionReports = pgTable("completion_reports", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Drawing sections — each generates its own slide in the PPTX (one image per section)
+export const completionReportDrawingSections = pgTable("completion_report_drawing_sections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => completionReports.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("도면"),
+  imageUrl: text("image_url"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Photo sections — each section generates its own slide group in the PPTX
 export const completionReportPhotoSections = pgTable("completion_report_photo_sections", {
   id: serial("id").primaryKey(),
@@ -768,13 +778,18 @@ export const insertCompletionReportPhotoSchema = createInsertSchema(completionRe
 export const insertCompletionReportPhotoSectionSchema = createInsertSchema(completionReportPhotoSections).omit({
   id: true, createdAt: true,
 });
+export const insertCompletionReportDrawingSectionSchema = createInsertSchema(completionReportDrawingSections).omit({
+  id: true, createdAt: true,
+});
 
 export type CompletionReport = typeof completionReports.$inferSelect;
 export type CompletionReportPhoto = typeof completionReportPhotos.$inferSelect;
 export type CompletionReportPhotoSection = typeof completionReportPhotoSections.$inferSelect;
+export type CompletionReportDrawingSection = typeof completionReportDrawingSections.$inferSelect;
 export type CompletionReportSectionWithPhotos = CompletionReportPhotoSection & { photos: CompletionReportPhoto[] };
 export type CompletionReportWithPhotos = CompletionReport & { photos: CompletionReportPhoto[] };
 export type CompletionReportWithSections = CompletionReport & {
   sections: CompletionReportSectionWithPhotos[];
   photos: CompletionReportPhoto[];
+  drawingSections: CompletionReportDrawingSection[];
 };

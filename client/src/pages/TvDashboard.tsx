@@ -212,9 +212,9 @@ export default function TvDashboard() {
             }}>TK Electric LLC</span>
             <span style={{
               fontFamily: "'Barlow Condensed', sans-serif",
-              fontSize: 12, fontWeight: 700, color: "#94a3b8",
+              fontSize: 18, fontWeight: 700, color: "#94a3b8",
               letterSpacing: 2.5, textTransform: "uppercase",
-            }}>사바나</span>
+            }}>{t.tvBranchName}</span>
           </div>
           <span style={{ width: 1, height: 26, background: "#e2e8f0" }} />
           <span style={{

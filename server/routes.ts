@@ -730,19 +730,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let ext = MIME_TO_EXT[req.file.mimetype] ?? ".jpg";
 
       if (isPdf) {
-        try {
-          const { fromBuffer } = await import("pdf2pic");
-          const convert = fromBuffer(fileBuffer, { density: 150, format: "jpeg", width: 2480, height: 3508 });
-          const result = await convert(1);
-          if (result?.base64) {
-            fileBuffer = Buffer.from(result.base64, "base64");
-            ext = ".jpg";
-          } else {
-            return res.status(400).json({ message: "Could not convert PDF to image." });
-          }
-        } catch {
-          return res.status(400).json({ message: "PDF conversion failed." });
-        }
+        const { pdfFirstPageToPng } = await import("./services/pdfFirstPage");
+        const rawPage = parseInt(req.body.pdfPage ?? "1", 10);
+        const pageNumber = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+        fileBuffer = await pdfFirstPageToPng(req.file.buffer, pageNumber);
+        ext = ".png";
       } else {
         if (!isImageMagicBytes(fileBuffer, req.file.mimetype)) {
           return res.status(400).json({ message: "File content does not match declared type." });
@@ -752,8 +744,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         ext = ".jpg";
       }
 
+      const mimeType = ext === ".png" ? "image/png" : "image/jpeg";
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      await uploadBuffer(filename, fileBuffer, "image/jpeg");
+      await uploadBuffer(filename, fileBuffer, mimeType);
       const url = `/uploads/${filename}`;
 
       const sectionId = Number(req.params.sid);

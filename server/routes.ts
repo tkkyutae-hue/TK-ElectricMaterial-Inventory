@@ -689,7 +689,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const report = await storage.getOrCreateCompletionReport(Number(req.params.id));
       const sortOrder = report.drawingSections?.length ?? 0;
-      const defaultTitle = sortOrder === 0 ? "도면" : `도면 ${sortOrder + 1}`;
+      const defaultTitle = sortOrder === 0 ? "Drawing" : `Drawing ${sortOrder + 1}`;
       const section = await storage.createDrawingSection(report.id, {
         title: req.body.title || defaultTitle,
         sortOrder,

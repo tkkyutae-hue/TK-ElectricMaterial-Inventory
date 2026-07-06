@@ -227,25 +227,25 @@ export async function generateCompletionReportPptx(
     slide.background = { color: WHITE };
     pageNum++;
 
-    // Green bar (taller for TOC)
+    // Green bar (same height as all other slides)
     slide.addShape(prs.ShapeType.rect, {
-      x: 0, y: 0, w: SLIDE_W, h: 1.1,
+      x: 0, y: 0, w: SLIDE_W, h: HEADER_H,
       fill: { color: TK_GREEN }, line: { color: TK_GREEN },
     });
     slide.addText("TABLE OF CONTENTS", {
-      x: 0.4, y: 0.1, w: 7.3, h: 0.9,
-      fontSize: 28, bold: true, color: WHITE,
+      x: 0.35, y: 0, w: 7.5, h: HEADER_H,
+      fontSize: 13, bold: true, color: WHITE,
       fontFace: "Calibri", align: "left", valign: "middle",
     });
 
-    // Logo INSIDE the green bar (right side)
+    // Logo INSIDE the green bar (right side — matches addPageHeader)
     const tocLogoData = await localFileBase64(LOGO_PATH);
     if (tocLogoData) {
-      slide.addImage({ data: tocLogoData, x: 8.1, y: 0.13, w: 1.7, h: 0.84 });
+      slide.addImage({ data: tocLogoData, x: 8.1, y: 0.04, w: 1.7, h: 0.57 });
     } else {
       slide.addText("TK ELECTRIC LLC.", {
-        x: 7.5, y: 0.1, w: 2.3, h: 0.9,
-        fontSize: 9, bold: true, color: WHITE,
+        x: 7.5, y: 0, w: 2.3, h: HEADER_H,
+        fontSize: 8, bold: true, color: WHITE,
         fontFace: "Calibri", align: "right", valign: "middle",
       });
     }
@@ -254,9 +254,9 @@ export async function generateCompletionReportPptx(
     const drawingTocItems = drawingSections.length > 0
       ? drawingSections.map((ds, i) => ({
           num: String(i + 3).padStart(2, "0"),
-          title: ds.title || "도면",
+          title: ds.title || "Drawing",
         }))
-      : [{ num: "03", title: "도면" }];
+      : [{ num: "03", title: "Drawing" }];
     const photoOffset = 2 + drawingTocItems.length + 1;
     const tocItems = [
       { num: "01", title: "Work Final Report" },
@@ -417,7 +417,7 @@ export async function generateCompletionReportPptx(
   // ── Drawing slides (one per drawing section) ─────────────────────────────
   const drawingSlides = drawingSections.length > 0
     ? drawingSections
-    : [{ id: 0, title: "도면", imageUrl: report.drawingImageUrl ?? null, sortOrder: 0, reportId: report.id, createdAt: null }];
+    : [{ id: 0, title: "Drawing", imageUrl: report.drawingImageUrl ?? null, sortOrder: 0, reportId: report.id, createdAt: null }];
   const infoTableBottom = HEADER_H + 0.1 + 0.7;
 
   for (let di = 0; di < drawingSlides.length; di++) {
@@ -426,10 +426,10 @@ export async function generateCompletionReportPptx(
     slide.background = { color: WHITE };
     pageNum++;
     const tocNum = String(di + 3).padStart(2, "0");
-    await addPageHeader(slide, prs, `${tocNum}  ${(ds.title || "도면").toUpperCase()}`);
+    await addPageHeader(slide, prs, `${tocNum}  ${(ds.title || "Drawing").toUpperCase()}`);
     addInfoTable(slide, project, report);
 
-    slide.addText(ds.title || "도면", {
+    slide.addText(ds.title || "Drawing", {
       x: 0.3, y: infoTableBottom + 0.15, w: 9.4, h: 0.35,
       fontSize: 13, bold: false, color: DARK, fontFace: "Calibri", align: "center",
     });

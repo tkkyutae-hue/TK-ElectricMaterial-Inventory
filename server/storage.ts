@@ -4297,7 +4297,7 @@ export class DatabaseStorage implements IStorage {
     if (drawingSections.length === 0) {
       const [ds] = await db.insert(completionReportDrawingSections).values({
         reportId: report.id,
-        title: "도면",
+        title: "Drawing",
         imageUrl: report.drawingImageUrl ?? null,
         sortOrder: 0,
       }).returning();

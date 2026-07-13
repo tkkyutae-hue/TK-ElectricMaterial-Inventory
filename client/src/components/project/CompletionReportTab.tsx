@@ -947,11 +947,14 @@ function CropEditorModal({
   const { t } = useLanguage();
   const [crop, setCrop] = useState<Crop | undefined>();
   const [zoom, setZoom] = useState(1);
+  const [fitPx, setFitPx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setZoom(1);
+    setFitPx(null);
     const hasSaved =
       photo.cropX != null && photo.cropY != null &&
       photo.cropWidth != null && photo.cropHeight != null &&
@@ -970,12 +973,22 @@ function CropEditorModal({
   }, [open, photo.cropX, photo.cropY, photo.cropWidth, photo.cropHeight]);
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    const { naturalWidth, naturalHeight } = img;
+
+    // Calculate the pixel width that makes the full image fit in the container
+    const containerW = containerRef.current?.clientWidth ?? 600;
+    const maxH = window.innerHeight * 0.55;
+    const scaleW = containerW / naturalWidth;
+    const scaleH = maxH / naturalHeight;
+    const fitScale = Math.min(scaleW, scaleH, 1); // never upscale beyond natural
+    setFitPx(Math.round(naturalWidth * fitScale));
+
     const hasSaved =
       photo.cropX != null && photo.cropY != null &&
       photo.cropWidth != null && photo.cropHeight != null &&
       Number(photo.cropWidth) > 0;
     if (!hasSaved) {
-      const { naturalWidth, naturalHeight } = e.currentTarget;
       const c = centerCrop(
         makeAspectCrop({ unit: "%", width: 90 }, PPT_ASPECT, naturalWidth, naturalHeight),
         naturalWidth,
@@ -996,6 +1009,10 @@ function CropEditorModal({
     onClose();
   }
 
+  // Rendered image width in px: fitPx * zoom
+  // At zoom=1 the full image is visible; <1 = shrink, >1 = zoom in
+  const imgWidthPx = fitPx != null ? Math.round(fitPx * zoom) : undefined;
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-2xl w-full">
@@ -1007,8 +1024,12 @@ function CropEditorModal({
         </DialogHeader>
         <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
 
-        {/* Crop area — scrollable so zoomed image stays accessible */}
-        <div className="overflow-auto bg-slate-100 rounded-lg" style={{ maxHeight: "55vh" }}>
+        {/* Crop area — overflow scroll but scrollbar hidden */}
+        <div
+          ref={containerRef}
+          className="no-scrollbar bg-slate-100 rounded-lg flex items-center justify-center"
+          style={{ maxHeight: "55vh", overflow: "auto" }}
+        >
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -1019,7 +1040,7 @@ function CropEditorModal({
               ref={imgRef}
               src={photo.photoUrl}
               alt="crop editor"
-              style={{ width: `${zoom * 100}%`, display: "block" }}
+              style={{ width: imgWidthPx ? `${imgWidthPx}px` : "100%", display: "block" }}
               onLoad={onImageLoad}
               data-testid={`img-crop-editor-${photo.id}`}
             />
@@ -1031,7 +1052,7 @@ function CropEditorModal({
           <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="range"
-            min={1}
+            min={0.3}
             max={3}
             step={0.05}
             value={zoom}
@@ -1042,7 +1063,7 @@ function CropEditorModal({
           />
           <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
           <span className="text-[11px] text-slate-500 w-9 text-right tabular-nums shrink-0">
-            {zoom.toFixed(1)}×
+            {Math.round(zoom * 100)}%
           </span>
         </div>
 

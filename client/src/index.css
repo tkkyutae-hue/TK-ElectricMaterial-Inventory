@@ -206,6 +206,10 @@ body[data-field-mode] [data-toast-viewport] li:not(.destructive) button:not([toa
 .tv-scroll-area { -ms-overflow-style: none; scrollbar-width: none; }
 .tv-scroll-area::-webkit-scrollbar { display: none; }
 
+/* Generic no-scrollbar utility */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Field Inventory — category strip scrollbar:
    Mobile → hidden completely (swipe still works)
    Desktop → very thin and subtle so it's not loud */

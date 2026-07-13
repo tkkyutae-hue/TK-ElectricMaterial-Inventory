@@ -13,8 +13,8 @@ import {
   ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X, Crop as CropIcon,
   ZoomIn, ZoomOut,
 } from "lucide-react";
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 import {
   DndContext,
   closestCenter,
@@ -945,78 +945,39 @@ function CropEditorModal({
   onApply: (coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null) => void;
 }) {
   const { t } = useLanguage();
-  const [crop, setCrop] = useState<Crop | undefined>();
+  const [cropperKey, setCropperKey] = useState(0);
+  const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [fitPx, setFitPx] = useState<number | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const naturalRef = useRef<{ w: number; h: number } | null>(null);
+  const [completedArea, setCompletedArea] = useState<Area | null>(null);
 
-  // Compute fitPx from actual container dimensions (called after dialog animation)
-  function calcFitPx() {
-    const nat = naturalRef.current;
-    const cw = containerRef.current?.clientWidth;
-    if (!nat || !cw) return;
-    const maxH = window.innerHeight * 0.55;
-    const fitScale = Math.min(cw / nat.w, maxH / nat.h, 1);
-    setFitPx(Math.round(nat.w * fitScale));
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    setZoom(1);
-    setFitPx(null);
-    naturalRef.current = null;
-    const hasSaved =
-      photo.cropX != null && photo.cropY != null &&
-      photo.cropWidth != null && photo.cropHeight != null &&
-      Number(photo.cropWidth) > 0;
-    if (hasSaved) {
-      setCrop({
-        unit: "%",
+  const hasSavedCrop =
+    photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
+  const initZoom = hasSavedCrop ? Math.max(1, 100 / Number(photo.cropWidth)) : 1;
+  const initAreaPct: Area | undefined = hasSavedCrop
+    ? {
         x: Number(photo.cropX),
         y: Number(photo.cropY),
         width: Number(photo.cropWidth),
         height: Number(photo.cropHeight),
-      });
-    } else {
-      setCrop(undefined);
-    }
-    // Re-measure after dialog animation completes (~200ms for Radix)
-    const tid = setTimeout(calcFitPx, 220);
-    return () => clearTimeout(tid);
-  }, [open, photo.cropX, photo.cropY, photo.cropWidth, photo.cropHeight]);
+      }
+    : undefined;
 
-  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const img = e.currentTarget;
-    const { naturalWidth, naturalHeight } = img;
-    naturalRef.current = { w: naturalWidth, h: naturalHeight };
-
-    // Conservative initial estimate so image doesn't overflow while waiting
-    const initW = Math.min(window.innerWidth - 80, 580);
-    const maxH = window.innerHeight * 0.55;
-    const initScale = Math.min(initW / naturalWidth, maxH / naturalHeight, 1);
-    setFitPx(Math.round(naturalWidth * initScale));
-
-    const hasSaved =
-      photo.cropX != null && photo.cropY != null &&
-      photo.cropWidth != null && photo.cropHeight != null &&
-      Number(photo.cropWidth) > 0;
-    if (!hasSaved) {
-      const c = centerCrop(
-        makeAspectCrop({ unit: "%", width: 90 }, PPT_ASPECT, naturalWidth, naturalHeight),
-        naturalWidth,
-        naturalHeight,
-      );
-      setCrop(c);
-    }
-    // Refine with actual container width after paint
-    requestAnimationFrame(() => requestAnimationFrame(calcFitPx));
-  }
+  useEffect(() => {
+    if (!open) return;
+    setZoom(initZoom);
+    setCropPos({ x: 0, y: 0 });
+    setCompletedArea(null);
+    setCropperKey((k) => k + 1);
+  }, [open]);
 
   function handleApply() {
-    if (!crop || !crop.width || !crop.height) return;
-    onApply({ cropX: crop.x, cropY: crop.y, cropWidth: crop.width, cropHeight: crop.height });
+    if (!completedArea) return;
+    onApply({
+      cropX: completedArea.x,
+      cropY: completedArea.y,
+      cropWidth: completedArea.width,
+      cropHeight: completedArea.height,
+    });
     onClose();
   }
 
@@ -1024,10 +985,6 @@ function CropEditorModal({
     onApply(null);
     onClose();
   }
-
-  // Rendered image width in px: fitPx * zoom
-  // At zoom=1 the full image is visible; <1 = shrink, >1 = zoom in
-  const imgWidthPx = fitPx != null ? Math.round(fitPx * zoom) : undefined;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -1040,27 +997,24 @@ function CropEditorModal({
         </DialogHeader>
         <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
 
-        {/* Crop area — overflow scroll but scrollbar hidden */}
-        <div
-          ref={containerRef}
-          className="no-scrollbar bg-slate-100 rounded-lg flex items-center justify-center"
-          style={{ maxHeight: "55vh", overflow: "auto" }}
-        >
-          <ReactCrop
-            crop={crop}
-            onChange={(_, percentCrop) => setCrop(percentCrop)}
+        {/* react-easy-crop: fixed crop box, image pans/zooms beneath it */}
+        <div className="relative rounded-lg overflow-hidden bg-slate-900" style={{ height: "55vh" }}>
+          <Cropper
+            key={cropperKey}
+            image={photo.photoUrl}
+            crop={cropPos}
+            zoom={zoom}
             aspect={PPT_ASPECT}
-            minWidth={10}
-          >
-            <img
-              ref={imgRef}
-              src={photo.photoUrl}
-              alt="crop editor"
-              style={{ width: imgWidthPx ? `${imgWidthPx}px` : "100%", display: "block" }}
-              onLoad={onImageLoad}
-              data-testid={`img-crop-editor-${photo.id}`}
-            />
-          </ReactCrop>
+            minZoom={0.5}
+            maxZoom={5}
+            onCropChange={setCropPos}
+            onZoomChange={setZoom}
+            onCropComplete={(croppedArea) => setCompletedArea(croppedArea)}
+            initialCroppedAreaPercentages={initAreaPct}
+            style={{
+              containerStyle: { borderRadius: "8px" },
+            }}
+          />
         </div>
 
         {/* Zoom slider */}
@@ -1068,11 +1022,11 @@ function CropEditorModal({
           <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="range"
-            min={0.3}
-            max={3}
+            min={0.5}
+            max={5}
             step={0.05}
             value={zoom}
-            onChange={e => setZoom(Number(e.target.value))}
+            onChange={(e) => setZoom(Number(e.target.value))}
             className="flex-1 accent-brand-600 cursor-pointer"
             aria-label={t.compRptCropZoom}
             data-testid={`slider-crop-zoom-${photo.id}`}

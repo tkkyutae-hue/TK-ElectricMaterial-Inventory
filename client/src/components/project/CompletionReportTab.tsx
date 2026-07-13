@@ -1069,40 +1069,37 @@ function PhotoCard({
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
   const [showCropModal, setShowCropModal] = useState(false);
-  // Track natural image aspect ratio for accurate crop preview
-  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
 
-  const hasCrop = photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
+  const hasCrop =
+    photo.cropX != null && photo.cropY != null &&
+    photo.cropWidth != null && photo.cropHeight != null &&
+    Number(photo.cropWidth) > 0 && Number(photo.cropHeight) > 0;
 
-  // Build image style for the crop preview inside a PPT-aspect-ratio container
+  // Build image style for the crop preview inside a PPT-aspect-ratio container.
+  //
+  // The crop editor always locks to PPT_ASPECT, so the crop rectangle satisfies:
+  //   (cW / cH) * naturalAspect === PPT_ASPECT
+  //
+  // Substituting that identity simplifies the top-offset formula to just
+  // -(cY/cH)*100 (% of container height), removing any dependency on naturalAspect.
+  //
+  //   imgWidth  = (100/cW) * containerWidth   → fills the cW% crop to 100% container width
+  //   imgHeight = imgWidth / naturalAspect     → browser computes this via height:auto
+  //   left      = -(cX/cW) * 100%             → shift crop-left to container-left
+  //   top       = -(cY/cH) * 100%             → shift crop-top to container-top (% of containerHeight)
   const buildCropImgStyle = (): React.CSSProperties => {
-    if (hasCrop && naturalAspect !== null) {
+    if (hasCrop) {
       const cX = Number(photo.cropX);
       const cY = Number(photo.cropY);
       const cW = Number(photo.cropWidth);
       const cH = Number(photo.cropHeight);
-      // Scale: image width = containerWidth * (100/cW)
-      // x-offset: -(cX/cW)*containerWidth  →  -(cX/cW)*100% of container
-      // y-offset: image is auto-height from width; imageHeight = containerWidth*(100/cW)/naturalAspect
-      //           containerHeight = containerWidth/PPT_ASPECT
-      //           top in % of containerHeight = -(cY/100)*imageH / containerH
-      //             = -(cY/100) * (100/cW) / naturalAspect * PPT_ASPECT * 100 (% of containerH)
-      const imgWidthPct   = (100 / cW) * 100;          // % of container width
-      const leftPct       = -(cX / cW) * 100;           // % of container width
-      const topPct        = -(cY / 100) * (100 / cW) * PPT_ASPECT / naturalAspect * 100; // % of containerHeight
       return {
         position: "absolute",
-        width:  `${imgWidthPct}%`,
-        height: "auto",
-        left:   `${leftPct}%`,
-        top:    `${topPct}%`,
+        width:    `${(100 / cW) * 100}%`,
+        height:   "auto",
+        left:     `${-(cX / cW) * 100}%`,
+        top:      `${-(cY / cH) * 100}%`,
       };
-    }
-    if (hasCrop) {
-      // Fallback before naturalAspect is known — center on crop midpoint
-      const cx = Number(photo.cropX) + Number(photo.cropWidth) / 2;
-      const cy = Number(photo.cropY) + Number(photo.cropHeight) / 2;
-      return { objectFit: "cover", objectPosition: `${cx}% ${cy}%`, width: "100%", height: "100%" };
     }
     return {
       objectFit: "cover",
@@ -1142,7 +1139,6 @@ function PhotoCard({
             src={photo.photoUrl}
             alt={`Photo ${index}`}
             style={buildCropImgStyle()}
-            onLoad={(e) => setNaturalAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
           />
           <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
           <div className="absolute top-2 right-2 flex gap-1">

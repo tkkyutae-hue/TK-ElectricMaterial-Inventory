@@ -11,10 +11,7 @@ import { useLanguage } from "@/hooks/use-language";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
   ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X, Crop as CropIcon,
-  ZoomIn, ZoomOut,
 } from "lucide-react";
-import Cropper from "react-easy-crop";
-import type { Area, MediaSize } from "react-easy-crop";
 import {
   DndContext,
   closestCenter,
@@ -929,9 +926,190 @@ function ImageUploadBox({
   );
 }
 
-// ── CropEditorModal ──────────────────────────────────────────────────────────
+// ── FreeCropEditor ────────────────────────────────────────────────────────────
+// Free-form crop tool: shows the full image, lets user drag any of 8 handles
+// (4 corners + 4 edges) to select any rectangular region.  Crop is stored as
+// percentages (0-100) of the rendered image, which maps 1:1 to % of natural
+// image pixels used by the server's sharp.extract() call.
 
-const PPT_ASPECT = 4.50 / 2.29; // ~1.965 — matches PPT slide cell ratio
+type CropHandle = 'tl'|'t'|'tr'|'r'|'br'|'b'|'bl'|'l'|'move';
+interface CropPct { x: number; y: number; w: number; h: number; }
+
+function FreeCropEditor({
+  photoUrl,
+  uid,
+  initPct,
+  containerHeight,
+  onChange,
+}: {
+  photoUrl: string;
+  uid: string | number;
+  initPct: CropPct | null;
+  containerHeight: number;
+  onChange: (pct: CropPct) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [natW, setNatW] = useState(0);
+  const [natH, setNatH] = useState(0);
+  const [cropPct, setCropPct] = useState<CropPct>({ x: 0, y: 0, w: 100, h: 100 });
+  const [ready, setReady] = useState(false);
+  const dragRef = useRef<{ handle: CropHandle; sx: number; sy: number; oc: CropPct; rW: number; rH: number } | null>(null);
+
+  // Compute where the image actually renders within the container (object-fit: contain math)
+  function getRendered() {
+    const c = containerRef.current;
+    if (!c || !natW || !natH) return null;
+    const cW = c.offsetWidth;
+    const cH = c.offsetHeight;
+    if (!cW || !cH) return null;
+    const imgAsp = natW / natH;
+    const cAsp   = cW / cH;
+    if (imgAsp > cAsp) {
+      // Wider image → letterbox top/bottom
+      const rW = cW, rH = cW / imgAsp;
+      return { x: 0, y: (cH - rH) / 2, w: rW, h: rH, cW, cH };
+    } else {
+      // Taller image → pillarbox left/right
+      const rH = cH, rW = cH * imgAsp;
+      return { x: (cW - rW) / 2, y: 0, w: rW, h: rH, cW, cH };
+    }
+  }
+
+  function onImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    setNatW(img.naturalWidth);
+    setNatH(img.naturalHeight);
+  }
+
+  // Initialise crop once natural size is known
+  useEffect(() => {
+    if (!natW || !natH) return;
+    if (initPct && initPct.w > 0 && initPct.h > 0) {
+      setCropPct({ x: initPct.x, y: initPct.y, w: initPct.w, h: initPct.h });
+    } else {
+      setCropPct({ x: 0, y: 0, w: 100, h: 100 });
+    }
+    setReady(true);
+  }, [natW, natH]);
+
+  // Propagate crop changes to parent
+  useEffect(() => {
+    if (ready) onChange({ ...cropPct });
+  }, [cropPct, ready]);
+
+  function startDrag(handle: CropHandle, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const r = getRendered();
+    if (!r) return;
+    const MIN = (20 / Math.min(r.w, r.h)) * 100; // ~20 px minimum selection
+    dragRef.current = { handle, sx: e.clientX, sy: e.clientY, oc: { ...cropPct }, rW: r.w, rH: r.h };
+
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return;
+      const { handle: h, oc, rW, rH } = dragRef.current;
+      const dx = ((ev.clientX - dragRef.current.sx) / rW) * 100;
+      const dy = ((ev.clientY - dragRef.current.sy) / rH) * 100;
+      let { x, y, w, h: ht } = oc;
+
+      if (h === 'move') {
+        x = Math.max(0, Math.min(100 - w,  oc.x + dx));
+        y = Math.max(0, Math.min(100 - ht, oc.y + dy));
+      } else {
+        if (h.includes('l')) { const nx = Math.max(0, Math.min(oc.x + oc.w - MIN, oc.x + dx)); w = oc.x + oc.w - nx; x = nx; }
+        if (h.includes('r')) { w  = Math.max(MIN, Math.min(100 - oc.x, oc.w + dx)); }
+        if (h.includes('t')) { const ny = Math.max(0, Math.min(oc.y + oc.h - MIN, oc.y + dy)); ht = oc.y + oc.h - ny; y = ny; }
+        if (h.includes('b')) { ht = Math.max(MIN, Math.min(100 - oc.y, oc.h + dy)); }
+      }
+      setCropPct({ x, y, w, h: ht });
+    }
+    function onUp() {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  const r   = getRendered();
+  const HS  = 10; // handle square size in px
+  const cpx = r ? {
+    x: r.x + (cropPct.x / 100) * r.w,
+    y: r.y + (cropPct.y / 100) * r.h,
+    w: (cropPct.w / 100) * r.w,
+    h: (cropPct.h / 100) * r.h,
+  } : null;
+
+  const handles: Array<{ id: CropHandle; cx: number; cy: number; cursor: string }> = (cpx && r) ? [
+    { id: 'tl', cx: cpx.x,            cy: cpx.y,            cursor: 'nwse-resize' },
+    { id: 't',  cx: cpx.x + cpx.w/2,  cy: cpx.y,            cursor: 'ns-resize'   },
+    { id: 'tr', cx: cpx.x + cpx.w,    cy: cpx.y,            cursor: 'nesw-resize' },
+    { id: 'r',  cx: cpx.x + cpx.w,    cy: cpx.y + cpx.h/2,  cursor: 'ew-resize'   },
+    { id: 'br', cx: cpx.x + cpx.w,    cy: cpx.y + cpx.h,    cursor: 'nwse-resize' },
+    { id: 'b',  cx: cpx.x + cpx.w/2,  cy: cpx.y + cpx.h,    cursor: 'ns-resize'   },
+    { id: 'bl', cx: cpx.x,            cy: cpx.y + cpx.h,    cursor: 'nesw-resize' },
+    { id: 'l',  cx: cpx.x,            cy: cpx.y + cpx.h/2,  cursor: 'ew-resize'   },
+  ] : [];
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden bg-slate-900 rounded-t-lg"
+      style={{ height: containerHeight }}
+    >
+      <img
+        src={photoUrl}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        onLoad={onImgLoad}
+        draggable={false}
+      />
+      {ready && r && cpx && r.cW > 0 && (
+        <svg className="absolute inset-0 select-none" width={r.cW} height={r.cH}>
+          <defs>
+            <mask id={`fcm-${uid}`}>
+              <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="white" />
+              <rect x={cpx.x} y={cpx.y} width={cpx.w} height={cpx.h} fill="black" />
+            </mask>
+          </defs>
+          {/* Dark overlay on image area outside crop */}
+          <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="rgba(0,0,0,0.55)" mask={`url(#fcm-${uid})`} />
+          {/* Fully dark letterbox/pillarbox areas */}
+          <rect x={0}       y={0}       width={r.cW}           height={r.y}               fill="rgba(0,0,0,0.85)" />
+          <rect x={0}       y={r.y+r.h} width={r.cW}           height={r.cH - r.y - r.h}  fill="rgba(0,0,0,0.85)" />
+          <rect x={0}       y={r.y}     width={r.x}            height={r.h}               fill="rgba(0,0,0,0.85)" />
+          <rect x={r.x+r.w} y={r.y}     width={r.cW - r.x - r.w} height={r.h}            fill="rgba(0,0,0,0.85)" />
+          {/* Rule-of-thirds guide lines */}
+          {[1/3, 2/3].flatMap(f => [
+            <line key={`v${f}`} x1={cpx.x + cpx.w*f} y1={cpx.y}        x2={cpx.x + cpx.w*f} y2={cpx.y + cpx.h} stroke="rgba(255,255,255,0.3)" strokeWidth={0.5} />,
+            <line key={`h${f}`} x1={cpx.x}           y1={cpx.y + cpx.h*f} x2={cpx.x + cpx.w} y2={cpx.y + cpx.h*f} stroke="rgba(255,255,255,0.3)" strokeWidth={0.5} />,
+          ])}
+          {/* Crop border */}
+          <rect x={cpx.x} y={cpx.y} width={cpx.w} height={cpx.h} fill="transparent" stroke="white" strokeWidth={1.5} />
+          {/* Move zone (inner area) */}
+          <rect
+            x={cpx.x + HS} y={cpx.y + HS}
+            width={Math.max(0, cpx.w - HS*2)} height={Math.max(0, cpx.h - HS*2)}
+            fill="transparent" style={{ cursor: 'move' }}
+            onMouseDown={(e) => startDrag('move', e)}
+          />
+          {/* 8 resize handles */}
+          {handles.map(h => (
+            <rect key={h.id}
+              x={h.cx - HS/2} y={h.cy - HS/2} width={HS} height={HS}
+              fill="white" stroke="rgba(0,0,0,0.35)" strokeWidth={1} rx={2}
+              style={{ cursor: h.cursor }}
+              onMouseDown={(e) => startDrag(h.id, e)}
+            />
+          ))}
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// ── CropEditorModal ──────────────────────────────────────────────────────────
 
 function CropEditorModal({
   photo,
@@ -945,15 +1123,9 @@ function CropEditorModal({
   onApply: (coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null) => void;
 }) {
   const { t } = useLanguage();
-  const [cropperKey, setCropperKey] = useState(0);
-  const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [completedArea, setCompletedArea] = useState<Area | null>(null);
-  const [dynMinZoom, setDynMinZoom] = useState(1);
-  const cropContainerRef = useRef<HTMLDivElement>(null);
 
   // User-resizable crop area height (px)
-  const [cropAreaHeight, setCropAreaHeight] = useState(380);
+  const [cropAreaHeight, setCropAreaHeight] = useState(400);
   const resizeDrag = useRef<{ startY: number; startH: number } | null>(null);
 
   function onResizeMouseDown(e: React.MouseEvent) {
@@ -962,8 +1134,8 @@ function CropEditorModal({
     function onMove(ev: MouseEvent) {
       if (!resizeDrag.current) return;
       const delta = ev.clientY - resizeDrag.current.startY;
-      const max = Math.floor(window.innerHeight * 0.85) - 200;
-      setCropAreaHeight(Math.max(180, Math.min(max, resizeDrag.current.startH + delta)));
+      const max = Math.floor(window.innerHeight * 0.82) - 160;
+      setCropAreaHeight(Math.max(200, Math.min(max, resizeDrag.current.startH + delta)));
     }
     function onUp() {
       resizeDrag.current = null;
@@ -976,81 +1148,22 @@ function CropEditorModal({
 
   const hasSavedCrop =
     photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
-  const initZoom = hasSavedCrop ? Math.max(1, 100 / Number(photo.cropWidth)) : 1;
-  const initAreaPct: Area | undefined = hasSavedCrop
-    ? {
-        x: Number(photo.cropX),
-        y: Number(photo.cropY),
-        width: Number(photo.cropWidth),
-        height: Number(photo.cropHeight),
-      }
-    : undefined;
+  const initPct: CropPct | null = hasSavedCrop
+    ? { x: Number(photo.cropX), y: Number(photo.cropY), w: Number(photo.cropWidth), h: Number(photo.cropHeight) }
+    : null;
+
+  const [currentPct, setCurrentPct] = useState<CropPct | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    if (hasSavedCrop) {
-      setDynMinZoom(1);
-      setZoom(initZoom);
-    } else {
-      // Will be updated to the real fit-zoom in handleMediaLoaded.
-      // Start at zoom=1 as a safe fallback until the image loads.
-      setDynMinZoom(1);
-      setZoom(1);
-    }
-    setCropPos({ x: 0, y: 0 });
-    setCompletedArea(null);
-    setCropperKey((k) => k + 1);
+    setCurrentPct(null);
   }, [open]);
 
-  // Called by react-easy-crop once the image has loaded inside the Cropper.
-  // mediaSize.width/height = the rendered (zoom=1) image dimensions in CSS px.
-  // Mirrors react-easy-crop's internal getCropSize(mediaW, mediaH, cW, cH, aspect):
-  //   fittingW = min(mediaW, cW)
-  //   fittingH = min(mediaH, cH)
-  //   if fittingW > fittingH * aspect → cropSize = { fittingH*aspect, fittingH }
-  //   else                            → cropSize = { fittingW, fittingW/aspect }
-  function handleMediaLoaded({ width: imgW, height: imgH }: MediaSize) {
-    if (hasSavedCrop) return;
-
-    const container = cropContainerRef.current;
-    if (!container) return;
-    const { width: cW, height: cH } = container.getBoundingClientRect();
-    if (!cW || !cH) return;
-
-    // Exact mirror of react-easy-crop getCropSize (rotation=0 → rotateSize is identity)
-    const fittingW = Math.min(imgW, cW);
-    const fittingH = Math.min(imgH, cH);
-    const cropW = fittingW > fittingH * PPT_ASPECT ? fittingH * PPT_ASPECT : fittingW;
-    const cropH = fittingW > fittingH * PPT_ASPECT ? fittingH : fittingW / PPT_ASPECT;
-
-    // Zoom at which the FULL image fits inside the crop box (contain-fit).
-    // At this zoom one edge of the image touches the crop box; the other is inset.
-    const fitZoom = Math.min(cropW / imgW, cropH / imgH);
-    const safeMin = Math.max(fitZoom, 0.05);
-
-    setDynMinZoom(safeMin);
-    setZoom(safeMin);
-  }
-
   function handleApply() {
-    if (!completedArea) return;
-    // When the user is at fit-zoom (entire image visible), react-easy-crop reports
-    // percentages outside 0–100 because the image is smaller than the crop box.
-    // Clamp to detect this: treat it as "no crop" (PPT export will center the image).
-    const isFullImageView =
-      completedArea.x < -1 ||
-      completedArea.y < -1 ||
-      completedArea.width > 101 ||
-      completedArea.height > 101;
-    if (isFullImageView) {
-      onApply(null);
+    if (currentPct && currentPct.w > 0 && currentPct.h > 0) {
+      onApply({ cropX: currentPct.x, cropY: currentPct.y, cropWidth: currentPct.w, cropHeight: currentPct.h });
     } else {
-      onApply({
-        cropX: completedArea.x,
-        cropY: completedArea.y,
-        cropWidth: completedArea.width,
-        cropHeight: completedArea.height,
-      });
+      onApply(null);
     }
     onClose();
   }
@@ -1060,71 +1173,42 @@ function CropEditorModal({
     onClose();
   }
 
+  // Is the current selection essentially the full image? (skip saving trivial crop)
+  const isFullImage = currentPct && currentPct.x < 0.5 && currentPct.y < 0.5 && currentPct.w > 99.5 && currentPct.h > 99.5;
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl w-full">
+      <DialogContent className="max-w-2xl w-full overflow-y-auto" style={{ maxHeight: "96vh" }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CropIcon className="w-4 h-4 text-brand-600" />
             {t.compRptCropModalTitle}
           </DialogTitle>
         </DialogHeader>
-        <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
+        <DialogDescription className="text-xs text-slate-500 -mt-1">
+          모서리·가장자리 핸들을 드래그해 원하는 영역을 선택하세요.
+        </DialogDescription>
 
-        {/* react-easy-crop: fixed crop box, image pans/zooms beneath it.
-            Guard with `open` so the Cropper unmounts immediately on close
-            instead of staying alive during the Dialog exit animation. */}
-        <div ref={cropContainerRef} className="relative rounded-t-lg overflow-hidden bg-slate-900" style={{ height: cropAreaHeight }}>
-          {open && (
-            <Cropper
-              key={cropperKey}
-              image={photo.photoUrl}
-              crop={cropPos}
-              zoom={zoom}
-              aspect={PPT_ASPECT}
-              minZoom={dynMinZoom}
-              maxZoom={5}
-              onCropChange={setCropPos}
-              onZoomChange={setZoom}
-              onCropComplete={(croppedArea) => setCompletedArea(croppedArea)}
-              onMediaLoaded={handleMediaLoaded}
-              initialCroppedAreaPercentages={initAreaPct}
-              style={{
-                containerStyle: { borderRadius: "8px 8px 0 0" },
-              }}
-            />
-          )}
-        </div>
-        {/* Drag handle — user pulls this up/down to resize the crop preview area */}
+        {open && (
+          <FreeCropEditor
+            photoUrl={photo.photoUrl}
+            uid={photo.id ?? 0}
+            initPct={initPct}
+            containerHeight={cropAreaHeight}
+            onChange={setCurrentPct}
+          />
+        )}
+
+        {/* Vertical resize handle */}
         <div
-          className="flex items-center justify-center h-4 rounded-b-lg bg-slate-200 hover:bg-slate-300 cursor-ns-resize select-none border-t border-slate-300 transition-colors"
+          className="flex items-center justify-center h-4 rounded-b-lg bg-slate-200 hover:bg-slate-300 cursor-ns-resize select-none border-t border-slate-300 transition-colors -mt-0"
           onMouseDown={onResizeMouseDown}
-          title="드래그하여 영역 크기 조절"
+          title="드래그하여 미리보기 영역 크기 조절"
         >
           <GripVertical className="w-4 h-3.5 rotate-90 text-slate-400" />
         </div>
 
-        {/* Zoom slider */}
-        <div className="flex items-center gap-2 px-1">
-          <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
-          <input
-            type="range"
-            min={dynMinZoom}
-            max={5}
-            step={0.05}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            className="flex-1 accent-brand-600 cursor-pointer"
-            aria-label={t.compRptCropZoom}
-            data-testid={`slider-crop-zoom-${photo.id}`}
-          />
-          <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className="text-[11px] text-slate-500 w-9 text-right tabular-nums shrink-0">
-            {Math.round(zoom * 100)}%
-          </span>
-        </div>
-
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center pt-1">
           <Button
             variant="outline"
             size="sm"
@@ -1140,11 +1224,11 @@ function CropEditorModal({
             <Button
               size="sm"
               onClick={handleApply}
-              disabled={!completedArea}
+              disabled={!currentPct}
               className="bg-brand-600 hover:bg-brand-700 text-white"
               data-testid={`button-crop-apply-${photo.id}`}
             >
-              {t.compRptCropApply}
+              {isFullImage ? "전체 이미지 적용" : t.compRptCropApply}
             </Button>
           </div>
         </div>

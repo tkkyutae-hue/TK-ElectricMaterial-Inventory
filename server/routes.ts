@@ -772,6 +772,23 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const cf = req.body.cropFocus;
         updateData.cropFocus = (typeof cf === "string" && VALID_CROP_FOCUS.includes(cf)) ? cf : "centre";
       }
+      // Manual crop coords (0-100 percent of original image dimensions)
+      if ("cropX" in req.body) {
+        const v = req.body.cropX == null ? null : Number(req.body.cropX);
+        updateData.cropX = (v != null && isFinite(v) && v >= 0 && v <= 100) ? String(v) : null;
+      }
+      if ("cropY" in req.body) {
+        const v = req.body.cropY == null ? null : Number(req.body.cropY);
+        updateData.cropY = (v != null && isFinite(v) && v >= 0 && v <= 100) ? String(v) : null;
+      }
+      if ("cropWidth" in req.body) {
+        const v = req.body.cropWidth == null ? null : Number(req.body.cropWidth);
+        updateData.cropWidth = (v != null && isFinite(v) && v > 0 && v <= 100) ? String(v) : null;
+      }
+      if ("cropHeight" in req.body) {
+        const v = req.body.cropHeight == null ? null : Number(req.body.cropHeight);
+        updateData.cropHeight = (v != null && isFinite(v) && v > 0 && v <= 100) ? String(v) : null;
+      }
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
       }

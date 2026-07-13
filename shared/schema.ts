@@ -766,6 +766,10 @@ export const completionReportPhotos = pgTable("completion_report_photos", {
   photoDate: text("photo_date"),
   description: text("description"),
   cropFocus: text("crop_focus").default("centre"),
+  cropX: numeric("crop_x"),
+  cropY: numeric("crop_y"),
+  cropWidth: numeric("crop_width"),
+  cropHeight: numeric("crop_height"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

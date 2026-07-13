@@ -65,12 +65,18 @@ const VALID_CROP_POSITIONS: Record<string, string> = {
   right: "right",
 };
 
-/** Load, EXIF-rotate, and crop an image to exactly match cellW:cellH ratio */
+/** Load, EXIF-rotate, optionally extract a manual crop region, then resize to fill the cell */
 async function imgCropped(
   url: string | null | undefined,
   cellW: number,
   cellH: number,
-  cropFocus?: string | null,
+  opts?: {
+    cropFocus?: string | null;
+    cropX?: number | null;
+    cropY?: number | null;
+    cropWidth?: number | null;
+    cropHeight?: number | null;
+  },
 ): Promise<string | null> {
   if (!url) return null;
   try {
@@ -85,17 +91,44 @@ async function imgCropped(
     }
     if (!buf) return null;
 
+    const sharp = (await import("sharp")).default;
+
+    // Step 1: EXIF auto-rotate into a clean buffer
+    const rotated = await sharp(buf).rotate().toBuffer();
+
+    // Step 2: Apply manual crop if coords are present (percentages 0-100)
+    const cx = opts?.cropX != null ? Number(opts.cropX) : null;
+    const cy = opts?.cropY != null ? Number(opts.cropY) : null;
+    const cw = opts?.cropWidth != null ? Number(opts.cropWidth) : null;
+    const ch = opts?.cropHeight != null ? Number(opts.cropHeight) : null;
+    const hasCrop = cx != null && cy != null && cw != null && ch != null && cw > 0 && ch > 0;
+
+    let toResize: Buffer;
+    if (hasCrop) {
+      const meta = await sharp(rotated).metadata();
+      const imgW = meta.width ?? 1;
+      const imgH = meta.height ?? 1;
+      const left   = Math.max(0, Math.round(cx! / 100 * imgW));
+      const top    = Math.max(0, Math.round(cy! / 100 * imgH));
+      const width  = Math.min(imgW - left, Math.max(1, Math.round(cw! / 100 * imgW)));
+      const height = Math.min(imgH - top,  Math.max(1, Math.round(ch! / 100 * imgH)));
+      toResize = await sharp(rotated).extract({ left, top, width, height }).toBuffer();
+    } else {
+      toResize = rotated;
+    }
+
+    // Step 3: Resize to PPT cell aspect ratio with cover (use focus position only when no manual crop)
     const targetW = 1440;
     const targetH = Math.max(1, Math.round(targetW * cellH / cellW));
-    const position = (cropFocus && VALID_CROP_POSITIONS[cropFocus]) ? VALID_CROP_POSITIONS[cropFocus] : "centre";
+    const position = (!hasCrop && opts?.cropFocus && VALID_CROP_POSITIONS[opts.cropFocus])
+      ? VALID_CROP_POSITIONS[opts.cropFocus]
+      : "centre";
 
-    const sharp = (await import("sharp")).default;
-    const cropped = await sharp(buf)
-      .rotate()
+    const final = await sharp(toResize)
       .resize(targetW, targetH, { fit: "cover", position })
       .jpeg({ quality: 90 })
       .toBuffer();
-    return `data:image/jpeg;base64,${cropped.toString("base64")}`;
+    return `data:image/jpeg;base64,${final.toString("base64")}`;
   } catch {
     return null;
   }
@@ -548,7 +581,13 @@ export async function generateCompletionReportPptx(
         const x = colX[cell % cols];
         const y = rowY[Math.floor(cell / cols)];
 
-        const pData = await imgCropped(photo.photoUrl, photoW, photoH, photo.cropFocus);
+        const pData = await imgCropped(photo.photoUrl, photoW, photoH, {
+          cropFocus: photo.cropFocus,
+          cropX: photo.cropX != null ? Number(photo.cropX) : null,
+          cropY: photo.cropY != null ? Number(photo.cropY) : null,
+          cropWidth: photo.cropWidth != null ? Number(photo.cropWidth) : null,
+          cropHeight: photo.cropHeight != null ? Number(photo.cropHeight) : null,
+        });
         if (pData) {
           slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
         } else {

@@ -1060,6 +1060,11 @@ const en = {
   compRptCropBottom:               "Bottom",
   compRptCropLeft:                 "Left",
   compRptCropRight:                "Right",
+  compRptCropEdit:                 "Crop",
+  compRptCropModalTitle:           "Adjust Crop",
+  compRptCropHint:                 "Drag to reposition or resize the crop area. The fixed ratio matches the PPT slide cell.",
+  compRptCropApply:                "Apply Crop",
+  compRptCropReset:                "Reset Crop",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "Scope Items",
@@ -3430,6 +3435,11 @@ const ko: Translations = {
   compRptCropBottom:               "하단",
   compRptCropLeft:                 "왼쪽",
   compRptCropRight:                "오른쪽",
+  compRptCropEdit:                 "크롭",
+  compRptCropModalTitle:           "크롭 조절",
+  compRptCropHint:                 "크롭 영역을 드래그하여 위치와 크기를 조절하세요. 비율은 PPT 슬라이드에 고정됩니다.",
+  compRptCropApply:                "크롭 적용",
+  compRptCropReset:                "크롭 초기화",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "작업 범위 항목",
@@ -5800,6 +5810,11 @@ const es: Translations = {
   compRptCropBottom:               "Abajo",
   compRptCropLeft:                 "Izquierda",
   compRptCropRight:                "Derecha",
+  compRptCropEdit:                 "Recortar",
+  compRptCropModalTitle:           "Ajustar recorte",
+  compRptCropHint:                 "Arrastra para reposicionar o redimensionar el área de recorte. La proporción es fija para la celda PPT.",
+  compRptCropApply:                "Aplicar recorte",
+  compRptCropReset:                "Restablecer recorte",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "Elementos del Alcance",

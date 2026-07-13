@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
-  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X,
+  ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X, Crop as CropIcon,
 } from "lucide-react";
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import {
   DndContext,
   closestCenter,
@@ -36,6 +39,10 @@ interface Photo {
   photoDate: string | null;
   description: string | null;
   cropFocus: CropFocus | null;
+  cropX: string | null;
+  cropY: string | null;
+  cropWidth: string | null;
+  cropHeight: string | null;
   sortOrder: number;
   sectionId: number | null;
 }
@@ -193,6 +200,17 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
 
   async function handleCropFocusChange(photoId: number, cropFocus: CropFocus) {
     await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, { cropFocus });
+    invalidate();
+  }
+
+  async function handleCropChange(
+    photoId: number,
+    coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null,
+  ) {
+    const patch = coords
+      ? { cropX: coords.cropX, cropY: coords.cropY, cropWidth: coords.cropWidth, cropHeight: coords.cropHeight }
+      : { cropX: null, cropY: null, cropWidth: null, cropHeight: null };
+    await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, patch);
     invalidate();
   }
 
@@ -399,6 +417,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           onDelete={(photoId) => deleteMut.mutate(photoId)}
           onMetaChange={(photoId, field, val) => handlePhotoMeta(photoId, field, val)}
           onCropFocusChange={(photoId, focus) => handleCropFocusChange(photoId, focus)}
+          onCropChange={(photoId, coords) => handleCropChange(photoId, coords)}
           onReorder={(photos, fromIdx, toIdx) => handleReorder(section.id, photos, fromIdx, toIdx)}
           onDragEnd={(event) => handleDragEnd(section.id, section.photos, event)}
           onUpdateTitle={(title) => updateSectionMut.mutate({ id: section.id, data: { title } })}
@@ -535,7 +554,7 @@ function DrawingSectionCard({
 // ── PhotoSectionCard ────────────────────────────────────────────────────────
 
 function PhotoSectionCard({
-  section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onCropFocusChange, onReorder, onDragEnd,
+  section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onCropFocusChange, onCropChange, onReorder, onDragEnd,
   onUpdateTitle, onDeleteSection, canDelete,
 }: {
   section: PhotoSection;
@@ -545,6 +564,7 @@ function PhotoSectionCard({
   onDelete: (photoId: number) => void;
   onMetaChange: (photoId: number, field: "photoDate" | "description", val: string) => void;
   onCropFocusChange: (photoId: number, focus: CropFocus) => void;
+  onCropChange: (photoId: number, coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null) => void;
   onReorder: (photos: Photo[], fromIdx: number, toIdx: number) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onUpdateTitle: (title: string) => void;
@@ -657,6 +677,7 @@ function PhotoSectionCard({
                     onDelete={() => onDelete(photo.id)}
                     onMetaChange={(field, val) => onMetaChange(photo.id, field, val)}
                     onCropFocusChange={(focus) => onCropFocusChange(photo.id, focus)}
+                    onCropChange={(coords) => onCropChange(photo.id, coords)}
                     onMoveUp={() => onReorder(photos, idx, idx - 1)}
                     onMoveDown={() => onReorder(photos, idx, idx + 1)}
                   />
@@ -907,18 +928,132 @@ function ImageUploadBox({
   );
 }
 
+// ── CropEditorModal ──────────────────────────────────────────────────────────
+
+const PPT_ASPECT = 4.50 / 2.29; // ~1.965 — matches PPT slide cell ratio
+
+function CropEditorModal({
+  photo,
+  open,
+  onClose,
+  onApply,
+}: {
+  photo: Photo;
+  open: boolean;
+  onClose: () => void;
+  onApply: (coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null) => void;
+}) {
+  const { t } = useLanguage();
+  const [crop, setCrop] = useState<Crop | undefined>();
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const hasSaved =
+      photo.cropX != null && photo.cropY != null &&
+      photo.cropWidth != null && photo.cropHeight != null &&
+      Number(photo.cropWidth) > 0;
+    if (hasSaved) {
+      setCrop({
+        unit: "%",
+        x: Number(photo.cropX),
+        y: Number(photo.cropY),
+        width: Number(photo.cropWidth),
+        height: Number(photo.cropHeight),
+      });
+    } else {
+      setCrop(undefined);
+    }
+  }, [open, photo.cropX, photo.cropY, photo.cropWidth, photo.cropHeight]);
+
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const hasSaved =
+      photo.cropX != null && photo.cropY != null &&
+      photo.cropWidth != null && photo.cropHeight != null &&
+      Number(photo.cropWidth) > 0;
+    if (!hasSaved) {
+      const { naturalWidth, naturalHeight } = e.currentTarget;
+      const c = centerCrop(
+        makeAspectCrop({ unit: "%", width: 90 }, PPT_ASPECT, naturalWidth, naturalHeight),
+        naturalWidth,
+        naturalHeight,
+      );
+      setCrop(c);
+    }
+  }
+
+  function handleApply() {
+    if (!crop || !crop.width || !crop.height) return;
+    onApply({ cropX: crop.x, cropY: crop.y, cropWidth: crop.width, cropHeight: crop.height });
+    onClose();
+  }
+
+  function handleReset() {
+    onApply(null);
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CropIcon className="w-4 h-4 text-brand-600" />
+            {t.compRptCropModalTitle}
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</p>
+        <div className="flex items-center justify-center bg-slate-100 rounded-lg p-2 overflow-auto max-h-[60vh]">
+          <ReactCrop
+            crop={crop}
+            onChange={(c) => setCrop(c)}
+            aspect={PPT_ASPECT}
+            minWidth={10}
+            className="max-w-full"
+          >
+            <img
+              ref={imgRef}
+              src={photo.photoUrl}
+              alt="crop editor"
+              style={{ maxWidth: "100%", maxHeight: "54vh", display: "block" }}
+              onLoad={onImageLoad}
+              data-testid={`img-crop-editor-${photo.id}`}
+            />
+          </ReactCrop>
+        </div>
+        <div className="flex justify-between items-center pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            data-testid={`button-crop-reset-${photo.id}`}
+          >
+            {t.compRptCropReset}
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose} data-testid={`button-crop-cancel-${photo.id}`}>
+              {t.cmnCancel}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApply}
+              disabled={!crop?.width}
+              className="bg-brand-600 hover:bg-brand-700 text-white"
+              data-testid={`button-crop-apply-${photo.id}`}
+            >
+              {t.compRptCropApply}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── PhotoCard ───────────────────────────────────────────────────────────────
 
-const CROP_OPTIONS: { value: CropFocus; labelKey: keyof ReturnType<typeof useLanguage>["t"] }[] = [
-  { value: "top",    labelKey: "compRptCropTop" },
-  { value: "centre", labelKey: "compRptCropCentre" },
-  { value: "right",  labelKey: "compRptCropRight" },
-  { value: "left",   labelKey: "compRptCropLeft" },
-  { value: "bottom", labelKey: "compRptCropBottom" },
-];
-
 function PhotoCard({
-  photo, index, isFirst, isLast, onDelete, onMetaChange, onCropFocusChange, onMoveUp, onMoveDown,
+  photo, index, isFirst, isLast, onDelete, onMetaChange, onCropFocusChange, onCropChange, onMoveUp, onMoveDown,
 }: {
   photo: Photo;
   index: number;
@@ -927,17 +1062,38 @@ function PhotoCard({
   onDelete: () => void;
   onMetaChange: (field: "photoDate" | "description", val: string) => void;
   onCropFocusChange: (focus: CropFocus) => void;
+  onCropChange: (coords: { cropX: number; cropY: number; cropWidth: number; cropHeight: number } | null) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
+  const [showCropModal, setShowCropModal] = useState(false);
 
-  const [localCropFocus, setLocalCropFocus] = useState<CropFocus>(photo.cropFocus ?? "centre");
+  const hasCrop = photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
 
-  useEffect(() => {
-    setLocalCropFocus(photo.cropFocus ?? "centre");
-  }, [photo.cropFocus]);
+  // CSS preview: use manual crop coords if present, otherwise use cropFocus position
+  const previewStyle: React.CSSProperties = (() => {
+    if (hasCrop) {
+      const x = Number(photo.cropX);
+      const y = Number(photo.cropY);
+      const w = Number(photo.cropWidth);
+      const h = Number(photo.cropHeight);
+      // Center the crop region in the display
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      return { objectPosition: `${cx}% ${cy}%` };
+    }
+    return {
+      objectPosition: {
+        centre: "center center",
+        top:    "center top",
+        bottom: "center bottom",
+        left:   "left center",
+        right:  "right center",
+      }[photo.cropFocus ?? "centre"] ?? "center center",
+    };
+  })();
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -947,101 +1103,96 @@ function PhotoCard({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="border border-slate-200 rounded-xl overflow-hidden bg-white"
-      data-testid={`photo-card-${photo.id}`}
-    >
-      <div className="relative">
-        <img
-          src={photo.photoUrl}
-          alt={`Photo ${index}`}
-          className="w-full h-44 object-cover"
-          style={{
-            objectPosition: {
-              centre: "center center",
-              top:    "center top",
-              bottom: "center bottom",
-              left:   "left center",
-              right:  "right center",
-            }[localCropFocus] ?? "center center",
-          }}
-        />
-        <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
-        <div className="absolute top-2 right-2 flex gap-1">
-          <button
-            {...attributes}
-            {...listeners}
-            className="bg-white/90 hover:bg-slate-100 text-slate-500 rounded-full p-1.5 shadow cursor-grab active:cursor-grabbing"
-            data-testid={`button-drag-${photo.id}`}
-            title={t.compRptDragToReorder}
-          >
-            <GripVertical className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onMoveUp}
-            disabled={isFirst}
-            className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
-            data-testid={`button-move-up-${photo.id}`}
-            title={t.compRptMoveUp}
-          >
-            <ArrowUp className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={isLast}
-            className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
-            data-testid={`button-move-down-${photo.id}`}
-            title={t.compRptMoveDown}
-          >
-            <ArrowDown className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="bg-white/90 hover:bg-red-50 text-red-500 rounded-full p-1.5 shadow"
-            data-testid={`button-delete-photo-${photo.id}`}
-            title={t.compRptDeletePhoto}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="border border-slate-200 rounded-xl overflow-hidden bg-white"
+        data-testid={`photo-card-${photo.id}`}
+      >
+        <div className="relative">
+          <img
+            src={photo.photoUrl}
+            alt={`Photo ${index}`}
+            className="w-full h-44 object-cover"
+            style={previewStyle}
+          />
+          <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
+          <div className="absolute top-2 right-2 flex gap-1">
+            <button
+              {...attributes}
+              {...listeners}
+              className="bg-white/90 hover:bg-slate-100 text-slate-500 rounded-full p-1.5 shadow cursor-grab active:cursor-grabbing"
+              data-testid={`button-drag-${photo.id}`}
+              title={t.compRptDragToReorder}
+            >
+              <GripVertical className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
+              data-testid={`button-move-up-${photo.id}`}
+              title={t.compRptMoveUp}
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="bg-white/90 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-full p-1.5 shadow"
+              data-testid={`button-move-down-${photo.id}`}
+              title={t.compRptMoveDown}
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="bg-white/90 hover:bg-red-50 text-red-500 rounded-full p-1.5 shadow"
+              data-testid={`button-delete-photo-${photo.id}`}
+              title={t.compRptDeletePhoto}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="p-3 space-y-2 bg-slate-50">
-        <input
-          type="text"
-          defaultValue={photo.description ?? ""}
-          onBlur={e => onMetaChange("description", e.target.value)}
-          placeholder={t.compRptPhotoDesc}
-          className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
-          data-testid={`input-photo-desc-${photo.id}`}
-        />
-        {/* Crop focus picker */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-slate-400 shrink-0">{t.compRptCropFocus}:</span>
-          <div className="flex gap-0.5 flex-1">
-            {CROP_OPTIONS.map(opt => {
-              const active = localCropFocus === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => { setLocalCropFocus(opt.value); onCropFocusChange(opt.value); }}
-                  title={t[opt.labelKey] as string}
-                  data-testid={`button-crop-${opt.value}-${photo.id}`}
-                  className={`flex-1 text-[10px] font-medium py-0.5 rounded border transition-colors ${
-                    active
-                      ? "bg-brand-600 text-white border-brand-600"
-                      : "bg-white text-slate-500 border-slate-200 hover:border-brand-400 hover:text-brand-600"
-                  }`}
-                >
-                  {t[opt.labelKey] as string}
-                </button>
-              );
-            })}
+        <div className="p-3 space-y-2 bg-slate-50">
+          <input
+            type="text"
+            defaultValue={photo.description ?? ""}
+            onBlur={e => onMetaChange("description", e.target.value)}
+            placeholder={t.compRptPhotoDesc}
+            className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
+            data-testid={`input-photo-desc-${photo.id}`}
+          />
+          {/* Crop editor row */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400">
+              {hasCrop ? (
+                <span className="text-brand-600 font-medium">✓ {t.compRptCropEdit}</span>
+              ) : (
+                t.compRptCropFocus
+              )}
+            </span>
+            <button
+              onClick={() => setShowCropModal(true)}
+              className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800 border border-brand-200 rounded px-2 py-0.5 hover:bg-brand-50 transition-colors"
+              data-testid={`button-open-crop-${photo.id}`}
+            >
+              <CropIcon className="w-3 h-3" />
+              {t.compRptCropEdit}
+            </button>
           </div>
         </div>
       </div>
-    </div>
+
+      <CropEditorModal
+        photo={photo}
+        open={showCropModal}
+        onClose={() => setShowCropModal(false)}
+        onApply={(coords) => onCropChange(coords)}
+      />
+    </>
   );
 }
 

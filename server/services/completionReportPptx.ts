@@ -57,6 +57,36 @@ function containIn(imgW: number, imgH: number, cellW: number, cellH: number) {
   return { renderW, renderH, dx: (cellW - renderW) / 2, dy: (cellH - renderH) / 2 };
 }
 
+/** Load, EXIF-rotate, and center-crop an image to exactly match cellW:cellH ratio */
+async function imgCropped(url: string | null | undefined, cellW: number, cellH: number): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
+    const filename = path.basename(raw);
+    if (!filename) return null;
+
+    let buf = await downloadBuffer(filename);
+    if (!buf) {
+      const localPath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(localPath)) buf = fs.readFileSync(localPath);
+    }
+    if (!buf) return null;
+
+    const targetW = 1440;
+    const targetH = Math.max(1, Math.round(targetW * cellH / cellW));
+
+    const sharp = (await import("sharp")).default;
+    const cropped = await sharp(buf)
+      .rotate()
+      .resize(targetW, targetH, { fit: "cover", position: "centre" })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${cropped.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 async function localFileBase64(filePath: string): Promise<string | null> {
   try {
     const buf = fs.readFileSync(filePath);
@@ -504,15 +534,14 @@ export async function generateCompletionReportPptx(
         const x = colX[cell % cols];
         const y = rowY[Math.floor(cell / cols)];
 
-        const pData = await imgBase64(photo.photoUrl);
-        // Gray background visible in letterbox/pillarbox areas
-        slide.addShape(prs.ShapeType.rect, {
-          x, y, w: photoW, h: photoH,
-          fill: { color: "E8E8E8" }, line: { color: "D0D0D0", pt: 0.5 },
-        });
+        const pData = await imgCropped(photo.photoUrl, photoW, photoH);
         if (pData) {
-          const { renderW: pW, renderH: pH, dx: pDx, dy: pDy } = containIn(pData.width, pData.height, photoW, photoH);
-          slide.addImage({ data: pData.data, x: x + pDx, y: y + pDy, w: pW, h: pH });
+          slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
+        } else {
+          slide.addShape(prs.ShapeType.rect, {
+            x, y, w: photoW, h: photoH,
+            fill: { color: "E8E8E8" }, line: { color: "D0D0D0", pt: 0.5 },
+          });
         }
 
         // Caption bar

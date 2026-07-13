@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import {
@@ -1002,11 +1002,11 @@ function CropEditorModal({
             {t.compRptCropModalTitle}
           </DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</p>
+        <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
         <div className="flex items-center justify-center bg-slate-100 rounded-lg p-2 overflow-auto max-h-[60vh]">
           <ReactCrop
             crop={crop}
-            onChange={(c) => setCrop(c)}
+            onChange={(_, percentCrop) => setCrop(percentCrop)}
             aspect={PPT_ASPECT}
             minWidth={10}
             className="max-w-full"
@@ -1069,22 +1069,43 @@ function PhotoCard({
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
   const [showCropModal, setShowCropModal] = useState(false);
+  // Track natural image aspect ratio for accurate crop preview
+  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
 
   const hasCrop = photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
 
-  // CSS preview: use manual crop coords if present, otherwise use cropFocus position
-  const previewStyle: React.CSSProperties = (() => {
+  // Build image style for the crop preview inside a PPT-aspect-ratio container
+  const buildCropImgStyle = (): React.CSSProperties => {
+    if (hasCrop && naturalAspect !== null) {
+      const cX = Number(photo.cropX);
+      const cY = Number(photo.cropY);
+      const cW = Number(photo.cropWidth);
+      const cH = Number(photo.cropHeight);
+      // Scale: image width = containerWidth * (100/cW)
+      // x-offset: -(cX/cW)*containerWidth  →  -(cX/cW)*100% of container
+      // y-offset: image is auto-height from width; imageHeight = containerWidth*(100/cW)/naturalAspect
+      //           containerHeight = containerWidth/PPT_ASPECT
+      //           top in % of containerHeight = -(cY/100)*imageH / containerH
+      //             = -(cY/100) * (100/cW) / naturalAspect * PPT_ASPECT * 100 (% of containerH)
+      const imgWidthPct   = (100 / cW) * 100;          // % of container width
+      const leftPct       = -(cX / cW) * 100;           // % of container width
+      const topPct        = -(cY / 100) * (100 / cW) * PPT_ASPECT / naturalAspect * 100; // % of containerHeight
+      return {
+        position: "absolute",
+        width:  `${imgWidthPct}%`,
+        height: "auto",
+        left:   `${leftPct}%`,
+        top:    `${topPct}%`,
+      };
+    }
     if (hasCrop) {
-      const x = Number(photo.cropX);
-      const y = Number(photo.cropY);
-      const w = Number(photo.cropWidth);
-      const h = Number(photo.cropHeight);
-      // Center the crop region in the display
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-      return { objectPosition: `${cx}% ${cy}%` };
+      // Fallback before naturalAspect is known — center on crop midpoint
+      const cx = Number(photo.cropX) + Number(photo.cropWidth) / 2;
+      const cy = Number(photo.cropY) + Number(photo.cropHeight) / 2;
+      return { objectFit: "cover", objectPosition: `${cx}% ${cy}%`, width: "100%", height: "100%" };
     }
     return {
+      objectFit: "cover",
       objectPosition: {
         centre: "center center",
         top:    "center top",
@@ -1092,8 +1113,10 @@ function PhotoCard({
         left:   "left center",
         right:  "right center",
       }[photo.cropFocus ?? "centre"] ?? "center center",
+      width: "100%",
+      height: "100%",
     };
-  })();
+  };
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -1110,12 +1133,16 @@ function PhotoCard({
         className="border border-slate-200 rounded-xl overflow-hidden bg-white"
         data-testid={`photo-card-${photo.id}`}
       >
-        <div className="relative">
+        {/* Preview: locked to PPT aspect ratio, overflow hidden to show exactly the crop */}
+        <div
+          className="relative overflow-hidden w-full"
+          style={{ aspectRatio: "4.50/2.29" }}
+        >
           <img
             src={photo.photoUrl}
             alt={`Photo ${index}`}
-            className="w-full h-44 object-cover"
-            style={previewStyle}
+            style={buildCropImgStyle()}
+            onLoad={(e) => setNaturalAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
           />
           <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
           <div className="absolute top-2 right-2 flex gap-1">

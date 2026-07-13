@@ -933,6 +933,12 @@ function PhotoCard({
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
 
+  const [localCropFocus, setLocalCropFocus] = useState<CropFocus>(photo.cropFocus ?? "centre");
+
+  useEffect(() => {
+    setLocalCropFocus(photo.cropFocus ?? "centre");
+  }, [photo.cropFocus]);
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -948,7 +954,20 @@ function PhotoCard({
       data-testid={`photo-card-${photo.id}`}
     >
       <div className="relative">
-        <img src={photo.photoUrl} alt={`Photo ${index}`} className="w-full h-44 object-cover" />
+        <img
+          src={photo.photoUrl}
+          alt={`Photo ${index}`}
+          className="w-full h-44 object-cover"
+          style={{
+            objectPosition: {
+              centre: "center center",
+              top:    "center top",
+              bottom: "center bottom",
+              left:   "left center",
+              right:  "right center",
+            }[localCropFocus] ?? "center center",
+          }}
+        />
         <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
         <div className="absolute top-2 right-2 flex gap-1">
           <button
@@ -1002,11 +1021,11 @@ function PhotoCard({
           <span className="text-[10px] text-slate-400 shrink-0">{t.compRptCropFocus}:</span>
           <div className="flex gap-0.5 flex-1">
             {CROP_OPTIONS.map(opt => {
-              const active = (photo.cropFocus ?? "centre") === opt.value;
+              const active = localCropFocus === opt.value;
               return (
                 <button
                   key={opt.value}
-                  onClick={() => onCropFocusChange(opt.value)}
+                  onClick={() => { setLocalCropFocus(opt.value); onCropFocusChange(opt.value); }}
                   title={t[opt.labelKey] as string}
                   data-testid={`button-crop-${opt.value}-${photo.id}`}
                   className={`flex-1 text-[10px] font-medium py-0.5 rounded border transition-colors ${

@@ -11,6 +11,7 @@ import { useLanguage } from "@/hooks/use-language";
 import {
   Download, Upload, Trash2, FileText, Image, Camera,
   ChevronDown, ChevronUp, Loader2, Plus, ArrowUp, ArrowDown, GripVertical, Pencil, Check, X, Crop as CropIcon,
+  ZoomIn, ZoomOut,
 } from "lucide-react";
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -945,10 +946,12 @@ function CropEditorModal({
 }) {
   const { t } = useLanguage();
   const [crop, setCrop] = useState<Crop | undefined>();
+  const [zoom, setZoom] = useState(1);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    setZoom(1);
     const hasSaved =
       photo.cropX != null && photo.cropY != null &&
       photo.cropWidth != null && photo.cropHeight != null &&
@@ -1003,25 +1006,47 @@ function CropEditorModal({
           </DialogTitle>
         </DialogHeader>
         <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
-        <div className="flex items-center justify-center bg-slate-100 rounded-lg p-2 overflow-auto max-h-[60vh]">
+
+        {/* Crop area — scrollable so zoomed image stays accessible */}
+        <div className="overflow-auto bg-slate-100 rounded-lg" style={{ maxHeight: "55vh" }}>
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
             aspect={PPT_ASPECT}
             minWidth={10}
-            className="max-w-full"
           >
             <img
               ref={imgRef}
               src={photo.photoUrl}
               alt="crop editor"
-              style={{ maxWidth: "100%", maxHeight: "54vh", display: "block" }}
+              style={{ width: `${zoom * 100}%`, display: "block" }}
               onLoad={onImageLoad}
               data-testid={`img-crop-editor-${photo.id}`}
             />
           </ReactCrop>
         </div>
-        <div className="flex justify-between items-center pt-1">
+
+        {/* Zoom slider */}
+        <div className="flex items-center gap-2 px-1">
+          <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={0.05}
+            value={zoom}
+            onChange={e => setZoom(Number(e.target.value))}
+            className="flex-1 accent-brand-600 cursor-pointer"
+            aria-label={t.compRptCropZoom}
+            data-testid={`slider-crop-zoom-${photo.id}`}
+          />
+          <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="text-[11px] text-slate-500 w-9 text-right tabular-nums shrink-0">
+            {zoom.toFixed(1)}×
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center">
           <Button
             variant="outline"
             size="sm"

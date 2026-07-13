@@ -950,11 +950,23 @@ function CropEditorModal({
   const [fitPx, setFitPx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const naturalRef = useRef<{ w: number; h: number } | null>(null);
+
+  // Compute fitPx from actual container dimensions (called after dialog animation)
+  function calcFitPx() {
+    const nat = naturalRef.current;
+    const cw = containerRef.current?.clientWidth;
+    if (!nat || !cw) return;
+    const maxH = window.innerHeight * 0.55;
+    const fitScale = Math.min(cw / nat.w, maxH / nat.h, 1);
+    setFitPx(Math.round(nat.w * fitScale));
+  }
 
   useEffect(() => {
     if (!open) return;
     setZoom(1);
     setFitPx(null);
+    naturalRef.current = null;
     const hasSaved =
       photo.cropX != null && photo.cropY != null &&
       photo.cropWidth != null && photo.cropHeight != null &&
@@ -970,19 +982,21 @@ function CropEditorModal({
     } else {
       setCrop(undefined);
     }
+    // Re-measure after dialog animation completes (~200ms for Radix)
+    const tid = setTimeout(calcFitPx, 220);
+    return () => clearTimeout(tid);
   }, [open, photo.cropX, photo.cropY, photo.cropWidth, photo.cropHeight]);
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget;
     const { naturalWidth, naturalHeight } = img;
+    naturalRef.current = { w: naturalWidth, h: naturalHeight };
 
-    // Calculate the pixel width that makes the full image fit in the container
-    const containerW = containerRef.current?.clientWidth ?? 600;
+    // Conservative initial estimate so image doesn't overflow while waiting
+    const initW = Math.min(window.innerWidth - 80, 580);
     const maxH = window.innerHeight * 0.55;
-    const scaleW = containerW / naturalWidth;
-    const scaleH = maxH / naturalHeight;
-    const fitScale = Math.min(scaleW, scaleH, 1); // never upscale beyond natural
-    setFitPx(Math.round(naturalWidth * fitScale));
+    const initScale = Math.min(initW / naturalWidth, maxH / naturalHeight, 1);
+    setFitPx(Math.round(naturalWidth * initScale));
 
     const hasSaved =
       photo.cropX != null && photo.cropY != null &&
@@ -996,6 +1010,8 @@ function CropEditorModal({
       );
       setCrop(c);
     }
+    // Refine with actual container width after paint
+    requestAnimationFrame(() => requestAnimationFrame(calcFitPx));
   }
 
   function handleApply() {

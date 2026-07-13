@@ -14,7 +14,7 @@ import {
   ZoomIn, ZoomOut,
 } from "lucide-react";
 import Cropper from "react-easy-crop";
-import type { Area } from "react-easy-crop";
+import type { Area, MediaSize } from "react-easy-crop";
 import {
   DndContext,
   closestCenter,
@@ -949,6 +949,8 @@ function CropEditorModal({
   const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [completedArea, setCompletedArea] = useState<Area | null>(null);
+  const [dynMinZoom, setDynMinZoom] = useState(1);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
 
   const hasSavedCrop =
     photo.cropX != null && photo.cropWidth != null && Number(photo.cropWidth) > 0;
@@ -964,20 +966,65 @@ function CropEditorModal({
 
   useEffect(() => {
     if (!open) return;
-    setZoom(initZoom);
+    if (hasSavedCrop) {
+      setDynMinZoom(1);
+      setZoom(initZoom);
+    } else {
+      // Will be updated to the real fit-zoom in handleMediaLoaded.
+      // Start at zoom=1 as a safe fallback until the image loads.
+      setDynMinZoom(1);
+      setZoom(1);
+    }
     setCropPos({ x: 0, y: 0 });
     setCompletedArea(null);
     setCropperKey((k) => k + 1);
   }, [open]);
 
+  // Called by react-easy-crop once the image has loaded inside the Cropper.
+  // mediaSize.width/height = the rendered (zoom=1) image dimensions in CSS px.
+  function handleMediaLoaded({ width: imgW, height: imgH }: MediaSize) {
+    if (hasSavedCrop) return;
+
+    const container = cropContainerRef.current;
+    if (!container) return;
+    const { width: cW, height: cH } = container.getBoundingClientRect();
+    if (!cW || !cH) return;
+
+    // Mirrors react-easy-crop's internal getCropSize() logic:
+    // the crop box fills the constraining dimension of the container.
+    const containerAspect = cW / cH;
+    const cropW = containerAspect < PPT_ASPECT ? cW : cH * PPT_ASPECT;
+    const cropH = containerAspect < PPT_ASPECT ? cW / PPT_ASPECT : cH;
+
+    // The zoom at which the FULL image just fits inside the crop box
+    // (one dimension exactly touches the crop box edge, the other is smaller).
+    // Below this zoom the image is smaller than the crop box in one dimension.
+    const fitZoom = Math.min(cropW / imgW, cropH / imgH);
+    const safeMin = Math.max(fitZoom, 0.1);
+
+    setDynMinZoom(safeMin);
+    setZoom(safeMin);
+  }
+
   function handleApply() {
     if (!completedArea) return;
-    onApply({
-      cropX: completedArea.x,
-      cropY: completedArea.y,
-      cropWidth: completedArea.width,
-      cropHeight: completedArea.height,
-    });
+    // When the image is smaller than the crop box (fit-zoom view), react-easy-crop
+    // emits percentages outside the 0-100 range.  Treat these as "no crop".
+    const outOfBounds =
+      completedArea.x < -0.5 ||
+      completedArea.y < -0.5 ||
+      completedArea.width > 100.5 ||
+      completedArea.height > 100.5;
+    if (outOfBounds) {
+      onApply(null);
+    } else {
+      onApply({
+        cropX: completedArea.x,
+        cropY: completedArea.y,
+        cropWidth: completedArea.width,
+        cropHeight: completedArea.height,
+      });
+    }
     onClose();
   }
 
@@ -1000,7 +1047,7 @@ function CropEditorModal({
         {/* react-easy-crop: fixed crop box, image pans/zooms beneath it.
             Guard with `open` so the Cropper unmounts immediately on close
             instead of staying alive during the Dialog exit animation. */}
-        <div className="relative rounded-lg overflow-hidden bg-slate-900" style={{ height: "55vh" }}>
+        <div ref={cropContainerRef} className="relative rounded-lg overflow-hidden bg-slate-900" style={{ height: "55vh" }}>
           {open && (
             <Cropper
               key={cropperKey}
@@ -1008,11 +1055,12 @@ function CropEditorModal({
               crop={cropPos}
               zoom={zoom}
               aspect={PPT_ASPECT}
-              minZoom={0.5}
+              minZoom={dynMinZoom}
               maxZoom={5}
               onCropChange={setCropPos}
               onZoomChange={setZoom}
               onCropComplete={(croppedArea) => setCompletedArea(croppedArea)}
+              onMediaLoaded={handleMediaLoaded}
               initialCroppedAreaPercentages={initAreaPct}
               style={{
                 containerStyle: { borderRadius: "8px" },
@@ -1026,7 +1074,7 @@ function CropEditorModal({
           <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="range"
-            min={0.5}
+            min={dynMinZoom}
             max={5}
             step={0.05}
             value={zoom}

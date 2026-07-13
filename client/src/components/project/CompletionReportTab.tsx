@@ -1050,6 +1050,47 @@ function CropEditorModal({
   );
 }
 
+// ── Crop preset helpers ──────────────────────────────────────────────────────
+
+type PresetKey = "centre" | "top" | "bottom" | "left" | "right";
+
+/** Compute a crop rect (all % of image dims) that fills as much of the image as
+ *  possible at PPT_ASPECT, positioned at the given edge/center. */
+function computePresetCrop(preset: PresetKey, naturalAspect: number) {
+  let cropW: number, cropH: number;
+  if (naturalAspect > PPT_ASPECT) {
+    cropH = 100;
+    cropW = (PPT_ASPECT / naturalAspect) * 100;
+  } else {
+    cropW = 100;
+    cropH = (naturalAspect / PPT_ASPECT) * 100;
+  }
+  let cropX: number, cropY: number;
+  switch (preset) {
+    case "top":
+      cropX = (100 - cropW) / 2; cropY = 0; break;
+    case "bottom":
+      cropX = (100 - cropW) / 2; cropY = 100 - cropH; break;
+    case "left":
+      cropX = 0; cropY = (100 - cropH) / 2; break;
+    case "right":
+      cropX = 100 - cropW; cropY = (100 - cropH) / 2; break;
+    default: // centre
+      cropX = (100 - cropW) / 2; cropY = (100 - cropH) / 2; break;
+  }
+  return { cropX, cropY, cropWidth: cropW, cropHeight: cropH };
+}
+
+const CROP_PRESETS: { key: PresetKey; labelKey: keyof ReturnType<typeof useLanguage>["t"] }[] = [
+  { key: "centre", labelKey: "compRptCropCentre" },
+  { key: "top",    labelKey: "compRptCropTop" },
+  { key: "bottom", labelKey: "compRptCropBottom" },
+  { key: "left",   labelKey: "compRptCropLeft" },
+  { key: "right",  labelKey: "compRptCropRight" },
+];
+
+const PRESET_TOL = 1.0; // % tolerance for active-state detection
+
 // ── PhotoCard ───────────────────────────────────────────────────────────────
 
 function PhotoCard({
@@ -1069,11 +1110,33 @@ function PhotoCard({
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: photo.id });
   const [showCropModal, setShowCropModal] = useState(false);
+  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
 
   const hasCrop =
     photo.cropX != null && photo.cropY != null &&
     photo.cropWidth != null && photo.cropHeight != null &&
     Number(photo.cropWidth) > 0 && Number(photo.cropHeight) > 0;
+
+  /** Returns which preset key (if any) the saved crop matches, within tolerance. */
+  function activePreset(): PresetKey | null {
+    if (!hasCrop || naturalAspect === null) return null;
+    for (const { key } of CROP_PRESETS) {
+      const p = computePresetCrop(key, naturalAspect);
+      if (
+        Math.abs(Number(photo.cropX)      - p.cropX)      < PRESET_TOL &&
+        Math.abs(Number(photo.cropY)      - p.cropY)      < PRESET_TOL &&
+        Math.abs(Number(photo.cropWidth)  - p.cropWidth)  < PRESET_TOL &&
+        Math.abs(Number(photo.cropHeight) - p.cropHeight) < PRESET_TOL
+      ) return key;
+    }
+    return null; // custom crop (from modal)
+  }
+
+  function applyPreset(key: PresetKey) {
+    if (naturalAspect === null) return;
+    const coords = computePresetCrop(key, naturalAspect);
+    onCropChange(coords);
+  }
 
   // Build image style for the crop preview inside a PPT-aspect-ratio container.
   //
@@ -1139,6 +1202,7 @@ function PhotoCard({
             src={photo.photoUrl}
             alt={`Photo ${index}`}
             style={buildCropImgStyle()}
+            onLoad={(e) => setNaturalAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
           />
           <span className="absolute top-2 left-2 bg-black/50 text-white text-xs font-bold px-2 py-0.5 rounded">#{index}</span>
           <div className="absolute top-2 right-2 flex gap-1">
@@ -1188,18 +1252,41 @@ function PhotoCard({
             className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
             data-testid={`input-photo-desc-${photo.id}`}
           />
-          {/* Crop editor row */}
+          {/* Quick preset buttons */}
+          <div className="flex gap-0.5">
+            {CROP_PRESETS.map(({ key, labelKey }) => {
+              const isActive = activePreset() === key;
+              const canClick = naturalAspect !== null;
+              return (
+                <button
+                  key={key}
+                  onClick={() => applyPreset(key)}
+                  disabled={!canClick}
+                  title={t[labelKey] as string}
+                  data-testid={`button-preset-${key}-${photo.id}`}
+                  className={`flex-1 text-[10px] font-medium py-0.5 rounded border transition-colors disabled:opacity-40 ${
+                    isActive
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-brand-400 hover:text-brand-600"
+                  }`}
+                >
+                  {t[labelKey] as string}
+                </button>
+              );
+            })}
+          </div>
+          {/* Fine-tune crop + status */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-slate-400">
-              {hasCrop ? (
+              {hasCrop && activePreset() === null ? (
                 <span className="text-brand-600 font-medium">✓ {t.compRptCropEdit}</span>
-              ) : (
-                t.compRptCropFocus
-              )}
+              ) : !hasCrop ? (
+                <span className="text-slate-400">{t.compRptCropFocus}</span>
+              ) : null}
             </span>
             <button
               onClick={() => setShowCropModal(true)}
-              className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800 border border-brand-200 rounded px-2 py-0.5 hover:bg-brand-50 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-800 border border-brand-200 rounded px-2 py-0.5 hover:bg-brand-50 transition-colors ml-auto"
               data-testid={`button-open-crop-${photo.id}`}
             >
               <CropIcon className="w-3 h-3" />

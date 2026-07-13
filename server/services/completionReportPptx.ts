@@ -19,34 +19,42 @@ const SLIDE_H = 7.5;
 // Header bar height (green bar at top of every slide)
 const HEADER_H = 0.65;
 
-async function imgBase64(url: string | null | undefined): Promise<string | null> {
+interface ImgData { data: string; width: number; height: number; }
+
+async function imgBase64(url: string | null | undefined): Promise<ImgData | null> {
   if (!url) return null;
   try {
     const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
     const filename = path.basename(raw);
     if (!filename) return null;
 
-    const buf = await downloadBuffer(filename);
-    if (buf) {
-      const ext = path.extname(filename).toLowerCase().replace(".", "");
-      const mimeMap: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" };
-      const mime = mimeMap[ext] ?? "jpeg";
-      return `data:image/${mime};base64,${buf.toString("base64")}`;
+    let buf = await downloadBuffer(filename);
+    if (!buf) {
+      const localPath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(localPath)) buf = fs.readFileSync(localPath);
     }
+    if (!buf) return null;
 
-    const localPath = path.join(process.cwd(), "uploads", filename);
-    if (fs.existsSync(localPath)) {
-      const localBuf = fs.readFileSync(localPath);
-      const ext = path.extname(filename).toLowerCase().replace(".", "");
-      const mimeMap: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" };
-      const mime = mimeMap[ext] ?? "jpeg";
-      return `data:image/${mime};base64,${localBuf.toString("base64")}`;
-    }
-
-    return null;
+    // Auto-rotate based on EXIF and strip orientation tag so PowerPoint never double-rotates
+    const sharp = (await import("sharp")).default;
+    const rotated = await sharp(buf).rotate().jpeg({ quality: 90 }).toBuffer();
+    const meta = await sharp(rotated).metadata();
+    return {
+      data: `data:image/jpeg;base64,${rotated.toString("base64")}`,
+      width: meta.width ?? 1,
+      height: meta.height ?? 1,
+    };
   } catch {
     return null;
   }
+}
+
+/** Compute "contain" render size and centering offsets within a cell */
+function containIn(imgW: number, imgH: number, cellW: number, cellH: number) {
+  const scale = Math.min(cellW / imgW, cellH / imgH);
+  const renderW = imgW * scale;
+  const renderH = imgH * scale;
+  return { renderW, renderH, dx: (cellW - renderW) / 2, dy: (cellH - renderH) / 2 };
 }
 
 async function localFileBase64(filePath: string): Promise<string | null> {
@@ -402,8 +410,9 @@ export async function generateCompletionReportPptx(
 
     const qData = await imgBase64(report.quotationImageUrl);
     if (qData) {
-      // Image starts just below green bar, fills remaining height
-      slide.addImage({ data: qData, x: 1.575, y: HEADER_H + 0.05, w: 6.85, h: SLIDE_H - HEADER_H - 0.25 });
+      const qCellW = 6.85, qCellH = SLIDE_H - HEADER_H - 0.25;
+      const { renderW: qW, renderH: qH, dx: qDx, dy: qDy } = containIn(qData.width, qData.height, qCellW, qCellH);
+      slide.addImage({ data: qData.data, x: 1.575 + qDx, y: HEADER_H + 0.05 + qDy, w: qW, h: qH });
     } else {
       slide.addText("[ Quotation image not uploaded ]", {
         x: 0.3, y: 3.5, w: 9.4, h: 0.6,
@@ -436,7 +445,8 @@ export async function generateCompletionReportPptx(
 
     const dData = await imgBase64(ds.imageUrl);
     if (dData) {
-      slide.addImage({ data: dData, x: 0.3, y: infoTableBottom + 0.55, w: 9.4, h: 5.0 });
+      const { renderW: dW, renderH: dH, dx: dDx, dy: dDy } = containIn(dData.width, dData.height, 9.4, 5.0);
+      slide.addImage({ data: dData.data, x: 0.3 + dDx, y: infoTableBottom + 0.55 + dDy, w: dW, h: dH });
     } else {
       slide.addText("[ Drawing image not uploaded ]", {
         x: 0.3, y: 4.5, w: 9.4, h: 0.6,
@@ -501,10 +511,8 @@ export async function generateCompletionReportPptx(
           fill: { color: "E8E8E8" }, line: { color: "D0D0D0", pt: 0.5 },
         });
         if (pData) {
-          slide.addImage({
-            data: pData, x, y, w: photoW, h: photoH,
-            sizing: { type: "contain", w: photoW, h: photoH },
-          });
+          const { renderW: pW, renderH: pH, dx: pDx, dy: pDy } = containIn(pData.width, pData.height, photoW, photoH);
+          slide.addImage({ data: pData.data, x: x + pDx, y: y + pDy, w: pW, h: pH });
         }
 
         // Caption bar

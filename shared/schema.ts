@@ -765,6 +765,7 @@ export const completionReportPhotos = pgTable("completion_report_photos", {
   photoUrl: text("photo_url").notNull(),
   photoDate: text("photo_date"),
   description: text("description"),
+  cropFocus: text("crop_focus").default("centre"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });

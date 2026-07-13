@@ -764,9 +764,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { and: andOp } = await import("drizzle-orm");
 
       // Only update fields that were actually provided in the request body
+      const VALID_CROP_FOCUS = ["centre", "top", "bottom", "left", "right"];
       const updateData: Record<string, unknown> = {};
       if ("photoDate" in req.body) updateData.photoDate = req.body.photoDate ?? null;
       if ("description" in req.body) updateData.description = req.body.description ?? null;
+      if ("cropFocus" in req.body) {
+        const cf = req.body.cropFocus;
+        updateData.cropFocus = (typeof cf === "string" && VALID_CROP_FOCUS.includes(cf)) ? cf : "centre";
+      }
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
       }

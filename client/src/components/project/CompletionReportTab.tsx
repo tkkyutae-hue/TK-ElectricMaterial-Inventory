@@ -28,11 +28,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+type CropFocus = "centre" | "top" | "bottom" | "left" | "right";
+
 interface Photo {
   id: number;
   photoUrl: string;
   photoDate: string | null;
   description: string | null;
+  cropFocus: CropFocus | null;
   sortOrder: number;
   sectionId: number | null;
 }
@@ -185,6 +188,11 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
 
   async function handlePhotoMeta(photoId: number, field: "photoDate" | "description", value: string) {
     await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, { [field]: value });
+    invalidate();
+  }
+
+  async function handleCropFocusChange(photoId: number, cropFocus: CropFocus) {
+    await apiRequest("PATCH", `/api/projects/${projectId}/completion-report/photos/${photoId}`, { cropFocus });
     invalidate();
   }
 
@@ -390,6 +398,7 @@ export function CompletionReportTab({ projectId, project }: { projectId: number;
           onUpload={(file) => handleSectionPhotoUpload(section.id, file)}
           onDelete={(photoId) => deleteMut.mutate(photoId)}
           onMetaChange={(photoId, field, val) => handlePhotoMeta(photoId, field, val)}
+          onCropFocusChange={(photoId, focus) => handleCropFocusChange(photoId, focus)}
           onReorder={(photos, fromIdx, toIdx) => handleReorder(section.id, photos, fromIdx, toIdx)}
           onDragEnd={(event) => handleDragEnd(section.id, section.photos, event)}
           onUpdateTitle={(title) => updateSectionMut.mutate({ id: section.id, data: { title } })}
@@ -526,7 +535,7 @@ function DrawingSectionCard({
 // ── PhotoSectionCard ────────────────────────────────────────────────────────
 
 function PhotoSectionCard({
-  section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onReorder, onDragEnd,
+  section, slideLabel, sensors, onUpload, onDelete, onMetaChange, onCropFocusChange, onReorder, onDragEnd,
   onUpdateTitle, onDeleteSection, canDelete,
 }: {
   section: PhotoSection;
@@ -535,6 +544,7 @@ function PhotoSectionCard({
   onUpload: (file: File) => Promise<void>;
   onDelete: (photoId: number) => void;
   onMetaChange: (photoId: number, field: "photoDate" | "description", val: string) => void;
+  onCropFocusChange: (photoId: number, focus: CropFocus) => void;
   onReorder: (photos: Photo[], fromIdx: number, toIdx: number) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onUpdateTitle: (title: string) => void;
@@ -646,6 +656,7 @@ function PhotoSectionCard({
                     isLast={idx === photos.length - 1}
                     onDelete={() => onDelete(photo.id)}
                     onMetaChange={(field, val) => onMetaChange(photo.id, field, val)}
+                    onCropFocusChange={(focus) => onCropFocusChange(photo.id, focus)}
                     onMoveUp={() => onReorder(photos, idx, idx - 1)}
                     onMoveDown={() => onReorder(photos, idx, idx + 1)}
                   />
@@ -898,8 +909,16 @@ function ImageUploadBox({
 
 // ── PhotoCard ───────────────────────────────────────────────────────────────
 
+const CROP_OPTIONS: { value: CropFocus; labelKey: keyof ReturnType<typeof useLanguage>["t"] }[] = [
+  { value: "top",    labelKey: "compRptCropTop" },
+  { value: "centre", labelKey: "compRptCropCentre" },
+  { value: "right",  labelKey: "compRptCropRight" },
+  { value: "left",   labelKey: "compRptCropLeft" },
+  { value: "bottom", labelKey: "compRptCropBottom" },
+];
+
 function PhotoCard({
-  photo, index, isFirst, isLast, onDelete, onMetaChange, onMoveUp, onMoveDown,
+  photo, index, isFirst, isLast, onDelete, onMetaChange, onCropFocusChange, onMoveUp, onMoveDown,
 }: {
   photo: Photo;
   index: number;
@@ -907,6 +926,7 @@ function PhotoCard({
   isLast: boolean;
   onDelete: () => void;
   onMetaChange: (field: "photoDate" | "description", val: string) => void;
+  onCropFocusChange: (focus: CropFocus) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -977,6 +997,30 @@ function PhotoCard({
           className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-400 bg-white"
           data-testid={`input-photo-desc-${photo.id}`}
         />
+        {/* Crop focus picker */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-slate-400 shrink-0">{t.compRptCropFocus}:</span>
+          <div className="flex gap-0.5 flex-1">
+            {CROP_OPTIONS.map(opt => {
+              const active = (photo.cropFocus ?? "centre") === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => onCropFocusChange(opt.value)}
+                  title={t[opt.labelKey] as string}
+                  data-testid={`button-crop-${opt.value}-${photo.id}`}
+                  className={`flex-1 text-[10px] font-medium py-0.5 rounded border transition-colors ${
+                    active
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-brand-400 hover:text-brand-600"
+                  }`}
+                >
+                  {t[opt.labelKey] as string}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

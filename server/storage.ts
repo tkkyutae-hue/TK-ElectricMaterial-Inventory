@@ -4940,6 +4940,8 @@ export async function runCompletionReportMigration(): Promise<void> {
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
     ALTER TABLE completion_report_photos
       ADD COLUMN IF NOT EXISTS section_id INTEGER REFERENCES completion_report_photo_sections(id) ON DELETE SET NULL;
+    ALTER TABLE completion_report_photos
+      ADD COLUMN IF NOT EXISTS crop_focus TEXT DEFAULT 'centre';
     ALTER TABLE completion_report_photo_sections
       ADD COLUMN IF NOT EXISTS photos_per_slide INTEGER NOT NULL DEFAULT 2;
   `);

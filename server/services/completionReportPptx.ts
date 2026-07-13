@@ -57,8 +57,21 @@ function containIn(imgW: number, imgH: number, cellW: number, cellH: number) {
   return { renderW, renderH, dx: (cellW - renderW) / 2, dy: (cellH - renderH) / 2 };
 }
 
-/** Load, EXIF-rotate, and center-crop an image to exactly match cellW:cellH ratio */
-async function imgCropped(url: string | null | undefined, cellW: number, cellH: number): Promise<string | null> {
+const VALID_CROP_POSITIONS: Record<string, string> = {
+  centre: "centre",
+  top: "top",
+  bottom: "bottom",
+  left: "left",
+  right: "right",
+};
+
+/** Load, EXIF-rotate, and crop an image to exactly match cellW:cellH ratio */
+async function imgCropped(
+  url: string | null | undefined,
+  cellW: number,
+  cellH: number,
+  cropFocus?: string | null,
+): Promise<string | null> {
   if (!url) return null;
   try {
     const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
@@ -74,11 +87,12 @@ async function imgCropped(url: string | null | undefined, cellW: number, cellH: 
 
     const targetW = 1440;
     const targetH = Math.max(1, Math.round(targetW * cellH / cellW));
+    const position = (cropFocus && VALID_CROP_POSITIONS[cropFocus]) ? VALID_CROP_POSITIONS[cropFocus] : "centre";
 
     const sharp = (await import("sharp")).default;
     const cropped = await sharp(buf)
       .rotate()
-      .resize(targetW, targetH, { fit: "cover", position: "centre" })
+      .resize(targetW, targetH, { fit: "cover", position })
       .jpeg({ quality: 90 })
       .toBuffer();
     return `data:image/jpeg;base64,${cropped.toString("base64")}`;
@@ -534,7 +548,7 @@ export async function generateCompletionReportPptx(
         const x = colX[cell % cols];
         const y = rowY[Math.floor(cell / cols)];
 
-        const pData = await imgCropped(photo.photoUrl, photoW, photoH);
+        const pData = await imgCropped(photo.photoUrl, photoW, photoH, photo.cropFocus);
         if (pData) {
           slide.addImage({ data: pData, x, y, w: photoW, h: photoH });
         } else {

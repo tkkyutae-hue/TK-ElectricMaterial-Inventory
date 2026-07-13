@@ -1054,6 +1054,12 @@ const en = {
   compRptAddPhoto:                 "Add photo",
   compRptMultipleHint:             "Shift / Ctrl for multiple",
   compRptUploading:                "uploading…",
+  compRptCropFocus:                "Crop focus",
+  compRptCropCentre:               "Center",
+  compRptCropTop:                  "Top",
+  compRptCropBottom:               "Bottom",
+  compRptCropLeft:                 "Left",
+  compRptCropRight:                "Right",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "Scope Items",
@@ -3418,6 +3424,12 @@ const ko: Translations = {
   compRptAddPhoto:                 "사진 추가",
   compRptMultipleHint:             "Shift / Ctrl로 여러 장 선택",
   compRptUploading:                "업로드 중…",
+  compRptCropFocus:                "크롭 기준점",
+  compRptCropCentre:               "중앙",
+  compRptCropTop:                  "상단",
+  compRptCropBottom:               "하단",
+  compRptCropLeft:                 "왼쪽",
+  compRptCropRight:                "오른쪽",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "작업 범위 항목",
@@ -5782,6 +5794,12 @@ const es: Translations = {
   compRptAddPhoto:                 "Agregar foto",
   compRptMultipleHint:             "Shift / Ctrl para seleccionar varias",
   compRptUploading:                "subiendo…",
+  compRptCropFocus:                "Enfoque de recorte",
+  compRptCropCentre:               "Centro",
+  compRptCropTop:                  "Arriba",
+  compRptCropBottom:               "Abajo",
+  compRptCropLeft:                 "Izquierda",
+  compRptCropRight:                "Derecha",
 
   // ── Project — Overview ──
   projOverviewScopeItems:          "Elementos del Alcance",

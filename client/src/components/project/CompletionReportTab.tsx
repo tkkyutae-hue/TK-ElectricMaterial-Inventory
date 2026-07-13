@@ -997,24 +997,28 @@ function CropEditorModal({
         </DialogHeader>
         <DialogDescription className="text-xs text-slate-500 -mt-1">{t.compRptCropHint}</DialogDescription>
 
-        {/* react-easy-crop: fixed crop box, image pans/zooms beneath it */}
+        {/* react-easy-crop: fixed crop box, image pans/zooms beneath it.
+            Guard with `open` so the Cropper unmounts immediately on close
+            instead of staying alive during the Dialog exit animation. */}
         <div className="relative rounded-lg overflow-hidden bg-slate-900" style={{ height: "55vh" }}>
-          <Cropper
-            key={cropperKey}
-            image={photo.photoUrl}
-            crop={cropPos}
-            zoom={zoom}
-            aspect={PPT_ASPECT}
-            minZoom={0.5}
-            maxZoom={5}
-            onCropChange={setCropPos}
-            onZoomChange={setZoom}
-            onCropComplete={(croppedArea) => setCompletedArea(croppedArea)}
-            initialCroppedAreaPercentages={initAreaPct}
-            style={{
-              containerStyle: { borderRadius: "8px" },
-            }}
-          />
+          {open && (
+            <Cropper
+              key={cropperKey}
+              image={photo.photoUrl}
+              crop={cropPos}
+              zoom={zoom}
+              aspect={PPT_ASPECT}
+              minZoom={0.5}
+              maxZoom={5}
+              onCropChange={setCropPos}
+              onZoomChange={setZoom}
+              onCropComplete={(croppedArea) => setCompletedArea(croppedArea)}
+              initialCroppedAreaPercentages={initAreaPct}
+              style={{
+                containerStyle: { borderRadius: "8px" },
+              }}
+            />
+          )}
         </div>
 
         {/* Zoom slider */}
@@ -1053,7 +1057,7 @@ function CropEditorModal({
             <Button
               size="sm"
               onClick={handleApply}
-              disabled={!crop?.width}
+              disabled={!completedArea}
               className="bg-brand-600 hover:bg-brand-700 text-white"
               data-testid={`button-crop-apply-${photo.id}`}
             >

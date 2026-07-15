@@ -401,8 +401,11 @@ export async function generateCompletionReportPptx(
       })),
     ];
 
-    const startY = tocItems.length <= 3 ? 2.45 : 2.0;
-    const rowH   = tocItems.length <= 4 ? 1.05 : Math.min(1.05, (7.5 - startY - 0.3) / tocItems.length);
+    const maxRowH  = 1.05;
+    const available = SLIDE_H - HEADER_H - 0.3;          // usable height below header
+    const rowH   = Math.min(maxRowH, available / tocItems.length);
+    const totalH = rowH * tocItems.length;
+    const startY = HEADER_H + (available - totalH) / 2;  // vertically centred
 
     for (let i = 0; i < tocItems.length; i++) {
       const item = tocItems[i];

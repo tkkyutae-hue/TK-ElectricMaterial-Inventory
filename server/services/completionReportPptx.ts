@@ -615,7 +615,10 @@ export async function generateCompletionReportPptx(
       const slide = prs.addSlide();
       slide.background = { color: WHITE };
       pageNum++;
-      await addPageHeader(slide, prs, `${sectionNum}  ${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`);
+      const slideLabel = totalPhotoSlides > 1
+        ? `${sectionNum}  ${sectionTitle}  ${slideNum} / ${totalPhotoSlides}`
+        : `${sectionNum}  ${sectionTitle}`;
+      await addPageHeader(slide, prs, slideLabel);
       addInfoTable(slide, project, report);
 
       if (photos.length === 0) {
@@ -627,40 +630,19 @@ export async function generateCompletionReportPptx(
         continue;
       }
 
-      // ── Dynamic row heights based on each photo's effective aspect ratio ──
+      // ── Uniform photo height: all rows on this slide get the same height ──
       const numRows = Math.ceil(slidePhotos.length / cols);
+      const availH  = AVAIL_BOT - AVAIL_TOP - numRows * CAP_H - (numRows - 1) * ROW_GAP;
+      const uniformH = Math.max(0.3, availH / numRows);
 
-      // Fetch effective W/H ratios for all photos on this slide in parallel
-      const ratios = await Promise.all(
-        slidePhotos.map(p => p ? getEffectiveRatio(p) : Promise.resolve(4 / 3))
-      );
-
-      // Per row: the most-portrait photo (smallest W/H ratio) determines row height
-      const rowMinRatio: number[] = [];
-      for (let r = 0; r < numRows; r++) {
-        let minR = Infinity;
-        for (let c = 0; c < cols; c++) {
-          const idx = r * cols + c;
-          if (idx < ratios.length) minR = Math.min(minR, ratios[idx]);
-        }
-        rowMinRatio.push(minR === Infinity ? 4 / 3 : minR);
-      }
-
-      // Natural photo height for each row (before scaling to fit slide)
-      const naturalH = rowMinRatio.map(r => photoW / r);
-      const naturalTotal = naturalH.reduce((a, b) => a + b, 0);
-
-      // Scale all rows proportionally so they fill available height exactly
-      const availH = AVAIL_BOT - AVAIL_TOP - numRows * CAP_H - (numRows - 1) * ROW_GAP;
-      const scale = naturalTotal > 0 ? availH / naturalTotal : 1;
-      const rowPhotoH = naturalH.map(h => Math.max(0.3, h * scale));
+      const rowPhotoH = Array<number>(numRows).fill(uniformH);
 
       // Build rowY start positions
       const rowY: number[] = [];
       let curY = AVAIL_TOP;
       for (let r = 0; r < numRows; r++) {
         rowY.push(curY);
-        curY += rowPhotoH[r] + CAP_H + (r < numRows - 1 ? ROW_GAP : 0);
+        curY += uniformH + CAP_H + (r < numRows - 1 ? ROW_GAP : 0);
       }
       // ─────────────────────────────────────────────────────────────────────
 

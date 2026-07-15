@@ -684,6 +684,12 @@ export async function generateCompletionReportPptx(
             fill: { color: "E8E8E8" }, line: { color: "D0D0D0", pt: 0.5 },
           });
         }
+        // Border overlay on top of image
+        slide.addShape(prs.ShapeType.rect, {
+          x, y, w: photoW, h: photoH,
+          fill: { type: "none" },
+          line: { color: "BBBBBB", pt: 0.75 },
+        });
 
         // Caption bar
         slide.addShape(prs.ShapeType.rect, {

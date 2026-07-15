@@ -123,15 +123,25 @@ async function imgCropped(
     const targetW = 1440;
     const targetH = Math.max(1, Math.round(targetW * cellH / cellW));
 
-    // Cell dimensions now match the photo's effective aspect ratio (computed by getEffectiveRatio),
-    // so cover fills the cell perfectly with no clipping and no white space regardless of crop.
-    const position = (!hasCrop && opts?.cropFocus && VALID_CROP_POSITIONS[opts.cropFocus])
-      ? VALID_CROP_POSITIONS[opts.cropFocus]
-      : "centre";
-    const final = await sharp(toResize)
-      .resize(targetW, targetH, { fit: "cover", position })
-      .jpeg({ quality: 90 })
-      .toBuffer();
+    let final: Buffer;
+    if (hasCrop) {
+      // contain: full cropped area always visible, no clipping ever.
+      // Cell is dynamically sized to match crop ratio so white space is minimal.
+      final = await sharp(toResize)
+        .resize(targetW, targetH, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    } else {
+      // cover: no crop → fill cell edge-to-edge using focus position
+      const position = (opts?.cropFocus && VALID_CROP_POSITIONS[opts.cropFocus])
+        ? VALID_CROP_POSITIONS[opts.cropFocus]
+        : "centre";
+      final = await sharp(toResize)
+        .resize(targetW, targetH, { fit: "cover", position })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    }
     return `data:image/jpeg;base64,${final.toString("base64")}`;
   } catch {
     return null;

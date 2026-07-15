@@ -586,7 +586,7 @@ export async function generateCompletionReportPptx(
   }
 
   // ── Slide 6+: Photo sections ───────────────────────────────────────────────
-  const CAP_H       = 0.52;
+  const CAP_H       = 0.26;
   const ROW_GAP     = 0.10;
   const AVAIL_TOP   = 1.58;                  // y where photo rows start
   const AVAIL_BOT   = SLIDE_H - 0.22;        // y bottom limit (page-number clearance)

@@ -145,6 +145,40 @@ async function imgCropped(
   }
 }
 
+/** Get effective W/H aspect ratio of a photo, accounting for crop percentages */
+async function getEffectiveRatio(photo: any): Promise<number> {
+  const defaultRatio = 4 / 3;
+  try {
+    const url = photo?.photoUrl;
+    if (!url) return defaultRatio;
+    const raw = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : url;
+    const filename = path.basename(raw);
+    if (!filename) return defaultRatio;
+
+    let buf = await downloadBuffer(filename);
+    if (!buf) {
+      const localPath = path.join(process.cwd(), "uploads", filename);
+      if (fs.existsSync(localPath)) buf = fs.readFileSync(localPath);
+    }
+    if (!buf) return defaultRatio;
+
+    const sharp = (await import("sharp")).default;
+    const rotated = await sharp(buf).rotate().toBuffer();
+    const meta = await sharp(rotated).metadata();
+    const imgW = meta.width ?? 1;
+    const imgH = meta.height ?? 1;
+
+    const cw = photo.cropWidth  != null ? Number(photo.cropWidth)  : null;
+    const ch = photo.cropHeight != null ? Number(photo.cropHeight) : null;
+    if (cw != null && ch != null && cw > 0 && ch > 0) {
+      return Math.max(0.05, (cw / 100 * imgW) / (ch / 100 * imgH));
+    }
+    return imgW / imgH;
+  } catch {
+    return defaultRatio;
+  }
+}
+
 async function localFileBase64(filePath: string): Promise<string | null> {
   try {
     const buf = fs.readFileSync(filePath);
@@ -546,17 +580,17 @@ export async function generateCompletionReportPptx(
   }
 
   // ── Slide 6+: Photo sections ───────────────────────────────────────────────
-  const CAP_H = 0.52;
+  const CAP_H       = 0.52;
+  const ROW_GAP     = 0.10;
+  const AVAIL_TOP   = 1.58;                  // y where photo rows start
+  const AVAIL_BOT   = SLIDE_H - 0.22;        // y bottom limit (page-number clearance)
 
-  const PHOTO_LAYOUTS: Record<number, { photoW: number; photoH: number; cols: number; colX: number[]; rowY: number[] }> = {
-    // 2장: 2col × 1row
-    2: { photoW: 4.50, photoH: 5.20, cols: 2, colX: [0.45, 5.05], rowY: [1.58] },
-    // 4장: 2col × 2row
-    4: { photoW: 4.50, photoH: 2.29, cols: 2, colX: [0.45, 5.05], rowY: [1.58, 4.49] },
-    // 6장: 3col × 2row
-    6: { photoW: 2.97, photoH: 2.29, cols: 3, colX: [0.45, 3.52, 6.59], rowY: [1.58, 4.49] },
-    // 8장: 4col × 2row
-    8: { photoW: 2.20, photoH: 2.29, cols: 4, colX: [0.45, 2.75, 5.05, 7.35], rowY: [1.58, 4.49] },
+  // Column widths and x-positions only; row heights are computed dynamically per slide
+  const PHOTO_LAYOUTS: Record<number, { photoW: number; cols: number; colX: number[] }> = {
+    2: { photoW: 4.50, cols: 2, colX: [0.45, 5.05] },
+    4: { photoW: 4.50, cols: 2, colX: [0.45, 5.05] },
+    6: { photoW: 2.97, cols: 3, colX: [0.45, 3.52, 6.59] },
+    8: { photoW: 2.20, cols: 4, colX: [0.45, 2.75, 5.05, 7.35] },
   };
 
   for (let sectionIdx = 0; sectionIdx < sections.length; sectionIdx++) {
@@ -564,12 +598,13 @@ export async function generateCompletionReportPptx(
     const photos = section.photos ?? [];
     const pps = autoPps(photos.length);
     const layout = PHOTO_LAYOUTS[pps];
-    const { photoW, photoH, cols, colX, rowY } = layout;
+    const { photoW, cols, colX } = layout;
     const sectionTitle = (section.title || "WORK PICTURE").toUpperCase();
     const sectionNum = String(sectionIdx + 2 + drawingSlides.length + 1).padStart(2, "0");
     const totalPhotoSlides = Math.ceil(Math.max(photos.length, 1) / pps);
 
     for (let i = 0; i < Math.max(photos.length, 1); i += pps) {
+      const slidePhotos = photos.slice(i, i + pps);
       const slideNum = Math.floor(i / pps) + 1;
       const slide = prs.addSlide();
       slide.background = { color: WHITE };
@@ -586,11 +621,50 @@ export async function generateCompletionReportPptx(
         continue;
       }
 
-      for (let cell = 0; cell < pps; cell++) {
-        const photo = photos[i + cell];
+      // ── Dynamic row heights based on each photo's effective aspect ratio ──
+      const numRows = Math.ceil(slidePhotos.length / cols);
+
+      // Fetch effective W/H ratios for all photos on this slide in parallel
+      const ratios = await Promise.all(
+        slidePhotos.map(p => p ? getEffectiveRatio(p) : Promise.resolve(4 / 3))
+      );
+
+      // Per row: the most-portrait photo (smallest W/H ratio) determines row height
+      const rowMinRatio: number[] = [];
+      for (let r = 0; r < numRows; r++) {
+        let minR = Infinity;
+        for (let c = 0; c < cols; c++) {
+          const idx = r * cols + c;
+          if (idx < ratios.length) minR = Math.min(minR, ratios[idx]);
+        }
+        rowMinRatio.push(minR === Infinity ? 4 / 3 : minR);
+      }
+
+      // Natural photo height for each row (before scaling to fit slide)
+      const naturalH = rowMinRatio.map(r => photoW / r);
+      const naturalTotal = naturalH.reduce((a, b) => a + b, 0);
+
+      // Scale all rows proportionally so they fill available height exactly
+      const availH = AVAIL_BOT - AVAIL_TOP - numRows * CAP_H - (numRows - 1) * ROW_GAP;
+      const scale = naturalTotal > 0 ? availH / naturalTotal : 1;
+      const rowPhotoH = naturalH.map(h => Math.max(0.3, h * scale));
+
+      // Build rowY start positions
+      const rowY: number[] = [];
+      let curY = AVAIL_TOP;
+      for (let r = 0; r < numRows; r++) {
+        rowY.push(curY);
+        curY += rowPhotoH[r] + CAP_H + (r < numRows - 1 ? ROW_GAP : 0);
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
+      for (let cell = 0; cell < slidePhotos.length; cell++) {
+        const photo = slidePhotos[cell];
         if (!photo) continue;
-        const x = colX[cell % cols];
-        const y = rowY[Math.floor(cell / cols)];
+        const row = Math.floor(cell / cols);
+        const x   = colX[cell % cols];
+        const y   = rowY[row];
+        const photoH = rowPhotoH[row];
 
         const pData = await imgCropped(photo.photoUrl, photoW, photoH, {
           cropFocus: photo.cropFocus,

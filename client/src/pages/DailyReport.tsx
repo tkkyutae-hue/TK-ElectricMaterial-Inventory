@@ -4,25 +4,27 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, ChevronDown,
   Search, ClipboardList, FileText, CheckCircle2, Loader2,
-  User, BarChart3, Hash, Filter,
+  BarChart3, Filter,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  STATUS_CFG, type ProjectStatus,
-} from "@/lib/mock-daily-report";
 import type { Project } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 
-// ─── localStorage keys ───────────────────────────────────────────────────────
-const LS_HIDDEN   = "voltstock_dr_hidden_statuses_v1";
+// ─── localStorage keys (v2 — new defaults) ────────────────────────────────────
+const LS_HIDDEN   = "voltstock_dr_hidden_statuses_v2";
 const LS_COLLAPSE = "voltstock_dr_collapsed_groups_v1";
 
-// completed + cancelled hidden by default
-const DEFAULT_HIDDEN = new Set<string>(["completed", "cancelled"]);
+// Show ONLY "working on it" and "start soon" by default.
+// Everything else is hidden until the user explicitly enables it.
+const SHOW_BY_DEFAULT = new Set(["working on it", "start soon"]);
+const ALL_KNOWN_STATUSES = [
+  "active", "in progress", "on_hold", "on hold", "quote only",
+  "stuck", "completed", "done", "cancelled", "canceled",
+];
+const DEFAULT_HIDDEN = new Set<string>(ALL_KNOWN_STATUSES);
 
 function loadHidden(): Set<string> {
   try {
@@ -40,7 +42,21 @@ function loadCollapsed(): Set<string> {
   return new Set();
 }
 
-// ─── Palette (mirrors Projects.tsx) ──────────────────────────────────────────
+// ─── Monday status colors (mirrors Projects.tsx) ──────────────────────────────
+const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
+  { keys: ["active"],                               bg: "#00C875" },
+  { keys: ["working on it", "in progress"],         bg: "#FDAB3D", text: "#1a1a1a" },
+  { keys: ["on_hold", "on hold"],                   bg: "#FDBC64", text: "#1a1a1a" },
+  { keys: ["quote only"],                           bg: "#C4C4C4", text: "#1a1a1a" },
+  { keys: ["stuck"],                                bg: "#E2445C" },
+  { keys: ["start soon"],                           bg: "#00C4F4", text: "#1a1a1a" },
+  { keys: ["completed", "done"],                    bg: "#00C875" },
+  { keys: ["cancelled", "canceled"],                bg: "#E2445C" },
+];
+function statusBg(s: string)   { const l = s.toLowerCase(); return STATUS_COLOR_MAP.find(e => e.keys.includes(l))?.bg   ?? "#C4C4C4"; }
+function statusFg(s: string)   { const l = s.toLowerCase(); return STATUS_COLOR_MAP.find(e => e.keys.includes(l))?.text ?? "#ffffff"; }
+
+// ─── Group palette (mirrors Projects.tsx) ─────────────────────────────────────
 const GROUP_PALETTE = [
   "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
   "#579BFC","#9CD326","#FF9F43","#FF3D57","#7E5CB5",
@@ -75,30 +91,10 @@ function formatLastDate(date: string | null, noReportsLabel: string): string {
   });
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-function ProjectStatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status as ProjectStatus] ?? {
-    label: status,
-    className: "bg-slate-100 text-slate-500 border-slate-200",
-  };
-  return (
-    <Badge variant="outline" className={`${cfg.className} text-xs font-semibold px-2 py-0.5`}>
-      {cfg.label}
-    </Badge>
-  );
-}
-
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({
-  icon: Icon, label, value, accent, iconBg, iconColor, borderColor,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  accent: string;
-  iconBg: string;
-  iconColor: string;
-  borderColor: string;
+function KpiCard({ icon: Icon, label, value, accent, iconBg, iconColor, borderColor }: {
+  icon: React.ElementType; label: string; value: string;
+  accent: string; iconBg: string; iconColor: string; borderColor: string;
 }) {
   return (
     <Card className={`overflow-hidden border ${borderColor}`}>
@@ -119,83 +115,56 @@ function KpiCard({
 }
 
 // ─── Project card ─────────────────────────────────────────────────────────────
-function ProjectCard({
-  project, summary, onOpen,
-}: {
-  project: Project;
-  summary: ReportSummary;
-  onOpen: () => void;
+function ProjectCard({ project, summary, onOpen }: {
+  project: Project; summary: ReportSummary; onOpen: () => void;
 }) {
   const { t } = useLanguage();
-  const loc   = projectLocation(project);
-  const owner = project.ownerName || project.customerName;
+  const loc = projectLocation(project);
 
   return (
     <Card
-      key={project.id}
       data-testid={`card-project-${project.id}`}
       className="hover:shadow-md transition-all duration-150 cursor-pointer group border border-slate-200"
       onClick={onOpen}
     >
       <CardContent className="px-5 py-4 flex gap-4">
 
-        {/* Left icon */}
-        <div className="flex items-start pt-0.5">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
-            project.status === "active"    ? "bg-emerald-50" :
-            project.status === "completed" ? "bg-teal-50"    :
-            project.status === "on_hold"   ? "bg-amber-50"   :
-                                             "bg-slate-100"
-          }`}>
-            <Briefcase className={`w-5 h-5 ${
-              project.status === "active"    ? "text-emerald-600" :
-              project.status === "completed" ? "text-teal-600"    :
-              project.status === "on_hold"   ? "text-amber-600"   :
-                                               "text-slate-400"
-            }`} />
-          </div>
-        </div>
-
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-2">
 
-          {/* Row 1: Name + PO + Status */}
+          {/* Row 1: PO · Name · Monday status chip */}
           <div className="flex items-center gap-2 flex-wrap">
+            {project.poNumber && (
+              <span
+                data-testid={`text-project-po-${project.id}`}
+                className="text-xs font-mono text-slate-400 shrink-0"
+              >
+                {project.poNumber}
+              </span>
+            )}
             <span
               data-testid={`text-project-name-${project.id}`}
               className="font-semibold text-slate-800 text-sm leading-tight"
             >
               {project.name}
             </span>
+            {/* Monday-style status chip */}
             <span
-              data-testid={`text-project-po-${project.id}`}
-              className="flex items-center gap-1 text-xs text-slate-400 font-medium shrink-0"
+              className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ml-auto"
+              style={{ backgroundColor: statusBg(project.status ?? ""), color: statusFg(project.status ?? "") }}
+              data-testid={`chip-status-${project.id}`}
             >
-              <Hash className="w-3 h-3" />
-              {project.poNumber ? `${t.dailyReportPoPrefix} ${project.poNumber}` : t.dailyReportNoPo}
+              {project.status}
             </span>
-            <ProjectStatusBadge status={project.status} />
           </div>
 
-          {/* Row 2: Location + Owner */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <span
-              data-testid={`text-project-location-${project.id}`}
-              className="flex items-center gap-1 text-xs text-slate-500"
-            >
+          {/* Row 2: Location */}
+          {loc && loc !== "—" && (
+            <div className="flex items-center gap-1 text-xs text-slate-500">
               <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
-              {loc}
-            </span>
-            {owner && (
-              <span
-                data-testid={`text-project-owner-${project.id}`}
-                className="flex items-center gap-1 text-xs text-slate-500 ml-auto"
-              >
-                <User className="w-3 h-3 shrink-0 text-slate-400" />
-                {owner}
-              </span>
-            )}
-          </div>
+              <span data-testid={`text-project-location-${project.id}`}>{loc}</span>
+            </div>
+          )}
 
           {/* Row 3: Report mini-stats */}
           <div className="flex items-center gap-4 pt-1 border-t border-slate-100 flex-wrap">
@@ -248,23 +217,16 @@ function ProjectCard({
 }
 
 // ─── Customer group ───────────────────────────────────────────────────────────
-function CustomerGroup({
-  groupKey, displayName, projects, summaryMap, collapsed, onToggle, onOpen,
-}: {
-  groupKey:    string;
-  displayName: string;
-  projects:    Project[];
-  summaryMap:  Record<number, ReportSummary>;
-  collapsed:   boolean;
-  onToggle:    () => void;
-  onOpen:      (id: number) => void;
+function CustomerGroup({ groupKey, displayName, projects, summaryMap, collapsed, onToggle, onOpen }: {
+  groupKey: string; displayName: string; projects: Project[];
+  summaryMap: Record<number, ReportSummary>;
+  collapsed: boolean; onToggle: () => void; onOpen: (id: number) => void;
 }) {
   const isNone = groupKey === "__none__";
   const color  = groupAccentColor(groupKey);
 
   return (
     <div>
-      {/* Group header */}
       <button
         type="button"
         className="w-full flex items-center h-10 bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-200 rounded-lg text-left select-none mb-1"
@@ -282,13 +244,10 @@ function CustomerGroup({
           <span className="font-semibold text-[13px] text-slate-800 truncate">
             {isNone ? "고객사 미지정" : displayName}
           </span>
-          <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">
-            {projects.length}
-          </span>
+          <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
         </div>
       </button>
 
-      {/* Cards */}
       {!collapsed && (
         <div className="space-y-2 mb-3 pl-1">
           {projects.map((p) => (
@@ -314,7 +273,6 @@ export default function DailyReport() {
   const [hiddenStatuses,  setHiddenStatuses]  = useState<Set<string>>(loadHidden);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(loadCollapsed);
 
-  // Persist to localStorage
   useEffect(() => {
     try { localStorage.setItem(LS_HIDDEN,   JSON.stringify([...hiddenStatuses]));   } catch {}
   }, [hiddenStatuses]);
@@ -322,8 +280,10 @@ export default function DailyReport() {
     try { localStorage.setItem(LS_COLLAPSE, JSON.stringify([...collapsedGroups])); } catch {}
   }, [collapsedGroups]);
 
+  // Real-time Monday sync: refetch every 30 s so status changes propagate quickly
   const { data: allProjects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+    refetchInterval: 30_000,
   });
 
   const { data: reportSummaries = [] } = useQuery<ReportSummary[]>({
@@ -333,26 +293,31 @@ export default function DailyReport() {
       if (!res.ok) return [];
       return res.json();
     },
+    refetchInterval: 30_000,
   });
 
   const summaryMap = useMemo(
-    () => reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => {
-      acc[s.projectId] = s;
-      return acc;
-    }, {}),
+    () => reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => { acc[s.projectId] = s; return acc; }, {}),
     [reportSummaries],
   );
 
-  // All unique statuses present in the data
+  // All statuses present in the data (for the filter popover)
   const allStatusOptions = useMemo(
-    () => [...new Set(allProjects.map((p) => p.status).filter(Boolean))]
-            .sort() as ProjectStatus[],
+    () => [...new Set(allProjects.map((p) => p.status).filter(Boolean))].sort() as string[],
     [allProjects],
   );
 
-  // Filtered list (respects hidden statuses + search)
+  // On first load with the new v2 key, dynamically hide any status not in SHOW_BY_DEFAULT
+  // that isn't already in DEFAULT_HIDDEN (covers unexpected Monday label values).
+  useEffect(() => {
+    if (localStorage.getItem(LS_HIDDEN) !== null) return; // user already has a preference
+    const extra = allStatusOptions.filter(s => !SHOW_BY_DEFAULT.has(s.toLowerCase()) && !DEFAULT_HIDDEN.has(s.toLowerCase()));
+    if (extra.length === 0) return;
+    setHiddenStatuses(prev => new Set([...prev, ...extra]));
+  }, [allStatusOptions]);
+
   const filtered = useMemo(() => allProjects.filter((p) => {
-    if (hiddenStatuses.has(p.status ?? "")) return false;
+    if (hiddenStatuses.has((p.status ?? "").toLowerCase())) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -364,7 +329,7 @@ export default function DailyReport() {
     );
   }), [allProjects, hiddenStatuses, search]);
 
-  // Group by customer
+  // Group by customer (customerName first, then ownerName)
   const groups = useMemo(() => {
     const map = new Map<string, { displayName: string; projects: Project[] }>();
     filtered.forEach((p) => {
@@ -381,18 +346,28 @@ export default function DailyReport() {
   }, [filtered]);
 
   function toggleHidden(s: string) {
-    setHiddenStatuses(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+    setHiddenStatuses(prev => {
+      const n = new Set(prev);
+      n.has(s) ? n.delete(s) : n.add(s);
+      return n;
+    });
   }
   function toggleGroup(key: string) {
-    setCollapsedGroups(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setCollapsedGroups(prev => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
   }
 
-  // KPI counts always use full project list (unaffected by filter)
+  // KPI always uses full project list
   const totalCount     = allProjects.length;
-  const activeCount    = allProjects.filter((p) => p.status === "active").length;
-  const completedCount = allProjects.filter((p) => p.status === "completed").length;
+  const activeCount    = allProjects.filter((p) => !["completed","cancelled","canceled","done"].includes((p.status ?? "").toLowerCase())).length;
+  const completedCount = allProjects.filter((p) => ["completed","done"].includes((p.status ?? "").toLowerCase())).length;
+  const visibleCount   = filtered.length;
 
-  const visibleCount = filtered.length;
+  // How many visible statuses vs total
+  const visibleStatusCount = allStatusOptions.filter(s => !hiddenStatuses.has(s.toLowerCase())).length;
 
   return (
     <div className="space-y-6">
@@ -403,34 +378,25 @@ export default function DailyReport() {
         <p className="text-slate-500 mt-1">{t.dailyReportSubtitle}</p>
       </div>
 
-      {/* ── KPI Cards (always full counts) ── */}
+      {/* ── KPI Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
-          icon={BarChart3}
-          label={t.dailyReportTotalProjects}
+          icon={BarChart3}     label={t.dailyReportTotalProjects}
           value={String(totalCount)}
           accent="bg-gradient-to-r from-slate-400 to-slate-500"
-          iconBg="bg-slate-100"
-          iconColor="text-slate-600"
-          borderColor="border-slate-200"
+          iconBg="bg-slate-100" iconColor="text-slate-600" borderColor="border-slate-200"
         />
         <KpiCard
-          icon={Briefcase}
-          label={t.dailyReportActiveProjects}
+          icon={Briefcase}     label={t.dailyReportActiveProjects}
           value={String(activeCount)}
           accent="bg-gradient-to-r from-emerald-400 to-green-500"
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
-          borderColor="border-emerald-200"
+          iconBg="bg-emerald-50" iconColor="text-emerald-600" borderColor="border-emerald-200"
         />
         <KpiCard
-          icon={CheckCircle2}
-          label={t.dailyReportCompletedProjects}
+          icon={CheckCircle2}  label={t.dailyReportCompletedProjects}
           value={String(completedCount)}
           accent="bg-gradient-to-r from-teal-400 to-blue-500"
-          iconBg="bg-teal-50"
-          iconColor="text-teal-600"
-          borderColor="border-teal-200"
+          iconBg="bg-teal-50" iconColor="text-teal-600" borderColor="border-teal-200"
         />
       </div>
 
@@ -452,14 +418,13 @@ export default function DailyReport() {
             {isLoading
               ? t.dailyReportLoading
               : visibleCount === totalCount
-                ? `${totalCount} ${totalCount !== 1 ? t.dailyReportProjectPlural : t.dailyReportProjectSingular}`
+                ? `${totalCount}`
                 : `${visibleCount} / ${totalCount}`}
           </span>
         </div>
 
         {/* Filters row */}
         <div className="flex gap-2 flex-wrap">
-          {/* Search */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input
@@ -483,13 +448,13 @@ export default function DailyReport() {
                 data-testid="btn-status-filter"
               >
                 <Filter className="w-3.5 h-3.5" />
-                {hiddenStatuses.size === 0
-                  ? t.dailyReportAll
-                  : `${allStatusOptions.length - hiddenStatuses.size} / ${allStatusOptions.length}`}
+                {allStatusOptions.length === 0
+                  ? "Status"
+                  : `${visibleStatusCount} / ${allStatusOptions.length}`}
                 <ChevronDown className="w-3 h-3 ml-0.5" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-52 p-2" align="start">
+            <PopoverContent className="w-56 p-2" align="start">
               <div className="mb-1.5 flex items-center justify-between px-1">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
                 {hiddenStatuses.size > 0 && (
@@ -497,13 +462,12 @@ export default function DailyReport() {
                     className="text-[11px] text-blue-600 hover:text-blue-800 font-medium"
                     onClick={() => setHiddenStatuses(new Set())}
                   >
-                    {t.dailyReportAll} 보기
+                    모두 보기
                   </button>
                 )}
               </div>
               {allStatusOptions.map((s) => {
-                const visible = !hiddenStatuses.has(s);
-                const cfg = STATUS_CFG[s] ?? { label: s, className: "" };
+                const visible = !hiddenStatuses.has(s.toLowerCase());
                 return (
                   <label
                     key={s}
@@ -512,12 +476,15 @@ export default function DailyReport() {
                     <input
                       type="checkbox"
                       checked={visible}
-                      onChange={() => toggleHidden(s)}
+                      onChange={() => toggleHidden(s.toLowerCase())}
                       className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
                     />
-                    <Badge variant="outline" className={`${cfg.className} text-xs font-semibold px-2 py-0`}>
-                      {cfg.label}
-                    </Badge>
+                    <span
+                      className="text-[11px] font-bold px-2 py-0.5 rounded"
+                      style={{ backgroundColor: statusBg(s), color: statusFg(s) }}
+                    >
+                      {s}
+                    </span>
                   </label>
                 );
               })}
@@ -534,7 +501,6 @@ export default function DailyReport() {
             </CardContent>
           </Card>
 
-        /* No projects at all */
         ) : allProjects.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
@@ -548,7 +514,6 @@ export default function DailyReport() {
             </CardContent>
           </Card>
 
-        /* Nothing matches filters */
         ) : filtered.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
@@ -562,7 +527,6 @@ export default function DailyReport() {
             </CardContent>
           </Card>
 
-        /* Grouped project cards */
         ) : (
           <div className="space-y-1">
             {groups.map(([key, { displayName, projects }]) => (

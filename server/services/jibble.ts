@@ -112,7 +112,8 @@ export async function jibbleFetch(
 export interface JibblePerson {
   id?: string;
   uid?: string;          // some versions expose uid
-  name: string;
+  name: string;          // normalised display name (fullName ?? name ?? email)
+  fullName?: string;     // Jibble live API primary name field (Person.fullName)
   employeeCode?: string; // Jibble live API field name
   employeeNumber?: string; // kept for backwards compat / alias
   email?: string;
@@ -162,9 +163,12 @@ export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]>
     ...p,
     // Guarantee that `uid` is always the canonical person key
     uid: p.uid ?? p.id ?? "",
-    // Normalise employee code — live API uses `employeeCode`, some versions use `employeeNumber`
-    employeeCode: p.employeeCode ?? p.employeeNumber,
-    employeeNumber: p.employeeNumber ?? p.employeeCode,
+    // Live API uses `fullName`; fall back to `name`, then email as last resort
+    name: p.fullName ?? p.name ?? p.email ?? "",
+    fullName: p.fullName ?? p.name,
+    // Normalise employee code — live API uses `code` or `employeeCode`
+    employeeCode: p.employeeCode ?? p.code ?? p.employeeNumber,
+    employeeNumber: p.employeeNumber ?? p.employeeCode ?? p.code,
   })) as JibblePerson[];
 }
 

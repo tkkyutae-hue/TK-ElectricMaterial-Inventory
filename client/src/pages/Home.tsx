@@ -392,18 +392,18 @@ export default function Home() {
               />
 
               <SquareCard
-                testId="btn-daily-report-mode"
-                onClick={() => navigate("/daily-report")}
-                accentColor="#60a5fa"
-                emoji="📋"
-                emojiBg="rgba(96,165,250,0.08)"
-                title={t.dailyReportMode}
-                tags={[t.tagProjects, t.tagReports, t.tagManpower, t.tagProgress]}
+                testId="btn-crew-dispatch-mode"
+                onClick={() => navigate("/crew-dispatch")}
+                accentColor="#f59e0b"
+                emoji="👷"
+                emojiBg="rgba(245,158,11,0.09)"
+                title="Crew Dispatch"
+                tags={["배치", "Daily Report", "출근현황"]}
                 tagGap={6}
                 tagStyle={{
-                  background: "rgba(96,165,250,0.08)",
-                  border: "1px solid rgba(96,165,250,0.15)",
-                  color: "#60a5fa",
+                  background: "rgba(245,158,11,0.09)",
+                  border: "1px solid rgba(245,158,11,0.18)",
+                  color: "#d97706",
                 }}
                 locked={!canAccessAdminMode}
                 F={F}

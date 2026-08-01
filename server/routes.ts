@@ -5380,6 +5380,35 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     };
   }
 
+  // ─── Crew Dispatch ─────────────────────────────────────────────────────────
+
+  // GET /api/crew-dispatch/assignments?date=YYYY-MM-DD
+  app.get("/api/crew-dispatch/assignments", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+      const assignments = await storage.getAssignmentsByDate(date);
+      res.json(assignments);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // PUT /api/crew-dispatch/assignments/:workerId
+  app.put("/api/crew-dispatch/assignments/:workerId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.workerId);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
+      const { date, projectId } = req.body as { date: string; projectId: number | null };
+      if (!date) return res.status(400).json({ message: "date is required" });
+      const user = req.user as any;
+      const assignedBy = user?.id ?? null;
+      const row = await storage.upsertAssignment(workerId, date, projectId ?? null, assignedBy);
+      res.json(row);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET /api/jibble/status
   app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
     try {

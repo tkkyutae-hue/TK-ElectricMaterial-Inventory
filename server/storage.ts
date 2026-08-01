@@ -35,6 +35,8 @@ import {
   type CompletionReport, type CompletionReportPhoto, type CompletionReportWithPhotos,
   type CompletionReportPhotoSection, type CompletionReportSectionWithPhotos, type CompletionReportWithSections,
   type CompletionReportDrawingSection,
+  dailyWorkerAssignments,
+  type DailyWorkerAssignment,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -177,6 +179,9 @@ export interface IStorage {
   createWorker(data: CreateWorkerRequest): Promise<Worker>;
   updateWorker(id: number, data: UpdateWorkerRequest): Promise<Worker>;
   deleteWorker(id: number): Promise<void>;
+
+  getAssignmentsByDate(date: string): Promise<DailyWorkerAssignment[]>;
+  upsertAssignment(workerId: number, date: string, projectId: number | null, assignedBy: string | null): Promise<DailyWorkerAssignment>;
 
   getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]>;
   createWorkerAttendance(data: CreateWorkerAttendanceRequest): Promise<WorkerAttendance>;
@@ -3148,6 +3153,25 @@ export class DatabaseStorage implements IStorage {
     await db.delete(workers).where(eq(workers.id, id));
   }
 
+  async getAssignmentsByDate(date: string): Promise<DailyWorkerAssignment[]> {
+    return await db
+      .select()
+      .from(dailyWorkerAssignments)
+      .where(eq(dailyWorkerAssignments.date, date));
+  }
+
+  async upsertAssignment(workerId: number, date: string, projectId: number | null, assignedBy: string | null): Promise<DailyWorkerAssignment> {
+    const [row] = await db
+      .insert(dailyWorkerAssignments)
+      .values({ workerId, date, projectId: projectId ?? null, assignedBy })
+      .onConflictDoUpdate({
+        target: [dailyWorkerAssignments.workerId, dailyWorkerAssignments.date],
+        set: { projectId: projectId ?? null, assignedBy, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
+
   async getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]> {
     return await db
       .select()
@@ -4952,5 +4976,23 @@ export async function runCompletionReportMigration(): Promise<void> {
       ADD COLUMN IF NOT EXISTS crop_height NUMERIC;
     ALTER TABLE completion_report_photo_sections
       ADD COLUMN IF NOT EXISTS photos_per_slide INTEGER NOT NULL DEFAULT 2;
+  `);
+}
+
+export async function runCrewDispatchMigration(): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS daily_worker_assignments (
+      id          SERIAL PRIMARY KEY,
+      worker_id   INTEGER NOT NULL,
+      project_id  INTEGER,
+      date        TEXT NOT NULL,
+      assigned_by TEXT,
+      created_at  TIMESTAMP DEFAULT NOW(),
+      updated_at  TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS dwa_worker_date_uniq
+    ON daily_worker_assignments (worker_id, date)
   `);
 }

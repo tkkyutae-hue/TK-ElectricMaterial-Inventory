@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, jsonb, varchar, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./models/auth";
@@ -801,3 +801,25 @@ export type CompletionReportWithSections = CompletionReport & {
   photos: CompletionReportPhoto[];
   drawingSections: CompletionReportDrawingSection[];
 };
+
+// ─── Daily Worker Assignments (Crew Dispatch) ─────────────────────────────────
+// Records which project each worker is assigned to on a given date.
+
+export const dailyWorkerAssignments = pgTable("daily_worker_assignments", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  date: date("date").notNull(),
+  assignedBy: text("assigned_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("dwa_worker_date_uniq").on(t.workerId, t.date),
+]);
+
+export const insertDailyWorkerAssignmentSchema = createInsertSchema(dailyWorkerAssignments).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+
+export type DailyWorkerAssignment = typeof dailyWorkerAssignments.$inferSelect;
+export type CreateDailyWorkerAssignmentRequest = z.infer<typeof insertDailyWorkerAssignmentSchema>;

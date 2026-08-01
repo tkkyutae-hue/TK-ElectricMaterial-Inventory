@@ -32,6 +32,8 @@ import ReorderArea from "@/pages/ReorderArea";
 import Reports from "@/pages/Reports";
 import DailyReport from "@/pages/DailyReport";
 import DailyReportWorkspace from "@/pages/DailyReportWorkspace";
+import CrewDispatch from "@/pages/CrewDispatch";
+import CrewDispatchAssignment from "@/pages/CrewDispatchAssignment";
 import UserApprovals from "@/pages/admin/UserApprovals";
 import Export from "@/pages/admin/Export";
 import SkuCleanup from "@/pages/admin/SkuCleanup";
@@ -112,8 +114,28 @@ function DailyReportLayout({
 function DailyReportRouter() {
   return (
     <ManagerGuard>
-      <DailyReportLayout>
+      <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
         <DailyReport />
+      </DailyReportLayout>
+    </ManagerGuard>
+  );
+}
+
+function CrewDispatchRouter() {
+  return (
+    <ManagerGuard>
+      <DailyReportLayout backTo="/home" backLabel="Home">
+        <CrewDispatch />
+      </DailyReportLayout>
+    </ManagerGuard>
+  );
+}
+
+function CrewDispatchAssignmentRouter() {
+  return (
+    <ManagerGuard>
+      <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
+        <CrewDispatchAssignment />
       </DailyReportLayout>
     </ManagerGuard>
   );
@@ -258,6 +280,8 @@ function Router() {
       <Route path="/tv" component={() => <AuthGuard><TvDashboard /></AuthGuard>} />
       <Route path="/field/:rest*" component={FieldRouter} />
       <Route path="/field" component={FieldRouter} />
+      <Route path="/crew-dispatch/assignment" component={CrewDispatchAssignmentRouter} />
+      <Route path="/crew-dispatch" component={CrewDispatchRouter} />
       <Route path="/daily-report/:projectId" component={DailyReportWorkspaceRouter} />
       <Route path="/daily-report" component={DailyReportRouter} />
       <Route component={AdminRouter} />

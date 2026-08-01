@@ -182,24 +182,35 @@ function parseDuration(dur?: string): number | undefined {
        + Math.round(parseFloat(m[3] || "0"));
 }
 
-/** Fetch currently clocked-in time entries from the time-tracking service.
- *  TimeEntry is an individual event record (type In/Out/StartBreak).
- *  Jibble's /TimeEntries OData endpoint returns 500 for any $filter expression,
- *  so we fetch the latest entries without filters and do all filtering server-side:
- *  - keep only today's "In" events
- *  - keep only those whose nextTimeEntryId is null (no subsequent ClockOut/Break) */
-export async function fetchActiveTimeEntries(token: string): Promise<JibbleTimeEntry[]> {
+/** Fetch currently clocked-in people using the time-attendance /TimesheetsSummary endpoint.
+ *  Jibble's /TimeEntries endpoint consistently returns 500 regardless of query params,
+ *  so we use TimesheetsSummary instead.
+ *
+ *  DailyTimesheetSummaryModel has `firstIn` (DateTimeOffset) and `lastOut` (DateTimeOffset).
+ *  A person with firstIn set and lastOut absent/null for today is currently on site.
+ *
+ *  Returns lightweight objects with `{ personId }` — compatible with the existing
+ *  jibble_active_cache format read by /api/jibble/active (entry.personId lookup). */
+export async function fetchActiveTimeEntries(token: string): Promise<{ personId: string; firstIn: string }[]> {
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const data = await jibbleFetch(JIBBLE_TRACKING, "/TimeEntries", token, {
-    "$orderby": "localTime desc",
-    "$top": "500",
+  const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/TimesheetsSummary", token, {
+    from: today,
+    to: today,
   });
-  const list: JibbleTimeEntry[] = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
-  return list.filter((e) => {
-    // Must be a ClockIn event for today with no subsequent event
-    const entryDate = (e.localTime ?? e.time ?? "").slice(0, 10);
-    return e.type === "In" && entryDate === today && e.nextTimeEntryId == null;
-  });
+  const list: any[] = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
+
+  const active: { personId: string; firstIn: string }[] = [];
+  for (const summary of list) {
+    const personId: string = summary.personId;
+    if (!personId) continue;
+    // `daily` is an array of DailyTimesheetSummaryModel; filter for today's entry
+    const daily: any[] = summary.daily ?? [];
+    const todayEntry = daily.find((d: any) => d.date === today);
+    if (todayEntry?.firstIn && !todayEntry?.lastOut) {
+      active.push({ personId, firstIn: todayEntry.firstIn });
+    }
+  }
+  return active;
 }
 
 /** Fetch attendance (timesheet) records for a date range from the time-attendance service.

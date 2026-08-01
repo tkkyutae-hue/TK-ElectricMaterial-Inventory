@@ -1,8 +1,76 @@
 // Jibble Time & Attendance API client (v2)
-// Docs: https://api.jibble.io/v2
-// Auth: Personal Access Token stored in app_settings under key "jibble_pat"
+// Auth: OAuth2 Client Credentials flow
+//   POST https://id.prod.jibble.io/connect/token
+//   grant_type=client_credentials&client_id=...&client_secret=...
+// The resulting access_token is cached in app_settings with its expiry.
 
-const JIBBLE_API = "https://api.jibble.io/v2";
+const JIBBLE_API      = "https://api.jibble.io/v2";
+const JIBBLE_TOKEN_URL = "https://id.prod.jibble.io/connect/token";
+
+// ─── OAuth2 token exchange ────────────────────────────────────────────────────
+
+export async function exchangeClientCredentials(
+  clientId: string,
+  clientSecret: string,
+): Promise<{ accessToken: string; expiresAt: number }> {
+  const body = new URLSearchParams({
+    grant_type:    "client_credentials",
+    client_id:     clientId,
+    client_secret: clientSecret,
+  });
+
+  const res = await fetch(JIBBLE_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Jibble token exchange failed (${res.status}): ${text}`);
+  }
+
+  const json = await res.json();
+  const accessToken = json.access_token as string;
+  const expiresIn   = (json.expires_in as number) ?? 3600;
+  // Subtract 60 s buffer so we refresh a bit before actual expiry
+  const expiresAt = Date.now() + (expiresIn - 60) * 1000;
+
+  return { accessToken, expiresAt };
+}
+
+// ─── Cached token helper (requires storage) ───────────────────────────────────
+// Pass the storage instance so we can read/write app_settings.
+
+export async function getJibbleToken(storage: {
+  getAppSetting: (key: string) => Promise<string | null | undefined>;
+  setAppSetting: (key: string, value: string | null) => Promise<void>;
+}): Promise<string> {
+  // Check cached token
+  const [cachedToken, expiresAtRaw, clientId, clientSecret] = await Promise.all([
+    storage.getAppSetting("jibble_access_token"),
+    storage.getAppSetting("jibble_token_expires_at"),
+    storage.getAppSetting("jibble_client_id"),
+    storage.getAppSetting("jibble_client_secret"),
+  ]);
+
+  if (!clientId || !clientSecret) {
+    throw new Error("Jibble이 연결되지 않았습니다. Client ID와 Secret을 먼저 입력해주세요.");
+  }
+
+  const expiresAt = expiresAtRaw ? parseInt(expiresAtRaw, 10) : 0;
+  if (cachedToken && Date.now() < expiresAt) {
+    return cachedToken;
+  }
+
+  // Token missing or expired — refresh
+  const { accessToken, expiresAt: newExpiresAt } = await exchangeClientCredentials(clientId, clientSecret);
+  await Promise.all([
+    storage.setAppSetting("jibble_access_token",    accessToken),
+    storage.setAppSetting("jibble_token_expires_at", String(newExpiresAt)),
+  ]);
+  return accessToken;
+}
 
 // ─── Low-level fetch ──────────────────────────────────────────────────────────
 
@@ -65,7 +133,6 @@ export interface JibbleAttendanceRecord {
 /** Fetch all active team members */
 export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]> {
   const data = await jibbleFetch("/people", token);
-  // API may return { value: [...] } or { data: [...] } or bare array
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
   return list as JibblePerson[];
 }
@@ -92,12 +159,22 @@ export async function fetchAttendance(
   return list as JibbleAttendanceRecord[];
 }
 
-/** Test if a token is valid — returns basic organisation info */
-export async function testJibbleToken(token: string): Promise<{ ok: boolean; orgName?: string }> {
+/** Test a client-id/secret pair — returns org name on success */
+export async function testJibbleCredentials(
+  clientId: string,
+  clientSecret: string,
+): Promise<{ ok: boolean; orgName?: string }> {
   try {
-    const data = await jibbleFetch("/organization", token);
-    const orgName = data?.name ?? data?.value?.name ?? data?.data?.name;
-    return { ok: true, orgName };
+    const { accessToken } = await exchangeClientCredentials(clientId, clientSecret);
+    // Try fetching org info with the fresh token
+    try {
+      const data = await jibbleFetch("/organization", accessToken);
+      const orgName = data?.name ?? data?.value?.name ?? data?.data?.name;
+      return { ok: true, orgName };
+    } catch {
+      // Token worked (exchange succeeded) even if /organization endpoint differs
+      return { ok: true };
+    }
   } catch {
     return { ok: false };
   }

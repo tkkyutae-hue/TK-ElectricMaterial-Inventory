@@ -42,8 +42,9 @@ export default function JibbleIntegration() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tokenInput, setTokenInput] = useState("");
-  const [showToken, setShowToken] = useState(false);
+  const [clientId, setClientId]         = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [showSecret, setShowSecret]     = useState(false);
 
   // ── Queries ──
   const { data: status, isLoading: statusLoading } = useQuery<JibbleStatus>({
@@ -63,9 +64,13 @@ export default function JibbleIntegration() {
 
   // ── Connect mutation ──
   const connectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/jibble/connect", { token: tokenInput.trim() }),
+    mutationFn: () => apiRequest("POST", "/api/jibble/connect", {
+      clientId: clientId.trim(),
+      clientSecret: clientSecret.trim(),
+    }),
     onSuccess: (data: any) => {
-      setTokenInput("");
+      setClientId("");
+      setClientSecret("");
       qc.invalidateQueries({ queryKey: ["/api/jibble/status"] });
       qc.invalidateQueries({ queryKey: ["/api/jibble/members"] });
       toast({ title: "Jibble 연결 완료", description: data.orgName ? `조직: ${data.orgName}` : undefined });
@@ -203,44 +208,63 @@ export default function JibbleIntegration() {
               <p className="text-sm text-slate-500">
                 Jibble 관리자 계정에서{" "}
                 <a
-                  href="https://app.jibble.io/account/integrations"
+                  href="https://app.jibble.io/account/api"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 underline underline-offset-2"
                 >
-                  Personal Access Token
+                  Settings → Integrations → API
                 </a>
-                을 발급한 뒤 아래에 입력하세요.
+                에서 API 키를 발급한 뒤 아래에 입력하세요.
               </p>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">API 키 ID (Client ID)</label>
                   <Input
-                    type={showToken ? "text" : "password"}
-                    placeholder="jbl_xxxxxxxxxxxx"
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    className="pr-16 text-sm font-mono"
-                    onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim()) connectMutation.mutate(); }}
+                    type="text"
+                    placeholder="ba22fd1a-c3bc-4088-…"
+                    value={clientId}
+                    onChange={(e) => setClientId(e.target.value)}
+                    className="text-sm font-mono"
+                    autoComplete="off"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
-                  >
-                    {showToken ? "숨기기" : "보기"}
-                  </button>
                 </div>
-                <Button
-                  className="gap-1.5 text-xs shrink-0"
-                  onClick={() => connectMutation.mutate()}
-                  disabled={!tokenInput.trim() || connectMutation.isPending}
-                >
-                  {connectMutation.isPending
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Link2 className="w-3.5 h-3.5" />}
-                  연결
-                </Button>
+                <div>
+                  <label className="text-xs font-medium text-slate-500 mb-1 block">API 키 시크릿 (Client Secret)</label>
+                  <div className="relative">
+                    <Input
+                      type={showSecret ? "text" : "password"}
+                      placeholder="JwbUrOaLqrF15Pr8…"
+                      value={clientSecret}
+                      onChange={(e) => setClientSecret(e.target.value)}
+                      className="pr-16 text-sm font-mono"
+                      autoComplete="off"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && clientId.trim() && clientSecret.trim()) {
+                          connectMutation.mutate();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      {showSecret ? "숨기기" : "보기"}
+                    </button>
+                  </div>
+                </div>
               </div>
+              <Button
+                className="gap-1.5 text-xs"
+                onClick={() => connectMutation.mutate()}
+                disabled={!clientId.trim() || !clientSecret.trim() || connectMutation.isPending}
+              >
+                {connectMutation.isPending
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Link2 className="w-3.5 h-3.5" />}
+                연결
+              </Button>
             </div>
           )}
         </CardContent>

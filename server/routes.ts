@@ -5318,8 +5318,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/jibble/status
   app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
     try {
-      const token = await storage.getAppSetting("jibble_pat");
-      if (!token) return res.json({ connected: false, activePunchIns: 0 });
+      const clientId = await storage.getAppSetting("jibble_client_id");
+      if (!clientId) return res.json({ connected: false, activePunchIns: 0 });
 
       const lastSyncAt = await storage.getAppSetting("jibble_last_sync_at");
       const activeCacheRaw = await storage.getAppSetting("jibble_active_cache");
@@ -5336,23 +5336,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/jibble/connect — save PAT and test it
+  // POST /api/jibble/connect — save Client ID + Secret and test them
   app.post("/api/jibble/connect", isAuthenticated, requireAdmin, async (req, res) => {
     try {
-      const { token } = req.body;
-      if (!token || typeof token !== "string") return res.status(400).json({ message: "token is required" });
+      const { clientId, clientSecret } = req.body;
+      if (!clientId || typeof clientId !== "string") return res.status(400).json({ message: "clientId is required" });
+      if (!clientSecret || typeof clientSecret !== "string") return res.status(400).json({ message: "clientSecret is required" });
 
-      const { testJibbleToken } = await import("./services/jibble");
-      const result = await testJibbleToken(token.trim());
-      if (!result.ok) return res.status(401).json({ message: "Jibble API 토큰이 유효하지 않습니다. 토큰을 다시 확인해주세요." });
+      const { testJibbleCredentials, exchangeClientCredentials, fetchActiveTimeEntries } = await import("./services/jibble");
+      const result = await testJibbleCredentials(clientId.trim(), clientSecret.trim());
+      if (!result.ok) return res.status(401).json({ message: "Jibble 인증 정보가 유효하지 않습니다. Client ID와 Secret을 다시 확인해주세요." });
 
-      await storage.setAppSetting("jibble_pat", token.trim());
+      // Store credentials
+      await storage.setAppSetting("jibble_client_id", clientId.trim());
+      await storage.setAppSetting("jibble_client_secret", clientSecret.trim());
       if (result.orgName) await storage.setAppSetting("jibble_org_name", result.orgName);
 
-      // Immediately run a sync
-      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      // Get a fresh token and cache it
       try {
-        const entries = await fetchActiveTimeEntries(token.trim());
+        const { accessToken, expiresAt } = await exchangeClientCredentials(clientId.trim(), clientSecret.trim());
+        await storage.setAppSetting("jibble_access_token", accessToken);
+        await storage.setAppSetting("jibble_token_expires_at", String(expiresAt));
+
+        // Immediately run a sync
+        const entries = await fetchActiveTimeEntries(accessToken);
         await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
         await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
       } catch {}
@@ -5363,13 +5370,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // DELETE /api/jibble/connect — remove token
+  // DELETE /api/jibble/connect — remove credentials
   app.delete("/api/jibble/connect", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
-      await storage.setAppSetting("jibble_pat", null);
-      await storage.setAppSetting("jibble_org_name", null);
-      await storage.setAppSetting("jibble_active_cache", null);
-      await storage.setAppSetting("jibble_last_sync_at", null);
+      await Promise.all([
+        storage.setAppSetting("jibble_client_id", null),
+        storage.setAppSetting("jibble_client_secret", null),
+        storage.setAppSetting("jibble_access_token", null),
+        storage.setAppSetting("jibble_token_expires_at", null),
+        storage.setAppSetting("jibble_org_name", null),
+        storage.setAppSetting("jibble_active_cache", null),
+        storage.setAppSetting("jibble_last_sync_at", null),
+      ]);
       res.json({ ok: true });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -5379,10 +5391,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // GET /api/jibble/members — fetch members from Jibble
   app.get("/api/jibble/members", isAuthenticated, requireManager, async (_req, res) => {
     try {
-      const token = await storage.getAppSetting("jibble_pat");
-      if (!token) return res.status(400).json({ message: "Jibble이 연결되지 않았습니다." });
-
-      const { fetchJibbleMembers } = await import("./services/jibble");
+      const { getJibbleToken, fetchJibbleMembers } = await import("./services/jibble");
+      const token = await getJibbleToken(storage);
       const members = await fetchJibbleMembers(token);
       res.json({ members });
     } catch (err: any) {
@@ -5390,17 +5400,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // POST /api/jibble/sync — refresh active punch-ins and attendance cache
+  // POST /api/jibble/sync — refresh active punch-ins cache
   app.post("/api/jibble/sync", isAuthenticated, requireManager, async (_req, res) => {
     try {
-      const token = await storage.getAppSetting("jibble_pat");
-      if (!token) return res.status(400).json({ message: "Jibble이 연결되지 않았습니다." });
-
-      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
+      const token = await getJibbleToken(storage);
       const entries = await fetchActiveTimeEntries(token);
       await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
       await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
-
       res.json({ ok: true, activePunchIns: entries.length });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -5422,16 +5429,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       // Fetch Jibble member to get employee number
-      const token = await storage.getAppSetting("jibble_pat");
       let employeeNumber: string | undefined;
-      if (token) {
-        try {
-          const { fetchJibbleMembers } = await import("./services/jibble");
-          const members = await fetchJibbleMembers(token);
-          const member = members.find((m) => m.uid === jibblePersonId);
-          employeeNumber = member?.employeeNumber;
-        } catch {}
-      }
+      try {
+        const { getJibbleToken, fetchJibbleMembers } = await import("./services/jibble");
+        const token = await getJibbleToken(storage);
+        const members = await fetchJibbleMembers(token);
+        const member = members.find((m) => m.uid === jibblePersonId);
+        employeeNumber = member?.employeeNumber;
+      } catch {}
 
       await storage.updateWorker(workerId, {
         jibblePersonId,
@@ -5471,12 +5476,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!worker) return res.status(404).json({ message: "Worker not found" });
       if (!worker.jibblePersonId) return res.json({ records: [], notLinked: true });
 
-      const token = await storage.getAppSetting("jibble_pat");
-      if (!token) return res.json({ records: [], notConnected: true });
+      const clientId = await storage.getAppSetting("jibble_client_id");
+      if (!clientId) return res.json({ records: [], notConnected: true });
 
-      const { fetchAttendance } = await import("./services/jibble");
-      // Fetch last 60 days
-      const to = new Date().toISOString().slice(0, 10);
+      const { getJibbleToken, fetchAttendance } = await import("./services/jibble");
+      const token = await getJibbleToken(storage);
+      const to   = new Date().toISOString().slice(0, 10);
       const from = new Date(Date.now() - 60 * 86400 * 1000).toISOString().slice(0, 10);
       const records = await fetchAttendance(token, { personUid: worker.jibblePersonId, from, to });
 
@@ -5489,9 +5494,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Periodic Jibble sync (every 10 minutes) ───────────────────────────────────
   setInterval(async () => {
     try {
-      const token = await storage.getAppSetting("jibble_pat");
-      if (!token) return;
-      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      const clientId = await storage.getAppSetting("jibble_client_id");
+      if (!clientId) return;
+      const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
+      const token = await getJibbleToken(storage);
       const entries = await fetchActiveTimeEntries(token);
       await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
       await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());

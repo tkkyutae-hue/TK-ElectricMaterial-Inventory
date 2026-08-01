@@ -5438,7 +5438,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const token = await getJibbleToken(storage);
         const members = await fetchJibbleMembers(token);
         const member = members.find((m) => (m.uid ?? m.id) === jibblePersonId);
-        employeeNumber = member?.employeeNumber;
+        // Live API uses `employeeCode`; fallback to `employeeNumber` for compat
+        employeeNumber = member?.employeeCode ?? member?.employeeNumber;
       } catch {}
 
       await storage.updateWorker(workerId, {
@@ -5459,7 +5460,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const allWorkers = await storage.getWorkers();
 
       const result = (Array.isArray(entries) ? entries : []).map((entry: any) => {
-        const worker = allWorkers.find((w) => w.jibblePersonId === (entry.personId ?? entry.personUid)) ?? null;
+        // Live API sets `personUid`; `personId` is kept as fallback
+        const worker = allWorkers.find((w) => w.jibblePersonId === (entry.personUid ?? entry.personId)) ?? null;
         return { entry, worker };
       });
 

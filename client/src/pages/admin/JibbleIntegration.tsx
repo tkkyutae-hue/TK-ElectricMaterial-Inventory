@@ -27,7 +27,8 @@ interface JibbleStatus {
 interface JibblePerson {
   uid: string;
   name: string;
-  employeeNumber?: string;
+  employeeCode?: string;   // live API field name
+  employeeNumber?: string; // kept for backwards compat
   email?: string;
 }
 
@@ -328,7 +329,7 @@ export default function JibbleIntegration() {
 
                         {/* Employee number from Jibble */}
                         <td className="px-5 py-3 text-slate-500 text-xs font-mono">
-                          {person.employeeNumber ?? "—"}
+                          {person.employeeCode ?? person.employeeNumber ?? "—"}
                         </td>
 
                         {/* Worker select */}

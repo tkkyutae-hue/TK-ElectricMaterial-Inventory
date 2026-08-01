@@ -113,16 +113,18 @@ export interface JibblePerson {
   id?: string;
   uid?: string;          // some versions expose uid
   name: string;
-  employeeNumber?: string;
+  employeeCode?: string; // Jibble live API field name
+  employeeNumber?: string; // kept for backwards compat / alias
   email?: string;
   status?: string;
   photoUrl?: string;
 }
 
 export interface JibbleTimeEntry {
-  id: string;
+  id?: string;
+  uid?: string;          // Jibble live API uses uid as the entry key
   personId?: string;
-  personUid?: string;
+  personUid?: string;    // Jibble live API uses personUid
   startTime?: string;    // ISO timestamp
   endTime?: string | null;
   duration?: number;     // seconds
@@ -132,13 +134,14 @@ export interface JibbleTimeEntry {
 }
 
 export interface JibbleAttendanceRecord {
-  id: string;
+  id?: string;
   personId?: string;
-  personUid?: string;
+  personUid?: string;    // Jibble live API uses personUid
   date: string;          // YYYY-MM-DD
-  firstIn?: string;      // ISO timestamp
-  lastOut?: string;      // ISO timestamp
-  totalDuration?: number; // seconds
+  firstIn?: string;      // ISO timestamp (clock-in)
+  lastOut?: string;      // ISO timestamp (clock-out)
+  workedDuration?: number; // seconds — Jibble live API field name
+  totalDuration?: number;  // alias kept for backwards compat
   status?: string;
 }
 
@@ -148,7 +151,9 @@ export interface JibbleAttendanceRecord {
  *  Normalises the person identifier: the workspace service may return `id`
  *  (OData convention) or `uid` (legacy). We expose both fields and always
  *  set `uid = uid ?? id` so that all downstream code using `person.uid`
- *  continues to work regardless of which field the API populates. */
+ *  continues to work regardless of which field the API populates.
+ *  Also normalises `employeeCode` → `employeeNumber` so UI code can use
+ *  either field name. */
 export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]> {
   const data = await jibbleFetch(JIBBLE_WORKSPACE, "/People", token);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
@@ -156,6 +161,9 @@ export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]>
     ...p,
     // Guarantee that `uid` is always the canonical person key
     uid: p.uid ?? p.id ?? "",
+    // Normalise employee code — live API uses `employeeCode`, some versions use `employeeNumber`
+    employeeCode: p.employeeCode ?? p.employeeNumber,
+    employeeNumber: p.employeeNumber ?? p.employeeCode,
   })) as JibblePerson[];
 }
 
@@ -177,14 +185,20 @@ export async function fetchAttendance(
   const filters: string[] = [];
   if (params?.from)     filters.push(`date ge '${params.from}'`);
   if (params?.to)       filters.push(`date le '${params.to}'`);
-  if (params?.personId) filters.push(`personId eq '${params.personId}'`);
+  // Live Jibble API uses `personUid` as the filter field (not `personId`)
+  if (params?.personId) filters.push(`personUid eq '${params.personId}'`);
 
   const qp: Record<string, string> = {};
   if (filters.length) qp["$filter"] = filters.join(" and ");
 
   const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/Timesheets", token, qp);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
-  return list as JibbleAttendanceRecord[];
+  // Normalise workedDuration → totalDuration so both field names work downstream
+  return (list as any[]).map((r) => ({
+    ...r,
+    workedDuration: r.workedDuration ?? r.totalDuration,
+    totalDuration:  r.totalDuration  ?? r.workedDuration,
+  })) as JibbleAttendanceRecord[];
 }
 
 /** Test a client-id/secret pair — returns org name on success */

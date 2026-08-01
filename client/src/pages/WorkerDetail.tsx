@@ -1435,7 +1435,7 @@ export default function WorkerDetail() {
                           {formatTime(rec.lastOut ?? rec.clockOut ?? rec.endTime)}
                         </td>
                         <td className="px-3 py-2 text-xs font-medium text-slate-700 tabular-nums">
-                          {formatDuration(rec.totalDuration ?? rec.duration)}
+                          {formatDuration(rec.workedDuration ?? rec.totalDuration ?? rec.duration)}
                         </td>
                         <td className="px-3 py-2">
                           {rec.status

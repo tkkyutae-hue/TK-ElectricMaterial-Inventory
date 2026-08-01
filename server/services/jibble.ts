@@ -273,7 +273,7 @@ export async function fetchActiveTimeEntries(
   token: string,
   personIds: string[],
 ): Promise<{
-  updated: { personId: string; firstIn: string }[];
+  updated: { personId: string; firstIn: string; lastOut?: string }[];
   invalidIds: string[];
   failed: string[];
 }> {
@@ -285,7 +285,7 @@ export async function fetchActiveTimeEntries(
   if (personIds.length === 0) return { updated: [], invalidIds: [], failed: [] };
 
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const updated: { personId: string; firstIn: string }[] = [];
+  const updated: { personId: string; firstIn: string; lastOut?: string }[] = [];
   const invalidIds: string[] = [];
   const failed: string[] = [];
 
@@ -299,8 +299,8 @@ export async function fetchActiveTimeEntries(
       const todayEntry = daily.find((d: any) => d.date === today);
       const firstIn = todayEntry?.firstInTimestamp ?? todayEntry?.firstIn;
       const lastOut = todayEntry?.lastOutTimestamp  ?? todayEntry?.lastOut;
-      if (firstIn && !lastOut) updated.push({ personId, firstIn });
-      // else: queried OK but not punched in — omit from updated (not on site)
+      if (firstIn) updated.push({ personId, firstIn, ...(lastOut ? { lastOut } : {}) });
+      // else: no punch-in today — omit from updated
     } catch (err: any) {
       if (err?.status === 404) {
         invalidIds.push(personId);

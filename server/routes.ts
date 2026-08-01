@@ -5328,7 +5328,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     // Load existing cache so we can preserve entries for temp-failed workers
     const existingCacheRaw = await storage.getAppSetting("jibble_active_cache");
-    const existingCache: { personId: string; firstIn: string }[] = (() => {
+    const existingCache: { personId: string; firstIn: string; lastOut?: string }[] = (() => {
       try { return JSON.parse(existingCacheRaw ?? "[]"); } catch { return []; }
     })();
     const existingMap = new Map(existingCache.map((e) => [e.personId, e]));
@@ -5336,7 +5336,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const result = await fetchActiveTimeEntries(token, personIds);
 
     // Merge: fresh data for updated, preserve cache for temp failures, drop invalids
-    const newCache: { personId: string; firstIn: string }[] = [...result.updated];
+    const newCache: { personId: string; firstIn: string; lastOut?: string }[] = [...result.updated];
     let preserved = 0;
     for (const pid of result.failed) {
       const existing = existingMap.get(pid);
@@ -5347,8 +5347,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     // "all failed" = every retryable request failed and there were no successes
     const allFailed = result.failed.length > 0 && success === 0 && result.invalidIds.length < personIds.length;
 
+    const onSiteNow = result.updated.filter((e) => !e.lastOut).length;
     console.log(
-      `[jibble-sync] total=${personIds.length} success=${success} punchedIn=${result.updated.length}` +
+      `[jibble-sync] total=${personIds.length} success=${success} onSite=${onSiteNow} todayAttendance=${result.updated.length}` +
       ` invalidPersonIds=${result.invalidIds.length} temporaryFailures=${result.failed.length} preserved=${preserved}`,
     );
 
@@ -5390,7 +5391,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let activePunchIns = 0;
       try {
         const cached = JSON.parse(activeCacheRaw ?? "[]");
-        activePunchIns = Array.isArray(cached) ? cached.length : 0;
+        // Count only workers still on-site (firstIn set, no lastOut yet)
+        activePunchIns = Array.isArray(cached) ? cached.filter((e: any) => !e.lastOut).length : 0;
       } catch {}
 
       const orgNameRaw = await storage.getAppSetting("jibble_org_name");

@@ -180,15 +180,19 @@ function parseDuration(dur?: string): number | undefined {
 
 /** Fetch currently clocked-in time entries from the time-tracking service.
  *  TimeEntry is an individual event record (type In/Out/StartBreak).
- *  A ClockIn entry with nextTimeEntryId === null means the person has not yet
- *  clocked out or started a break — i.e. they are currently on site. */
+ *  Jibble's OData endpoint does not support filtering on nextTimeEntryId (returns 500).
+ *  Instead we fetch today's ClockIn events and filter server-side: an In entry
+ *  whose nextTimeEntryId is null/undefined has no subsequent event and is still active. */
 export async function fetchActiveTimeEntries(token: string): Promise<JibbleTimeEntry[]> {
+  // Use today's UTC date so the filter targets only current-day events
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
   const data = await jibbleFetch(JIBBLE_TRACKING, "/TimeEntries", token, {
-    "$filter": "type eq 'In' and nextTimeEntryId eq null",
+    "$filter": `type eq 'In' and belongsToDate eq ${today}`,
     "$orderby": "localTime desc",
   });
-  const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
-  return list as JibbleTimeEntry[];
+  const list: JibbleTimeEntry[] = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
+  // Keep only entries that have no subsequent event (nextTimeEntryId absent or null)
+  return list.filter((e) => e.nextTimeEntryId == null);
 }
 
 /** Fetch attendance (timesheet) records for a date range from the time-attendance service.

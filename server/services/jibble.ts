@@ -172,14 +172,32 @@ export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]>
   })) as JibblePerson[];
 }
 
-/** Parse an ISO 8601 duration string (e.g. "PT8H30M") into total seconds. */
-function parseDuration(dur?: string): number | undefined {
-  if (!dur) return undefined;
-  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+/** Parse an ISO 8601 duration string (e.g. "PT8H30M", "PT8H30M15S") into total seconds.
+ *  Also accepts a plain number (treated as seconds) for defensive handling. */
+function parseDuration(dur?: string | number | null): number | undefined {
+  if (dur === null || dur === undefined) return undefined;
+  if (typeof dur === "number") return dur > 0 ? dur : undefined;
+  if (typeof dur !== "string" || !dur) return undefined;
+  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/i);
   if (!m) return undefined;
-  return (parseInt(m[1] || "0") * 3600)
-       + (parseInt(m[2] || "0") * 60)
-       + Math.round(parseFloat(m[3] || "0"));
+  const total = (parseInt(m[1] || "0") * 3600)
+              + (parseInt(m[2] || "0") * 60)
+              + Math.round(parseFloat(m[3] || "0"));
+  return total > 0 ? total : undefined;
+}
+
+/** Extract a duration string from a trackedHours value that may be:
+ *  - an object: { total: "PT8H30M", tracked: "PT8H30M" }
+ *  - a flat ISO 8601 string: "PT8H30M"
+ *  - a plain number of seconds */
+function extractDuration(trackedHours: any): number | undefined {
+  if (!trackedHours) return undefined;
+  if (typeof trackedHours === "string") return parseDuration(trackedHours);
+  if (typeof trackedHours === "number") return parseDuration(trackedHours);
+  // object — try known field names
+  return parseDuration(
+    trackedHours.total ?? trackedHours.tracked ?? trackedHours.duration ?? trackedHours.value,
+  );
 }
 
 /** Fetch currently clocked-in people using the time-attendance /TimesheetsSummary endpoint.
@@ -213,15 +231,40 @@ export async function fetchActiveTimeEntries(token: string): Promise<{ personId:
   return active;
 }
 
+/** Normalise a single DailyTimesheetModel entry into a JibbleAttendanceRecord.
+ *  The live Jibble API may use `firstIn`/`lastOut` (like TimesheetsSummary) OR
+ *  `firstInTimestamp`/`lastOutTimestamp` — we try both field names so the
+ *  attendance card never shows dashes due to a wrong property name. */
+function normaliseDailyEntry(d: any, personId?: string): JibbleAttendanceRecord {
+  // Clock-in: try both field name conventions
+  const clockIn  = d.firstInTimestamp ?? d.firstIn  ?? d.clockIn  ?? d.startTime  ?? undefined;
+  // Clock-out: try both field name conventions
+  const clockOut = d.lastOutTimestamp  ?? d.lastOut  ?? d.clockOut ?? d.endTime    ?? undefined;
+
+  return {
+    personId,
+    date:             d.date,
+    firstInTimestamp: clockIn,
+    lastOutTimestamp: clockOut,
+    firstIn:          clockIn,   // alias read by WorkerDetail UI
+    lastOut:          clockOut,  // alias read by WorkerDetail UI
+    totalDuration:    extractDuration(d.trackedHours ?? d.workedDuration ?? d.trackedTime),
+    status:           d.status,
+  };
+}
+
 /** Fetch attendance (timesheet) records for a date range from the time-attendance service.
  *  Uses key-based OData access /Timesheets({personId}) when a personId is given, which
  *  returns a TimesheetModel with a `daily` array of DailyTimesheetModel entries.
- *  Falls back to list-based access when no personId is provided. */
+ *  Falls back to list-based access when no personId is provided.
+ *
+ *  Query params: Jibble uses `from` / `to` (YYYY-MM-DD) for date range filtering.
+ *  Confirmed against time-attendance.prod.jibble.io/v1/$metadata — same convention
+ *  as /TimesheetsSummary which is known-working. */
 export async function fetchAttendance(
   token: string,
   params?: { from?: string; to?: string; personId?: string },
 ): Promise<JibbleAttendanceRecord[]> {
-  // Query params: Jibble uses `from` / `to` (YYYY-MM-DD) for date range filtering
   const qp: Record<string, string> = {};
   if (params?.from) qp["from"] = params.from;
   if (params?.to)   qp["to"]   = params.to;
@@ -229,34 +272,29 @@ export async function fetchAttendance(
   if (params?.personId) {
     // Key-based access returns a single TimesheetModel with a `daily` collection
     const data = await jibbleFetch(JIBBLE_ATTENDANCE, `/Timesheets(${params.personId})`, token, qp);
-    const daily: any[] = data?.daily ?? [];
-    return daily.map((d) => ({
-      personId:          params.personId,
-      date:              d.date,
-      firstInTimestamp:  d.firstInTimestamp,
-      lastOutTimestamp:  d.lastOutTimestamp,
-      firstIn:           d.firstInTimestamp,  // alias for legacy UI fallback chains
-      lastOut:           d.lastOutTimestamp,
-      totalDuration:     parseDuration(d.trackedHours?.total ?? d.trackedHours?.tracked),
-      status:            d.status,
-    }));
+    const daily: any[] = data?.daily ?? data?.value ?? [];
+
+    // Diagnostic log: on the first record, emit its keys so we can confirm field names
+    if (daily.length > 0) {
+      const sample = daily[0];
+      console.log("[jibble] Timesheets daily record keys:", Object.keys(sample));
+      console.log("[jibble] Timesheets daily record sample:", JSON.stringify(sample));
+    }
+
+    return daily.map((d) => normaliseDailyEntry(d, params.personId));
   }
 
   // No personId: list all timesheets (used for bulk sync)
   const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/Timesheets", token, qp);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
   return (list as any[]).map((r) => {
+    // The list endpoint wraps per-person records; each entry may have a `daily` array
+    // or may be a flat DailyTimesheetModel directly.
     const daily0 = r.daily?.[0];
-    return {
-      personId:          r.personId,
-      date:              daily0?.date ?? r.date,
-      firstInTimestamp:  daily0?.firstInTimestamp,
-      lastOutTimestamp:  daily0?.lastOutTimestamp,
-      firstIn:           daily0?.firstInTimestamp,
-      lastOut:           daily0?.lastOutTimestamp,
-      totalDuration:     parseDuration(r.total ?? daily0?.trackedHours?.total),
-      status:            r.status,
-    };
+    const source = daily0 ?? r;
+    const rec    = normaliseDailyEntry(source, r.personId ?? source.personId);
+    // personId is on the outer wrapper when using the list endpoint
+    return { ...rec, personId: r.personId ?? rec.personId };
   });
 }
 

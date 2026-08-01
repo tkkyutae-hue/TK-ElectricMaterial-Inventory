@@ -1,42 +1,47 @@
 ---
 name: Jibble integration pattern
-description: How Jibble time-tracking is integrated into the manpower section
+description: How the Jibble time-tracking integration is structured; known API quirks and working endpoints.
 ---
 
-# Jibble Integration
+# Jibble Integration Pattern
 
-## Architecture
-Same pattern as Monday.com: PAT token stored in `app_settings` (key: `jibble_pat`), service file wraps REST API, routes added to `server/routes.ts`.
+## Auth
+- OAuth2 Client Credentials: POST `https://identity.prod.jibble.io/connect/token`
+- Basic Auth header (`Authorization: Basic base64(id:secret)`), NOT body params
+- Scope: `api1`
 
-**Why:** Read-only — workers punch in/out in Jibble app (with face recognition), our app just displays the data.
+## Microservice URLs (confirmed via OData $metadata)
+- `JIBBLE_WORKSPACE  = https://workspace.prod.jibble.io/v1`   → People, Organizations
+- `JIBBLE_TRACKING   = https://time-tracking.prod.jibble.io/v1` → TimeEntries, HourEntries
+- `JIBBLE_ATTENDANCE = https://time-attendance.prod.jibble.io/v1` → Timesheets
 
-## Key settings keys in app_settings
-- `jibble_pat` — Personal Access Token
-- `jibble_org_name` — display name for the connected org
-- `jibble_active_cache` — JSON array of current active time entries (refreshed every 10 min)
-- `jibble_last_sync_at` — ISO timestamp of last sync
+## TimeEntry Schema (from $metadata)
+- Entity: `TimeEntry` (one record per punch event, NOT a start→end range)
+- Key fields: `id`, `personId` (Guid), `type` (enum: In=0/Out=1/StartBreak=2), `localTime` (DateTimeOffset), `nextTimeEntryId` (Guid, null = no subsequent event), `belongsToDate` (Date)
+- Person currently on site = ClockIn entry where `nextTimeEntryId` is null
 
-## API endpoints added
-- `GET /api/jibble/status` — connection status + active punch-in count
-- `POST /api/jibble/connect` — save PAT, test it, run initial sync
-- `DELETE /api/jibble/connect` — remove token
-- `GET /api/jibble/members` — fetch people from Jibble
-- `POST /api/jibble/sync` — manual refresh of active cache
-- `POST /api/jibble/map` — link a Jibble person UID to a local worker
-- `GET /api/jibble/active` — cached active punch-ins with matched workers
-- `GET /api/jibble/attendance/:workerId` — live attendance for last 60 days
+## /TimeEntries OData Filtering — BROKEN
+- **Any OData $filter expression causes Jibble to return HTTP 500** (confirmed with both `nextTimeEntryId eq null` and `type eq 'In' and belongsToDate eq {date}`)
+- Workaround: fetch without $filter (use `$top=500 $orderby=localTime desc`) and filter server-side
+- Server-side logic: keep entries where `type === "In"`, `localTime.slice(0,10) === today`, `nextTimeEntryId == null`
 
-## DB schema added (workers table)
-- `employee_id` (text) — human-readable employee number synced from Jibble
-- `jibble_person_id` (text, unique) — Jibble internal UID for the person
+**Why:** Jibble's OData server appears to have indexing/query issues on some fields; their web app likely uses non-OData APIs internally.
 
-## Jibble API shape notes
-- Base URL: `https://api.jibble.io/v2`
-- Auth: `Authorization: Bearer {token}`
-- Response shape may be `{ value: [...] }` or `{ data: [...] }` or bare array — service handles all three
-- People: `GET /people`
-- Active entries: `GET /timesheets?status=active`
-- Attendance history: `GET /attendance?personUid=...&from=...&to=...`
-- Organisation info: `GET /organization`
+## Timesheets Schema (from $metadata)
+- Entity: `TimesheetModel`, key: `personId` (Guid)
+- Key-based access: `/Timesheets({personId})?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- Response has `daily: DailyTimesheetModel[]` with `firstInTimestamp`, `lastOutTimestamp`, `trackedHours.total` (ISO 8601 duration)
+- Entity set is `Timesheets` (confirmed via $metadata EntitySet)
 
-**How to apply:** If Jibble changes API shape, update `server/services/jibble.ts`. The response normalization (`data?.value ?? data?.data ?? array`) is defensive by design.
+## People / Members
+- Endpoint: `/People` on workspace service
+- Field names: `id` (OData key, Guid) or `uid` (legacy), `employeeCode` (primary) / `employeeNumber` (alias)
+- `fetchJibbleMembers` normalizes: always sets `uid = uid ?? id`
+
+## App Storage Keys
+- `jibble_client_id`, `jibble_client_secret`, `jibble_access_token`, `jibble_token_expires_at`
+- `jibble_org_name`, `jibble_active_cache`, `jibble_last_sync_at`
+
+## DB columns added to workers table
+- `employeeId` (text) — human-readable employee number
+- `jibblePersonId` (text) — Jibble person Guid used for mapping

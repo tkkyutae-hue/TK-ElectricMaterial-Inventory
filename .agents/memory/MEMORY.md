@@ -1,0 +1,1 @@
+- [Jibble integration pattern](jibble-integration.md) — read-only sync via PAT token; same app_settings + service pattern as Monday integration

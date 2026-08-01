@@ -503,6 +503,9 @@ export const workers = pgTable("workers", {
   workerState: text("worker_state"),
   dateOfTk: date("date_of_tk"),
   project: text("project"),
+  // Employee / Jibble integration
+  employeeId: text("employee_id"),
+  jibblePersonId: text("jibble_person_id").unique(),
   // Evaluation fields
   skill: integer("skill"),
   control: integer("control"),

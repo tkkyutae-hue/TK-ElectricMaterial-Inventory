@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import {
   HardHat, PlusCircle, Loader2, Users, CheckCircle2, XCircle,
   ClipboardList, Check, X, UserCircle2, Trash2, ArrowUpDown, Camera,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,17 @@ export default function Manpower() {
     queryKey: ["/api/workers"],
   });
 
+  // Jibble active punch-ins
+  const { data: jibbleActiveData } = useQuery<{ active: { entry: any; worker: { id: number } | null }[] }>({
+    queryKey: ["/api/jibble/active"],
+    refetchInterval: 5 * 60 * 1000, // refresh every 5 minutes
+  });
+  const punchedInIds = new Set(
+    (jibbleActiveData?.active ?? [])
+      .filter((a) => a.worker)
+      .map((a) => a.worker!.id)
+  );
+
   // ── Delete mutation ──
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/workers/${id}`),
@@ -365,6 +377,9 @@ export default function Manpower() {
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                       {t.mpColStatus}
                     </th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">
+                      사번
+                    </th>
                     <th className="px-5 py-3" />
                   </tr>
                 </thead>
@@ -395,16 +410,26 @@ export default function Manpower() {
                         data-testid={`row-worker-${worker.id}`}
                         className={`transition-colors ${isConfirming ? "bg-red-50" : "hover:bg-slate-50"}`}
                       >
-                        {/* Avatar + name */}
+                        {/* Avatar + name + punch-in badge */}
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-3">
                             <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} />
-                            <span
-                              data-testid={`text-worker-name-${worker.id}`}
-                              className="font-medium text-slate-800"
-                            >
-                              {worker.fullName}
-                            </span>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  data-testid={`text-worker-name-${worker.id}`}
+                                  className="font-medium text-slate-800"
+                                >
+                                  {worker.fullName}
+                                </span>
+                                {punchedInIds.has(worker.id) && (
+                                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    현장
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
@@ -433,6 +458,13 @@ export default function Manpower() {
                               {t.mpInactive}
                             </Badge>
                           )}
+                        </td>
+
+                        {/* Employee ID */}
+                        <td className="px-5 py-3 hidden sm:table-cell">
+                          <span className="text-xs font-mono text-slate-500">
+                            {(worker as any).employeeId ?? "—"}
+                          </span>
                         </td>
 
                         {/* Actions */}

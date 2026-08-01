@@ -5313,5 +5313,193 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Jibble Integration ────────────────────────────────────────────────────────
+
+  // GET /api/jibble/status
+  app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const token = await storage.getAppSetting("jibble_pat");
+      if (!token) return res.json({ connected: false, activePunchIns: 0 });
+
+      const lastSyncAt = await storage.getAppSetting("jibble_last_sync_at");
+      const activeCacheRaw = await storage.getAppSetting("jibble_active_cache");
+      let activePunchIns = 0;
+      try {
+        const cached = JSON.parse(activeCacheRaw ?? "[]");
+        activePunchIns = Array.isArray(cached) ? cached.length : 0;
+      } catch {}
+
+      const orgNameRaw = await storage.getAppSetting("jibble_org_name");
+      res.json({ connected: true, orgName: orgNameRaw, lastSyncAt, activePunchIns });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/jibble/connect — save PAT and test it
+  app.post("/api/jibble/connect", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== "string") return res.status(400).json({ message: "token is required" });
+
+      const { testJibbleToken } = await import("./services/jibble");
+      const result = await testJibbleToken(token.trim());
+      if (!result.ok) return res.status(401).json({ message: "Jibble API 토큰이 유효하지 않습니다. 토큰을 다시 확인해주세요." });
+
+      await storage.setAppSetting("jibble_pat", token.trim());
+      if (result.orgName) await storage.setAppSetting("jibble_org_name", result.orgName);
+
+      // Immediately run a sync
+      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      try {
+        const entries = await fetchActiveTimeEntries(token.trim());
+        await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
+        await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
+      } catch {}
+
+      res.json({ ok: true, orgName: result.orgName });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // DELETE /api/jibble/connect — remove token
+  app.delete("/api/jibble/connect", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      await storage.setAppSetting("jibble_pat", null);
+      await storage.setAppSetting("jibble_org_name", null);
+      await storage.setAppSetting("jibble_active_cache", null);
+      await storage.setAppSetting("jibble_last_sync_at", null);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/jibble/members — fetch members from Jibble
+  app.get("/api/jibble/members", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const token = await storage.getAppSetting("jibble_pat");
+      if (!token) return res.status(400).json({ message: "Jibble이 연결되지 않았습니다." });
+
+      const { fetchJibbleMembers } = await import("./services/jibble");
+      const members = await fetchJibbleMembers(token);
+      res.json({ members });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/jibble/sync — refresh active punch-ins and attendance cache
+  app.post("/api/jibble/sync", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const token = await storage.getAppSetting("jibble_pat");
+      if (!token) return res.status(400).json({ message: "Jibble이 연결되지 않았습니다." });
+
+      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      const entries = await fetchActiveTimeEntries(token);
+      await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
+      await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
+
+      res.json({ ok: true, activePunchIns: entries.length });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // POST /api/jibble/map — map a Jibble person to a local worker
+  app.post("/api/jibble/map", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const { jibblePersonId, workerId } = req.body;
+      if (!jibblePersonId) return res.status(400).json({ message: "jibblePersonId is required" });
+
+      if (workerId === null || workerId === undefined) {
+        // Unmap: clear jibblePersonId from any worker that had this Jibble person
+        const allWorkers = await storage.getWorkers();
+        const existing = allWorkers.find((w) => w.jibblePersonId === jibblePersonId);
+        if (existing) await storage.updateWorker(existing.id, { jibblePersonId: null });
+        return res.json({ ok: true });
+      }
+
+      // Fetch Jibble member to get employee number
+      const token = await storage.getAppSetting("jibble_pat");
+      let employeeNumber: string | undefined;
+      if (token) {
+        try {
+          const { fetchJibbleMembers } = await import("./services/jibble");
+          const members = await fetchJibbleMembers(token);
+          const member = members.find((m) => m.uid === jibblePersonId);
+          employeeNumber = member?.employeeNumber;
+        } catch {}
+      }
+
+      await storage.updateWorker(workerId, {
+        jibblePersonId,
+        ...(employeeNumber ? { employeeId: employeeNumber } : {}),
+      });
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // GET /api/jibble/active — currently punched-in workers (with local worker info)
+  app.get("/api/jibble/active", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const cacheRaw = await storage.getAppSetting("jibble_active_cache");
+      const entries = JSON.parse(cacheRaw ?? "[]");
+      const allWorkers = await storage.getWorkers();
+
+      const result = (Array.isArray(entries) ? entries : []).map((entry: any) => {
+        const worker = allWorkers.find((w) => w.jibblePersonId === entry.personUid) ?? null;
+        return { entry, worker };
+      });
+
+      res.json({ active: result });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/jibble/attendance/:workerId — Jibble attendance history for a worker
+  app.get("/api/jibble/attendance/:workerId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.workerId);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid worker ID" });
+
+      const worker = await storage.getWorker(workerId);
+      if (!worker) return res.status(404).json({ message: "Worker not found" });
+      if (!worker.jibblePersonId) return res.json({ records: [], notLinked: true });
+
+      const token = await storage.getAppSetting("jibble_pat");
+      if (!token) return res.json({ records: [], notConnected: true });
+
+      const { fetchAttendance } = await import("./services/jibble");
+      // Fetch last 60 days
+      const to = new Date().toISOString().slice(0, 10);
+      const from = new Date(Date.now() - 60 * 86400 * 1000).toISOString().slice(0, 10);
+      const records = await fetchAttendance(token, { personUid: worker.jibblePersonId, from, to });
+
+      res.json({ records });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ── Periodic Jibble sync (every 10 minutes) ───────────────────────────────────
+  setInterval(async () => {
+    try {
+      const token = await storage.getAppSetting("jibble_pat");
+      if (!token) return;
+      const { fetchActiveTimeEntries } = await import("./services/jibble");
+      const entries = await fetchActiveTimeEntries(token);
+      await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
+      await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
+      console.log(`[jibble] synced: ${entries.length} active punch-ins`);
+    } catch (err: any) {
+      console.warn("[jibble] periodic sync failed:", err.message);
+    }
+  }, 10 * 60 * 1000);
+
   return httpServer;
 }

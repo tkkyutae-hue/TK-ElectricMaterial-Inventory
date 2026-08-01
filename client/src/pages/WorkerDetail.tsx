@@ -8,7 +8,7 @@ import {
   ArrowLeft, HardHat, Pencil, Save, X, Loader2,
   Star, ClipboardList, Calendar, Zap, LayoutGrid,
   Camera, StickyNote, Award, PlusCircle, Trash2,
-  Check, ChevronDown, ChevronUp, History,
+  Check, ChevronDown, ChevronUp, History, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -351,6 +351,20 @@ export default function WorkerDetail() {
     queryFn: async () => {
       const res = await fetch(`/api/workers/${workerId}/evaluations`, { credentials: "include" });
       if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !isNaN(workerId) && workerId > 0,
+  });
+
+  const { data: jibbleAttData } = useQuery<{
+    records: any[];
+    notLinked?: boolean;
+    notConnected?: boolean;
+  }>({
+    queryKey: ["/api/jibble/attendance", workerId],
+    queryFn: async () => {
+      const res = await fetch(`/api/jibble/attendance/${workerId}`, { credentials: "include" });
+      if (!res.ok) return { records: [] };
       return res.json();
     },
     enabled: !isNaN(workerId) && workerId > 0,
@@ -1346,6 +1360,95 @@ export default function WorkerDetail() {
             <p className="text-xs text-center text-slate-300 py-6">
               {t.workerDetailNoEvalHistory}
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* JIBBLE ATTENDANCE                                                     */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Clock className="w-4 h-4 text-slate-400" />
+            Jibble 출결 기록
+            {(worker as any).jibblePersonId && (
+              <span className="text-xs font-normal text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 ml-1">
+                연동됨
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-5">
+          {!(worker as any).jibblePersonId ? (
+            <p className="text-xs text-slate-400 text-center py-6">
+              Jibble 멤버와 연결되지 않았습니다.{" "}
+              <a href="/admin/jibble" className="text-blue-500 underline underline-offset-2">관리자 설정</a>
+              에서 매핑해주세요.
+            </p>
+          ) : jibbleAttData?.notConnected ? (
+            <p className="text-xs text-slate-400 text-center py-6">
+              Jibble이 연결되지 않았습니다.{" "}
+              <a href="/admin/jibble" className="text-blue-500 underline underline-offset-2">여기서 연결</a>
+              하세요.
+            </p>
+          ) : !jibbleAttData ? (
+            <div className="flex items-center justify-center py-8 gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+              <span className="text-xs text-slate-400">Jibble에서 데이터를 불러오는 중…</span>
+            </div>
+          ) : jibbleAttData.records.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6">최근 60일간 Jibble 출결 기록이 없습니다.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50">
+                    {["날짜", "출근", "퇴근", "근무시간", "상태"].map((h) => (
+                      <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {jibbleAttData.records.slice(0, 30).map((rec: any, idx: number) => {
+                    const formatTime = (iso?: string) => {
+                      if (!iso) return "—";
+                      try { return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }); }
+                      catch { return "—"; }
+                    };
+                    const formatDuration = (seconds?: number) => {
+                      if (!seconds) return "—";
+                      const h = Math.floor(seconds / 3600);
+                      const m = Math.floor((seconds % 3600) / 60);
+                      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    };
+                    const dateStr = rec.date ?? rec.startTime?.slice(0, 10) ?? "—";
+                    return (
+                      <tr key={rec.id ?? idx} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 text-xs text-slate-600 tabular-nums whitespace-nowrap font-medium">{dateStr}</td>
+                        <td className="px-3 py-2 text-xs text-slate-600 tabular-nums whitespace-nowrap">
+                          {formatTime(rec.firstIn ?? rec.clockIn ?? rec.startTime)}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-slate-600 tabular-nums whitespace-nowrap">
+                          {formatTime(rec.lastOut ?? rec.clockOut ?? rec.endTime)}
+                        </td>
+                        <td className="px-3 py-2 text-xs font-medium text-slate-700 tabular-nums">
+                          {formatDuration(rec.totalDuration ?? rec.duration)}
+                        </td>
+                        <td className="px-3 py-2">
+                          {rec.status
+                            ? <span className="text-xs px-2 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200">{rec.status}</span>
+                            : <span className="text-slate-300 text-xs">—</span>
+                          }
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

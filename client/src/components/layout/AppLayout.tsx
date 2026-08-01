@@ -25,6 +25,7 @@ import {
   Unlink,
   LayoutGrid,
   Cable,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage, LanguageSwitcher } from "@/hooks/use-language";
@@ -93,6 +94,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/admin/supplier-cleanup", label: t.navSupplierCleanup, icon: Unlink },
         { href: "/admin/reel-id-cleanup", label: t.navReelIdCleanup, icon: Cable },
         { href: "/admin/monday", label: "Monday.com", icon: LayoutGrid },
+        { href: "/admin/jibble", label: "Jibble 연동", icon: Clock },
       ],
     }] : []),
   ];

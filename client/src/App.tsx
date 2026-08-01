@@ -40,6 +40,7 @@ import StockPricing from "@/pages/admin/StockPricing";
 import SupplierCleanup from "@/pages/admin/SupplierCleanup";
 import ReelIdCleanup from "@/pages/admin/ReelIdCleanup";
 import MondayIntegration from "@/pages/admin/MondayIntegration";
+import JibbleIntegration from "@/pages/admin/JibbleIntegration";
 
 import TvDashboard from "@/pages/TvDashboard";
 import FieldHome from "@/pages/field/FieldHome";
@@ -206,6 +207,7 @@ function AdminRouter() {
           <Route path="/admin/supplier-cleanup" component={() => <AdminToolsGuard><SupplierCleanup /></AdminToolsGuard>} />
           <Route path="/admin/reel-id-cleanup" component={() => <AdminToolsGuard><ReelIdCleanup /></AdminToolsGuard>} />
           <Route path="/admin/monday" component={() => <AdminToolsGuard><MondayIntegration /></AdminToolsGuard>} />
+          <Route path="/admin/jibble" component={() => <AdminToolsGuard><JibbleIntegration /></AdminToolsGuard>} />
           <Route component={NotFound} />
         </Switch>
       </AppLayout>

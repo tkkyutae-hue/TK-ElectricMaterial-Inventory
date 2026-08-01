@@ -5460,8 +5460,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const allWorkers = await storage.getWorkers();
 
       const result = (Array.isArray(entries) ? entries : []).map((entry: any) => {
-        // Live API sets `personUid`; `personId` is kept as fallback
-        const worker = allWorkers.find((w) => w.jibblePersonId === (entry.personUid ?? entry.personId)) ?? null;
+        // TimeEntry schema uses personId (Guid); personUid kept as legacy fallback
+        const worker = allWorkers.find((w) => w.jibblePersonId === (entry.personId ?? entry.personUid)) ?? null;
         return { entry, worker };
       });
 

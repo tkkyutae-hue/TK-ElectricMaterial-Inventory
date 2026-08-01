@@ -120,28 +120,29 @@ export interface JibblePerson {
   photoUrl?: string;
 }
 
+// TimeEntry is an individual punch event (one record per In/Out/StartBreak action).
+// Schema confirmed via time-tracking.prod.jibble.io/v1/$metadata
 export interface JibbleTimeEntry {
-  id?: string;
-  uid?: string;          // Jibble live API uses uid as the entry key
-  personId?: string;
-  personUid?: string;    // Jibble live API uses personUid
-  startTime?: string;    // ISO timestamp
-  endTime?: string | null;
-  duration?: number;     // seconds
-  faceVerified?: boolean;
-  imageUrl?: string;
-  activity?: string;
+  id: string;
+  personId?: string;           // Guid — matches jibblePersonId in our DB
+  type?: "In" | "Out" | "StartBreak" | string;
+  localTime?: string;          // ISO timestamp of the event
+  time?: string;               // fallback alias
+  nextTimeEntryId?: string | null; // null = no subsequent event → person is still on site
+  isFaceRecognized?: boolean;
+  picture?: { url?: string } | null;
 }
 
+// Mirrors DailyTimesheetModel from time-attendance.prod.jibble.io/v1/$metadata
 export interface JibbleAttendanceRecord {
-  id?: string;
   personId?: string;
-  personUid?: string;    // Jibble live API uses personUid
-  date: string;          // YYYY-MM-DD
-  firstIn?: string;      // ISO timestamp (clock-in)
-  lastOut?: string;      // ISO timestamp (clock-out)
-  workedDuration?: number; // seconds — Jibble live API field name
-  totalDuration?: number;  // alias kept for backwards compat
+  date: string;                    // YYYY-MM-DD
+  firstInTimestamp?: string;       // ISO DateTimeOffset — first clock-in of the day
+  lastOutTimestamp?: string;       // ISO DateTimeOffset — last clock-out of the day
+  // Aliases kept so existing WorkerDetail fallback chains keep working
+  firstIn?: string;
+  lastOut?: string;
+  totalDuration?: number;          // seconds, derived from trackedHours duration string
   status?: string;
 }
 
@@ -167,38 +168,74 @@ export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]>
   })) as JibblePerson[];
 }
 
-/** Fetch currently clocked-in time entries from the time-tracking service */
+/** Parse an ISO 8601 duration string (e.g. "PT8H30M") into total seconds. */
+function parseDuration(dur?: string): number | undefined {
+  if (!dur) return undefined;
+  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+  if (!m) return undefined;
+  return (parseInt(m[1] || "0") * 3600)
+       + (parseInt(m[2] || "0") * 60)
+       + Math.round(parseFloat(m[3] || "0"));
+}
+
+/** Fetch currently clocked-in time entries from the time-tracking service.
+ *  TimeEntry is an individual event record (type In/Out/StartBreak).
+ *  A ClockIn entry with nextTimeEntryId === null means the person has not yet
+ *  clocked out or started a break — i.e. they are currently on site. */
 export async function fetchActiveTimeEntries(token: string): Promise<JibbleTimeEntry[]> {
-  // OData filter: entries with no end time are still active (clocked in)
   const data = await jibbleFetch(JIBBLE_TRACKING, "/TimeEntries", token, {
-    "$filter": "endTime eq null",
+    "$filter": "type eq 'In' and nextTimeEntryId eq null",
+    "$orderby": "localTime desc",
   });
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
   return list as JibbleTimeEntry[];
 }
 
-/** Fetch attendance (timesheet) records for a date range from the time-attendance service */
+/** Fetch attendance (timesheet) records for a date range from the time-attendance service.
+ *  Uses key-based OData access /Timesheets({personId}) when a personId is given, which
+ *  returns a TimesheetModel with a `daily` array of DailyTimesheetModel entries.
+ *  Falls back to list-based access when no personId is provided. */
 export async function fetchAttendance(
   token: string,
   params?: { from?: string; to?: string; personId?: string },
 ): Promise<JibbleAttendanceRecord[]> {
-  const filters: string[] = [];
-  if (params?.from)     filters.push(`date ge '${params.from}'`);
-  if (params?.to)       filters.push(`date le '${params.to}'`);
-  // Live Jibble API uses `personUid` as the filter field (not `personId`)
-  if (params?.personId) filters.push(`personUid eq '${params.personId}'`);
-
+  // Query params: Jibble uses `from` / `to` (YYYY-MM-DD) for date range filtering
   const qp: Record<string, string> = {};
-  if (filters.length) qp["$filter"] = filters.join(" and ");
+  if (params?.from) qp["from"] = params.from;
+  if (params?.to)   qp["to"]   = params.to;
 
+  if (params?.personId) {
+    // Key-based access returns a single TimesheetModel with a `daily` collection
+    const data = await jibbleFetch(JIBBLE_ATTENDANCE, `/Timesheets(${params.personId})`, token, qp);
+    const daily: any[] = data?.daily ?? [];
+    return daily.map((d) => ({
+      personId:          params.personId,
+      date:              d.date,
+      firstInTimestamp:  d.firstInTimestamp,
+      lastOutTimestamp:  d.lastOutTimestamp,
+      firstIn:           d.firstInTimestamp,  // alias for legacy UI fallback chains
+      lastOut:           d.lastOutTimestamp,
+      totalDuration:     parseDuration(d.trackedHours?.total ?? d.trackedHours?.tracked),
+      status:            d.status,
+    }));
+  }
+
+  // No personId: list all timesheets (used for bulk sync)
   const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/Timesheets", token, qp);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
-  // Normalise workedDuration → totalDuration so both field names work downstream
-  return (list as any[]).map((r) => ({
-    ...r,
-    workedDuration: r.workedDuration ?? r.totalDuration,
-    totalDuration:  r.totalDuration  ?? r.workedDuration,
-  })) as JibbleAttendanceRecord[];
+  return (list as any[]).map((r) => {
+    const daily0 = r.daily?.[0];
+    return {
+      personId:          r.personId,
+      date:              daily0?.date ?? r.date,
+      firstInTimestamp:  daily0?.firstInTimestamp,
+      lastOutTimestamp:  daily0?.lastOutTimestamp,
+      firstIn:           daily0?.firstInTimestamp,
+      lastOut:           daily0?.lastOutTimestamp,
+      totalDuration:     parseDuration(r.total ?? daily0?.trackedHours?.total),
+      status:            r.status,
+    };
+  });
 }
 
 /** Test a client-id/secret pair — returns org name on success */

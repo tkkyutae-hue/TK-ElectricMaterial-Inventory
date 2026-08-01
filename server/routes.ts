@@ -5315,6 +5315,70 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Jibble Integration ────────────────────────────────────────────────────────
 
+  /** Shared sync logic used by connect, manual sync, and periodic sync.
+   *  Queries each mapped worker sequentially, merges with existing cache,
+   *  and writes results + stats to storage.
+   *  Returns `allFailed: true` when all retryable requests failed — caller
+   *  should respond 503 and NOT overwrite cache in that case. */
+  async function runJibbleSync(token: string) {
+    const { fetchActiveTimeEntries } = await import("./services/jibble");
+
+    const allWorkers = await storage.getWorkers();
+    const personIds = allWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
+
+    // Load existing cache so we can preserve entries for temp-failed workers
+    const existingCacheRaw = await storage.getAppSetting("jibble_active_cache");
+    const existingCache: { personId: string; firstIn: string }[] = (() => {
+      try { return JSON.parse(existingCacheRaw ?? "[]"); } catch { return []; }
+    })();
+    const existingMap = new Map(existingCache.map((e) => [e.personId, e]));
+
+    const result = await fetchActiveTimeEntries(token, personIds);
+
+    // Merge: fresh data for updated, preserve cache for temp failures, drop invalids
+    const newCache: { personId: string; firstIn: string }[] = [...result.updated];
+    let preserved = 0;
+    for (const pid of result.failed) {
+      const existing = existingMap.get(pid);
+      if (existing) { newCache.push(existing); preserved++; }
+    }
+
+    const success = personIds.length - result.failed.length - result.invalidIds.length;
+    // "all failed" = every retryable request failed and there were no successes
+    const allFailed = result.failed.length > 0 && success === 0 && result.invalidIds.length < personIds.length;
+
+    console.log(
+      `[jibble-sync] total=${personIds.length} success=${success} punchedIn=${result.updated.length}` +
+      ` invalidPersonIds=${result.invalidIds.length} temporaryFailures=${result.failed.length} preserved=${preserved}`,
+    );
+
+    if (!allFailed) {
+      // Accumulate invalid IDs into persistent store
+      const existingInvalidRaw = await storage.getAppSetting("jibble_invalid_ids");
+      const existingInvalid: string[] = (() => {
+        try { return JSON.parse(existingInvalidRaw ?? "[]"); } catch { return []; }
+      })();
+      const mergedInvalid = Array.from(new Set([...existingInvalid, ...result.invalidIds]));
+
+      await Promise.all([
+        storage.setAppSetting("jibble_active_cache", JSON.stringify(newCache)),
+        storage.setAppSetting("jibble_last_sync_at", new Date().toISOString()),
+        storage.setAppSetting("jibble_invalid_ids", JSON.stringify(mergedInvalid)),
+      ]);
+    }
+
+    return {
+      total: personIds.length,
+      success,
+      punchedIn: result.updated.length,
+      invalidPersonIds: result.invalidIds.length,
+      temporaryFailures: result.failed.length,
+      preserved,
+      allFailed,
+      newCache,
+    };
+  }
+
   // GET /api/jibble/status
   app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
     try {
@@ -5343,7 +5407,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!clientId || typeof clientId !== "string") return res.status(400).json({ message: "clientId is required" });
       if (!clientSecret || typeof clientSecret !== "string") return res.status(400).json({ message: "clientSecret is required" });
 
-      const { testJibbleCredentials, exchangeClientCredentials, fetchActiveTimeEntries } = await import("./services/jibble");
+      const { testJibbleCredentials, exchangeClientCredentials } = await import("./services/jibble");
       const result = await testJibbleCredentials(clientId.trim(), clientSecret.trim());
       if (!result.ok) {
         const detail = result.error ? ` (${result.error})` : "";
@@ -5355,18 +5419,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.setAppSetting("jibble_client_secret", clientSecret.trim());
       if (result.orgName) await storage.setAppSetting("jibble_org_name", result.orgName);
 
-      // Get a fresh token and cache it
+      // Get a fresh token and cache it, then run an initial sync (best-effort)
       try {
         const { accessToken, expiresAt } = await exchangeClientCredentials(clientId.trim(), clientSecret.trim());
         await storage.setAppSetting("jibble_access_token", accessToken);
         await storage.setAppSetting("jibble_token_expires_at", String(expiresAt));
-
-        // Immediately run a sync (only mapped workers have jibblePersonId set)
-        const mappedWorkers = await storage.getWorkers();
-        const personIds = mappedWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
-        const entries = await fetchActiveTimeEntries(accessToken, personIds);
-        await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
-        await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
+        await runJibbleSync(accessToken).catch(() => {/* best-effort on connect */});
       } catch {}
 
       res.json({ ok: true, orgName: result.orgName });
@@ -5408,14 +5466,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // POST /api/jibble/sync — refresh active punch-ins cache
   app.post("/api/jibble/sync", isAuthenticated, requireManager, async (_req, res) => {
     try {
-      const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
+      const { getJibbleToken } = await import("./services/jibble");
       const token = await getJibbleToken(storage);
-      const allWorkers = await storage.getWorkers();
-      const personIds = allWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
-      const entries = await fetchActiveTimeEntries(token, personIds);
-      await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
-      await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
-      res.json({ ok: true, activePunchIns: entries.length });
+      const stats = await runJibbleSync(token);
+      if (stats.allFailed) {
+        return res.status(503).json({
+          message: "모든 Jibble 요청이 일시적으로 실패했습니다. 기존 캐시가 유지됩니다.",
+          ...stats,
+        });
+      }
+      res.json({ ok: true, activePunchIns: stats.punchedIn, ...stats });
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -5435,16 +5495,32 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ ok: true });
       }
 
-      // Fetch Jibble member to get employee number
+      // Validate personId exists in Jibble and fetch employee number
       let employeeNumber: string | undefined;
+      let memberNotFound = false;
       try {
         const { getJibbleToken, fetchJibbleMembers } = await import("./services/jibble");
         const token = await getJibbleToken(storage);
         const members = await fetchJibbleMembers(token);
         const member = members.find((m) => (m.uid ?? m.id) === jibblePersonId);
-        // Live API uses `employeeCode`; fallback to `employeeNumber` for compat
-        employeeNumber = member?.employeeCode ?? member?.employeeNumber;
-      } catch {}
+        if (!member) {
+          memberNotFound = true;
+        } else {
+          employeeNumber = member?.employeeCode ?? member?.employeeNumber;
+          // Remove from invalid list if it was previously flagged
+          const invalidRaw = await storage.getAppSetting("jibble_invalid_ids");
+          const invalid: string[] = (() => { try { return JSON.parse(invalidRaw ?? "[]"); } catch { return []; } })();
+          if (invalid.includes(jibblePersonId)) {
+            await storage.setAppSetting("jibble_invalid_ids", JSON.stringify(invalid.filter((id) => id !== jibblePersonId)));
+          }
+        }
+      } catch (fetchErr: any) {
+        // Network/token error during validation — allow mapping but warn
+        console.warn("[jibble] map validation fetch failed:", fetchErr.message);
+      }
+      if (memberNotFound) {
+        return res.status(400).json({ message: "해당 Jibble 멤버를 찾을 수 없습니다. 멤버 목록을 새로고침하고 다시 시도해주세요." });
+      }
 
       await storage.updateWorker(workerId, {
         jibblePersonId,
@@ -5453,6 +5529,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json({ ok: true });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
+    }
+  });
+
+  // DELETE /api/jibble/map/:workerId — remove Jibble mapping for a specific worker
+  app.delete("/api/jibble/map/:workerId", isAuthenticated, requireAdmin, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.workerId);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
+      const worker = await storage.getWorker(workerId);
+      if (!worker) return res.status(404).json({ message: "Worker not found" });
+
+      const prevPersonId = worker.jibblePersonId;
+      await storage.updateWorker(workerId, { jibblePersonId: null });
+
+      // Remove from invalid IDs list if present
+      if (prevPersonId) {
+        const invalidRaw = await storage.getAppSetting("jibble_invalid_ids");
+        const invalid: string[] = (() => { try { return JSON.parse(invalidRaw ?? "[]"); } catch { return []; } })();
+        if (invalid.includes(prevPersonId)) {
+          await storage.setAppSetting("jibble_invalid_ids", JSON.stringify(invalid.filter((id) => id !== prevPersonId)));
+        }
+      }
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // GET /api/jibble/invalid-mappings — workers whose Jibble personId returned 404
+  app.get("/api/jibble/invalid-mappings", isAuthenticated, requireManager, async (_req, res) => {
+    try {
+      const invalidRaw = await storage.getAppSetting("jibble_invalid_ids");
+      const invalidIds: string[] = (() => { try { return JSON.parse(invalidRaw ?? "[]"); } catch { return []; } })();
+      if (invalidIds.length === 0) return res.json({ invalidMappings: [] });
+
+      const allWorkers = await storage.getWorkers();
+      const invalidMappings = invalidIds
+        .map((jibblePersonId) => {
+          const worker = allWorkers.find((w) => w.jibblePersonId === jibblePersonId);
+          if (!worker) return null;
+          return { workerId: worker.id, workerName: worker.fullName, jibblePersonId };
+        })
+        .filter(Boolean);
+
+      res.json({ invalidMappings });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
     }
   });
 
@@ -5505,14 +5628,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const clientId = await storage.getAppSetting("jibble_client_id");
       if (!clientId) return;
-      const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
+      const { getJibbleToken } = await import("./services/jibble");
       const token = await getJibbleToken(storage);
-      const allWorkers = await storage.getWorkers();
-      const personIds = allWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
-      const entries = await fetchActiveTimeEntries(token, personIds);
-      await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
-      await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
-      console.log(`[jibble] synced: ${entries.length} active punch-ins`);
+      const stats = await runJibbleSync(token);
+      if (stats.allFailed) {
+        console.warn("[jibble] periodic sync: all requests failed — cache preserved");
+      } else {
+        console.log(`[jibble] periodic sync complete: ${stats.punchedIn} active punch-ins`);
+      }
     } catch (err: any) {
       console.warn("[jibble] periodic sync failed:", err.message);
     }

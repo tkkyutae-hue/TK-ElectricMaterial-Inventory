@@ -16,6 +16,13 @@ const JIBBLE_WORKSPACE  = "https://workspace.prod.jibble.io/v1";
 const JIBBLE_TRACKING   = "https://time-tracking.prod.jibble.io/v1";
 const JIBBLE_ATTENDANCE = "https://time-attendance.prod.jibble.io/v1";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Printed once per process so the deployment log confirms the strategy. */
+let syncStrategyLogged = false;
+
 // ─── OAuth2 token exchange ────────────────────────────────────────────────────
 
 export async function exchangeClientCredentials(
@@ -105,6 +112,59 @@ export async function jibbleFetch(
     throw new Error(`Jibble API ${res.status} (${path}): ${text}`);
   }
   return res.json();
+}
+
+/** Like `jibbleFetch` but with automatic retry for 429 / 5xx responses.
+ *  - Reads `Retry-After` header when present; otherwise uses exponential backoff.
+ *  - 404 errors are NOT retried; thrown Error carries `{ status: 404 }`.
+ *  - Other 4xx errors are not retried.
+ *  - maxRetries defaults to 4. */
+async function jibbleFetchRetry(
+  baseUrl: string,
+  path: string,
+  token: string,
+  params?: Record<string, string>,
+  maxRetries = 4,
+): Promise<any> {
+  const url = new URL(baseUrl + path);
+  if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+
+    if (res.ok) return res.json();
+
+    // 404 = invalid resource — do not retry
+    if (res.status === 404) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(`Jibble API 404 (${path}): ${text}`);
+      (err as any).status = 404;
+      throw err;
+    }
+
+    // 429 or 5xx = retryable
+    if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+      const retryAfterHeader = res.headers.get("Retry-After");
+      let waitMs: number;
+      if (retryAfterHeader) {
+        const seconds = parseInt(retryAfterHeader, 10);
+        waitMs = isNaN(seconds) ? 1000 : Math.min(seconds * 1000, 10_000);
+      } else {
+        waitMs = Math.min(500 * Math.pow(2, attempt), 10_000);
+      }
+      console.warn(`[jibble] attempt ${attempt + 1}/${maxRetries + 1} → ${res.status} (${path}), retrying in ${waitMs}ms`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    // Other 4xx, or retries exhausted
+    const text = await res.text().catch(() => "");
+    const err = new Error(`Jibble API ${res.status} (${path}): ${text}`);
+    (err as any).status = res.status;
+    throw err;
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -201,37 +261,61 @@ function extractDuration(trackedHours: any): number | undefined {
 }
 
 /** Fetch currently clocked-in people by querying each mapped worker's timesheet individually.
- *  /TimesheetsSummary (list) consistently returns 500, but /Timesheets({personId}) (key-based)
- *  returns 200 — confirmed via /api/jibble/attendance/:workerId in production logs.
  *
- *  Calls are parallelised with Promise.all. A person is considered on-site when today's
- *  DailyTimesheetModel has firstIn/firstInTimestamp set but lastOut/lastOutTimestamp absent.
+ *  Uses /Timesheets({personId}) key-based endpoint with retry on 429/5xx.
+ *  Calls are **sequential** (300 ms gap) to avoid Jibble rate limits.
  *
- *  @param personIds  Jibble personId values for the mapped workers to check.
- *  Returns lightweight { personId, firstIn } objects compatible with jibble_active_cache. */
+ *  Returns:
+ *  - `updated`    — personIds on-site right now (firstIn set, lastOut absent)
+ *  - `invalidIds` — personIds that returned 404 (wrong / deleted Jibble person)
+ *  - `failed`     — personIds with temporary errors (429/5xx) after all retries */
 export async function fetchActiveTimeEntries(
   token: string,
   personIds: string[],
-): Promise<{ personId: string; firstIn: string }[]> {
-  if (personIds.length === 0) return [];
-  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+): Promise<{
+  updated: { personId: string; firstIn: string }[];
+  invalidIds: string[];
+  failed: string[];
+}> {
+  if (!syncStrategyLogged) {
+    console.log("[jibble] active sync strategy: sequential-retry-v2");
+    syncStrategyLogged = true;
+  }
 
-  const results = await Promise.all(
-    personIds.map(async (personId) => {
-      try {
-        const records = await fetchAttendance(token, { personId, from: today, to: today });
-        const todayRecord = records.find((r) => r.date === today);
-        // On-site = clocked in today but not yet clocked out
-        const firstIn = todayRecord?.firstInTimestamp ?? todayRecord?.firstIn;
-        const lastOut = todayRecord?.lastOutTimestamp ?? todayRecord?.lastOut;
-        if (firstIn && !lastOut) return { personId, firstIn };
-      } catch (err: any) {
-        console.warn(`[jibble] fetchActiveTimeEntries: failed for personId ${personId}:`, err.message);
+  if (personIds.length === 0) return { updated: [], invalidIds: [], failed: [] };
+
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const updated: { personId: string; firstIn: string }[] = [];
+  const invalidIds: string[] = [];
+  const failed: string[] = [];
+
+  for (let i = 0; i < personIds.length; i++) {
+    const personId = personIds[i];
+    try {
+      const data = await jibbleFetchRetry(
+        JIBBLE_ATTENDANCE, `/Timesheets(${personId})`, token, { from: today, to: today },
+      );
+      const daily: any[] = data?.daily ?? data?.value ?? [];
+      const todayEntry = daily.find((d: any) => d.date === today);
+      const firstIn = todayEntry?.firstInTimestamp ?? todayEntry?.firstIn;
+      const lastOut = todayEntry?.lastOutTimestamp  ?? todayEntry?.lastOut;
+      if (firstIn && !lastOut) updated.push({ personId, firstIn });
+      // else: queried OK but not punched in — omit from updated (not on site)
+    } catch (err: any) {
+      if (err?.status === 404) {
+        invalidIds.push(personId);
+        console.warn(`[jibble] personId ${personId} → 404 (invalid mapping)`);
+      } else {
+        failed.push(personId);
+        console.warn(`[jibble] personId ${personId} → temp failure: ${err.message}`);
       }
-      return null;
-    }),
-  );
-  return results.filter((r): r is { personId: string; firstIn: string } => r !== null);
+    }
+
+    // 300 ms rate-limit guard between calls (skip after the last one)
+    if (i < personIds.length - 1) await sleep(300);
+  }
+
+  return { updated, invalidIds, failed };
 }
 
 /** Normalise a single DailyTimesheetModel entry into a JibbleAttendanceRecord.

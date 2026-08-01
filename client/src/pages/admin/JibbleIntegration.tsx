@@ -37,6 +37,12 @@ interface MappingRow {
   worker: Worker | null;
 }
 
+interface InvalidMapping {
+  workerId: number;
+  workerName: string;
+  jibblePersonId: string;
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function JibbleIntegration() {
@@ -97,10 +103,19 @@ export default function JibbleIntegration() {
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["/api/jibble/status"] });
       qc.invalidateQueries({ queryKey: ["/api/workers"] });
-      toast({ title: "동기화 완료", description: `활성 펀치인: ${data.activePunchIns ?? 0}명` });
+      qc.invalidateQueries({ queryKey: ["/api/jibble/invalid-mappings"] });
+      const parts: string[] = [`활성 펀치인: ${data.punchedIn ?? data.activePunchIns ?? 0}명`];
+      if ((data.invalidPersonIds ?? 0) > 0) parts.push(`잘못된 매핑: ${data.invalidPersonIds}개`);
+      if ((data.temporaryFailures ?? 0) > 0) parts.push(`일시 실패: ${data.temporaryFailures}개`);
+      toast({ title: "동기화 완료", description: parts.join(" · ") });
     },
     onError: (err: any) => {
-      toast({ title: "동기화 실패", description: err.message, variant: "destructive" });
+      const is503 = err?.message?.includes("일시적으로 실패");
+      toast({
+        title: is503 ? "동기화 일시 실패" : "동기화 실패",
+        description: is503 ? "모든 Jibble 요청이 실패했습니다. 기존 상태가 유지됩니다." : err.message,
+        variant: is503 ? "default" : "destructive",
+      });
     },
   });
 
@@ -114,6 +129,26 @@ export default function JibbleIntegration() {
     },
     onError: (err: any) => {
       toast({ title: "매핑 실패", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // ── Invalid mappings query ──
+  const { data: invalidMappingsData } = useQuery<{ invalidMappings: InvalidMapping[] }>({
+    queryKey: ["/api/jibble/invalid-mappings"],
+    enabled: !!status?.connected,
+  });
+  const invalidMappings = invalidMappingsData?.invalidMappings ?? [];
+
+  // ── Unmap mutation (clear invalid mapping) ──
+  const unmapMutation = useMutation({
+    mutationFn: (workerId: number) => apiRequest("DELETE", `/api/jibble/map/${workerId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/jibble/invalid-mappings"] });
+      qc.invalidateQueries({ queryKey: ["/api/workers"] });
+      toast({ title: "매핑 해제됨" });
+    },
+    onError: (err: any) => {
+      toast({ title: "매핑 해제 실패", description: err.message, variant: "destructive" });
     },
   });
 
@@ -366,6 +401,56 @@ export default function JibbleIntegration() {
                 </table>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Invalid mappings ── */}
+      {status?.connected && invalidMappings.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700">
+              <AlertCircle className="w-4 h-4" />
+              잘못된 Jibble 연결 ({invalidMappings.length}개)
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              동기화 중 Jibble 서버에서 찾을 수 없었던 직원입니다. 매핑을 해제하고 다시 연결하세요.
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-amber-50">
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">작업자</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Jibble ID</th>
+                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">조치</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {invalidMappings.map((m) => (
+                    <tr key={m.workerId} className="hover:bg-slate-50">
+                      <td className="px-5 py-3 font-medium text-slate-800">{m.workerName}</td>
+                      <td className="px-5 py-3 text-xs font-mono text-slate-400">
+                        {m.jibblePersonId.slice(0, 8)}…
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs text-red-500 hover:text-red-600 hover:border-red-300 gap-1"
+                          onClick={() => unmapMutation.mutate(m.workerId)}
+                          disabled={unmapMutation.isPending}
+                        >
+                          <X className="w-3 h-3" />
+                          매핑 해제
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}

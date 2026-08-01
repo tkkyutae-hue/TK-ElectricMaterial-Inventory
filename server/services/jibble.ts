@@ -5,7 +5,7 @@
 // The resulting access_token is cached in app_settings with its expiry.
 
 const JIBBLE_API      = "https://api.jibble.io/v2";
-const JIBBLE_TOKEN_URL = "https://id.prod.jibble.io/connect/token";
+const JIBBLE_TOKEN_URL = "https://identity.prod.jibble.io/connect/token";
 
 // ─── OAuth2 token exchange ────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ export async function exchangeClientCredentials(
   // Jibble's IdentityServer4 expects credentials as Basic Auth header,
   // not in the request body.
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const body = new URLSearchParams({ grant_type: "client_credentials" });
+  const body = new URLSearchParams({ grant_type: "client_credentials", scope: "api1" });
 
   const res = await fetch(JIBBLE_TOKEN_URL, {
     method: "POST",

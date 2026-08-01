@@ -13,15 +13,17 @@ export async function exchangeClientCredentials(
   clientId: string,
   clientSecret: string,
 ): Promise<{ accessToken: string; expiresAt: number }> {
-  const body = new URLSearchParams({
-    grant_type:    "client_credentials",
-    client_id:     clientId,
-    client_secret: clientSecret,
-  });
+  // Jibble's IdentityServer4 expects credentials as Basic Auth header,
+  // not in the request body.
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const body = new URLSearchParams({ grant_type: "client_credentials" });
 
   const res = await fetch(JIBBLE_TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": `Basic ${basicAuth}`,
+    },
     body: body.toString(),
   });
 
@@ -163,7 +165,7 @@ export async function fetchAttendance(
 export async function testJibbleCredentials(
   clientId: string,
   clientSecret: string,
-): Promise<{ ok: boolean; orgName?: string }> {
+): Promise<{ ok: boolean; orgName?: string; error?: string }> {
   try {
     const { accessToken } = await exchangeClientCredentials(clientId, clientSecret);
     // Try fetching org info with the fresh token
@@ -175,7 +177,7 @@ export async function testJibbleCredentials(
       // Token worked (exchange succeeded) even if /organization endpoint differs
       return { ok: true };
     }
-  } catch {
-    return { ok: false };
+  } catch (err: any) {
+    return { ok: false, error: err?.message ?? "인증 실패" };
   }
 }

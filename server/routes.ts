@@ -5345,7 +5345,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const { testJibbleCredentials, exchangeClientCredentials, fetchActiveTimeEntries } = await import("./services/jibble");
       const result = await testJibbleCredentials(clientId.trim(), clientSecret.trim());
-      if (!result.ok) return res.status(401).json({ message: "Jibble 인증 정보가 유효하지 않습니다. Client ID와 Secret을 다시 확인해주세요." });
+      if (!result.ok) {
+        const detail = result.error ? ` (${result.error})` : "";
+        return res.status(401).json({ message: `Jibble 인증 정보가 유효하지 않습니다. Client ID와 Secret을 다시 확인해주세요.${detail}` });
+      }
 
       // Store credentials
       await storage.setAppSetting("jibble_client_id", clientId.trim());

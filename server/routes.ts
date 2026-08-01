@@ -5361,8 +5361,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         await storage.setAppSetting("jibble_access_token", accessToken);
         await storage.setAppSetting("jibble_token_expires_at", String(expiresAt));
 
-        // Immediately run a sync
-        const entries = await fetchActiveTimeEntries(accessToken);
+        // Immediately run a sync (only mapped workers have jibblePersonId set)
+        const mappedWorkers = await storage.getWorkers();
+        const personIds = mappedWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
+        const entries = await fetchActiveTimeEntries(accessToken, personIds);
         await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
         await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
       } catch {}
@@ -5408,7 +5410,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
       const token = await getJibbleToken(storage);
-      const entries = await fetchActiveTimeEntries(token);
+      const allWorkers = await storage.getWorkers();
+      const personIds = allWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
+      const entries = await fetchActiveTimeEntries(token, personIds);
       await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
       await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
       res.json({ ok: true, activePunchIns: entries.length });
@@ -5503,7 +5507,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!clientId) return;
       const { getJibbleToken, fetchActiveTimeEntries } = await import("./services/jibble");
       const token = await getJibbleToken(storage);
-      const entries = await fetchActiveTimeEntries(token);
+      const allWorkers = await storage.getWorkers();
+      const personIds = allWorkers.map((w: any) => w.jibblePersonId).filter(Boolean) as string[];
+      const entries = await fetchActiveTimeEntries(token, personIds);
       await storage.setAppSetting("jibble_active_cache", JSON.stringify(entries));
       await storage.setAppSetting("jibble_last_sync_at", new Date().toISOString());
       console.log(`[jibble] synced: ${entries.length} active punch-ins`);

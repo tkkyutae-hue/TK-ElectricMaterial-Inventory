@@ -200,35 +200,38 @@ function extractDuration(trackedHours: any): number | undefined {
   );
 }
 
-/** Fetch currently clocked-in people using the time-attendance /TimesheetsSummary endpoint.
- *  Jibble's /TimeEntries endpoint consistently returns 500 regardless of query params,
- *  so we use TimesheetsSummary instead.
+/** Fetch currently clocked-in people by querying each mapped worker's timesheet individually.
+ *  /TimesheetsSummary (list) consistently returns 500, but /Timesheets({personId}) (key-based)
+ *  returns 200 — confirmed via /api/jibble/attendance/:workerId in production logs.
  *
- *  DailyTimesheetSummaryModel has `firstIn` (DateTimeOffset) and `lastOut` (DateTimeOffset).
- *  A person with firstIn set and lastOut absent/null for today is currently on site.
+ *  Calls are parallelised with Promise.all. A person is considered on-site when today's
+ *  DailyTimesheetModel has firstIn/firstInTimestamp set but lastOut/lastOutTimestamp absent.
  *
- *  Returns lightweight objects with `{ personId }` — compatible with the existing
- *  jibble_active_cache format read by /api/jibble/active (entry.personId lookup). */
-export async function fetchActiveTimeEntries(token: string): Promise<{ personId: string; firstIn: string }[]> {
+ *  @param personIds  Jibble personId values for the mapped workers to check.
+ *  Returns lightweight { personId, firstIn } objects compatible with jibble_active_cache. */
+export async function fetchActiveTimeEntries(
+  token: string,
+  personIds: string[],
+): Promise<{ personId: string; firstIn: string }[]> {
+  if (personIds.length === 0) return [];
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/TimesheetsSummary", token, {
-    from: today,
-    to: today,
-  });
-  const list: any[] = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
 
-  const active: { personId: string; firstIn: string }[] = [];
-  for (const summary of list) {
-    const personId: string = summary.personId;
-    if (!personId) continue;
-    // `daily` is an array of DailyTimesheetSummaryModel; filter for today's entry
-    const daily: any[] = summary.daily ?? [];
-    const todayEntry = daily.find((d: any) => d.date === today);
-    if (todayEntry?.firstIn && !todayEntry?.lastOut) {
-      active.push({ personId, firstIn: todayEntry.firstIn });
-    }
-  }
-  return active;
+  const results = await Promise.all(
+    personIds.map(async (personId) => {
+      try {
+        const records = await fetchAttendance(token, { personId, from: today, to: today });
+        const todayRecord = records.find((r) => r.date === today);
+        // On-site = clocked in today but not yet clocked out
+        const firstIn = todayRecord?.firstInTimestamp ?? todayRecord?.firstIn;
+        const lastOut = todayRecord?.lastOutTimestamp ?? todayRecord?.lastOut;
+        if (firstIn && !lastOut) return { personId, firstIn };
+      } catch (err: any) {
+        console.warn(`[jibble] fetchActiveTimeEntries: failed for personId ${personId}:`, err.message);
+      }
+      return null;
+    }),
+  );
+  return results.filter((r): r is { personId: string; firstIn: string } => r !== null);
 }
 
 /** Normalise a single DailyTimesheetModel entry into a JibbleAttendanceRecord.

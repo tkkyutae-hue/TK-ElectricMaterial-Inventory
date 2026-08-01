@@ -5534,6 +5534,122 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // POST /api/jibble/auto-map — bulk auto-map Jibble members to local workers
+  // Exact name / employee-code matches are applied immediately.
+  // Near-matches are returned as suggestions for manual confirmation.
+  app.post("/api/jibble/auto-map", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      const { getJibbleToken, fetchJibbleMembers } = await import("./services/jibble");
+      const token = await getJibbleToken(storage);
+      const [members, allWorkers] = await Promise.all([
+        fetchJibbleMembers(token),
+        storage.getWorkers(),
+      ]);
+
+      // Already-mapped Jibble person IDs and worker IDs — skip these
+      const mappedPersonIds = new Set(
+        allWorkers.filter((w) => w.jibblePersonId).map((w) => w.jibblePersonId as string),
+      );
+      const mappedWorkerIds = new Set(
+        allWorkers.filter((w) => w.jibblePersonId).map((w) => w.id),
+      );
+
+      /** Normalise a name string for loose comparison. */
+      function normName(s: string): string {
+        return s.toLowerCase().replace(/\s+/g, "").trim();
+      }
+
+      // Build lookup maps for unmapped workers
+      const unmappedWorkers = allWorkers.filter((w) => !mappedWorkerIds.has(w.id));
+      const workerByCode = new Map<string, typeof allWorkers[0]>();
+      const workerByNormName = new Map<string, typeof allWorkers[0]>();
+      for (const w of unmappedWorkers) {
+        if (w.employeeId) workerByCode.set(w.employeeId.trim(), w);
+        workerByNormName.set(normName(w.fullName), w);
+      }
+
+      let autoMapped = 0;
+      const suggestions: Array<{
+        jibblePersonId: string;
+        jibbleName: string;
+        jibbleEmployeeCode?: string;
+        workerId: number;
+        workerName: string;
+        workerEmployeeId?: string;
+        reason: string;
+      }> = [];
+
+      // Track which workers have been auto-mapped during this run (avoid double-assign)
+      const claimedWorkerIds = new Set<number>();
+
+      for (const member of members) {
+        // Skip already-mapped persons
+        if (mappedPersonIds.has(member.uid)) continue;
+
+        const code = member.employeeCode ?? member.employeeNumber;
+        const normMemberName = normName(member.name);
+        let matched: typeof allWorkers[0] | undefined;
+        let reason = "";
+
+        // 1. Exact employee code
+        if (code && workerByCode.has(code.trim())) {
+          const candidate = workerByCode.get(code.trim())!;
+          if (!claimedWorkerIds.has(candidate.id)) {
+            matched = candidate;
+            reason = "employee_code";
+          }
+        }
+
+        // 2. Exact normalised name (only if no code match)
+        if (!matched && workerByNormName.has(normMemberName)) {
+          const candidate = workerByNormName.get(normMemberName)!;
+          if (!claimedWorkerIds.has(candidate.id)) {
+            matched = candidate;
+            reason = "exact_name";
+          }
+        }
+
+        // 3. Substring match — collect as suggestion only
+        if (!matched) {
+          const partial = unmappedWorkers.find((w) => {
+            if (claimedWorkerIds.has(w.id)) return false;
+            const normW = normName(w.fullName);
+            return normMemberName.includes(normW) || normW.includes(normMemberName);
+          });
+          if (partial) {
+            suggestions.push({
+              jibblePersonId: member.uid,
+              jibbleName: member.name,
+              jibbleEmployeeCode: code,
+              workerId: partial.id,
+              workerName: partial.fullName,
+              workerEmployeeId: partial.employeeId ?? undefined,
+              reason: "name_partial",
+            });
+          }
+          continue;
+        }
+
+        // Auto-apply high-confidence match
+        claimedWorkerIds.add(matched.id);
+        const employeeNumber = code || matched.employeeId || undefined;
+        await storage.updateWorker(matched.id, {
+          jibblePersonId: member.uid,
+          ...(employeeNumber && !matched.employeeId ? { employeeId: employeeNumber } : {}),
+        });
+        autoMapped++;
+
+        // Remove from lookup maps so it can't be matched again
+        if (matched.employeeId) workerByCode.delete(matched.employeeId.trim());
+        workerByNormName.delete(normName(matched.fullName));
+      }
+
+      res.json({ autoMapped, suggestions, skipped: mappedPersonIds.size });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // DELETE /api/jibble/map/:workerId — remove Jibble mapping for a specific worker
   app.delete("/api/jibble/map/:workerId", isAuthenticated, requireAdmin, async (req, res) => {
     try {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Clock, Link2, Link2Off, RefreshCw, Check, X, Loader2,
-  User, Badge as BadgeIcon, AlertCircle, CheckCircle2,
+  User, AlertCircle, CheckCircle2, Wand2, HelpCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,22 @@ interface InvalidMapping {
   jibblePersonId: string;
 }
 
+interface AutoMapSuggestion {
+  jibblePersonId: string;
+  jibbleName: string;
+  jibbleEmployeeCode?: string;
+  workerId: number;
+  workerName: string;
+  workerEmployeeId?: string;
+  reason: string;
+}
+
+interface AutoMapResult {
+  autoMapped: number;
+  suggestions: AutoMapSuggestion[];
+  skipped: number;
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function JibbleIntegration() {
@@ -52,6 +68,11 @@ export default function JibbleIntegration() {
   const [clientId, setClientId]         = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [showSecret, setShowSecret]     = useState(false);
+
+  // Suggestions returned by auto-map (pending manual confirmation)
+  const [pendingSuggestions, setPendingSuggestions] = useState<AutoMapSuggestion[]>([]);
+  // IDs dismissed by the admin during this session
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
   // ── Queries ──
   const { data: status, isLoading: statusLoading } = useQuery<JibbleStatus>({
@@ -93,6 +114,8 @@ export default function JibbleIntegration() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/jibble/status"] });
       qc.invalidateQueries({ queryKey: ["/api/jibble/members"] });
+      setPendingSuggestions([]);
+      setDismissedSuggestions(new Set());
       toast({ title: "Jibble 연결 해제됨" });
     },
   });
@@ -132,6 +155,52 @@ export default function JibbleIntegration() {
     },
   });
 
+  // ── Auto-map mutation ──
+  const autoMapMutation = useMutation({
+    mutationFn: async (): Promise<AutoMapResult> => {
+      const res = await apiRequest("POST", "/api/jibble/auto-map");
+      return res.json() as Promise<AutoMapResult>;
+    },
+    onSuccess: (data: AutoMapResult) => {
+      qc.invalidateQueries({ queryKey: ["/api/workers"] });
+      qc.invalidateQueries({ queryKey: ["/api/jibble/members"] });
+
+      // Persist suggestions so admin can review them
+      setPendingSuggestions(data.suggestions ?? []);
+      setDismissedSuggestions(new Set());
+
+      const parts: string[] = [];
+      if (data.autoMapped > 0) parts.push(`${data.autoMapped}명 자동 매핑 완료`);
+      if ((data.suggestions ?? []).length > 0)
+        parts.push(`${data.suggestions.length}명 수동 확인 필요`);
+      if (data.autoMapped === 0 && (data.suggestions ?? []).length === 0)
+        parts.push("새로 매핑할 멤버가 없습니다");
+
+      toast({
+        title: "자동 매핑 실행됨",
+        description: parts.join(" · "),
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: "자동 매핑 실패", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // ── Apply suggestion mutation (reuse mapMutation logic) ──
+  const applySuggestionMutation = useMutation({
+    mutationFn: ({ jibblePersonId, workerId }: { jibblePersonId: string; workerId: number }) =>
+      apiRequest("POST", "/api/jibble/map", { jibblePersonId, workerId }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["/api/workers"] });
+      // Remove the applied suggestion from the list
+      setPendingSuggestions((prev) => prev.filter((s) => s.jibblePersonId !== variables.jibblePersonId));
+      toast({ title: "매핑 적용됨" });
+    },
+    onError: (err: any) => {
+      toast({ title: "매핑 실패", description: err.message, variant: "destructive" });
+    },
+  });
+
   // ── Invalid mappings query ──
   const { data: invalidMappingsData } = useQuery<{ invalidMappings: InvalidMapping[] }>({
     queryKey: ["/api/jibble/invalid-mappings"],
@@ -159,6 +228,28 @@ export default function JibbleIntegration() {
   });
 
   const mappedCount = mappingRows.filter((r) => r.worker).length;
+
+  // Visible suggestions — filter out dismissed ones and those already mapped via workers
+  const mappedPersonIds = new Set(workers.filter((w) => w.jibblePersonId).map((w) => w.jibblePersonId as string));
+  const visibleSuggestions = pendingSuggestions.filter(
+    (s) => !dismissedSuggestions.has(s.jibblePersonId) && !mappedPersonIds.has(s.jibblePersonId),
+  );
+
+  function dismissSuggestion(jibblePersonId: string) {
+    setDismissedSuggestions((prev) => {
+      const next = new Set(prev);
+      next.add(jibblePersonId);
+      return next;
+    });
+  }
+
+  // ── Reason label ──
+  function reasonLabel(reason: string): string {
+    if (reason === "employee_code") return "사번 일치";
+    if (reason === "exact_name")    return "이름 일치";
+    if (reason === "name_partial")  return "이름 유사";
+    return reason;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -320,6 +411,22 @@ export default function JibbleIntegration() {
                   </span>
                 )}
               </CardTitle>
+              {/* Auto-map button — only show when there are unmapped members */}
+              {members.length > 0 && mappedCount < members.length && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                  onClick={() => autoMapMutation.mutate()}
+                  disabled={autoMapMutation.isPending || membersLoading}
+                  title="이름·사번이 일치하는 작업자를 자동으로 연결합니다"
+                >
+                  {autoMapMutation.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Wand2 className="w-3.5 h-3.5" />}
+                  자동 매핑
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -401,6 +508,83 @@ export default function JibbleIntegration() {
                 </table>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Auto-map suggestions (near-matches that need manual confirmation) ── */}
+      {status?.connected && visibleSuggestions.length > 0 && (
+        <Card className="border-blue-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-700">
+              <HelpCircle className="w-4 h-4" />
+              매핑 제안 — 수동 확인 필요 ({visibleSuggestions.length}개)
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              이름이 유사하지만 완전히 일치하지 않습니다. 맞는 경우 적용하고 틀리면 건너뜁니다.
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-blue-50">
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Jibble 멤버</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">제안된 작업자</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">근거</th>
+                    <th className="px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">조치</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {visibleSuggestions.map((s) => (
+                    <tr key={s.jibblePersonId} className="hover:bg-slate-50">
+                      <td className="px-5 py-3">
+                        <span className="font-medium text-slate-800">{s.jibbleName}</span>
+                        {s.jibbleEmployeeCode && (
+                          <div className="text-xs text-slate-400">사번: {s.jibbleEmployeeCode}</div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="font-medium text-slate-800">{s.workerName}</span>
+                        {s.workerEmployeeId && (
+                          <div className="text-xs text-slate-400">사번: {s.workerEmployeeId}</div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge variant="outline" className="text-xs text-slate-500">
+                          {reasonLabel(s.reason)}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            className="text-xs h-7 gap-1 bg-blue-600 hover:bg-blue-700"
+                            onClick={() => applySuggestionMutation.mutate({
+                              jibblePersonId: s.jibblePersonId,
+                              workerId: s.workerId,
+                            })}
+                            disabled={applySuggestionMutation.isPending}
+                          >
+                            <Check className="w-3 h-3" />
+                            적용
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7 gap-1 text-slate-500"
+                            onClick={() => dismissSuggestion(s.jibblePersonId)}
+                          >
+                            <X className="w-3 h-3" />
+                            건너뜀
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}

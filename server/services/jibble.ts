@@ -260,15 +260,22 @@ function extractDuration(trackedHours: any): number | undefined {
   );
 }
 
-/** Fetch currently clocked-in people by querying each mapped worker's timesheet individually.
+/** Fetch today's clock-in/out status for all mapped workers.
  *
- *  Uses /Timesheets({personId}) key-based endpoint with retry on 429/5xx.
- *  Calls are **sequential** (300 ms gap) to avoid Jibble rate limits.
+ *  Uses the time-tracking service `/TimeEntries` endpoint with a single bulk call
+ *  (`$filter=belongsToDate eq {today}`). This is far more reliable than the
+ *  time-attendance `/Timesheets({personId})` endpoint, which consistently returns 404
+ *  despite valid personIds.  (Investigation confirmed: the workspace People API `id`
+ *  field does NOT key into the time-attendance Timesheets entity — the entity simply
+ *  has no accessible key via the workspace id.)
+ *
+ *  OData `$filter`/`$top`/`$orderby` params must be embedded in the path string
+ *  directly — passing them via the `params` argument would encode `$` → `%24`.
  *
  *  Returns:
- *  - `updated`    — personIds on-site right now (firstIn set, lastOut absent)
- *  - `invalidIds` — personIds that returned 404 (wrong / deleted Jibble person)
- *  - `failed`     — personIds with temporary errors (429/5xx) after all retries */
+ *  - `updated`    — workers with activity today; each has firstIn and optional lastOut
+ *  - `invalidIds` — always empty (validation happens at mapping time)
+ *  - `failed`     — all personIds when the bulk fetch itself errors */
 export async function fetchActiveTimeEntries(
   token: string,
   personIds: string[],
@@ -278,44 +285,62 @@ export async function fetchActiveTimeEntries(
   failed: string[];
 }> {
   if (!syncStrategyLogged) {
-    console.log("[jibble] active sync strategy: sequential-retry-v2");
+    console.log("[jibble] active sync strategy: timeentries-bulk-v1");
     syncStrategyLogged = true;
   }
 
   if (personIds.length === 0) return { updated: [], invalidIds: [], failed: [] };
 
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const updated: { personId: string; firstIn: string; lastOut?: string }[] = [];
-  const invalidIds: string[] = [];
-  const failed: string[] = [];
+  const personIdSet = new Set(personIds);
 
-  for (let i = 0; i < personIds.length; i++) {
-    const personId = personIds[i];
-    try {
-      const data = await jibbleFetchRetry(
-        JIBBLE_ATTENDANCE, `/Timesheets(${personId})`, token, { from: today, to: today },
-      );
-      const daily: any[] = data?.daily ?? data?.value ?? [];
-      const todayEntry = daily.find((d: any) => d.date === today);
-      const firstIn = todayEntry?.firstInTimestamp ?? todayEntry?.firstIn;
-      const lastOut = todayEntry?.lastOutTimestamp  ?? todayEntry?.lastOut;
-      if (firstIn) updated.push({ personId, firstIn, ...(lastOut ? { lastOut } : {}) });
-      // else: no punch-in today — omit from updated
-    } catch (err: any) {
-      if (err?.status === 404) {
-        invalidIds.push(personId);
-        console.warn(`[jibble] personId ${personId} → 404 (invalid mapping)`);
-      } else {
-        failed.push(personId);
-        console.warn(`[jibble] personId ${personId} → temp failure: ${err.message}`);
-      }
+  try {
+    // Single bulk call — OData params embedded in path to avoid '%24' encoding.
+    const path = `/TimeEntries?$filter=belongsToDate eq ${today}&$top=500&$orderby=time asc`;
+    const data = await jibbleFetchRetry(JIBBLE_TRACKING, path, token);
+    const entries: any[] = data?.value ?? [];
+
+    // Group entries by personId, keeping only mapped workers
+    const byPerson = new Map<string, any[]>();
+    for (const e of entries) {
+      if (!personIdSet.has(e.personId)) continue;
+      const arr = byPerson.get(e.personId) ?? [];
+      arr.push(e);
+      byPerson.set(e.personId, arr);
     }
 
-    // 300 ms rate-limit guard between calls (skip after the last one)
-    if (i < personIds.length - 1) await sleep(300);
-  }
+    const updated: { personId: string; firstIn: string; lastOut?: string }[] = [];
 
-  return { updated, invalidIds, failed };
+    for (const personId of personIds) {
+      const arr = byPerson.get(personId);
+      if (!arr || arr.length === 0) continue; // no activity today
+
+      // Entries already ordered by time asc from the query
+      const firstInEntry = arr.find((e) => e.type === "In");
+      const firstIn = firstInEntry?.time ?? firstInEntry?.localTime;
+      if (!firstIn) continue;
+
+      // Determine clock-out: last entry of the day is "Out" → person has left
+      const lastEntry = arr[arr.length - 1];
+      const lastOut =
+        lastEntry?.type === "Out"
+          ? (lastEntry.time ?? lastEntry.localTime ?? undefined)
+          : undefined;
+
+      updated.push({ personId, firstIn, ...(lastOut ? { lastOut } : {}) });
+    }
+
+    console.log(
+      `[jibble] TimeEntries today: ${entries.length} entries total,` +
+      ` ${updated.length} mapped workers with activity`,
+    );
+    return { updated, invalidIds: [], failed: [] };
+
+  } catch (err: any) {
+    console.warn("[jibble] fetchActiveTimeEntries bulk failed:", err.message);
+    // Treat all as temporarily failed — caller will preserve existing cache
+    return { updated: [], invalidIds: [], failed: personIds };
+  }
 }
 
 /** Normalise a single DailyTimesheetModel entry into a JibbleAttendanceRecord.

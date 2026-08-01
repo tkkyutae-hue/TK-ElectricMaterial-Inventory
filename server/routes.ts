@@ -5437,7 +5437,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const { getJibbleToken, fetchJibbleMembers } = await import("./services/jibble");
         const token = await getJibbleToken(storage);
         const members = await fetchJibbleMembers(token);
-        const member = members.find((m) => m.uid === jibblePersonId);
+        const member = members.find((m) => (m.uid ?? m.id) === jibblePersonId);
         employeeNumber = member?.employeeNumber;
       } catch {}
 
@@ -5459,7 +5459,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const allWorkers = await storage.getWorkers();
 
       const result = (Array.isArray(entries) ? entries : []).map((entry: any) => {
-        const worker = allWorkers.find((w) => w.jibblePersonId === entry.personUid) ?? null;
+        const worker = allWorkers.find((w) => w.jibblePersonId === (entry.personId ?? entry.personUid)) ?? null;
         return { entry, worker };
       });
 
@@ -5486,7 +5486,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const token = await getJibbleToken(storage);
       const to   = new Date().toISOString().slice(0, 10);
       const from = new Date(Date.now() - 60 * 86400 * 1000).toISOString().slice(0, 10);
-      const records = await fetchAttendance(token, { personUid: worker.jibblePersonId, from, to });
+      const records = await fetchAttendance(token, { personId: worker.jibblePersonId, from, to });
 
       res.json({ records });
     } catch (err: any) {

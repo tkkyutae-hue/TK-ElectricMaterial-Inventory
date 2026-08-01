@@ -1,11 +1,20 @@
-// Jibble Time & Attendance API client (v2)
+// Jibble Time & Attendance API client
 // Auth: OAuth2 Client Credentials flow
-//   POST https://id.prod.jibble.io/connect/token
-//   grant_type=client_credentials&client_id=...&client_secret=...
-// The resulting access_token is cached in app_settings with its expiry.
+//   POST https://identity.prod.jibble.io/connect/token
+//   Authorization: Basic base64(clientId:clientSecret)
+//   grant_type=client_credentials&scope=api1
+//
+// Jibble uses a microservice architecture — each domain has its own base URL:
+//   workspace   → https://workspace.prod.jibble.io/v1   (People, Organizations)
+//   time-tracking → https://time-tracking.prod.jibble.io/v1  (TimeEntries, HourEntries)
+//   time-attendance → https://time-attendance.prod.jibble.io/v1 (Timesheets)
+//
+// Endpoints return OData envelopes: { value: [...] }
 
-const JIBBLE_API      = "https://api.jibble.io/v2";
-const JIBBLE_TOKEN_URL = "https://identity.prod.jibble.io/connect/token";
+const JIBBLE_TOKEN_URL  = "https://identity.prod.jibble.io/connect/token";
+const JIBBLE_WORKSPACE  = "https://workspace.prod.jibble.io/v1";
+const JIBBLE_TRACKING   = "https://time-tracking.prod.jibble.io/v1";
+const JIBBLE_ATTENDANCE = "https://time-attendance.prod.jibble.io/v1";
 
 // ─── OAuth2 token exchange ────────────────────────────────────────────────────
 
@@ -42,13 +51,11 @@ export async function exchangeClientCredentials(
 }
 
 // ─── Cached token helper (requires storage) ───────────────────────────────────
-// Pass the storage instance so we can read/write app_settings.
 
 export async function getJibbleToken(storage: {
   getAppSetting: (key: string) => Promise<string | null | undefined>;
   setAppSetting: (key: string, value: string | null) => Promise<void>;
 }): Promise<string> {
-  // Check cached token
   const [cachedToken, expiresAtRaw, clientId, clientSecret] = await Promise.all([
     storage.getAppSetting("jibble_access_token"),
     storage.getAppSetting("jibble_token_expires_at"),
@@ -75,13 +82,15 @@ export async function getJibbleToken(storage: {
 }
 
 // ─── Low-level fetch ──────────────────────────────────────────────────────────
+// `baseUrl` is one of the JIBBLE_* constants; `path` is the entity segment.
 
 export async function jibbleFetch(
+  baseUrl: string,
   path: string,
   token: string,
   params?: Record<string, string>,
 ): Promise<any> {
-  const url = new URL(JIBBLE_API + path);
+  const url = new URL(baseUrl + path);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
@@ -101,7 +110,8 @@ export async function jibbleFetch(
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface JibblePerson {
-  uid: string;
+  id?: string;
+  uid?: string;          // some versions expose uid
   name: string;
   employeeNumber?: string;
   email?: string;
@@ -111,10 +121,11 @@ export interface JibblePerson {
 
 export interface JibbleTimeEntry {
   id: string;
-  personUid: string;
-  startTime: string;       // ISO timestamp
-  endTime: string | null;  // null = still clocked in
-  duration?: number;       // seconds
+  personId?: string;
+  personUid?: string;
+  startTime?: string;    // ISO timestamp
+  endTime?: string | null;
+  duration?: number;     // seconds
   faceVerified?: boolean;
   imageUrl?: string;
   activity?: string;
@@ -122,41 +133,56 @@ export interface JibbleTimeEntry {
 
 export interface JibbleAttendanceRecord {
   id: string;
-  personUid: string;
-  date: string;            // YYYY-MM-DD
-  firstIn?: string;        // ISO timestamp
-  lastOut?: string;        // ISO timestamp
-  totalDuration?: number;  // seconds
+  personId?: string;
+  personUid?: string;
+  date: string;          // YYYY-MM-DD
+  firstIn?: string;      // ISO timestamp
+  lastOut?: string;      // ISO timestamp
+  totalDuration?: number; // seconds
   status?: string;
 }
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
-/** Fetch all active team members */
+/** Fetch all active team members from the workspace service.
+ *  Normalises the person identifier: the workspace service may return `id`
+ *  (OData convention) or `uid` (legacy). We expose both fields and always
+ *  set `uid = uid ?? id` so that all downstream code using `person.uid`
+ *  continues to work regardless of which field the API populates. */
 export async function fetchJibbleMembers(token: string): Promise<JibblePerson[]> {
-  const data = await jibbleFetch("/people", token);
+  const data = await jibbleFetch(JIBBLE_WORKSPACE, "/People", token);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
-  return list as JibblePerson[];
+  return (list as any[]).map((p) => ({
+    ...p,
+    // Guarantee that `uid` is always the canonical person key
+    uid: p.uid ?? p.id ?? "",
+  })) as JibblePerson[];
 }
 
-/** Fetch currently clocked-in time entries */
+/** Fetch currently clocked-in time entries from the time-tracking service */
 export async function fetchActiveTimeEntries(token: string): Promise<JibbleTimeEntry[]> {
-  const data = await jibbleFetch("/timesheets", token, { status: "active" });
+  // OData filter: entries with no end time are still active (clocked in)
+  const data = await jibbleFetch(JIBBLE_TRACKING, "/TimeEntries", token, {
+    "$filter": "endTime eq null",
+  });
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
   return list as JibbleTimeEntry[];
 }
 
-/** Fetch attendance records for a date range */
+/** Fetch attendance (timesheet) records for a date range from the time-attendance service */
 export async function fetchAttendance(
   token: string,
-  params?: { from?: string; to?: string; personUid?: string },
+  params?: { from?: string; to?: string; personId?: string },
 ): Promise<JibbleAttendanceRecord[]> {
-  const qp: Record<string, string> = {};
-  if (params?.from)      qp["from"] = params.from;
-  if (params?.to)        qp["to"]   = params.to;
-  if (params?.personUid) qp["personUid"] = params.personUid;
+  const filters: string[] = [];
+  if (params?.from)     filters.push(`date ge '${params.from}'`);
+  if (params?.to)       filters.push(`date le '${params.to}'`);
+  if (params?.personId) filters.push(`personId eq '${params.personId}'`);
 
-  const data = await jibbleFetch("/attendance", token, qp);
+  const qp: Record<string, string> = {};
+  if (filters.length) qp["$filter"] = filters.join(" and ");
+
+  const data = await jibbleFetch(JIBBLE_ATTENDANCE, "/Timesheets", token, qp);
   const list = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
   return list as JibbleAttendanceRecord[];
 }
@@ -170,11 +196,13 @@ export async function testJibbleCredentials(
     const { accessToken } = await exchangeClientCredentials(clientId, clientSecret);
     // Try fetching org info with the fresh token
     try {
-      const data = await jibbleFetch("/organization", accessToken);
-      const orgName = data?.name ?? data?.value?.name ?? data?.data?.name;
+      const data = await jibbleFetch(JIBBLE_WORKSPACE, "/Organizations", accessToken);
+      // OData response: { value: [{ name: '...' }] }
+      const orgs = data?.value ?? data?.data ?? (Array.isArray(data) ? data : []);
+      const orgName = orgs[0]?.name ?? orgs[0]?.displayName;
       return { ok: true, orgName };
     } catch {
-      // Token worked (exchange succeeded) even if /organization endpoint differs
+      // Token worked (exchange succeeded) even if /Organizations endpoint differs
       return { ok: true };
     }
   } catch (err: any) {

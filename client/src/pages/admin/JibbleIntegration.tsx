@@ -306,9 +306,6 @@ export default function JibbleIntegration() {
                         Jibble 이름
                       </th>
                       <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        사번
-                      </th>
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                         연결된 작업자
                       </th>
                       <th className="px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
@@ -325,11 +322,6 @@ export default function JibbleIntegration() {
                           {person.email && (
                             <div className="text-xs text-slate-400">{person.email}</div>
                           )}
-                        </td>
-
-                        {/* Employee number from Jibble */}
-                        <td className="px-5 py-3 text-slate-500 text-xs font-mono">
-                          {person.employeeCode ?? person.employeeNumber ?? "—"}
                         </td>
 
                         {/* Worker select */}

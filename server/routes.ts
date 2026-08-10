@@ -844,9 +844,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { generateCompletionReportPptx } = await import("./services/completionReportPptx");
       const buffer = await generateCompletionReportPptx(project, report);
 
-      const safeName = (project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);
+      // Apply title case (capitalize first letter of each word) then sanitize
+      const toTitleCase = (s: string) => s.replace(/(^|[\s\-_()])([a-z])/g, (_: string, sep: string, c: string) => sep + c.toUpperCase());
+      const safeName = toTitleCase(project.name ?? "report").replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
       const poNum = ((project as any).poNumber ?? (project as any).code ?? "").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 20);
-      const filename = poNum ? `${poNum}_${safeName}_completion_report.pptx` : `${safeName}_completion_report.pptx`;
+      const filename = poNum ? `${poNum}_${safeName}_Completion_Report.pptx` : `${safeName}_Completion_Report.pptx`;
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.setHeader("Content-Length", buffer.length);

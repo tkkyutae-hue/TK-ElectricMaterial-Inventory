@@ -586,7 +586,9 @@ export async function generateCompletionReportPptx(
   }
 
   // ── Slide 6+: Photo sections ───────────────────────────────────────────────
-  const CAP_H       = 0.26;
+  const CAP_HDR_H   = 0.14;   // green "WORK DESCRIPTION" label strip
+  const CAP_TXT_H   = 0.24;   // description text area below header
+  const CAP_H       = CAP_HDR_H + CAP_TXT_H;   // total caption height = 0.38
   const ROW_GAP     = 0.10;
   const AVAIL_TOP   = 1.58;                  // y where photo rows start
   const AVAIL_BOT   = SLIDE_H - 0.22;        // y bottom limit (page-number clearance)
@@ -676,14 +678,24 @@ export async function generateCompletionReportPptx(
           line: { color: "BBBBBB", pt: 0.75 },
         });
 
-        // Caption bar
+        // Caption: full background
         slide.addShape(prs.ShapeType.rect, {
           x, y: y + photoH, w: photoW, h: CAP_H,
-          fill: { color: "F4F4F4" }, line: { color: "E0E0E0", pt: 0.5 },
+          fill: { color: "F7F7F7" }, line: { color: "D8D8D8", pt: 0.5 },
         });
+        // Caption: "WORK DESCRIPTION" green header strip
+        slide.addShape(prs.ShapeType.rect, {
+          x, y: y + photoH, w: photoW, h: CAP_HDR_H,
+          fill: { color: TK_GREEN }, line: { color: TK_GREEN, pt: 0 },
+        });
+        slide.addText("WORK DESCRIPTION", {
+          x: x + 0.10, y: y + photoH + 0.01, w: photoW - 0.20, h: CAP_HDR_H,
+          fontSize: 6.5, color: WHITE, fontFace: "Calibri", bold: true, valign: "middle",
+        });
+        // Caption: description text
         slide.addText(photo.description ?? "—", {
-          x: x + 0.12, y: y + photoH + 0.06, w: photoW - 0.24, h: CAP_H - 0.06,
-          fontSize: 9, color: "333333", fontFace: "Calibri", valign: "top",
+          x: x + 0.10, y: y + photoH + CAP_HDR_H + 0.03, w: photoW - 0.20, h: CAP_TXT_H - 0.04,
+          fontSize: 8.5, color: "333333", fontFace: "Calibri", valign: "top",
         });
       }
 

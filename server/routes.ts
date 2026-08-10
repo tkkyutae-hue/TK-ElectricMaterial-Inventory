@@ -4366,6 +4366,155 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── AI Extraction from BOQ/Quote file ───────────────────────────────────────
+  const uploadExtract = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = [
+        "image/jpeg", "image/jpg", "image/png", "image/webp",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        // Note: legacy .xls (application/vnd.ms-excel) is NOT supported — ExcelJS xlsx.load only reads OOXML
+      ];
+      cb(null, allowed.includes(file.mimetype));
+    },
+  });
+
+  app.post(
+    "/api/projects/:id/scope-items/extract-from-file",
+    isAuthenticated,
+    requireManager,
+    uploadExtract.single("file"),
+    async (req, res) => {
+      try {
+        const projectId = parseInt(req.params.id);
+        if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) return res.status(500).json({ message: "OPENAI_API_KEY is not configured" });
+
+        const mime = req.file.mimetype;
+        // Images keyed per page for PDF; single entry for image files
+        const pageImages: Array<{ base64: string; mimeType: string }> = [];
+        let textContent: string | null = null;
+        let totalPdfPages = 1;
+        const PDF_PAGE_CAP = 8; // maximum pages sent to GPT-4o vision in one call
+
+        // ── PDF → render all pages (up to cap) ───────────────────────────────
+        if (mime === "application/pdf") {
+          const { pdfFirstPageToPng, pdfPageCount } = await import("./services/pdfFirstPage.js");
+          totalPdfPages = await pdfPageCount(req.file.buffer);
+          const pagesToProcess = Math.min(totalPdfPages, PDF_PAGE_CAP);
+          // Render pages sequentially (pdfjs is not safely parallelisable on same doc)
+          for (let p = 1; p <= pagesToProcess; p++) {
+            const pngBuf = await pdfFirstPageToPng(req.file.buffer, p);
+            pageImages.push({ base64: pngBuf.toString("base64"), mimeType: "image/png" });
+          }
+        }
+        // ── Excel → row text ─────────────────────────────────────────────────
+        else if (mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+          const ExcelJS = (await import("exceljs")).default;
+          const wb = new ExcelJS.Workbook();
+          await wb.xlsx.load(req.file.buffer);
+          const lines: string[] = [];
+          wb.eachSheet((sheet) => {
+            sheet.eachRow((row) => {
+              const vals = (row.values as any[]).slice(1)
+                .map((v: any) => (v == null ? "" : String(v).trim()))
+                .join("\t");
+              if (vals.trim()) lines.push(vals);
+            });
+          });
+          textContent = lines.slice(0, 300).join("\n");
+        }
+        // ── Image → direct base64 ────────────────────────────────────────────
+        else {
+          pageImages.push({ base64: req.file.buffer.toString("base64"), mimeType: mime });
+        }
+
+        // ── Build OpenAI prompt ──────────────────────────────────────────────
+        const systemPrompt =
+          "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
+          "You may receive multiple pages — extract ALL line items across all pages. " +
+          "Return ONLY valid JSON — an array of objects with keys: " +
+          "itemName (string, preserve original language), qty (number), unit (string), " +
+          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
+          "remarks (string or null). " +
+          "No markdown, no explanation — just the JSON array.";
+
+        const userContent: any[] = [];
+        if (pageImages.length > 0) {
+          for (const img of pageImages) {
+            userContent.push({
+              type: "image_url",
+              image_url: { url: `data:${img.mimeType};base64,${img.base64}`, detail: "high" },
+            });
+          }
+          userContent.push({
+            type: "text",
+            text: pageImages.length > 1
+              ? `These are ${pageImages.length} pages from the same document. Extract ALL scope/BOQ line items across all pages. Return as JSON array.`
+              : "Extract all scope/BOQ line items from this document. Return as JSON array.",
+          });
+        } else {
+          userContent.push({
+            type: "text",
+            text: `Extract all scope/BOQ line items from this spreadsheet data:\n\n${textContent}\n\nReturn as JSON array.`,
+          });
+        }
+
+        const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userContent },
+            ],
+            max_tokens: 4000,
+            temperature: 0.1,
+          }),
+        });
+
+        if (!oaiRes.ok) {
+          const errBody = await oaiRes.text();
+          console.error("[extract] OpenAI error:", errBody);
+          return res.status(502).json({ message: "AI extraction failed", detail: errBody });
+        }
+
+        const oaiData = await oaiRes.json() as any;
+        const raw = oaiData.choices?.[0]?.message?.content ?? "[]";
+
+        // Strip markdown fences if present
+        const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+        let items: any[];
+        try {
+          items = JSON.parse(cleaned);
+          if (!Array.isArray(items)) items = [];
+        } catch {
+          items = [];
+        }
+
+        const pagesProcessed = pageImages.length > 0 ? pageImages.length : null;
+        res.json({
+          items,
+          pagesProcessed,
+          totalPages: mime === "application/pdf" ? totalPdfPages : null,
+          pageCapped: mime === "application/pdf" && totalPdfPages > PDF_PAGE_CAP,
+        });
+      } catch (err: any) {
+        console.error("[extract]", err);
+        res.status(500).json({ message: err.message });
+      }
+    },
+  );
+
   // ─── Equipment ───────────────────────────────────────────────────────────────
   // Accessible to admin + manager only (not field staff/viewer)
 

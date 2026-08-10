@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2,
+  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { type PendingRow, newPendingRow } from "./types";
 import { CATEGORY_ORDER, resolveDisplayCategory } from "./categoryConfig";
 import { BundleSelector } from "./scope/BundleSelector";
 import { ScopeItemDialog } from "./scope/ScopeItemDialog";
+import { ScopeExtractDialog } from "./scope/ScopeExtractDialog";
 import { ScopeDeleteDialog, UndoSnackbar } from "./scope/ScopeDeleteDialog";
 import { InlineScopeRow } from "./scope/InlineScopeRow";
 import { ScopeCategorySection } from "./scope/ScopeCategorySection";
@@ -30,6 +31,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const [deleteTarget, setDeleteTarget] = useState<ProjectScopeItem | null>(null);
   const [addMode, setAddMode] = useState<AddMode>("none");
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
 
   // ── Inline-add row state ──
   const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
@@ -148,7 +150,13 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
             <h3 className="font-semibold text-slate-900 text-sm">{t.projScopeTableTitle}</h3>
             <p className="text-xs text-slate-400 mt-0.5">{t.projScopeTableSubtitle}</p>
           </div>
-          <div className="relative">
+          <div className="relative flex items-center gap-2">
+            <Button size="sm" variant="outline"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 gap-1.5"
+              onClick={() => { setExtractOpen(true); setShowAddMenu(false); }}
+              data-testid="button-scope-extract">
+              <Sparkles className="w-3.5 h-3.5" /> 견적서에서 가져오기
+            </Button>
             <div className="flex">
               <Button size="sm"
                 className="bg-brand-700 hover:bg-brand-800 text-white rounded-r-none border-r border-brand-500/40"
@@ -307,6 +315,14 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           </div>
         ) : null}
       </div>
+
+      {/* ── Extract from file dialog ── */}
+      <ScopeExtractDialog
+        projectId={projectId}
+        open={extractOpen}
+        onClose={() => setExtractOpen(false)}
+        onAdded={() => qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] })}
+      />
 
       {/* ── Dialogs ── */}
       <ScopeItemDialog

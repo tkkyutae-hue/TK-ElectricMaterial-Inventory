@@ -209,6 +209,18 @@ function WorkerRow({ worker, jibble, assignedProjectId, sortedActiveProjects, so
   );
 }
 
+// ─── Group accent color (mirrors DailyReport.tsx) ────────────────────────────
+const GROUP_PALETTE = [
+  "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
+  "#579BFC","#9CD326","#FF9F43","#FF3D57","#7E5CB5",
+];
+function groupAccentColor(name: string): string {
+  if (!name || name === "고객사 미지정") return "#C4C4C4";
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = ((h * 31) + name.charCodeAt(i)) | 0;
+  return GROUP_PALETTE[Math.abs(h) % GROUP_PALETTE.length];
+}
+
 // ─── Project card view ────────────────────────────────────────────────────────
 function ProjectCardView({
   allProjects,
@@ -221,16 +233,15 @@ function ProjectCardView({
   jibbleMap: Map<number, JibbleEntry>;
   getAssignment: (workerId: number) => number | null;
 }) {
-  const [expandedId,     setExpandedId]     = useState<number | null>(null);
-  const [hideCompleted,  setHideCompleted]  = useState<boolean>(true);
+  const [expandedId,      setExpandedId]      = useState<number | null>(null);
+  const [hideCompleted,   setHideCompleted]   = useState<boolean>(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Count completed projects (for toggle label)
   const completedCount = useMemo(
     () => allProjects.filter((p) => !p.archived && groupPriority(p) >= 3).length,
     [allProjects],
   );
 
-  // Group by customerName (고객사), sorted by status priority within each group
   const groups = useMemo(() => {
     const nonArchived = allProjects.filter((p) => !p.archived);
     const visible     = hideCompleted ? nonArchived.filter((p) => groupPriority(p) < 3) : nonArchived;
@@ -241,13 +252,20 @@ function ProjectCardView({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     }
-    // Sort group keys: named customers A→Z, "고객사 미지정" last
     return Array.from(map.entries() as IterableIterator<[string, Project[]]>).sort(([a], [b]) => {
       if (a === "고객사 미지정") return 1;
       if (b === "고객사 미지정") return -1;
       return a.localeCompare(b);
     });
   }, [allProjects, hideCompleted]);
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
 
   function getProjectWorkers(projectId: number) {
     return workerList
@@ -256,7 +274,7 @@ function ProjectCardView({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3">
       {/* Completed filter toggle */}
       <div className="flex justify-end">
         <button
@@ -281,123 +299,139 @@ function ProjectCardView({
             : "등록된 프로젝트가 없습니다."}
         </p>
       )}
-      {groups.map(([owner, projects]) => (
-        <div key={owner}>
-          {/* Group header */}
-          <div className="flex items-center gap-2 mb-3">
-            <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
-            <span className="text-sm font-semibold text-slate-600">{owner}</span>
-            <div className="flex-1 h-px bg-slate-200 ml-1" />
-            <span className="text-xs text-slate-400 shrink-0">{projects.length}개 프로젝트</span>
-          </div>
 
-          {/* Project cards */}
-          <div className="space-y-2">
-            {projects.map((p) => {
-              const workers    = getProjectWorkers(p.id);
-              const isExpanded = expandedId === p.id;
-              const sc         = statusColors(p);
+      {groups.map(([owner, projects]) => {
+        const color     = groupAccentColor(owner);
+        const collapsed = collapsedGroups.has(owner);
+        return (
+          <div key={owner}>
+            {/* Group header — Daily Report style */}
+            <button
+              type="button"
+              onClick={() => toggleGroup(owner)}
+              className="w-full flex items-center h-10 bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-200 rounded-lg text-left select-none mb-1"
+              style={{ borderLeftWidth: 4, borderLeftColor: color }}
+            >
+              <div className="w-8 flex items-center justify-center flex-shrink-0">
+                {collapsed
+                  ? <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                  : <ChevronDown  className="w-3.5 h-3.5 text-slate-500" />}
+              </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0 pr-3">
+                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                <span className="font-semibold text-[13px] text-slate-800 truncate">{owner}</span>
+                <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
+              </div>
+            </button>
 
-              return (
-                <div key={p.id} className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    {/* Status badge */}
-                    <span style={{
-                      background: sc.bg, color: sc.text,
-                      fontSize: 10, fontWeight: 700, padding: "2px 8px",
-                      borderRadius: 999, whiteSpace: "nowrap", flexShrink: 0,
-                    }}>
-                      {statusLabel(p)}
-                    </span>
+            {/* Project cards */}
+            {!collapsed && (
+              <div className="space-y-2 mb-3 pl-1">
+                {projects.map((p) => {
+                  const workers    = getProjectWorkers(p.id);
+                  const isExpanded = expandedId === p.id;
+                  const sc         = statusColors(p);
 
-                    {/* Project info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{p.name}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        {p.poNumber && (
-                          <span className="text-xs font-mono text-slate-400">{p.poNumber}</span>
-                        )}
-                        {p.jobLocation && (
-                          <span className="flex items-center gap-0.5 text-xs text-slate-400">
-                            <MapPin className="w-2.5 h-2.5" />{p.jobLocation}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  return (
+                    <Card
+                      key={p.id}
+                      className="hover:shadow-md transition-all duration-150 cursor-pointer group border border-slate-200"
+                      onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                    >
+                      <CardContent className="px-5 py-4 flex gap-4">
+                        {/* Main content */}
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          {/* Row 1: PO · Name · Status chip */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {p.poNumber && (
+                              <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>
+                            )}
+                            <span className="font-semibold text-slate-800 text-sm leading-tight">{p.name}</span>
+                            <span
+                              className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ml-auto"
+                              style={{ backgroundColor: sc.bg, color: sc.text }}
+                            >
+                              {statusLabel(p)}
+                            </span>
+                          </div>
 
-                    {/* Assigned worker count */}
-                    <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
-                      workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
-                    }`}>
-                      <Users className="w-3 h-3" />{workers.length}명
-                    </span>
+                          {/* Row 2: Location */}
+                          {p.jobLocation && (
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                              <span>{p.jobLocation}</span>
+                            </div>
+                          )}
 
-                    {/* Toggle icon */}
-                    {isExpanded
-                      ? <ChevronUp   className="w-4 h-4 text-slate-400 shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
-                  </button>
-
-                  {/* Expanded worker list */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 bg-slate-50/70">
-                      {workers.length === 0 ? (
-                        <p className="px-5 py-4 text-sm text-slate-400 text-center italic">
-                          배치된 작업자가 없습니다.
-                        </p>
-                      ) : (
-                        <div className="divide-y divide-slate-100">
-                          {workers.map(({ worker, jibble }) => {
-                            const isOnSite  = !!jibble && !jibble.lastOut;
-                            const checkedIn = !!jibble;
-                            return (
-                              <div key={worker.id} className="flex items-center gap-3 px-4 py-2.5">
-                                <div className="relative shrink-0">
-                                  <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
-                                  <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-50 ${
-                                    isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
-                                  }`} />
+                          {/* Expanded: inline worker list */}
+                          {isExpanded && (
+                            <div className="mt-2 pt-2 border-t border-slate-100">
+                              {workers.length === 0 ? (
+                                <p className="text-sm text-slate-400 italic py-1">배치된 작업자가 없습니다.</p>
+                              ) : (
+                                <div className="space-y-2 pt-1">
+                                  {workers.map(({ worker, jibble }) => {
+                                    const isOnSite  = !!jibble && !jibble.lastOut;
+                                    const checkedIn = !!jibble;
+                                    return (
+                                      <div key={worker.id} className="flex items-center gap-3">
+                                        <div className="relative shrink-0">
+                                          <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
+                                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                                            isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+                                          }`} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
+                                          {worker.trade && <p className="text-xs text-slate-400">{worker.trade}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-4 tabular-nums shrink-0">
+                                          <div className="text-right">
+                                            <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">출근</p>
+                                            <p className={`text-sm font-semibold leading-tight ${checkedIn ? "text-emerald-600" : "text-slate-300"}`}>
+                                              {fmtTime(jibble?.firstIn)}
+                                            </p>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">퇴근</p>
+                                            <p className={`text-sm font-semibold leading-tight ${jibble?.lastOut ? "text-slate-600" : "text-slate-300"}`}>
+                                              {jibble?.lastOut
+                                                ? fmtTime(jibble.lastOut)
+                                                : isOnSite
+                                                  ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
+                                                  : "—"}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
-                                  {worker.trade && (
-                                    <p className="text-xs text-slate-400">{worker.trade}</p>
-                                  )}
-                                </div>
-                                {/* Clock in / out */}
-                                <div className="flex items-center gap-4 tabular-nums shrink-0">
-                                  <div className="text-right">
-                                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">출근</p>
-                                    <p className={`text-sm font-semibold leading-tight ${checkedIn ? "text-emerald-600" : "text-slate-300"}`}>
-                                      {fmtTime(jibble?.firstIn)}
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">퇴근</p>
-                                    <p className={`text-sm font-semibold leading-tight ${jibble?.lastOut ? "text-slate-600" : "text-slate-300"}`}>
-                                      {jibble?.lastOut ? fmtTime(jibble.lastOut) : isOnSite ? (
-                                        <span className="text-xs text-emerald-500 font-medium">근무 중</span>
-                                      ) : "—"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              )}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+
+                        {/* Right: worker count badge + expand icon */}
+                        <div className="shrink-0 flex flex-col items-end justify-start gap-2 pl-2 pt-0.5">
+                          <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                            workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
+                          }`}>
+                            <Users className="w-3 h-3" />{workers.length}명
+                          </span>
+                          {isExpanded
+                            ? <ChevronUp   className="w-4 h-4 text-slate-400" />
+                            : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -4340,8 +4340,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ message: "ids must be an array of numbers" });
       }
       // Validate: must be a complete, duplicate-free permutation of this project's scope items
-      const { projectScopeItems: psi } = await import("../shared/schema");
-      const existing = await db.select({ id: psi.id }).from(psi).where(eq(psi.projectId, projectId));
+      const existing = await db
+        .select({ id: projectScopeItems.id })
+        .from(projectScopeItems)
+        .where(eq(projectScopeItems.projectId, projectId));
       const validIds = new Set(existing.map(r => r.id));
       if (ids.length !== validIds.size) {
         return res.status(400).json({ message: "ids must contain all scope items for this project (no extras or omissions)" });
@@ -4355,7 +4357,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
       await db.transaction(async tx => {
         await Promise.all(ids.map((id, index) =>
-          tx.update(psi).set({ sortOrder: index + 1 }).where(eq(psi.id, id))
+          tx.update(projectScopeItems).set({ sortOrder: index + 1 }).where(eq(projectScopeItems.id, id))
         ));
       });
       res.json({ ok: true });

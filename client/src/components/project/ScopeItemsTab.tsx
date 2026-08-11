@@ -134,6 +134,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     (s, g) => s + g.items.reduce((ss, i) => ss + parseFloat(String(i.estimatedQty || 0)), 0), 0
   );
 
+  // Flat ordered IDs for the single Materials SortableContext
+  const materialItemIds = materialGroups.flatMap(g => g.items.map(i => i.id));
+
   // ── DnD setup ──
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -147,13 +150,20 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const activeId = active.id as number;
     const overId   = over.id as number;
 
-    // ── Enforce same-category constraint ─────────────────────────────────────
-    // Both active and over must belong to the same rendered category group.
-    const activeCat = grouped.find(g => g.items.some(i => i.id === activeId));
-    const overCat   = grouped.find(g => g.items.some(i => i.id === overId));
-    if (!activeCat || !overCat || activeCat.cat !== overCat.cat) return;
+    const isMaterialActive = materialItemIds.includes(activeId);
+    const isMaterialOver   = materialItemIds.includes(overId);
 
-    // Compute the new global order and persist
+    // Block cross Materials ↔ Equipment drops
+    if (isMaterialActive !== isMaterialOver) return;
+
+    // Within Equipment: block cross-category drops
+    if (!isMaterialActive) {
+      const activeCat = equipmentGroups.find(g => g.items.some(i => i.id === activeId));
+      const overCat   = equipmentGroups.find(g => g.items.some(i => i.id === overId));
+      if (!activeCat || !overCat || activeCat.cat !== overCat.cat) return;
+    }
+    // Within Materials: allow cross-category (renders as a flat list)
+
     const currentGlobalOrder = sortedScopeItems.map(i => i.id);
     const activeIdx = currentGlobalOrder.indexOf(activeId);
     const overIdx   = currentGlobalOrder.indexOf(overId);
@@ -162,7 +172,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const newGlobalOrder = arrayMove(currentGlobalOrder, activeIdx, overIdx);
     setLocalOrder(newGlobalOrder);
     reorderMutation.mutate(newGlobalOrder);
-  }, [sortedScopeItems, grouped, reorderMutation]);
+  }, [sortedScopeItems, materialItemIds, equipmentGroups, reorderMutation]);
 
   // ── Async action cluster ──
   const {
@@ -354,7 +364,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   <tr>
                     {/* Drag handle column */}
                     <th className="w-6" />
-                    <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[36%]">{t.projScopeColItem}</th>
+                    {/* Row number column */}
+                    <th className="w-8 pr-1 text-right text-[10px] font-semibold text-slate-300 py-3">#</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[33%]">{t.projScopeColItem}</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.projScopeColUnit}</th>
                     <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.projScopeColEstQty}</th>
                     <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">{t.projScopeColCategory}</th>
@@ -367,7 +379,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   <>
                     <tbody>
                       <tr>
-                        <td colSpan={6} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
+                        <td colSpan={7} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
                           <button
                             type="button"
                             onClick={() => setMaterialsCollapsed(c => !c)}
@@ -401,42 +413,43 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                       </tr>
                     </tbody>
 
-                    {/* One SortableContext per material category (aligns drag zones with rendered groups) */}
+                    {/* Single SortableContext for all material items (flat list, cross-category OK) */}
                     {!materialsCollapsed && (
-                      materialGroups.map(({ cat, items }) => (
-                        <SortableContext
-                          key={cat}
-                          items={items.map(i => i.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <ScopeCategorySection
-                            cat={cat}
-                            items={items}
-                            allInvItems={allInvItems}
-                            hideHeader={true}
-                            isCollapsed={false}
-                            onToggle={() => {}}
-                            selectedIds={selectedIds}
-                            dragDisabled={isAdding}
-                            onEdit={setDialogItem}
-                            onDelete={setDeleteTarget}
-                            onDuplicate={duplicateItem}
-                            onSelect={toggleSelectItem}
-                          />
-                        </SortableContext>
-                      ))
+                      <SortableContext items={materialItemIds} strategy={verticalListSortingStrategy}>
+                        {materialGroups.map(({ cat, items }, gi) => {
+                          const offset = materialGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
+                          return (
+                            <ScopeCategorySection
+                              key={cat}
+                              cat={cat}
+                              items={items}
+                              allInvItems={allInvItems}
+                              hideHeader={true}
+                              isCollapsed={false}
+                              onToggle={() => {}}
+                              selectedIds={selectedIds}
+                              dragDisabled={isAdding}
+                              startIndex={offset + 1}
+                              onEdit={setDialogItem}
+                              onDelete={setDeleteTarget}
+                              onDuplicate={duplicateItem}
+                              onSelect={toggleSelectItem}
+                            />
+                          );
+                        })}
+                      </SortableContext>
                     )}
 
                     {/* Spacer between Materials block and Equipment */}
                     {equipmentGroups.length > 0 && (
                       <tbody>
-                        <tr><td colSpan={6} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+                        <tr><td colSpan={7} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
                       </tbody>
                     )}
                   </>
                 )}
 
-                {/* ── Equipment groups (each in its own SortableContext) ── */}
+                {/* ── Equipment groups (each in its own SortableContext, numbered 1…N per category) ── */}
                 {equipmentGroups.map(({ cat, items }) => (
                   <SortableContext
                     key={cat}
@@ -452,6 +465,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                       onToggle={() => toggleCat(cat)}
                       selectedIds={selectedIds}
                       dragDisabled={isAdding}
+                      startIndex={1}
                       onEdit={setDialogItem}
                       onDelete={setDeleteTarget}
                       onDuplicate={duplicateItem}

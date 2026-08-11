@@ -14,6 +14,8 @@ interface ScopeCategorySectionProps {
   onToggle: () => void;
   selectedIds: Set<number>;
   dragDisabled?: boolean;
+  /** 1-based start index for row numbering (default: 1). */
+  startIndex?: number;
   onEdit: (item: ProjectScopeItem) => void;
   onDelete: (item: ProjectScopeItem) => void;
   onDuplicate: (item: ProjectScopeItem) => void;
@@ -26,6 +28,7 @@ export function ScopeCategorySection({
   isCollapsed, onToggle,
   selectedIds,
   dragDisabled = false,
+  startIndex = 1,
   onEdit, onDelete, onDuplicate, onSelect,
 }: ScopeCategorySectionProps) {
   const cfg = CATEGORY_CONFIG[cat] ?? { accent: "#64748b", iconBg: "#f1f5f9", subtitle: "" };
@@ -44,6 +47,10 @@ export function ScopeCategorySection({
     .filter(sg => sg.items.length > 0);
   const ungroupedItems = sgMap.get(null) ?? [];
 
+  // Flat index map: item.id → display row number
+  const rowNumberMap = new Map<number, number>();
+  items.forEach((item, i) => rowNumberMap.set(item.id, startIndex + i));
+
   function renderRow(item: ProjectScopeItem) {
     return (
       <SortableScopeItemRow
@@ -53,6 +60,7 @@ export function ScopeCategorySection({
         accentColor={cfg.accent}
         isSelected={selectedIds.has(item.id)}
         dragDisabled={dragDisabled}
+        rowNumber={rowNumberMap.get(item.id)}
         onEdit={() => onEdit(item)}
         onDelete={() => onDelete(item)}
         onDuplicate={() => onDuplicate(item)}
@@ -67,7 +75,7 @@ export function ScopeCategorySection({
       <tbody>
         {items.map(renderRow)}
         {/* Thin separator between material categories */}
-        <tr><td colSpan={6} style={{ height: 2, background: "#f1f5f9", padding: 0 }} /></tr>
+        <tr><td colSpan={7} style={{ height: 2, background: "#f1f5f9", padding: 0 }} /></tr>
       </tbody>
     );
   }
@@ -77,7 +85,7 @@ export function ScopeCategorySection({
     <tbody>
       {/* Category header */}
       <tr>
-        <td colSpan={6} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
+        <td colSpan={7} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
           <button
             type="button"
             onClick={onToggle}
@@ -123,7 +131,7 @@ export function ScopeCategorySection({
               <Fragment key={sg.key}>
                 <tr style={{ background: `${cfg.accent}08`, borderLeft: `3px solid ${cfg.accent}33` }}>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     style={{ paddingLeft: 22, paddingTop: 5, paddingBottom: 5, borderBottom: `1px solid ${cfg.accent}1f` }}
                   >
                     <span style={{ color: `${cfg.accent}b3`, fontSize: 8, letterSpacing: "1.2px", fontWeight: 700 }}>
@@ -142,7 +150,7 @@ export function ScopeCategorySection({
       )}
 
       {/* Spacer */}
-      <tr><td colSpan={6} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+      <tr><td colSpan={7} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
     </tbody>
   );
 }

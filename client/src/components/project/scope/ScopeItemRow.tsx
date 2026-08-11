@@ -25,6 +25,7 @@ export interface ScopeItemRowProps {
   allInvItems: any[];
   accentColor: string;
   isSelected: boolean;
+  rowNumber?: number;
   dragDisabled?: boolean;
   /** Internal — passed by SortableScopeItemRow */
   trRef?: (el: HTMLTableRowElement | null) => void;
@@ -40,6 +41,7 @@ export interface ScopeItemRowProps {
 export function ScopeItemRow({
   item, allInvItems, accentColor,
   isSelected,
+  rowNumber,
   dragDisabled = false,
   trRef, trStyle, isDragging, dragHandleProps,
   onEdit, onDelete, onDuplicate, onSelect,
@@ -76,20 +78,29 @@ export function ScopeItemRow({
         )}
       </td>
 
-      <td className="px-5 py-3">
+      {/* Row number */}
+      <td className="w-8 pr-1 py-3 text-right tabular-nums">
+        {rowNumber != null && (
+          <span className="text-[10px] font-semibold text-slate-300 group-hover/row:text-slate-400 transition-colors">
+            {rowNumber}
+          </span>
+        )}
+      </td>
+
+      <td className="px-4 py-3">
         <div className="flex items-baseline gap-0 flex-wrap">
-          <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
+          <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[240px]" title={item.itemName}>
             {item.itemName}
           </p>
           {isSupport && <ScopeTypeChip scopeType="support" />}
         </div>
         {invLinked && (
-          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[240px]" title={invLinked.name}>
+          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[220px]" title={invLinked.name}>
             <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
             <span className="truncate">{invLinked.name}</span>
           </span>
         )}
-        {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[240px]">{item.remarks}</p>}
+        {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[220px]">{item.remarks}</p>}
       </td>
       <td className="px-4 py-3">
         <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
@@ -134,7 +145,7 @@ export function ScopeItemRow({
 }
 
 // ── Sortable wrapper ──────────────────────────────────────────────────────────
-export function SortableScopeItemRow({ item, dragDisabled, ...rest }: ScopeItemRowProps) {
+export function SortableScopeItemRow({ item, dragDisabled, rowNumber, ...rest }: ScopeItemRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: dragDisabled,
@@ -144,6 +155,7 @@ export function SortableScopeItemRow({ item, dragDisabled, ...rest }: ScopeItemR
     <ScopeItemRow
       item={item}
       {...rest}
+      rowNumber={rowNumber}
       dragDisabled={dragDisabled}
       trRef={setNodeRef}
       trStyle={{ transform: CSS.Transform.toString(transform), transition }}

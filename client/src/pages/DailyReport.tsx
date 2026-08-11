@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, ChevronDown,
   Search, ClipboardList, FileText, CheckCircle2, Loader2,
-  BarChart3, Filter,
+  BarChart3, Filter, Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,16 @@ interface ReportSummary {
   lastDate:  string | null;
 }
 
+interface CrewAssignment {
+  workerId:  number;
+  projectId: number | null;
+}
+
+function todayDateStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function projectLocation(p: Project): string {
   if (p.jobLocation) return p.jobLocation;
@@ -115,8 +125,8 @@ function KpiCard({ icon: Icon, label, value, accent, iconBg, iconColor, borderCo
 }
 
 // ─── Project card ─────────────────────────────────────────────────────────────
-function ProjectCard({ project, summary, onOpen }: {
-  project: Project; summary: ReportSummary; onOpen: () => void;
+function ProjectCard({ project, summary, assignedCount, onOpen }: {
+  project: Project; summary: ReportSummary; assignedCount?: number; onOpen: () => void;
 }) {
   const { t } = useLanguage();
   const loc = projectLocation(project);
@@ -148,6 +158,13 @@ function ProjectCard({ project, summary, onOpen }: {
             >
               {project.name}
             </span>
+            {/* Crew assignment badge */}
+            {assignedCount != null && assignedCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                <Users className="w-2.5 h-2.5" />
+                {assignedCount}명
+              </span>
+            )}
             {/* Monday-style status chip */}
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ml-auto"
@@ -217,9 +234,10 @@ function ProjectCard({ project, summary, onOpen }: {
 }
 
 // ─── Customer group ───────────────────────────────────────────────────────────
-function CustomerGroup({ groupKey, displayName, projects, summaryMap, collapsed, onToggle, onOpen }: {
+function CustomerGroup({ groupKey, displayName, projects, summaryMap, assignedCountMap, collapsed, onToggle, onOpen }: {
   groupKey: string; displayName: string; projects: Project[];
   summaryMap: Record<number, ReportSummary>;
+  assignedCountMap: Map<number, number>;
   collapsed: boolean; onToggle: () => void; onOpen: (id: number) => void;
 }) {
   const isNone = groupKey === "__none__";
@@ -255,6 +273,7 @@ function CustomerGroup({ groupKey, displayName, projects, summaryMap, collapsed,
               key={p.id}
               project={p}
               summary={summaryMap[p.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null }}
+              assignedCount={assignedCountMap.get(p.id)}
               onOpen={() => onOpen(p.id)}
             />
           ))}
@@ -272,6 +291,7 @@ export default function DailyReport() {
   const [search,          setSearch]          = useState("");
   const [hiddenStatuses,  setHiddenStatuses]  = useState<Set<string>>(loadHidden);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(loadCollapsed);
+  const [othersCollapsed, setOthersCollapsed] = useState(true);
 
   useEffect(() => {
     try { localStorage.setItem(LS_HIDDEN,   JSON.stringify([...hiddenStatuses]));   } catch {}
@@ -295,6 +315,28 @@ export default function DailyReport() {
     },
     refetchInterval: 30_000,
   });
+
+  // Today's crew dispatch assignments — used to surface assigned projects at the top
+  const todayStr = useMemo(() => todayDateStr(), []);
+  const { data: crewAssignments = [] } = useQuery<CrewAssignment[]>({
+    queryKey: ["/api/crew-dispatch/assignments", todayStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/crew-dispatch/assignments?date=${todayStr}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchInterval: 60_000,
+  });
+
+  // projectId → number of assigned workers today
+  const assignedCountMap = useMemo(() => {
+    const m = new Map<number, number>();
+    crewAssignments.forEach((a) => {
+      if (a.projectId == null) return;
+      m.set(a.projectId, (m.get(a.projectId) ?? 0) + 1);
+    });
+    return m;
+  }, [crewAssignments]);
 
   const summaryMap = useMemo(
     () => reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => { acc[s.projectId] = s; return acc; }, {}),
@@ -329,8 +371,36 @@ export default function DailyReport() {
     );
   }), [allProjects, hiddenStatuses, search]);
 
-  // Group by customer (customerName first, then ownerName)
-  const groups = useMemo(() => {
+  // Split into assigned-today vs rest
+  const { assignedProjects, otherProjects } = useMemo(() => {
+    const assigned: Project[] = [];
+    const other:    Project[] = [];
+    filtered.forEach((p) => {
+      (assignedCountMap.has(p.id) ? assigned : other).push(p);
+    });
+    return { assignedProjects: assigned, otherProjects: other };
+  }, [filtered, assignedCountMap]);
+
+  const hasAssigned = assignedProjects.length > 0;
+
+  // Group the "other" projects by customer (same logic as before)
+  const otherGroups = useMemo(() => {
+    const map = new Map<string, { displayName: string; projects: Project[] }>();
+    otherProjects.forEach((p) => {
+      const raw = p.customerName?.trim() || p.ownerName?.trim() || "";
+      const k   = raw ? raw.toLowerCase() : "__none__";
+      if (!map.has(k)) map.set(k, { displayName: raw || "__none__", projects: [] });
+      map.get(k)!.projects.push(p);
+    });
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === "__none__") return 1;
+      if (b === "__none__") return -1;
+      return a.localeCompare(b);
+    });
+  }, [otherProjects]);
+
+  // Legacy: full group list used when there are no assigned projects
+  const allGroups = useMemo(() => {
     const map = new Map<string, { displayName: string; projects: Project[] }>();
     filtered.forEach((p) => {
       const raw = p.customerName?.trim() || p.ownerName?.trim() || "";
@@ -527,15 +597,81 @@ export default function DailyReport() {
             </CardContent>
           </Card>
 
+        ) : hasAssigned ? (
+          <div className="space-y-4">
+
+            {/* ── 오늘 배치된 프로젝트 ── */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 px-1 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 shrink-0">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                </span>
+                <span className="text-sm font-semibold text-blue-700">오늘 배치된 프로젝트</span>
+                <span className="text-xs font-medium text-blue-400 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">{assignedProjects.length}</span>
+              </div>
+              <div className="space-y-2">
+                {assignedProjects.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    summary={summaryMap[p.id] ?? { total: 0, draft: 0, submitted: 0, lastDate: null }}
+                    assignedCount={assignedCountMap.get(p.id)}
+                    onOpen={() => navigate(`/daily-report/${p.id}`)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* ── 나머지 프로젝트 (접힘) ── */}
+            {otherProjects.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setOthersCollapsed((v) => !v)}
+                  className="w-full flex items-center h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-left select-none"
+                >
+                  <div className="w-5 flex items-center justify-center flex-shrink-0 mr-2">
+                    {othersCollapsed
+                      ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      : <ChevronDown  className="w-3.5 h-3.5 text-slate-400" />}
+                  </div>
+                  <span className="text-xs font-medium text-slate-500">다른 프로젝트</span>
+                  <span className="text-xs text-slate-400 ml-1.5 font-medium">{otherProjects.length}개</span>
+                </button>
+
+                {!othersCollapsed && (
+                  <div className="space-y-1 mt-2">
+                    {otherGroups.map(([key, { displayName, projects }]) => (
+                      <CustomerGroup
+                        key={key}
+                        groupKey={key}
+                        displayName={displayName}
+                        projects={projects}
+                        summaryMap={summaryMap}
+                        assignedCountMap={assignedCountMap}
+                        collapsed={collapsedGroups.has(key)}
+                        onToggle={() => toggleGroup(key)}
+                        onOpen={(id) => navigate(`/daily-report/${id}`)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+
         ) : (
+          // No assigned projects — show all groups as before
           <div className="space-y-1">
-            {groups.map(([key, { displayName, projects }]) => (
+            {allGroups.map(([key, { displayName, projects }]) => (
               <CustomerGroup
                 key={key}
                 groupKey={key}
                 displayName={displayName}
                 projects={projects}
                 summaryMap={summaryMap}
+                assignedCountMap={assignedCountMap}
                 collapsed={collapsedGroups.has(key)}
                 onToggle={() => toggleGroup(key)}
                 onOpen={(id) => navigate(`/daily-report/${id}`)}

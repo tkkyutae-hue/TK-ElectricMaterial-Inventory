@@ -83,7 +83,7 @@ function cardStatusLabel(p: Project): string {
   if (pri === 0) return "Working on it";
   if (pri === 1) return "Start Soon";
   if (pri === 3) return "Done";
-  return "In Progress";
+  return "Working on it";
 }
 
 function sortProjects(list: Project[]): Project[] {
@@ -297,7 +297,7 @@ function groupAccentColor(name: string): string {
 const STATUS_FILTERS = [
   { priority: 0, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
   { priority: 1, label: "Start Soon",    bg: "#dbeafe", text: "#1d4ed8" },
-  { priority: 2, label: "In Progress",   bg: "#fef9c3", text: "#a16207" },
+  { priority: 2, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
   { priority: 3, label: "Done",          bg: "#f1f5f9", text: "#94a3b8" },
 ] as const;
 

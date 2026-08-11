@@ -4404,7 +4404,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         // ── PDF → render all pages (up to cap) ───────────────────────────────
         if (mime === "application/pdf") {
-          const { pdfFirstPageToPng, pdfPageCount } = await import("./services/pdfFirstPage.js");
+          const { pdfFirstPageToPng, pdfPageCount } = await import("./services/pdfFirstPage");
           totalPdfPages = await pdfPageCount(req.file.buffer);
           const pagesToProcess = Math.min(totalPdfPages, PDF_PAGE_CAP);
           // Render pages sequentially (pdfjs is not safely parallelisable on same doc)

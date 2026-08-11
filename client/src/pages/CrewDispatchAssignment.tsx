@@ -129,33 +129,36 @@ function isKorean(w: Worker): boolean {
   return n.includes("korea") || n === "kr";
 }
 
-/** Role category used for sort ordering and visual styling */
-function tradeCategory(w: Worker): "foreman" | "helper" | "safety" {
+/** Role category used for sort ordering and visual styling.
+ *  General Manager / Manager are excluded from field-trade badges. */
+function tradeCategory(w: Worker): "foreman" | "helper" | "safety" | "management" {
   const t = (w.trade ?? "").toLowerCase().trim();
-  if (t === "safety")                                        return "safety";
-  if (t === "foreman" || t === "general manager" || t === "manager") return "foreman";
+  if (t === "general manager" || t === "manager") return "management";
+  if (t === "safety")                             return "safety";
+  if (t === "foreman")                            return "foreman";
   return "helper";
 }
 
-/** Sort rank inside a project card: Foreman 0 → Helper 1 → Safety 2 */
+/** Sort rank inside a project card: Management/Foreman 0 → Helper 1 → Safety 2 */
 function projectWorkerRank(w: Worker): number {
   const cat = tradeCategory(w);
-  if (cat === "foreman") return 0;
-  if (cat === "safety")  return 2;
+  if (cat === "management" || cat === "foreman") return 0;
+  if (cat === "safety")                          return 2;
   return 1;
 }
 
-/** Visual role chip config */
+/** Visual role chip config — returns null for management (no badge) */
 function tradeInfo(w: Worker): {
   Icon: React.ElementType;
   bg: string;
   text: string;
   label: string;
-} {
+} | null {
   const cat = tradeCategory(w);
-  if (cat === "foreman") return { Icon: HardHat,    bg: "#fef3c7", text: "#92400e", label: "Foreman"  };
-  if (cat === "safety")  return { Icon: ShieldCheck, bg: "#d1fae5", text: "#065f46", label: "Safety"   };
-  return                        { Icon: Wrench,      bg: "#dbeafe", text: "#1e40af", label: "Helper"   };
+  if (cat === "management") return null;
+  if (cat === "foreman")    return { Icon: HardHat,    bg: "#fef3c7", text: "#92400e", label: "Foreman" };
+  if (cat === "safety")     return { Icon: ShieldCheck, bg: "#d1fae5", text: "#065f46", label: "Safety"  };
+  return                           { Icon: Wrench,      bg: "#dbeafe", text: "#1e40af", label: "Helper"  };
 }
 
 /** General Manager → Manager → 나머지 순 (left-panel sort only) */
@@ -373,7 +376,9 @@ function SortableGroup({ id, children }: {
 
 // ─── Draggable compact worker row (split-pane left panel) ─────────────────────
 function TradeBadge({ worker, small }: { worker: Worker; small?: boolean }) {
-  const { Icon, bg, text, label } = tradeInfo(worker);
+  const info = tradeInfo(worker);
+  if (!info) return null;
+  const { Icon, bg, text, label } = info;
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded font-bold leading-none shrink-0 ${small ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"}`}
@@ -410,10 +415,8 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
           }`} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
-            <TradeBadge worker={worker} small />
-          </div>
+          <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+          <TradeBadge worker={worker} small />
         </div>
       </div>
       {/* Right: assignment badge or unassign button */}
@@ -762,7 +765,7 @@ function ProjectCardView({
                                                 const korean    = isKorean(worker);
                                                 const isOnSite  = korean || (!!jibble && !jibble.lastOut);
                                                 const checkedIn = !!jibble;
-                                                const { bg: tradeBg } = tradeInfo(worker);
+                                                const tradeBg = tradeInfo(worker)?.bg ?? "transparent";
                                                 return (
                                                   <div key={worker.id}
                                                     className="flex items-center gap-3 px-2 py-1.5 rounded-lg"
@@ -775,10 +778,8 @@ function ProjectCardView({
                                                       }`} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
-                                                        <TradeBadge worker={worker} small />
-                                                      </div>
+                                                      <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
+                                                      <TradeBadge worker={worker} small />
                                                     </div>
                                                     <div className="flex items-center gap-4 tabular-nums shrink-0">
                                                       <div className="text-right">

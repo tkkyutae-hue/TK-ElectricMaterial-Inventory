@@ -806,7 +806,25 @@ export default function CrewDispatchAssignment() {
     [assignments],
   );
 
-  const { data: allProjects = [] } = useQuery<Project[]>({ queryKey: ["/api/projects"] });
+  const { data: allProjects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    // Don't re-fetch on window focus — avoids spurious refetches that could
+    // interrupt an in-progress drag and remount DroppableProjectCard nodes.
+    refetchOnWindowFocus: false,
+  });
+
+  // ── isDragging guard ──────────────────────────────────────────────────────
+  // Freeze the project list while a worker drag is active so that any
+  // background data refresh (e.g. Jibble polling triggers a cascade refetch)
+  // cannot remount DroppableProjectCard nodes mid-drag, which would silently
+  // drop the active drag or misroute the drop event.
+  const isDragActive = activeWorker !== null;
+  const frozenProjectsRef = useRef<Project[]>(allProjects);
+  // Only update the snapshot between drags (safe: ref mutation during render).
+  if (!isDragActive) {
+    frozenProjectsRef.current = allProjects;
+  }
+  const displayedProjects = isDragActive ? frozenProjectsRef.current : allProjects;
 
   const { activeByCustomer, doneProjects } = useMemo(() => {
     const sorted = sortProjects(allProjects);
@@ -868,9 +886,10 @@ export default function CrewDispatchAssignment() {
   // ── DnD (single DndContext at page level) ─────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  // Compute groups at page level for group-reorder routing in onDragEnd
+  // Compute groups at page level for group-reorder routing in onDragEnd.
+  // Uses displayedProjects (frozen during drag) so group IDs stay stable.
   const pageGroups = useMemo(() => {
-    const sorted = sortProjects(allProjects.filter((p) => !p.archived));
+    const sorted = sortProjects(displayedProjects.filter((p) => !p.archived));
     const map = new Map<string, Project[]>();
     for (const p of sorted) {
       const key = p.customerName?.trim() || "고객사 미지정";
@@ -887,7 +906,7 @@ export default function CrewDispatchAssignment() {
     const ordered   = groupOrder.map((k) => byName.has(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
     const remaining = entries.filter(([k]) => !groupOrder.includes(k));
     return [...ordered, ...remaining];
-  }, [allProjects, groupOrder]);
+  }, [displayedProjects, groupOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pageGroupIds = useMemo(() => pageGroups.map(([k]) => k), [pageGroups]);
 
@@ -1085,13 +1104,13 @@ export default function CrewDispatchAssignment() {
               {/* Right: project cards */}
               <div className="flex-1 min-w-0 overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
                 <ProjectCardView
-                  allProjects={allProjects}
+                  allProjects={displayedProjects}
                   workerList={workerList}
                   jibbleMap={jibbleMap}
                   getAssignment={getAssignment}
                   groupOrder={groupOrder}
                   onGroupOrderChange={setGroupOrder}
-                  isDragActive={activeWorker !== null}
+                  isDragActive={isDragActive}
                 />
               </div>
             </div>
@@ -1150,7 +1169,7 @@ export default function CrewDispatchAssignment() {
 
               {viewMode === "project" && (
                 <ProjectCardView
-                  allProjects={allProjects}
+                  allProjects={displayedProjects}
                   workerList={workerList}
                   jibbleMap={jibbleMap}
                   getAssignment={getAssignment}

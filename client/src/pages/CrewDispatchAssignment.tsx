@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Users, CheckCircle2, MapPin, Loader2, GripVertical,
-  Search, SlidersHorizontal, X,
+  Search, SlidersHorizontal, X, HardHat, ShieldCheck, Wrench,
 } from "lucide-react";
 import {
   DndContext, type DragEndEvent, type DragStartEvent,
@@ -123,7 +123,42 @@ function cardStatusLabel(p: Project): string {
   return ENUM_TO_MONDAY_LABEL[raw.toLowerCase()] ?? (raw || "—");
 }
 
-/** General Manager → Manager → 나머지 순 */
+/** Returns true for Korean-nationality workers — always treated as on-site */
+function isKorean(w: Worker): boolean {
+  const n = (w.nationality ?? "").toLowerCase();
+  return n.includes("korea") || n === "kr";
+}
+
+/** Role category used for sort ordering and visual styling */
+function tradeCategory(w: Worker): "foreman" | "helper" | "safety" {
+  const t = (w.trade ?? "").toLowerCase().trim();
+  if (t === "safety")                                        return "safety";
+  if (t === "foreman" || t === "general manager" || t === "manager") return "foreman";
+  return "helper";
+}
+
+/** Sort rank inside a project card: Foreman 0 → Helper 1 → Safety 2 */
+function projectWorkerRank(w: Worker): number {
+  const cat = tradeCategory(w);
+  if (cat === "foreman") return 0;
+  if (cat === "safety")  return 2;
+  return 1;
+}
+
+/** Visual role chip config */
+function tradeInfo(w: Worker): {
+  Icon: React.ElementType;
+  bg: string;
+  text: string;
+  label: string;
+} {
+  const cat = tradeCategory(w);
+  if (cat === "foreman") return { Icon: HardHat,    bg: "#fef3c7", text: "#92400e", label: "Foreman"  };
+  if (cat === "safety")  return { Icon: ShieldCheck, bg: "#d1fae5", text: "#065f46", label: "Safety"   };
+  return                        { Icon: Wrench,      bg: "#dbeafe", text: "#1e40af", label: "Helper"   };
+}
+
+/** General Manager → Manager → 나머지 순 (left-panel sort only) */
 function managerRank(w: Worker): number {
   const t = (w.trade ?? "").toLowerCase().trim();
   if (t === "general manager") return 0;
@@ -138,14 +173,18 @@ function sortProjects(list: Project[]): Project[] {
   });
 }
 
+function workerOnSiteScore(w: Worker, jibbleMap: Map<number, JibbleEntry>): number {
+  if (isKorean(w)) return 2;                    // Korean workers always on-site
+  const j = jibbleMap.get(w.id);
+  return j && !j.lastOut ? 2 : j ? 1 : 0;
+}
+
 function sortWorkers(list: Worker[], jibbleMap: Map<number, JibbleEntry>): Worker[] {
   return [...list].filter((w) => w.isActive).sort((a, b) => {
     const ra = managerRank(a), rb = managerRank(b);
     if (ra !== rb) return ra - rb;
-    const ja = jibbleMap.get(a.id);
-    const jb = jibbleMap.get(b.id);
-    const scoreA = ja && !ja.lastOut ? 2 : ja ? 1 : 0;
-    const scoreB = jb && !jb.lastOut ? 2 : jb ? 1 : 0;
+    const scoreA = workerOnSiteScore(a, jibbleMap);
+    const scoreB = workerOnSiteScore(b, jibbleMap);
     if (scoreA !== scoreB) return scoreB - scoreA;
     return a.fullName.localeCompare(b.fullName);
   });
@@ -333,6 +372,19 @@ function SortableGroup({ id, children }: {
 }
 
 // ─── Draggable compact worker row (split-pane left panel) ─────────────────────
+function TradeBadge({ worker, small }: { worker: Worker; small?: boolean }) {
+  const { Icon, bg, text, label } = tradeInfo(worker);
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded font-bold leading-none shrink-0 ${small ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"}`}
+      style={{ backgroundColor: bg, color: text }}
+    >
+      <Icon className={small ? "w-2.5 h-2.5" : "w-3 h-3"} />
+      {label}
+    </span>
+  );
+}
+
 function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
   worker: Worker;
   jibble?: JibbleEntry;
@@ -340,13 +392,14 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
   onUnassign?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `worker-${worker.id}` });
-  const isOnSite  = !!jibble && !jibble.lastOut;
+  const korean    = isKorean(worker);
+  const isOnSite  = korean || (!!jibble && !jibble.lastOut);
   const checkedIn = !!jibble;
   return (
     <div
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0.35 : 1 }}
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all select-none"
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all select-none"
     >
       {/* Drag handle area */}
       <div {...attributes} {...listeners} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
@@ -357,8 +410,10 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
           }`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
-          {worker.trade && <p className="text-[11px] text-slate-400 leading-tight truncate">{worker.trade}</p>}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+            <TradeBadge worker={worker} small />
+          </div>
         </div>
       </div>
       {/* Right: assignment badge or unassign button */}
@@ -555,6 +610,10 @@ function ProjectCardView({
   function getProjectWorkers(projectId: number) {
     return workerList
       .filter((w) => w.isActive && getAssignment(w.id) === projectId)
+      .sort((a, b) => {
+        const diff = projectWorkerRank(a) - projectWorkerRank(b);
+        return diff !== 0 ? diff : a.fullName.localeCompare(b.fullName);
+      })
       .map((w) => ({ worker: w, jibble: jibbleMap.get(w.id) }));
   }
 
@@ -698,12 +757,17 @@ function ProjectCardView({
                                           {workers.length === 0 ? (
                                             <p className="text-sm text-slate-400 italic py-1">배치된 작업자가 없습니다.</p>
                                           ) : (
-                                            <div className="space-y-2 pt-1">
+                                            <div className="space-y-1.5 pt-1">
                                               {workers.map(({ worker, jibble }) => {
-                                                const isOnSite  = !!jibble && !jibble.lastOut;
+                                                const korean    = isKorean(worker);
+                                                const isOnSite  = korean || (!!jibble && !jibble.lastOut);
                                                 const checkedIn = !!jibble;
+                                                const { bg: tradeBg } = tradeInfo(worker);
                                                 return (
-                                                  <div key={worker.id} className="flex items-center gap-3">
+                                                  <div key={worker.id}
+                                                    className="flex items-center gap-3 px-2 py-1.5 rounded-lg"
+                                                    style={{ borderLeft: `3px solid ${tradeBg}`, backgroundColor: `${tradeBg}18` }}
+                                                  >
                                                     <div className="relative shrink-0">
                                                       <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
                                                       <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
@@ -711,8 +775,10 @@ function ProjectCardView({
                                                       }`} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                      <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
-                                                      {worker.trade && <p className="text-xs text-slate-400">{worker.trade}</p>}
+                                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
+                                                        <TradeBadge worker={worker} small />
+                                                      </div>
                                                     </div>
                                                     <div className="flex items-center gap-4 tabular-nums shrink-0">
                                                       <div className="text-right">
@@ -1019,7 +1085,7 @@ export default function CrewDispatchAssignment() {
 
   // ── Derived values ────────────────────────────────────────────────────────
   const assignedCount = workerList.filter((w) => getAssignment(w.id) !== null).length;
-  const onSiteCount   = workerList.filter((w) => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; }).length;
+  const onSiteCount   = workerList.filter((w) => isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })()).length;
   const isToday   = dateStr === toLocalDateStr(new Date());
   const isLoading = workersLoading || assignmentsLoading;
 
@@ -1029,7 +1095,7 @@ export default function CrewDispatchAssignment() {
     const q = workerSearch.trim().toLowerCase();
     return sortedWorkers.filter((w) => {
       if (q && !w.fullName.toLowerCase().includes(q) && !(w.trade ?? "").toLowerCase().includes(q)) return false;
-      if (workerFilter === "onsite") { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; }
+      if (workerFilter === "onsite") { return isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })(); }
       if (workerFilter === "unassigned") return getAssignment(w.id) === null;
       return true;
     });

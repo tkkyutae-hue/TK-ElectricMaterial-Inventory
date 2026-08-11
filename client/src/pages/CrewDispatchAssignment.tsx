@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import {
   DndContext, type DragEndEvent, type DragStartEvent,
-  PointerSensor, useSensor, useSensors, closestCenter,
+  PointerSensor, useSensor, useSensors, closestCenter, pointerWithin,
   DragOverlay, useDraggable, useDroppable,
 } from "@dnd-kit/core";
 import {
@@ -287,10 +287,11 @@ function SortableGroup({ id, children }: {
 }
 
 // ─── Draggable compact worker row (split-pane left panel) ─────────────────────
-function DraggableWorkerRow({ worker, jibble, assignedProject }: {
+function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
   worker: Worker;
   jibble?: JibbleEntry;
   assignedProject?: Project | null;
+  onUnassign?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `worker-${worker.id}` });
   const isOnSite  = !!jibble && !jibble.lastOut;
@@ -298,25 +299,39 @@ function DraggableWorkerRow({ worker, jibble, assignedProject }: {
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={{ opacity: isDragging ? 0.35 : 1 }}
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing select-none touch-none"
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all select-none"
     >
-      <div className="relative shrink-0">
-        <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
-        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-          isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
-        }`} />
+      {/* Drag handle area */}
+      <div {...attributes} {...listeners} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
+        <div className="relative shrink-0">
+          <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
+          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+            isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+          }`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+          {worker.trade && <p className="text-[11px] text-slate-400 leading-tight truncate">{worker.trade}</p>}
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
-        {worker.trade && <p className="text-[11px] text-slate-400 leading-tight truncate">{worker.trade}</p>}
-      </div>
+      {/* Right: assignment badge or unassign button */}
       {assignedProject ? (
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0 max-w-[90px] truncate leading-tight">
-          {assignedProject.name}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 max-w-[80px] truncate leading-tight">
+            {assignedProject.name}
+          </span>
+          {onUnassign && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onUnassign(); }}
+              className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+              title="배치 취소"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       ) : (
         <span className="text-[10px] text-slate-300 shrink-0">미배치</span>
       )}
@@ -1034,7 +1049,11 @@ export default function CrewDispatchAssignment() {
       {/* ── Single DndContext wrapping all views ── */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={(args) =>
+          String(args.active.id).startsWith("worker-")
+            ? pointerWithin(args)
+            : closestCenter(args)
+        }
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -1091,14 +1110,21 @@ export default function CrewDispatchAssignment() {
                   {filteredWorkers.length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-10">해당하는 작업자가 없습니다.</p>
                   ) : (
-                    filteredWorkers.map((w) => (
+                    filteredWorkers.map((w) => {
+                      const assignedId = getAssignment(w.id);
+                      return (
                       <DraggableWorkerRow
                         key={w.id}
                         worker={w}
                         jibble={jibbleMap.get(w.id)}
-                        assignedProject={allProjects.find((p) => p.id === getAssignment(w.id))}
+                        assignedProject={allProjects.find((p) => p.id === assignedId)}
+                        onUnassign={assignedId !== null ? () => {
+                          handleAssign(w.id, null);
+                          toast({ title: `${w.fullName} 배치 취소` });
+                        } : undefined}
                       />
-                    ))
+                    );
+                    })
                   )}
                 </div>
               </div>

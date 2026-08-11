@@ -54,4 +54,4 @@ ADMIN_SEED_TOKEN = "tk-admin-seed-2026"
 
 [postMerge]
 path = "scripts/post-merge.sh"
-timeoutMs = 20000
+timeoutMs = 60000

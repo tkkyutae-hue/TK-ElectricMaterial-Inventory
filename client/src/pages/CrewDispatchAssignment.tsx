@@ -48,13 +48,16 @@ function fmtTime(iso?: string): string {
 function groupPriority(p: Project): number {
   const g = (p.mondayGroupTitle ?? "").toLowerCase();
   const s = (p.status ?? "").toLowerCase();
-  if (g.includes("working on it") || g.includes("working")) return 0;
-  if (g.includes("start soon") || g.includes("soon"))        return 1;
+  // Check explicit "done" status FIRST — takes priority over group name.
+  // This handles the common Monday pattern where the status column is updated
+  // to "Done" but the item hasn't been moved to the Done group yet.
   if (
     ["completed", "cancelled", "canceled", "done"].includes(s) ||
     p.archived ||
     g.includes("done") || g.includes("complete") || g.includes("finish")
   ) return 3;
+  if (g.includes("working on it") || g.includes("working")) return 0;
+  if (g.includes("start soon") || g.includes("soon"))        return 1;
   return 2;
 }
 

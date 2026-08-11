@@ -4473,7 +4473,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let raw: string;
         try {
           const geminiResult = await genAI.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: [{ parts }],
             config: { temperature: 0.1, maxOutputTokens: 4000 },
           });

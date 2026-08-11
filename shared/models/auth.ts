@@ -24,6 +24,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
+  googleId: varchar("google_id").unique(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;

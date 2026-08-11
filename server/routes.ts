@@ -14,6 +14,7 @@ type RequestWithUser = Request & { currentUser?: User };
 import { validateNewMovement, validateDraftForConfirmation } from "./services/inventory/movement-validation";
 import { z } from "zod";
 import { registerAuthRoutes, authStorage } from "./replit_integrations/auth";
+import { registerGoogleAuthRoutes } from "./replit_integrations/auth/googleAuth";
 import { isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import multer from "multer";
 import path from "path";
@@ -146,6 +147,7 @@ function getUserDisplayName(req: any): string | null {
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   registerAuthRoutes(app);
+  registerGoogleAuthRoutes(app);
 
   // Serve uploaded completion-report images from Object Storage (persistent across deploys)
   // Falls back to local uploadsDir for dev environments without Object Storage configured.

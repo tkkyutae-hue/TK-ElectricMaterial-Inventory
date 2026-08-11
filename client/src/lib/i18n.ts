@@ -19,6 +19,11 @@ const en = {
   materialInventorySystem: "Material Inventory System",
   noAccount:               "No account?",
   requestAccess:           "Request Access",
+  signInWithGoogle:        "Sign in with Google",
+  orDivider:               "or",
+  googlePending:           "Account pending admin approval.",
+  googleRejected:          "Account access denied. Contact an admin.",
+  googleError:             "Google sign-in failed. Please try again.",
 
   // ── Home / Mode select ───────────────────────────────────────────────────
   morning:            "Morning",
@@ -2420,6 +2425,11 @@ const ko: Translations = {
   materialInventorySystem: "자재 재고 시스템",
   noAccount:               "계정이 없으신가요?",
   requestAccess:           "접속 요청",
+  signInWithGoogle:        "구글로 로그인",
+  orDivider:               "또는",
+  googlePending:           "계정 승인 대기 중입니다. 관리자에게 문의하세요.",
+  googleRejected:          "계정 접근이 거부되었습니다. 관리자에게 문의하세요.",
+  googleError:             "구글 로그인에 실패했습니다. 다시 시도해 주세요.",
 
   morning:            "아침",
   afternoon:          "오후",
@@ -4806,6 +4816,11 @@ const es: Translations = {
   materialInventorySystem: "Sistema de Inventario",
   noAccount:               "¿Sin cuenta?",
   requestAccess:           "Solicitar Acceso",
+  signInWithGoogle:        "Iniciar sesión con Google",
+  orDivider:               "o",
+  googlePending:           "Cuenta pendiente de aprobación del admin.",
+  googleRejected:          "Acceso denegado. Contacta a un administrador.",
+  googleError:             "Error al iniciar sesión con Google. Inténtalo de nuevo.",
 
   morning:            "Mañana",
   afternoon:          "Tarde",

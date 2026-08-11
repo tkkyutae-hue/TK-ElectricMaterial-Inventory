@@ -6,7 +6,10 @@ export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   findUserByEmail(email: string): Promise<User | undefined>;
+  findUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(data: { email: string; passwordHash: string; name: string }): Promise<User>;
+  createGoogleUser(data: { googleId: string; email: string; name?: string | null; profileImageUrl?: string | null }): Promise<User>;
+  linkGoogleId(userId: string, googleId: string): Promise<void>;
   listUsers(status?: string): Promise<User[]>;
   updateUserStatus(id: string, status: string): Promise<User | undefined>;
   updateUser(id: string, data: Partial<{ role: string; status: string; name: string }>): Promise<User | undefined>;
@@ -35,6 +38,38 @@ class AuthStorage implements IAuthStorage {
   async findUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async findUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user;
+  }
+
+  async createGoogleUser(data: {
+    googleId: string;
+    email: string;
+    name?: string | null;
+    profileImageUrl?: string | null;
+  }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: data.email.toLowerCase(),
+        googleId: data.googleId,
+        name: data.name ?? data.email.split("@")[0],
+        profileImageUrl: data.profileImageUrl ?? null,
+        role: "viewer",
+        status: "pending",
+      })
+      .returning();
+    return user;
+  }
+
+  async linkGoogleId(userId: string, googleId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ googleId, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   async createUser(data: { email: string; passwordHash: string; name: string }): Promise<User> {

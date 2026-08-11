@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems } from "../shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";

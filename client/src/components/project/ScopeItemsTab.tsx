@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles, Package,
 } from "lucide-react";
@@ -59,6 +59,37 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
 
   // ── Local drag-order override (null = use server sortOrder) ──
   const [localOrder, setLocalOrder] = useState<number[] | null>(null);
+
+  // ── Column resize state ──
+  // Columns: 0=Item, 1=Unit, 2=Est.Qty, 3=Category, 4=Actions
+  const FIXED_COL_PX = 56; // handle(24) + #(32), not resizable
+  const MIN_COL_WIDTHS = [100, 50, 60, 70, 120] as const;
+  const [colWidths, setColWidths] = useState([240, 70, 85, 130, 165]);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+
+  const startResize = useCallback((colIdx: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = colWidths[colIdx];
+    const containerW = tableWrapperRef.current?.clientWidth ?? 900;
+    const otherW = colWidths.reduce((s, w, i) => i !== colIdx ? s + w : s, 0) + FIXED_COL_PX;
+    const maxW = Math.max(MIN_COL_WIDTHS[colIdx], containerW - otherW);
+
+    function onMove(ev: MouseEvent) {
+      const newW = Math.max(MIN_COL_WIDTHS[colIdx], Math.min(maxW, startW + ev.clientX - startX));
+      setColWidths(prev => prev.map((w, i) => i === colIdx ? newW : w));
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [colWidths]);
 
   // ── Data ──
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
@@ -358,19 +389,50 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div ref={tableWrapperRef} className="overflow-x-hidden">
+              <table
+                className="text-sm"
+                style={{
+                  tableLayout: "fixed",
+                  width: FIXED_COL_PX + colWidths.reduce((a, b) => a + b, 0),
+                  minWidth: "100%",
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: 24 }} />
+                  <col style={{ width: 32 }} />
+                  {colWidths.map((w, i) => <col key={i} style={{ width: w }} />)}
+                </colgroup>
                 <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>
-                    {/* Drag handle column */}
-                    <th className="w-6" />
-                    {/* Row number column */}
-                    <th className="w-8 pr-1 text-right text-[10px] font-semibold text-slate-300 py-3">#</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[33%]">{t.projScopeColItem}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.projScopeColUnit}</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.projScopeColEstQty}</th>
-                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">{t.projScopeColCategory}</th>
-                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[31%]">{t.projScopeColActions}</th>
+                    {/* Drag handle — fixed, no resize */}
+                    <th style={{ width: 24 }} />
+                    {/* # — fixed, no resize */}
+                    <th style={{ width: 32 }} className="pr-1 text-right text-[10px] font-semibold text-slate-300 py-3">#</th>
+                    {/* Resizable columns */}
+                    {[
+                      { label: t.projScopeColItem,     align: "text-left"  },
+                      { label: t.projScopeColUnit,     align: "text-left"  },
+                      { label: t.projScopeColEstQty,   align: "text-right" },
+                      { label: t.projScopeColCategory, align: "text-left"  },
+                      { label: t.projScopeColActions,  align: "text-right" },
+                    ].map(({ label, align }, i) => (
+                      <th
+                        key={i}
+                        style={{ width: colWidths[i], position: "relative", overflow: "hidden" }}
+                        className={`${align} px-4 py-3 font-semibold text-slate-600 select-none`}
+                      >
+                        <span className="block truncate">{label}</span>
+                        {/* Column resize handle */}
+                        <div
+                          onMouseDown={e => startResize(i, e)}
+                          className="absolute top-0 right-0 h-full w-2 flex items-center justify-center cursor-col-resize group/rh z-10"
+                          title="Drag to resize column"
+                        >
+                          <div className="w-px h-4 bg-slate-300 group-hover/rh:bg-brand-500 group-hover/rh:h-full transition-all duration-100" />
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 

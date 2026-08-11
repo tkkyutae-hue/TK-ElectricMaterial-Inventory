@@ -89,18 +89,18 @@ export function ScopeItemRow({
 
       <td className="px-4 py-3">
         <div className="flex items-baseline gap-0 flex-wrap">
-          <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[240px]" title={item.itemName}>
+          <p className="font-medium text-slate-900 leading-snug text-sm truncate" title={item.itemName}>
             {item.itemName}
           </p>
           {isSupport && <ScopeTypeChip scopeType="support" />}
         </div>
         {invLinked && (
-          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate max-w-[220px]" title={invLinked.name}>
+          <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded truncate" title={invLinked.name}>
             <Package className="w-2.5 h-2.5 shrink-0 text-slate-400" />
             <span className="truncate">{invLinked.name}</span>
           </span>
         )}
-        {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[220px]">{item.remarks}</p>}
+        {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{item.remarks}</p>}
       </td>
       <td className="px-4 py-3">
         <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>

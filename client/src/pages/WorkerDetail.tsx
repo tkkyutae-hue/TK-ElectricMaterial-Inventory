@@ -8,7 +8,7 @@ import {
   ArrowLeft, HardHat, Pencil, Save, X, Loader2,
   Star, ClipboardList, Calendar, Zap, LayoutGrid,
   Camera, StickyNote, Award, PlusCircle, Trash2,
-  Check, ChevronDown, ChevronUp, History, Clock,
+  Check, ChevronDown, ChevronUp, History, Clock, Link2, Unlink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1453,6 +1453,172 @@ export default function WorkerDetail() {
         </CardContent>
       </Card>
 
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* LINKED USER ACCOUNT                                                   */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <LinkedUserCard workerId={Number(workerId)} worker={worker} />
+
     </div>
+  );
+}
+
+// ─── LinkedUserCard ─────────────────────────────────────────────────────────
+// Allows managers/admins to link one app-user account to this worker record.
+// This enables the foreman self-view in the Daily Report page: when a manager
+// with a linked worker visits Daily Report they see only their own assigned projects.
+function LinkedUserCard({ workerId, worker }: { workerId: number; worker: any }) {
+  const { toast } = useToast();
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+
+  interface LinkableUser { id: string; name: string; firstName: string | null; lastName: string | null; email: string | null; role: string; }
+
+  const { data: users = [], isLoading: usersLoading } = useQuery<LinkableUser[]>({
+    queryKey: ["/api/workers/linkable-users"],
+    queryFn: async () => {
+      const res = await fetch("/api/workers/linkable-users", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isEditing,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async (userId: string | null) => {
+      const res = await fetch(`/api/workers/${workerId}/linked-user`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "오류가 발생했습니다." }));
+        throw new Error(err.message);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workers", workerId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/workers/linkable-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/me/worker"] });
+      toast({ title: "계정 연결이 업데이트되었습니다." });
+      setIsEditing(false);
+      setSelectedUserId("");
+    },
+    onError: (err: any) => toast({ title: "오류", description: err.message, variant: "destructive" }),
+  });
+
+  const currentLinkedUserId: string | null = (worker as any).linkedUserId ?? null;
+
+  function userDisplayName(u: LinkableUser): string {
+    const full = [u.firstName, u.lastName].filter(Boolean).join(" ");
+    return full || u.name || u.email || u.id;
+  }
+
+  const linkedUser = users.find((u) => u.id === currentLinkedUserId);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-slate-400" />
+          앱 계정 연결
+          {currentLinkedUserId && (
+            <span className="text-xs font-normal text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 ml-1">
+              연동됨
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-5 space-y-3">
+        <p className="text-xs text-slate-400">
+          작업반장이 Daily Report에서 로그인 시 본인 배치 프로젝트만 강조 표시됩니다.
+          한 계정에 하나의 작업자만 연결할 수 있습니다.
+        </p>
+
+        {!isEditing ? (
+          <div className="flex items-center gap-3">
+            {currentLinkedUserId ? (
+              <>
+                <span className="text-sm text-slate-700 flex-1">
+                  {linkedUser ? userDisplayName(linkedUser) : currentLinkedUserId}
+                </span>
+                <Button
+                  variant="outline" size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => { setSelectedUserId(currentLinkedUserId); setIsEditing(true); }}
+                >
+                  <Pencil className="w-3 h-3" /> 변경
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  className="gap-1.5 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                  disabled={linkMutation.isPending}
+                  onClick={() => linkMutation.mutate(null)}
+                >
+                  {linkMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
+                  연결 해제
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-slate-400 flex-1">연결된 계정 없음</span>
+                <Button
+                  variant="outline" size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Link2 className="w-3 h-3" /> 계정 연결
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {usersLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                <span className="text-xs text-slate-400">사용자 목록 불러오는 중…</span>
+              </div>
+            ) : (
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger className="text-sm h-9">
+                  <SelectValue placeholder="계정을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {userDisplayName(u)}
+                      {u.role && (
+                        <span className="text-xs text-slate-400 ml-1">({u.role})</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="gap-1.5 text-xs"
+                disabled={!selectedUserId || linkMutation.isPending}
+                onClick={() => linkMutation.mutate(selectedUserId)}
+              >
+                {linkMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                저장
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => { setIsEditing(false); setSelectedUserId(""); }}
+              >
+                <X className="w-3 h-3" /> 취소
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

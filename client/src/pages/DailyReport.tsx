@@ -10,8 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { Project } from "@shared/schema";
+import type { Project, Worker } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── localStorage keys (v2 — new defaults) ────────────────────────────────────
 const LS_HIDDEN   = "voltstock_dr_hidden_statuses_v2";
@@ -287,6 +288,7 @@ function CustomerGroup({ groupKey, displayName, projects, summaryMap, assignedCo
 export default function DailyReport() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const [search,          setSearch]          = useState("");
   const [hiddenStatuses,  setHiddenStatuses]  = useState<Set<string>>(loadHidden);
@@ -328,6 +330,17 @@ export default function DailyReport() {
     refetchInterval: 60_000,
   });
 
+  // Worker record linked to the current user (if any) — used to filter assigned projects for non-admin users
+  const { data: linkedWorker = null } = useQuery<Worker | null>({
+    queryKey: ["/api/me/worker"],
+    queryFn: async () => {
+      const res = await fetch("/api/me/worker", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   // projectId → number of assigned workers today
   const assignedCountMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -337,6 +350,25 @@ export default function DailyReport() {
     });
     return m;
   }, [crewAssignments]);
+
+  // Set of projectIds where the linked worker (if any) is assigned today.
+  // Used to personalise the "오늘 배치된 프로젝트" section for non-admin managers.
+  const myWorkerProjectIds = useMemo(() => {
+    if (!linkedWorker) return null; // no linked worker → no filtering
+    const ids = new Set<number>();
+    crewAssignments.forEach((a) => {
+      if (a.workerId === linkedWorker.id && a.projectId != null) ids.add(a.projectId);
+    });
+    return ids;
+  }, [linkedWorker, crewAssignments]);
+
+  // Whether to show only the current user's assigned projects in the highlighted section.
+  // DailyReport is accessible to "manager" and "admin" roles only (see useAuth/App.tsx).
+  // - admin: always sees everything regardless of linked worker.
+  // - manager with a linked worker record: sees only their own dispatched projects
+  //   (treated as a foreman-manager / 작업반장).
+  // - manager without a linked worker: falls back to seeing all (existing behaviour).
+  const isSelfFilterActive = user?.role === "manager" && myWorkerProjectIds !== null;
 
   const summaryMap = useMemo(
     () => reportSummaries.reduce<Record<number, ReportSummary>>((acc, s) => { acc[s.projectId] = s; return acc; }, {}),
@@ -371,15 +403,23 @@ export default function DailyReport() {
     );
   }), [allProjects, hiddenStatuses, search]);
 
-  // Split into assigned-today vs rest
+  // Split into assigned-today vs rest.
+  // When isSelfFilterActive, "assigned" means ONLY projects where the current user's own
+  // worker is dispatched (personalised view). Admins / users without a linked worker
+  // see the full set of projects that have any crew assigned (original behaviour).
   const { assignedProjects, otherProjects } = useMemo(() => {
     const assigned: Project[] = [];
     const other:    Project[] = [];
     filtered.forEach((p) => {
-      (assignedCountMap.has(p.id) ? assigned : other).push(p);
+      if (isSelfFilterActive) {
+        // myWorkerProjectIds is non-null when isSelfFilterActive is true
+        (myWorkerProjectIds!.has(p.id) ? assigned : other).push(p);
+      } else {
+        (assignedCountMap.has(p.id) ? assigned : other).push(p);
+      }
     });
     return { assignedProjects: assigned, otherProjects: other };
-  }, [filtered, assignedCountMap]);
+  }, [filtered, assignedCountMap, isSelfFilterActive, myWorkerProjectIds]);
 
   const hasAssigned = assignedProjects.length > 0;
 
@@ -606,7 +646,9 @@ export default function DailyReport() {
                 <span className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 shrink-0">
                   <Users className="w-3.5 h-3.5 text-blue-600" />
                 </span>
-                <span className="text-sm font-semibold text-blue-700">오늘 배치된 프로젝트</span>
+                <span className="text-sm font-semibold text-blue-700">
+                  {isSelfFilterActive ? "오늘 내 배치 프로젝트" : "오늘 배치된 프로젝트"}
+                </span>
                 <span className="text-xs font-medium text-blue-400 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">{assignedProjects.length}</span>
               </div>
               <div className="space-y-2">

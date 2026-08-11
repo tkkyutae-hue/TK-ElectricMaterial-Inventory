@@ -5017,3 +5017,25 @@ export async function runCrewDispatchMigration(): Promise<void> {
     ON daily_worker_assignments (worker_id, date)
   `);
 }
+
+// Idempotent migration: add linked_user_id column + unique constraint to workers table.
+// Enables the foreman self-view in DailyReport (one user account ↔ one worker record).
+export async function runWorkerLinkedUserMigration(): Promise<void> {
+  await db.execute(sql`
+    ALTER TABLE workers
+    ADD COLUMN IF NOT EXISTS linked_user_id TEXT
+      REFERENCES users(id) ON DELETE SET NULL
+  `);
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'workers_linked_user_id_unique'
+      ) THEN
+        ALTER TABLE workers
+        ADD CONSTRAINT workers_linked_user_id_unique UNIQUE (linked_user_id);
+      END IF;
+    END $$
+  `);
+}

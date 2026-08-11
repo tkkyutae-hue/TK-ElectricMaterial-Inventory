@@ -507,6 +507,9 @@ export const workers = pgTable("workers", {
   // Employee / Jibble integration
   employeeId: text("employee_id"),
   jibblePersonId: text("jibble_person_id").unique(),
+  // Link to app user account (for foreman self-view filtering).
+  // Unique: one user account can be linked to at most one worker.
+  linkedUserId: text("linked_user_id").unique().references(() => users.id, { onDelete: "set null" }),
   // Evaluation fields
   skill: integer("skill"),
   control: integer("control"),

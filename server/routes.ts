@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers } from "../shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";
@@ -205,6 +205,68 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.json(safe);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── My linked worker ────────────────────────────────────────────────────────
+  // Returns the worker record linked to the current user, or null if none.
+  app.get("/api/me/worker", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const rows = await db.select().from(workers).where(eq(workers.linkedUserId, userId)).limit(1);
+      res.json(rows[0] ?? null);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Users available for worker linking (manager+) ───────────────────────────
+  // Returns a safe minimal list of active user accounts so managers can pick
+  // one to link to a worker record (foreman self-view feature).
+  app.get("/api/workers/linkable-users", isAuthenticated, requireManagerRead, async (_req, res) => {
+    try {
+      const { authStorage } = await import("./replit_integrations/auth/storage");
+      const allUsers = await authStorage.listUsers("active");
+      const safe = allUsers.map(({ passwordHash: _ph, ...u }: any) => ({
+        id: u.id, name: u.name, firstName: u.firstName, lastName: u.lastName,
+        email: u.email, role: u.role,
+      }));
+      res.json(safe);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── Link / unlink a user account to a worker ────────────────────────────────
+  // PATCH /api/workers/:id/linked-user  body: { userId: string | null }
+  // Managers (and admins) can call this. Sets workers.linked_user_id with uniqueness
+  // validation — a user can be linked to at most one worker.
+  app.patch("/api/workers/:id/linked-user", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const workerId = parseIntParam(req.params.id, "id", res);
+      if (workerId === null) return;
+      const { userId } = req.body as { userId: string | null };
+
+      if (userId !== null && userId !== undefined && typeof userId !== "string") {
+        return res.status(400).json({ message: "userId must be a string or null" });
+      }
+
+      // If linking (not clearing), verify the user isn't already linked to another worker.
+      if (userId) {
+        const conflict = await db.select({ id: workers.id })
+          .from(workers)
+          .where(eq(workers.linkedUserId, userId))
+          .limit(1);
+        if (conflict.length > 0 && conflict[0].id !== workerId) {
+          return res.status(409).json({ message: "이 계정은 이미 다른 작업자에 연결되어 있습니다." });
+        }
+      }
+
+      const updated = await storage.updateWorker(workerId, { linkedUserId: userId ?? null } as any);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
     }
   });
 

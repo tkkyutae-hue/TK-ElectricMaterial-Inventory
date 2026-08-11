@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useFieldTheme } from "@/hooks/use-field-theme";
+import { useLanguage } from "@/hooks/use-language";
+import { useAuth } from "@/hooks/use-auth";
 
 interface TileProps {
   emoji: string;
@@ -60,6 +61,7 @@ function Tile({ emoji, title, subtitle, accentColor, onClick }: TileProps) {
           fontSize: 12, color: "#94a3b8", margin: 0,
           fontFamily: "'Barlow', sans-serif",
           lineHeight: 1.4,
+          whiteSpace: "pre-line",
         }}>{subtitle}</p>
       </div>
       <span style={{
@@ -76,6 +78,8 @@ function Tile({ emoji, title, subtitle, accentColor, onClick }: TileProps) {
 
 export default function CrewDispatch() {
   const [, navigate] = useLocation();
+  const { t } = useLanguage();
+  const { isManagerOrAbove } = useAuth();
 
   return (
     <div>
@@ -84,29 +88,31 @@ export default function CrewDispatch() {
           fontSize: 11, textTransform: "uppercase", letterSpacing: 2,
           color: "#94a3b8", fontFamily: "'Barlow Condensed', sans-serif",
           fontWeight: 600, margin: "0 0 8px",
-        }}>CREW DISPATCH</p>
+        }}>{t.projectOpsMode}</p>
         <h1 style={{
           fontFamily: "'Bebas Neue', sans-serif",
           fontSize: 40, lineHeight: 1.05, margin: "0 0 6px",
           color: "#1e293b", letterSpacing: 1,
-        }}>프로젝트 운영</h1>
+        }}>{t.projectOpsMode}</h1>
         <p style={{ fontSize: 13, color: "#64748b", margin: 0, fontFamily: "'Barlow', sans-serif" }}>
-          오늘의 작업자 배치를 설정하거나 일일 보고서를 작성하세요.
+          {t.crewDispatchPageSubtitle}
         </p>
       </div>
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Tile
-          emoji="👷"
-          title="작업자 배치"
-          subtitle={"오늘 출근한 작업자를\n프로젝트에 배치합니다"}
-          accentColor="#f59e0b"
-          onClick={() => navigate("/crew-dispatch/assignment")}
-        />
+        {isManagerOrAbove && (
+          <Tile
+            emoji="👷"
+            title={t.crewDispatchWorkerTitle}
+            subtitle={t.crewDispatchWorkerSubtitle}
+            accentColor="#f59e0b"
+            onClick={() => navigate("/crew-dispatch/assignment")}
+          />
+        )}
         <Tile
           emoji="📋"
-          title="Daily Report"
-          subtitle={"프로젝트별 일일 보고서\n작성 및 조회"}
+          title={t.crewDispatchDailyTitle}
+          subtitle={t.crewDispatchDailySubtitle}
           accentColor="#60a5fa"
           onClick={() => navigate("/daily-report")}
         />

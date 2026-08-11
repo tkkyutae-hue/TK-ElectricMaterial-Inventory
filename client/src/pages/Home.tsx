@@ -397,8 +397,8 @@ export default function Home() {
                 accentColor="#f59e0b"
                 emoji="👷"
                 emojiBg="rgba(245,158,11,0.09)"
-                title="Crew Dispatch"
-                tags={["배치", "Daily Report", "출근현황"]}
+                title={t.projectOpsMode}
+                tags={[t.tagAssignment, t.crewDispatchDailyTitle, t.tagAttendance]}
                 tagGap={6}
                 tagStyle={{
                   background: "rgba(245,158,11,0.09)",

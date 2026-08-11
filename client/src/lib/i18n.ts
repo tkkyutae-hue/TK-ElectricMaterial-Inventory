@@ -32,6 +32,7 @@ const en = {
   adminMode:          "Admin Mode",
   inventoryMode:      "Inventory Mode",
   dailyReportMode:    "Daily Report Mode",
+  projectOpsMode:     "Project Operations",
   displayMode:        "Display Mode",
   logout:             "Logout",
   roleNote:           "— Contact an admin for elevated access.",
@@ -1771,6 +1772,15 @@ const en = {
   dailyReportNoReports:             "No reports",
   dailyReportOpen:                  "Open",
 
+  // ── Project Operations (Crew Dispatch) mode ──────────────────────────────
+  crewDispatchPageSubtitle:    "Set today's worker assignments or write daily reports.",
+  crewDispatchWorkerTitle:     "Worker Assignment",
+  crewDispatchWorkerSubtitle:  "Assign today's workers\nto their projects",
+  crewDispatchDailyTitle:      "Daily Report",
+  crewDispatchDailySubtitle:   "Write and view\ndaily project reports",
+  tagAssignment:               "Assignment",
+  tagAttendance:               "Attendance",
+
   // ── Daily Report workspace page ─────────────────────────────────────────
   dailyWorkspaceTabNew:             "New Report",
   dailyWorkspaceTabHistory:         "Report History",
@@ -2422,6 +2432,7 @@ const ko: Translations = {
   adminMode:          "관리자 모드",
   inventoryMode:      "재고 모드",
   dailyReportMode:    "일일 보고 모드",
+  projectOpsMode:     "프로젝트 운영",
   displayMode:        "디스플레이 모드",
   logout:             "로그아웃",
   roleNote:           "— 더 높은 권한은 관리자에게 문의하세요.",
@@ -4147,6 +4158,15 @@ const ko: Translations = {
   dailyReportNoReports:             "보고서 없음",
   dailyReportOpen:                  "열기",
 
+  // ── 프로젝트 운영 (Crew Dispatch) 모드 ──────────────────────────────────
+  crewDispatchPageSubtitle:    "오늘의 작업자 배치를 설정하거나 일일 보고서를 작성하세요.",
+  crewDispatchWorkerTitle:     "작업자 배치",
+  crewDispatchWorkerSubtitle:  "오늘 출근한 작업자를\n프로젝트에 배치합니다",
+  crewDispatchDailyTitle:      "Daily Report",
+  crewDispatchDailySubtitle:   "프로젝트별 일일 보고서\n작성 및 조회",
+  tagAssignment:               "배치",
+  tagAttendance:               "출근현황",
+
   // ── Daily Report workspace page ─────────────────────────────────────────
   dailyWorkspaceTabNew:             "새 보고서",
   dailyWorkspaceTabHistory:         "보고서 이력",
@@ -4798,6 +4818,7 @@ const es: Translations = {
   adminMode:          "Modo Admin",
   inventoryMode:      "Modo Inventario",
   dailyReportMode:    "Modo Reporte Diario",
+  projectOpsMode:     "Operaciones de Proyecto",
   displayMode:        "Modo Pantalla",
   logout:             "Salir",
   roleNote:           "— Contacta a un admin para mayor acceso.",
@@ -6599,6 +6620,15 @@ const es: Translations = {
   dailyReportLast:                  "Último",
   dailyReportNoReports:             "Sin reportes",
   dailyReportOpen:                  "Abrir",
+
+  // ── Operaciones de Proyecto (Crew Dispatch) ───────────────────────────────
+  crewDispatchPageSubtitle:    "Configure las asignaciones de trabajadores o escriba reportes diarios.",
+  crewDispatchWorkerTitle:     "Asignación de Trabajadores",
+  crewDispatchWorkerSubtitle:  "Asigna los trabajadores\nde hoy a sus proyectos",
+  crewDispatchDailyTitle:      "Reporte Diario",
+  crewDispatchDailySubtitle:   "Redacta y consulta\nreportes diarios de proyecto",
+  tagAssignment:               "Asignación",
+  tagAttendance:               "Asistencia",
 
   // ── Daily Report workspace page ─────────────────────────────────────────
   dailyWorkspaceTabNew:             "Nuevo reporte",

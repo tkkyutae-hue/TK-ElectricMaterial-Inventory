@@ -4439,6 +4439,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           pageImages.push({ base64: req.file.buffer.toString("base64"), mimeType: mime });
         }
 
+        // ── Fetch inventory items for AI matching ───────────────────────────
+        const { items: itemsTable } = await import("../shared/schema");
+        const inventoryRows = await db
+          .select({ id: itemsTable.id, name: itemsTable.name, unitOfMeasure: itemsTable.unitOfMeasure })
+          .from(itemsTable)
+          .where(eq(itemsTable.isActive, true));
+        const inventoryForPrompt = inventoryRows.slice(0, 500).map(r => ({ id: r.id, name: r.name, unit: r.unitOfMeasure }));
+        const inventoryMap = new Map(inventoryRows.map(r => [r.id, r.name]));
+
         // ── Build Gemini prompt ──────────────────────────────────────────────
         const systemPrompt =
           "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
@@ -4446,8 +4455,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "Return ONLY valid JSON — an array of objects with keys: " +
           "itemName (string, preserve original language), qty (number), unit (string), " +
           "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
-          "remarks (string or null). " +
-          "No markdown, no explanation — just the JSON array.";
+          "remarks (string or null), " +
+          "inventoryItemId (number or null — pick the best matching id from the INVENTORY LIST below; must be an exact id from the list; null if no confident match). " +
+          "No markdown, no explanation — just the JSON array.\n\n" +
+          "INVENTORY LIST (id, name, unit):\n" +
+          JSON.stringify(inventoryForPrompt);
 
         const { GoogleGenAI } = await import("@google/genai");
         const genAI = new GoogleGenAI({ apiKey });
@@ -4500,12 +4512,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           items = [];
         }
 
+        // Validate inventoryItemId against the actual inventory map
+        items = items.map((it: any) => {
+          const invId = typeof it.inventoryItemId === "number" && inventoryMap.has(it.inventoryItemId)
+            ? it.inventoryItemId
+            : null;
+          return {
+            ...it,
+            inventoryItemId: invId,
+            inventoryItemName: invId ? inventoryMap.get(invId) ?? null : null,
+          };
+        });
+
         const pagesProcessed = pageImages.length > 0 ? pageImages.length : null;
         res.json({
           items,
           pagesProcessed,
           totalPages: mime === "application/pdf" ? totalPdfPages : null,
           pageCapped: mime === "application/pdf" && totalPdfPages > PDF_PAGE_CAP,
+          inventoryItems: inventoryForPrompt.map(r => ({ id: r.id, name: r.name })),
         });
       } catch (err: any) {
         console.error("[extract]", err);

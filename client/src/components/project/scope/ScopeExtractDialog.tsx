@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  FileText, Upload, X, Loader2, CheckSquare, Square, ChevronDown,
-  AlertCircle, Sparkles,
+  FileText, Upload, X, Loader2, CheckSquare, Square,
+  AlertCircle, Sparkles, Link2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,13 @@ interface ExtractedItem {
   unit: string;
   category: string;
   remarks: string | null;
+  inventoryItemId: number | null;
+  inventoryItemName: string | null;
+}
+
+interface InventoryOption {
+  id: number;
+  name: string;
 }
 
 interface RowState extends ExtractedItem {
@@ -31,7 +38,7 @@ function formatBytes(bytes: number) {
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── DropZone ────────────────────────────────────────────────────────────────
 function DropZone({
   file,
   onFile,
@@ -101,16 +108,134 @@ function DropZone({
   );
 }
 
+// ─── InventoryCell ────────────────────────────────────────────────────────────
+function InventoryCell({
+  row,
+  inventoryItems,
+  onChange,
+}: {
+  row: RowState;
+  inventoryItems: InventoryOption[];
+  onChange: (id: number | null, name: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = inventoryItems
+    .filter((it) => !search || it.name.toLowerCase().includes(search.toLowerCase()))
+    .slice(0, 30);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 30);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative min-w-[120px]">
+      {/* Display badge */}
+      <div className="flex items-center gap-1">
+        {row.inventoryItemId ? (
+          <>
+            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5 text-[11px] max-w-[130px] truncate">
+              <Link2 className="w-2.5 h-2.5 shrink-0" />
+              <span className="truncate">{row.inventoryItemName}</span>
+            </span>
+            <button
+              onClick={() => onChange(null, null)}
+              className="text-slate-300 hover:text-slate-500 transition-colors shrink-0"
+              title="연결 해제"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setOpen(true)}
+            className="text-slate-300 hover:text-slate-500 text-xs transition-colors"
+          >
+            —
+          </button>
+        )}
+        {!open && (
+          <button
+            onClick={() => setOpen(true)}
+            className="text-slate-300 hover:text-brand-500 transition-colors ml-0.5"
+            title="인벤토리 연결"
+          >
+            <Link2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown picker */}
+      {open && (
+        <div className="absolute z-50 left-0 top-full mt-1 w-60 bg-white border border-slate-200 rounded-xl shadow-xl">
+          <div className="p-2 border-b border-slate-100">
+            <input
+              ref={inputRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="이름으로 검색…"
+              className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:border-brand-400"
+            />
+          </div>
+          <div className="max-h-44 overflow-y-auto">
+            <button
+              className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 border-b border-slate-50"
+              onClick={() => { onChange(null, null); setOpen(false); setSearch(""); }}
+            >
+              — 연결 해제
+            </button>
+            {filtered.length === 0 && (
+              <p className="px-3 py-2 text-xs text-slate-400">검색 결과 없음</p>
+            )}
+            {filtered.map((it) => (
+              <button
+                key={it.id}
+                className={`w-full text-left px-3 py-2 text-xs truncate transition-colors
+                  ${row.inventoryItemId === it.id
+                    ? "bg-emerald-50 text-emerald-800 font-medium"
+                    : "text-slate-700 hover:bg-slate-50"}`}
+                onClick={() => { onChange(it.id, it.name); setOpen(false); setSearch(""); }}
+              >
+                {it.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ResultTable ─────────────────────────────────────────────────────────────
 function ResultTable({
   rows,
+  inventoryItems,
   onToggle,
   onToggleAll,
   onEdit,
+  onEditInventory,
 }: {
   rows: RowState[];
+  inventoryItems: InventoryOption[];
   onToggle: (id: string) => void;
   onToggleAll: () => void;
   onEdit: (id: string, field: keyof ExtractedItem, value: string) => void;
+  onEditInventory: (id: string, invId: number | null, invName: string | null) => void;
 }) {
   const allSelected = rows.length > 0 && rows.every((r) => r.selected);
   const someSelected = rows.some((r) => r.selected);
@@ -139,6 +264,9 @@ function ResultTable({
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-20">단위</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-28">카테고리</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">비고</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">
+                <span className="flex items-center gap-1"><Link2 className="w-3 h-3" /> 인벤토리</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -197,13 +325,25 @@ function ResultTable({
                     placeholder="—"
                   />
                 </td>
+                <td className="px-3 py-2">
+                  <InventoryCell
+                    row={row}
+                    inventoryItems={inventoryItems}
+                    onChange={(id, name) => onEditInventory(row.localId, id, name)}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-xs text-slate-400">
-        {rows.filter((r) => r.selected).length} / {rows.length}개 선택됨
+      <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+        <span>{rows.filter((r) => r.selected).length} / {rows.length}개 선택됨</span>
+        {rows.some((r) => r.selected && r.inventoryItemId) && (
+          <span className="text-emerald-600">
+            {rows.filter((r) => r.selected && r.inventoryItemId).length}개 인벤토리 연결됨
+          </span>
+        )}
       </div>
     </div>
   );
@@ -226,12 +366,14 @@ export function ScopeExtractDialog({
 
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<RowState[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryOption[]>([]);
   const [step, setStep] = useState<"upload" | "result">("upload");
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setFile(null);
     setRows([]);
+    setInventoryItems([]);
     setStep("upload");
     setError(null);
   }
@@ -271,9 +413,10 @@ export function ScopeExtractDialog({
         pagesProcessed: number | null;
         totalPages: number | null;
         pageCapped: boolean;
+        inventoryItems: InventoryOption[];
       }>;
     },
-    onSuccess: ({ items, pagesProcessed, totalPages, pageCapped }) => {
+    onSuccess: ({ items, pagesProcessed, totalPages, pageCapped, inventoryItems: inv }) => {
       if (items.length === 0) {
         setError("품목을 찾을 수 없었습니다. 파일을 확인하고 다시 시도하세요.");
         return;
@@ -283,10 +426,13 @@ export function ScopeExtractDialog({
       } else {
         setPageCappedInfo(null);
       }
+      setInventoryItems(inv ?? []);
       setRows(
         items.map((it, i) => ({
           ...it,
           qty: isNaN(Number(it.qty)) ? 0 : Number(it.qty),
+          inventoryItemId: it.inventoryItemId ?? null,
+          inventoryItemName: it.inventoryItemName ?? null,
           localId: `${Date.now()}-${i}`,
           selected: true,
         })),
@@ -314,11 +460,11 @@ export function ScopeExtractDialog({
               estimatedQty: String(row.qty ?? 0),
               category: row.category || "Other",
               remarks: row.remarks || null,
+              linkedInventoryItemId: row.inventoryItemId ?? null,
             }),
           }).then(async (r) => {
             if (!r.ok) {
               const body = await r.json().catch(() => ({}));
-              // 409 duplicate → skip silently
               if (r.status === 409) return { skipped: true };
               throw new Error(body.message ?? "저장 실패");
             }
@@ -368,14 +514,23 @@ export function ScopeExtractDialog({
       ),
     );
   }
+  function editInventory(id: string, invId: number | null, invName: string | null) {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.localId === id ? { ...r, inventoryItemId: invId, inventoryItemName: invName } : r,
+      ),
+    );
+  }
 
   const selectedRows = rows.filter((r) => r.selected);
   const isExtracting = extractMutation.isPending;
   const isSaving = saveMutation.isPending;
 
+  const matchedCount = rows.filter((r) => r.inventoryItemId !== null).length;
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-3xl w-full">
+      <DialogContent className="max-w-4xl w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
@@ -426,7 +581,13 @@ export function ScopeExtractDialog({
             <>
               <div className="flex items-center gap-2 text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                AI가 {rows.length}개 항목을 추출했습니다. 수량·단위를 확인하고 추가할 항목을 선택하세요.
+                <span>
+                  AI가 {rows.length}개 항목을 추출했습니다.
+                  {matchedCount > 0 && (
+                    <> · <span className="text-emerald-600 font-medium">{matchedCount}개</span>가 인벤토리와 자동 매칭됐습니다. 인벤토리 열에서 수정할 수 있습니다.</>
+                  )}
+                  {matchedCount === 0 && <> 인벤토리 열에서 직접 연결할 수 있습니다.</>}
+                </span>
               </div>
               {pageCappedInfo && (
                 <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
@@ -440,9 +601,11 @@ export function ScopeExtractDialog({
 
               <ResultTable
                 rows={rows}
+                inventoryItems={inventoryItems}
                 onToggle={toggleRow}
                 onToggleAll={toggleAll}
                 onEdit={editRow}
+                onEditInventory={editInventory}
               />
 
               {error && (

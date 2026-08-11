@@ -82,7 +82,7 @@ function cardStatusLabel(p: Project): string {
   if (pri === 0) return "Working on it";
   if (pri === 1) return "Start Soon";
   if (pri === 3) return "Done";
-  return "Active";
+  return "Working on it";
 }
 
 /** General Manager → Manager → 나머지 순 */
@@ -270,7 +270,6 @@ function groupAccentColor(name: string): string {
 const STATUS_FILTERS = [
   { priority: 0, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
   { priority: 1, label: "Start Soon",    bg: "#dbeafe", text: "#1d4ed8" },
-  { priority: 2, label: "Active",        bg: "#fef9c3", text: "#a16207" },
   { priority: 3, label: "Done",          bg: "#f1f5f9", text: "#94a3b8" },
 ] as const;
 
@@ -473,7 +472,10 @@ function ProjectCardView({
           (p.poNumber ?? "").toLowerCase().includes(q) ||
           (p.jobLocation ?? "").toLowerCase().includes(q)
         );
-        if (filterPriorities.size > 0) filtered = filtered.filter((p) => filterPriorities.has(groupPriority(p)));
+        if (filterPriorities.size > 0) filtered = filtered.filter((p) => {
+          const pri = groupPriority(p);
+          return filterPriorities.has(pri === 2 ? 0 : pri);
+        });
         return [owner, filtered] as [string, Project[]];
       })
       .filter(([, ps]) => ps.length > 0);

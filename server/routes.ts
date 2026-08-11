@@ -4402,13 +4402,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let totalPdfPages = 1;
         const PDF_PAGE_CAP = 8; // maximum pages sent to GPT-4o vision in one call
 
-        // ── PDF → render all pages (up to cap) in one document load ─────────
+        // ── PDF → render requested page range in one document load ──────────
         if (mime === "application/pdf") {
+          const fromPage = Math.max(1, parseInt(String(req.body.fromPage ?? "1")) || 1);
+          const toPageRaw = parseInt(String(req.body.toPage ?? "")) || Infinity;
+          const toPage   = Math.min(toPageRaw, fromPage + PDF_PAGE_CAP - 1); // cap relative to fromPage
           const { pdfPageRangeToPngs } = await import("./services/pdfFirstPage");
           const { pngs, totalPages } = await pdfPageRangeToPngs(
             req.file.buffer,
-            1,
-            PDF_PAGE_CAP,
+            fromPage,
+            toPage,
           );
           totalPdfPages = totalPages;
           for (const pngBuf of pngs) {
@@ -4487,7 +4490,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!oaiRes.ok) {
           const errBody = await oaiRes.text();
           console.error("[extract] OpenAI error:", errBody);
-          return res.status(502).json({ message: "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." });
+          let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+          try {
+            const errJson = JSON.parse(errBody);
+            const code = errJson?.error?.code ?? "";
+            if (code === "credit_balance_exhausted" || code === "insufficient_quota") {
+              userMsg = "OpenAI API 크레딧이 부족합니다. 관리자에게 API 키 크레딧을 충전해 달라고 요청하세요.";
+            } else if (code === "invalid_api_key") {
+              userMsg = "OpenAI API 키가 유효하지 않습니다. 관리자에게 문의하세요.";
+            }
+          } catch { /* ignore parse error */ }
+          return res.status(502).json({ message: userMsg });
         }
 
         const oaiData = await oaiRes.json() as any;

@@ -4330,6 +4330,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Reorder scope items (drag-and-drop) ────────────────────────────────────
+  app.patch("/api/projects/:id/scope-items/reorder", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const projectId = parseInt(String(req.params.id));
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.some(id => typeof id !== "number")) {
+        return res.status(400).json({ message: "ids must be an array of numbers" });
+      }
+      // Validate: must be a complete, duplicate-free permutation of this project's scope items
+      const { projectScopeItems: psi } = await import("../shared/schema");
+      const existing = await db.select({ id: psi.id }).from(psi).where(eq(psi.projectId, projectId));
+      const validIds = new Set(existing.map(r => r.id));
+      if (ids.length !== validIds.size) {
+        return res.status(400).json({ message: "ids must contain all scope items for this project (no extras or omissions)" });
+      }
+      const uniqueIds = new Set<number>(ids);
+      if (uniqueIds.size !== ids.length) {
+        return res.status(400).json({ message: "ids must not contain duplicates" });
+      }
+      if (!ids.every((id: number) => validIds.has(id))) {
+        return res.status(400).json({ message: "Some IDs do not belong to this project" });
+      }
+      await db.transaction(async tx => {
+        await Promise.all(ids.map((id, index) =>
+          tx.update(psi).set({ sortOrder: index + 1 }).where(eq(psi.id, id))
+        ));
+      });
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/scope-items/:id", isAuthenticated, requireManager, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

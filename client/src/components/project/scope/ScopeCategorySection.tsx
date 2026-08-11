@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { ChevronDown, LayoutList } from "lucide-react";
 import type { ProjectScopeItem } from "@shared/schema";
 import { CATEGORY_CONFIG, CAT_ICONS, resolveSubGroup } from "../categoryConfig";
-import { ScopeItemRow } from "./ScopeItemRow";
+import { SortableScopeItemRow } from "./ScopeItemRow";
 
 interface ScopeCategorySectionProps {
   cat: string;
@@ -13,6 +13,7 @@ interface ScopeCategorySectionProps {
   isCollapsed: boolean;
   onToggle: () => void;
   selectedIds: Set<number>;
+  dragDisabled?: boolean;
   onEdit: (item: ProjectScopeItem) => void;
   onDelete: (item: ProjectScopeItem) => void;
   onDuplicate: (item: ProjectScopeItem) => void;
@@ -24,6 +25,7 @@ export function ScopeCategorySection({
   hideHeader = false,
   isCollapsed, onToggle,
   selectedIds,
+  dragDisabled = false,
   onEdit, onDelete, onDuplicate, onSelect,
 }: ScopeCategorySectionProps) {
   const cfg = CATEGORY_CONFIG[cat] ?? { accent: "#64748b", iconBg: "#f1f5f9", subtitle: "" };
@@ -44,12 +46,13 @@ export function ScopeCategorySection({
 
   function renderRow(item: ProjectScopeItem) {
     return (
-      <ScopeItemRow
+      <SortableScopeItemRow
         key={item.id}
         item={item}
         allInvItems={allInvItems}
         accentColor={cfg.accent}
         isSelected={selectedIds.has(item.id)}
+        dragDisabled={dragDisabled}
         onEdit={() => onEdit(item)}
         onDelete={() => onDelete(item)}
         onDuplicate={() => onDuplicate(item)}
@@ -64,7 +67,7 @@ export function ScopeCategorySection({
       <tbody>
         {items.map(renderRow)}
         {/* Thin separator between material categories */}
-        <tr><td colSpan={5} style={{ height: 2, background: "#f1f5f9", padding: 0 }} /></tr>
+        <tr><td colSpan={6} style={{ height: 2, background: "#f1f5f9", padding: 0 }} /></tr>
       </tbody>
     );
   }
@@ -74,7 +77,7 @@ export function ScopeCategorySection({
     <tbody>
       {/* Category header */}
       <tr>
-        <td colSpan={5} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
+        <td colSpan={6} style={{ padding: 0, borderLeft: `4px solid ${cfg.accent}` }}>
           <button
             type="button"
             onClick={onToggle}
@@ -120,7 +123,7 @@ export function ScopeCategorySection({
               <Fragment key={sg.key}>
                 <tr style={{ background: `${cfg.accent}08`, borderLeft: `3px solid ${cfg.accent}33` }}>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     style={{ paddingLeft: 22, paddingTop: 5, paddingBottom: 5, borderBottom: `1px solid ${cfg.accent}1f` }}
                   >
                     <span style={{ color: `${cfg.accent}b3`, fontSize: 8, letterSpacing: "1.2px", fontWeight: 700 }}>
@@ -139,7 +142,7 @@ export function ScopeCategorySection({
       )}
 
       {/* Spacer */}
-      <tr><td colSpan={5} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+      <tr><td colSpan={6} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
     </tbody>
   );
 }

@@ -1,7 +1,10 @@
+import { CSSProperties } from "react";
 import {
-  CheckSquare, Copy,
+  CheckSquare, Copy, GripVertical,
   Package, Pencil, Square, Trash2,
 } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/use-language";
 import type { ProjectScopeItem } from "@shared/schema";
@@ -22,6 +25,12 @@ export interface ScopeItemRowProps {
   allInvItems: any[];
   accentColor: string;
   isSelected: boolean;
+  dragDisabled?: boolean;
+  /** Internal — passed by SortableScopeItemRow */
+  trRef?: (el: HTMLTableRowElement | null) => void;
+  trStyle?: CSSProperties;
+  isDragging?: boolean;
+  dragHandleProps?: Record<string, any>;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -31,6 +40,8 @@ export interface ScopeItemRowProps {
 export function ScopeItemRow({
   item, allInvItems, accentColor,
   isSelected,
+  dragDisabled = false,
+  trRef, trStyle, isDragging, dragHandleProps,
   onEdit, onDelete, onDuplicate, onSelect,
 }: ScopeItemRowProps) {
   const { t } = useLanguage();
@@ -41,12 +52,30 @@ export function ScopeItemRow({
 
   return (
     <tr
-      style={{ borderLeft: `3px solid ${accentColor}55` }}
-      className={`transition-colors border-t border-slate-100/80 ${!item.isActive ? "opacity-40" : ""}`}
+      ref={trRef}
+      style={{
+        borderLeft: `3px solid ${accentColor}55`,
+        opacity: isDragging ? 0.45 : 1,
+        ...trStyle,
+      }}
+      className={`group/row transition-colors border-t border-slate-100/80 ${!item.isActive ? "opacity-40" : ""} ${isDragging ? "bg-slate-50 shadow-lg z-10" : ""}`}
       data-testid={`scope-row-${item.id}`}
-      onMouseEnter={e => (e.currentTarget.style.background = `${accentColor}08`)}
-      onMouseLeave={e => (e.currentTarget.style.background = "")}
+      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.background = `${accentColor}08`; }}
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = ""; }}
     >
+      {/* Drag handle */}
+      <td className="w-6 pl-2 pr-0 py-3">
+        {!dragDisabled && (
+          <div
+            {...(dragHandleProps ?? {})}
+            className="cursor-grab active:cursor-grabbing text-slate-200 group-hover/row:text-slate-400 transition-colors touch-none select-none flex items-center justify-center"
+            title="Drag to reorder"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </div>
+        )}
+      </td>
+
       <td className="px-5 py-3">
         <div className="flex items-baseline gap-0 flex-wrap">
           <p className="font-medium text-slate-900 leading-snug text-sm truncate max-w-[260px]" title={item.itemName}>
@@ -101,5 +130,25 @@ export function ScopeItemRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+// ── Sortable wrapper ──────────────────────────────────────────────────────────
+export function SortableScopeItemRow({ item, dragDisabled, ...rest }: ScopeItemRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    disabled: dragDisabled,
+  });
+
+  return (
+    <ScopeItemRow
+      item={item}
+      {...rest}
+      dragDisabled={dragDisabled}
+      trRef={setNodeRef}
+      trStyle={{ transform: CSS.Transform.toString(transform), transition }}
+      isDragging={isDragging}
+      dragHandleProps={dragDisabled ? undefined : { ...attributes, ...listeners }}
+    />
   );
 }

@@ -3209,7 +3209,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(projectScopeItems)
       .where(eq(projectScopeItems.projectId, projectId))
-      .orderBy(asc(projectScopeItems.id));
+      .orderBy(sql`${projectScopeItems.sortOrder} ASC NULLS LAST`, asc(projectScopeItems.id));
   }
 
   async getScopeItem(id: number): Promise<ProjectScopeItem | undefined> {

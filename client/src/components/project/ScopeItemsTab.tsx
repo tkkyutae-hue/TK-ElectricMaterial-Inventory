@@ -1,7 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles, Package,
 } from "lucide-react";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,12 +57,28 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // ── Local drag-order override (null = use server sortOrder) ──
+  const [localOrder, setLocalOrder] = useState<number[] | null>(null);
+
   // ── Data ──
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
     queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
   });
   const { data: allInvItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+
+  // ── Reorder mutation ──
+  const reorderMutation = useMutation({
+    mutationFn: (ids: number[]) =>
+      apiRequest("PATCH", `/api/projects/${projectId}/scope-items/reorder`, { ids }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+    },
+    onError: (err: any) => {
+      setLocalOrder(null); // revert optimistic order on error
+      toast({ title: "Reorder failed", description: err.message, variant: "destructive" });
+    },
+  });
 
   // ── Mutations ──
   const deleteMutation = useMutation({
@@ -76,25 +97,33 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const totalQty = scopeItems.reduce((s, i) => s + parseFloat(String(i.estimatedQty || 0)), 0);
   const primaryCount = scopeItems.filter(i => !((i as any).scopeType) || (i as any).scopeType === "primary").length;
 
-  // ── Grouped / ordered category data ──
+  // ── Sort items by server sortOrder (or local override) ──
+  const sortedScopeItems = useMemo(() => {
+    // Server already returns items sorted by sortOrder NULLS LAST, id
+    // localOrder overrides that for optimistic drag-and-drop updates
+    if (!localOrder) return scopeItems;
+    const idMap = new Map(scopeItems.map(i => [i.id, i]));
+    const ordered = localOrder.map(id => idMap.get(id)).filter(Boolean) as ProjectScopeItem[];
+    // Append any items not in localOrder (e.g. just added)
+    const inOrder = new Set(localOrder);
+    for (const item of scopeItems) { if (!inOrder.has(item.id)) ordered.push(item); }
+    return ordered;
+  }, [scopeItems, localOrder]);
+
+  // ── Grouped / ordered category data (preserves sortedScopeItems order) ──
   const grouped = useMemo(() => {
     const map = new Map<string, ProjectScopeItem[]>();
-    for (const item of scopeItems) {
+    for (const item of sortedScopeItems) {
       const cat = resolveDisplayCategory(item.category, item.itemName);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(item);
     }
-    for (const [, items] of map) items.sort((a, b) => {
-      const aType = (a as any).scopeType ?? "primary";
-      const bType = (b as any).scopeType ?? "primary";
-      if (aType !== bType) return aType === "primary" ? -1 : 1;
-      return a.itemName.localeCompare(b.itemName);
-    });
+    // Preserve sortedScopeItems order within each group (no re-sort)
     const result: { cat: string; items: ProjectScopeItem[] }[] = [];
     for (const cat of CATEGORY_ORDER) { if (map.has(cat)) result.push({ cat, items: map.get(cat)! }); }
-    for (const [cat, items] of map) { if (!CATEGORY_ORDER.includes(cat)) result.push({ cat, items }); }
+    map.forEach((items, cat) => { if (!CATEGORY_ORDER.includes(cat)) result.push({ cat, items }); });
     return result;
-  }, [scopeItems]);
+  }, [sortedScopeItems]);
 
   // ── Split into materials vs equipment groups ──
   const materialGroups = grouped.filter(g => MATERIAL_CATS.has(g.cat));
@@ -104,6 +133,36 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const materialTotalQty = materialGroups.reduce(
     (s, g) => s + g.items.reduce((ss, i) => ss + parseFloat(String(i.estimatedQty || 0)), 0), 0
   );
+
+  // ── DnD setup ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+  const isAdding = addMode === "multiple" && pendingRows.length > 0;
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeId = active.id as number;
+    const overId   = over.id as number;
+
+    // ── Enforce same-category constraint ─────────────────────────────────────
+    // Both active and over must belong to the same rendered category group.
+    const activeCat = grouped.find(g => g.items.some(i => i.id === activeId));
+    const overCat   = grouped.find(g => g.items.some(i => i.id === overId));
+    if (!activeCat || !overCat || activeCat.cat !== overCat.cat) return;
+
+    // Compute the new global order and persist
+    const currentGlobalOrder = sortedScopeItems.map(i => i.id);
+    const activeIdx = currentGlobalOrder.indexOf(activeId);
+    const overIdx   = currentGlobalOrder.indexOf(overId);
+    if (activeIdx === -1 || overIdx === -1) return;
+
+    const newGlobalOrder = arrayMove(currentGlobalOrder, activeIdx, overIdx);
+    setLocalOrder(newGlobalOrder);
+    reorderMutation.mutate(newGlobalOrder);
+  }, [sortedScopeItems, grouped, reorderMutation]);
 
   // ── Async action cluster ──
   const {
@@ -128,8 +187,6 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const visibleIds = grouped.flatMap(g => collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id));
     setSelectedIds(new Set(visibleIds));
   }
-
-  const isAdding = addMode === "multiple" && pendingRows.length > 0;
 
   return (
     <div className="space-y-5">
@@ -286,103 +343,125 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
           />
 
         ) : grouped.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
-                <tr>
-                  <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[38%]">{t.projScopeColItem}</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.projScopeColUnit}</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.projScopeColEstQty}</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">{t.projScopeColCategory}</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">{t.projScopeColActions}</th>
-                </tr>
-              </thead>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50/80 border-b border-slate-200">
+                  <tr>
+                    {/* Drag handle column */}
+                    <th className="w-6" />
+                    <th className="text-left px-5 py-3 font-semibold text-slate-600 w-[36%]">{t.projScopeColItem}</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[7%]">{t.projScopeColUnit}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[10%]">{t.projScopeColEstQty}</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 w-[13%]">{t.projScopeColCategory}</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[31%]">{t.projScopeColActions}</th>
+                  </tr>
+                </thead>
 
-              {/* ── Materials super-header + rows ── */}
-              {materialGroups.length > 0 && (
-                <>
-                  <tbody>
-                    <tr>
-                      <td colSpan={5} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
-                        <button
-                          type="button"
-                          onClick={() => setMaterialsCollapsed(c => !c)}
-                          style={{ background: "#64748b0d" }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
-                          data-testid="scope-cat-toggle-materials"
-                        >
-                          <div
-                            style={{ background: "#f1f5f9", width: 28, height: 28, color: "#64748b" }}
-                            className="rounded-md flex items-center justify-center shrink-0"
+                {/* ── Materials super-header + rows ── */}
+                {materialGroups.length > 0 && (
+                  <>
+                    <tbody>
+                      <tr>
+                        <td colSpan={6} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
+                          <button
+                            type="button"
+                            onClick={() => setMaterialsCollapsed(c => !c)}
+                            style={{ background: "#64748b0d" }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
+                            data-testid="scope-cat-toggle-materials"
                           >
-                            <Package className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold leading-tight text-slate-600">Materials</p>
-                            <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
-                              {materialGroups.map(g => g.cat).join(" · ")}
-                            </p>
-                          </div>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap bg-slate-200/70 text-slate-500">
-                            {materialTotalItems} item{materialTotalItems !== 1 ? "s" : ""}
-                          </span>
-                          <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right text-slate-500">
-                            {materialTotalQty.toLocaleString()}
-                          </span>
-                          <ChevronDown
-                            className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200 ${materialsCollapsed ? "-rotate-90" : ""}`}
-                          />
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
+                            <div
+                              style={{ background: "#f1f5f9", width: 28, height: 28, color: "#64748b" }}
+                              className="rounded-md flex items-center justify-center shrink-0"
+                            >
+                              <Package className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold leading-tight text-slate-600">Materials</p>
+                              <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                                {materialGroups.map(g => g.cat).join(" · ")}
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap bg-slate-200/70 text-slate-500">
+                              {materialTotalItems} item{materialTotalItems !== 1 ? "s" : ""}
+                            </span>
+                            <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right text-slate-500">
+                              {materialTotalQty.toLocaleString()}
+                            </span>
+                            <ChevronDown
+                              className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200 ${materialsCollapsed ? "-rotate-90" : ""}`}
+                            />
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
 
-                  {/* All material category rows (flat, no per-category headers) */}
-                  {!materialsCollapsed && materialGroups.map(({ cat, items }) => (
+                    {/* One SortableContext per material category (aligns drag zones with rendered groups) */}
+                    {!materialsCollapsed && (
+                      materialGroups.map(({ cat, items }) => (
+                        <SortableContext
+                          key={cat}
+                          items={items.map(i => i.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <ScopeCategorySection
+                            cat={cat}
+                            items={items}
+                            allInvItems={allInvItems}
+                            hideHeader={true}
+                            isCollapsed={false}
+                            onToggle={() => {}}
+                            selectedIds={selectedIds}
+                            dragDisabled={isAdding}
+                            onEdit={setDialogItem}
+                            onDelete={setDeleteTarget}
+                            onDuplicate={duplicateItem}
+                            onSelect={toggleSelectItem}
+                          />
+                        </SortableContext>
+                      ))
+                    )}
+
+                    {/* Spacer between Materials block and Equipment */}
+                    {equipmentGroups.length > 0 && (
+                      <tbody>
+                        <tr><td colSpan={6} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+                      </tbody>
+                    )}
+                  </>
+                )}
+
+                {/* ── Equipment groups (each in its own SortableContext) ── */}
+                {equipmentGroups.map(({ cat, items }) => (
+                  <SortableContext
+                    key={cat}
+                    items={items.map(i => i.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
                     <ScopeCategorySection
-                      key={cat}
                       cat={cat}
                       items={items}
                       allInvItems={allInvItems}
-                      hideHeader={true}
-                      isCollapsed={false}
-                      onToggle={() => {}}
+                      hideHeader={false}
+                      isCollapsed={collapsedCats.has(cat)}
+                      onToggle={() => toggleCat(cat)}
                       selectedIds={selectedIds}
+                      dragDisabled={isAdding}
                       onEdit={setDialogItem}
                       onDelete={setDeleteTarget}
                       onDuplicate={duplicateItem}
                       onSelect={toggleSelectItem}
                     />
-                  ))}
-
-                  {/* Spacer between Materials block and Equipment */}
-                  {equipmentGroups.length > 0 && (
-                    <tbody>
-                      <tr><td colSpan={5} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
-                    </tbody>
-                  )}
-                </>
-              )}
-
-              {/* ── Equipment groups (with full headers) ── */}
-              {equipmentGroups.map(({ cat, items }) => (
-                <ScopeCategorySection
-                  key={cat}
-                  cat={cat}
-                  items={items}
-                  allInvItems={allInvItems}
-                  hideHeader={false}
-                  isCollapsed={collapsedCats.has(cat)}
-                  onToggle={() => toggleCat(cat)}
-                  selectedIds={selectedIds}
-                  onEdit={setDialogItem}
-                  onDelete={setDeleteTarget}
-                  onDuplicate={duplicateItem}
-                  onSelect={toggleSelectItem}
-                />
-              ))}
-            </table>
-          </div>
+                  </SortableContext>
+                ))}
+              </table>
+            </div>
+          </DndContext>
         ) : null}
       </div>
 

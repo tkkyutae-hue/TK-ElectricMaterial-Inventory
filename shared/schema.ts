@@ -452,6 +452,7 @@ export const projectScopeItems = pgTable("project_scope_items", {
   scopeType: text("scope_type").default("primary"),
   acceptedVariants: jsonb("accepted_variants").$type<number[]>().default([]),
   progressCountingMode: text("progress_counting_mode").default("exact"),
+  sortOrder: integer("sort_order"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

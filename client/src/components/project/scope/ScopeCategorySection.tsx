@@ -8,17 +8,11 @@ interface ScopeCategorySectionProps {
   cat: string;
   items: ProjectScopeItem[];
   allInvItems: any[];
+  /** When true, suppresses the colored category header row (used in Materials block). */
+  hideHeader?: boolean;
   isCollapsed: boolean;
   onToggle: () => void;
-  variantOpen: number | null;
-  movingItem: number | null;
   selectedIds: Set<number>;
-  onVariantOpen: (id: number) => void;
-  onVariantClose: () => void;
-  onVariantSave: (item: ProjectScopeItem, ids: number[]) => void;
-  onMoveOpen: (id: number) => void;
-  onMoveClose: () => void;
-  onMoveCategory: (item: ProjectScopeItem, category: string) => void;
   onEdit: (item: ProjectScopeItem) => void;
   onDelete: (item: ProjectScopeItem) => void;
   onDuplicate: (item: ProjectScopeItem) => void;
@@ -27,10 +21,9 @@ interface ScopeCategorySectionProps {
 
 export function ScopeCategorySection({
   cat, items, allInvItems,
+  hideHeader = false,
   isCollapsed, onToggle,
-  variantOpen, movingItem, selectedIds,
-  onVariantOpen, onVariantClose, onVariantSave,
-  onMoveOpen, onMoveClose, onMoveCategory,
+  selectedIds,
   onEdit, onDelete, onDuplicate, onSelect,
 }: ScopeCategorySectionProps) {
   const cfg = CATEGORY_CONFIG[cat] ?? { accent: "#64748b", iconBg: "#f1f5f9", subtitle: "" };
@@ -56,15 +49,7 @@ export function ScopeCategorySection({
         item={item}
         allInvItems={allInvItems}
         accentColor={cfg.accent}
-        isVariantOpen={variantOpen === item.id}
-        isMoving={movingItem === item.id}
         isSelected={selectedIds.has(item.id)}
-        onVariantOpen={() => onVariantOpen(item.id)}
-        onVariantClose={onVariantClose}
-        onVariantSave={(ids) => onVariantSave(item, ids)}
-        onMoveOpen={() => onMoveOpen(item.id)}
-        onMoveClose={onMoveClose}
-        onMoveCategory={(c) => onMoveCategory(item, c)}
         onEdit={() => onEdit(item)}
         onDelete={() => onDelete(item)}
         onDuplicate={() => onDuplicate(item)}
@@ -73,6 +58,18 @@ export function ScopeCategorySection({
     );
   }
 
+  // ── Material mode (hideHeader=true): flat rows, no header, no collapse ──
+  if (hideHeader) {
+    return (
+      <tbody>
+        {items.map(renderRow)}
+        {/* Thin separator between material categories */}
+        <tr><td colSpan={5} style={{ height: 2, background: "#f1f5f9", padding: 0 }} /></tr>
+      </tbody>
+    );
+  }
+
+  // ── Normal mode: full colored header + optional collapse ──
   return (
     <tbody>
       {/* Category header */}

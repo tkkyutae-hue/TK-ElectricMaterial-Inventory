@@ -13,9 +13,6 @@ interface UseScopeActionsParams {
   setAddMode: Dispatch<SetStateAction<"none" | "multiple" | "bundle">>;
   selectedIds: Set<number>;
   setSelectedIds: Dispatch<SetStateAction<Set<number>>>;
-  setVariantOpen: Dispatch<SetStateAction<number | null>>;
-  setMovingItem: Dispatch<SetStateAction<number | null>>;
-  patchMutateAsync: (args: { id: number; data: any }) => Promise<any>;
 }
 
 export function useScopeActions({
@@ -26,9 +23,6 @@ export function useScopeActions({
   setAddMode,
   selectedIds,
   setSelectedIds,
-  setVariantOpen,
-  setMovingItem,
-  patchMutateAsync,
 }: UseScopeActionsParams) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -116,17 +110,6 @@ export function useScopeActions({
     }
   }
 
-  async function saveVariants(item: ProjectScopeItem, ids: number[]) {
-    await patchMutateAsync({ id: item.id, data: { acceptedVariants: ids } });
-    setVariantOpen(null);
-    toast({ title: "Variants saved" });
-  }
-
-  async function moveToCategory(item: ProjectScopeItem, category: string) {
-    await patchMutateAsync({ id: item.id, data: { category } });
-    setMovingItem(null);
-  }
-
   async function deleteSelected() {
     const ids = [...selectedIds];
     const snapshot = scopeItems.filter(i => ids.includes(i.id));
@@ -169,8 +152,6 @@ export function useScopeActions({
     saveMultiple,
     saveBundle,
     duplicateItem,
-    saveVariants,
-    moveToCategory,
     deleteSelected,
   };
 }

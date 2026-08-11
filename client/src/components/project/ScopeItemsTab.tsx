@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles,
+  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles, Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,17 @@ import { ScopeCategorySection } from "./scope/ScopeCategorySection";
 import { useScopeActions } from "./scope/useScopeActions";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useLanguage } from "@/hooks/use-language";
+
+// Categories that collapse under the "Materials" header
+const MATERIAL_CATS = new Set([
+  "Conduit",
+  "Fittings & Connectors",
+  "Cable Tray",
+  "Cable / Wire",
+  "Grounding",
+  "Boxes",
+  "Devices",
+]);
 
 export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const { t } = useLanguage();
@@ -37,9 +48,8 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
 
   // ── Table interaction state ──
+  const [materialsCollapsed, setMaterialsCollapsed] = useState(false);
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
-  const [variantOpen, setVariantOpen] = useState<number | null>(null);
-  const [movingItem, setMovingItem] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // ── Data ──
@@ -49,7 +59,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   });
   const { data: allInvItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
 
-  // ── Mutations (single-item delete + patch — bulk actions live in the hook) ──
+  // ── Mutations ──
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/scope-items/${id}`),
     onSuccess: () => {
@@ -59,15 +69,6 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
       setDeleteTarget(null);
     },
     onError: (err: any) => toast({ title: t.projScopeDeleteFailedToast, description: err.message, variant: "destructive" }),
-  });
-
-  const patchMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/scope-items/${id}`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
-      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
-    },
-    onError: (err: any) => toast({ title: t.projScopeUpdateFailedToast, description: err.message, variant: "destructive" }),
   });
 
   // ── Stats ──
@@ -95,14 +96,22 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     return result;
   }, [scopeItems]);
 
+  // ── Split into materials vs equipment groups ──
+  const materialGroups = grouped.filter(g => MATERIAL_CATS.has(g.cat));
+  const equipmentGroups = grouped.filter(g => !MATERIAL_CATS.has(g.cat));
+
+  const materialTotalItems = materialGroups.reduce((s, g) => s + g.items.length, 0);
+  const materialTotalQty = materialGroups.reduce(
+    (s, g) => s + g.items.reduce((ss, i) => ss + parseFloat(String(i.estimatedQty || 0)), 0), 0
+  );
+
   // ── Async action cluster ──
   const {
     isSaving, undoSnackbar, dismissUndoSnackbar,
-    saveMultiple, saveBundle, duplicateItem, saveVariants, moveToCategory, deleteSelected,
+    saveMultiple, saveBundle, duplicateItem, deleteSelected,
   } = useScopeActions({
     projectId, scopeItems, pendingRows, setPendingRows, setAddMode,
-    selectedIds, setSelectedIds, setVariantOpen, setMovingItem,
-    patchMutateAsync: patchMutation.mutateAsync,
+    selectedIds, setSelectedIds,
   });
 
   // ── Local helpers ──
@@ -288,23 +297,84 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   <th className="text-right px-4 py-3 font-semibold text-slate-600 w-[32%]">{t.projScopeColActions}</th>
                 </tr>
               </thead>
-              {grouped.map(({ cat, items }) => (
+
+              {/* ── Materials super-header + rows ── */}
+              {materialGroups.length > 0 && (
+                <>
+                  <tbody>
+                    <tr>
+                      <td colSpan={5} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
+                        <button
+                          type="button"
+                          onClick={() => setMaterialsCollapsed(c => !c)}
+                          style={{ background: "#64748b0d" }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
+                          data-testid="scope-cat-toggle-materials"
+                        >
+                          <div
+                            style={{ background: "#f1f5f9", width: 28, height: 28, color: "#64748b" }}
+                            className="rounded-md flex items-center justify-center shrink-0"
+                          >
+                            <Package className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold leading-tight text-slate-600">Materials</p>
+                            <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                              {materialGroups.map(g => g.cat).join(" · ")}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap bg-slate-200/70 text-slate-500">
+                            {materialTotalItems} item{materialTotalItems !== 1 ? "s" : ""}
+                          </span>
+                          <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right text-slate-500">
+                            {materialTotalQty.toLocaleString()}
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200 ${materialsCollapsed ? "-rotate-90" : ""}`}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+
+                  {/* All material category rows (flat, no per-category headers) */}
+                  {!materialsCollapsed && materialGroups.map(({ cat, items }) => (
+                    <ScopeCategorySection
+                      key={cat}
+                      cat={cat}
+                      items={items}
+                      allInvItems={allInvItems}
+                      hideHeader={true}
+                      isCollapsed={false}
+                      onToggle={() => {}}
+                      selectedIds={selectedIds}
+                      onEdit={setDialogItem}
+                      onDelete={setDeleteTarget}
+                      onDuplicate={duplicateItem}
+                      onSelect={toggleSelectItem}
+                    />
+                  ))}
+
+                  {/* Spacer between Materials block and Equipment */}
+                  {equipmentGroups.length > 0 && (
+                    <tbody>
+                      <tr><td colSpan={5} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+                    </tbody>
+                  )}
+                </>
+              )}
+
+              {/* ── Equipment groups (with full headers) ── */}
+              {equipmentGroups.map(({ cat, items }) => (
                 <ScopeCategorySection
                   key={cat}
                   cat={cat}
                   items={items}
                   allInvItems={allInvItems}
+                  hideHeader={false}
                   isCollapsed={collapsedCats.has(cat)}
                   onToggle={() => toggleCat(cat)}
-                  variantOpen={variantOpen}
-                  movingItem={movingItem}
                   selectedIds={selectedIds}
-                  onVariantOpen={(id) => setVariantOpen(variantOpen === id ? null : id)}
-                  onVariantClose={() => setVariantOpen(null)}
-                  onVariantSave={saveVariants}
-                  onMoveOpen={(id) => setMovingItem(id)}
-                  onMoveClose={() => setMovingItem(null)}
-                  onMoveCategory={moveToCategory}
                   onEdit={setDialogItem}
                   onDelete={setDeleteTarget}
                   onDuplicate={duplicateItem}

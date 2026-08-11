@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Users, CheckCircle2, MapPin, Loader2, Building2, GripVertical,
+  Users, CheckCircle2, MapPin, Loader2, GripVertical,
   Search, SlidersHorizontal, X,
 } from "lucide-react";
 import {
-  DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter,
+  DndContext, type DragEndEvent, type DragStartEvent,
+  PointerSensor, useSensor, useSensors, closestCenter,
+  DragOverlay, useDraggable, useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext, useSortable, arrayMove, verticalListSortingStrategy,
@@ -43,9 +45,6 @@ function fmtTime(iso?: string): string {
 }
 
 // ─── Project status helpers ───────────────────────────────────────────────────
-/**
- * Sort priority: 0 = Working on it, 1 = Start soon, 2 = other active, 3 = done/completed
- */
 function groupPriority(p: Project): number {
   const g = (p.mondayGroupTitle ?? "").toLowerCase();
   const s = (p.status ?? "").toLowerCase();
@@ -62,22 +61,22 @@ function groupPriority(p: Project): number {
 function statusLabel(p: Project): string {
   if (p.mondayGroupTitle) return p.mondayGroupTitle;
   const s = (p.status ?? "").toLowerCase();
-  if (s === "active")                      return "진행 중";
-  if (s === "on_hold")                     return "보류";
-  if (s === "completed")                   return "완료";
+  if (s === "active")                        return "진행 중";
+  if (s === "on_hold")                       return "보류";
+  if (s === "completed")                     return "완료";
   if (s === "cancelled" || s === "canceled") return "취소";
   return p.status ?? "";
 }
 
 function statusColors(p: Project): { bg: string; text: string } {
   const pri = groupPriority(p);
-  if (pri === 0) return { bg: "#dcfce7", text: "#15803d" };   // green  — working on it
-  if (pri === 1) return { bg: "#dbeafe", text: "#1d4ed8" };   // blue   — start soon
-  if (pri === 3) return { bg: "#f1f5f9", text: "#94a3b8" };   // gray   — done
-  return { bg: "#fef9c3", text: "#a16207" };                   // yellow — other
+  if (pri === 0) return { bg: "#dcfce7", text: "#15803d" };
+  if (pri === 1) return { bg: "#dbeafe", text: "#1d4ed8" };
+  if (pri === 3) return { bg: "#f1f5f9", text: "#94a3b8" };
+  return { bg: "#fef9c3", text: "#a16207" };
 }
 
-/** Priority-based status label for cards — mirrors Monday.com group names */
+/** Priority-based status label — mirrors Monday.com group names */
 function cardStatusLabel(p: Project): string {
   const pri = groupPriority(p);
   if (pri === 0) return "Working on it";
@@ -86,7 +85,7 @@ function cardStatusLabel(p: Project): string {
   return "Working on it";
 }
 
-/** General Manager → Manager → 나머지 순 (대소문자 무시) */
+/** General Manager → Manager → 나머지 순 */
 function managerRank(w: Worker): number {
   const t = (w.trade ?? "").toLowerCase().trim();
   if (t === "general manager") return 0;
@@ -101,32 +100,39 @@ function sortProjects(list: Project[]): Project[] {
   });
 }
 
-// ─── localStorage persistence ─────────────────────────────────────────────────
+function sortWorkers(list: Worker[], jibbleMap: Map<number, JibbleEntry>): Worker[] {
+  return [...list].filter((w) => w.isActive).sort((a, b) => {
+    const ra = managerRank(a), rb = managerRank(b);
+    if (ra !== rb) return ra - rb;
+    const ja = jibbleMap.get(a.id);
+    const jb = jibbleMap.get(b.id);
+    const scoreA = ja && !ja.lastOut ? 2 : ja ? 1 : 0;
+    const scoreB = jb && !jb.lastOut ? 2 : jb ? 1 : 0;
+    if (scoreA !== scoreB) return scoreB - scoreA;
+    return a.fullName.localeCompare(b.fullName);
+  });
+}
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
 const LS_GROUP_ORDER = "voltstock_cd_group_order_v1";
 const LS_COLLAPSED   = "voltstock_cd_group_collapsed_v1";
 
 function loadGroupOrder(): string[] {
-  try {
-    const s = localStorage.getItem(LS_GROUP_ORDER);
-    if (s) return JSON.parse(s) as string[];
-  } catch {}
+  try { const s = localStorage.getItem(LS_GROUP_ORDER); if (s) return JSON.parse(s) as string[]; } catch {}
   return [];
 }
 function saveGroupOrder(order: string[]) {
   try { localStorage.setItem(LS_GROUP_ORDER, JSON.stringify(order)); } catch {}
 }
 function loadCollapsedGroups(): Set<string> {
-  try {
-    const s = localStorage.getItem(LS_COLLAPSED);
-    if (s) return new Set(JSON.parse(s) as string[]);
-  } catch {}
+  try { const s = localStorage.getItem(LS_COLLAPSED); if (s) return new Set(JSON.parse(s) as string[]); } catch {}
   return new Set();
 }
 function saveCollapsedGroups(s: Set<string>) {
   try { localStorage.setItem(LS_COLLAPSED, JSON.stringify(Array.from(s))); } catch {}
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Shared types ─────────────────────────────────────────────────────────────
 interface CustomerGroup { customer: string; projects: Project[] }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -143,7 +149,7 @@ function WorkerAvatar({ photoUrl, name, small }: { photoUrl?: string | null; nam
   );
 }
 
-// ─── Worker row (worker-centric view) ─────────────────────────────────────────
+// ─── WorkerRow (small-screen dropdown fallback) ───────────────────────────────
 function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, doneProjects, onAssign }: {
   worker: Worker;
   jibble?: JibbleEntry;
@@ -155,29 +161,22 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
   const [showCompleted, setShowCompleted] = useState(false);
   const isOnSite  = !!jibble && !jibble.lastOut;
   const checkedIn = !!jibble;
-
-  // If the assigned project is a completed one, always show it so the current value is visible
   const assignedDoneProject = doneProjects.find((p) => p.id === assignedProjectId);
 
   function handleValueChange(v: string) {
     if (v === "__show_completed__") { setShowCompleted((s) => !s); return; }
-    onAssign(v === "__none__" ? null : parseInt(v));
+    onAssign(v === "__none__" ? null : parseInt(v, 10));
   }
 
   return (
     <tr className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-
-      {/* Worker */}
       <td className="px-5 py-3">
         <div className="flex items-center gap-3">
           <div className="relative">
             <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} />
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
-              }`}
-              title={isOnSite ? "현장 근무 중" : checkedIn ? "퇴근" : "미출근"}
-            />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+              isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+            }`} title={isOnSite ? "현장 근무 중" : checkedIn ? "퇴근" : "미출근"} />
           </div>
           <div>
             <p className="font-medium text-slate-800 text-sm leading-tight">{worker.fullName}</p>
@@ -185,59 +184,34 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
           </div>
         </div>
       </td>
-
-      {/* 출근 시간 */}
       <td className="px-4 py-3 tabular-nums whitespace-nowrap">
-        {checkedIn ? (
-          <span className="text-sm text-emerald-600 font-semibold">{fmtTime(jibble!.firstIn)}</span>
-        ) : (
-          <span className="text-sm text-slate-300">—</span>
-        )}
+        {checkedIn
+          ? <span className="text-sm text-emerald-600 font-semibold">{fmtTime(jibble!.firstIn)}</span>
+          : <span className="text-sm text-slate-300">—</span>}
       </td>
-
-      {/* 퇴근 시간 */}
       <td className="px-4 py-3 tabular-nums whitespace-nowrap">
-        {jibble?.lastOut ? (
-          <span className="text-sm text-slate-500 font-semibold">{fmtTime(jibble.lastOut)}</span>
-        ) : isOnSite ? (
-          <span className="text-xs text-emerald-500 font-medium">근무 중</span>
-        ) : (
-          <span className="text-sm text-slate-300">—</span>
-        )}
+        {jibble?.lastOut
+          ? <span className="text-sm text-slate-500 font-semibold">{fmtTime(jibble.lastOut)}</span>
+          : isOnSite
+            ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
+            : <span className="text-sm text-slate-300">—</span>}
       </td>
-
-      {/* Project assignment */}
       <td className="px-4 py-3">
-        <Select
-          value={assignedProjectId !== null ? String(assignedProjectId) : "__none__"}
-          onValueChange={handleValueChange}
-        >
-          <SelectTrigger
-            className={`h-8 text-sm max-w-[280px] ${
-              assignedProjectId !== null
-                ? "border-amber-300 bg-amber-50 text-amber-800"
-                : "border-slate-200 text-slate-400"
-            }`}
-          >
+        <Select value={assignedProjectId !== null ? String(assignedProjectId) : "__none__"} onValueChange={handleValueChange}>
+          <SelectTrigger className={`h-8 text-sm max-w-[280px] ${
+            assignedProjectId !== null ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-400"
+          }`}>
             <SelectValue placeholder="미배치" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">
-              <span className="text-slate-400">— 미배치</span>
-            </SelectItem>
-
-            {/* Active projects grouped by 발주처 (customerName) */}
+            <SelectItem value="__none__"><span className="text-slate-400">— 미배치</span></SelectItem>
             {activeByCustomer.map(({ customer, projects }) => (
               <SelectGroup key={customer}>
-                <SelectLabel className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2 py-1 bg-slate-50">
-                  {customer}
-                </SelectLabel>
+                <SelectLabel className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2 py-1 bg-slate-50">{customer}</SelectLabel>
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     <div className="flex items-center gap-2">
-                      {p.poNumber && (
-                        <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>
-                      )}
+                      {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
                       <span>{p.name}</span>
                       {p.jobLocation && (
                         <span className="flex items-center gap-0.5 text-xs text-slate-400 shrink-0">
@@ -249,18 +223,13 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
                 ))}
               </SelectGroup>
             ))}
-
-            {/* Completed projects — hidden by default */}
             {doneProjects.length > 0 && (
               <>
                 <SelectSeparator />
-                {/* Always show if currently assigned to a completed project */}
                 {assignedDoneProject && !showCompleted && (
                   <SelectItem key={assignedDoneProject.id} value={String(assignedDoneProject.id)}>
                     <div className="flex items-center gap-2 opacity-60">
-                      {assignedDoneProject.poNumber && (
-                        <span className="text-xs font-mono text-slate-400 shrink-0">{assignedDoneProject.poNumber}</span>
-                      )}
+                      {assignedDoneProject.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{assignedDoneProject.poNumber}</span>}
                       <span>{assignedDoneProject.name}</span>
                     </div>
                   </SelectItem>
@@ -268,17 +237,13 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
                 {showCompleted && doneProjects.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     <div className="flex items-center gap-2 opacity-60">
-                      {p.poNumber && (
-                        <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>
-                      )}
+                      {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
                       <span>{p.name}</span>
                     </div>
                   </SelectItem>
                 ))}
                 <SelectItem value="__show_completed__" className="text-slate-400 italic text-xs">
-                  {showCompleted
-                    ? "▲ 완료 프로젝트 접기"
-                    : `▼ 완료된 프로젝트 보기 (${doneProjects.length}개)`}
+                  {showCompleted ? "▲ 완료 프로젝트 접기" : `▼ 완료된 프로젝트 보기 (${doneProjects.length}개)`}
                 </SelectItem>
               </>
             )}
@@ -289,7 +254,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
   );
 }
 
-// ─── Group accent color (mirrors DailyReport.tsx) ────────────────────────────
+// ─── Group accent color ───────────────────────────────────────────────────────
 const GROUP_PALETTE = [
   "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
   "#579BFC","#9CD326","#FF9F43","#FF3D57","#7E5CB5",
@@ -309,35 +274,96 @@ const STATUS_FILTERS = [
   { priority: 3, label: "Done",          bg: "#f1f5f9", text: "#94a3b8" },
 ] as const;
 
-// ─── Sortable group wrapper ────────────────────────────────────────────────────
+// ─── Sortable group wrapper ───────────────────────────────────────────────────
 function SortableGroup({ id, children }: {
   id: string;
-  children: (dragHandleProps: { attributes: any; listeners: any }) => React.ReactNode;
+  children: (handleProps: { attributes: any; listeners: any }) => React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 50 : undefined,
-        position: "relative",
-      }}
-    >
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : undefined, position: "relative" }}>
       {children({ attributes, listeners })}
     </div>
   );
 }
 
-// ─── API helpers for server-side layout prefs ─────────────────────────────────
-// null fields mean "no preference ever saved for this user"; [] means "explicitly saved empty array"
+// ─── Draggable compact worker row (split-pane left panel) ─────────────────────
+function DraggableWorkerRow({ worker, jibble, assignedProject }: {
+  worker: Worker;
+  jibble?: JibbleEntry;
+  assignedProject?: Project | null;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `worker-${worker.id}` });
+  const isOnSite  = !!jibble && !jibble.lastOut;
+  const checkedIn = !!jibble;
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ opacity: isDragging ? 0.35 : 1 }}
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all cursor-grab active:cursor-grabbing select-none touch-none"
+    >
+      <div className="relative shrink-0">
+        <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
+        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+          isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+        }`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+        {worker.trade && <p className="text-[11px] text-slate-400 leading-tight truncate">{worker.trade}</p>}
+      </div>
+      {assignedProject ? (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0 max-w-[90px] truncate leading-tight">
+          {assignedProject.name}
+        </span>
+      ) : (
+        <span className="text-[10px] text-slate-300 shrink-0">미배치</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Droppable project card wrapper ──────────────────────────────────────────
+function DroppableProjectCard({ projectId, children }: {
+  projectId: number;
+  children: (isOver: boolean) => React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `project-${projectId}` });
+  return <div ref={setNodeRef}>{children(isOver)}</div>;
+}
+
+// ─── Worker drag overlay (shown during drag) ──────────────────────────────────
+function WorkerDragOverlay({ worker, jibble }: { worker: Worker; jibble?: JibbleEntry }) {
+  const isOnSite  = !!jibble && !jibble.lastOut;
+  const checkedIn = !!jibble;
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-2 border-blue-400 bg-white shadow-2xl w-[220px]">
+      <div className="relative shrink-0">
+        <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
+        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+          isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+        }`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+        <p className="text-[11px] text-blue-500 leading-tight">드롭하여 배치</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
 async function fetchLayoutPrefs(): Promise<{ groupOrder: string[] | null; collapsedGroups: string[] | null }> {
   const res = await fetch("/api/crew-dispatch/layout-prefs");
   if (!res.ok) throw new Error("Failed to load layout prefs");
   return res.json();
 }
+
+// ─── ProjectCardView ──────────────────────────────────────────────────────────
+// NOTE: No DndContext inside — uses the ancestor DndContext at the page level.
+// SortableContext for group reordering still works with an ancestor DndContext.
 function ProjectCardView({
   allProjects,
   workerList,
@@ -345,6 +371,7 @@ function ProjectCardView({
   getAssignment,
   groupOrder,
   onGroupOrderChange,
+  isDragActive,
 }: {
   allProjects: Project[];
   workerList: Worker[];
@@ -352,24 +379,21 @@ function ProjectCardView({
   getAssignment: (workerId: number) => number | null;
   groupOrder: string[];
   onGroupOrderChange: (order: string[]) => void;
+  isDragActive?: boolean;
 }) {
-  const [expandedId,       setExpandedId]       = useState<number | null>(null);
-  const [collapsedGroups,  setCollapsedGroups]  = useState<Set<string>>(loadCollapsedGroups);
-  const [searchQuery,      setSearchQuery]      = useState("");
+  const [expandedId,       setExpandedId]      = useState<number | null>(null);
+  const [collapsedGroups,  setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
+  const [searchQuery,      setSearchQuery]     = useState("");
   const [filterPriorities, setFilterPriorities] = useState<Set<number>>(new Set());
-  const [showFilterMenu,   setShowFilterMenu]   = useState(false);
+  const [showFilterMenu,   setShowFilterMenu]  = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
-  // Track whether server collapsedGroups prefs have been applied
+  // ── Server sync for collapsedGroups ──────────────────────────────────────
   const collapsedServerApplied  = useRef(false);
-  // True if the user changed collapsedGroups before the server fetch resolved
   const pendingCollapsedChange   = useRef(false);
-  // Skip the very first effect run (initialization from localStorage, not a user action)
   const isInitialCollapsedEffect = useRef(true);
-  // Always holds the latest collapsedGroups value for use in the hydration closure
   const collapsedGroupsRef       = useRef(collapsedGroups);
 
-  // Fetch server prefs — shared query key with parent, so only one network request is made
   const { data: serverPrefs } = useQuery({
     queryKey: ["crew-dispatch-layout-prefs"],
     queryFn: fetchLayoutPrefs,
@@ -377,41 +401,27 @@ function ProjectCardView({
     retry: false,
   });
 
-  // Hydrate collapsedGroups once.
-  // - pending user change → their change wins; save it to server
-  // - server has a value → apply it (even empty)
-  // - server null → migrate current local state to server
   useEffect(() => {
     if (!serverPrefs || collapsedServerApplied.current) return;
     collapsedServerApplied.current = true;
     if (pendingCollapsedChange.current) {
-      // User changed before fetch resolved — save their state, don't overwrite it
       saveLayoutPrefs({ collapsedGroups: Array.from(collapsedGroupsRef.current) }).catch(() => {});
     } else if (serverPrefs.collapsedGroups !== null) {
-      // Server has a saved value — apply it (even if empty)
       const s = new Set(serverPrefs.collapsedGroups);
       setCollapsedGroups(s);
       saveCollapsedGroups(s);
     } else {
-      // No server record — migrate local fallback to server
       saveLayoutPrefs({ collapsedGroups: Array.from(collapsedGroupsRef.current) }).catch(() => {});
     }
   }, [serverPrefs]);
 
-  // Debounce timer for collapsedGroups server sync
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync collapsedGroups to localStorage immediately; debounce server writes post-hydration
   useEffect(() => {
     collapsedGroupsRef.current = collapsedGroups;
     saveCollapsedGroups(collapsedGroups);
     if (!collapsedServerApplied.current) {
-      // Before hydration: track user changes (but skip the initial mount run)
-      if (isInitialCollapsedEffect.current) {
-        isInitialCollapsedEffect.current = false;
-      } else {
-        pendingCollapsedChange.current = true;
-      }
+      if (isInitialCollapsedEffect.current) { isInitialCollapsedEffect.current = false; }
+      else { pendingCollapsedChange.current = true; }
       return;
     }
     if (syncTimer.current) clearTimeout(syncTimer.current);
@@ -420,24 +430,19 @@ function ProjectCardView({
     }, 800);
   }, [collapsedGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Close filter dropdown on outside click
   useEffect(() => {
     if (!showFilterMenu) return;
     function handler(e: MouseEvent) {
-      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) {
-        setShowFilterMenu(false);
-      }
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) setShowFilterMenu(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showFilterMenu]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  // Build groups; apply saved groupOrder to reorder them
+  // ── Groups ────────────────────────────────────────────────────────────────
   const groups = useMemo(() => {
     const sorted = sortProjects(allProjects.filter((p) => !p.archived));
-    const map         = new Map<string, Project[]>();
+    const map = new Map<string, Project[]>();
     for (const p of sorted) {
       const key = p.customerName?.trim() || "고객사 미지정";
       if (!map.has(key)) map.set(key, []);
@@ -449,7 +454,6 @@ function ProjectCardView({
       return a.localeCompare(b);
     });
     if (groupOrder.length === 0) return entries;
-    // Reorder by saved groupOrder; append new groups not yet in order
     const byName = new Map(entries);
     const ordered   = groupOrder.map((k) => byName.get(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
     const remaining = entries.filter(([k]) => !groupOrder.includes(k));
@@ -458,23 +462,18 @@ function ProjectCardView({
 
   const groupIds = useMemo(() => groups.map(([owner]) => owner), [groups]);
 
-  // Apply search + status filter (DndContext still uses groupIds from full groups for stability)
   const isFiltering = searchQuery.trim().length > 0 || filterPriorities.size > 0;
   const filteredGroups = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return groups
       .map(([owner, projects]) => {
         let filtered = projects;
-        if (q) {
-          filtered = filtered.filter((p) =>
-            p.name.toLowerCase().includes(q) ||
-            (p.poNumber ?? "").toLowerCase().includes(q) ||
-            (p.jobLocation ?? "").toLowerCase().includes(q)
-          );
-        }
-        if (filterPriorities.size > 0) {
-          filtered = filtered.filter((p) => filterPriorities.has(groupPriority(p)));
-        }
+        if (q) filtered = filtered.filter((p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.poNumber ?? "").toLowerCase().includes(q) ||
+          (p.jobLocation ?? "").toLowerCase().includes(q)
+        );
+        if (filterPriorities.size > 0) filtered = filtered.filter((p) => filterPriorities.has(groupPriority(p)));
         return [owner, filtered] as [string, Project[]];
       })
       .filter(([, ps]) => ps.length > 0);
@@ -491,15 +490,6 @@ function ProjectCardView({
     });
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = groupIds.indexOf(String(active.id));
-    const newIndex = groupIds.indexOf(String(over.id));
-    if (oldIndex === -1 || newIndex === -1) return;
-    onGroupOrderChange(arrayMove(groupIds, oldIndex, newIndex));
-  }
-
   function getProjectWorkers(projectId: number) {
     return workerList
       .filter((w) => w.isActive && getAssignment(w.id) === projectId)
@@ -508,10 +498,9 @@ function ProjectCardView({
 
   return (
     <div className="space-y-3">
-      {/* ── Toolbar: search + filter + completed toggle ── */}
+      {/* ── Toolbar ── */}
       <div className="space-y-2">
         <div className="flex gap-2">
-          {/* Search input */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             <input
@@ -522,37 +511,23 @@ function ProjectCardView({
               className="w-full h-9 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
             />
             {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-              >
+              <button type="button" onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-
-          {/* Status filter dropdown */}
           <div className="relative" ref={filterMenuRef}>
-            <button
-              type="button"
-              onClick={() => setShowFilterMenu((v) => !v)}
+            <button type="button" onClick={() => setShowFilterMenu((v) => !v)}
               className={`h-9 px-3 flex items-center gap-1.5 text-xs font-medium border rounded-lg transition-colors whitespace-nowrap ${
-                filterPriorities.size > 0
-                  ? "border-blue-300 bg-blue-50 text-blue-700"
-                  : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
-              }`}
-            >
+                filterPriorities.size > 0 ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
+              }`}>
               <SlidersHorizontal className="w-3.5 h-3.5" />
               {filterPriorities.size > 0 ? `▼ ${filterPriorities.size}개` : "▼ 필터"}
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[190px]">
                 {STATUS_FILTERS.map(({ priority, label, bg, text }) => (
-                  <label
-                    key={priority}
-                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none"
-                  >
+                  <label key={priority} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={filterPriorities.has(priority)}
@@ -565,32 +540,20 @@ function ProjectCardView({
                       }}
                       className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: bg, color: text }}>
-                      {label}
-                    </span>
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: bg, color: text }}>{label}</span>
                   </label>
                 ))}
                 {filterPriorities.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setFilterPriorities(new Set())}
-                    className="w-full mt-1 pt-1 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 py-1 text-center"
-                  >
+                  <button type="button" onClick={() => setFilterPriorities(new Set())}
+                    className="w-full mt-1 pt-1 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 py-1 text-center">
                     필터 초기화
                   </button>
                 )}
               </div>
             )}
           </div>
-
         </div>
-
-        {/* Result count (only when filtering) */}
-        {isFiltering && (
-          <p className="text-xs text-slate-400">
-            총 {totalCount}개 중 {filteredCount}개 표시
-          </p>
-        )}
+        {isFiltering && <p className="text-xs text-slate-400">총 {totalCount}개 중 {filteredCount}개 표시</p>}
       </div>
 
       {filteredGroups.length === 0 && (
@@ -599,156 +562,154 @@ function ProjectCardView({
         </p>
       )}
 
-      {/* Single DndContext for group-level reordering */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={groupIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
-            {filteredGroups.map(([owner, projects]) => {
-              const color     = groupAccentColor(owner);
-              const collapsed = collapsedGroups.has(owner);
-
-              return (
-                <SortableGroup key={owner} id={owner}>
-                  {({ attributes, listeners }) => (
-                    <div>
-                      {/* Group header with drag handle */}
+      {/* SortableContext — uses ancestor DndContext at page level */}
+      <SortableContext items={groupIds} strategy={verticalListSortingStrategy}>
+        <div className="space-y-3">
+          {filteredGroups.map(([owner, projects]) => {
+            const color     = groupAccentColor(owner);
+            const collapsed = collapsedGroups.has(owner);
+            return (
+              <SortableGroup key={owner} id={owner}>
+                {({ attributes, listeners }) => (
+                  <div>
+                    {/* Group header */}
+                    <div
+                      className="w-full flex items-center h-10 bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-200 rounded-lg select-none mb-1"
+                      style={{ borderLeftWidth: 4, borderLeftColor: color }}
+                    >
                       <div
-                        className="w-full flex items-center h-10 bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-200 rounded-lg select-none mb-1"
-                        style={{ borderLeftWidth: 4, borderLeftColor: color }}
+                        {...attributes}
+                        {...listeners}
+                        className="w-8 flex items-center justify-center flex-shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors"
                       >
-                        {/* Drag handle — only this area drags */}
-                        <div
-                          {...attributes}
-                          {...listeners}
-                          className="w-8 flex items-center justify-center flex-shrink-0 cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors"
-                        >
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-
-                        {/* Name + count — click to collapse */}
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(owner)}
-                          className="flex items-center gap-2 flex-1 min-w-0 pr-3 h-full text-left"
-                        >
-                          <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
-                          <span className="font-semibold text-[13px] text-slate-800 truncate">{owner}</span>
-                          <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
-                          <span className="ml-auto shrink-0">
-                            {collapsed
-                              ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                              : <ChevronDown  className="w-3.5 h-3.5 text-slate-400" />}
-                          </span>
-                        </button>
+                        <GripVertical className="w-4 h-4" />
                       </div>
-
-                      {/* Project cards */}
-                      {!collapsed && (
-                        <div className="space-y-2 mb-1 pl-1">
-                          {projects.map((p) => {
-                            const workers    = getProjectWorkers(p.id);
-                            const isExpanded = expandedId === p.id;
-                            const sc         = statusColors(p);
-
-                            return (
-                              <Card
-                                key={p.id}
-                                className="hover:shadow-md transition-all duration-150 cursor-pointer border border-slate-200 bg-white"
-                                onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                              >
-                                <CardContent className="px-5 py-4 flex gap-4">
-                                  {/* Main content */}
-                                  <div className="flex-1 min-w-0 space-y-1.5">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      {p.poNumber && (
-                                        <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>
-                                      )}
-                                      <span className="font-semibold text-slate-800 text-sm leading-tight">{p.name}</span>
-                                    </div>
-                                    {p.jobLocation && (
-                                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                                        <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
-                                        <span>{p.jobLocation}</span>
-                                      </div>
-                                    )}
-                                    {isExpanded && (
-                                      <div className="mt-2 pt-2 border-t border-slate-100">
-                                        {workers.length === 0 ? (
-                                          <p className="text-sm text-slate-400 italic py-1">배치된 작업자가 없습니다.</p>
-                                        ) : (
-                                          <div className="space-y-2 pt-1">
-                                            {workers.map(({ worker, jibble }) => {
-                                              const isOnSite  = !!jibble && !jibble.lastOut;
-                                              const checkedIn = !!jibble;
-                                              return (
-                                                <div key={worker.id} className="flex items-center gap-3">
-                                                  <div className="relative shrink-0">
-                                                    <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
-                                                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                                                      isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
-                                                    }`} />
-                                                  </div>
-                                                  <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
-                                                    {worker.trade && <p className="text-xs text-slate-400">{worker.trade}</p>}
-                                                  </div>
-                                                  <div className="flex items-center gap-4 tabular-nums shrink-0">
-                                                    <div className="text-right">
-                                                      <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">출근</p>
-                                                      <p className={`text-sm font-semibold leading-tight ${checkedIn ? "text-emerald-600" : "text-slate-300"}`}>
-                                                        {fmtTime(jibble?.firstIn)}
-                                                      </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                      <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">퇴근</p>
-                                                      <p className={`text-sm font-semibold leading-tight ${jibble?.lastOut ? "text-slate-600" : "text-slate-300"}`}>
-                                                        {jibble?.lastOut
-                                                          ? fmtTime(jibble.lastOut)
-                                                          : isOnSite
-                                                            ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
-                                                            : "—"}
-                                                      </p>
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {/* Right: status chip + worker count + expand */}
-                                  <div className="shrink-0 flex flex-col items-end justify-start gap-1.5 pl-2 pt-0.5 min-w-[88px]">
-                                    <span
-                                      className="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap text-right"
-                                      style={{ backgroundColor: sc.bg, color: sc.text }}
-                                    >
-                                      {cardStatusLabel(p)}
-                                    </span>
-                                    <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
-                                      workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
-                                    }`}>
-                                      <Users className="w-3 h-3" />{workers.length}명
-                                    </span>
-                                    {isExpanded
-                                      ? <ChevronUp   className="w-4 h-4 text-slate-400" />
-                                      : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <button type="button" onClick={() => toggleGroup(owner)} className="flex items-center gap-2 flex-1 min-w-0 pr-3 h-full text-left">
+                        <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                        <span className="font-semibold text-[13px] text-slate-800 truncate">{owner}</span>
+                        <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
+                        <span className="ml-auto shrink-0">
+                          {collapsed ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                        </span>
+                      </button>
                     </div>
-                  )}
-                </SortableGroup>
-              );
-            })}
-          </div>
-        </SortableContext>
-      </DndContext>
+
+                    {/* Project cards */}
+                    {!collapsed && (
+                      <div className="space-y-2 mb-1 pl-1">
+                        {projects.map((p) => {
+                          const workers    = getProjectWorkers(p.id);
+                          const isExpanded = expandedId === p.id;
+                          const sc         = statusColors(p);
+                          return (
+                            <DroppableProjectCard key={p.id} projectId={p.id}>
+                              {(isOver) => (
+                                <Card
+                                  className={`transition-all duration-150 cursor-pointer border bg-white ${
+                                    isDragActive && isOver
+                                      ? "border-blue-400 shadow-md ring-2 ring-blue-300 ring-offset-1"
+                                      : "border-slate-200 hover:shadow-md"
+                                  }`}
+                                  onClick={() => { if (!isDragActive) setExpandedId(isExpanded ? null : p.id); }}
+                                >
+                                  <CardContent className="px-5 py-4 flex gap-4 relative">
+                                    {/* Drop hint overlay */}
+                                    {isDragActive && isOver && (
+                                      <div className="absolute inset-0 rounded-lg bg-blue-50/70 flex items-center justify-center z-10 pointer-events-none">
+                                        <span className="text-sm font-bold text-blue-600">여기에 배치</span>
+                                      </div>
+                                    )}
+                                    {/* Main content */}
+                                    <div className="flex-1 min-w-0 space-y-1.5">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
+                                        <span className="font-semibold text-slate-800 text-sm leading-tight">{p.name}</span>
+                                      </div>
+                                      {p.jobLocation && (
+                                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                                          <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                                          <span>{p.jobLocation}</span>
+                                        </div>
+                                      )}
+                                      {isExpanded && (
+                                        <div className="mt-2 pt-2 border-t border-slate-100">
+                                          {workers.length === 0 ? (
+                                            <p className="text-sm text-slate-400 italic py-1">배치된 작업자가 없습니다.</p>
+                                          ) : (
+                                            <div className="space-y-2 pt-1">
+                                              {workers.map(({ worker, jibble }) => {
+                                                const isOnSite  = !!jibble && !jibble.lastOut;
+                                                const checkedIn = !!jibble;
+                                                return (
+                                                  <div key={worker.id} className="flex items-center gap-3">
+                                                    <div className="relative shrink-0">
+                                                      <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
+                                                      <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                                                        isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+                                                      }`} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                      <p className="text-sm font-medium text-slate-800 leading-tight truncate">{worker.fullName}</p>
+                                                      {worker.trade && <p className="text-xs text-slate-400">{worker.trade}</p>}
+                                                    </div>
+                                                    <div className="flex items-center gap-4 tabular-nums shrink-0">
+                                                      <div className="text-right">
+                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">출근</p>
+                                                        <p className={`text-sm font-semibold leading-tight ${checkedIn ? "text-emerald-600" : "text-slate-300"}`}>
+                                                          {fmtTime(jibble?.firstIn)}
+                                                        </p>
+                                                      </div>
+                                                      <div className="text-right">
+                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">퇴근</p>
+                                                        <p className={`text-sm font-semibold leading-tight ${jibble?.lastOut ? "text-slate-600" : "text-slate-300"}`}>
+                                                          {jibble?.lastOut
+                                                            ? fmtTime(jibble.lastOut)
+                                                            : isOnSite
+                                                              ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
+                                                              : "—"}
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* Right: status chip + worker count + expand */}
+                                    <div className="shrink-0 flex flex-col items-end justify-start gap-1.5 pl-2 pt-0.5 min-w-[88px]">
+                                      <span
+                                        className="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap text-right"
+                                        style={{ backgroundColor: sc.bg, color: sc.text }}
+                                      >
+                                        {cardStatusLabel(p)}
+                                      </span>
+                                      <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                                        workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
+                                      }`}>
+                                        <Users className="w-3 h-3" />{workers.length}명
+                                      </span>
+                                      {isExpanded
+                                        ? <ChevronUp   className="w-4 h-4 text-slate-400" />
+                                        : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </DroppableProjectCard>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </SortableGroup>
+            );
+          })}
+        </div>
+      </SortableContext>
     </div>
   );
 }
@@ -758,19 +719,23 @@ export default function CrewDispatchAssignment() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [dateStr,    setDateStr]    = useState<string>(() => toLocalDateStr(new Date()));
-  const [viewMode,   setViewMode]   = useState<"worker" | "project">("worker");
   const [groupOrder, setGroupOrder] = useState<string[]>(loadGroupOrder);
+  // Small-screen tab state (lg+ always shows split pane)
+  const [viewMode,   setViewMode]   = useState<"worker" | "project">("worker");
 
-  // Track whether server groupOrder prefs have been applied
+  // Worker drag state
+  const [activeWorker,  setActiveWorker]  = useState<Worker | null>(null);
+
+  // Left-panel search/filter
+  const [workerSearch, setWorkerSearch] = useState("");
+  const [workerFilter, setWorkerFilter] = useState<"all" | "onsite" | "unassigned">("all");
+
+  // ── Server prefs: groupOrder ──────────────────────────────────────────────
   const groupOrderServerApplied  = useRef(false);
-  // True if the user changed groupOrder before the server fetch resolved
   const pendingGroupOrderChange   = useRef(false);
-  // Skip the very first effect run (initialization from localStorage, not a user action)
   const isInitialGroupOrderEffect = useRef(true);
-  // Always holds the latest groupOrder value for use in the hydration closure
   const groupOrderRef             = useRef(groupOrder);
 
-  // Fetch server prefs for groupOrder (shared cache with ProjectCardView — one network request)
   const { data: serverPrefs } = useQuery({
     queryKey: ["crew-dispatch-layout-prefs"],
     queryFn: fetchLayoutPrefs,
@@ -778,40 +743,26 @@ export default function CrewDispatchAssignment() {
     retry: false,
   });
 
-  // Hydrate groupOrder once.
-  // - pending user change → their change wins; save it to server
-  // - server has a value → apply it (even empty)
-  // - server null → migrate current local state to server
   useEffect(() => {
     if (!serverPrefs || groupOrderServerApplied.current) return;
     groupOrderServerApplied.current = true;
     if (pendingGroupOrderChange.current) {
-      // User changed before fetch resolved — save their state, don't overwrite it
       saveLayoutPrefs({ groupOrder: groupOrderRef.current }).catch(() => {});
     } else if (serverPrefs.groupOrder !== null) {
-      // Server has a saved value — apply it (even if empty)
       setGroupOrder(serverPrefs.groupOrder);
       saveGroupOrder(serverPrefs.groupOrder);
     } else {
-      // No server record — migrate local fallback to server
       saveLayoutPrefs({ groupOrder: groupOrderRef.current }).catch(() => {});
     }
   }, [serverPrefs]);
 
-  // Debounce timer for groupOrder server sync
   const groupOrderSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Persist groupOrder to localStorage immediately; debounce server writes post-hydration
   useEffect(() => {
     groupOrderRef.current = groupOrder;
     saveGroupOrder(groupOrder);
     if (!groupOrderServerApplied.current) {
-      // Before hydration: track user changes (but skip the initial mount run)
-      if (isInitialGroupOrderEffect.current) {
-        isInitialGroupOrderEffect.current = false;
-      } else {
-        pendingGroupOrderChange.current = true;
-      }
+      if (isInitialGroupOrderEffect.current) { isInitialGroupOrderEffect.current = false; }
+      else { pendingGroupOrderChange.current = true; }
       return;
     }
     if (groupOrderSyncTimer.current) clearTimeout(groupOrderSyncTimer.current);
@@ -826,12 +777,9 @@ export default function CrewDispatchAssignment() {
     setDateStr(toLocalDateStr(d));
   }
 
-  // Workers
-  const { data: workerList = [], isLoading: workersLoading } = useQuery<Worker[]>({
-    queryKey: ["/api/workers"],
-  });
+  // ── Data fetching ──────────────────────────────────────────────────────────
+  const { data: workerList = [], isLoading: workersLoading } = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
 
-  // Jibble active cache
   const { data: jibbleData } = useQuery<{ active: JibbleActive[] }>({
     queryKey: ["/api/jibble/active"],
     refetchInterval: 5 * 60 * 1000,
@@ -844,7 +792,6 @@ export default function CrewDispatchAssignment() {
     return m;
   }, [jibbleData]);
 
-  // Assignments for this date
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery<Assignment[]>({
     queryKey: ["/api/crew-dispatch/assignments", dateStr],
     queryFn: async () => {
@@ -854,18 +801,13 @@ export default function CrewDispatchAssignment() {
       return Array.isArray(data) ? data : [];
     },
   });
-  const safeAssignments = Array.isArray(assignments) ? assignments : [];
   const assignmentMap = useMemo(
-    () => new Map(safeAssignments.map((a) => [a.workerId, a.projectId])),
-    [safeAssignments],
+    () => new Map((Array.isArray(assignments) ? assignments : []).map((a) => [a.workerId, a.projectId])),
+    [assignments],
   );
 
-  // All projects (sorted; split into active vs done for dropdown)
-  const { data: allProjects = [] } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
-  });
-  // Build activeByCustomer groups for WorkerRow dropdown, plus doneProjects
-  // Applies the same groupOrder as the project card view so both tabs stay in sync
+  const { data: allProjects = [] } = useQuery<Project[]>({ queryKey: ["/api/projects"] });
+
   const { activeByCustomer, doneProjects } = useMemo(() => {
     const sorted = sortProjects(allProjects);
     const active = sorted.filter((p) => groupPriority(p) < 3);
@@ -882,21 +824,19 @@ export default function CrewDispatchAssignment() {
         if (b === "고객사 미지정") return -1;
         return a.localeCompare(b);
       });
-    // Apply saved group order (same order as project card view)
     let ordered: [string, Project[]][];
     if (groupOrder.length > 0) {
-      const byName = new Map(alphabetical);
+      const byName    = new Map(alphabetical);
       const inOrder   = groupOrder.map((k) => byName.has(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
       const remaining = alphabetical.filter(([k]) => !groupOrder.includes(k));
       ordered = [...inOrder, ...remaining];
     } else {
       ordered = alphabetical;
     }
-    const activeByCustomer = ordered.map(([customer, projects]) => ({ customer, projects }));
-    return { activeByCustomer, doneProjects: done };
+    return { activeByCustomer: ordered.map(([customer, projects]) => ({ customer, projects })), doneProjects: done };
   }, [allProjects, groupOrder]);
 
-  // Optimistic local state — scoped to current dateStr
+  // ── Optimistic assignment state ───────────────────────────────────────────
   const [localOverride, setLocalOverride] = useState<Map<number, number | null>>(new Map());
   useEffect(() => { setLocalOverride(new Map()); }, [dateStr]);
 
@@ -907,17 +847,10 @@ export default function CrewDispatchAssignment() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ date: dateStr, projectId }),
-      }).then(async (r) => {
-        if (!r.ok) throw new Error(await r.text());
-        return r.json();
-      }),
+      }).then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/crew-dispatch/assignments", dateStr] }); },
     onError: (err: any, variables) => {
-      setLocalOverride((prev) => {
-        const next = new Map(prev);
-        next.delete(variables.workerId);
-        return next;
-      });
+      setLocalOverride((prev) => { const next = new Map(prev); next.delete(variables.workerId); return next; });
       toast({ title: "배치 저장 실패", description: err.message, variant: "destructive" });
     },
   });
@@ -932,10 +865,94 @@ export default function CrewDispatchAssignment() {
     return assignmentMap.get(workerId) ?? null;
   }
 
+  // ── DnD (single DndContext at page level) ─────────────────────────────────
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Compute groups at page level for group-reorder routing in onDragEnd
+  const pageGroups = useMemo(() => {
+    const sorted = sortProjects(allProjects.filter((p) => !p.archived));
+    const map = new Map<string, Project[]>();
+    for (const p of sorted) {
+      const key = p.customerName?.trim() || "고객사 미지정";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(p);
+    }
+    const entries = Array.from(map.entries() as IterableIterator<[string, Project[]]>).sort(([a], [b]) => {
+      if (a === "고객사 미지정") return 1;
+      if (b === "고객사 미지정") return -1;
+      return a.localeCompare(b);
+    });
+    if (groupOrder.length === 0) return entries;
+    const byName    = new Map(entries);
+    const ordered   = groupOrder.map((k) => byName.has(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
+    const remaining = entries.filter(([k]) => !groupOrder.includes(k));
+    return [...ordered, ...remaining];
+  }, [allProjects, groupOrder]);
+
+  const pageGroupIds = useMemo(() => pageGroups.map(([k]) => k), [pageGroups]);
+
+  function handleDragStart(event: DragStartEvent) {
+    const id = String(event.active.id);
+    if (id.startsWith("worker-")) {
+      const workerId = parseInt(id.replace("worker-", ""), 10);
+      setActiveWorker(workerList.find((w) => w.id === workerId) ?? null);
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveWorker(null);
+    const activeId = String(active.id);
+
+    // ── Worker → project drop ──────────────────────────────────────────────
+    if (activeId.startsWith("worker-")) {
+      const workerId = parseInt(activeId.replace("worker-", ""), 10);
+      if (!over) {
+        // Dropped outside a project — unassign
+        if (getAssignment(workerId) !== null) {
+          handleAssign(workerId, null);
+          const worker = workerList.find((w) => w.id === workerId);
+          toast({ title: `${worker?.fullName ?? "작업자"} 배치 해제` });
+        }
+        return;
+      }
+      const overId = String(over.id);
+      if (overId.startsWith("project-")) {
+        const projectId = parseInt(overId.replace("project-", ""), 10);
+        if (getAssignment(workerId) === projectId) return; // no-op
+        const project = allProjects.find((p) => p.id === projectId);
+        const worker  = workerList.find((w) => w.id === workerId);
+        handleAssign(workerId, projectId);
+        toast({ title: `${worker?.fullName ?? "작업자"} → ${project?.name ?? "프로젝트"} 배치 완료` });
+      }
+      return;
+    }
+
+    // ── Group reorder ──────────────────────────────────────────────────────
+    if (!over || activeId === String(over.id)) return;
+    const oldIndex = pageGroupIds.indexOf(activeId);
+    const newIndex = pageGroupIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    setGroupOrder(arrayMove(pageGroupIds, oldIndex, newIndex));
+  }
+
+  // ── Derived values ────────────────────────────────────────────────────────
   const assignedCount = workerList.filter((w) => getAssignment(w.id) !== null).length;
   const onSiteCount   = workerList.filter((w) => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; }).length;
   const isToday   = dateStr === toLocalDateStr(new Date());
   const isLoading = workersLoading || assignmentsLoading;
+
+  const sortedWorkers = useMemo(() => sortWorkers(workerList, jibbleMap), [workerList, jibbleMap]);
+
+  const filteredWorkers = useMemo(() => {
+    const q = workerSearch.trim().toLowerCase();
+    return sortedWorkers.filter((w) => {
+      if (q && !w.fullName.toLowerCase().includes(q) && !(w.trade ?? "").toLowerCase().includes(q)) return false;
+      if (workerFilter === "onsite") { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; }
+      if (workerFilter === "unassigned") return getAssignment(w.id) === null;
+      return true;
+    });
+  }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5">
@@ -955,9 +972,7 @@ export default function CrewDispatchAssignment() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-800">{fmtDate(dateStr)}</span>
           {isToday && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">
-              오늘
-            </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">오늘</span>
           )}
         </div>
         <button onClick={() => changeDate(1)} disabled={isToday}
@@ -995,97 +1010,166 @@ export default function CrewDispatchAssignment() {
         </Card>
       </div>
 
-      {/* ── View toggle ── */}
-      <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 w-fit">
-        {(["worker", "project"] as const).map((mode) => (
-          <button key={mode} type="button"
-            onClick={() => setViewMode(mode)}
-            className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === mode
-                ? "bg-white text-slate-800 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}>
-            {mode === "worker" ? "👷 작업자별" : "🏗️ 프로젝트별"}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Worker-centric table ── */}
-      {viewMode === "worker" && (
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16 gap-3">
-                <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
-                <p className="text-sm text-slate-400">불러오는 중...</p>
-              </div>
-            ) : workerList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2">
-                <Users className="w-8 h-8 text-slate-200" />
-                <p className="text-sm text-slate-400">등록된 작업자가 없습니다.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50">
-                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">작업자</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">출근 시간</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">퇴근 시간</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">배치 프로젝트</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workerList
-                      .filter((w) => w.isActive)
-                      .sort((a, b) => {
-                        const ra = managerRank(a), rb = managerRank(b);
-                        if (ra !== rb) return ra - rb;
-                        const ja = jibbleMap.get(a.id);
-                        const jb = jibbleMap.get(b.id);
-                        const scoreA = ja && !ja.lastOut ? 2 : ja ? 1 : 0;
-                        const scoreB = jb && !jb.lastOut ? 2 : jb ? 1 : 0;
-                        if (scoreA !== scoreB) return scoreB - scoreA;
-                        return a.fullName.localeCompare(b.fullName);
-                      })
-                      .map((worker) => (
-                        <WorkerRow
-                          key={worker.id}
-                          worker={worker}
-                          jibble={jibbleMap.get(worker.id)}
-                          assignedProjectId={getAssignment(worker.id)}
-                          activeByCustomer={activeByCustomer}
-                          doneProjects={doneProjects}
-                          onAssign={(pid) => handleAssign(worker.id, pid)}
-                        />
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Project-centric card view ── */}
-      {viewMode === "project" && (
-        isLoading ? (
+      {/* ── Single DndContext wrapping all views ── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
             <p className="text-sm text-slate-400">불러오는 중...</p>
           </div>
         ) : (
-          <ProjectCardView
-            allProjects={allProjects}
-            workerList={workerList}
-            jibbleMap={jibbleMap}
-            getAssignment={getAssignment}
-            groupOrder={groupOrder}
-            onGroupOrderChange={setGroupOrder}
-          />
-        )
-      )}
+          <>
+            {/* ── lg+ : split pane ── */}
+            <div className="hidden lg:flex gap-0 items-start border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
 
+              {/* Left: worker list */}
+              <div className="w-[300px] xl:w-[340px] shrink-0 flex flex-col border-r border-slate-200">
+                {/* Panel header */}
+                <div className="px-4 pt-4 pb-3 border-b border-slate-100 bg-slate-50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">작업자 ({sortedWorkers.length})</span>
+                    <span className="text-[10px] text-slate-400">← 드래그하여 배치</span>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="이름으로 검색..."
+                      value={workerSearch}
+                      onChange={(e) => setWorkerSearch(e.target.value)}
+                      className="w-full h-8 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
+                    />
+                    {workerSearch && (
+                      <button type="button" onClick={() => setWorkerSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5">
+                    {(["all", "onsite", "unassigned"] as const).map((f) => (
+                      <button key={f} type="button" onClick={() => setWorkerFilter(f)}
+                        className={`flex-1 text-xs font-medium py-1 rounded-md border transition-colors ${
+                          workerFilter === f
+                            ? "bg-slate-800 border-slate-800 text-white"
+                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                        }`}>
+                        {f === "all" ? "전체" : f === "onsite" ? "현장" : "미배치"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Worker list */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 420px)" }}>
+                  {filteredWorkers.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-10">해당하는 작업자가 없습니다.</p>
+                  ) : (
+                    filteredWorkers.map((w) => (
+                      <DraggableWorkerRow
+                        key={w.id}
+                        worker={w}
+                        jibble={jibbleMap.get(w.id)}
+                        assignedProject={allProjects.find((p) => p.id === getAssignment(w.id))}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right: project cards */}
+              <div className="flex-1 min-w-0 overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
+                <ProjectCardView
+                  allProjects={allProjects}
+                  workerList={workerList}
+                  jibbleMap={jibbleMap}
+                  getAssignment={getAssignment}
+                  groupOrder={groupOrder}
+                  onGroupOrderChange={setGroupOrder}
+                  isDragActive={activeWorker !== null}
+                />
+              </div>
+            </div>
+
+            {/* ── < lg: tab view ── */}
+            <div className="lg:hidden space-y-4">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 w-fit">
+                {(["worker", "project"] as const).map((mode) => (
+                  <button key={mode} type="button" onClick={() => setViewMode(mode)}
+                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      viewMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    }`}>
+                    {mode === "worker" ? "👷 작업자별" : "🏗️ 프로젝트별"}
+                  </button>
+                ))}
+              </div>
+
+              {viewMode === "worker" && (
+                <Card>
+                  <CardContent className="p-0">
+                    {workerList.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 gap-2">
+                        <Users className="w-8 h-8 text-slate-200" />
+                        <p className="text-sm text-slate-400">등록된 작업자가 없습니다.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50">
+                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">작업자</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">출근</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">퇴근</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">배치 프로젝트</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedWorkers.map((worker) => (
+                              <WorkerRow
+                                key={worker.id}
+                                worker={worker}
+                                jibble={jibbleMap.get(worker.id)}
+                                assignedProjectId={getAssignment(worker.id)}
+                                activeByCustomer={activeByCustomer}
+                                doneProjects={doneProjects}
+                                onAssign={(pid) => handleAssign(worker.id, pid)}
+                              />
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {viewMode === "project" && (
+                <ProjectCardView
+                  allProjects={allProjects}
+                  workerList={workerList}
+                  jibbleMap={jibbleMap}
+                  getAssignment={getAssignment}
+                  groupOrder={groupOrder}
+                  onGroupOrderChange={setGroupOrder}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── DragOverlay ── */}
+        <DragOverlay dropAnimation={null}>
+          {activeWorker && (
+            <WorkerDragOverlay worker={activeWorker} jibble={jibbleMap.get(activeWorker.id)} />
+          )}
+        </DragOverlay>
+
+      </DndContext>
     </div>
   );
 }

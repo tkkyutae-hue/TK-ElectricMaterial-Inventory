@@ -79,13 +79,9 @@ function statusColors(p: Project): { bg: string; text: string } {
   return { bg: "#fef9c3", text: "#a16207" };
 }
 
-/** Priority-based status label — mirrors Monday.com group names */
+/** Raw Monday status label shown on cards */
 function cardStatusLabel(p: Project): string {
-  const pri = groupPriority(p);
-  if (pri === 0) return "Working on it";
-  if (pri === 1) return "Start Soon";
-  if (pri === 3) return "Done";
-  return "Working on it";
+  return p.status?.trim() || "—";
 }
 
 /** General Manager → Manager → 나머지 순 */
@@ -269,12 +265,20 @@ function groupAccentColor(name: string): string {
   return GROUP_PALETTE[Math.abs(h) % GROUP_PALETTE.length];
 }
 
-// ─── Status filter options ────────────────────────────────────────────────────
-const STATUS_FILTERS = [
-  { priority: 0, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
-  { priority: 1, label: "Start Soon",    bg: "#dbeafe", text: "#1d4ed8" },
-  { priority: 3, label: "Done",          bg: "#f1f5f9", text: "#94a3b8" },
-] as const;
+// ─── Dynamic status options from project list ────────────────────────────────
+/** Build sorted, deduplicated list of Monday status labels from the project list. */
+function buildStatusOptions(projects: Project[]): { label: string; bg: string; text: string }[] {
+  const seen = new Set<string>();
+  const out: { label: string; pri: number; bg: string; text: string }[] = [];
+  for (const p of projects) {
+    const label = p.status?.trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    const sc = statusColors(p);
+    out.push({ label, pri: groupPriority(p), bg: sc.bg, text: sc.text });
+  }
+  return out.sort((a, b) => a.pri - b.pri || a.label.localeCompare(b.label));
+}
 
 // ─── Sortable group wrapper ───────────────────────────────────────────────────
 function SortableGroup({ id, children }: {
@@ -401,7 +405,7 @@ function ProjectCardView({
   const [expandedId,       setExpandedId]      = useState<number | null>(null);
   const [collapsedGroups,  setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
   const [searchQuery,      setSearchQuery]     = useState("");
-  const [filterPriorities, setFilterPriorities] = useState<Set<number>>(new Set());
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
   const [showFilterMenu,   setShowFilterMenu]  = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
@@ -479,7 +483,7 @@ function ProjectCardView({
 
   const groupIds = useMemo(() => groups.map(([owner]) => owner), [groups]);
 
-  const isFiltering = searchQuery.trim().length > 0 || filterPriorities.size > 0;
+  const isFiltering = searchQuery.trim().length > 0 || filterStatuses.size > 0;
   const filteredGroups = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return groups
@@ -490,14 +494,13 @@ function ProjectCardView({
           (p.poNumber ?? "").toLowerCase().includes(q) ||
           (p.jobLocation ?? "").toLowerCase().includes(q)
         );
-        if (filterPriorities.size > 0) filtered = filtered.filter((p) => {
-          const pri = groupPriority(p);
-          return filterPriorities.has(pri === 2 ? 0 : pri);
-        });
+        if (filterStatuses.size > 0) filtered = filtered.filter((p) =>
+          filterStatuses.has(p.status?.trim() ?? "")
+        );
         return [owner, filtered] as [string, Project[]];
       })
       .filter(([, ps]) => ps.length > 0);
-  }, [groups, searchQuery, filterPriorities]);
+  }, [groups, searchQuery, filterStatuses]);
 
   const totalCount    = useMemo(() => groups.reduce((s, [, ps]) => s + ps.length, 0), [groups]);
   const filteredCount = useMemo(() => filteredGroups.reduce((s, [, ps]) => s + ps.length, 0), [filteredGroups]);
@@ -539,22 +542,22 @@ function ProjectCardView({
           <div className="relative" ref={filterMenuRef}>
             <button type="button" onClick={() => setShowFilterMenu((v) => !v)}
               className={`h-9 px-3 flex items-center gap-1.5 text-xs font-medium border rounded-lg transition-colors whitespace-nowrap ${
-                filterPriorities.size > 0 ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
+                filterStatuses.size > 0 ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
               }`}>
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              {filterPriorities.size > 0 ? `▼ ${filterPriorities.size}개` : "▼ 필터"}
+              {filterStatuses.size > 0 ? `▼ ${filterStatuses.size}개` : "▼ 필터"}
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[190px]">
-                {STATUS_FILTERS.map(({ priority, label, bg, text }) => (
-                  <label key={priority} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none">
+                {buildStatusOptions(allProjects).map(({ label, bg, text }) => (
+                  <label key={label} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={filterPriorities.has(priority)}
+                      checked={filterStatuses.has(label)}
                       onChange={() => {
-                        setFilterPriorities((prev) => {
+                        setFilterStatuses((prev) => {
                           const next = new Set(prev);
-                          next.has(priority) ? next.delete(priority) : next.add(priority);
+                          next.has(label) ? next.delete(label) : next.add(label);
                           return next;
                         });
                       }}
@@ -563,8 +566,8 @@ function ProjectCardView({
                     <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: bg, color: text }}>{label}</span>
                   </label>
                 ))}
-                {filterPriorities.size > 0 && (
-                  <button type="button" onClick={() => setFilterPriorities(new Set())}
+                {filterStatuses.size > 0 && (
+                  <button type="button" onClick={() => setFilterStatuses(new Set())}
                     className="w-full mt-1 pt-1 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 py-1 text-center">
                     필터 초기화
                   </button>

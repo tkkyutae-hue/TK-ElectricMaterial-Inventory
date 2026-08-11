@@ -5636,6 +5636,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/crew-dispatch/layout-prefs  — returns saved group order + collapsed groups for current user.
+  // Returns null for each field when no preference has ever been saved (distinguishes "never set" from "intentionally empty").
+  app.get("/api/crew-dispatch/layout-prefs", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const orderKey     = `user_pref:${userId}:crew_dispatch_group_order`;
+      const collapsedKey = `user_pref:${userId}:crew_dispatch_collapsed`;
+      const settings = await storage.getAppSettings([orderKey, collapsedKey]);
+      // null = key not present in DB (never saved); [] = explicitly saved empty array
+      const groupOrder      = settings[orderKey]     !== null ? JSON.parse(settings[orderKey]!) as string[] : null;
+      const collapsedGroups = settings[collapsedKey] !== null ? JSON.parse(settings[collapsedKey]!) as string[] : null;
+      res.json({ groupOrder, collapsedGroups });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // PUT /api/crew-dispatch/layout-prefs  — saves group order + collapsed groups for current user
+  app.put("/api/crew-dispatch/layout-prefs", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const { groupOrder, collapsedGroups } = req.body as { groupOrder?: string[]; collapsedGroups?: string[] };
+      const orderKey     = `user_pref:${userId}:crew_dispatch_group_order`;
+      const collapsedKey = `user_pref:${userId}:crew_dispatch_collapsed`;
+      if (Array.isArray(groupOrder))     await storage.setAppSetting(orderKey,     JSON.stringify(groupOrder));
+      if (Array.isArray(collapsedGroups)) await storage.setAppSetting(collapsedKey, JSON.stringify(collapsedGroups));
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET /api/jibble/status
   app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
     try {

@@ -331,6 +331,13 @@ function SortableGroup({ id, children }: {
   );
 }
 
+// ─── API helpers for server-side layout prefs ─────────────────────────────────
+// null fields mean "no preference ever saved for this user"; [] means "explicitly saved empty array"
+async function fetchLayoutPrefs(): Promise<{ groupOrder: string[] | null; collapsedGroups: string[] | null }> {
+  const res = await fetch("/api/crew-dispatch/layout-prefs");
+  if (!res.ok) throw new Error("Failed to load layout prefs");
+  return res.json();
+}
 function ProjectCardView({
   allProjects,
   workerList,
@@ -353,8 +360,65 @@ function ProjectCardView({
   const [showFilterMenu,   setShowFilterMenu]   = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
-  // Persist collapsedGroups to localStorage (groupOrder persisted by parent)
-  useEffect(() => { saveCollapsedGroups(collapsedGroups); }, [collapsedGroups]);
+  // Track whether server collapsedGroups prefs have been applied
+  const collapsedServerApplied  = useRef(false);
+  // True if the user changed collapsedGroups before the server fetch resolved
+  const pendingCollapsedChange   = useRef(false);
+  // Skip the very first effect run (initialization from localStorage, not a user action)
+  const isInitialCollapsedEffect = useRef(true);
+  // Always holds the latest collapsedGroups value for use in the hydration closure
+  const collapsedGroupsRef       = useRef(collapsedGroups);
+
+  // Fetch server prefs — shared query key with parent, so only one network request is made
+  const { data: serverPrefs } = useQuery({
+    queryKey: ["crew-dispatch-layout-prefs"],
+    queryFn: fetchLayoutPrefs,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  // Hydrate collapsedGroups once.
+  // - pending user change → their change wins; save it to server
+  // - server has a value → apply it (even empty)
+  // - server null → migrate current local state to server
+  useEffect(() => {
+    if (!serverPrefs || collapsedServerApplied.current) return;
+    collapsedServerApplied.current = true;
+    if (pendingCollapsedChange.current) {
+      // User changed before fetch resolved — save their state, don't overwrite it
+      saveLayoutPrefs({ collapsedGroups: Array.from(collapsedGroupsRef.current) }).catch(() => {});
+    } else if (serverPrefs.collapsedGroups !== null) {
+      // Server has a saved value — apply it (even if empty)
+      const s = new Set(serverPrefs.collapsedGroups);
+      setCollapsedGroups(s);
+      saveCollapsedGroups(s);
+    } else {
+      // No server record — migrate local fallback to server
+      saveLayoutPrefs({ collapsedGroups: Array.from(collapsedGroupsRef.current) }).catch(() => {});
+    }
+  }, [serverPrefs]);
+
+  // Debounce timer for collapsedGroups server sync
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync collapsedGroups to localStorage immediately; debounce server writes post-hydration
+  useEffect(() => {
+    collapsedGroupsRef.current = collapsedGroups;
+    saveCollapsedGroups(collapsedGroups);
+    if (!collapsedServerApplied.current) {
+      // Before hydration: track user changes (but skip the initial mount run)
+      if (isInitialCollapsedEffect.current) {
+        isInitialCollapsedEffect.current = false;
+      } else {
+        pendingCollapsedChange.current = true;
+      }
+      return;
+    }
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      saveLayoutPrefs({ collapsedGroups: Array.from(collapsedGroups) }).catch(() => {});
+    }, 800);
+  }, [collapsedGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close filter dropdown on outside click
   useEffect(() => {
@@ -697,8 +761,64 @@ export default function CrewDispatchAssignment() {
   const [viewMode,   setViewMode]   = useState<"worker" | "project">("worker");
   const [groupOrder, setGroupOrder] = useState<string[]>(loadGroupOrder);
 
-  // Persist group order to localStorage whenever it changes
-  useEffect(() => { saveGroupOrder(groupOrder); }, [groupOrder]);
+  // Track whether server groupOrder prefs have been applied
+  const groupOrderServerApplied  = useRef(false);
+  // True if the user changed groupOrder before the server fetch resolved
+  const pendingGroupOrderChange   = useRef(false);
+  // Skip the very first effect run (initialization from localStorage, not a user action)
+  const isInitialGroupOrderEffect = useRef(true);
+  // Always holds the latest groupOrder value for use in the hydration closure
+  const groupOrderRef             = useRef(groupOrder);
+
+  // Fetch server prefs for groupOrder (shared cache with ProjectCardView — one network request)
+  const { data: serverPrefs } = useQuery({
+    queryKey: ["crew-dispatch-layout-prefs"],
+    queryFn: fetchLayoutPrefs,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  // Hydrate groupOrder once.
+  // - pending user change → their change wins; save it to server
+  // - server has a value → apply it (even empty)
+  // - server null → migrate current local state to server
+  useEffect(() => {
+    if (!serverPrefs || groupOrderServerApplied.current) return;
+    groupOrderServerApplied.current = true;
+    if (pendingGroupOrderChange.current) {
+      // User changed before fetch resolved — save their state, don't overwrite it
+      saveLayoutPrefs({ groupOrder: groupOrderRef.current }).catch(() => {});
+    } else if (serverPrefs.groupOrder !== null) {
+      // Server has a saved value — apply it (even if empty)
+      setGroupOrder(serverPrefs.groupOrder);
+      saveGroupOrder(serverPrefs.groupOrder);
+    } else {
+      // No server record — migrate local fallback to server
+      saveLayoutPrefs({ groupOrder: groupOrderRef.current }).catch(() => {});
+    }
+  }, [serverPrefs]);
+
+  // Debounce timer for groupOrder server sync
+  const groupOrderSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist groupOrder to localStorage immediately; debounce server writes post-hydration
+  useEffect(() => {
+    groupOrderRef.current = groupOrder;
+    saveGroupOrder(groupOrder);
+    if (!groupOrderServerApplied.current) {
+      // Before hydration: track user changes (but skip the initial mount run)
+      if (isInitialGroupOrderEffect.current) {
+        isInitialGroupOrderEffect.current = false;
+      } else {
+        pendingGroupOrderChange.current = true;
+      }
+      return;
+    }
+    if (groupOrderSyncTimer.current) clearTimeout(groupOrderSyncTimer.current);
+    groupOrderSyncTimer.current = setTimeout(() => {
+      saveLayoutPrefs({ groupOrder }).catch(() => {});
+    }, 800);
+  }, [groupOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function changeDate(delta: number) {
     const d = new Date(dateStr + "T00:00:00");
@@ -968,4 +1088,13 @@ export default function CrewDispatchAssignment() {
 
     </div>
   );
+}
+
+async function saveLayoutPrefs(prefs: { groupOrder?: string[]; collapsedGroups?: string[] }): Promise<void> {
+  const res = await fetch("/api/crew-dispatch/layout-prefs", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(prefs),
+  });
+  if (!res.ok) throw new Error("Failed to save layout prefs");
 }

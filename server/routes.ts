@@ -4449,12 +4449,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "remarks (string or null). " +
           "No markdown, no explanation — just the JSON array.";
 
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const geminiModel = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
-          generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
-        });
+        const { GoogleGenAI } = await import("@google/genai");
+        const genAI = new GoogleGenAI({ apiKey });
 
         const parts: any[] = [];
         if (pageImages.length > 0) {
@@ -4476,8 +4472,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         let raw: string;
         try {
-          const geminiResult = await geminiModel.generateContent(parts);
-          raw = geminiResult.response.text();
+          const geminiResult = await genAI.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: [{ parts }],
+            config: { temperature: 0.1, maxOutputTokens: 4000 },
+          });
+          raw = geminiResult.text ?? "[]";
         } catch (aiErr: any) {
           console.error("[extract] Gemini error:", aiErr);
           let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";

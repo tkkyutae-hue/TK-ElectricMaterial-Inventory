@@ -86,6 +86,14 @@ function cardStatusLabel(p: Project): string {
   return "Working on it";
 }
 
+/** General Manager → Manager → 나머지 순 (대소문자 무시) */
+function managerRank(w: Worker): number {
+  const t = (w.trade ?? "").toLowerCase().trim();
+  if (t === "general manager") return 0;
+  if (t === "manager")         return 1;
+  return 2;
+}
+
 function sortProjects(list: Project[]): Project[] {
   return [...list].sort((a, b) => {
     const diff = groupPriority(a) - groupPriority(b);
@@ -911,6 +919,8 @@ export default function CrewDispatchAssignment() {
                     {workerList
                       .filter((w) => w.isActive)
                       .sort((a, b) => {
+                        const ra = managerRank(a), rb = managerRank(b);
+                        if (ra !== rb) return ra - rb;
                         const ja = jibbleMap.get(a.id);
                         const jb = jibbleMap.get(b.id);
                         const scoreA = ja && !ja.lastOut ? 2 : ja ? 1 : 0;

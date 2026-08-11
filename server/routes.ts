@@ -4301,6 +4301,22 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Project crew assignments (for daily report pre-population) ─────────────
+  app.get("/api/projects/:id/crew-assignments", isAuthenticated, requireManagerRead, async (req, res) => {
+    try {
+      const projectId = parseIntParam(req.params.id, "id", res);
+      if (projectId === null) return;
+      const date = req.query.date as string;
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ message: "date query param required (YYYY-MM-DD)" });
+      }
+      const assignments = await storage.getCrewAssignmentsForProject(projectId, date);
+      res.json(assignments);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);

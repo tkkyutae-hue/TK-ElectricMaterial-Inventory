@@ -213,27 +213,33 @@ function Section({
   const ic = SECTION_ICON_STYLE[num] ?? { bg: "bg-slate-100", icon: "text-slate-500" };
   return (
     <Card className="shadow-none border border-slate-200">
-      <button type="button" data-testid={`section-toggle-${num}`}
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50/70 transition-colors text-left">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold shrink-0">
-            {num}
-          </span>
-          <span className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${ic.bg}`}>
-            <span className={ic.icon}>{icon}</span>
-          </span>
-          <span className="text-sm font-semibold text-slate-800 shrink-0">{title}</span>
-          {!open && summary && (
-            <span className="ml-1 text-[11px] text-slate-400 truncate">{summary}</span>
-          )}
-          {alert && <span className="ml-2 shrink-0">{alert}</span>}
-        </div>
-        <div className="flex items-center gap-2 shrink-0 ml-3">
-          {headerRight}
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
-        </div>
-      </button>
+      <div className="flex items-center px-5 hover:bg-slate-50/70 transition-colors">
+        <button type="button" data-testid={`section-toggle-${num}`}
+          onClick={() => setOpen((o) => !o)}
+          className="flex-1 flex items-center justify-between py-3 text-left min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold shrink-0">
+              {num}
+            </span>
+            <span className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${ic.bg}`}>
+              <span className={ic.icon}>{icon}</span>
+            </span>
+            <span className="text-sm font-semibold text-slate-800 shrink-0">{title}</span>
+            {!open && summary && (
+              <span className="ml-1 text-[11px] text-slate-400 truncate">{summary}</span>
+            )}
+            {alert && <span className="ml-2 shrink-0">{alert}</span>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+          </div>
+        </button>
+        {headerRight && (
+          <div className="flex items-center shrink-0 ml-2">
+            {headerRight}
+          </div>
+        )}
+      </div>
       {open && (
         <CardContent className="pt-0 pb-6 px-5 border-t border-slate-100">
           <div className="pt-4">{children}</div>
@@ -801,6 +807,13 @@ export function NewReportTab({
   const [projectManagerId,    setProjectManagerId]    = useState<number | null>(fd?.projectManagerId    ?? null);
   const [projectManagerTrade, setProjectManagerTrade] = useState<string>(fd?.projectManagerTrade ?? "");
 
+  // ── Crew assignments for the selected report date ──
+  const { data: crewAssignments = [], isSuccess: crewLoaded } = useQuery<any[]>({
+    queryKey: ["/api/projects", projectId, "crew-assignments", reportDate],
+    queryFn: () => fetch(`/api/projects/${projectId}/crew-assignments?date=${reportDate}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!projectId,
+  });
+
   // Auto-generate report number
   const autoNumApplied = useRef(false);
   useEffect(() => {
@@ -808,6 +821,73 @@ export function NewReportTab({
     autoNumApplied.current = true;
     setReportNumber(String(existingReports.length + 1).padStart(3, "0"));
   }, [existingReports.length, reportId, fd?.reportNumber]);
+
+  // ── Auto-populate manpower from Crew Dispatch (new report + empty manpower only) ──
+  const crewAutoApplied = useRef(false);
+  useEffect(() => {
+    if (reportId || crewAutoApplied.current || !crewLoaded || crewAssignments.length === 0) return;
+    crewAutoApplied.current = true;
+    setManpower(prev => {
+      if (prev.length > 0) return prev;
+      const hrs = calcHours(defStart, defEnd, "ATTEND", defLunchBreak);
+      return crewAssignments.map(w => ({
+        id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
+        attendanceStatus: "ATTEND", startTime: defStart, endTime: defEnd,
+        lunchBreak: defLunchBreak, hoursWorked: hrs, notes: "",
+      }));
+    });
+  }, [crewLoaded, crewAssignments, reportId]);
+
+  // ── Auto-populate materials from Scope Items (new report + empty materials only) ──
+  const scopeAutoApplied = useRef(false);
+  useEffect(() => {
+    if (reportId || scopeAutoApplied.current || scopeItems.length === 0) return;
+    scopeAutoApplied.current = true;
+    setMaterials(prev => {
+      if (prev.length > 0) return prev;
+      return scopeItems
+        .filter((s: any) => s.isActive)
+        .map((s: any) => ({
+          id: uid(), description: s.itemName, unit: s.unit ?? "EA", qty: 0, notes: "",
+          inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
+        }));
+    });
+  }, [scopeItems, reportId]);
+
+  // ── Manual import helpers ──
+  function importCrewDispatch() {
+    if (!crewAssignments.length) {
+      toast({ title: "배치된 인원 없음", description: "이 날짜·프로젝트에 배치된 인원이 없습니다.", variant: "destructive" });
+      return;
+    }
+    const hrs = calcHours(defStart, defEnd, "ATTEND", defLunchBreak);
+    const existingIds = new Set(manpower.map(r => r.workerId).filter(Boolean));
+    const newRows = crewAssignments
+      .filter(w => !existingIds.has(w.workerId))
+      .map(w => ({
+        id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
+        attendanceStatus: "ATTEND", startTime: defStart, endTime: defEnd,
+        lunchBreak: defLunchBreak, hoursWorked: hrs, notes: "",
+      }));
+    if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "배치 인원이 이미 Manpower 섹션에 있습니다." }); return; }
+    setManpower(prev => [...prev, ...newRows]);
+    toast({ title: `${newRows.length}명 추가됨` });
+  }
+
+  function importScopeItems() {
+    const active = scopeItems.filter((s: any) => s.isActive);
+    if (!active.length) return;
+    const existingScopeIds = new Set(materials.map(r => r.scopeItemId).filter(Boolean));
+    const newRows = active
+      .filter((s: any) => !existingScopeIds.has(s.id))
+      .map((s: any) => ({
+        id: uid(), description: s.itemName, unit: s.unit ?? "EA", qty: 0, notes: "",
+        inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
+      }));
+    if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "Scope Items이 이미 Materials 섹션에 있습니다." }); return; }
+    setMaterials(prev => [...prev, ...newRows]);
+    toast({ title: `${newRows.length}개 자재 추가됨` });
+  }
 
   // ── Manpower section-level defaults ──
   const [defStart,      setDefStart]      = useState("07:00");
@@ -1289,7 +1369,14 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
-      <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}>
+      <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}
+        headerRight={!isSubmitted ? (
+          <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
+            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap"
+            title="Crew Dispatch에서 오늘 배치 인원 불러오기">
+            <Users className="w-3 h-3" /> Crew 불러오기
+          </button>
+        ) : undefined}>
 
         {/* Section-level defaults */}
         <div className="flex items-center gap-4 flex-wrap mb-4 pb-4 border-b border-slate-100">
@@ -2219,7 +2306,14 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
-      <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}>
+      <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}
+        headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
+          <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
+            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors whitespace-nowrap"
+            title="Scope Items 자재 목록 불러오기">
+            <Package className="w-3 h-3" /> Scope 불러오기
+          </button>
+        ) : undefined}>
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <colgroup>

@@ -181,6 +181,7 @@ export interface IStorage {
   deleteWorker(id: number): Promise<void>;
 
   getAssignmentsByDate(date: string): Promise<DailyWorkerAssignment[]>;
+  getCrewAssignmentsForProject(projectId: number, date: string): Promise<{ workerId: number; workerName: string; trade: string | null }[]>;
   upsertAssignment(workerId: number, date: string, projectId: number | null, assignedBy: string | null): Promise<DailyWorkerAssignment>;
 
   getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]>;
@@ -3158,6 +3159,26 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(dailyWorkerAssignments)
       .where(eq(dailyWorkerAssignments.date, date));
+  }
+
+  async getCrewAssignmentsForProject(projectId: number, date: string): Promise<{ workerId: number; workerName: string; trade: string | null }[]> {
+    const rows = await db
+      .select({
+        workerId: dailyWorkerAssignments.workerId,
+        workerName: workers.fullName,
+        trade: workers.trade,
+      })
+      .from(dailyWorkerAssignments)
+      .innerJoin(workers, eq(dailyWorkerAssignments.workerId, workers.id))
+      .where(
+        and(
+          eq(dailyWorkerAssignments.projectId, projectId),
+          eq(dailyWorkerAssignments.date, date),
+          eq(workers.isActive, true),
+        )
+      )
+      .orderBy(asc(workers.fullName));
+    return rows;
   }
 
   async upsertAssignment(workerId: number, date: string, projectId: number | null, assignedBy: string | null): Promise<DailyWorkerAssignment> {

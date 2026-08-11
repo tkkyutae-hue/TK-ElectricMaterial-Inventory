@@ -77,18 +77,13 @@ function statusColors(p: Project): { bg: string; text: string } {
   return { bg: "#fef9c3", text: "#a16207" };                   // yellow — other
 }
 
-/** Priority-based status label for cards — avoids showing raw mondayGroupTitle (e.g. "HMGMA") */
+/** Priority-based status label for cards — mirrors Monday.com group names */
 function cardStatusLabel(p: Project): string {
   const pri = groupPriority(p);
   if (pri === 0) return "Working on it";
   if (pri === 1) return "Start Soon";
-  if (pri === 3) {
-    const s = (p.status ?? "").toLowerCase();
-    return s === "cancelled" || s === "canceled" ? "취소" : "완료";
-  }
-  const s = (p.status ?? "").toLowerCase();
-  if (s === "on_hold") return "보류";
-  return "진행 중";
+  if (pri === 3) return "Done";
+  return "In Progress";
 }
 
 function sortProjects(list: Project[]): Project[] {
@@ -302,8 +297,8 @@ function groupAccentColor(name: string): string {
 const STATUS_FILTERS = [
   { priority: 0, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
   { priority: 1, label: "Start Soon",    bg: "#dbeafe", text: "#1d4ed8" },
-  { priority: 2, label: "기타 진행 중",   bg: "#fef9c3", text: "#a16207" },
-  { priority: 3, label: "완료",           bg: "#f1f5f9", text: "#94a3b8" },
+  { priority: 2, label: "In Progress",   bg: "#fef9c3", text: "#a16207" },
+  { priority: 3, label: "Done",          bg: "#f1f5f9", text: "#94a3b8" },
 ] as const;
 
 // ─── Sortable group wrapper ────────────────────────────────────────────────────

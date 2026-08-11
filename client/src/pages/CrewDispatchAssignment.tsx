@@ -77,6 +77,20 @@ function statusColors(p: Project): { bg: string; text: string } {
   return { bg: "#fef9c3", text: "#a16207" };                   // yellow — other
 }
 
+/** Priority-based status label for cards — avoids showing raw mondayGroupTitle (e.g. "HMGMA") */
+function cardStatusLabel(p: Project): string {
+  const pri = groupPriority(p);
+  if (pri === 0) return "Working on it";
+  if (pri === 1) return "Start Soon";
+  if (pri === 3) {
+    const s = (p.status ?? "").toLowerCase();
+    return s === "cancelled" || s === "canceled" ? "취소" : "완료";
+  }
+  const s = (p.status ?? "").toLowerCase();
+  if (s === "on_hold") return "보류";
+  return "진행 중";
+}
+
 function sortProjects(list: Project[]): Project[] {
   return [...list].sort((a, b) => {
     const diff = groupPriority(a) - groupPriority(b);
@@ -330,7 +344,6 @@ function ProjectCardView({
   onGroupOrderChange: (order: string[]) => void;
 }) {
   const [expandedId,       setExpandedId]       = useState<number | null>(null);
-  const [hideCompleted,    setHideCompleted]    = useState<boolean>(true);
   const [collapsedGroups,  setCollapsedGroups]  = useState<Set<string>>(loadCollapsedGroups);
   const [searchQuery,      setSearchQuery]      = useState("");
   const [filterPriorities, setFilterPriorities] = useState<Set<number>>(new Set());
@@ -354,16 +367,9 @@ function ProjectCardView({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const completedCount = useMemo(
-    () => allProjects.filter((p) => !p.archived && groupPriority(p) >= 3).length,
-    [allProjects],
-  );
-
   // Build groups; apply saved groupOrder to reorder them
   const groups = useMemo(() => {
-    const nonArchived = allProjects.filter((p) => !p.archived);
-    const visible     = hideCompleted ? nonArchived.filter((p) => groupPriority(p) < 3) : nonArchived;
-    const sorted      = sortProjects(visible);
+    const sorted = sortProjects(allProjects.filter((p) => !p.archived));
     const map         = new Map<string, Project[]>();
     for (const p of sorted) {
       const key = p.customerName?.trim() || "고객사 미지정";
@@ -381,7 +387,7 @@ function ProjectCardView({
     const ordered   = groupOrder.map((k) => byName.get(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
     const remaining = entries.filter(([k]) => !groupOrder.includes(k));
     return [...ordered, ...remaining];
-  }, [allProjects, hideCompleted, groupOrder]);
+  }, [allProjects, groupOrder]);
 
   const groupIds = useMemo(() => groups.map(([owner]) => owner), [groups]);
 
@@ -510,18 +516,6 @@ function ProjectCardView({
             )}
           </div>
 
-          {/* Completed toggle */}
-          <button
-            type="button"
-            onClick={() => setHideCompleted((v) => !v)}
-            className={`h-9 px-3 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
-              hideCompleted
-                ? "bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200"
-                : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-            }`}
-          >
-            {hideCompleted ? `완료 ${completedCount}개 숨김` : `완료 ${completedCount}개 포함`}
-          </button>
         </div>
 
         {/* Result count (only when filtering) */}
@@ -534,11 +528,7 @@ function ProjectCardView({
 
       {filteredGroups.length === 0 && (
         <p className="text-sm text-slate-400 text-center py-12">
-          {isFiltering
-            ? "검색 결과가 없습니다."
-            : hideCompleted && completedCount > 0
-              ? `활성 프로젝트가 없습니다. 완료 프로젝트 ${completedCount}개를 보려면 위 버튼을 누르세요.`
-              : "등록된 프로젝트가 없습니다."}
+          {isFiltering ? "검색 결과가 없습니다." : "등록된 프로젝트가 없습니다."}
         </p>
       )}
 
@@ -667,7 +657,7 @@ function ProjectCardView({
                                       className="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap text-right"
                                       style={{ backgroundColor: sc.bg, color: sc.text }}
                                     >
-                                      {statusLabel(p)}
+                                      {cardStatusLabel(p)}
                                     </span>
                                     <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
                                       workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"

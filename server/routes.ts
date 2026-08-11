@@ -4392,15 +4392,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
         if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-        const apiKey = process.env.OPENAI_API_KEY;
-        if (!apiKey) return res.status(500).json({ message: "OPENAI_API_KEY is not configured" });
+        const apiKey = process.env.GOOGLE_AI_API_KEY;
+        if (!apiKey) return res.status(500).json({ message: "GOOGLE_AI_API_KEY is not configured" });
 
         const mime = req.file.mimetype;
         // Images keyed per page for PDF; single entry for image files
         const pageImages: Array<{ base64: string; mimeType: string }> = [];
         let textContent: string | null = null;
         let totalPdfPages = 1;
-        const PDF_PAGE_CAP = 8; // maximum pages sent to GPT-4o vision in one call
+        const PDF_PAGE_CAP = 8; // maximum pages sent to Gemini vision in one call
 
         // ── PDF → render requested page range in one document load ──────────
         if (mime === "application/pdf") {
@@ -4439,7 +4439,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           pageImages.push({ base64: req.file.buffer.toString("base64"), mimeType: mime });
         }
 
-        // ── Build OpenAI prompt ──────────────────────────────────────────────
+        // ── Build Gemini prompt ──────────────────────────────────────────────
         const systemPrompt =
           "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
           "You may receive multiple pages — extract ALL line items across all pages. " +
@@ -4449,62 +4449,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "remarks (string or null). " +
           "No markdown, no explanation — just the JSON array.";
 
-        const userContent: any[] = [];
-        if (pageImages.length > 0) {
-          for (const img of pageImages) {
-            userContent.push({
-              type: "image_url",
-              image_url: { url: `data:${img.mimeType};base64,${img.base64}`, detail: "high" },
-            });
-          }
-          userContent.push({
-            type: "text",
-            text: pageImages.length > 1
-              ? `These are ${pageImages.length} pages from the same document. Extract ALL scope/BOQ line items across all pages. Return as JSON array.`
-              : "Extract all scope/BOQ line items from this document. Return as JSON array.",
-          });
-        } else {
-          userContent.push({
-            type: "text",
-            text: `Extract all scope/BOQ line items from this spreadsheet data:\n\n${textContent}\n\nReturn as JSON array.`,
-          });
-        }
-
-        const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userContent },
-            ],
-            max_tokens: 4000,
-            temperature: 0.1,
-          }),
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const geminiModel = genAI.getGenerativeModel({
+          model: "gemini-2.0-flash",
+          generationConfig: { temperature: 0.1, maxOutputTokens: 4000 },
         });
 
-        if (!oaiRes.ok) {
-          const errBody = await oaiRes.text();
-          console.error("[extract] OpenAI error:", errBody);
-          let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
-          try {
-            const errJson = JSON.parse(errBody);
-            const code = errJson?.error?.code ?? "";
-            if (code === "credit_balance_exhausted" || code === "insufficient_quota") {
-              userMsg = "OpenAI API 크레딧이 부족합니다. 관리자에게 API 키 크레딧을 충전해 달라고 요청하세요.";
-            } else if (code === "invalid_api_key") {
-              userMsg = "OpenAI API 키가 유효하지 않습니다. 관리자에게 문의하세요.";
-            }
-          } catch { /* ignore parse error */ }
-          return res.status(502).json({ message: userMsg });
+        const parts: any[] = [];
+        if (pageImages.length > 0) {
+          for (const img of pageImages) {
+            parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+          }
+          parts.push({
+            text: systemPrompt + "\n\n" + (
+              pageImages.length > 1
+                ? `These are ${pageImages.length} pages from the same document. Extract ALL scope/BOQ line items across all pages. Return as JSON array.`
+                : "Extract all scope/BOQ line items from this document. Return as JSON array."
+            ),
+          });
+        } else {
+          parts.push({
+            text: systemPrompt + `\n\nExtract all scope/BOQ line items from this spreadsheet data:\n\n${textContent}\n\nReturn as JSON array.`,
+          });
         }
 
-        const oaiData = await oaiRes.json() as any;
-        const raw = oaiData.choices?.[0]?.message?.content ?? "[]";
+        let raw: string;
+        try {
+          const geminiResult = await geminiModel.generateContent(parts);
+          raw = geminiResult.response.text();
+        } catch (aiErr: any) {
+          console.error("[extract] Gemini error:", aiErr);
+          let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+          const msg = String(aiErr?.message ?? "");
+          if (msg.includes("API_KEY_INVALID") || msg.includes("invalid api key")) {
+            userMsg = "Google AI API 키가 유효하지 않습니다. 관리자에게 문의하세요.";
+          } else if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+            userMsg = "Gemini API 할당량이 초과됐습니다. 잠시 후 다시 시도해 주세요.";
+          }
+          return res.status(502).json({ message: userMsg });
+        }
 
         // Strip markdown fences if present
         const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();

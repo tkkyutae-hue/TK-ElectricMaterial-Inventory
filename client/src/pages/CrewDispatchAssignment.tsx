@@ -310,20 +310,22 @@ function ProjectCardView({
   workerList,
   jibbleMap,
   getAssignment,
+  groupOrder,
+  onGroupOrderChange,
 }: {
   allProjects: Project[];
   workerList: Worker[];
   jibbleMap: Map<number, JibbleEntry>;
   getAssignment: (workerId: number) => number | null;
+  groupOrder: string[];
+  onGroupOrderChange: (order: string[]) => void;
 }) {
   const [expandedId,      setExpandedId]      = useState<number | null>(null);
   const [hideCompleted,   setHideCompleted]   = useState<boolean>(true);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
-  const [groupOrder,      setGroupOrder]      = useState<string[]>(loadGroupOrder);
 
-  // Persist state to localStorage
+  // Persist collapsedGroups to localStorage (groupOrder persisted by parent)
   useEffect(() => { saveCollapsedGroups(collapsedGroups); }, [collapsedGroups]);
-  useEffect(() => { saveGroupOrder(groupOrder); }, [groupOrder]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -372,7 +374,7 @@ function ProjectCardView({
     const oldIndex = groupIds.indexOf(String(active.id));
     const newIndex = groupIds.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
-    setGroupOrder(arrayMove(groupIds, oldIndex, newIndex));
+    onGroupOrderChange(arrayMove(groupIds, oldIndex, newIndex));
   }
 
   function getProjectWorkers(projectId: number) {
@@ -566,8 +568,12 @@ function ProjectCardView({
 export default function CrewDispatchAssignment() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [dateStr,  setDateStr]  = useState<string>(() => toLocalDateStr(new Date()));
-  const [viewMode, setViewMode] = useState<"worker" | "project">("worker");
+  const [dateStr,    setDateStr]    = useState<string>(() => toLocalDateStr(new Date()));
+  const [viewMode,   setViewMode]   = useState<"worker" | "project">("worker");
+  const [groupOrder, setGroupOrder] = useState<string[]>(loadGroupOrder);
+
+  // Persist group order to localStorage whenever it changes
+  useEffect(() => { saveGroupOrder(groupOrder); }, [groupOrder]);
 
   function changeDate(delta: number) {
     const d = new Date(dateStr + "T00:00:00");
@@ -614,6 +620,7 @@ export default function CrewDispatchAssignment() {
     queryKey: ["/api/projects"],
   });
   // Build activeByCustomer groups for WorkerRow dropdown, plus doneProjects
+  // Applies the same groupOrder as the project card view so both tabs stay in sync
   const { activeByCustomer, doneProjects } = useMemo(() => {
     const sorted = sortProjects(allProjects);
     const active = sorted.filter((p) => groupPriority(p) < 3);
@@ -624,15 +631,25 @@ export default function CrewDispatchAssignment() {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     }
-    const activeByCustomer = Array.from(map.entries() as IterableIterator<[string, Project[]]>)
+    const alphabetical = Array.from(map.entries() as IterableIterator<[string, Project[]]>)
       .sort(([a], [b]) => {
         if (a === "고객사 미지정") return 1;
         if (b === "고객사 미지정") return -1;
         return a.localeCompare(b);
-      })
-      .map(([customer, projects]) => ({ customer, projects }));
+      });
+    // Apply saved group order (same order as project card view)
+    let ordered: [string, Project[]][];
+    if (groupOrder.length > 0) {
+      const byName = new Map(alphabetical);
+      const inOrder   = groupOrder.map((k) => byName.has(k) ? ([k, byName.get(k)!] as [string, Project[]]) : null).filter(Boolean) as [string, Project[]][];
+      const remaining = alphabetical.filter(([k]) => !groupOrder.includes(k));
+      ordered = [...inOrder, ...remaining];
+    } else {
+      ordered = alphabetical;
+    }
+    const activeByCustomer = ordered.map(([customer, projects]) => ({ customer, projects }));
     return { activeByCustomer, doneProjects: done };
-  }, [allProjects]);
+  }, [allProjects, groupOrder]);
 
   // Optimistic local state — scoped to current dateStr
   const [localOverride, setLocalOverride] = useState<Map<number, number | null>>(new Map());
@@ -816,6 +833,8 @@ export default function CrewDispatchAssignment() {
             workerList={workerList}
             jibbleMap={jibbleMap}
             getAssignment={getAssignment}
+            groupOrder={groupOrder}
+            onGroupOrderChange={setGroupOrder}
           />
         )
       )}

@@ -72,34 +72,55 @@ function statusLabel(p: Project): string {
 }
 
 // Monday.com status label → official Monday colour palette
+// Colors verified against the Monday.com status column UI.
 const MONDAY_STATUS_COLORS: Record<string, string> = {
+  // Monday standard labels
   "working on it": "#fdab3d",
-  "done":          "#00c875",
   "stuck":         "#e2445c",
+  "done":          "#00c875",
+  "quote only":    "#c4c4c4",
+  "start soon":    "#579bfc",
   "not started":   "#c4c4c4",
   "in progress":   "#0086c0",
-  "quote only":    "#a25ddc",
+  "waiting":       "#ffcb00",
+  "on hold":       "#c4c4c4",
+  // Variants
   "cancelled":     "#808080",
   "canceled":      "#808080",
   "completed":     "#00c875",
-  "start soon":    "#579bfc",
-  "on hold":       "#bb3354",
-  "waiting":       "#ffcb00",
+  // Legacy VoltStock enum values (stored before raw-label sync)
+  "active":        "#fdab3d",   // was "Working on it"
+  "on_hold":       "#c4c4c4",   // was "Quote Only" / hold states
+};
+
+// Old VoltStock enum → Monday display label
+const ENUM_TO_MONDAY_LABEL: Record<string, string> = {
+  "active":    "Working on it",
+  "on_hold":   "On Hold",
+  "completed": "Done",
+  "cancelled": "Cancelled",
+  "canceled":  "Cancelled",
 };
 
 function statusColors(p: Project): { bg: string; text: string } {
-  const key = (p.status ?? "").trim().toLowerCase();
+  const raw = (p.status ?? "").trim();
+  const key = raw.toLowerCase();
   const bg  = MONDAY_STATUS_COLORS[key];
-  if (bg) return { bg, text: "#ffffff" };
-  // Fallback: priority-based muted tones for unmapped labels
+  if (bg) {
+    // Use dark text on light colours (grey, yellow)
+    const light = ["#c4c4c4", "#ffcb00"].includes(bg);
+    return { bg, text: light ? "#333333" : "#ffffff" };
+  }
+  // Fallback for any unmapped label
   const pri = groupPriority(p);
-  if (pri === 3) return { bg: "#c4c4c4", text: "#ffffff" };
+  if (pri === 3) return { bg: "#c4c4c4", text: "#333333" };
   return { bg: "#fdab3d", text: "#ffffff" };
 }
 
-/** Raw Monday status label shown on cards */
+/** Monday status label shown on cards — translates legacy enum values */
 function cardStatusLabel(p: Project): string {
-  return p.status?.trim() || "—";
+  const raw = p.status?.trim() || "";
+  return ENUM_TO_MONDAY_LABEL[raw.toLowerCase()] ?? (raw || "—");
 }
 
 /** General Manager → Manager → 나머지 순 */

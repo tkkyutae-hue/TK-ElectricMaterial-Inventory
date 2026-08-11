@@ -164,6 +164,16 @@ export default function UserApprovals() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-slate-900">{u.name ?? "—"}</p>
+                    {u.googleId && (
+                      <span
+                        title={t.adminUserApprovGoogleAccount}
+                        aria-label={t.adminUserApprovGoogleAccount}
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 shadow-sm text-[10px] font-bold leading-none select-none"
+                        style={{ fontFamily: "'Google Sans', Arial, sans-serif", color: "#4285F4" }}
+                      >
+                        G
+                      </span>
+                    )}
                     {roleBadge(u.role)}
                     {statusBadge(u.status)}
                   </div>

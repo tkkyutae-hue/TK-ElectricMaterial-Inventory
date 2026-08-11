@@ -2357,6 +2357,7 @@ const en = {
   adminUserApprovToastRejected:    "User rejected",
   adminUserApprovToastDeleted:     "User deleted",
   adminUserApprovToastDeletedDesc: "The account has been permanently removed.",
+  adminUserApprovGoogleAccount:    "Google account",
 
   // ── Field Inventory: leftovers ──
   fieldInvLowStockPreset:          "⚠ Low Stock",
@@ -4748,6 +4749,7 @@ const ko: Translations = {
   adminUserApprovToastRejected:    "사용자가 거부되었습니다",
   adminUserApprovToastDeleted:     "사용자가 삭제되었습니다",
   adminUserApprovToastDeletedDesc: "계정이 영구적으로 제거되었습니다.",
+  adminUserApprovGoogleAccount:    "구글 계정",
 
   // ── Field Inventory: leftovers ──
   fieldInvLowStockPreset:          "⚠ 재고 부족",
@@ -7139,6 +7141,7 @@ const es: Translations = {
   adminUserApprovToastRejected:    "Usuario rechazado",
   adminUserApprovToastDeleted:     "Usuario eliminado",
   adminUserApprovToastDeletedDesc: "La cuenta ha sido eliminada permanentemente.",
+  adminUserApprovGoogleAccount:    "Cuenta de Google",
 
   // ── Field Inventory: leftovers ──
   fieldInvLowStockPreset:          "⚠ Bajo stock",

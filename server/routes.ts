@@ -4402,14 +4402,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let totalPdfPages = 1;
         const PDF_PAGE_CAP = 8; // maximum pages sent to GPT-4o vision in one call
 
-        // ── PDF → render all pages (up to cap) ───────────────────────────────
+        // ── PDF → render all pages (up to cap) in one document load ─────────
         if (mime === "application/pdf") {
-          const { pdfFirstPageToPng, pdfPageCount } = await import("./services/pdfFirstPage");
-          totalPdfPages = await pdfPageCount(req.file.buffer);
-          const pagesToProcess = Math.min(totalPdfPages, PDF_PAGE_CAP);
-          // Render pages sequentially (pdfjs is not safely parallelisable on same doc)
-          for (let p = 1; p <= pagesToProcess; p++) {
-            const pngBuf = await pdfFirstPageToPng(req.file.buffer, p);
+          const { pdfPageRangeToPngs } = await import("./services/pdfFirstPage");
+          const { pngs, totalPages } = await pdfPageRangeToPngs(
+            req.file.buffer,
+            1,
+            PDF_PAGE_CAP,
+          );
+          totalPdfPages = totalPages;
+          for (const pngBuf of pngs) {
             pageImages.push({ base64: pngBuf.toString("base64"), mimeType: "image/png" });
           }
         }
@@ -4485,7 +4487,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!oaiRes.ok) {
           const errBody = await oaiRes.text();
           console.error("[extract] OpenAI error:", errBody);
-          return res.status(502).json({ message: "AI extraction failed", detail: errBody });
+          return res.status(502).json({ message: "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." });
         }
 
         const oaiData = await oaiRes.json() as any;

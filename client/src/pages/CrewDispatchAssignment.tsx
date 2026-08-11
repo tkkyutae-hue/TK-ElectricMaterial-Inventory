@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Users, CheckCircle2, MapPin, Loader2, Building2, GripVertical,
+  Search, SlidersHorizontal, X,
 } from "lucide-react";
 import {
   DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter,
@@ -283,6 +284,14 @@ function groupAccentColor(name: string): string {
   return GROUP_PALETTE[Math.abs(h) % GROUP_PALETTE.length];
 }
 
+// ─── Status filter options ────────────────────────────────────────────────────
+const STATUS_FILTERS = [
+  { priority: 0, label: "Working on it", bg: "#dcfce7", text: "#15803d" },
+  { priority: 1, label: "Start Soon",    bg: "#dbeafe", text: "#1d4ed8" },
+  { priority: 2, label: "기타 진행 중",   bg: "#fef9c3", text: "#a16207" },
+  { priority: 3, label: "완료",           bg: "#f1f5f9", text: "#94a3b8" },
+] as const;
+
 // ─── Sortable group wrapper ────────────────────────────────────────────────────
 function SortableGroup({ id, children }: {
   id: string;
@@ -320,12 +329,28 @@ function ProjectCardView({
   groupOrder: string[];
   onGroupOrderChange: (order: string[]) => void;
 }) {
-  const [expandedId,      setExpandedId]      = useState<number | null>(null);
-  const [hideCompleted,   setHideCompleted]   = useState<boolean>(true);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
+  const [expandedId,       setExpandedId]       = useState<number | null>(null);
+  const [hideCompleted,    setHideCompleted]    = useState<boolean>(true);
+  const [collapsedGroups,  setCollapsedGroups]  = useState<Set<string>>(loadCollapsedGroups);
+  const [searchQuery,      setSearchQuery]      = useState("");
+  const [filterPriorities, setFilterPriorities] = useState<Set<number>>(new Set());
+  const [showFilterMenu,   setShowFilterMenu]   = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
 
   // Persist collapsedGroups to localStorage (groupOrder persisted by parent)
   useEffect(() => { saveCollapsedGroups(collapsedGroups); }, [collapsedGroups]);
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    if (!showFilterMenu) return;
+    function handler(e: MouseEvent) {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showFilterMenu]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -360,6 +385,31 @@ function ProjectCardView({
 
   const groupIds = useMemo(() => groups.map(([owner]) => owner), [groups]);
 
+  // Apply search + status filter (DndContext still uses groupIds from full groups for stability)
+  const isFiltering = searchQuery.trim().length > 0 || filterPriorities.size > 0;
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return groups
+      .map(([owner, projects]) => {
+        let filtered = projects;
+        if (q) {
+          filtered = filtered.filter((p) =>
+            p.name.toLowerCase().includes(q) ||
+            (p.poNumber ?? "").toLowerCase().includes(q) ||
+            (p.jobLocation ?? "").toLowerCase().includes(q)
+          );
+        }
+        if (filterPriorities.size > 0) {
+          filtered = filtered.filter((p) => filterPriorities.has(groupPriority(p)));
+        }
+        return [owner, filtered] as [string, Project[]];
+      })
+      .filter(([, ps]) => ps.length > 0);
+  }, [groups, searchQuery, filterPriorities]);
+
+  const totalCount    = useMemo(() => groups.reduce((s, [, ps]) => s + ps.length, 0), [groups]);
+  const filteredCount = useMemo(() => filteredGroups.reduce((s, [, ps]) => s + ps.length, 0), [filteredGroups]);
+
   function toggleGroup(key: string) {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
@@ -385,28 +435,110 @@ function ProjectCardView({
 
   return (
     <div className="space-y-3">
-      {/* Completed filter toggle */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setHideCompleted((v) => !v)}
-          className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-            hideCompleted
-              ? "bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200"
-              : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-          }`}
-        >
-          {hideCompleted
-            ? `완료 ${completedCount}개 숨김 — 보기`
-            : `완료 ${completedCount}개 포함 — 숨기기`}
-        </button>
+      {/* ── Toolbar: search + filter + completed toggle ── */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          {/* Search input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="프로젝트명, PO 번호, 위치로 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Status filter dropdown */}
+          <div className="relative" ref={filterMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowFilterMenu((v) => !v)}
+              className={`h-9 px-3 flex items-center gap-1.5 text-xs font-medium border rounded-lg transition-colors whitespace-nowrap ${
+                filterPriorities.size > 0
+                  ? "border-blue-300 bg-blue-50 text-blue-700"
+                  : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {filterPriorities.size > 0 ? `▼ ${filterPriorities.size}개` : "▼ 필터"}
+            </button>
+            {showFilterMenu && (
+              <div className="absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[190px]">
+                {STATUS_FILTERS.map(({ priority, label, bg, text }) => (
+                  <label
+                    key={priority}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filterPriorities.has(priority)}
+                      onChange={() => {
+                        setFilterPriorities((prev) => {
+                          const next = new Set(prev);
+                          next.has(priority) ? next.delete(priority) : next.add(priority);
+                          return next;
+                        });
+                      }}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: bg, color: text }}>
+                      {label}
+                    </span>
+                  </label>
+                ))}
+                {filterPriorities.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterPriorities(new Set())}
+                    className="w-full mt-1 pt-1 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 py-1 text-center"
+                  >
+                    필터 초기화
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Completed toggle */}
+          <button
+            type="button"
+            onClick={() => setHideCompleted((v) => !v)}
+            className={`h-9 px-3 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap ${
+              hideCompleted
+                ? "bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200"
+                : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+            }`}
+          >
+            {hideCompleted ? `완료 ${completedCount}개 숨김` : `완료 ${completedCount}개 포함`}
+          </button>
+        </div>
+
+        {/* Result count (only when filtering) */}
+        {isFiltering && (
+          <p className="text-xs text-slate-400">
+            총 {totalCount}개 중 {filteredCount}개 표시
+          </p>
+        )}
       </div>
 
-      {groups.length === 0 && (
+      {filteredGroups.length === 0 && (
         <p className="text-sm text-slate-400 text-center py-12">
-          {hideCompleted && completedCount > 0
-            ? `활성 프로젝트가 없습니다. 완료 프로젝트 ${completedCount}개를 보려면 위 버튼을 누르세요.`
-            : "등록된 프로젝트가 없습니다."}
+          {isFiltering
+            ? "검색 결과가 없습니다."
+            : hideCompleted && completedCount > 0
+              ? `활성 프로젝트가 없습니다. 완료 프로젝트 ${completedCount}개를 보려면 위 버튼을 누르세요.`
+              : "등록된 프로젝트가 없습니다."}
         </p>
       )}
 
@@ -414,7 +546,7 @@ function ProjectCardView({
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={groupIds} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {groups.map(([owner, projects]) => {
+            {filteredGroups.map(([owner, projects]) => {
               const color     = groupAccentColor(owner);
               const collapsed = collapsedGroups.has(owner);
 
@@ -475,12 +607,6 @@ function ProjectCardView({
                                         <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>
                                       )}
                                       <span className="font-semibold text-slate-800 text-sm leading-tight">{p.name}</span>
-                                      <span
-                                        className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ml-auto"
-                                        style={{ backgroundColor: sc.bg, color: sc.text }}
-                                      >
-                                        {statusLabel(p)}
-                                      </span>
                                     </div>
                                     {p.jobLocation && (
                                       <div className="flex items-center gap-1 text-xs text-slate-500">
@@ -535,8 +661,14 @@ function ProjectCardView({
                                       </div>
                                     )}
                                   </div>
-                                  {/* Right: worker count + expand */}
-                                  <div className="shrink-0 flex flex-col items-end justify-start gap-2 pl-1 pt-0.5">
+                                  {/* Right: status chip + worker count + expand */}
+                                  <div className="shrink-0 flex flex-col items-end justify-start gap-1.5 pl-2 pt-0.5 min-w-[88px]">
+                                    <span
+                                      className="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap text-right"
+                                      style={{ backgroundColor: sc.bg, color: sc.text }}
+                                    >
+                                      {statusLabel(p)}
+                                    </span>
                                     <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
                                       workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
                                     }`}>

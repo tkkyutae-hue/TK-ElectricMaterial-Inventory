@@ -71,12 +71,30 @@ function statusLabel(p: Project): string {
   return p.status ?? "";
 }
 
+// Monday.com status label → official Monday colour palette
+const MONDAY_STATUS_COLORS: Record<string, string> = {
+  "working on it": "#fdab3d",
+  "done":          "#00c875",
+  "stuck":         "#e2445c",
+  "not started":   "#c4c4c4",
+  "in progress":   "#0086c0",
+  "quote only":    "#a25ddc",
+  "cancelled":     "#808080",
+  "canceled":      "#808080",
+  "completed":     "#00c875",
+  "start soon":    "#579bfc",
+  "on hold":       "#bb3354",
+  "waiting":       "#ffcb00",
+};
+
 function statusColors(p: Project): { bg: string; text: string } {
+  const key = (p.status ?? "").trim().toLowerCase();
+  const bg  = MONDAY_STATUS_COLORS[key];
+  if (bg) return { bg, text: "#ffffff" };
+  // Fallback: priority-based muted tones for unmapped labels
   const pri = groupPriority(p);
-  if (pri === 0) return { bg: "#dcfce7", text: "#15803d" };
-  if (pri === 1) return { bg: "#dbeafe", text: "#1d4ed8" };
-  if (pri === 3) return { bg: "#f1f5f9", text: "#94a3b8" };
-  return { bg: "#fef9c3", text: "#a16207" };
+  if (pri === 3) return { bg: "#c4c4c4", text: "#ffffff" };
+  return { bg: "#fdab3d", text: "#ffffff" };
 }
 
 /** Raw Monday status label shown on cards */

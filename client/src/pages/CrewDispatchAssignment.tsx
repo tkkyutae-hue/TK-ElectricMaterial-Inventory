@@ -221,24 +221,33 @@ function ProjectCardView({
   jibbleMap: Map<number, JibbleEntry>;
   getAssignment: (workerId: number) => number | null;
 }) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId,     setExpandedId]     = useState<number | null>(null);
+  const [hideCompleted,  setHideCompleted]  = useState<boolean>(true);
 
-  // Group by ownerName (발주처), sorted by status priority within each group
+  // Count completed projects (for toggle label)
+  const completedCount = useMemo(
+    () => allProjects.filter((p) => !p.archived && groupPriority(p) >= 3).length,
+    [allProjects],
+  );
+
+  // Group by customerName (고객사), sorted by status priority within each group
   const groups = useMemo(() => {
-    const sorted = sortProjects(allProjects.filter((p) => !p.archived));
-    const map = new Map<string, Project[]>();
+    const nonArchived = allProjects.filter((p) => !p.archived);
+    const visible     = hideCompleted ? nonArchived.filter((p) => groupPriority(p) < 3) : nonArchived;
+    const sorted      = sortProjects(visible);
+    const map         = new Map<string, Project[]>();
     for (const p of sorted) {
-      const key = p.ownerName?.trim() || "발주처 미지정";
+      const key = p.customerName?.trim() || "고객사 미지정";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     }
-    // Sort group keys: named owners A→Z, "발주처 미지정" last
+    // Sort group keys: named customers A→Z, "고객사 미지정" last
     return Array.from(map.entries() as IterableIterator<[string, Project[]]>).sort(([a], [b]) => {
-      if (a === "발주처 미지정") return 1;
-      if (b === "발주처 미지정") return -1;
+      if (a === "고객사 미지정") return 1;
+      if (b === "고객사 미지정") return -1;
       return a.localeCompare(b);
     });
-  }, [allProjects]);
+  }, [allProjects, hideCompleted]);
 
   function getProjectWorkers(projectId: number) {
     return workerList
@@ -248,8 +257,29 @@ function ProjectCardView({
 
   return (
     <div className="space-y-8">
+      {/* Completed filter toggle */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setHideCompleted((v) => !v)}
+          className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+            hideCompleted
+              ? "bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200"
+              : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          }`}
+        >
+          {hideCompleted
+            ? `완료 ${completedCount}개 숨김 — 보기`
+            : `완료 ${completedCount}개 포함 — 숨기기`}
+        </button>
+      </div>
+
       {groups.length === 0 && (
-        <p className="text-sm text-slate-400 text-center py-12">등록된 프로젝트가 없습니다.</p>
+        <p className="text-sm text-slate-400 text-center py-12">
+          {hideCompleted && completedCount > 0
+            ? `활성 프로젝트가 없습니다. 완료 프로젝트 ${completedCount}개를 보려면 위 버튼을 누르세요.`
+            : "등록된 프로젝트가 없습니다."}
+        </p>
       )}
       {groups.map(([owner, projects]) => (
         <div key={owner}>

@@ -4497,6 +4497,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     },
   });
 
+  // Returns page count for a PDF so the client can show a page-range picker
+  app.post(
+    "/api/projects/:id/scope-items/pdf-page-count",
+    isAuthenticated,
+    requireManager,
+    uploadExtract.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+        if (req.file.mimetype !== "application/pdf")
+          return res.json({ pageCount: 1 });
+        const { pdfPageCount } = await import("./services/pdfFirstPage");
+        const pageCount = await pdfPageCount(req.file.buffer);
+        res.json({ pageCount });
+      } catch (err: any) {
+        console.error("[pdf-page-count]", err);
+        res.json({ pageCount: 1 }); // fail-safe: treat as single page
+      }
+    },
+  );
+
   app.post(
     "/api/projects/:id/scope-items/extract-from-file",
     isAuthenticated,
@@ -4601,11 +4622,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         let raw: string;
         try {
           const geminiResult = await genAI.models.generateContent({
-            model: "gemini-flash-latest",
+            model: "gemini-2.0-flash-latest",
             contents: [{ parts }],
             config: { temperature: 0.1, maxOutputTokens: 4000 },
           });
           raw = geminiResult.text ?? "[]";
+          console.log("[extract] Gemini raw (first 500):", raw.slice(0, 500));
         } catch (aiErr: any) {
           console.error("[extract] Gemini error:", aiErr);
           let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";

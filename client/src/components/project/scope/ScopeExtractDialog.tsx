@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   FileText, Upload, X, Loader2, CheckSquare, Square,
-  AlertCircle, Sparkles, Link2,
+  AlertCircle, Sparkles, Link2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface RowState extends ExtractedItem {
 
 const ACCEPTED = ".pdf,.png,.jpg,.jpeg,.webp,.xlsx";
 const MAX_SIZE_MB = 20;
+const PDF_PAGE_CAP = 8; // must match server constant
 
 function formatBytes(bytes: number) {
   return bytes < 1024 * 1024
@@ -104,6 +105,114 @@ function DropZone({
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
       />
+    </div>
+  );
+}
+
+// ─── PageRangePicker ──────────────────────────────────────────────────────────
+function PageRangePicker({
+  totalPages,
+  fromPage,
+  toPage,
+  onChange,
+}: {
+  totalPages: number;
+  fromPage: number;
+  toPage: number;
+  onChange: (from: number, to: number) => void;
+}) {
+  const maxTo = Math.min(totalPages, fromPage + PDF_PAGE_CAP - 1);
+
+  function setFrom(v: number) {
+    const clamped = Math.max(1, Math.min(v, totalPages));
+    const newTo = Math.min(toPage, clamped + PDF_PAGE_CAP - 1, totalPages);
+    onChange(clamped, Math.max(clamped, newTo));
+  }
+  function setTo(v: number) {
+    const clamped = Math.max(fromPage, Math.min(v, maxTo));
+    onChange(fromPage, clamped);
+  }
+
+  const pageCount = toPage - fromPage + 1;
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+        <FileText className="w-4 h-4 text-amber-600" />
+        PDF {totalPages}페이지 — BOQ가 있는 페이지 범위를 선택하세요
+      </div>
+
+      <div className="flex items-center gap-3">
+        {/* From page */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500 font-medium">시작 페이지</label>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setFrom(fromPage - 1)}
+              disabled={fromPage <= 1}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={fromPage}
+              onChange={(e) => setFrom(parseInt(e.target.value) || 1)}
+              className="w-14 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm outline-none focus:border-brand-400 bg-white"
+            />
+            <button
+              onClick={() => setFrom(fromPage + 1)}
+              disabled={fromPage >= totalPages}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <span className="text-slate-400 mt-5">~</span>
+
+        {/* To page */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-slate-500 font-medium">끝 페이지</label>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setTo(toPage - 1)}
+              disabled={toPage <= fromPage}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <input
+              type="number"
+              min={fromPage}
+              max={maxTo}
+              value={toPage}
+              onChange={(e) => setTo(parseInt(e.target.value) || fromPage)}
+              className="w-14 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm outline-none focus:border-brand-400 bg-white"
+            />
+            <button
+              onClick={() => setTo(toPage + 1)}
+              disabled={toPage >= maxTo}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 text-xs text-slate-500">
+          ({pageCount}페이지 처리{pageCount >= PDF_PAGE_CAP ? ` — 최대 ${PDF_PAGE_CAP}페이지` : ""})
+        </div>
+      </div>
+
+      {totalPages > PDF_PAGE_CAP && (
+        <p className="text-xs text-amber-700">
+          한 번에 최대 {PDF_PAGE_CAP}페이지까지 처리할 수 있습니다. 나머지 페이지는 범위를 바꿔 다시 추출하세요.
+        </p>
+      )}
     </div>
   );
 }
@@ -370,12 +479,22 @@ export function ScopeExtractDialog({
   const [step, setStep] = useState<"upload" | "result">("upload");
   const [error, setError] = useState<string | null>(null);
 
+  // Page range state (only relevant for PDFs with >1 page)
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [checkingPages, setCheckingPages] = useState(false);
+  const [fromPage, setFromPage] = useState(1);
+  const [toPage, setToPage] = useState(1);
+
   function reset() {
     setFile(null);
     setRows([]);
     setInventoryItems([]);
     setStep("upload");
     setError(null);
+    setTotalPages(1);
+    setCheckingPages(false);
+    setFromPage(1);
+    setToPage(1);
   }
 
   function handleClose() {
@@ -383,13 +502,41 @@ export function ScopeExtractDialog({
     onClose();
   }
 
-  function handleFile(f: File) {
+  async function handleFile(f: File) {
     if (f.size > MAX_SIZE_MB * 1024 * 1024) {
       setError(`파일 크기가 ${MAX_SIZE_MB}MB를 초과합니다.`);
       return;
     }
     setError(null);
     setFile(f);
+    setTotalPages(1);
+    setFromPage(1);
+    setToPage(1);
+
+    // For PDFs, fetch page count so we can show the range picker
+    if (f.type === "application/pdf") {
+      setCheckingPages(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", f);
+        const r = await fetch(`/api/projects/${projectId}/scope-items/pdf-page-count`, {
+          method: "POST",
+          credentials: "include",
+          body: fd,
+        });
+        if (r.ok) {
+          const data = await r.json();
+          const count = data.pageCount ?? 1;
+          setTotalPages(count);
+          setFromPage(1);
+          setToPage(Math.min(count, PDF_PAGE_CAP));
+        }
+      } catch {
+        // fail-safe: treat as 1 page
+      } finally {
+        setCheckingPages(false);
+      }
+    }
   }
 
   // ── Extract mutation ──────────────────────────────────────────────────────
@@ -399,6 +546,11 @@ export function ScopeExtractDialog({
     mutationFn: async (f: File) => {
       const fd = new FormData();
       fd.append("file", f);
+      // Pass page range for PDFs
+      if (f.type === "application/pdf" && totalPages > 1) {
+        fd.append("fromPage", String(fromPage));
+        fd.append("toPage", String(toPage));
+      }
       const r = await fetch(`/api/projects/${projectId}/scope-items/extract-from-file`, {
         method: "POST",
         credentials: "include",
@@ -416,13 +568,13 @@ export function ScopeExtractDialog({
         inventoryItems: InventoryOption[];
       }>;
     },
-    onSuccess: ({ items, pagesProcessed, totalPages, pageCapped, inventoryItems: inv }) => {
+    onSuccess: ({ items, pagesProcessed, totalPages: respTotal, pageCapped, inventoryItems: inv }) => {
       if (items.length === 0) {
-        setError("품목을 찾을 수 없었습니다. 파일을 확인하고 다시 시도하세요.");
+        setError("품목을 찾을 수 없었습니다. BOQ/견적서 페이지가 맞는지 확인하고 다시 시도해 주세요.");
         return;
       }
-      if (pageCapped && pagesProcessed && totalPages) {
-        setPageCappedInfo({ processed: pagesProcessed, total: totalPages });
+      if (pageCapped && pagesProcessed && respTotal) {
+        setPageCappedInfo({ processed: pagesProcessed, total: respTotal });
       } else {
         setPageCappedInfo(null);
       }
@@ -525,8 +677,9 @@ export function ScopeExtractDialog({
   const selectedRows = rows.filter((r) => r.selected);
   const isExtracting = extractMutation.isPending;
   const isSaving = saveMutation.isPending;
-
   const matchedCount = rows.filter((r) => r.inventoryItemId !== null).length;
+  const isPdf = file?.type === "application/pdf";
+  const showPagePicker = isPdf && totalPages > 1 && !checkingPages;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
@@ -544,7 +697,25 @@ export function ScopeExtractDialog({
           {/* ── Upload step ── */}
           {step === "upload" && (
             <>
-              <DropZone file={file} onFile={handleFile} onClear={() => { setFile(null); setError(null); }} />
+              <DropZone file={file} onFile={handleFile} onClear={() => { setFile(null); setError(null); setTotalPages(1); }} />
+
+              {/* Page count loading indicator */}
+              {checkingPages && (
+                <div className="flex items-center gap-2 text-xs text-slate-500 px-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  PDF 페이지 수 확인 중…
+                </div>
+              )}
+
+              {/* Page range picker (multi-page PDFs only) */}
+              {showPagePicker && (
+                <PageRangePicker
+                  totalPages={totalPages}
+                  fromPage={fromPage}
+                  toPage={toPage}
+                  onChange={(f, t) => { setFromPage(f); setToPage(t); }}
+                />
+              )}
 
               {error && (
                 <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
@@ -559,7 +730,7 @@ export function ScopeExtractDialog({
                 </Button>
                 <Button
                   className="bg-brand-700 hover:bg-brand-800 text-white min-w-[120px]"
-                  disabled={!file || isExtracting}
+                  disabled={!file || isExtracting || checkingPages}
                   onClick={() => file && extractMutation.mutate(file)}
                 >
                   {isExtracting ? (
@@ -568,7 +739,8 @@ export function ScopeExtractDialog({
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2" /> AI 추출
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {showPagePicker ? `${fromPage}~${toPage}p AI 추출` : "AI 추출"}
                     </>
                   )}
                 </Button>

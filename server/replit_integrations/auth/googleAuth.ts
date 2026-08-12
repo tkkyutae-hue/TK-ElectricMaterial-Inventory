@@ -2,6 +2,16 @@ import { OAuth2Client } from "google-auth-library";
 import type { Express } from "express";
 import { authStorage } from "./storage";
 
+/**
+ * Resolves the OAuth callback URL in priority order:
+ *  1. GOOGLE_CALLBACK_URL env var — must be set explicitly for production.
+ *     Production value: https://tkelectric.replit.app/api/auth/google/callback
+ *     See docs/google-oauth-setup.md for the full setup guide, including the
+ *     required step of registering this URI in Google Cloud Console.
+ *  2. Auto-detected dev URL via REPLIT_DEV_DOMAIN (set automatically in the
+ *     Replit workspace, not present in production).
+ *  3. Relative path fallback — OAuth will fail; only a last resort.
+ */
 function getClient() {
   return new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,

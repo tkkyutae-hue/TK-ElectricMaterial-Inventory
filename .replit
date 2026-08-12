@@ -51,6 +51,7 @@ integrations = ["javascript_log_in_with_replit:2.0.0", "javascript_object_storag
 ADMIN_SEED_TOKEN = "tk-admin-seed-2026"
 
 [userenv.production]
+GOOGLE_CALLBACK_URL = "https://tkelectric.replit.app/api/auth/google/callback"
 
 [postMerge]
 path = "scripts/post-merge.sh"

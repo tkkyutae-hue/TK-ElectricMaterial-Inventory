@@ -179,7 +179,7 @@ interface ManpowerRow {
   attendanceStatus: string; startTime: string; endTime: string;
   hoursWorked: number; lunchBreak: boolean; notes: string;
 }
-interface MaterialRow  { id: number; description: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
+interface MaterialRow  { id: number; description: string; spec: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
 interface EquipmentRow {
   id: number; name: string; size: string; brand: string;
   unit: string; qty: number; hours: number; notes: string;
@@ -848,7 +848,7 @@ export function NewReportTab({
       return scopeItems
         .filter((s: any) => s.isActive)
         .map((s: any) => ({
-          id: uid(), description: s.itemName, unit: s.unit ?? "EA", qty: 0, notes: "",
+          id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
           inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
         }));
     });
@@ -881,7 +881,7 @@ export function NewReportTab({
     const newRows = active
       .filter((s: any) => !existingScopeIds.has(s.id))
       .map((s: any) => ({
-        id: uid(), description: s.itemName, unit: s.unit ?? "EA", qty: 0, notes: "",
+        id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
         inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
       }));
     if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "Scope Items이 이미 Materials 섹션에 있습니다." }); return; }
@@ -931,14 +931,17 @@ export function NewReportTab({
     return rows.map((r: any) => ({ lunchBreak: true, ...r }));
   });
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
-    (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, ...m }))
+    (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
   );
   const [equipment, setEquipment]  = useState<EquipmentRow[]>(fd?.equipment  ?? []);
 
   // ── Notes ──
-  const [generalNotes,     setGeneralNotes]     = useState<string>(fd?.generalNotes     ?? "");
-  const [safetyNotes,      setSafetyNotes]      = useState<string>(fd?.safetyNotes      ?? "");
-  const [inspectorVisitor, setInspectorVisitor] = useState<string>(fd?.inspectorVisitor ?? "");
+  const [generalNotes,       setGeneralNotes]       = useState<string>(fd?.generalNotes       ?? "");
+  const [safetyNotes,        setSafetyNotes]        = useState<string>(fd?.safetyNotes        ?? "");
+  const [inspectorVisitor,   setInspectorVisitor]   = useState<string>(fd?.inspectorVisitor   ?? "");
+  const [requestFromClient,  setRequestFromClient]  = useState<string>(fd?.requestFromClient  ?? "");
+  const [drawingNo,          setDrawingNo]          = useState<string>(fd?.drawingNo          ?? "");
+  const [drawingDescription, setDrawingDescription] = useState<string>(fd?.drawingDescription ?? "");
 
   // ── Save state ──
   const [savedStatus, setSavedStatus] = useState<string | null>(initialData?.status ?? null);
@@ -1035,6 +1038,7 @@ export function NewReportTab({
       projectManager, projectManagerId, projectManagerTrade,
       tasks, manpower, materials, equipment,
       generalNotes, safetyNotes, inspectorVisitor,
+      requestFromClient, drawingNo, drawingDescription,
     };
   }
 
@@ -2435,9 +2439,12 @@ export function NewReportTab({
                           let patch: Partial<MaterialRow> = { scopeItemId: scopeId };
                           if (scopeId) {
                             const scope = scopeItems.find((s: any) => s.id === scopeId);
-                            if (scope?.linkedInventoryItemId) {
-                              const invItem = inventoryItems.find((inv: any) => inv.id === scope.linkedInventoryItemId);
-                              if (invItem) { patch.inventoryItemId = invItem.id; patch.description = invItem.name; patch.unit = invItem.unitOfMeasure ?? row.unit; }
+                            if (scope) {
+                              patch.spec = scope.remarks ?? "";
+                              if (scope.linkedInventoryItemId) {
+                                const invItem = inventoryItems.find((inv: any) => inv.id === scope.linkedInventoryItemId);
+                                if (invItem) { patch.inventoryItemId = invItem.id; patch.description = invItem.name; patch.unit = invItem.unitOfMeasure ?? row.unit; }
+                              }
                             }
                           }
                           setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
@@ -2468,7 +2475,7 @@ export function NewReportTab({
 
         </div>
         <AddRow testId="btn-add-material" label={t.newReportAddMaterial}
-          onClick={() => setMaterials([...materials, { id: uid(), description: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
+          onClick={() => setMaterials([...materials, { id: uid(), description: "", spec: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
         {inventoryItems.length > 0 && (
           <p className="mt-2 text-[10px] text-slate-400">
@@ -2672,6 +2679,29 @@ export function NewReportTab({
               onChange={(e) => setInspectorVisitor(e.target.value)}
               placeholder={t.newReportInspectorPh}
               className="h-9 text-sm" />
+          </div>
+          <div>
+            <FL>Request From Client / Team</FL>
+            <Textarea data-testid="input-request-from-client" value={requestFromClient}
+              onChange={(e) => setRequestFromClient(e.target.value)}
+              placeholder="Requests or instructions received from client or team…"
+              className="text-sm min-h-[72px] resize-y" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <FL>Drawing No.</FL>
+              <Input data-testid="input-drawing-no" value={drawingNo}
+                onChange={(e) => setDrawingNo(e.target.value)}
+                placeholder="e.g. E-101, M-205"
+                className="h-9 text-sm" />
+            </div>
+            <div>
+              <FL>Drawing Description</FL>
+              <Input data-testid="input-drawing-description" value={drawingDescription}
+                onChange={(e) => setDrawingDescription(e.target.value)}
+                placeholder="e.g. Electrical Floor Plan – Level 1"
+                className="h-9 text-sm" />
+            </div>
           </div>
         </div>
       </Section>

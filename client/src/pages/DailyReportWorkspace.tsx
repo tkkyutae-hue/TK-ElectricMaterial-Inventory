@@ -59,23 +59,68 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ─── Weather code mapper ───────────────────────────────────────────────────────
+const WEATHER_MAP: Record<string, string> = {
+  // Sunny / clear
+  clear: "SUNNY", sunny: "SUNNY",
+  // Cloudy — handles hyphenated editor value "partly-cloudy" after normalisation
+  "partly cloudy": "CLOUDY", cloudy: "CLOUDY", overcast: "CLOUDY",
+  // Rain
+  rain: "RAIN", rainy: "RAIN", raining: "RAIN", drizzle: "RAIN",
+  // Snow
+  snow: "SNOW", snowy: "SNOW", snowing: "SNOW",
+  // Tornado
+  tornado: "TORNADO",
+  // Editor-only values not in the five-option template — output as-is (uppercased)
+  wind: "WIND", windy: "WIND",
+  heat: "HEAT", hot: "HEAT",
+};
+function mapWeather(raw: string): string {
+  // Normalise: lowercase, strip leading/trailing spaces, convert hyphens to spaces
+  const key = (raw ?? "").toLowerCase().trim().replace(/-/g, " ");
+  return WEATHER_MAP[key] ?? (raw ? raw.toUpperCase() : "—");
+}
+
 // ─── Excel export helper ──────────────────────────────────────────────────────
-function exportReportToExcel(report: any, projectName: string) {
+function exportReportToExcel(report: any, project: any) {
   const fd = report.formData ?? {};
   const rows: string[][] = [];
 
-  // Header
+  // Project location: jobLocation takes priority, else build from address parts
+  const projectLoc =
+    project?.jobLocation ||
+    [project?.addressLine1, project?.city, project?.state].filter(Boolean).join(", ") ||
+    "—";
+
+  // Project duration
+  // Append T00:00:00 so date-only strings (YYYY-MM-DD) are parsed as local calendar
+  // dates rather than UTC midnight, which would shift by one day in negative-UTC timezones.
+  const fmtDate = (d: string | null | undefined) =>
+    d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—";
+  const duration = project
+    ? `${fmtDate(project.startDate)} ~ ${fmtDate(project.endDate)}`
+    : "—";
+
+  // ── Header ─────────────────────────────────────────────────────────────────
   rows.push(["VoltStock — Daily Report Export"]);
-  rows.push(["Project:", projectName]);
-  rows.push(["Report No.:", report.reportNumber ?? "—"]);
-  rows.push(["Report Date:", report.reportDate ?? "—"]);
-  rows.push(["Prepared By:", fd.preparedBy ?? "—"]);
-  rows.push(["Shift:", fd.shift ?? "—"]);
-  rows.push(["Weather:", fd.weather ?? "—"]);
-  rows.push(["Temperature:", fd.temperature ? `${fd.temperature}°F` : "—"]);
+  rows.push(["PO / JOB NO:",       project?.code ?? project?.poNumber ?? "—"]);
+  rows.push(["PROJECT:",            project?.name ?? "—"]);
+  rows.push(["CLIENT:",             project?.customerName ?? "—"]);
+  rows.push(["PROJECT LOCATION:",   projectLoc]);
+  rows.push(["PROJECT DURATION:",   duration]);
+  rows.push(["Report No.:",         report.reportNumber ?? "—"]);
+  rows.push(["Report Date:",        report.reportDate ?? "—"]);
+  rows.push(["REPORTER:",           fd.preparedBy ?? "—", "TITLE:", fd.preparedByTrade ?? "—"]);
+  rows.push(["PROJECT MANAGER:",    fd.projectManager ?? "—", "TITLE:", fd.projectManagerTrade ?? "—"]);
+  rows.push(["Shift:",              fd.shift ?? "—"]);
+  rows.push(["WEATHER:",            mapWeather(fd.weather ?? "")]);
+  const fmtTemp = (v: string | number | null | undefined) =>
+    (v != null && v !== "") ? `${v}°F` : "—";
+  rows.push(["TEMPERATURE HIGH:",   fmtTemp(fd.temperatureHigh)]);
+  rows.push(["TEMPERATURE LOW:",    fmtTemp(fd.temperatureLow)]);
   rows.push([]);
 
-  // Manpower
+  // ── Manpower ───────────────────────────────────────────────────────────────
   rows.push(["── MANPOWER ──"]);
   rows.push(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
   (fd.manpower ?? []).forEach((r: any) => {
@@ -85,7 +130,7 @@ function exportReportToExcel(report: any, projectName: string) {
   rows.push(["", "", "", "", "Total:", String(totalHrs.toFixed(1)), ""]);
   rows.push([]);
 
-  // Work Tasks
+  // ── Work Tasks ─────────────────────────────────────────────────────────────
   rows.push(["── WORK TASKS ──"]);
   rows.push(["Description", "Area", "Status", "Notes"]);
   (fd.tasks ?? []).forEach((r: any) => {
@@ -93,15 +138,15 @@ function exportReportToExcel(report: any, projectName: string) {
   });
   rows.push([]);
 
-  // Materials
+  // ── Materials (with SIZE column) ───────────────────────────────────────────
   rows.push(["── MATERIALS ──"]);
-  rows.push(["Material", "Unit", "Qty", "Notes"]);
+  rows.push(["Material", "Size / Spec", "Unit", "Qty", "Notes"]);
   (fd.materials ?? []).forEach((r: any) => {
-    rows.push([r.description ?? "", r.unit ?? "", String(r.qty ?? 0), r.notes ?? ""]);
+    rows.push([r.description ?? "", r.spec ?? r.remarks ?? "", r.unit ?? "", String(r.qty ?? 0), r.notes ?? ""]);
   });
   rows.push([]);
 
-  // Equipment
+  // ── Equipment ──────────────────────────────────────────────────────────────
   rows.push(["── EQUIPMENT ──"]);
   rows.push(["Equipment", "Unit", "Qty", "Hours", "Notes"]);
   (fd.equipment ?? []).forEach((r: any) => {
@@ -109,11 +154,14 @@ function exportReportToExcel(report: any, projectName: string) {
   });
   rows.push([]);
 
-  // Notes
+  // ── Notes / Remarks ────────────────────────────────────────────────────────
   rows.push(["── NOTES / REMARKS ──"]);
-  rows.push(["General Notes:", fd.generalNotes ?? ""]);
-  rows.push(["Safety:", fd.safetyNotes ?? ""]);
-  rows.push(["Inspector/Visitor:", fd.inspectorVisitor ?? ""]);
+  rows.push(["General Notes:",              fd.generalNotes ?? ""]);
+  rows.push(["Safety Concerns:",            fd.safetyNotes ?? ""]);
+  rows.push(["Request From Client/Team:",   fd.requestFromClient ?? ""]);
+  rows.push(["Inspector/Visitor:",          fd.inspectorVisitor ?? ""]);
+  rows.push(["Drawing No.:",                fd.drawingNo ?? ""]);
+  rows.push(["Drawing Description:",        fd.drawingDescription ?? ""]);
 
   // Build CSV
   const csv = rows.map((row) =>
@@ -132,11 +180,11 @@ function exportReportToExcel(report: any, projectName: string) {
 // ─── Tab content components ───────────────────────────────────────────────────
 function HistoryTab({
   projectId,
-  projectName,
+  project,
   onOpen,
 }: {
   projectId: number;
-  projectName: string;
+  project: any;
   onOpen: (report: any) => void;
 }) {
   const { toast } = useToast();
@@ -323,7 +371,7 @@ function HistoryTab({
                       size="sm"
                       className="text-xs gap-1.5 h-8 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
                       onClick={() => {
-                        exportReportToExcel(r, projectName);
+                        exportReportToExcel(r, project);
                         toast({ title: t.dailyWorkspaceExportedToast, description: t.dailyWorkspaceExportedDesc.replace("{n}", String(r.reportNumber ?? r.id)) });
                       }}
                     >
@@ -708,7 +756,7 @@ export default function DailyReportWorkspace() {
         {activeTab === "history" && (
           <HistoryTab
             projectId={numericProjectId}
-            projectName={project.name}
+            project={project}
             onOpen={(report) => {
               setEditingReport(report);
               setActiveTab("new-report");

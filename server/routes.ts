@@ -4239,10 +4239,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
-      const role = req.user?.role ?? "viewer";
-      if (role !== "admin" && role !== "manager") {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
+      // requireManager middleware already ensures only admin/manager can reach here
       await storage.deleteDailyReport(id);
       res.status(204).end();
     } catch (err: any) {

@@ -4624,7 +4624,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const geminiResult = await genAI.models.generateContent({
             model: "gemini-3.5-flash",
             contents: [{ parts }],
-            config: { temperature: 0.1, maxOutputTokens: 4000 },
+            config: { temperature: 0.1, maxOutputTokens: 4000, responseMimeType: "application/json" },
           });
           raw = geminiResult.text ?? "[]";
           console.log("[extract] Gemini raw (first 500):", raw.slice(0, 500));

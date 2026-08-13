@@ -52,7 +52,6 @@ const TASK_STATUS_CFG: Record<string, {
   "delayed":      { label: "Delayed",     dotColor: "#f97316", badgeBg: "#fff7ed", badgeBorder: "#fdba74", badgeText: "#c2410c", accentColor: "#f97316", dot: "bg-orange-500",  text: "text-orange-700",  rowBg: "bg-amber-50/30", borderColor: "#f97316" },
   "blocked":      { label: "Blocked",     dotColor: "#f43f5e", badgeBg: "#fff1f2", badgeBorder: "#fecdd3", badgeText: "#e11d48", accentColor: "#f43f5e", dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#f43f5e" },
 };
-const AVATAR_COLORS = ["#818cf8", "#34d399", "#f97316", "#3b82f6"];
 
 const TRADE_COLOR_CFG: Record<string, { bg: string; color: string; border: string }> = {
   "Foreman":     { bg: "#dcfce7", color: "#16a34a", border: "#86efac" },
@@ -162,19 +161,13 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function initials(name: string): string {
-  return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]?.toUpperCase() ?? "").slice(0, 2).join("");
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface TaskWorker { name: string; role: "main" | "assist"; trade?: string }
 interface PhotoFile { url: string; workDescription: string; memo: string }
 interface TaskRow {
   id: number; description: string; area: string; status: string; notes: string;
   expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: PhotoFile[];
-  workers: TaskWorker[]; linkedPinId: string | null;
 }
-interface DrawingPin { id: string; x: number; y: number; linkedTaskId: number | null }
 interface ManpowerRow {
   id: number; workerId: number | null; workerName: string; trade: string;
   attendanceStatus: string; startTime: string; endTime: string;
@@ -902,10 +895,9 @@ export function NewReportTab({
       const photoFiles: PhotoFile[] = rawPhotos.map((p: any) =>
         typeof p === "string" ? { url: p, workDescription: "", memo: "" } : p
       );
-      return { expanded: false, detailNotes: "", drawingFiles: [], workers: [], linkedPinId: null, ...t, photoFiles };
+      return { expanded: false, detailNotes: "", drawingFiles: [], ...t, photoFiles };
     })
   );
-  const [assignOpen,     setAssignOpen]     = useState<number | null>(null);
   const [deleteConfirm,  setDeleteConfirm]  = useState<number | null>(null);
   const [undoState,      setUndoState]      = useState<{ task: TaskRow; index: number; progress: number } | null>(null);
   const undoTimerRef    = useRef<ReturnType<typeof setTimeout>  | null>(null);
@@ -914,12 +906,7 @@ export function NewReportTab({
   // Drawing Board state
   const [drawingUrl,       setDrawingUrl]       = useState<string | null>(null);
   const [drawingFilename,  setDrawingFilename]  = useState("");
-  const [pins,             setPins]             = useState<DrawingPin[]>([]);
   const [drawingCollapsed, setDrawingCollapsed] = useState(false);
-  const [addPinMode,       setAddPinMode]       = useState(false);
-  const [selectedPinId,    setSelectedPinId]    = useState<string | null>(null);
-  const [pinLinkOpen,      setPinLinkOpen]      = useState<string | null>(null);
-  const [taskPinOpen,      setTaskPinOpen]      = useState<number | null>(null);
   const drawingInputRef    = useRef<HTMLInputElement>(null);
   const photoInputRef      = useRef<HTMLInputElement>(null);
   const [photoTaskId,      setPhotoTaskId]      = useState<number | null>(null);
@@ -1002,10 +989,6 @@ export function NewReportTab({
   function handleDeleteTask(task: TaskRow, index: number) {
     setDeleteConfirm(null);
     setTasks(prev => prev.filter(r => r.id !== task.id));
-    // Unlink any pin that was pointing at this task
-    if (task.linkedPinId) {
-      setPins(prev => prev.map(p => p.id === task.linkedPinId ? { ...p, linkedTaskId: null } : p));
-    }
     if (undoTimerRef.current)    clearTimeout(undoTimerRef.current);
     if (undoIntervalRef.current) clearInterval(undoIntervalRef.current);
     let progress = 100;
@@ -1030,10 +1013,6 @@ export function NewReportTab({
       arr.splice(undoState.index, 0, restoredTask);
       return arr;
     });
-    // Re-link the pin that was unlinked on delete
-    if (restoredTask.linkedPinId) {
-      setPins(prev => prev.map(p => p.id === restoredTask.linkedPinId ? { ...p, linkedTaskId: restoredTask.id } : p));
-    }
     setUndoState(null);
   }
 
@@ -1662,20 +1641,11 @@ export function NewReportTab({
             </span>
             {drawingUrl ? (
               <>
-                <button type="button"
-                  onClick={() => { setAddPinMode(m => !m); setSelectedPinId(null); }}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5,
-                    padding: "3px 9px", borderRadius: 5,
-                    border: addPinMode ? "1px solid #a78bfa" : "1px solid #d0dbd2",
-                    background: addPinMode ? "#ede9fe" : "white",
-                    color: addPinMode ? "#7c3aed" : "#3d5c45", cursor: "pointer", fontWeight: addPinMode ? 700 : 400,
-                  }}>{t.newReportAddPin}</button>
                 <button type="button" onClick={() => drawingInputRef.current?.click()}
                   style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
                   {t.newReportReplace}
                 </button>
-                <button type="button" onClick={() => { setDrawingCollapsed(c => !c); setAddPinMode(false); setSelectedPinId(null); }}
+                <button type="button" onClick={() => setDrawingCollapsed(c => !c)}
                   style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #d0dbd2", borderRadius: 5, background: "white", color: "#3d5c45", cursor: "pointer" }}>
                   {drawingCollapsed ? t.newReportExpand : t.newReportCollapse}
                 </button>
@@ -1706,143 +1676,27 @@ export function NewReportTab({
           ) : drawingCollapsed ? (
             /* Collapsed summary bar */
             <div style={{ padding: "7px 14px", background: "#f8faf9", display: "flex", alignItems: "center", gap: 8, fontSize: 10.5, color: "#6b8a70" }}>
-              <span style={{ flex: 1 }}>
-                {pins.length} pin{pins.length !== 1 ? "s" : ""} placed ·{" "}
-                {pins.filter(p => p.linkedTaskId !== null).length} linked to task{pins.filter(p => p.linkedTaskId !== null).length !== 1 ? "s" : ""} ·{" "}
-                {pins.filter(p => p.linkedTaskId === null).length} unlinked
-              </span>
+              <span style={{ flex: 1 }}>{drawingFilename}</span>
               <button type="button" onClick={() => setDrawingCollapsed(false)}
                 style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 {t.newReportExpandDrawing}
               </button>
             </div>
           ) : (
-            /* Drawing canvas with pins */
-            <>
-              <div
-                style={{ position: "relative", height: 340, overflow: "hidden", background: "#f1f5f2", cursor: addPinMode ? "crosshair" : "default" }}
-                onClick={e => {
-                  if (!addPinMode) { setSelectedPinId(null); setPinLinkOpen(null); return; }
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top)  / rect.height) * 100;
-                  const nextId = `A${pins.length + 1}`;
-                  setPins(prev => [...prev, { id: nextId, x, y, linkedTaskId: null }]);
-                }}>
-                {drawingFilename.toLowerCase().endsWith(".pdf") ? (
-                  <PdfViewer
-                    url={drawingUrl!}
-                    filename={drawingFilename}
-                    height={340}
-                    onReplaceClick={() => drawingInputRef.current?.click()}
-                  />
-                ) : (
-                  <img src={drawingUrl!} alt="Project drawing"
-                    style={{ width: "100%", height: 340, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
-                )}
-                {/* Pins */}
-                {pins.map(pin => {
-                  const isLinked = pin.linkedTaskId !== null;
-                  const linkedTask = isLinked ? tasks.find(t => t.id === pin.linkedTaskId) : null;
-                  return (
-                    <div key={pin.id}
-                      style={{
-                        position: "absolute", left: `${pin.x}%`, top: `${pin.y}%`,
-                        width: 26, height: 26, borderRadius: "50%",
-                        background: isLinked ? "#16a34a" : "#1d6ecc",
-                        color: "white", fontSize: 9, fontWeight: 700,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        transform: "translate(-50%, -50%)",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.25)", cursor: "pointer", zIndex: 10, userSelect: "none",
-                      }}
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (selectedPinId === pin.id) { setSelectedPinId(null); setPinLinkOpen(null); }
-                        else { setSelectedPinId(pin.id); setPinLinkOpen(null); }
-                      }}>
-                      {pin.id}
-                      {/* Pin popover */}
-                      {selectedPinId === pin.id && (
-                        <div style={{
-                          position: "absolute", bottom: "calc(100% + 10px)", left: "50%", transform: "translateX(-50%)",
-                          background: "white", border: "1px solid #d0dbd2", borderRadius: 8, padding: "10px 12px",
-                          minWidth: 190, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", fontSize: 11, zIndex: 50,
-                          color: "#1c2b1f", cursor: "default", textAlign: "left",
-                        }} onClick={e => e.stopPropagation()}>
-                          <p style={{ fontWeight: 700, marginBottom: 4 }}>{t.newReportPin} {pin.id}</p>
-                          <p style={{ color: "#6b8a70", fontSize: 10, marginBottom: 8 }}>
-                            {linkedTask ? `→ ${linkedTask.description || `${t.newReportTask} ${tasks.indexOf(linkedTask) + 1}`}` : t.newReportNotLinked}
-                          </p>
-                          <div style={{ position: "relative", display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button type="button"
-                              onClick={() => setPinLinkOpen(pinLinkOpen === pin.id ? null : pin.id)}
-                              style={{ fontSize: 10, color: "#4338ca", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                              {t.newReportLinkToTask}
-                            </button>
-                            <button type="button"
-                              onClick={() => {
-                                // Unlink the task that pointed to this pin
-                                if (pin.linkedTaskId !== null) {
-                                  setTasks(prev => prev.map(t => t.id === pin.linkedTaskId ? { ...t, linkedPinId: null } : t));
-                                }
-                                setPins(prev => prev.filter(p => p.id !== pin.id));
-                                setSelectedPinId(null); setPinLinkOpen(null);
-                              }}
-                              style={{ fontSize: 10, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                              {t.newReportDeletePin}
-                            </button>
-                            {pinLinkOpen === pin.id && (
-                              <div style={{
-                                position: "absolute", top: "100%", left: 0, marginTop: 4,
-                                background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 200,
-                              }}>
-                                {tasks.length === 0 ? (
-                                  <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>{t.newReportNoTasksYet}</p>
-                                ) : tasks.map((task, ti) => (
-                                  <button key={task.id} type="button"
-                                    style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
-                                    className="hover:bg-slate-50"
-                                    onClick={() => {
-                                      // Unlink previous task if any
-                                      if (pin.linkedTaskId !== null) {
-                                        setTasks(prev => prev.map(t2 => t2.id === pin.linkedTaskId ? { ...t2, linkedPinId: null } : t2));
-                                      }
-                                      // Unlink any other pin that was linked to this task
-                                      const existingPin = pins.find(p => p.id !== pin.id && p.linkedTaskId === task.id);
-                                      if (existingPin) {
-                                        setPins(prev => prev.map(p => p.id === existingPin.id ? { ...p, linkedTaskId: null } : p));
-                                        setTasks(prev => prev.map(t2 => t2.id === task.id ? { ...t2, linkedPinId: null } : t2));
-                                      }
-                                      setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: task.id } : p));
-                                      setTasks(prev => prev.map(t2 => t2.id === task.id ? { ...t2, linkedPinId: pin.id } : t2));
-                                      setPinLinkOpen(null); setSelectedPinId(null);
-                                    }}>
-                                    {task.description || `${t.newReportTask} ${ti + 1}`}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Legend bar */}
-              <div style={{ background: "#f4f7f5", borderTop: "1px solid #e2e8e4", padding: "7px 12px", display: "flex", alignItems: "center", fontSize: 9, color: "#6b8a70" }}>
-                <span style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> {t.newReportLinkedToTask}
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1d6ecc", display: "inline-block" }} /> {t.newReportNotYetLinked}
-                  </span>
-                </span>
-                <span>{t.newReportPinHint}</span>
-              </div>
-            </>
+            /* Drawing canvas */
+            <div style={{ position: "relative", height: 340, overflow: "hidden", background: "#f1f5f2" }}>
+              {drawingFilename.toLowerCase().endsWith(".pdf") ? (
+                <PdfViewer
+                  url={drawingUrl!}
+                  filename={drawingFilename}
+                  height={340}
+                  onReplaceClick={() => drawingInputRef.current?.click()}
+                />
+              ) : (
+                <img src={drawingUrl!} alt="Project drawing"
+                  style={{ width: "100%", height: 340, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
+              )}
+            </div>
           )}
         </div>
         <input ref={drawingInputRef} type="file" accept="image/*,.pdf,.dwg" className="hidden"
@@ -1851,7 +1705,7 @@ export function NewReportTab({
             if (!file) return;
             const url = URL.createObjectURL(file);
             setDrawingUrl(url); setDrawingFilename(file.name);
-            setDrawingCollapsed(false); setAddPinMode(false);
+            setDrawingCollapsed(false);
             e.target.value = "";
           }} />
         <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
@@ -1878,7 +1732,6 @@ export function NewReportTab({
         <div className="space-y-[10px]" data-testid="task-cards">
           {tasks.map((row, i) => {
             const cfg = TASK_STATUS_CFG[row.status] ?? TASK_STATUS_CFG["not-started"];
-            const mainWorker = row.workers.find(w => w.role === "main");
 
             return (
               <div key={row.id} data-testid={`task-card-${i}`} className="group"
@@ -1895,64 +1748,6 @@ export function NewReportTab({
                     #{i + 1}
                   </span>
 
-                  {/* Pin badge */}
-                  {row.linkedPinId ? (
-                    <button type="button"
-                      data-testid={`badge-pin-linked-${i}`}
-                      onClick={e => { e.stopPropagation(); setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0,
-                        background: row.status === "completed" ? "#f0fdf4" : "#f5f3ff",
-                        color: row.status === "completed" ? "#15803d" : "#7c3aed",
-                        border: `1px solid ${row.status === "completed" ? "#86efac" : "#ddd6fe"}`,
-                        borderRadius: 4, padding: "2px 7px", fontSize: 9.5, fontWeight: 700,
-                        cursor: "pointer", whiteSpace: "nowrap",
-                      }}>
-                      📍 {row.linkedPinId}
-                    </button>
-                  ) : (
-                    <div style={{ position: "relative", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                      <button type="button"
-                        data-testid={`badge-pin-link-${i}`}
-                        onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 3,
-                          background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#ccc",
-                          borderRadius: 4, padding: "2px 7px", fontSize: 9.5, fontWeight: 700,
-                          cursor: "pointer", whiteSpace: "nowrap",
-                        }}>
-                        {t.newReportNoPin}
-                      </button>
-                      {taskPinOpen === row.id && (
-                        <div style={{
-                          position: "absolute", top: "100%", left: 0, marginTop: 3, zIndex: 60,
-                          background: "white", border: "1px solid #d0dbd2", borderRadius: 6,
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", minWidth: 150,
-                        }}>
-                          {pins.filter(p => p.linkedTaskId === null).length === 0 ? (
-                            <p style={{ padding: "6px 10px", fontSize: 10, color: "#9db8a2" }}>
-                              {pins.length === 0 ? t.newReportNoPinsOnDrawing : t.newReportAllPinsLinked}
-                            </p>
-                          ) : pins.filter(p => p.linkedTaskId === null).map(pin => (
-                            <button key={pin.id} type="button"
-                              style={{ display: "block", width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 10, color: "#1c2b1f", background: "none", border: "none", cursor: "pointer" }}
-                              className="hover:bg-slate-50"
-                              onClick={() => {
-                                setPins(prev => prev.map(p => p.id === pin.id ? { ...p, linkedTaskId: row.id } : p));
-                                setTasks(prev => prev.map(r => r.id === row.id ? { ...r, linkedPinId: pin.id } : r));
-                                setTaskPinOpen(null);
-                              }}>
-                              📍 {pin.id}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Divider */}
-                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
-
                   {/* Description + Location — flex:1 */}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
@@ -1968,48 +1763,6 @@ export function NewReportTab({
                         style={{ fontSize: 12, color: "#555", fontWeight: 500 }}
                         placeholder={t.newReportAreaLocationPh} />
                     </div>
-                  </div>
-
-                  {/* Divider */}
-                  <span style={{ width: 1, height: 22, background: "#f0f0f0", margin: "0 10px", flexShrink: 0 }} />
-
-                  {/* Worker display */}
-                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                    {row.workers.length === 0 ? (
-                      <span style={{ fontSize: 12, color: "#ddd" }}>{t.newReportNoWorkersAssigned}</span>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {mainWorker && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <div style={{
-                              width: 28, height: 28, borderRadius: "50%",
-                              background: AVATAR_COLORS[0], color: "#fff",
-                              fontSize: 10, fontWeight: 700, flexShrink: 0,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}>{initials(mainWorker.name)}</div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                              <span style={{ fontSize: 12, fontWeight: 500, color: "#1a1a1a", whiteSpace: "nowrap" }}>
-                                {(() => {
-                                  const parts = mainWorker.name.trim().split(/\s+/);
-                                  return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
-                                })()}
-                              </span>
-                              <span style={{ fontSize: 10, color: "#aaa", whiteSpace: "nowrap" }}>
-                                {mainWorker.trade || t.newReportWorker} · {t.newReportMain}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        {row.workers.length > 1 && (
-                          <span style={{
-                            display: "inline-flex", alignItems: "center", justifyContent: "center",
-                            background: "#f0f0f0", border: "1.5px solid #e0e0e0",
-                            borderRadius: 20, padding: "2px 9px",
-                            fontSize: 11, fontWeight: 700, color: "#666",
-                          }}>+{row.workers.length - 1}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   {/* Divider */}
@@ -2075,94 +1828,10 @@ export function NewReportTab({
                 {/* ── Detail panel ── */}
                 {row.expanded && (
                   <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 0.9fr", gap: 0 }}>
-
-                      {/* Col A: Worker Assignment */}
-                      <div style={{ paddingRight: 16, borderRight: "1px solid #f5f5f5" }}>
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>{t.newReportWorkerAssignment}</p>
-
-                        {/* Assigned list */}
-                        {row.workers.length > 0 && (
-                          <div className="space-y-1 mb-2">
-                            {row.workers.map((w, wi) => (
-                              <div key={wi} className={`flex items-center gap-2 px-2 py-1.5 rounded-md ${w.role === "main" ? "bg-green-50" : "bg-white border border-slate-100"}`}>
-                                <div style={{
-                                  width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                                  background: w.role === "main" ? "#dcfce7" : "#dbeafe",
-                                  color: w.role === "main" ? "#16a34a" : "#1d6ecc",
-                                  border: `1.5px solid ${w.role === "main" ? "#86efac" : "#93c5fd"}`,
-                                  fontSize: 9, fontWeight: 700,
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                }}>{initials(w.name)}</div>
-                                <span className="text-[11px] text-slate-700 flex-1 min-w-0 truncate">{w.name}</span>
-                                {tradeBadge(w.trade)}
-                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
-                                  w.role === "main" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                                }`}>{w.role === "main" ? t.newReportMain : t.newReportAssist}</span>
-                                <button type="button"
-                                  onClick={() => setTasks(tasks.map(r => r.id === row.id
-                                    ? { ...r, workers: r.workers.filter((_, idx) => idx !== wi) } : r))}
-                                  className="text-slate-200 hover:text-red-400 transition-colors shrink-0">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Assign dropdown */}
-                        {manpower.length === 0 ? (
-                          <button type="button" disabled
-                            title={t.newReportAddWorkersFirst}
-                            className="w-full text-left text-[11px] text-slate-300 border border-dashed border-slate-200 rounded-md px-3 py-2 cursor-not-allowed">
-                            {t.newReportAssignWorker}
-                          </button>
-                        ) : (
-                          <div className="relative">
-                            <button type="button"
-                              onClick={e => { e.stopPropagation(); setAssignOpen(assignOpen === row.id ? null : row.id); }}
-                              className="w-full text-left text-[11px] text-blue-600 border border-dashed border-blue-200 rounded-md px-3 py-2 hover:bg-blue-50 transition-colors">
-                              {t.newReportAssignWorker}
-                            </button>
-                            {assignOpen === row.id && (
-                              <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[200px]">
-                                {manpower
-                                  .filter(mp => mp.workerName && !row.workers.some(w => w.name === mp.workerName))
-                                  .map(mp => (
-                                    <button key={mp.id} type="button"
-                                      className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                      onClick={e => {
-                                        e.stopPropagation();
-                                        const isFirst = row.workers.length === 0;
-                                        setTasks(tasks.map(r => r.id === row.id
-                                          ? { ...r, workers: [...r.workers, { name: mp.workerName, role: isFirst ? "main" : "assist", trade: mp.trade || undefined }] }
-                                          : r));
-                                        setAssignOpen(null);
-                                      }}>
-                                      <div style={{
-                                        width: 18, height: 18, borderRadius: "50%",
-                                        background: "#dbeafe", color: "#1d6ecc",
-                                        fontSize: 8, fontWeight: 700,
-                                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                                      }}>{initials(mp.workerName)}</div>
-                                      <span className="flex-1 truncate">{mp.workerName}</span>
-                                      {tradeBadge(mp.trade)}
-                                      {row.workers.length === 0
-                                        ? <span className="text-[9px] text-green-600 shrink-0">{t.newReportToMain}</span>
-                                        : <span className="text-[9px] text-slate-400 shrink-0">{t.newReportAssist}</span>}
-                                    </button>
-                                  ))}
-                                {manpower.filter(mp => mp.workerName && !row.workers.some(w => w.name === mp.workerName)).length === 0 && (
-                                  <p className="px-3 py-2 text-[11px] text-slate-400 italic">{t.newReportAllAssigned}</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr", gap: 0 }}>
 
                       {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}
-                      <div style={{ padding: "0 16px", borderRight: "1px solid #f5f5f5" }}>
+                      <div style={{ padding: "0 16px 0 0", borderRight: "1px solid #f5f5f5" }}>
                         <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
                           {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
                         </p>
@@ -2272,53 +1941,8 @@ export function NewReportTab({
                         </div>
                       </div>
 
-                      {/* Col C: Drawing Reference (compact) + Notes */}
+                      {/* Col C: Notes */}
                       <div style={{ paddingLeft: 16 }}>
-                        {/* Drawing Reference — compact */}
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportDrawingRef}</p>
-                        {row.linkedPinId ? (
-                          <div
-                            style={{
-                              display: "flex", alignItems: "center", gap: 8,
-                              background: "#f5f3ff", border: "1px solid #ddd6fe",
-                              borderRadius: 7, padding: "8px 10px",
-                              marginBottom: 10, cursor: "pointer",
-                            }}
-                            onClick={() => { setDrawingCollapsed(false); setSelectedPinId(row.linkedPinId); }}>
-                            <div style={{
-                              width: 20, height: 20, borderRadius: "50%",
-                              background: "#7c3aed", fontSize: 8, color: "#fff",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontWeight: 700, flexShrink: 0,
-                            }}>{row.linkedPinId}</div>
-                            <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", lineHeight: 1.3 }}>
-                                {t.newReportPin} {row.linkedPinId}
-                              </p>
-                              <p style={{ fontSize: 10, color: "#a78bfa", lineHeight: 1.3 }}>{t.newReportJumpToDrawing}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            background: "#f9f9f9", border: "1px solid #ebebeb",
-                            borderRadius: 7, padding: "8px 10px",
-                            marginBottom: 10, cursor: "pointer",
-                          }}
-                          onClick={() => setTaskPinOpen(taskPinOpen === row.id ? null : row.id)}>
-                            <div style={{
-                              width: 20, height: 20, borderRadius: "50%",
-                              background: "#e5e5e5", fontSize: 8, color: "#aaa",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontWeight: 700, flexShrink: 0,
-                            }}>—</div>
-                            <div>
-                              <p style={{ fontSize: 11, fontWeight: 600, color: "#bbb", lineHeight: 1.3 }}>{t.newReportNoPinLinked}</p>
-                              <p style={{ fontSize: 10, color: "#ccc", lineHeight: 1.3 }}>{t.newReportClickToLink}</p>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Notes */}
                         <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportNotes}</p>
                         <Textarea value={row.detailNotes}
@@ -2343,7 +1967,7 @@ export function NewReportTab({
         <AddRow testId="btn-add-task" label={t.newReportAddTask}
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
-            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [] as PhotoFile[], workers: [], linkedPinId: null,
+            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [] as PhotoFile[],
           }])} />
 
         {/* ── Undo toast ── */}

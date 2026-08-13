@@ -1242,7 +1242,7 @@ export default function CrewDispatchAssignment() {
                 </div>
 
                 {/* Worker list */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 420px)" }}>
+                <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 420px)" }}>
                   {filteredWorkers.length === 0 ? (
                     <p className="text-sm text-slate-400 text-center py-10">해당하는 작업자가 없습니다.</p>
                   ) : (
@@ -1266,7 +1266,7 @@ export default function CrewDispatchAssignment() {
               </div>
 
               {/* Right: project cards */}
-              <div className="flex-1 min-w-0 overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
+              <div className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
                 <ProjectCardView
                   allProjects={displayedProjects}
                   workerList={workerList}

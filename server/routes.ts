@@ -4576,14 +4576,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           pageImages.push({ base64: req.file.buffer.toString("base64"), mimeType: mime });
         }
 
-        // ── Fetch inventory items for AI matching ───────────────────────────
+        // ── Fetch full inventory for server-side fuzzy matching ─────────────
         const { items: itemsTable } = await import("../shared/schema");
         const inventoryRows = await db
           .select({ id: itemsTable.id, name: itemsTable.name, unitOfMeasure: itemsTable.unitOfMeasure })
           .from(itemsTable)
           .where(eq(itemsTable.isActive, true));
-        const inventoryForPrompt = inventoryRows.slice(0, 500).map(r => ({ id: r.id, name: r.name, unit: r.unitOfMeasure }));
-        const inventoryMap = new Map(inventoryRows.map(r => [r.id, r.name]));
+        const inventoryCandidates = inventoryRows.map(r => ({ id: r.id, name: r.name }));
 
         // ── Build Gemini prompt ──────────────────────────────────────────────
         const systemPrompt =
@@ -4593,11 +4592,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "itemName (string — the description/품명, e.g. 'POWER DISTRIBUTION PANEL'), " +
           "spec (string or null — the specification/규격, e.g. 'Main 400AF 480/277V, 3P3W, 400Amp Main Circuit Breaker, Indoor'), " +
           "qty (number), unit (string), " +
-          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
-          "inventoryItemId (number or null — pick the best matching id from the INVENTORY LIST below; must be an exact id from the list; null if no confident match). " +
-          "No markdown, no explanation — just the JSON array.\n\n" +
-          "INVENTORY LIST (id, name, unit):\n" +
-          JSON.stringify(inventoryForPrompt);
+          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment). " +
+          "No markdown, no explanation — just the JSON array.";
 
         const { GoogleGenAI } = await import("@google/genai");
         const genAI = new GoogleGenAI({ apiKey });
@@ -4651,18 +4647,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           items = [];
         }
 
-        // Validate inventoryItemId and normalise spec→remarks
-        items = items.map((it: any) => {
-          const invId = typeof it.inventoryItemId === "number" && inventoryMap.has(it.inventoryItemId)
-            ? it.inventoryItemId
-            : null;
-          return {
-            ...it,
-            remarks: it.spec ?? it.remarks ?? null, // map spec field → remarks for DB compat
-            inventoryItemId: invId,
-            inventoryItemName: invId ? inventoryMap.get(invId) ?? null : null,
-          };
-        });
+        // Server-side fuzzy inventory matching (AI no longer does this)
+        const { batchMatch } = await import("./services/inventoryMatcher");
+        items = batchMatch(
+          items.map((it: any) => ({ ...it, remarks: it.spec ?? it.remarks ?? null })),
+          inventoryCandidates,
+        );
 
         const pagesProcessed = pageImages.length > 0 ? pageImages.length : null;
         res.json({
@@ -4670,7 +4660,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           pagesProcessed,
           totalPages: mime === "application/pdf" ? totalPdfPages : null,
           pageCapped: mime === "application/pdf" && totalPdfPages > PDF_PAGE_CAP,
-          inventoryItems: inventoryForPrompt.map(r => ({ id: r.id, name: r.name })),
+          inventoryItems: inventoryCandidates.map(r => ({ id: r.id, name: r.name })),
         });
       } catch (err: any) {
         console.error("[extract]", err);

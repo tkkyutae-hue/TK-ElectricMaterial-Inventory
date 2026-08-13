@@ -1966,29 +1966,26 @@ export function NewReportTab({
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <colgroup>
             <col style={{ width: 36 }} />
-            <col style={{ width: 80 }} />
             <col />
+            <col style={{ width: 160 }} />
             <col style={{ width: 64 }} />
             <col style={{ width: 44 }} />
-            {scopeItems.length > 0 && <col style={{ width: 130 }} />}
             <col style={{ width: 32 }} />
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              {([t.newReportPhoto, t.newReportSize, t.newReportMaterialName] as const).map((lbl, ci) => (
-                <th key={lbl} className={`py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? "px-2 text-center" : ci === 1 ? "pl-2 pr-1 text-right" : "px-2 text-left"}`}>{lbl}</th>
-              ))}
+              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">{t.newReportPhoto}</th>
+              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportMaterialName}</th>
+              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportSpec}</th>
               <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
-              {scopeItems.length > 0 && <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left">{t.newReportScopeLink}</th>}
               <th className="py-2 px-1" />
             </tr>
           </thead>
           <tbody>
             {materials.length === 0 && (
-              <tr><td colSpan={scopeItems.length > 0 ? 7 : 6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
+              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
             )}
             {materials.map((row, i) => {
-              const { size } = extractSize(row.description);
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
               const imgUrl: string = linkedItem?.imageUrl ?? "";
               return (
@@ -2008,19 +2005,6 @@ export function NewReportTab({
                     ) : (
                       <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={28} /></div>
                     )}
-                  </td>
-                  {/* SIZE column */}
-                  <td className="py-1.5 pl-1 pr-1 text-right">
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: "fit-content", minWidth: 40, maxWidth: "100%",
-                      fontSize: 10, fontWeight: 600,
-                      color: size ? "#555" : "#ccc",
-                      background: size ? "#f0f0f0" : "#fafafa",
-                      border: `1px solid ${size ? "#e0e0e0" : "#eee"}`,
-                      borderRadius: 5, padding: "3px 7px",
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>{size || "—"}</span>
                   </td>
                   {/* Material Name — search input + Inv tag */}
                   <td className="py-1.5 px-2" style={{ overflow: "visible" }}>
@@ -2046,6 +2030,13 @@ export function NewReportTab({
                         }}>{t.newReportInv}</span>
                       )}
                     </div>
+                  </td>
+                  {/* SPEC column */}
+                  <td className="py-1.5 px-2">
+                    <input data-testid={`input-mat-spec-${i}`} value={row.spec}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
+                      placeholder="—"
+                      style={{ width: "100%", fontSize: 12, border: "none", background: "transparent", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
                   </td>
                   {/* QTY cell */}
                   <td className="py-1.5 px-1">
@@ -2073,34 +2064,7 @@ export function NewReportTab({
                         }} />
                     )}
                   </td>
-                  {/* Scope Link */}
-                  {scopeItems.length > 0 && (
-                    <td className="py-1.5 px-2.5">
-                      <select data-testid={`select-scope-link-${i}`}
-                        value={row.scopeItemId ?? ""}
-                        onChange={(e) => {
-                          const scopeId = e.target.value ? Number(e.target.value) : null;
-                          let patch: Partial<MaterialRow> = { scopeItemId: scopeId };
-                          if (scopeId) {
-                            const scope = scopeItems.find((s: any) => s.id === scopeId);
-                            if (scope) {
-                              patch.spec = scope.remarks ?? "";
-                              if (scope.linkedInventoryItemId) {
-                                const invItem = inventoryItems.find((inv: any) => inv.id === scope.linkedInventoryItemId);
-                                if (invItem) { patch.inventoryItemId = invItem.id; patch.description = invItem.name; patch.unit = invItem.unitOfMeasure ?? row.unit; }
-                              }
-                            }
-                          }
-                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                        }}
-                        className="h-8 w-full text-xs rounded-md border border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors px-2 cursor-pointer text-slate-600">
-                        <option value="">{t.newReportNoLink}</option>
-                        {scopeItems.filter((s: any) => s.isActive).map((s: any) => (
-                          <option key={s.id} value={s.id}>{s.itemName} ({s.unit})</option>
-                        ))}
-                      </select>
-                    </td>
-                  )}
+                  {/* Scope Link — hidden UI, auto-link logic kept above */}
                   {/* Delete */}
                   <td className="py-1.5 px-1">
                     <button type="button" data-testid={`btn-remove-mat-${i}`}

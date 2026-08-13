@@ -1121,8 +1121,8 @@ export default function CrewDispatchAssignment() {
       if (q && !w.fullName.toLowerCase().includes(q) && !(w.trade ?? "").toLowerCase().includes(q)) return false;
       if (workerFilter === "onsite") { return isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })(); }
       if (workerFilter === "unassigned") return getAssignment(w.id) === null;
-      // "all" tab: hide already-assigned workers so the pool shrinks as dispatching proceeds
-      return getAssignment(w.id) === null;
+      // "all" tab: show everyone so assigned workers are visible (with X button) after navigation
+      return true;
     });
   }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap]); // eslint-disable-line react-hooks/exhaustive-deps
 

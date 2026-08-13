@@ -1748,21 +1748,13 @@ export function NewReportTab({
                     #{i + 1}
                   </span>
 
-                  {/* Description + Location — flex:1 */}
+                  {/* Description — flex:1 */}
                   <div style={{ flex: 1, minWidth: 0 }} onClick={e => e.stopPropagation()}>
                     <Input data-testid={`input-task-desc-${i}`} value={row.description}
                       onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, description: e.target.value } : r))}
-                      className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#ccc] truncate w-full p-0"
+                      className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent font-semibold placeholder:italic placeholder:text-[#999] truncate w-full p-0"
                       style={{ fontSize: 13, color: "#1a1a1a" }}
                       placeholder={t.newReportTaskDescPh} />
-                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      <Input data-testid={`input-task-area-${i}`} value={row.area}
-                        onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, area: e.target.value } : r))}
-                        className="shadow-none h-auto focus-visible:ring-0 border-0 bg-transparent placeholder:text-[#ccc] truncate p-0 w-full"
-                        style={{ fontSize: 12, color: "#555", fontWeight: 500 }}
-                        placeholder={t.newReportAreaLocationPh} />
-                    </div>
                   </div>
 
                   {/* Divider */}

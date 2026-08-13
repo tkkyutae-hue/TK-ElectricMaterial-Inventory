@@ -138,13 +138,22 @@ function isForemanPlus(trade: string | null | undefined): boolean {
 let _uid = 1000;
 function uid() { return ++_uid; }
 
-function calcHours(start: string, end: string, status: string, lunchBreak: boolean): number {
+function calcHours(start: string, end: string, status: string): number {
   if (!HOURS_COMPUTED.has(status) || !start || !end) return 0;
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
   const mins = (eh * 60 + em) - (sh * 60 + sm);
-  const gross = Math.max(0, Math.round(mins / 60 * 10) / 10);
-  return lunchBreak ? Math.max(0, Math.round((gross - 1) * 10) / 10) : gross;
+  return Math.max(0, Math.round(mins / 60 * 10) / 10);
+}
+
+// Convert ISO timestamp → "HH:MM" in local time (for Jibble punch-in/out)
+function tsToHHMM(ts: string | undefined): string | null {
+  if (!ts) return null;
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return null;
+    return d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+  } catch { return null; }
 }
 
 // Flexible word-order match for material search
@@ -171,7 +180,7 @@ interface TaskRow {
 interface ManpowerRow {
   id: number; workerId: number | null; workerName: string; trade: string;
   attendanceStatus: string; startTime: string; endTime: string;
-  hoursWorked: number; lunchBreak: boolean; notes: string;
+  hoursWorked: number; notes: string;
 }
 interface MaterialRow  { id: number; description: string; spec: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
 interface EquipmentRow {
@@ -808,6 +817,24 @@ export function NewReportTab({
     enabled: !!projectId,
   });
 
+  // ── Jibble today's punch-in/out times ──
+  const { data: jibbleActive, isSuccess: jibbleLoaded } = useQuery<{ active: { entry: any; worker: any }[] }>({
+    queryKey: ["/api/jibble/active"],
+    queryFn: () => fetch("/api/jibble/active", { credentials: "include" }).then(r => r.json()),
+  });
+  // Build workerId → { start, end } map from Jibble data
+  const jibbleTimeMap = (() => {
+    const map: Record<number, { start: string; end: string }> = {};
+    if (!jibbleActive?.active) return map;
+    for (const { entry, worker } of jibbleActive.active) {
+      if (!worker?.id) continue;
+      const start = tsToHHMM(entry.firstIn);
+      const end   = tsToHHMM(entry.lastOut);
+      if (start) map[worker.id] = { start, end: end ?? "17:00" };
+    }
+    return map;
+  })();
+
   // Auto-generate report number
   const autoNumApplied = useRef(false);
   useEffect(() => {
@@ -819,18 +846,20 @@ export function NewReportTab({
   // ── Auto-populate manpower from Crew Dispatch (new report + empty manpower only) ──
   const crewAutoApplied = useRef(false);
   useEffect(() => {
-    if (reportId || crewAutoApplied.current || !crewLoaded || crewAssignments.length === 0) return;
+    if (reportId || crewAutoApplied.current || !crewLoaded || !jibbleLoaded || crewAssignments.length === 0) return;
     crewAutoApplied.current = true;
     setManpower(prev => {
       if (prev.length > 0) return prev;
-      const hrs = calcHours(defStart, defEnd, "ATTEND", defLunchBreak);
-      return crewAssignments.map(w => ({
-        id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
-        attendanceStatus: "ATTEND", startTime: defStart, endTime: defEnd,
-        lunchBreak: defLunchBreak, hoursWorked: hrs, notes: "",
-      }));
+      return crewAssignments.map(w => {
+        const jt = jibbleTimeMap[w.workerId];
+        const start = jt?.start ?? "07:00";
+        const end   = jt?.end   ?? "17:00";
+        return { id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
+          attendanceStatus: "ATTEND", startTime: start, endTime: end,
+          hoursWorked: calcHours(start, end, "ATTEND"), notes: "" };
+      });
     });
-  }, [crewLoaded, crewAssignments, reportId]);
+  }, [crewLoaded, jibbleLoaded, crewAssignments, reportId]);
 
   // ── Auto-populate materials from Scope Items (new report + empty materials only) ──
   const scopeAutoApplied = useRef(false);
@@ -854,15 +883,17 @@ export function NewReportTab({
       toast({ title: "배치된 인원 없음", description: "이 날짜·프로젝트에 배치된 인원이 없습니다.", variant: "destructive" });
       return;
     }
-    const hrs = calcHours(defStart, defEnd, "ATTEND", defLunchBreak);
     const existingIds = new Set(manpower.map(r => r.workerId).filter(Boolean));
     const newRows = crewAssignments
       .filter(w => !existingIds.has(w.workerId))
-      .map(w => ({
-        id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
-        attendanceStatus: "ATTEND", startTime: defStart, endTime: defEnd,
-        lunchBreak: defLunchBreak, hoursWorked: hrs, notes: "",
-      }));
+      .map(w => {
+        const jt = jibbleTimeMap[w.workerId];
+        const start = jt?.start ?? "07:00";
+        const end   = jt?.end   ?? "17:00";
+        return { id: uid(), workerId: w.workerId, workerName: w.workerName, trade: w.trade ?? "",
+          attendanceStatus: "ATTEND", startTime: start, endTime: end,
+          hoursWorked: calcHours(start, end, "ATTEND"), notes: "" };
+      });
     if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "배치 인원이 이미 Manpower 섹션에 있습니다." }); return; }
     setManpower(prev => [...prev, ...newRows]);
     toast({ title: `${newRows.length}명 추가됨` });
@@ -882,11 +913,6 @@ export function NewReportTab({
     setMaterials(prev => [...prev, ...newRows]);
     toast({ title: `${newRows.length}개 자재 추가됨` });
   }
-
-  // ── Manpower section-level defaults ──
-  const [defStart,      setDefStart]      = useState("07:00");
-  const [defEnd,        setDefEnd]        = useState("17:00");
-  const [defLunchBreak, setDefLunchBreak] = useState(true);
 
   // ── Dynamic rows ──
   const [tasks, setTasks] = useState<TaskRow[]>(() =>
@@ -922,7 +948,7 @@ export function NewReportTab({
 
   const [manpower, setManpower] = useState<ManpowerRow[]>(() => {
     const rows = isWorkerBasedManpower(fd?.manpower ?? []) ? (fd?.manpower ?? []) : [];
-    return rows.map((r: any) => ({ lunchBreak: true, ...r }));
+    return rows.map((r: any) => { const { lunchBreak: _lb, ...rest } = r; return rest; });
   });
   const [materials,  setMaterials]  = useState<MaterialRow[]>(
     (fd?.materials ?? []).map((m: any) => ({ inventoryItemId: null, scopeItemId: null, spec: "", ...m }))
@@ -1368,41 +1394,6 @@ export function NewReportTab({
           </button>
         ) : undefined}>
 
-        {/* Section-level defaults */}
-        <div className="flex items-center gap-4 flex-wrap mb-4 pb-4 border-b border-slate-100">
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest shrink-0 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" /> {t.newReportRowDefaults}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">{t.newReportStart}</label>
-            <Input type="time" value={defStart} onChange={(e) => setDefStart(e.target.value)}
-              data-testid="input-def-start" className="h-7 text-xs w-28" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-slate-500">{t.newReportEnd}</label>
-            <Input type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)}
-              data-testid="input-def-end" className="h-7 text-xs w-28" />
-          </div>
-          <button type="button" data-testid="toggle-def-lunch-break"
-            onClick={() => {
-              const next = !defLunchBreak;
-              setDefLunchBreak(next);
-              setManpower(prev => prev.map(r => {
-                const hrs = calcHours(r.startTime, r.endTime, r.attendanceStatus, next);
-                return { ...r, lunchBreak: next, hoursWorked: hrs };
-              }));
-            }}
-            className={`flex items-center gap-1.5 h-7 px-3 rounded-md border text-[11px] font-medium transition-colors ${
-              defLunchBreak
-                ? "bg-amber-50 border-amber-200 text-amber-700"
-                : "border-slate-200 text-slate-400 bg-white"
-            }`}>
-            <span className="text-[13px] leading-none">☕</span>
-            {defLunchBreak ? t.newReportLunchBreakOn : t.newReportLunchBreakOff}
-          </button>
-          <span className="text-[10px] text-slate-300 italic">{t.newReportAppliesAllRows}</span>
-        </div>
-
         {/* Manpower table — no overflow-x-auto so dropdown panels are not clipped */}
         <div>
           <table className="text-sm w-full" data-testid="table-manpower">
@@ -1411,7 +1402,6 @@ export function NewReportTab({
               { label: t.newReportColStatusH,    cls: "w-[130px]" },
               { label: t.newReportStart,         cls: "w-[76px]" },
               { label: t.newReportEnd,           cls: "w-[76px]" },
-              { label: t.newReportColBreak,      cls: "w-[46px] text-center" },
               { label: t.newReportColHrs,        cls: "w-[48px] text-center" },
               { label: t.newReportColNotes,      cls: "w-[130px] text-center" },
             ]} />
@@ -1439,7 +1429,7 @@ export function NewReportTab({
                         return (
                           <Select value={row.attendanceStatus}
                             onValueChange={(v) => {
-                              const hrs = calcHours(row.startTime, row.endTime, v, row.lunchBreak);
+                              const hrs = calcHours(row.startTime, row.endTime, v);
                               setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
                             }}>
                             <SelectTrigger
@@ -1486,7 +1476,7 @@ export function NewReportTab({
                           value={row.startTime}
                           disabled={!hoursActive}
                           onChange={(e) => {
-                            const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus, row.lunchBreak);
+                            const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus);
                             setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
                           }}
                           style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
@@ -1511,30 +1501,11 @@ export function NewReportTab({
                           value={row.endTime}
                           disabled={!hoursActive}
                           onChange={(e) => {
-                            const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus, row.lunchBreak);
+                            const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus);
                             setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
                           }}
                           style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
                         />
-                      </div>
-                    </td>
-                    {/* Break toggle */}
-                    <td className="py-1.5 px-1">
-                      <div className="flex justify-center">
-                        <button type="button" data-testid={`toggle-mp-break-${i}`}
-                          onClick={() => {
-                            const nb = !row.lunchBreak;
-                            const hrs = calcHours(row.startTime, row.endTime, row.attendanceStatus, nb);
-                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, lunchBreak: nb, hoursWorked: hrs } : r));
-                          }}
-                          title={row.lunchBreak ? t.newReportLunchTitleOn : t.newReportLunchTitleOff}
-                          className={`h-6 w-8 rounded text-[9px] font-bold border transition-colors ${
-                            row.lunchBreak && hoursActive
-                              ? "bg-amber-50 border-amber-200 text-amber-600"
-                              : "border-slate-200 text-slate-300 bg-transparent"
-                          }`}>
-                          {row.lunchBreak && hoursActive ? "−1h" : "—"}
-                        </button>
                       </div>
                     </td>
                     {/* Hrs */}
@@ -1579,17 +1550,8 @@ export function NewReportTab({
                   <span style={{ fontSize: 11, fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8", fontVariantNumeric: "tabular-nums" }}>{exceptionsCount}</span>
                 </div>
               </div>
-              {/* Right: Break, Total Work Hrs, Issues */}
+              {/* Right: Total Work Hrs, Issues */}
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                {defLunchBreak ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
-                    {t.newReportMpBreakOn}
-                  </span>
-                ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 999, background: "#f1f5f9", border: "1px solid #e2e8f0", fontSize: 10, fontWeight: 500, color: "#94a3b8", whiteSpace: "nowrap" }}>
-                    {t.newReportMpBreakOff}
-                  </span>
-                )}
                 <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
                   <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>{t.newReportMpTotalHrs}</span>
                   <span style={{ fontSize: 17, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
@@ -1612,9 +1574,8 @@ export function NewReportTab({
           onClick={() => setManpower([...manpower, {
             id: uid(), workerId: null, workerName: "", trade: "",
             attendanceStatus: "ATTEND",
-            startTime: defStart, endTime: defEnd,
-            lunchBreak: defLunchBreak,
-            hoursWorked: calcHours(defStart, defEnd, "ATTEND", defLunchBreak),
+            startTime: "07:00", endTime: "17:00",
+            hoursWorked: calcHours("07:00", "17:00", "ATTEND"),
             notes: "",
           }])} />
 

@@ -943,6 +943,28 @@ export function NewReportTab({
   const photoInputRef      = useRef<HTMLInputElement>(null);
   const [photoTaskId,      setPhotoTaskId]      = useState<number | null>(null);
   const matRowRefs         = useRef<(HTMLTableRowElement | null)[]>([]);
+  const matDragRef         = useRef<{ col: "photo" | "spec"; startX: number; startW: number } | null>(null);
+  const [matColWidths, setMatColWidths] = useState<{ photo: number; spec: number }>(() => {
+    try { const s = localStorage.getItem("dr-mat-col-widths"); if (s) return JSON.parse(s); } catch {}
+    return { photo: 56, spec: 130 };
+  });
+  const startMatColDrag = (col: "photo" | "spec") => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = matColWidths[col];
+    matDragRef.current = { col, startX, startW };
+    const onMove = (mv: MouseEvent) => {
+      const newW = Math.max(28, startW + mv.clientX - startX);
+      setMatColWidths(prev => {
+        const next = { ...prev, [col]: newW };
+        try { localStorage.setItem("dr-mat-col-widths", JSON.stringify(next)); } catch {}
+        return next;
+      });
+    };
+    const onUp = () => { matDragRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
   function flashRow(i: number) {
     const el = matRowRefs.current[i];
     if (!el) return;
@@ -1965,18 +1987,24 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <colgroup>
-            <col style={{ width: 56 }} />
+            <col style={{ width: matColWidths.photo }} />
             <col />
-            <col style={{ width: 130 }} />
+            <col style={{ width: matColWidths.spec }} />
             <col style={{ width: 64 }} />
             <col style={{ width: 44 }} />
             <col style={{ width: 32 }} />
           </colgroup>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">{t.newReportPhoto}</th>
+              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap select-none" style={{ position: "relative" }}>
+                {t.newReportPhoto}
+                <div onMouseDown={startMatColDrag("photo")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
+              </th>
               <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportMaterialName}</th>
-              <th className="py-2 pr-2 pl-5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportSpec}</th>
+              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap select-none" style={{ position: "relative" }}>
+                {t.newReportSpec}
+                <div onMouseDown={startMatColDrag("spec")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
+              </th>
               <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
               <th className="py-2 px-1" />
             </tr>
@@ -2032,7 +2060,7 @@ export function NewReportTab({
                     </div>
                   </td>
                   {/* SPEC column */}
-                  <td className="py-1.5 pr-2 pl-5">
+                  <td className="py-1.5 px-2">
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder="—"

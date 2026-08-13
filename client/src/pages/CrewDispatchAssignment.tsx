@@ -194,8 +194,10 @@ function sortWorkers(list: Worker[], jibbleMap: Map<number, JibbleEntry>): Worke
 }
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
-const LS_GROUP_ORDER = "voltstock_cd_group_order_v1";
-const LS_COLLAPSED   = "voltstock_cd_group_collapsed_v1";
+const LS_GROUP_ORDER    = "voltstock_cd_group_order_v1";
+const LS_COLLAPSED      = "voltstock_cd_group_collapsed_v1";
+const LS_WORKER_FILTER  = "voltstock_cd_worker_filter_v1";
+const LS_FILTER_STATUSES = "voltstock_cd_filter_statuses_v1";
 
 function loadGroupOrder(): string[] {
   try { const s = localStorage.getItem(LS_GROUP_ORDER); if (s) return JSON.parse(s) as string[]; } catch {}
@@ -210,6 +212,17 @@ function loadCollapsedGroups(): Set<string> {
 }
 function saveCollapsedGroups(s: Set<string>) {
   try { localStorage.setItem(LS_COLLAPSED, JSON.stringify(Array.from(s))); } catch {}
+}
+function loadWorkerFilter(): "all" | "onsite" | "unassigned" {
+  try {
+    const s = localStorage.getItem(LS_WORKER_FILTER);
+    if (s === "all" || s === "onsite" || s === "unassigned") return s;
+  } catch {}
+  return "all";
+}
+function loadFilterStatuses(): Set<string> {
+  try { const s = localStorage.getItem(LS_FILTER_STATUSES); if (s) return new Set(JSON.parse(s) as string[]); } catch {}
+  return new Set();
 }
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -502,8 +515,13 @@ function ProjectCardView({
   const [expandedId,       setExpandedId]      = useState<number | null>(null);
   const [collapsedGroups,  setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
   const [searchQuery,      setSearchQuery]     = useState("");
-  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set());
+  const [filterStatuses, setFilterStatuses] = useState<Set<string>>(loadFilterStatuses);
   const [showFilterMenu,   setShowFilterMenu]  = useState(false);
+
+  // Persist project status filter to localStorage whenever it changes
+  useEffect(() => {
+    try { localStorage.setItem(LS_FILTER_STATUSES, JSON.stringify(Array.from(filterStatuses))); } catch {}
+  }, [filterStatuses]);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Server sync for collapsedGroups ──────────────────────────────────────
@@ -857,7 +875,12 @@ export default function CrewDispatchAssignment() {
 
   // Left-panel search/filter
   const [workerSearch, setWorkerSearch] = useState("");
-  const [workerFilter, setWorkerFilter] = useState<"all" | "onsite" | "unassigned">("all");
+  const [workerFilter, setWorkerFilter] = useState<"all" | "onsite" | "unassigned">(loadWorkerFilter);
+
+  // Persist worker filter to localStorage whenever it changes
+  useEffect(() => {
+    try { localStorage.setItem(LS_WORKER_FILTER, workerFilter); } catch {}
+  }, [workerFilter]);
 
   // ── Server prefs: groupOrder ──────────────────────────────────────────────
   const groupOrderServerApplied  = useRef(false);
@@ -1098,7 +1121,8 @@ export default function CrewDispatchAssignment() {
       if (q && !w.fullName.toLowerCase().includes(q) && !(w.trade ?? "").toLowerCase().includes(q)) return false;
       if (workerFilter === "onsite") { return isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })(); }
       if (workerFilter === "unassigned") return getAssignment(w.id) === null;
-      return true;
+      // "all" tab: hide already-assigned workers so the pool shrinks as dispatching proceeds
+      return getAssignment(w.id) === null;
     });
   }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap]); // eslint-disable-line react-hooks/exhaustive-deps
 

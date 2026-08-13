@@ -100,13 +100,19 @@ export function ScopeItemRow({
             <span className="truncate">{invLinked.name}</span>
           </span>
         )}
-        {item.remarks && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{item.remarks}</p>}
       </td>
+      {/* Spec / 규격 */}
       <td className="px-4 py-3">
-        <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
+        {item.remarks
+          ? <p className="text-xs text-slate-500 leading-snug whitespace-pre-wrap break-words">{item.remarks}</p>
+          : <span className="text-slate-300 text-xs">—</span>
+        }
       </td>
       <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums text-sm">
         {parseFloat(String(item.estimatedQty)).toLocaleString()}
+      </td>
+      <td className="px-4 py-3">
+        <span className="font-mono text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">{item.unit}</span>
       </td>
       <td className="px-4 py-3">
         <span className="text-xs" style={{ color: accentColor }}>{resolveDisplayCategory(item.category, item.itemName)}</span>

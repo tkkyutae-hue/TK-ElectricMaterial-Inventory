@@ -63,8 +63,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
   // ── Column resize state ──
   // Columns: 0=Item, 1=Unit, 2=Est.Qty, 3=Category, 4=Actions
   const FIXED_COL_PX = 56; // handle(24) + #(32), not resizable
-  const MIN_COL_WIDTHS = [100, 50, 60, 70, 120] as const;
-  const [colWidths, setColWidths] = useState([240, 70, 85, 130, 165]);
+  // Item, Spec, EstQty, Unit, Category, Actions
+  const MIN_COL_WIDTHS = [100, 80, 55, 50, 70, 120] as const;
+  const [colWidths, setColWidths] = useState([200, 160, 80, 65, 120, 150]);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
 
   const startResize = useCallback((colIdx: number, e: React.MouseEvent) => {
@@ -412,8 +413,9 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                     {/* Resizable columns */}
                     {[
                       { label: t.projScopeColItem,     align: "text-left"  },
-                      { label: t.projScopeColUnit,     align: "text-left"  },
+                      { label: "규격 / Spec",           align: "text-left"  },
                       { label: t.projScopeColEstQty,   align: "text-right" },
+                      { label: t.projScopeColUnit,     align: "text-left"  },
                       { label: t.projScopeColCategory, align: "text-left"  },
                       { label: t.projScopeColActions,  align: "text-right" },
                     ].map(({ label, align }, i) => (

@@ -1965,9 +1965,9 @@ export function NewReportTab({
         <div>
         <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
           <colgroup>
-            <col style={{ width: 36 }} />
+            <col style={{ width: 56 }} />
             <col />
-            <col style={{ width: 160 }} />
+            <col style={{ width: 130 }} />
             <col style={{ width: 64 }} />
             <col style={{ width: 44 }} />
             <col style={{ width: 32 }} />

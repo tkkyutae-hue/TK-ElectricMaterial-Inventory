@@ -81,10 +81,13 @@ function mapWeather(raw: string): string {
   return WEATHER_MAP[key] ?? (raw ? raw.toUpperCase() : "—");
 }
 
-// ─── Excel export helper ──────────────────────────────────────────────────────
-function exportReportToExcel(report: any, project: any) {
+// ─── Excel export helper (ExcelJS) ───────────────────────────────────────────
+async function exportReportToExcel(report: any, project: any): Promise<void> {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Daily Report");
+
   const fd = report.formData ?? {};
-  const rows: string[][] = [];
 
   // Project location: jobLocation takes priority, else build from address parts
   const projectLoc =
@@ -92,87 +95,215 @@ function exportReportToExcel(report: any, project: any) {
     [project?.addressLine1, project?.city, project?.state].filter(Boolean).join(", ") ||
     "—";
 
-  // Project duration
-  // Append T00:00:00 so date-only strings (YYYY-MM-DD) are parsed as local calendar
-  // dates rather than UTC midnight, which would shift by one day in negative-UTC timezones.
   const fmtDate = (d: string | null | undefined) =>
     d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—";
   const duration = project
     ? `${fmtDate(project.startDate)} ~ ${fmtDate(project.endDate)}`
     : "—";
-
-  // ── Header ─────────────────────────────────────────────────────────────────
-  rows.push(["VoltStock — Daily Report Export"]);
-  rows.push(["PO / JOB NO:",       project?.code ?? project?.poNumber ?? "—"]);
-  rows.push(["PROJECT:",            project?.name ?? "—"]);
-  rows.push(["CLIENT:",             project?.customerName ?? "—"]);
-  rows.push(["PROJECT LOCATION:",   projectLoc]);
-  rows.push(["PROJECT DURATION:",   duration]);
-  rows.push(["Report No.:",         report.reportNumber ?? "—"]);
-  rows.push(["Report Date:",        report.reportDate ?? "—"]);
-  rows.push(["REPORTER:",           fd.preparedBy ?? "—", "TITLE:", fd.preparedByTrade ?? "—"]);
-  rows.push(["PROJECT MANAGER:",    fd.projectManager ?? "—", "TITLE:", fd.projectManagerTrade ?? "—"]);
-  rows.push(["Shift:",              fd.shift ?? "—"]);
-  rows.push(["WEATHER:",            mapWeather(fd.weather ?? "")]);
   const fmtTemp = (v: string | number | null | undefined) =>
     (v != null && v !== "") ? `${v}°F` : "—";
-  rows.push(["TEMPERATURE HIGH:",   fmtTemp(fd.temperatureHigh)]);
-  rows.push(["TEMPERATURE LOW:",    fmtTemp(fd.temperatureLow)]);
-  rows.push([]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const HEADER_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3A5F" } };
+  const SECTION_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8EDF5" } };
+  const LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF8E7" } };
+  const COL_LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F4FA" } };
+  const PHOTO_LABEL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+  const PHOTO_DESC_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFBF0" } };
+  const PHOTO_MEMO_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FAFB" } };
+
+  function addTitle(text: string) {
+    const row = ws.addRow([text]);
+    row.height = 24;
+    const cell = row.getCell(1);
+    cell.fill = HEADER_FILL;
+    cell.font = { bold: true, size: 13, color: { argb: "FFFFFFFF" } };
+    cell.alignment = { vertical: "middle" };
+    ws.mergeCells(`A${row.number}:H${row.number}`);
+  }
+
+  function addKV(label: string, value: string, label2?: string, value2?: string) {
+    const r = ws.addRow([label, value, "", label2 ?? "", value2 ?? ""]);
+    r.getCell(1).font = { bold: true, size: 10 };
+    r.getCell(1).fill = LABEL_FILL;
+    r.getCell(4).font = { bold: true, size: 10 };
+    if (label2) r.getCell(4).fill = LABEL_FILL;
+    r.getCell(2).font = { size: 10 };
+    r.getCell(5).font = { size: 10 };
+    [1,2,4,5].forEach(c => { r.getCell(c).alignment = { vertical: "middle", wrapText: true }; });
+    r.height = 18;
+  }
+
+  function addSectionHeader(text: string) {
+    ws.addRow([]);
+    const row = ws.addRow([text]);
+    row.height = 20;
+    const cell = row.getCell(1);
+    cell.fill = SECTION_FILL;
+    cell.font = { bold: true, size: 11, color: { argb: "FF1F3A5F" } };
+    cell.alignment = { vertical: "middle" };
+    ws.mergeCells(`A${row.number}:H${row.number}`);
+  }
+
+  function addColHeader(cols: string[]) {
+    const row = ws.addRow(cols);
+    row.height = 16;
+    cols.forEach((_, i) => {
+      const c = row.getCell(i + 1);
+      c.fill = COL_LABEL_FILL;
+      c.font = { bold: true, size: 9 };
+      c.alignment = { vertical: "middle" };
+      c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
+    });
+  }
+
+  function addDataRow(vals: (string | number)[]) {
+    const row = ws.addRow(vals);
+    row.height = 16;
+    vals.forEach((_, i) => {
+      row.getCell(i + 1).font = { size: 10 };
+      row.getCell(i + 1).alignment = { vertical: "middle", wrapText: true };
+    });
+    return row;
+  }
+
+  // ── Column widths ──
+  ws.columns = [
+    { width: 22 }, { width: 28 }, { width: 14 }, { width: 20 },
+    { width: 28 }, { width: 10 }, { width: 10 }, { width: 20 },
+  ];
+
+  // ── Title ──────────────────────────────────────────────────────────────────
+  addTitle("VoltStock — Daily Report");
+
+  // ── Project header ─────────────────────────────────────────────────────────
+  addKV("PO / JOB NO:",     project?.code ?? project?.poNumber ?? "—");
+  addKV("PROJECT:",         project?.name ?? "—");
+  addKV("CLIENT:",          project?.customerName ?? "—");
+  addKV("PROJECT LOCATION:", projectLoc);
+  addKV("PROJECT DURATION:", duration);
+  addKV("Report No.:",      String(report.reportNumber ?? "—"), "Report Date:", report.reportDate ?? "—");
+  addKV("REPORTER:",        fd.preparedBy ?? "—",             "TITLE:",       fd.preparedByTrade ?? "—");
+  addKV("PROJECT MANAGER:", fd.projectManager ?? "—",         "TITLE:",       fd.projectManagerTrade ?? "—");
+  addKV("Shift:",           fd.shift ?? "—",                  "WEATHER:",     mapWeather(fd.weather ?? ""));
+  addKV("TEMP HIGH:",       fmtTemp(fd.temperatureHigh),      "TEMP LOW:",    fmtTemp(fd.temperatureLow));
 
   // ── Manpower ───────────────────────────────────────────────────────────────
-  rows.push(["── MANPOWER ──"]);
-  rows.push(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
+  addSectionHeader("MANPOWER");
+  addColHeader(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
   (fd.manpower ?? []).forEach((r: any) => {
-    rows.push([r.workerName ?? "", r.trade ?? "", r.attendanceStatus ?? "", r.startTime ?? "", r.endTime ?? "", String(r.hoursWorked ?? 0), r.notes ?? ""]);
+    addDataRow([r.workerName ?? "", r.trade ?? "", r.attendanceStatus ?? "", r.startTime ?? "", r.endTime ?? "", Number(r.hoursWorked ?? 0), r.notes ?? ""]);
   });
   const totalHrs = (fd.manpower ?? []).reduce((s: number, r: any) => s + Number(r.hoursWorked ?? 0), 0);
-  rows.push(["", "", "", "", "Total:", String(totalHrs.toFixed(1)), ""]);
-  rows.push([]);
+  const totRow = ws.addRow(["", "", "", "", "Total:", totalHrs.toFixed(1), ""]);
+  totRow.getCell(5).font = { bold: true, size: 10 };
+  totRow.getCell(6).font = { bold: true, size: 10 };
 
   // ── Work Tasks ─────────────────────────────────────────────────────────────
-  rows.push(["── WORK TASKS ──"]);
-  rows.push(["Description", "Area", "Status", "Notes"]);
+  addSectionHeader("WORK TASKS");
+  addColHeader(["Description", "Area", "Status", "Notes"]);
   (fd.tasks ?? []).forEach((r: any) => {
-    rows.push([r.description ?? "", r.area ?? "", r.status ?? "", r.notes ?? ""]);
+    addDataRow([r.description ?? "", r.area ?? "", r.status ?? "", r.notes ?? ""]);
   });
-  rows.push([]);
 
-  // ── Materials (with SIZE column) ───────────────────────────────────────────
-  rows.push(["── MATERIALS ──"]);
-  rows.push(["Material", "Size / Spec", "Unit", "Qty", "Notes"]);
+  // ── Materials ──────────────────────────────────────────────────────────────
+  addSectionHeader("MATERIALS");
+  addColHeader(["Material", "Size / Spec", "Unit", "Qty", "Notes"]);
   (fd.materials ?? []).forEach((r: any) => {
-    rows.push([r.description ?? "", r.spec ?? r.remarks ?? "", r.unit ?? "", String(r.qty ?? 0), r.notes ?? ""]);
+    addDataRow([r.description ?? "", r.spec ?? r.remarks ?? "", r.unit ?? "", Number(r.qty ?? 0), r.notes ?? ""]);
   });
-  rows.push([]);
 
   // ── Equipment ──────────────────────────────────────────────────────────────
-  rows.push(["── EQUIPMENT ──"]);
-  rows.push(["Equipment", "Unit", "Qty", "Hours", "Notes"]);
+  addSectionHeader("EQUIPMENT");
+  addColHeader(["Equipment", "Unit", "Qty", "Hours", "Notes"]);
   (fd.equipment ?? []).forEach((r: any) => {
-    rows.push([r.name ?? "", r.unit ?? "", String(r.qty ?? 0), String(r.hours ?? 0), r.notes ?? ""]);
+    addDataRow([r.name ?? "", r.unit ?? "", Number(r.qty ?? 0), Number(r.hours ?? 0), r.notes ?? ""]);
   });
-  rows.push([]);
 
   // ── Notes / Remarks ────────────────────────────────────────────────────────
-  rows.push(["── NOTES / REMARKS ──"]);
-  rows.push(["General Notes:",              fd.generalNotes ?? ""]);
-  rows.push(["Safety Concerns:",            fd.safetyNotes ?? ""]);
-  rows.push(["Request From Client/Team:",   fd.requestFromClient ?? ""]);
-  rows.push(["Inspector/Visitor:",          fd.inspectorVisitor ?? ""]);
-  rows.push(["Drawing No.:",                fd.drawingNo ?? ""]);
-  rows.push(["Drawing Description:",        fd.drawingDescription ?? ""]);
+  addSectionHeader("NOTES / REMARKS");
+  addKV("General Notes:",            fd.generalNotes ?? "");
+  addKV("Safety Concerns:",          fd.safetyNotes ?? "");
+  addKV("Request From Client/Team:", fd.requestFromClient ?? "");
+  addKV("Inspector/Visitor:",        fd.inspectorVisitor ?? "");
+  addKV("Drawing No.:",              fd.drawingNo ?? "");
+  addKV("Drawing Description:",      fd.drawingDescription ?? "");
 
-  // Build CSV
-  const csv = rows.map((row) =>
-    row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-  ).join("\n");
+  // ── Work Photos section — PICTURE / WORK DESCRIPTION / MEMO per task ──────
+  const tasksWithPhotos = (fd.tasks ?? []).filter((t: any) => (t.photoFiles ?? []).length > 0);
+  if (tasksWithPhotos.length > 0) {
+    addSectionHeader("WORK PHOTOS");
+    for (const task of tasksWithPhotos) {
+      // Task sub-header
+      ws.addRow([]);
+      const taskRow = ws.addRow([`Task: ${task.description ?? "—"}`]);
+      taskRow.getCell(1).font = { bold: true, size: 10, italic: true };
+      ws.mergeCells(`A${taskRow.number}:H${taskRow.number}`);
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const photos: { url: string; workDescription: string; memo: string }[] =
+        (task.photoFiles ?? []).map((p: any) =>
+          typeof p === "string" ? { url: p, workDescription: "", memo: "" } : p
+        );
+
+      // Pair photos: [0,1] then [2,3]
+      for (let i = 0; i < photos.length; i += 2) {
+        const p1 = photos[i];
+        const p2 = photos[i + 1] ?? null;
+        const picNum1 = i + 1;
+        const picNum2 = i + 2;
+
+        // PICTURE labels
+        const picLabelRow = ws.addRow([`PICTURE ${picNum1}`, "", "", "", p2 ? `PICTURE ${picNum2}` : ""]);
+        [1, 5].forEach(c => {
+          const cell = picLabelRow.getCell(c);
+          cell.fill = PHOTO_LABEL_FILL;
+          cell.font = { bold: true, size: 10, color: { argb: "FF1D4ED8" } };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+        });
+        ws.mergeCells(`A${picLabelRow.number}:D${picLabelRow.number}`);
+        if (p2) ws.mergeCells(`E${picLabelRow.number}:H${picLabelRow.number}`);
+        picLabelRow.height = 18;
+
+        // WORK DESCRIPTION row
+        const descRow = ws.addRow(["WORK DESCRIPTION", p1.workDescription, "", "", p2 ? "WORK DESCRIPTION" : "", p2 ? p2.workDescription : ""]);
+        [1, 5].forEach(c => {
+          descRow.getCell(c).fill = PHOTO_DESC_FILL;
+          descRow.getCell(c).font = { bold: true, size: 9 };
+          descRow.getCell(c).alignment = { vertical: "middle" };
+        });
+        [2, 6].forEach(c => {
+          descRow.getCell(c).font = { size: 10 };
+          descRow.getCell(c).alignment = { vertical: "middle", wrapText: true };
+        });
+        ws.mergeCells(`B${descRow.number}:D${descRow.number}`);
+        if (p2) ws.mergeCells(`F${descRow.number}:H${descRow.number}`);
+        descRow.height = 18;
+
+        // MEMO row
+        const memoRow = ws.addRow(["MEMO", p1.memo, "", "", p2 ? "MEMO" : "", p2 ? p2.memo : ""]);
+        [1, 5].forEach(c => {
+          memoRow.getCell(c).fill = PHOTO_MEMO_FILL;
+          memoRow.getCell(c).font = { bold: true, size: 9 };
+          memoRow.getCell(c).alignment = { vertical: "middle" };
+        });
+        [2, 6].forEach(c => {
+          memoRow.getCell(c).font = { size: 10 };
+          memoRow.getCell(c).alignment = { vertical: "middle", wrapText: true };
+        });
+        ws.mergeCells(`B${memoRow.number}:D${memoRow.number}`);
+        if (p2) ws.mergeCells(`F${memoRow.number}:H${memoRow.number}`);
+        memoRow.height = 18;
+      }
+    }
+  }
+
+  // ── Download ───────────────────────────────────────────────────────────────
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url  = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href  = url;
-  link.download = `DailyReport_${report.reportNumber ?? report.id}_${report.reportDate ?? "unknown"}.csv`;
+  link.download = `DailyReport_${report.reportNumber ?? report.id}_${report.reportDate ?? "unknown"}.xlsx`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -371,8 +502,9 @@ function HistoryTab({
                       size="sm"
                       className="text-xs gap-1.5 h-8 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
                       onClick={() => {
-                        exportReportToExcel(r, project);
-                        toast({ title: t.dailyWorkspaceExportedToast, description: t.dailyWorkspaceExportedDesc.replace("{n}", String(r.reportNumber ?? r.id)) });
+                        exportReportToExcel(r, project)
+                          .then(() => toast({ title: t.dailyWorkspaceExportedToast, description: t.dailyWorkspaceExportedDesc.replace("{n}", String(r.reportNumber ?? r.id)) }))
+                          .catch(() => toast({ title: "Export failed", variant: "destructive" }));
                       }}
                     >
                       <Download className="w-3.5 h-3.5" />

@@ -168,9 +168,10 @@ function initials(name: string): string {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TaskWorker { name: string; role: "main" | "assist"; trade?: string }
+interface PhotoFile { url: string; workDescription: string; memo: string }
 interface TaskRow {
   id: number; description: string; area: string; status: string; notes: string;
-  expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: string[];
+  expanded: boolean; detailNotes: string; drawingFiles: string[]; photoFiles: PhotoFile[];
   workers: TaskWorker[]; linkedPinId: string | null;
 }
 interface DrawingPin { id: string; x: number; y: number; linkedTaskId: number | null }
@@ -896,7 +897,13 @@ export function NewReportTab({
 
   // ── Dynamic rows ──
   const [tasks, setTasks] = useState<TaskRow[]>(() =>
-    (fd?.tasks ?? []).map((t: any) => ({ expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], ...t }))
+    (fd?.tasks ?? []).map((t: any) => {
+      const rawPhotos: any[] = t.photoFiles ?? [];
+      const photoFiles: PhotoFile[] = rawPhotos.map((p: any) =>
+        typeof p === "string" ? { url: p, workDescription: "", memo: "" } : p
+      );
+      return { expanded: false, detailNotes: "", drawingFiles: [], workers: [], linkedPinId: null, ...t, photoFiles };
+    })
   );
   const [assignOpen,     setAssignOpen]     = useState<number | null>(null);
   const [deleteConfirm,  setDeleteConfirm]  = useState<number | null>(null);
@@ -1855,7 +1862,7 @@ export function NewReportTab({
             reader.onload = ev => {
               const dataUrl = ev.target?.result as string;
               setTasks(prev => prev.map(r => r.id === photoTaskId
-                ? { ...r, photoFiles: [...r.photoFiles, dataUrl].slice(0, 4) } : r));
+                ? { ...r, photoFiles: [...r.photoFiles, { url: dataUrl, workDescription: "", memo: "" }].slice(0, 4) } : r));
             };
             reader.readAsDataURL(file);
             e.target.value = "";
@@ -2154,58 +2161,112 @@ export function NewReportTab({
                         )}
                       </div>
 
-                      {/* Col B: 작업사진 — 2×2 photo grid */}
+                      {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}
                       <div style={{ padding: "0 16px", borderRight: "1px solid #f5f5f5" }}>
                         <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
                           {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
                         </p>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          {[0, 1, 2, 3].map(slotIdx => {
-                            const photoUrl = row.photoFiles[slotIdx];
-                            if (photoUrl) {
-                              return (
-                                <div key={slotIdx} style={{
-                                  border: "1.5px solid #e0e0e0", borderRadius: 10,
-                                  aspectRatio: "1", position: "relative",
-                                  overflow: "hidden", background: "#1a1a2e",
-                                }}>
-                                  <img src={photoUrl} alt={`Photo ${slotIdx + 1}`}
-                                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                                  <button type="button"
-                                    onClick={() => setTasks(tasks.map(r => r.id === row.id
-                                      ? { ...r, photoFiles: r.photoFiles.filter((_, fi) => fi !== slotIdx) } : r))}
-                                    style={{
-                                      position: "absolute", bottom: 8, right: 8,
-                                      width: 24, height: 24, borderRadius: "50%",
-                                      background: "rgba(0,0,0,0.55)",
-                                      border: "1.5px solid rgba(255,255,255,0.3)",
-                                      color: "#fff", fontSize: 10, cursor: "pointer",
-                                      display: "flex", alignItems: "center", justifyContent: "center",
-                                      zIndex: 2, backdropFilter: "blur(4px)",
-                                      transition: "background 0.15s, transform 0.12s",
-                                    }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#f43f5e"; (e.currentTarget as HTMLElement).style.borderColor = "#f43f5e"; (e.currentTarget as HTMLElement).style.transform = "scale(1.1)"; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.55)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.3)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
-                                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
-                                  </button>
-                                </div>
-                              );
-                            }
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          {([[0, 1], [2, 3]] as [number, number][]).map(([a, b]) => {
+                            const photoA = row.photoFiles[a];
+                            const photoB = row.photoFiles[b];
+                            const hasPair = !!(photoA || photoB);
                             return (
-                              <button key={slotIdx} type="button"
-                                onClick={() => { setPhotoTaskId(row.id); photoInputRef.current?.click(); }}
-                                style={{
-                                  border: "1.5px dashed #e0e0e0", borderRadius: 10,
-                                  aspectRatio: "1", display: "flex", flexDirection: "column",
-                                  alignItems: "center", justifyContent: "center",
-                                  background: "#fafafa", cursor: "pointer",
-                                  transition: "border-color 0.15s, background 0.15s",
-                                }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#818cf8"; (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLElement).style.background = "#fafafa"; }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
-                                <span style={{ fontSize: 11, color: "#ccc" }}>{t.newReportAddPhoto}</span>
-                              </button>
+                              <div key={a}>
+                                {/* Photo thumbnails */}
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: hasPair ? 8 : 0 }}>
+                                  {([a, b] as number[]).map(slotIdx => {
+                                    const photo = row.photoFiles[slotIdx];
+                                    if (photo) {
+                                      return (
+                                        <div key={slotIdx} style={{
+                                          border: "1.5px solid #e0e0e0", borderRadius: 10,
+                                          position: "relative", overflow: "hidden", background: "#1a1a2e",
+                                        }}>
+                                          <img src={photo.url} alt={`Photo ${slotIdx + 1}`}
+                                            style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
+                                          <button type="button"
+                                            onClick={() => setTasks(tasks.map(r => r.id === row.id
+                                              ? { ...r, photoFiles: r.photoFiles.filter((_, fi) => fi !== slotIdx) } : r))}
+                                            style={{
+                                              position: "absolute", bottom: 8, right: 8,
+                                              width: 24, height: 24, borderRadius: "50%",
+                                              background: "rgba(0,0,0,0.55)",
+                                              border: "1.5px solid rgba(255,255,255,0.3)",
+                                              color: "#fff", fontSize: 10, cursor: "pointer",
+                                              display: "flex", alignItems: "center", justifyContent: "center",
+                                              zIndex: 2, backdropFilter: "blur(4px)",
+                                              transition: "background 0.15s, transform 0.12s",
+                                            }}
+                                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#f43f5e"; (e.currentTarget as HTMLElement).style.borderColor = "#f43f5e"; (e.currentTarget as HTMLElement).style.transform = "scale(1.1)"; }}
+                                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.55)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.3)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
+                                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>
+                                          </button>
+                                        </div>
+                                      );
+                                    }
+                                    return (
+                                      <button key={slotIdx} type="button"
+                                        onClick={() => { setPhotoTaskId(row.id); photoInputRef.current?.click(); }}
+                                        style={{
+                                          border: "1.5px dashed #e0e0e0", borderRadius: 10,
+                                          aspectRatio: "1", display: "flex", flexDirection: "column",
+                                          alignItems: "center", justifyContent: "center",
+                                          background: "#fafafa", cursor: "pointer",
+                                          transition: "border-color 0.15s, background 0.15s",
+                                        }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#818cf8"; (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLElement).style.background = "#fafafa"; }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+                                        <span style={{ fontSize: 11, color: "#ccc" }}>{t.newReportAddPhoto}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {/* Per-photo Work Description + Memo — only for pairs that have at least one photo */}
+                                {hasPair && (
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                    {([a, b] as number[]).map(slotIdx => {
+                                      const photo = row.photoFiles[slotIdx];
+                                      if (!photo) return <div key={slotIdx} />;
+                                      return (
+                                        <div key={slotIdx} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>Work Description</p>
+                                          <input
+                                            type="text"
+                                            placeholder="e.g. Conduit install & cable install"
+                                            value={photo.workDescription}
+                                            onChange={e => setTasks(tasks.map(r => r.id === row.id
+                                              ? { ...r, photoFiles: r.photoFiles.map((pf, i) => i === slotIdx ? { ...pf, workDescription: e.target.value } : pf) } : r))}
+                                            style={{
+                                              border: "1px solid #ebebeb", borderRadius: 6, padding: "4px 8px",
+                                              fontSize: 11, width: "100%", background: "#fff", outline: "none",
+                                              transition: "border-color 0.15s",
+                                            }}
+                                            onFocus={e => (e.currentTarget.style.borderColor = "#818cf8")}
+                                            onBlur={e => (e.currentTarget.style.borderColor = "#ebebeb")}
+                                          />
+                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>Memo</p>
+                                          <textarea
+                                            placeholder="Optional notes..."
+                                            value={photo.memo}
+                                            onChange={e => setTasks(tasks.map(r => r.id === row.id
+                                              ? { ...r, photoFiles: r.photoFiles.map((pf, i) => i === slotIdx ? { ...pf, memo: e.target.value } : pf) } : r))}
+                                            rows={2}
+                                            style={{
+                                              border: "1px solid #ebebeb", borderRadius: 6, padding: "4px 8px",
+                                              fontSize: 11, width: "100%", background: "#fff", resize: "none", outline: "none",
+                                              transition: "border-color 0.15s",
+                                            }}
+                                            onFocus={e => (e.currentTarget.style.borderColor = "#818cf8")}
+                                            onBlur={e => (e.currentTarget.style.borderColor = "#ebebeb")}
+                                          />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
@@ -2282,7 +2343,7 @@ export function NewReportTab({
         <AddRow testId="btn-add-task" label={t.newReportAddTask}
           onClick={() => setTasks([...tasks, {
             id: uid(), description: "", area: "", status: "in-progress", notes: "",
-            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [], workers: [], linkedPinId: null,
+            expanded: false, detailNotes: "", drawingFiles: [], photoFiles: [] as PhotoFile[], workers: [], linkedPinId: null,
           }])} />
 
         {/* ── Undo toast ── */}

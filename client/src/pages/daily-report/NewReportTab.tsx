@@ -1976,7 +1976,7 @@ export function NewReportTab({
             <tr className="border-b border-slate-200 bg-slate-50">
               <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">{t.newReportPhoto}</th>
               <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportMaterialName}</th>
-              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportSpec}</th>
+              <th className="py-2 pr-2 pl-5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportSpec}</th>
               <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
               <th className="py-2 px-1" />
             </tr>
@@ -2032,7 +2032,7 @@ export function NewReportTab({
                     </div>
                   </td>
                   {/* SPEC column */}
-                  <td className="py-1.5 px-2">
+                  <td className="py-1.5 pr-2 pl-5">
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder="—"

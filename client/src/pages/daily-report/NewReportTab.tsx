@@ -142,8 +142,9 @@ function calcHours(start: string, end: string, status: string): number {
   if (!HOURS_COMPUTED.has(status) || !start || !end) return 0;
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
-  const mins = (eh * 60 + em) - (sh * 60 + sm);
-  return Math.max(0, Math.round(mins / 60 * 10) / 10);
+  const gross = Math.max(0, Math.round(((eh * 60 + em) - (sh * 60 + sm)) / 60 * 10) / 10);
+  // Always deduct 1-hour lunch break (like Jibble)
+  return Math.max(0, Math.round((gross - 1) * 10) / 10);
 }
 
 // Convert ISO timestamp → "HH:MM" in local time (for Jibble punch-in/out)

@@ -4590,9 +4590,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
           "You may receive multiple pages — extract ALL line items across all pages. " +
           "Return ONLY valid JSON — an array of objects with keys: " +
-          "itemName (string, preserve original language), qty (number), unit (string), " +
+          "itemName (string — the description/품명, e.g. 'POWER DISTRIBUTION PANEL'), " +
+          "spec (string or null — the specification/규격, e.g. 'Main 400AF 480/277V, 3P3W, 400Amp Main Circuit Breaker, Indoor'), " +
+          "qty (number), unit (string), " +
           "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
-          "remarks (string or null), " +
           "inventoryItemId (number or null — pick the best matching id from the INVENTORY LIST below; must be an exact id from the list; null if no confident match). " +
           "No markdown, no explanation — just the JSON array.\n\n" +
           "INVENTORY LIST (id, name, unit):\n" +
@@ -4650,13 +4651,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           items = [];
         }
 
-        // Validate inventoryItemId against the actual inventory map
+        // Validate inventoryItemId and normalise spec→remarks
         items = items.map((it: any) => {
           const invId = typeof it.inventoryItemId === "number" && inventoryMap.has(it.inventoryItemId)
             ? it.inventoryItemId
             : null;
           return {
             ...it,
+            remarks: it.spec ?? it.remarks ?? null, // map spec field → remarks for DB compat
             inventoryItemId: invId,
             inventoryItemName: invId ? inventoryMap.get(invId) ?? null : null,
           };

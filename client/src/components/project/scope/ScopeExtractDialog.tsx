@@ -372,7 +372,7 @@ function ResultTable({
               <th className="text-right px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-20">수량</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-20">단위</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-28">카테고리</th>
-              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">비고</th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">규격 / Spec</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">
                 <span className="flex items-center gap-1"><Link2 className="w-3 h-3" /> 인벤토리</span>
               </th>
@@ -393,14 +393,15 @@ function ResultTable({
                     )}
                   </button>
                 </td>
-                <td className="px-3 py-2">
-                  <input
+                <td className="px-3 py-2 min-w-[160px]">
+                  <textarea
                     value={row.itemName}
                     onChange={(e) => onEdit(row.localId, "itemName", e.target.value)}
-                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-800 text-sm py-0.5 min-w-[140px]"
+                    rows={2}
+                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-800 text-sm py-0.5 resize-none leading-snug"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-20 text-right">
                   <input
                     type="number"
                     value={row.qty}
@@ -408,14 +409,14 @@ function ResultTable({
                     className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-800 text-sm py-0.5 text-right"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-16">
                   <input
                     value={row.unit}
                     onChange={(e) => onEdit(row.localId, "unit", e.target.value)}
                     className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-800 text-sm py-0.5"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 w-28">
                   <select
                     value={row.category}
                     onChange={(e) => onEdit(row.localId, "category", e.target.value)}
@@ -426,11 +427,12 @@ function ResultTable({
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-2">
-                  <input
+                <td className="px-3 py-2 min-w-[180px]">
+                  <textarea
                     value={row.remarks ?? ""}
                     onChange={(e) => onEdit(row.localId, "remarks", e.target.value)}
-                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-500 text-sm py-0.5"
+                    rows={2}
+                    className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-brand-400 outline-none text-slate-600 text-xs py-0.5 resize-none leading-snug"
                     placeholder="—"
                   />
                 </td>

@@ -2016,9 +2016,11 @@ export function NewReportTab({
             {materials.map((row, i) => {
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
               const imgUrl: string = linkedItem?.imageUrl ?? "";
+              const isExtra = row.scopeItemId === null && row.description.trim() !== "";
               return (
                 <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
+                  className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40"
+                  style={isExtra ? { borderLeft: "3px solid #f59e0b", background: "rgba(255,251,235,0.5)" } : undefined}>
                   {/* PHOTO column */}
                   <td className="py-1.5 px-0.5 text-center">
                     {imgUrl ? (
@@ -2056,6 +2058,14 @@ export function NewReportTab({
                           border: "1px solid #a5d6a7", borderRadius: 4,
                           padding: "1px 5px", whiteSpace: "nowrap",
                         }}>{t.newReportInv}</span>
+                      )}
+                      {isExtra && (
+                        <span style={{
+                          flexShrink: 0, fontSize: 10, fontWeight: 700,
+                          color: "#b45309", background: "#fff7ed",
+                          border: "1px solid #fcd34d", borderRadius: 4,
+                          padding: "1px 5px", whiteSpace: "nowrap",
+                        }}>추가</span>
                       )}
                     </div>
                   </td>

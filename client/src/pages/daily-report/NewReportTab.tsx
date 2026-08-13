@@ -546,13 +546,17 @@ function PersonCardCombobox({
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(() =>
     value ? allWorkers.find(w => w.fullName === value) ?? null : null
   );
+  const inputRef = useRef<HTMLInputElement>(null);
   const isReporter = variant === "reporter";
   const vs = isReporter
     ? { border: "1.5px solid #6ee7b7", bg: "#f0fdf4", avatarBg: "#10b981", subColor: "#10b981" }
     : { border: "1.5px solid #a5b4fc", bg: "#eef2ff", avatarBg: "#6366f1", subColor: "#818cf8" };
   const candidates = isReporter
     ? allWorkers.filter(w => w.isActive && isForemanPlus(w.trade))
-    : allWorkers.filter(w => w.isActive);
+    : allWorkers.filter(w => {
+        const tr = w.trade?.toLowerCase().trim() ?? "";
+        return w.isActive && (tr === "general manager" || tr === "manager");
+      });
   const filtered = candidates
     .filter(w => !query || w.fullName.toLowerCase().includes(query.toLowerCase()))
     .slice(0, 10);
@@ -595,20 +599,21 @@ function PersonCardCombobox({
       <div
         style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px dashed #d1d5db", borderRadius: 10, background: "#fafafa", padding: "8px 12px", cursor: disabled ? "default" : "pointer", minHeight: 52, transition: "border-color 0.15s, background 0.15s" }}
         onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.background = "#f5f3ff"; } }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.background = "#fafafa"; }}>
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.background = "#fafafa"; }}
+        onClick={() => { if (!disabled) { inputRef.current?.focus(); setOpen(true); } }}>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2}>
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
           </svg>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <input data-testid={testId} value={query}
+          <input ref={inputRef} data-testid={testId} value={query}
             placeholder={isReporter ? t.newReportSelectReporter : t.newReportSelectPM}
             disabled={disabled}
             onChange={e => { setQuery(e.target.value); setOpen(true); onChange(e.target.value, null); }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
-            style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#374151", fontWeight: 400, width: "100%" }} />
+            style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#374151", fontWeight: 400, width: "100%", cursor: "pointer" }} />
           <div style={{ fontSize: 10, color: "#d1d5db" }}>{isReporter ? t.newReportRequiredToSubmit : t.newReportOptional}</div>
         </div>
       </div>

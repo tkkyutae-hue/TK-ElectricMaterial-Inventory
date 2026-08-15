@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Users, CheckCircle2, MapPin, Loader2, GripVertical,
-  Search, SlidersHorizontal, X, HardHat, ShieldCheck, Wrench,
+  Search, SlidersHorizontal, X, HardHat, ShieldCheck, Wrench, AlertCircle,
 } from "lucide-react";
 import {
   DndContext, type DragEndEvent, type DragStartEvent,
@@ -32,6 +32,14 @@ interface UndoState {
   workerName: string;
   projectName: string;
   timerId: ReturnType<typeof setTimeout>;
+}
+interface AssignPayload {
+  workerId: number;
+  projectId: number | null;
+  /** ISO date string captured at call time — used to detect stale-date callbacks. */
+  date: string;
+  /** Monotonic ID that uniquely identifies this write attempt. */
+  opId: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -868,6 +876,82 @@ function ProjectCardView({
   );
 }
 
+// ─── Save status ──────────────────────────────────────────────────────────────
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function SaveStatusChip({
+  status, lastSavedAt, onRetry,
+}: {
+  status: SaveStatus;
+  lastSavedAt: Date | null;
+  onRetry: () => void;
+}) {
+  if (status === "idle") return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5,
+      padding: "4px 10px", borderRadius: 20,
+      background: "#f8fafc", border: "1px solid #e2e8f0",
+      fontSize: 12, color: "#cbd5e1", fontWeight: 500, whiteSpace: "nowrap",
+    }}>
+      변경 없음
+    </div>
+  );
+
+  if (status === "saving") return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5,
+      padding: "4px 10px", borderRadius: 20,
+      background: "#eff6ff", border: "1px solid #bfdbfe",
+      fontSize: 12, color: "#3b82f6", fontWeight: 600, whiteSpace: "nowrap",
+    }}>
+      <Loader2 className="w-3 h-3 animate-spin" />
+      저장 중…
+    </div>
+  );
+
+  if (status === "saved") {
+    const timeStr = lastSavedAt
+      ? lastSavedAt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      : undefined;
+    return (
+      <div
+        title={timeStr ? `마지막 저장: ${timeStr}` : undefined}
+        style={{
+          display: "flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 20,
+          background: "#f8fafc", border: "1px solid #e2e8f0",
+          fontSize: 12, color: "#94a3b8", fontWeight: 500,
+          whiteSpace: "nowrap", cursor: timeStr ? "help" : "default",
+        }}
+      >
+        <CheckCircle2 className="w-3 h-3" style={{ color: "#22c55e" }} />
+        저장됨
+      </div>
+    );
+  }
+
+  // error state
+  return (
+    <button
+      type="button"
+      onClick={onRetry}
+      style={{
+        display: "flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 20,
+        background: "#fff1f2", border: "1px solid #fecdd3",
+        fontSize: 12, color: "#e11d48", fontWeight: 600,
+        whiteSpace: "nowrap", cursor: "pointer",
+        transition: "background 0.12s",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#ffe4e6"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#fff1f2"; }}
+    >
+      <AlertCircle className="w-3 h-3" />
+      저장 실패 · 재시도
+    </button>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CrewDispatchAssignment() {
   const { toast } = useToast();
@@ -879,6 +963,42 @@ export default function CrewDispatchAssignment() {
 
   // Worker drag state
   const [activeWorker,  setActiveWorker]  = useState<Worker | null>(null);
+
+  // ── Save status state ──────────────────────────────────────────────────────
+  // inFlightCount (state): mirrors inFlightByDate for the CURRENT date only — drives UI
+  const [inFlightCount, setInFlightCount] = useState(0);
+  // failedOpsByDate: failures survive date navigation so the retry chip reappears
+  // when the user returns to a date that had a failed save.
+  // Structure: Map<dateStr, Map<opId, AssignPayload>>
+  const [failedOpsByDate, setFailedOpsByDate] = useState<Map<string, Map<string, AssignPayload>>>(new Map());
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Always-current ref for dateStr — read inside async mutation callbacks
+  const dateStrRef = useRef(dateStr);
+  const opIdCounter = useRef(0);
+
+  // Per-date in-flight counts — old-date callbacks decrement their own bucket,
+  // never touching the current date's UI state.
+  const inFlightByDate = useRef<Map<string, number>>(new Map());
+  function adjustInFlight(date: string, delta: number) {
+    const next = Math.max(0, (inFlightByDate.current.get(date) ?? 0) + delta);
+    inFlightByDate.current.set(date, next);
+    // Only trigger a re-render for the currently displayed date
+    if (date === dateStrRef.current) setInFlightCount(next);
+  }
+
+  // Latest opId per "workerId:date" — lets onError skip stale failures when a
+  // newer write for the same slot was queued after this one started.
+  const latestOpId = useRef<Map<string, string>>(new Map());
+
+  // Current-date view of failures — used for save status and retry UI
+  const currentFailedOps = failedOpsByDate.get(dateStr) ?? new Map<string, AssignPayload>();
+
+  // Derived — no extra useState lag
+  const saveStatus: SaveStatus =
+    currentFailedOps.size > 0 ? "error" :
+    inFlightCount > 0 ? "saving" :
+    lastSavedAt !== null ? "saved" : "idle";
 
   // Undo-unassign state
   const [undoState, setUndoState] = useState<UndoState | null>(null);
@@ -947,9 +1067,28 @@ export default function CrewDispatchAssignment() {
   }, [groupOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function changeDate(delta: number) {
+    const hasPendingSaves = inFlightCount > 0;
+    const hasFailures     = currentFailedOps.size > 0;
+    if (hasPendingSaves || hasFailures) {
+      const msg = hasFailures
+        ? "저장 실패한 변경사항이 있습니다. 이 날짜로 돌아오면 재시도 버튼으로 재전송할 수 있습니다. 날짜를 변경하시겠습니까?"
+        : "변경사항이 아직 저장 중입니다. 날짜를 변경하면 저장 실패 시 이 날짜로 돌아와야 재시도할 수 있습니다. 계속하시겠습니까?";
+      if (!window.confirm(msg)) return;
+    }
     const d = new Date(dateStr + "T00:00:00");
     d.setDate(d.getDate() + delta);
     setDateStr(toLocalDateStr(d));
+  }
+
+  function handleRetry() {
+    if (currentFailedOps.size === 0) return;
+    // Snapshot and clear this date's failures before re-queuing so the status
+    // transitions immediately to "saving" (handleAssign also clears stale entries)
+    const ops = Array.from(currentFailedOps.values());
+    setFailedOpsByDate((prev) => { const next = new Map(prev); next.delete(dateStr); return next; });
+    for (const op of ops) {
+      handleAssign(op.workerId, op.projectId);
+    }
   }
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -1032,22 +1171,60 @@ export default function CrewDispatchAssignment() {
   // ── Optimistic assignment state ───────────────────────────────────────────
   const [localOverride, setLocalOverride] = useState<Map<number, number | null>>(new Map());
   useEffect(() => {
+    // Keep dateStrRef in sync so async callbacks can compare dates
+    dateStrRef.current = dateStr;
     setLocalOverride(new Map());
     // Discard pending undo when navigating to a different date
     setUndoState((prev) => { if (prev) clearTimeout(prev.timerId); return null; });
+    // Restore the in-flight count for this date (0 if never visited).
+    // Old-date callbacks write to their own inFlightByDate bucket and will not
+    // touch this state (adjustInFlight gates on date === dateStrRef.current).
+    setInFlightCount(inFlightByDate.current.get(dateStr) ?? 0);
+    // Do NOT clear failedOpsByDate — failures survive navigation and are shown
+    // again when the user returns to the affected date.
+    setLastSavedAt(null);
   }, [dateStr]);
 
   const assignMutation = useMutation({
-    mutationFn: ({ workerId, projectId }: { workerId: number; projectId: number | null }) =>
+    mutationFn: ({ workerId, projectId, date }: AssignPayload) =>
       fetch(`/api/crew-dispatch/assignments/${workerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ date: dateStr, projectId }),
+        // Use the captured date from variables — not the closure's dateStr which may
+        // have advanced if the user navigated dates while the request was queued.
+        body: JSON.stringify({ date, projectId }),
       }).then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/crew-dispatch/assignments", dateStr] }); },
+
+    onMutate: ({ date }) => {
+      adjustInFlight(date, +1);
+    },
+
+    onSuccess: (_, { date }) => {
+      adjustInFlight(date, -1);
+      // Invalidate the query for the exact date this mutation targeted
+      qc.invalidateQueries({ queryKey: ["/api/crew-dispatch/assignments", date] });
+      // Only advance the "saved" timestamp for the currently visible date
+      if (date === dateStrRef.current) setLastSavedAt(new Date());
+    },
+
     onError: (err: any, variables) => {
-      setLocalOverride((prev) => { const next = new Map(prev); next.delete(variables.workerId); return next; });
+      const { workerId, date, opId } = variables;
+      adjustInFlight(date, -1);
+      // Only register this failure if no newer write for the same worker+date has
+      // been queued since this op started (latestOpId tracks the current authority).
+      if (opId === latestOpId.current.get(`${workerId}:${date}`)) {
+        // Roll back the optimistic override only if we are still on this date
+        // (localOverride only exists for the currently displayed date)
+        if (date === dateStrRef.current) {
+          setLocalOverride((prev) => { const next = new Map(prev); next.delete(workerId); return next; });
+        }
+        // Persist the failure in its own date bucket — survives date navigation
+        setFailedOpsByDate((prev) => {
+          const dateMap = new Map(prev.get(date) ?? new Map<string, AssignPayload>()).set(opId, variables);
+          return new Map(prev).set(date, dateMap);
+        });
+      }
       toast({ title: "배치 저장 실패", description: err.message, variant: "destructive" });
     },
   });
@@ -1068,10 +1245,31 @@ export default function CrewDispatchAssignment() {
       }
     }
 
+    // Capture date + opId at call time so callbacks can detect stale-date writes
+    const date  = dateStrRef.current;
+    const opId  = `op-${++opIdCounter.current}`;
+
+    // Register this as the authoritative write for this worker+date slot.
+    // onError will check this before adding to failedOps — if a newer write has
+    // been queued since this one, this slot will already point to the newer opId.
+    latestOpId.current.set(`${workerId}:${date}`, opId);
+
+    // A newer queued write supersedes any prior failed op for the same worker+date.
+    // Clear it immediately so the error chip doesn't show a stale retry option.
+    setFailedOpsByDate((prev) => {
+      const dateMap = prev.get(date);
+      if (!dateMap) return prev;
+      const staleIds = Array.from(dateMap.keys()).filter((id) => dateMap.get(id)?.workerId === workerId);
+      if (staleIds.length === 0) return prev;
+      const newDateMap = new Map(dateMap);
+      staleIds.forEach((id) => newDateMap.delete(id));
+      return new Map(prev).set(date, newDateMap);
+    });
+
     // Chain this write after any pending write for this worker (FIFO serialization)
     const prevWrite = workerWriteQueues.current.get(workerId) ?? Promise.resolve();
     const thisWrite = prevWrite.then(() =>
-      assignMutation.mutateAsync({ workerId, projectId }).then(() => {}, () => {})
+      assignMutation.mutateAsync({ workerId, projectId, date, opId }).then(() => {}, () => {})
     );
     workerWriteQueues.current.set(workerId, thisWrite);
     return thisWrite;
@@ -1199,9 +1397,18 @@ export default function CrewDispatchAssignment() {
     <div className="space-y-5">
 
       {/* ── Header ── */}
-      <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">작업자 배치</h1>
-        <p className="text-slate-500 mt-1 text-sm">오늘 출근한 작업자를 프로젝트에 배치하세요.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-slate-900">작업자 배치</h1>
+          <p className="text-slate-500 mt-1 text-sm">오늘 출근한 작업자를 프로젝트에 배치하세요.</p>
+        </div>
+        <div className="shrink-0 pt-1">
+          <SaveStatusChip
+            status={saveStatus}
+            lastSavedAt={lastSavedAt}
+            onRetry={handleRetry}
+          />
+        </div>
       </div>
 
       {/* ── Date navigator ── */}

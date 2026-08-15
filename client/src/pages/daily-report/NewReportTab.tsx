@@ -207,12 +207,12 @@ function isWorkerBasedManpower(rows: any[]): boolean {
 
 // ─── Section navigator ────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { num: 1, label: "Info",  color: "#3b82f6" },
-  { num: 2, label: "인력",  color: "#8b5cf6" },
-  { num: 3, label: "작업",  color: "#059669" },
-  { num: 4, label: "자재",  color: "#d97706" },
-  { num: 5, label: "장비",  color: "#f97316" },
-  { num: 6, label: "메모",  color: "#64748b" },
+  { num: 1, labelKey: "newReportNavInfo"      as const, color: "#3b82f6" },
+  { num: 2, labelKey: "newReportNavManpower"  as const, color: "#8b5cf6" },
+  { num: 3, labelKey: "newReportNavTasks"     as const, color: "#059669" },
+  { num: 4, labelKey: "newReportNavMaterials" as const, color: "#d97706" },
+  { num: 5, labelKey: "newReportNavEquipment" as const, color: "#f97316" },
+  { num: 6, labelKey: "newReportNavMemo"      as const, color: "#64748b" },
 ] as const;
 
 function NavIcon({ idx }: { idx: number }) {
@@ -239,6 +239,7 @@ function SectionNavigator({
   activeSection: number;
   completionHints: boolean[];
 }) {
+  const { t } = useLanguage();
   function scrollToSection(idx: number) {
     const el  = sectionRefs.current[idx];
     const nav = navRef.current;
@@ -293,7 +294,7 @@ function SectionNavigator({
                 §{item.num}
               </span>
               <span style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? "#1e293b" : "#64748b" }}>
-                {item.label}
+                {t[item.labelKey]}
               </span>
               {done && (
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", flexShrink: 0, marginLeft: 2 }} />
@@ -1086,7 +1087,7 @@ export function NewReportTab({
   // ── Manual import helpers ──
   function importCrewDispatch() {
     if (!crewAssignments.length) {
-      toast({ title: "배치된 인원 없음", description: "이 날짜·프로젝트에 배치된 인원이 없습니다.", variant: "destructive" });
+      toast({ title: t.newReportToastNoCrewTitle, description: t.newReportToastNoCrewDesc, variant: "destructive" });
       return;
     }
     const existingIds = new Set(manpower.map(r => r.workerId).filter(Boolean));
@@ -1100,9 +1101,9 @@ export function NewReportTab({
           attendanceStatus: "ATTEND", startTime: start, endTime: end,
           hoursWorked: calcHours(start, end, "ATTEND"), notes: "" };
       });
-    if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "배치 인원이 이미 Manpower 섹션에 있습니다." }); return; }
+    if (!newRows.length) { toast({ title: t.newReportToastCrewAlready, description: t.newReportToastCrewAlreadyDesc }); return; }
     setManpower(prev => [...prev, ...newRows]);
-    toast({ title: `${newRows.length}명 추가됨` });
+    toast({ title: t.newReportToastCrewAdded.replace("{n}", String(newRows.length)) });
   }
 
   function importScopeItems() {
@@ -1115,9 +1116,9 @@ export function NewReportTab({
         id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
         inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
       }));
-    if (!newRows.length) { toast({ title: "이미 모두 추가됨", description: "Scope Items이 이미 Materials 섹션에 있습니다." }); return; }
+    if (!newRows.length) { toast({ title: t.newReportToastScopeAlready, description: t.newReportToastScopeAlreadyDesc }); return; }
     setMaterials(prev => [...prev, ...newRows]);
-    toast({ title: `${newRows.length}개 자재 추가됨` });
+    toast({ title: t.newReportToastScopeAdded.replace("{n}", String(newRows.length)) });
   }
 
   // ── Dynamic rows ──
@@ -1668,8 +1669,8 @@ export function NewReportTab({
         headerRight={!isSubmitted ? (
           <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
             className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap"
-            title="Crew Dispatch에서 오늘 배치 인원 불러오기">
-            <Users className="w-3 h-3" /> Crew 불러오기
+            title={t.newReportCrewImportTitle}>
+            <Users className="w-3 h-3" /> {t.newReportCrewImportBtn}
           </button>
         ) : undefined}>
 
@@ -2191,10 +2192,10 @@ export function NewReportTab({
                                       if (!photo) return <div key={slotIdx} />;
                                       return (
                                         <div key={slotIdx} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>Work Description</p>
+                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoWorkDesc}</p>
                                           <input
                                             type="text"
-                                            placeholder="e.g. Conduit install & cable install"
+                                            placeholder={t.newReportPhotoWorkDescPh}
                                             value={photo.workDescription}
                                             onChange={e => setTasks(tasks.map(r => r.id === row.id
                                               ? { ...r, photoFiles: r.photoFiles.map((pf, i) => i === slotIdx ? { ...pf, workDescription: e.target.value } : pf) } : r))}
@@ -2206,9 +2207,9 @@ export function NewReportTab({
                                             onFocus={e => (e.currentTarget.style.borderColor = "#818cf8")}
                                             onBlur={e => (e.currentTarget.style.borderColor = "#ebebeb")}
                                           />
-                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>Memo</p>
+                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoMemo}</p>
                                           <textarea
-                                            placeholder="Optional notes..."
+                                            placeholder={t.newReportPhotoMemoPh}
                                             value={photo.memo}
                                             onChange={e => setTasks(tasks.map(r => r.id === row.id
                                               ? { ...r, photoFiles: r.photoFiles.map((pf, i) => i === slotIdx ? { ...pf, memo: e.target.value } : pf) } : r))}
@@ -2292,8 +2293,8 @@ export function NewReportTab({
         headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
             className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors whitespace-nowrap"
-            title="Scope Items 자재 목록 불러오기">
-            <Package className="w-3 h-3" /> Scope 불러오기
+            title={t.newReportScopeImportTitle}>
+            <Package className="w-3 h-3" /> {t.newReportScopeImportBtn}
           </button>
         ) : undefined}>
         {isMobile ? (
@@ -2336,7 +2337,7 @@ export function NewReportTab({
                           <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px" }}>{t.newReportInv}</span>
                         )}
                         {isExtra && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px" }}>추가</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px" }}>{t.newReportMaterialExtraLabel}</span>
                         )}
                       </div>
                     </div>
@@ -2357,14 +2358,14 @@ export function NewReportTab({
                   {/* Row 3: Qty + Unit */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 8, alignItems: "end" }}>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>QTY</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColQty}</div>
                       <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                         onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
                         onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
                         className="h-10 text-sm text-center tabular-nums" />
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>UNIT</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColUnit}</div>
                       {row.inventoryItemId ? (
                         <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#666", border: "1px solid #f0f0f0", borderRadius: 7 }}>
                           <span data-testid={`input-mat-unit-${i}`}>{row.unit || "EA"}</span>
@@ -2454,7 +2455,7 @@ export function NewReportTab({
                           <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>{t.newReportInv}</span>
                         )}
                         {isExtra && (
-                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>추가</span>
+                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>{t.newReportMaterialExtraLabel}</span>
                         )}
                       </div>
                     </td>
@@ -2849,25 +2850,25 @@ export function NewReportTab({
               className="h-9 text-sm" />
           </div>
           <div>
-            <FL>Request From Client / Team</FL>
+            <FL>{t.newReportRequestFromClient}</FL>
             <Textarea data-testid="input-request-from-client" value={requestFromClient}
               onChange={(e) => setRequestFromClient(e.target.value)}
-              placeholder="Requests or instructions received from client or team…"
+              placeholder={t.newReportRequestFromClientPh}
               className="text-sm min-h-[72px] resize-y" />
           </div>
           <div className={isMobile ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
             <div>
-              <FL>Drawing No.</FL>
+              <FL>{t.newReportDrawingNo}</FL>
               <Input data-testid="input-drawing-no" value={drawingNo}
                 onChange={(e) => setDrawingNo(e.target.value)}
-                placeholder="e.g. E-101, M-205"
+                placeholder={t.newReportDrawingNoPh}
                 className="h-9 text-sm" />
             </div>
             <div>
-              <FL>Drawing Description</FL>
+              <FL>{t.newReportDrawingDesc}</FL>
               <Input data-testid="input-drawing-description" value={drawingDescription}
                 onChange={(e) => setDrawingDescription(e.target.value)}
-                placeholder="e.g. Electrical Floor Plan – Level 1"
+                placeholder={t.newReportDrawingDescPh}
                 className="h-9 text-sm" />
             </div>
           </div>
@@ -2886,7 +2887,7 @@ export function NewReportTab({
               disabled={saveMutation.isPending || isSubmitted}
               onClick={() => saveMutation.mutate("draft")}>
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Save Draft
+              {t.newReportSaveDraft}
             </Button>
             <button data-testid="btn-submit-report-bottom"
               disabled={saveMutation.isPending || isSubmitted || !canSubmit}
@@ -2924,7 +2925,7 @@ export function NewReportTab({
                 disabled={deleteMutation.isPending}
                 onClick={() => setShowDeleteConfirm(true)}>
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete Report
+                {t.newReportDeleteReport}
               </Button>
             )}
           </div>

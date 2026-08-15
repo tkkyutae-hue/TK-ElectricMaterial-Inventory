@@ -60,7 +60,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Weather code mapper ───────────────────────────────────────────────────────
-const WEATHER_MAP: Record<string, string> = {
+const WEATHER_CODE_MAP: Record<string, string> = {
   // Sunny / clear
   clear: "SUNNY", sunny: "SUNNY",
   // Cloudy — handles hyphenated editor value "partly-cloudy" after normalisation
@@ -75,19 +75,30 @@ const WEATHER_MAP: Record<string, string> = {
   wind: "WIND", windy: "WIND",
   heat: "HEAT", hot: "HEAT",
 };
-function mapWeather(raw: string): string {
+const WEATHER_I18N_KEY: Record<string, string> = {
+  SUNNY: "excelWeatherSunny", CLOUDY: "excelWeatherCloudy",
+  RAIN: "excelWeatherRain",   SNOW: "excelWeatherSnow",
+  TORNADO: "excelWeatherTornado", WIND: "excelWeatherWind", HEAT: "excelWeatherHeat",
+};
+function mapWeather(raw: string, t: any): string {
   // Normalise: lowercase, strip leading/trailing spaces, convert hyphens to spaces
   const key = (raw ?? "").toLowerCase().trim().replace(/-/g, " ");
-  return WEATHER_MAP[key] ?? (raw ? raw.toUpperCase() : "—");
+  const code = WEATHER_CODE_MAP[key];
+  if (!code) return raw ? raw.toUpperCase() : "—";
+  const i18nKey = WEATHER_I18N_KEY[code];
+  return i18nKey ? (t[i18nKey] ?? code) : code;
 }
 
 // ─── Excel export helper (ExcelJS) ───────────────────────────────────────────
-async function exportReportToExcel(report: any, project: any): Promise<void> {
+async function exportReportToExcel(report: any, project: any, t: any, lang: string): Promise<void> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("Daily Report");
+  const ws = wb.addWorksheet(t.excelSheetName);
 
   const fd = report.formData ?? {};
+
+  // Map our app lang codes to BCP 47 locale codes for Intl APIs
+  const locale = lang === "ko" ? "ko-KR" : lang === "es" ? "es-MX" : "en-US";
 
   // Project location: jobLocation takes priority, else build from address parts
   const projectLoc =
@@ -96,7 +107,7 @@ async function exportReportToExcel(report: any, project: any): Promise<void> {
     "—";
 
   const fmtDate = (d: string | null | undefined) =>
-    d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—";
+    d ? new Date(`${d}T00:00:00`).toLocaleDateString(locale, { month: "2-digit", day: "2-digit", year: "numeric" }) : "—";
   const duration = project
     ? `${fmtDate(project.startDate)} ~ ${fmtDate(project.endDate)}`
     : "—";
@@ -174,69 +185,69 @@ async function exportReportToExcel(report: any, project: any): Promise<void> {
   ];
 
   // ── Title ──────────────────────────────────────────────────────────────────
-  addTitle("VoltStock — Daily Report");
+  addTitle(t.excelDailyReportTitle);
 
   // ── Project header ─────────────────────────────────────────────────────────
-  addKV("PO / JOB NO:",     project?.code ?? project?.poNumber ?? "—");
-  addKV("PROJECT:",         project?.name ?? "—");
-  addKV("CLIENT:",          project?.customerName ?? "—");
-  addKV("PROJECT LOCATION:", projectLoc);
-  addKV("PROJECT DURATION:", duration);
-  addKV("Report No.:",      String(report.reportNumber ?? "—"), "Report Date:", report.reportDate ?? "—");
-  addKV("REPORTER:",        fd.preparedBy ?? "—",             "TITLE:",       fd.preparedByTrade ?? "—");
-  addKV("PROJECT MANAGER:", fd.projectManager ?? "—",         "TITLE:",       fd.projectManagerTrade ?? "—");
-  addKV("Shift:",           fd.shift ?? "—",                  "WEATHER:",     mapWeather(fd.weather ?? ""));
-  addKV("TEMP HIGH:",       fmtTemp(fd.temperatureHigh),      "TEMP LOW:",    fmtTemp(fd.temperatureLow));
+  addKV(t.excelHeaderPoJobNo,    project?.code ?? project?.poNumber ?? "—");
+  addKV(t.excelHeaderProject,    project?.name ?? "—");
+  addKV(t.excelHeaderClient,     project?.customerName ?? "—");
+  addKV(t.excelHeaderLocation,   projectLoc);
+  addKV(t.excelHeaderDuration,   duration);
+  addKV(t.excelHeaderReportNo,   String(report.reportNumber ?? "—"), t.excelHeaderReportDate, fmtDate(report.reportDate));
+  addKV(t.excelHeaderReporter,   fd.preparedBy ?? "—",  t.excelHeaderTitle, fd.preparedByTrade ?? "—");
+  addKV(t.excelHeaderProjManager, fd.projectManager ?? "—", t.excelHeaderTitle, fd.projectManagerTrade ?? "—");
+  addKV(t.excelHeaderShift,      fd.shift ?? "—",       t.excelHeaderWeather, mapWeather(fd.weather ?? "", t));
+  addKV(t.excelHeaderTempHigh,   fmtTemp(fd.temperatureHigh), t.excelHeaderTempLow, fmtTemp(fd.temperatureLow));
 
   // ── Manpower ───────────────────────────────────────────────────────────────
-  addSectionHeader("MANPOWER");
-  addColHeader(["Worker", "Trade", "Status", "Start", "End", "Hours", "Notes"]);
+  addSectionHeader(t.excelManpower);
+  addColHeader([t.excelColWorker, t.excelColTrade, t.excelColStatus, t.excelColStart, t.excelColEnd, t.excelColHours, t.excelColNotes]);
   (fd.manpower ?? []).forEach((r: any) => {
     addDataRow([r.workerName ?? "", r.trade ?? "", r.attendanceStatus ?? "", r.startTime ?? "", r.endTime ?? "", Number(r.hoursWorked ?? 0), r.notes ?? ""]);
   });
   const totalHrs = (fd.manpower ?? []).reduce((s: number, r: any) => s + Number(r.hoursWorked ?? 0), 0);
-  const totRow = ws.addRow(["", "", "", "", "Total:", totalHrs.toFixed(1), ""]);
+  const totRow = ws.addRow(["", "", "", "", t.excelColTotal, totalHrs.toFixed(1), ""]);
   totRow.getCell(5).font = { bold: true, size: 10 };
   totRow.getCell(6).font = { bold: true, size: 10 };
 
   // ── Work Tasks ─────────────────────────────────────────────────────────────
-  addSectionHeader("WORK TASKS");
-  addColHeader(["Description", "Area", "Status", "Notes"]);
+  addSectionHeader(t.excelWorkTasks);
+  addColHeader([t.excelColDescription, t.excelColArea, t.excelColStatus, t.excelColNotes]);
   (fd.tasks ?? []).forEach((r: any) => {
     addDataRow([r.description ?? "", r.area ?? "", r.status ?? "", r.notes ?? ""]);
   });
 
   // ── Materials ──────────────────────────────────────────────────────────────
-  addSectionHeader("MATERIALS");
-  addColHeader(["Material", "Size / Spec", "Unit", "Qty", "Notes"]);
+  addSectionHeader(t.excelMaterials);
+  addColHeader([t.excelColMaterial, t.excelColSizeSpec, t.excelColUnit, t.excelColQty, t.excelColNotes]);
   (fd.materials ?? []).forEach((r: any) => {
     addDataRow([r.description ?? "", r.spec ?? r.remarks ?? "", r.unit ?? "", Number(r.qty ?? 0), r.notes ?? ""]);
   });
 
   // ── Equipment ──────────────────────────────────────────────────────────────
-  addSectionHeader("EQUIPMENT");
-  addColHeader(["Equipment", "Unit", "Qty", "Hours", "Notes"]);
+  addSectionHeader(t.excelEquipment);
+  addColHeader([t.excelColEquipment, t.excelColUnit, t.excelColQty, t.excelColHours, t.excelColNotes]);
   (fd.equipment ?? []).forEach((r: any) => {
     addDataRow([r.name ?? "", r.unit ?? "", Number(r.qty ?? 0), Number(r.hours ?? 0), r.notes ?? ""]);
   });
 
   // ── Notes / Remarks ────────────────────────────────────────────────────────
-  addSectionHeader("NOTES / REMARKS");
-  addKV("General Notes:",            fd.generalNotes ?? "");
-  addKV("Safety Concerns:",          fd.safetyNotes ?? "");
-  addKV("Request From Client/Team:", fd.requestFromClient ?? "");
-  addKV("Inspector/Visitor:",        fd.inspectorVisitor ?? "");
-  addKV("Drawing No.:",              fd.drawingNo ?? "");
-  addKV("Drawing Description:",      fd.drawingDescription ?? "");
+  addSectionHeader(t.excelNotesRemarks);
+  addKV(t.excelGeneralNotes,       fd.generalNotes ?? "");
+  addKV(t.excelSafetyConcerns,     fd.safetyNotes ?? "");
+  addKV(t.excelRequestFromClient,  fd.requestFromClient ?? "");
+  addKV(t.excelInspectorVisitor,   fd.inspectorVisitor ?? "");
+  addKV(t.excelDrawingNo,          fd.drawingNo ?? "");
+  addKV(t.excelDrawingDescription, fd.drawingDescription ?? "");
 
   // ── Work Photos section — PICTURE / WORK DESCRIPTION / MEMO per task ──────
-  const tasksWithPhotos = (fd.tasks ?? []).filter((t: any) => (t.photoFiles ?? []).length > 0);
+  const tasksWithPhotos = (fd.tasks ?? []).filter((task: any) => (task.photoFiles ?? []).length > 0);
   if (tasksWithPhotos.length > 0) {
-    addSectionHeader("WORK PHOTOS");
+    addSectionHeader(t.excelWorkPhotos);
     for (const task of tasksWithPhotos) {
       // Task sub-header
       ws.addRow([]);
-      const taskRow = ws.addRow([`Task: ${task.description ?? "—"}`]);
+      const taskRow = ws.addRow([`${t.excelTaskPrefix}${task.description ?? "—"}`]);
       taskRow.getCell(1).font = { bold: true, size: 10, italic: true };
       ws.mergeCells(`A${taskRow.number}:H${taskRow.number}`);
 
@@ -253,7 +264,7 @@ async function exportReportToExcel(report: any, project: any): Promise<void> {
         const picNum2 = i + 2;
 
         // PICTURE labels
-        const picLabelRow = ws.addRow([`PICTURE ${picNum1}`, "", "", "", p2 ? `PICTURE ${picNum2}` : ""]);
+        const picLabelRow = ws.addRow([`${t.excelPicturePrefix}${picNum1}`, "", "", "", p2 ? `${t.excelPicturePrefix}${picNum2}` : ""]);
         [1, 5].forEach(c => {
           const cell = picLabelRow.getCell(c);
           cell.fill = PHOTO_LABEL_FILL;
@@ -265,7 +276,7 @@ async function exportReportToExcel(report: any, project: any): Promise<void> {
         picLabelRow.height = 18;
 
         // WORK DESCRIPTION row
-        const descRow = ws.addRow(["WORK DESCRIPTION", p1.workDescription, "", "", p2 ? "WORK DESCRIPTION" : "", p2 ? p2.workDescription : ""]);
+        const descRow = ws.addRow([t.excelWorkDescription, p1.workDescription, "", "", p2 ? t.excelWorkDescription : "", p2 ? p2.workDescription : ""]);
         [1, 5].forEach(c => {
           descRow.getCell(c).fill = PHOTO_DESC_FILL;
           descRow.getCell(c).font = { bold: true, size: 9 };
@@ -280,7 +291,7 @@ async function exportReportToExcel(report: any, project: any): Promise<void> {
         descRow.height = 18;
 
         // MEMO row
-        const memoRow = ws.addRow(["MEMO", p1.memo, "", "", p2 ? "MEMO" : "", p2 ? p2.memo : ""]);
+        const memoRow = ws.addRow([t.excelMemo, p1.memo, "", "", p2 ? t.excelMemo : "", p2 ? p2.memo : ""]);
         [1, 5].forEach(c => {
           memoRow.getCell(c).fill = PHOTO_MEMO_FILL;
           memoRow.getCell(c).font = { bold: true, size: 9 };
@@ -319,7 +330,7 @@ function HistoryTab({
   onOpen: (report: any) => void;
 }) {
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const { data: reports = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
@@ -502,9 +513,9 @@ function HistoryTab({
                       size="sm"
                       className="text-xs gap-1.5 h-8 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
                       onClick={() => {
-                        exportReportToExcel(r, project)
+                        exportReportToExcel(r, project, t, lang)
                           .then(() => toast({ title: t.dailyWorkspaceExportedToast, description: t.dailyWorkspaceExportedDesc.replace("{n}", String(r.reportNumber ?? r.id)) }))
-                          .catch(() => toast({ title: "Export failed", variant: "destructive" }));
+                          .catch(() => toast({ title: t.excelExportFailed, variant: "destructive" }));
                       }}
                     >
                       <Download className="w-3.5 h-3.5" />

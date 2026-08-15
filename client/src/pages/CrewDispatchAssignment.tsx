@@ -20,6 +20,7 @@ import {
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import type { Worker, Project } from "@shared/schema";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -286,6 +287,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
   koreanPresent?: boolean;
   onAttendanceToggle?: (present: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const [showCompleted, setShowCompleted] = useState(false);
   const korean    = isKorean(worker);
   const isOnSite  = korean ? (koreanPresent !== false) : (!!jibble && !jibble.lastOut);
@@ -305,7 +307,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
             <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} />
             <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
               isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
-            }`} title={isOnSite ? "현장 근무 중" : checkedIn ? "퇴근" : "미출근"} />
+            }`} title={isOnSite ? t.cdStatusOnSite : checkedIn ? t.cdStatusCheckedOut : t.cdStatusAbsent} />
           </div>
           <div>
             <p className="font-medium text-slate-800 text-sm leading-tight">{worker.fullName}</p>
@@ -323,7 +325,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
               className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
             />
             <span className={`text-xs font-medium ${koreanPresent !== false ? "text-emerald-600" : "text-slate-400"}`}>
-              {koreanPresent !== false ? "출근" : "결근"}
+              {koreanPresent !== false ? t.cdAttPresent : t.cdAttAbsent}
             </span>
           </label>
         ) : checkedIn ? (
@@ -336,7 +338,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
         {korean ? null : jibble?.lastOut
           ? <span className="text-sm text-slate-500 font-semibold">{fmtTime(jibble.lastOut)}</span>
           : isOnSite
-            ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
+            ? <span className="text-xs text-emerald-500 font-medium">{t.cdWorkingNow}</span>
             : <span className="text-sm text-slate-300">—</span>}
       </td>
       <td className="px-4 py-3">
@@ -344,13 +346,13 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
           <SelectTrigger className={`h-8 text-sm max-w-[280px] ${
             assignedProjectId !== null ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-400"
           }`}>
-            <SelectValue placeholder="미배치" />
+            <SelectValue placeholder={t.cdUnassigned} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__"><span className="text-slate-400">— 미배치</span></SelectItem>
+            <SelectItem value="__none__"><span className="text-slate-400">— {t.cdUnassigned}</span></SelectItem>
             {activeByCustomer.map(({ customer, projects }) => (
               <SelectGroup key={customer}>
-                <SelectLabel className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2 py-1 bg-slate-50">{customer}</SelectLabel>
+                <SelectLabel className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2 py-1 bg-slate-50">{customer === "고객사 미지정" ? t.cdNoCustomer : customer}</SelectLabel>
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     <div className="flex items-center gap-2">
@@ -386,7 +388,7 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
                   </SelectItem>
                 ))}
                 <SelectItem value="__show_completed__" className="text-slate-400 italic text-xs">
-                  {showCompleted ? "▲ 완료 프로젝트 접기" : `▼ 완료된 프로젝트 보기 (${doneProjects.length}개)`}
+                  {showCompleted ? t.cdCollapseCompleted : t.cdExpandCompleted.replace("{n}", String(doneProjects.length))}
                 </SelectItem>
               </>
             )}
@@ -439,16 +441,18 @@ function SortableGroup({ id, children }: {
 
 // ─── Draggable compact worker row (split-pane left panel) ─────────────────────
 function TradeBadge({ worker, small }: { worker: Worker; small?: boolean }) {
+  const { t } = useLanguage();
   const info = tradeInfo(worker);
   if (!info) return null;
   const { Icon, bg, text, label } = info;
+  const displayLabel = label === "Foreman" ? t.cdTradeForeman : label === "Safety" ? t.cdTradeSafety : t.cdTradeHelper;
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded font-bold leading-none shrink-0 ${small ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"}`}
       style={{ backgroundColor: bg, color: text }}
     >
       <Icon className={small ? "w-2.5 h-2.5" : "w-3 h-3"} />
-      {label}
+      {displayLabel}
     </span>
   );
 }
@@ -462,6 +466,7 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
   koreanPresent?: boolean;
   onAttendanceToggle?: (present: boolean) => void;
 }) {
+  const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `worker-${worker.id}` });
   const korean    = isKorean(worker);
   const isOnSite  = korean ? (koreanPresent !== false) : (!!jibble && !jibble.lastOut);
@@ -489,7 +494,7 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
       {korean && onAttendanceToggle && (
         <label
           className="flex items-center gap-1 shrink-0 cursor-pointer select-none"
-          title={koreanPresent !== false ? "출근 중 — 클릭하여 결근 처리" : "결근 — 클릭하여 출근 처리"}
+          title={koreanPresent !== false ? t.cdAttPresentTitle : t.cdAttAbsentTitle}
           onClick={e => e.stopPropagation()}
         >
           <input
@@ -499,7 +504,7 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
             className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
           />
           <span className={`text-[10px] font-semibold ${koreanPresent !== false ? "text-emerald-600" : "text-slate-400"}`}>
-            {koreanPresent !== false ? "출근" : "결근"}
+            {koreanPresent !== false ? t.cdAttPresent : t.cdAttAbsent}
           </span>
         </label>
       )}
@@ -514,14 +519,14 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
               type="button"
               onClick={(e) => { e.stopPropagation(); onUnassign(); }}
               className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-              title="배치 취소"
+              title={t.cdUnassignBtn}
             >
               <X className="w-3 h-3" />
             </button>
           )}
         </div>
       ) : (
-        <span className="text-[10px] text-slate-300 shrink-0">미배치</span>
+        <span className="text-[10px] text-slate-300 shrink-0">{t.cdUnassigned}</span>
       )}
     </div>
   );
@@ -538,6 +543,7 @@ function DroppableProjectCard({ projectId, children }: {
 
 // ─── Worker drag overlay (shown during drag) ──────────────────────────────────
 function WorkerDragOverlay({ worker, jibble }: { worker: Worker; jibble?: JibbleEntry }) {
+  const { t } = useLanguage();
   const isOnSite  = !!jibble && !jibble.lastOut;
   const checkedIn = !!jibble;
   return (
@@ -550,7 +556,7 @@ function WorkerDragOverlay({ worker, jibble }: { worker: Worker; jibble?: Jibble
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
-        <p className="text-[11px] text-blue-500 leading-tight">드롭하여 배치</p>
+        <p className="text-[11px] text-blue-500 leading-tight">{t.cdDropHint}</p>
       </div>
     </div>
   );
@@ -585,6 +591,7 @@ function ProjectCardView({
   isDragActive?: boolean;
   koreanPresentFn?: (id: number) => boolean;
 }) {
+  const { t } = useLanguage();
   const [expandedId,       setExpandedId]      = useState<number | null>(null);
   const [collapsedGroups,  setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
   const [searchQuery,      setSearchQuery]     = useState("");
@@ -720,7 +727,7 @@ function ProjectCardView({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="프로젝트명, PO 번호, 위치로 검색..."
+              placeholder={t.cdProjectSearch}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-9 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
@@ -737,7 +744,7 @@ function ProjectCardView({
                 filterStatuses.size > 0 ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500 bg-white hover:bg-slate-50"
               }`}>
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              {filterStatuses.size > 0 ? `▼ ${filterStatuses.size}개` : "▼ 필터"}
+              {filterStatuses.size > 0 ? t.cdFilterActive.replace("{n}", String(filterStatuses.size)) : t.cdFilterBtn}
             </button>
             {showFilterMenu && (
               <div className="absolute right-0 top-10 z-50 bg-white border border-slate-200 rounded-xl shadow-lg p-2 min-w-[190px]">
@@ -761,19 +768,19 @@ function ProjectCardView({
                 {filterStatuses.size > 0 && (
                   <button type="button" onClick={() => setFilterStatuses(new Set())}
                     className="w-full mt-1 pt-1 border-t border-slate-100 text-xs text-slate-400 hover:text-slate-600 py-1 text-center">
-                    필터 초기화
+                    {t.cdFilterReset}
                   </button>
                 )}
               </div>
             )}
           </div>
         </div>
-        {isFiltering && <p className="text-xs text-slate-400">총 {totalCount}개 중 {filteredCount}개 표시</p>}
+        {isFiltering && <p className="text-xs text-slate-400">{t.cdFilterResult.replace("{filtered}", String(filteredCount)).replace("{total}", String(totalCount))}</p>}
       </div>
 
       {filteredGroups.length === 0 && (
         <p className="text-sm text-slate-400 text-center py-12">
-          {isFiltering ? "검색 결과가 없습니다." : "등록된 프로젝트가 없습니다."}
+          {isFiltering ? t.cdNoSearchResult : t.cdNoProjects}
         </p>
       )}
 
@@ -801,7 +808,7 @@ function ProjectCardView({
                       </div>
                       <button type="button" onClick={() => toggleGroup(owner)} className="flex items-center gap-2 flex-1 min-w-0 pr-3 h-full text-left">
                         <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
-                        <span className="font-semibold text-[13px] text-slate-800 truncate">{owner}</span>
+                        <span className="font-semibold text-[13px] text-slate-800 truncate">{owner === "고객사 미지정" ? t.cdNoCustomer : owner}</span>
                         <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
                         <span className="ml-auto shrink-0">
                           {collapsed ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
@@ -831,7 +838,7 @@ function ProjectCardView({
                                     {/* Drop hint overlay */}
                                     {isDragActive && isOver && (
                                       <div className="absolute inset-0 rounded-lg bg-blue-50/70 flex items-center justify-center z-10 pointer-events-none">
-                                        <span className="text-sm font-bold text-blue-600">여기에 배치</span>
+                                        <span className="text-sm font-bold text-blue-600">{t.cdDropHereHint}</span>
                                       </div>
                                     )}
                                     {/* Main content */}
@@ -849,7 +856,7 @@ function ProjectCardView({
                                       {isExpanded && (
                                         <div className="mt-2 pt-2 border-t border-slate-100">
                                           {workers.length === 0 ? (
-                                            <p className="text-sm text-slate-400 italic py-1">배치된 작업자가 없습니다.</p>
+                                            <p className="text-sm text-slate-400 italic py-1">{t.cdNoWorkersInProject}</p>
                                           ) : (
                                             <div className="space-y-1.5 pt-1">
                                               {workers.map(({ worker, jibble }) => {
@@ -876,18 +883,18 @@ function ProjectCardView({
                                                     </div>
                                                     <div className="flex items-center gap-4 tabular-nums shrink-0">
                                                       <div className="text-right">
-                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">출근</p>
+                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">{t.cdColCheckIn}</p>
                                                         <p className={`text-sm font-semibold leading-tight ${checkedIn ? "text-emerald-600" : "text-slate-300"}`}>
                                                           {fmtTime(jibble?.firstIn)}
                                                         </p>
                                                       </div>
                                                       <div className="text-right">
-                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">퇴근</p>
+                                                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-semibold leading-tight">{t.cdColCheckOut}</p>
                                                         <p className={`text-sm font-semibold leading-tight ${jibble?.lastOut ? "text-slate-600" : "text-slate-300"}`}>
                                                           {jibble?.lastOut
                                                             ? fmtTime(jibble.lastOut)
                                                             : isOnSite
-                                                              ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
+                                                              ? <span className="text-xs text-emerald-500 font-medium">{t.cdWorkingNow}</span>
                                                               : "—"}
                                                         </p>
                                                       </div>
@@ -911,7 +918,7 @@ function ProjectCardView({
                                       <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
                                         workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
                                       }`}>
-                                        <Users className="w-3 h-3" />{workers.length}명
+                                        <Users className="w-3 h-3" />{workers.length}{t.cdPersonUnit}
                                       </span>
                                       {isExpanded
                                         ? <ChevronUp   className="w-4 h-4 text-slate-400" />
@@ -946,6 +953,7 @@ function SaveStatusChip({
   lastSavedAt: Date | null;
   onRetry: () => void;
 }) {
+  const { t } = useLanguage();
   if (status === "idle") return (
     <div style={{
       display: "flex", alignItems: "center", gap: 5,
@@ -953,7 +961,7 @@ function SaveStatusChip({
       background: "#f8fafc", border: "1px solid #e2e8f0",
       fontSize: 12, color: "#cbd5e1", fontWeight: 500, whiteSpace: "nowrap",
     }}>
-      변경 없음
+      {t.cdSaveIdle}
     </div>
   );
 
@@ -965,7 +973,7 @@ function SaveStatusChip({
       fontSize: 12, color: "#3b82f6", fontWeight: 600, whiteSpace: "nowrap",
     }}>
       <Loader2 className="w-3 h-3 animate-spin" />
-      저장 중…
+      {t.cdSaveSaving}
     </div>
   );
 
@@ -975,7 +983,7 @@ function SaveStatusChip({
       : undefined;
     return (
       <div
-        title={timeStr ? `마지막 저장: ${timeStr}` : undefined}
+        title={timeStr ? t.cdSaveLastSaved + timeStr : undefined}
         style={{
           display: "flex", alignItems: "center", gap: 5,
           padding: "4px 10px", borderRadius: 20,
@@ -985,7 +993,7 @@ function SaveStatusChip({
         }}
       >
         <CheckCircle2 className="w-3 h-3" style={{ color: "#22c55e" }} />
-        저장됨
+        {t.cdSaveSaved}
       </div>
     );
   }
@@ -1007,7 +1015,7 @@ function SaveStatusChip({
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#fff1f2"; }}
     >
       <AlertCircle className="w-3 h-3" />
-      저장 실패 · 재시도
+      {t.cdSaveError}
     </button>
   );
 }
@@ -1015,6 +1023,7 @@ function SaveStatusChip({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CrewDispatchAssignment() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [dateStr,    setDateStr]    = useState<string>(() => toLocalDateStr(new Date()));
   const [groupOrder, setGroupOrder] = useState<string[]>(loadGroupOrder);
@@ -1135,8 +1144,8 @@ export default function CrewDispatchAssignment() {
     const hasFailures     = currentFailedOps.size > 0;
     if (hasPendingSaves || hasFailures) {
       const msg = hasFailures
-        ? "저장 실패한 변경사항이 있습니다. 이 날짜로 돌아오면 재시도 버튼으로 재전송할 수 있습니다. 날짜를 변경하시겠습니까?"
-        : "변경사항이 아직 저장 중입니다. 날짜를 변경하면 저장 실패 시 이 날짜로 돌아와야 재시도할 수 있습니다. 계속하시겠습니까?";
+        ? t.cdConfirmChangeFailed
+        : t.cdConfirmChangePending;
       if (!window.confirm(msg)) return;
     }
     const d = new Date(dateStr + "T00:00:00");
@@ -1325,7 +1334,7 @@ export default function CrewDispatchAssignment() {
           return new Map(prev).set(date, dateMap);
         });
       }
-      toast({ title: "배치 저장 실패", description: err.message, variant: "destructive" });
+      toast({ title: t.cdToastAssignFailed, description: err.message, variant: "destructive" });
     },
   });
 
@@ -1435,7 +1444,7 @@ export default function CrewDispatchAssignment() {
           return new Map(prev).set(date, dateMap);
         });
       }
-      toast({ title: "출근 저장 실패", description: err.message, variant: "destructive" });
+      toast({ title: t.cdToastAttFailed, description: err.message, variant: "destructive" });
     },
   });
 
@@ -1513,7 +1522,7 @@ export default function CrewDispatchAssignment() {
         if (prevProjectId !== null) {
           const worker  = workerList.find((w) => w.id === workerId);
           const project = allProjects.find((p) => p.id === prevProjectId);
-          handleUnassign(workerId, prevProjectId, worker?.fullName ?? "작업자", project?.name ?? "프로젝트");
+          handleUnassign(workerId, prevProjectId, worker?.fullName ?? t.cdWorkerFallback, project?.name ?? t.cdProjectFallback);
         }
         return;
       }
@@ -1524,7 +1533,7 @@ export default function CrewDispatchAssignment() {
         const project = allProjects.find((p) => p.id === projectId);
         const worker  = workerList.find((w) => w.id === workerId);
         handleAssign(workerId, projectId);
-        toast({ title: `${worker?.fullName ?? "작업자"} → ${project?.name ?? "프로젝트"} 배치 완료` });
+        toast({ title: t.cdToastAssigned.replace("{worker}", worker?.fullName ?? t.cdWorkerFallback).replace("{project}", project?.name ?? t.cdProjectFallback) });
       }
       return;
     }
@@ -1573,8 +1582,8 @@ export default function CrewDispatchAssignment() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-900">작업자 배치</h1>
-          <p className="text-slate-500 mt-1 text-sm">오늘 출근한 작업자를 프로젝트에 배치하세요.</p>
+          <h1 className="text-3xl font-display font-bold text-slate-900">{t.cdPageTitle}</h1>
+          <p className="text-slate-500 mt-1 text-sm">{t.cdPageSubtitle}</p>
         </div>
         <div className="shrink-0 pt-1">
           <SaveStatusChip
@@ -1594,7 +1603,7 @@ export default function CrewDispatchAssignment() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-800">{fmtDate(dateStr)}</span>
           {isToday && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">오늘</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 uppercase tracking-wide">{t.cdTodayBadge}</span>
           )}
         </div>
         <button onClick={() => changeDate(1)} disabled={isToday}
@@ -1611,8 +1620,8 @@ export default function CrewDispatchAssignment() {
               <Users className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">현장 출근</p>
-              <p className="text-2xl font-bold text-slate-800 leading-tight">{onSiteCount}명</p>
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">{t.cdKpiOnSite}</p>
+              <p className="text-2xl font-bold text-slate-800 leading-tight">{onSiteCount}{t.cdPersonUnit}</p>
             </div>
           </CardContent>
         </Card>
@@ -1622,7 +1631,7 @@ export default function CrewDispatchAssignment() {
               <CheckCircle2 className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">배치 완료</p>
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">{t.cdKpiAssigned}</p>
               <p className="text-2xl font-bold text-slate-800 leading-tight">
                 {assignedCount}
                 <span className="text-sm text-slate-400 ml-1 font-normal">/ {workerList.length}</span>
@@ -1646,7 +1655,7 @@ export default function CrewDispatchAssignment() {
         {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-3">
             <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
-            <p className="text-sm text-slate-400">불러오는 중...</p>
+            <p className="text-sm text-slate-400">{t.cdLoading}</p>
           </div>
         ) : (
           <>
@@ -1658,14 +1667,14 @@ export default function CrewDispatchAssignment() {
                 {/* Panel header */}
                 <div className="px-4 pt-4 pb-3 border-b border-slate-100 bg-slate-50 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">작업자 ({sortedWorkers.length})</span>
-                    <span className="text-[10px] text-slate-400">← 드래그하여 배치</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.cdPanelTitle.replace("{n}", String(sortedWorkers.length))}</span>
+                    <span className="text-[10px] text-slate-400">{t.cdPanelDragHint}</span>
                   </div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="이름으로 검색..."
+                      placeholder={t.cdWorkerSearch}
                       value={workerSearch}
                       onChange={(e) => setWorkerSearch(e.target.value)}
                       className="w-full h-8 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
@@ -1685,7 +1694,7 @@ export default function CrewDispatchAssignment() {
                             ? "bg-slate-800 border-slate-800 text-white"
                             : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                         }`}>
-                        {f === "all" ? "전체" : f === "onsite" ? "현장" : "미배치"}
+                        {f === "all" ? t.cdFilterAll : f === "onsite" ? t.cdFilterOnSite : t.cdFilterUnassigned}
                       </button>
                     ))}
                   </div>
@@ -1694,7 +1703,7 @@ export default function CrewDispatchAssignment() {
                 {/* Worker list */}
                 <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 420px)" }}>
                   {filteredWorkers.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-10">해당하는 작업자가 없습니다.</p>
+                    <p className="text-sm text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
                   ) : (
                     filteredWorkers.map((w) => {
                       const assignedId = getAssignment(w.id);
@@ -1707,7 +1716,7 @@ export default function CrewDispatchAssignment() {
                         assignedProject={allProjects.find((p) => p.id === assignedId)}
                         onUnassign={assignedId !== null ? () => {
                           const project = allProjects.find((p) => p.id === assignedId);
-                          handleUnassign(w.id, assignedId, w.fullName, project?.name ?? "프로젝트");
+                          handleUnassign(w.id, assignedId, w.fullName, project?.name ?? t.cdProjectFallback);
                         } : undefined}
                         koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
                         onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
@@ -1741,7 +1750,7 @@ export default function CrewDispatchAssignment() {
                     className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
                       viewMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
                     }`}>
-                    {mode === "worker" ? "👷 작업자별" : "🏗️ 프로젝트별"}
+                    {mode === "worker" ? t.cdTabWorker : t.cdTabProject}
                   </button>
                 ))}
               </div>
@@ -1752,17 +1761,17 @@ export default function CrewDispatchAssignment() {
                     {workerList.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 gap-2">
                         <Users className="w-8 h-8 text-slate-200" />
-                        <p className="text-sm text-slate-400">등록된 작업자가 없습니다.</p>
+                        <p className="text-sm text-slate-400">{t.cdNoWorkers}</p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-slate-100 bg-slate-50">
-                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">작업자</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">출근</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">퇴근</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">배치 프로젝트</th>
+                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColWorker}</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColCheckIn}</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColCheckOut}</th>
+                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColProject}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1781,7 +1790,7 @@ export default function CrewDispatchAssignment() {
                                       const prevId = getAssignment(worker.id);
                                       if (prevId !== null) {
                                         const project = allProjects.find((p) => p.id === prevId);
-                                        handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? "프로젝트");
+                                        handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? t.cdProjectFallback);
                                       }
                                     } else {
                                       handleAssign(worker.id, pid);
@@ -1857,7 +1866,7 @@ export default function CrewDispatchAssignment() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {undoState.workerName}
-                <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 6 }}>→ 배치 해제됨</span>
+                <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 6 }}>{t.cdUndoUnassigned}</span>
               </div>
               <div style={{ fontSize: 11, color: "#475569", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {undoState.projectName}
@@ -1877,12 +1886,12 @@ export default function CrewDispatchAssignment() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#2563eb"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#3b82f6"; }}
             >
-              되돌리기
+              {t.cdUndoBtn}
             </button>
             {/* Dismiss button */}
             <button
               type="button"
-              aria-label="닫기"
+              aria-label={t.cdUndoDismiss}
               onClick={() => { clearTimeout(undoState.timerId); setUndoState(null); }}
               style={{
                 width: 22, height: 22, borderRadius: "50%",

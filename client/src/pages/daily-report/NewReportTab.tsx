@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -692,7 +692,14 @@ function MaterialSearch({
   onChange: (patch: Partial<MaterialRow>) => void;
 }) {
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  // Fixed-position coords for mobile so the popup never overflows the visual viewport
+  const [fixedPos, setFixedPos] = useState<{
+    top: number; left: number; width: number; maxHeight: number;
+  } | null>(null);
+
   const initQuery = row.inventoryItemId
     ? (extractSize(row.description).rest || row.description)
     : row.description;
@@ -709,20 +716,82 @@ function MaterialSearch({
     setQuery(next);
   }, [row.description, row.inventoryItemId]);
 
+  // Recalculates position using visualViewport so the popup stays inside the visible area
+  // even when the virtual keyboard is open.
+  const calcPos = useCallback(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const vw = window.innerWidth;
+    const pad = 16;
+    // layout-viewport coordinates of visual viewport edges
+    const vvTop    = vv?.offsetTop  ?? 0;
+    const vvBottom = vvTop + (vv?.height ?? window.innerHeight);
+
+    const spaceBelow = vvBottom - rect.bottom - pad;
+    const spaceAbove = rect.top   - vvTop    - pad;
+    const desiredH   = 280;
+
+    let top: number, maxHeight: number;
+    if (spaceBelow >= 100) {
+      top       = rect.bottom + 4;
+      maxHeight = Math.min(desiredH, spaceBelow);
+    } else if (spaceAbove > spaceBelow) {
+      maxHeight = Math.min(desiredH, spaceAbove);
+      top       = rect.top - 4 - maxHeight;
+    } else {
+      top       = rect.bottom + 4;
+      maxHeight = Math.max(80, spaceBelow);
+    }
+
+    setFixedPos({
+      top:       Math.max(vvTop + pad, top),
+      left:      pad,
+      width:     vw - pad * 2,
+      maxHeight,
+    });
+  }, []);
+
+  // Update position while open (handles keyboard appearing / page scroll)
+  useEffect(() => {
+    if (!open || !isMobile) return;
+    calcPos();
+    const vv = window.visualViewport;
+    const update = () => calcPos();
+    vv?.addEventListener("resize",  update);
+    vv?.addEventListener("scroll",  update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      vv?.removeEventListener("resize",  update);
+      vv?.removeEventListener("scroll",  update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [open, isMobile, calcPos]);
+
+  function openWithPos() {
+    setOpen(true);
+    if (isMobile) { calcPos(); } else { setFixedPos(null); }
+  }
+
+  const dropdownStyle: React.CSSProperties = isMobile && fixedPos
+    ? { position: "fixed", top: fixedPos.top, left: fixedPos.left, width: fixedPos.width, zIndex: 99999, maxHeight: fixedPos.maxHeight }
+    : { position: "absolute", top: "calc(100% + 4px)", left: 0, minWidth: "min(400px, calc(100vw - 32px))", zIndex: 9999, maxHeight: 280 };
+
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapperRef}>
       <Input data-testid={testId} value={query}
         placeholder={t.newReportSearchInventory}
         className={cellInputCls}
         onChange={(e) => {
           setQuery(e.target.value);
-          setOpen(true);
+          openWithPos();
           onChange({ description: e.target.value, inventoryItemId: null });
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => openWithPos()}
         onBlur={() => setTimeout(() => setOpen(false), 150)} />
       {open && filtered.length > 0 && (
-        <div style={{ position: "absolute", zIndex: 9999, top: "calc(100% + 4px)", left: 0, minWidth: 400, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.10)", overflowY: "auto", maxHeight: 280 }}>
+        <div style={{ ...dropdownStyle, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.10)", overflowY: "auto" }}>
           {filtered.map((item) => {
             const { size, rest } = extractSize(item.name);
             return (
@@ -1268,7 +1337,7 @@ export function NewReportTab({
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
       <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}>
-        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
@@ -1276,7 +1345,7 @@ export function NewReportTab({
             {/* Col 1: Report No */}
             <div>
               <FL>{t.newReportReportNo}</FL>
-              <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
+              <div style={{ width: isMobile ? "100%" : 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
                 {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}
               </div>
             </div>
@@ -1285,14 +1354,15 @@ export function NewReportTab({
             <div>
               <FL>{t.newReportShift}</FL>
               <select data-testid="select-shift" value={shift} onChange={e => setShift(e.target.value)}
-                style={{ width: 130, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
+                style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none", cursor: "pointer" }}>
                 <option value="day">{t.newReportDayShift}</option>
                 <option value="night">{t.newReportNightShift}</option>
                 <option value="both">{t.newReportBothShifts}</option>
               </select>
             </div>
 
-            {/* Col 3: Weather + Temperature combined */}
+            {/* Col 3: Weather + Temperature combined — full row on mobile */}
+            {!isMobile && (
             <div>
               <FL>{t.newReportWeatherTemp}</FL>
               <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
@@ -1317,15 +1387,44 @@ export function NewReportTab({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Col 4: Report Date */}
             <div>
               <FL>{t.newReportReportDate}</FL>
               <input data-testid="input-report-date" type="date" value={reportDate}
                 onChange={e => setReportDate(e.target.value)}
-                style={{ width: 148, height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
+                style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
             </div>
           </div>
+
+          {/* ROW 1b — Weather + Temperature on mobile (full row) */}
+          {isMobile && (
+            <div>
+              <FL>{t.newReportWeatherTemp}</FL>
+              <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 40, background: "#fff" }}>
+                <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
+                  style={{ flex: 1, minWidth: 0, border: "none", padding: "0 8px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
+                  <option value="clear">{t.newReportWClear}</option>
+                  <option value="partly-cloudy">{t.newReportWPartlyCloudy}</option>
+                  <option value="overcast">{t.newReportWOvercast}</option>
+                  <option value="rain">{t.newReportWRain}</option>
+                  <option value="wind">{t.newReportWWind}</option>
+                  <option value="heat">{t.newReportWHeat}</option>
+                </select>
+                <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "0 6px", flexShrink: 0 }}>
+                  <span style={{ color: "#f87171", fontSize: 10, fontWeight: 700 }}>H</span>
+                  <input data-testid="input-temp-high" type="number" value={temperatureHigh} onChange={e => setTemperatureHigh(e.target.value)}
+                    style={{ width: 36, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                  <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
+                  <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
+                    style={{ width: 36, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: 4 }}>°F</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ROW 2 — Reporter | Project Manager */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
@@ -1882,7 +1981,7 @@ export function NewReportTab({
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 0.9fr", gap: 0 }}>
 
                       {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}
-                      <div style={{ padding: "0 16px 0 0", borderRight: "1px solid #f5f5f5" }}>
+                      <div style={{ padding: isMobile ? "0 0 12px 0" : "0 16px 0 0", borderRight: isMobile ? "none" : "1px solid #f5f5f5", borderBottom: isMobile ? "1px solid #f5f5f5" : "none" }}>
                         <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
                           {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
                         </p>

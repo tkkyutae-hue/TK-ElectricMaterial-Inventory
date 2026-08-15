@@ -104,7 +104,7 @@ function DailyReportLayout({
         <div style={{ flex: 1 }} />
         <LanguageSwitcher theme="light" />
       </header>
-      <main style={{ flex: 1, padding: "24px 32px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
+      <main style={{ flex: 1, maxWidth: 1200, width: "100%", margin: "0 auto" }} className="px-4 py-6 sm:px-8">
         {children}
       </main>
     </div>

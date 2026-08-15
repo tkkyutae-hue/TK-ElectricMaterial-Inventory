@@ -1989,7 +1989,6 @@ export function NewReportTab({
                 <PdfViewer
                   url={drawingUrl!}
                   filename={drawingFilename}
-                  height={340}
                   onReplaceClick={() => drawingInputRef.current?.click()}
                 />
               ) : (

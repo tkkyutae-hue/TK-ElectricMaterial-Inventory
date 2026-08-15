@@ -98,7 +98,7 @@ export function PdfViewer({ url, filename, height = 280, onReplaceClick }: PdfVi
   }
 
   return (
-    <div style={{ position: "relative", overflow: "auto", maxHeight: height, background: "#f1f5f2" }}>
+    <div style={{ position: "relative", background: "#f1f5f2" }}>
       {loading && (
         <div style={{
           position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",

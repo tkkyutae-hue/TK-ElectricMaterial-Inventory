@@ -171,6 +171,17 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+// ─── Mobile breakpoint hook ───────────────────────────────────────────────────
+function useIsMobile(breakpoint = 640) {
+  const [isMob, setIsMob] = useState(() => typeof window !== "undefined" && window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMob(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handler, { passive: true });
+    return () => window.removeEventListener("resize", handler);
+  }, [breakpoint]);
+  return isMob;
+}
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PhotoFile { url: string; workDescription: string; memo: string }
@@ -775,6 +786,7 @@ export function NewReportTab({
   const { t }       = useLanguage();
   const queryClient = useQueryClient();
   const { isManagerOrAbove } = useAuth();
+  const isMobile    = useIsMobile();
   const fd          = initialData?.formData ?? null;
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1259,7 +1271,7 @@ export function NewReportTab({
         <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}
-          <div style={{ display: "grid", gridTemplateColumns: "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
 
             {/* Col 1: Report No */}
             <div>
@@ -1316,7 +1328,7 @@ export function NewReportTab({
           </div>
 
           {/* ROW 2 — Reporter | Project Manager */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
             <div>
               <FL>
                 {t.newReportReporter}
@@ -1345,8 +1357,8 @@ export function NewReportTab({
           </div>
 
           {/* ROW 3 — Auto-filled strip */}
-          <div style={{ display: "flex", border: "1px solid #e8eaff", borderRadius: 10, background: "#f8faff", overflow: "hidden" }}>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: "1px solid #eef0ff" }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", border: "1px solid #e8eaff", borderRadius: 10, background: "#f8faff", overflow: "hidden" }}>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : "1px solid #eef0ff", borderBottom: isMobile ? "1px solid #eef0ff" : "none" }}>
               <div style={{ width: 30, height: 30, borderRadius: 7, background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
@@ -1357,7 +1369,7 @@ export function NewReportTab({
                 <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
               </div>
             </div>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: "1px solid #eef0ff" }}>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : "1px solid #eef0ff", borderBottom: isMobile ? "1px solid #eef0ff" : "none" }}>
               <div style={{ width: 30, height: 30, borderRadius: 7, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2}>
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -1424,139 +1436,197 @@ export function NewReportTab({
 
         {/* Manpower table — no overflow-x-auto so dropdown panels are not clipped */}
         <div>
-          <table className="text-sm w-full" data-testid="table-manpower">
-            <TH cols={[
-              { label: t.newReportColWorkerName, cls: "w-[280px]" },
-              { label: t.newReportColStatusH,    cls: "w-[130px]" },
-              { label: t.newReportStart,         cls: "w-[76px]" },
-              { label: t.newReportEnd,           cls: "w-[76px]" },
-              { label: t.newReportColHrs,        cls: "w-[48px] text-center" },
-              { label: t.newReportColNotes,      cls: "w-[130px] text-center" },
-            ]} />
-            <tbody>
+          {isMobile ? (
+            /* ── Mobile: stacked worker cards ── */
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-manpower">
               {manpower.length === 0 && (
-                <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
-                  {t.newReportNoWorkers}
-                </td></tr>
+                <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoWorkers}</div>
               )}
               {manpower.map((row, i) => {
                 const takenIds    = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
+                const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
                 return (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
-                    {/* Worker Name — role badge is rendered inside WorkerCombobox wrapper */}
-                    <td className="py-1.5 px-2.5">
-                      <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
-                        testId={`input-mp-worker-${i}`}
-                        onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
-                    </td>
-                    {/* Status */}
-                    <td className="py-1.5 px-2.5">
-                      {(() => {
-                        const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
-                        return (
-                          <Select value={row.attendanceStatus}
-                            onValueChange={(v) => {
-                              const hrs = calcHours(row.startTime, row.endTime, v);
-                              setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
-                            }}>
-                            <SelectTrigger
-                              data-testid={`select-mp-status-${i}`}
-                              className="h-8"
-                              style={{
-                                minWidth: "120px", width: "120px",
-                                padding: "5px 24px 5px 8px",
-                                fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 10.5 : 11,
-                                fontWeight: 600,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                color: sc.color,
-                                background: sc.bg,
-                                border: `1px solid ${sc.border}`,
-                              }}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ATTENDANCE_STATUSES.map((s) => (
-                                <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        );
-                      })()}
-                    </td>
-                    {/* Start */}
-                    <td className="py-1.5 px-2.5">
-                      <div style={{
-                        display: "flex", alignItems: "center",
-                        padding: "5px 7px", gap: 5, height: 32,
-                        border: "1px solid #e0e0e0", borderRadius: 7,
-                        opacity: !hoursActive ? 0.4 : 1,
-                        pointerEvents: !hoursActive ? "none" : "auto",
-                      }}>
-                        <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                        <input
-                          data-testid={`input-mp-start-${i}`}
-                          type="time"
-                          value={row.startTime}
-                          disabled={!hoursActive}
-                          onChange={(e) => {
-                            const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus);
-                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
-                          }}
-                          style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
-                        />
+                  <div key={row.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 12px 10px", background: "#fff", display: "flex", flexDirection: "column", gap: 9 }}>
+                    {/* Row 1: Worker + Delete */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
+                          testId={`input-mp-worker-${i}`}
+                          onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
                       </div>
-                    </td>
-                    {/* End */}
-                    <td className="py-1.5 px-2.5">
-                      <div style={{
-                        display: "flex", alignItems: "center",
-                        padding: "5px 7px", gap: 5, height: 32,
-                        border: "1px solid #e0e0e0", borderRadius: 7,
-                        opacity: !hoursActive ? 0.4 : 1,
-                        pointerEvents: !hoursActive ? "none" : "auto",
-                      }}>
-                        <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                        <input
-                          data-testid={`input-mp-end-${i}`}
-                          type="time"
-                          value={row.endTime}
-                          disabled={!hoursActive}
-                          onChange={(e) => {
-                            const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus);
-                            setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
-                          }}
-                          style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }}
-                        />
-                      </div>
-                    </td>
-                    {/* Hrs */}
-                    <td className="py-1.5 px-2.5">
-                      <ROCell center>
-                        {hoursActive ? row.hoursWorked.toFixed(1) : <span className="text-slate-300">—</span>}
-                      </ROCell>
-                    </td>
-                    {/* Notes */}
-                    <td className="py-1.5 px-2.5" style={{ textAlign: "center", verticalAlign: "middle" }}>
-                      <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
-                        onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                        className={cellInputCls} placeholder={t.newReportOptional}
-                        style={{ textAlign: "center", fontSize: 12, color: row.notes ? "#1a1a1a" : "#bbb" }} />
-                    </td>
-                    <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
-                    </td>
-                  </tr>
+                    </div>
+                    {/* Row 2: Status + Hrs badge */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Select value={row.attendanceStatus}
+                        onValueChange={(v) => {
+                          const hrs = calcHours(row.startTime, row.endTime, v);
+                          setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
+                        }}>
+                        <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-9"
+                          style={{ minWidth: 110, padding: "5px 28px 5px 10px", fontSize: 12, fontWeight: 600,
+                            color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ATTENDANCE_STATUSES.map((s) => (
+                            <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {hoursActive && (
+                        <div style={{ marginLeft: "auto", display: "flex", alignItems: "baseline", gap: 4 }}>
+                          <span style={{ fontSize: 10, color: "#94a3b8" }}>{t.newReportColHrs}</span>
+                          <span style={{ fontSize: 18, fontWeight: 800, color: "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{row.hoursWorked.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Row 3: Start + End (only when time matters) */}
+                    {hoursActive && (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {(["start", "end"] as const).map((which) => {
+                          const val = which === "start" ? row.startTime : row.endTime;
+                          return (
+                            <div key={which} style={{ display: "flex", alignItems: "center", padding: "6px 9px", gap: 6, height: 40, border: "1px solid #e0e0e0", borderRadius: 8 }}>
+                              <svg style={{ color: "#ccc", flexShrink: 0, width: 13, height: 13 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
+                                {which === "start" ? t.newReportStart : t.newReportEnd}
+                              </span>
+                              <input data-testid={which === "start" ? `input-mp-start-${i}` : `input-mp-end-${i}`}
+                                type="time" value={val}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  const hrs = which === "start"
+                                    ? calcHours(v, row.endTime, row.attendanceStatus)
+                                    : calcHours(row.startTime, v, row.attendanceStatus);
+                                  setManpower(manpower.map((r) => r.id === row.id ? { ...r, [which === "start" ? "startTime" : "endTime"]: v, hoursWorked: hrs } : r));
+                                }}
+                                style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, padding: 0, colorScheme: "light" as any }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Row 4: Notes */}
+                    <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
+                      onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
+                      className={cellInputCls} placeholder={t.newReportOptional}
+                      style={{ fontSize: 13, color: row.notes ? "#1a1a1a" : "#bbb" }} />
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            /* ── Desktop: original table ── */
+            <table className="text-sm w-full" data-testid="table-manpower">
+              <TH cols={[
+                { label: t.newReportColWorkerName, cls: "w-[280px]" },
+                { label: t.newReportColStatusH,    cls: "w-[130px]" },
+                { label: t.newReportStart,         cls: "w-[76px]" },
+                { label: t.newReportEnd,           cls: "w-[76px]" },
+                { label: t.newReportColHrs,        cls: "w-[48px] text-center" },
+                { label: t.newReportColNotes,      cls: "w-[130px] text-center" },
+              ]} />
+              <tbody>
+                {manpower.length === 0 && (
+                  <tr><td colSpan={8} className="py-7 text-center text-xs text-slate-300 italic">
+                    {t.newReportNoWorkers}
+                  </td></tr>
+                )}
+                {manpower.map((row, i) => {
+                  const takenIds    = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
+                  const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
+                  return (
+                    <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
+                      {/* Worker Name */}
+                      <td className="py-1.5 px-2.5">
+                        <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
+                          testId={`input-mp-worker-${i}`}
+                          onChange={(p) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, ...p } : r))} />
+                      </td>
+                      {/* Status */}
+                      <td className="py-1.5 px-2.5">
+                        {(() => {
+                          const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
+                          return (
+                            <Select value={row.attendanceStatus}
+                              onValueChange={(v) => {
+                                const hrs = calcHours(row.startTime, row.endTime, v);
+                                setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
+                              }}>
+                              <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-8"
+                                style={{ minWidth: "120px", width: "120px", padding: "5px 24px 5px 8px",
+                                  fontSize: row.attendanceStatus === "EARLY_LEAVE" ? 10.5 : 11, fontWeight: 600,
+                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                  color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ATTENDANCE_STATUSES.map((s) => (
+                                  <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
+                      </td>
+                      {/* Start */}
+                      <td className="py-1.5 px-2.5">
+                        <div style={{ display: "flex", alignItems: "center", padding: "5px 7px", gap: 5, height: 32,
+                          border: "1px solid #e0e0e0", borderRadius: 7,
+                          opacity: !hoursActive ? 0.4 : 1, pointerEvents: !hoursActive ? "none" : "auto" }}>
+                          <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          <input data-testid={`input-mp-start-${i}`} type="time" value={row.startTime} disabled={!hoursActive}
+                            onChange={(e) => {
+                              const hrs = calcHours(e.target.value, row.endTime, row.attendanceStatus);
+                              setManpower(manpower.map((r) => r.id === row.id ? { ...r, startTime: e.target.value, hoursWorked: hrs } : r));
+                            }}
+                            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }} />
+                        </div>
+                      </td>
+                      {/* End */}
+                      <td className="py-1.5 px-2.5">
+                        <div style={{ display: "flex", alignItems: "center", padding: "5px 7px", gap: 5, height: 32,
+                          border: "1px solid #e0e0e0", borderRadius: 7,
+                          opacity: !hoursActive ? 0.4 : 1, pointerEvents: !hoursActive ? "none" : "auto" }}>
+                          <svg style={{ color: "#ccc", flexShrink: 0, width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          <input data-testid={`input-mp-end-${i}`} type="time" value={row.endTime} disabled={!hoursActive}
+                            onChange={(e) => {
+                              const hrs = calcHours(row.startTime, e.target.value, row.attendanceStatus);
+                              setManpower(manpower.map((r) => r.id === row.id ? { ...r, endTime: e.target.value, hoursWorked: hrs } : r));
+                            }}
+                            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 12, padding: 0, colorScheme: "light" as any }} />
+                        </div>
+                      </td>
+                      {/* Hrs */}
+                      <td className="py-1.5 px-2.5">
+                        <ROCell center>
+                          {hoursActive ? row.hoursWorked.toFixed(1) : <span className="text-slate-300">—</span>}
+                        </ROCell>
+                      </td>
+                      {/* Notes */}
+                      <td className="py-1.5 px-2.5" style={{ textAlign: "center", verticalAlign: "middle" }}>
+                        <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
+                          onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
+                          className={cellInputCls} placeholder={t.newReportOptional}
+                          style={{ textAlign: "center", fontSize: 12, color: row.notes ? "#1a1a1a" : "#bbb" }} />
+                      </td>
+                      <td className="py-1.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
 
           {/* Summary bar — full-width flex div, not a table row */}
           {manpower.length > 0 && (
@@ -1809,7 +1879,7 @@ export function NewReportTab({
                 {/* ── Detail panel ── */}
                 {row.expanded && (
                   <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr", gap: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 0.9fr", gap: 0 }}>
 
                       {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}
                       <div style={{ padding: "0 16px 0 0", borderRight: "1px solid #f5f5f5" }}>
@@ -1984,142 +2054,210 @@ export function NewReportTab({
             <Package className="w-3 h-3" /> Scope 불러오기
           </button>
         ) : undefined}>
-        <div>
-        <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
-          <colgroup>
-            <col style={{ width: matColWidths.photo }} />
-            <col />
-            <col style={{ width: matColWidths.spec }} />
-            <col style={{ width: 64 }} />
-            <col style={{ width: 44 }} />
-            <col style={{ width: 32 }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap select-none" style={{ position: "relative" }}>
-                {t.newReportPhoto}
-                <div onMouseDown={startMatColDrag("photo")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
-              </th>
-              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportMaterialName}</th>
-              <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap select-none" style={{ position: "relative" }}>
-                {t.newReportSpec}
-                <div onMouseDown={startMatColDrag("spec")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
-              </th>
-              <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
-              <th className="py-2 px-1" />
-            </tr>
-          </thead>
-          <tbody>
+        {isMobile ? (
+          /* ── Mobile: material cards ── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-materials">
             {materials.length === 0 && (
-              <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
+              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoMaterials}</div>
             )}
             {materials.map((row, i) => {
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
               const imgUrl: string = linkedItem?.imageUrl ?? "";
               const isExtra = row.scopeItemId === null && row.description.trim() !== "";
               return (
-                <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40"
-                  style={isExtra ? { borderLeft: "3px solid #f59e0b", background: "rgba(255,251,235,0.5)" } : undefined}>
-                  {/* PHOTO column */}
-                  <td className="py-1.5 px-0.5 text-center">
-                    {imgUrl ? (
-                      <>
+                <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
+                  style={{ border: isExtra ? "1px solid #fde68a" : "1px solid #e8e8e8", borderLeft: isExtra ? "3px solid #f59e0b" : "1px solid #e8e8e8", borderRadius: 10, padding: "12px 12px 10px", background: isExtra ? "rgba(255,251,235,0.5)" : "#fff", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* Row 1: Photo + Name/badges + Delete */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ flexShrink: 0 }}>
+                      {imgUrl ? (
                         <img src={imgUrl} alt=""
-                          style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.15)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
-                          onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
-                        <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={28} /></div>
-                      </>
-                    ) : (
-                      <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={28} /></div>
-                    )}
-                  </td>
-                  {/* Material Name — search input + Inv tag */}
-                  <td className="py-1.5 px-2" style={{ overflow: "visible" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                          onChange={(p) => {
-                            let patch: Partial<MaterialRow> = { ...p };
-                            if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                              const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                              if (matched) patch.scopeItemId = matched.id;
-                              flashRow(i);
-                            }
-                            setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                          }} />
-                      </div>
-                      {row.inventoryItemId && (
-                        <span style={{
-                          flexShrink: 0, fontSize: 10, fontWeight: 600,
-                          color: "#2e7d32", background: "#e8f5e9",
-                          border: "1px solid #a5d6a7", borderRadius: 4,
-                          padding: "1px 5px", whiteSpace: "nowrap",
-                        }}>{t.newReportInv}</span>
-                      )}
-                      {isExtra && (
-                        <span style={{
-                          flexShrink: 0, fontSize: 10, fontWeight: 700,
-                          color: "#b45309", background: "#fff7ed",
-                          border: "1px solid #fcd34d", borderRadius: 4,
-                          padding: "1px 5px", whiteSpace: "nowrap",
-                        }}>추가</span>
+                          style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
+                          onError={e => { e.currentTarget.style.display = "none"; }} />
+                      ) : (
+                        <ThumbPlaceholder size={44} />
                       )}
                     </div>
-                  </td>
-                  {/* SPEC column */}
-                  <td className="py-1.5 px-2">
+                    <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
+                      <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                        onChange={(p) => {
+                          let patch: Partial<MaterialRow> = { ...p };
+                          if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                            const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                            if (matched) patch.scopeItemId = matched.id;
+                            flashRow(i);
+                          }
+                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                        }} />
+                      <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
+                        {row.inventoryItemId && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px" }}>{t.newReportInv}</span>
+                        )}
+                        {isExtra && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px" }}>추가</span>
+                        )}
+                      </div>
+                    </div>
+                    <button type="button" data-testid={`btn-remove-mat-${i}`}
+                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                      style={{ width: 30, height: 30, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  {/* Row 2: Spec */}
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportSpec}</div>
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder="—"
-                      style={{ width: "100%", fontSize: 12, border: "none", background: "transparent", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
-                  </td>
-                  {/* QTY cell */}
-                  <td className="py-1.5 px-1">
-                    <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                      onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
-                      className="h-8 text-xs text-center tabular-nums w-full" />
-                  </td>
-                  {/* UNIT cell */}
-                  <td className="py-1.5 px-0.5 text-center">
-                    {row.inventoryItemId ? (
-                      <span data-testid={`input-mat-unit-${i}`} style={{
-                        fontSize: 13, fontWeight: 600, color: "#666",
-                        background: "transparent", whiteSpace: "nowrap",
-                        display: "inline-block",
-                      }}>{row.unit || "EA"}</span>
-                    ) : (
-                      <input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                        placeholder={t.newReportUnitEAPh}
-                        style={{
-                          width: "100%", fontSize: 13, fontWeight: 600, textAlign: "center",
-                          border: "none", background: "transparent",
-                          color: "#666", outline: "none",
-                        }} />
-                    )}
-                  </td>
-                  {/* Scope Link — hidden UI, auto-link logic kept above */}
-                  {/* Delete */}
-                  <td className="py-1.5 px-1">
-                    <button type="button" data-testid={`btn-remove-mat-${i}`}
-                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                      style={{ width: 24, height: 24, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", margin: "0 auto", transition: "all 0.12s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#fca5a5"; e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.transform = "scale(1.05)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#f87171"; e.currentTarget.style.transform = "scale(1)"; }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </td>
-                </tr>
+                      style={{ width: "100%", fontSize: 13, border: "1px solid #e8e8e8", borderRadius: 7, padding: "6px 10px", background: "#fff", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
+                  </div>
+                  {/* Row 3: Qty + Unit */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 8, alignItems: "end" }}>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>QTY</div>
+                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                        className="h-10 text-sm text-center tabular-nums" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>UNIT</div>
+                      {row.inventoryItemId ? (
+                        <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#666", border: "1px solid #f0f0f0", borderRadius: 7 }}>
+                          <span data-testid={`input-mat-unit-${i}`}>{row.unit || "EA"}</span>
+                        </div>
+                      ) : (
+                        <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                          onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                          placeholder={t.newReportUnitEAPh}
+                          style={{ width: "100%", height: 40, fontSize: 14, fontWeight: 700, textAlign: "center", border: "1px solid #e8e8e8", borderRadius: 7, background: "#fff", outline: "none", color: "#666" }} />
+                      )}
+                    </div>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-
-        </div>
+          </div>
+        ) : (
+          /* ── Desktop: original table ── */
+          <div>
+          <table className="text-sm w-full" style={{ tableLayout: "fixed" }} data-testid="table-materials">
+            <colgroup>
+              <col style={{ width: matColWidths.photo }} />
+              <col />
+              <col style={{ width: matColWidths.spec }} />
+              <col style={{ width: 64 }} />
+              <col style={{ width: 44 }} />
+              <col style={{ width: 32 }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap select-none" style={{ position: "relative" }}>
+                  {t.newReportPhoto}
+                  <div onMouseDown={startMatColDrag("photo")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
+                </th>
+                <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">{t.newReportMaterialName}</th>
+                <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-left whitespace-nowrap select-none" style={{ position: "relative" }}>
+                  {t.newReportSpec}
+                  <div onMouseDown={startMatColDrag("spec")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
+                </th>
+                <th colSpan={2} className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center">{t.newReportQtyUnit}</th>
+                <th className="py-2 px-1" />
+              </tr>
+            </thead>
+            <tbody>
+              {materials.length === 0 && (
+                <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
+              )}
+              {materials.map((row, i) => {
+                const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
+                const imgUrl: string = linkedItem?.imageUrl ?? "";
+                const isExtra = row.scopeItemId === null && row.description.trim() !== "";
+                return (
+                  <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
+                    className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40"
+                    style={isExtra ? { borderLeft: "3px solid #f59e0b", background: "rgba(255,251,235,0.5)" } : undefined}>
+                    {/* PHOTO column */}
+                    <td className="py-1.5 px-0.5 text-center">
+                      {imgUrl ? (
+                        <>
+                          <img src={imgUrl} alt=""
+                            style={{ width: 28, height: 28, borderRadius: 5, objectFit: "cover", border: "1px solid #e8e8e8", display: "block", margin: "0 auto", cursor: "pointer", transition: "transform 0.12s, box-shadow 0.12s" }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.15)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+                            onError={e => { e.currentTarget.style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }} />
+                          <div style={{ display: "none", margin: "0 auto" }}><ThumbPlaceholder size={28} /></div>
+                        </>
+                      ) : (
+                        <div style={{ margin: "0 auto", width: "fit-content" }}><ThumbPlaceholder size={28} /></div>
+                      )}
+                    </td>
+                    {/* Material Name */}
+                    <td className="py-1.5 px-2" style={{ overflow: "visible" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                            onChange={(p) => {
+                              let patch: Partial<MaterialRow> = { ...p };
+                              if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                                const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                                if (matched) patch.scopeItemId = matched.id;
+                                flashRow(i);
+                              }
+                              setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                            }} />
+                        </div>
+                        {row.inventoryItemId && (
+                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>{t.newReportInv}</span>
+                        )}
+                        {isExtra && (
+                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>추가</span>
+                        )}
+                      </div>
+                    </td>
+                    {/* SPEC */}
+                    <td className="py-1.5 px-2">
+                      <input data-testid={`input-mat-spec-${i}`} value={row.spec}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
+                        placeholder="—"
+                        style={{ width: "100%", fontSize: 12, border: "none", background: "transparent", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
+                    </td>
+                    {/* QTY */}
+                    <td className="py-1.5 px-1">
+                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                        className="h-8 text-xs text-center tabular-nums w-full" />
+                    </td>
+                    {/* UNIT */}
+                    <td className="py-1.5 px-0.5 text-center">
+                      {row.inventoryItemId ? (
+                        <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 13, fontWeight: 600, color: "#666", background: "transparent", whiteSpace: "nowrap", display: "inline-block" }}>{row.unit || "EA"}</span>
+                      ) : (
+                        <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                          onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                          placeholder={t.newReportUnitEAPh}
+                          style={{ width: "100%", fontSize: 13, fontWeight: 600, textAlign: "center", border: "none", background: "transparent", color: "#666", outline: "none" }} />
+                      )}
+                    </td>
+                    {/* Delete */}
+                    <td className="py-1.5 px-1">
+                      <button type="button" data-testid={`btn-remove-mat-${i}`}
+                        onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                        style={{ width: 24, height: 24, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", margin: "0 auto", transition: "all 0.12s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#fca5a5"; e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.transform = "scale(1.05)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#f87171"; e.currentTarget.style.transform = "scale(1)"; }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+        )}
         <AddRow testId="btn-add-material" label={t.newReportAddMaterial}
           onClick={() => setMaterials([...materials, { id: uid(), description: "", spec: "", unit: "EA", qty: 1, notes: "", inventoryItemId: null, scopeItemId: null }])} />
 
@@ -2156,7 +2294,7 @@ export function NewReportTab({
         </div>
 
         <div className="overflow-x-auto">
-        <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: 900 }} data-testid="table-equipment">
+        <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: isMobile ? 700 : 900 }} data-testid="table-equipment">
           <TH cols={[
             { label: t.newReportSize,        cls: "w-[80px] text-center" },
             { label: t.newReportEqColName,   cls: "w-[200px]" },
@@ -2333,7 +2471,7 @@ export function NewReportTab({
               placeholder="Requests or instructions received from client or team…"
               className="text-sm min-h-[72px] resize-y" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={isMobile ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
             <div>
               <FL>Drawing No.</FL>
               <Input data-testid="input-drawing-no" value={drawingNo}

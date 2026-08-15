@@ -2293,145 +2293,283 @@ export function NewReportTab({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-        <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: isMobile ? 700 : 900 }} data-testid="table-equipment">
-          <TH cols={[
-            { label: t.newReportSize,        cls: "w-[80px] text-center" },
-            { label: t.newReportEqColName,   cls: "w-[200px]" },
-            { label: t.newReportBrand,       cls: "w-[100px]" },
-            { label: t.newReportEqColQty,    cls: "w-[64px] text-center" },
-            { label: t.newReportEqColUnit,   cls: "w-[64px] text-center" },
-            { label: t.newReportEqColHours,  cls: "w-[96px] text-center" },
-            { label: t.newReportStatus,      cls: "w-[180px]" },
-            { label: t.newReportColNotes,    cls: "w-[120px]" },
-          ]} />
-          <tbody>
+        {isMobile ? (
+          /* ── Mobile: stacked equipment cards ── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-equipment">
             {equipment.length === 0 && (
-              <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoEquipment}</td></tr>
+              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoEquipment}</div>
             )}
             {equipment.map((row, i) => {
               const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
-              const rowBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : undefined;
+              const cardBorderColor = row.eqStatus === "broken" ? "#fecdd3" : row.eqStatus === "partial" ? "#fde68a" : "#e5e7eb";
+              const cardBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : "#fff";
               const visibleTags = row.eqStatus === "broken"
                 ? ["repair", "return"]
                 : row.eqStatus === "partial"
                 ? ["repair", "return", "pending"]
                 : [];
               return (
-                <tr key={row.id} className="border-b border-slate-100 last:border-0 group" style={rowBg ? { background: rowBg } : undefined}>
-                  {/* SIZE */}
-                  <td className="py-1.5 px-2.5">
-                    <Input data-testid={`input-eq-size-${i}`} value={row.size}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
-                      className="h-8 text-xs text-center w-full" placeholder={t.newReportSizePh} />
-                  </td>
-                  {/* EQUIPMENT NAME */}
-                  <td className="py-1.5 px-2.5">
-                    <Input data-testid={`input-eq-name-${i}`} value={row.name}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
-                      className={cellInputCls} placeholder={t.newReportEqNamePh} />
-                  </td>
-                  {/* BRAND */}
-                  <td className="py-1.5 px-2.5">
-                    <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
-                      className={cellInputCls} placeholder={t.newReportEqBrandPh} />
-                  </td>
-                  {/* QTY */}
-                  <td className="py-1.5 px-2">
-                    <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center tabular-nums w-full" />
-                  </td>
-                  {/* UNIT */}
-                  <td className="py-1.5 px-2">
-                    <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      className="h-8 text-xs text-center w-full" placeholder={t.newReportUnitEAPh} />
-                  </td>
-                  {/* HOURS USED */}
-                  <td className="py-1.5 px-2">
-                    <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
-                      onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
-                      className="h-8 text-xs text-center tabular-nums w-full" />
-                  </td>
-                  {/* STATUS */}
-                  <td className="py-1.5 px-2.5">
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      {/* Operation state dropdown */}
-                      <div style={{ position: "relative" }}>
-                        <select
-                          data-testid={`select-eq-status-${i}`}
-                          value={row.eqStatus}
-                          onChange={(e) => {
-                            const newStatus = e.target.value as "operational" | "partial" | "broken";
-                            setEquipment(equipment.map((r) => {
-                              if (r.id !== row.id) return r;
-                              let tags = r.tags;
-                              if (newStatus === "operational") tags = [];
-                              else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
-                              return { ...r, eqStatus: newStatus, tags };
-                            }));
-                          }}
-                          style={{
-                            border: `1px solid ${eqCfg.border}`,
-                            borderRadius: 7, padding: "5px 28px 5px 9px",
-                            fontSize: 12, background: eqCfg.bg, color: eqCfg.color,
-                            appearance: "none", width: "100%", cursor: "pointer",
-                            fontWeight: 500, outline: "none",
-                          }}>
-                          <option value="operational">{t.newReportEqOperational}</option>
-                          <option value="partial">{t.newReportEqPartial}</option>
-                          <option value="broken">{t.newReportEqBroken}</option>
-                        </select>
-                        <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>
-                      </div>
-                      {/* Action tags */}
-                      {visibleTags.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                          {visibleTags.map((tag) => {
-                            const tc = EQ_TAG_CFG[tag];
-                            const active = row.tags.includes(tag);
-                            return (
-                              <button key={tag} type="button"
-                                data-testid={`btn-eq-tag-${tag}-${i}`}
-                                onClick={() => setEquipment(equipment.map((r) => {
-                                  if (r.id !== row.id) return r;
-                                  const tags = r.tags.includes(tag) ? r.tags.filter(t => t !== tag) : [...r.tags, tag];
-                                  return { ...r, tags };
-                                }))}
-                                style={{
-                                  background: active ? tc.bg : "#f5f5f5",
-                                  border: `1px solid ${active ? tc.border : "#e5e5e5"}`,
-                                  color: active ? tc.color : "#aaa",
-                                  borderRadius: 5, padding: "3px 8px",
-                                  fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
-                                  cursor: "pointer",
-                                }}>
-                                {eqTagLabel(tag, t)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                <div key={row.id}
+                  style={{ border: `1px solid ${cardBorderColor}`, borderLeft: row.eqStatus !== "operational" ? `3px solid ${eqCfg.border}` : `1px solid ${cardBorderColor}`, borderRadius: 10, padding: "12px 12px 10px", background: cardBg, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {/* Row 1: Name + Status badge + Delete */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColName}</div>
+                      <Input data-testid={`input-eq-name-${i}`} value={row.name}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
+                        className="h-9 text-sm w-full" placeholder={t.newReportEqNamePh} />
                     </div>
-                  </td>
-                  {/* NOTES */}
-                  <td className="py-1.5 px-2.5">
+                    <div style={{ flexShrink: 0, paddingTop: 17 }}>
+                      <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
+                    </div>
+                  </div>
+                  {/* Row 2: Size + Brand */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportSize}</div>
+                      <Input data-testid={`input-eq-size-${i}`} value={row.size}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
+                        className="h-9 text-sm text-center w-full" placeholder={t.newReportSizePh} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportBrand}</div>
+                      <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
+                        className="h-9 text-sm w-full" placeholder={t.newReportEqBrandPh} />
+                    </div>
+                  </div>
+                  {/* Row 3: Qty + Unit + Hours */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 1fr", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColQty}</div>
+                      <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                        className="h-9 text-sm text-center tabular-nums w-full" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColUnit}</div>
+                      <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                        className="h-9 text-sm text-center w-full" placeholder={t.newReportUnitEAPh} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColHours}</div>
+                      <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
+                        className="h-9 text-sm text-center tabular-nums w-full" />
+                    </div>
+                  </div>
+                  {/* Row 4: Status select + action tags */}
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportStatus}</div>
+                    <div style={{ position: "relative", marginBottom: visibleTags.length > 0 ? 8 : 0 }}>
+                      <select
+                        data-testid={`select-eq-status-${i}`}
+                        value={row.eqStatus}
+                        onChange={(e) => {
+                          const newStatus = e.target.value as "operational" | "partial" | "broken";
+                          setEquipment(equipment.map((r) => {
+                            if (r.id !== row.id) return r;
+                            let tags = r.tags;
+                            if (newStatus === "operational") tags = [];
+                            else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
+                            return { ...r, eqStatus: newStatus, tags };
+                          }));
+                        }}
+                        style={{
+                          border: `1px solid ${eqCfg.border}`,
+                          borderRadius: 7, padding: "7px 28px 7px 10px",
+                          fontSize: 13, background: eqCfg.bg, color: eqCfg.color,
+                          appearance: "none", width: "100%", cursor: "pointer",
+                          fontWeight: 600, outline: "none",
+                        }}>
+                        <option value="operational">{t.newReportEqOperational}</option>
+                        <option value="partial">{t.newReportEqPartial}</option>
+                        <option value="broken">{t.newReportEqBroken}</option>
+                      </select>
+                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 11, pointerEvents: "none" }}>▾</span>
+                    </div>
+                    {visibleTags.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {visibleTags.map((tag) => {
+                          const tc = EQ_TAG_CFG[tag];
+                          const active = row.tags.includes(tag);
+                          return (
+                            <button key={tag} type="button"
+                              data-testid={`btn-eq-tag-${tag}-${i}`}
+                              onClick={() => setEquipment(equipment.map((r) => {
+                                if (r.id !== row.id) return r;
+                                const tags = r.tags.includes(tag) ? r.tags.filter(t => t !== tag) : [...r.tags, tag];
+                                return { ...r, tags };
+                              }))}
+                              style={{
+                                background: active ? tc.bg : "#f5f5f5",
+                                border: `1px solid ${active ? tc.border : "#e5e5e5"}`,
+                                color: active ? tc.color : "#aaa",
+                                borderRadius: 6, padding: "5px 10px",
+                                fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                                cursor: "pointer",
+                              }}>
+                              {eqTagLabel(tag, t)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  {/* Row 5: Notes */}
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColNotes}</div>
                     <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
-                      className={cellInputCls} placeholder={t.newReportOptional} />
-                  </td>
-                  {/* DELETE */}
-                  <td className="py-1.5 px-1 w-[32px] opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
-                  </td>
-                </tr>
+                      className="h-9 text-sm w-full" placeholder={t.newReportOptional} />
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-        </div>
+          </div>
+        ) : (
+          /* ── Desktop: original table ── */
+          <div className="overflow-x-auto">
+          <table className="text-sm w-full" style={{ tableLayout: "fixed", minWidth: 900 }} data-testid="table-equipment">
+            <TH cols={[
+              { label: t.newReportSize,        cls: "w-[80px] text-center" },
+              { label: t.newReportEqColName,   cls: "w-[200px]" },
+              { label: t.newReportBrand,       cls: "w-[100px]" },
+              { label: t.newReportEqColQty,    cls: "w-[64px] text-center" },
+              { label: t.newReportEqColUnit,   cls: "w-[64px] text-center" },
+              { label: t.newReportEqColHours,  cls: "w-[96px] text-center" },
+              { label: t.newReportStatus,      cls: "w-[180px]" },
+              { label: t.newReportColNotes,    cls: "w-[120px]" },
+            ]} />
+            <tbody>
+              {equipment.length === 0 && (
+                <tr><td colSpan={9} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoEquipment}</td></tr>
+              )}
+              {equipment.map((row, i) => {
+                const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
+                const rowBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : undefined;
+                const visibleTags = row.eqStatus === "broken"
+                  ? ["repair", "return"]
+                  : row.eqStatus === "partial"
+                  ? ["repair", "return", "pending"]
+                  : [];
+                return (
+                  <tr key={row.id} className="border-b border-slate-100 last:border-0 group" style={rowBg ? { background: rowBg } : undefined}>
+                    {/* SIZE */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-eq-size-${i}`} value={row.size}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
+                        className="h-8 text-xs text-center w-full" placeholder={t.newReportSizePh} />
+                    </td>
+                    {/* EQUIPMENT NAME */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-eq-name-${i}`} value={row.name}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
+                        className={cellInputCls} placeholder={t.newReportEqNamePh} />
+                    </td>
+                    {/* BRAND */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
+                        className={cellInputCls} placeholder={t.newReportEqBrandPh} />
+                    </td>
+                    {/* QTY */}
+                    <td className="py-1.5 px-2">
+                      <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
+                        className="h-8 text-xs text-center tabular-nums w-full" />
+                    </td>
+                    {/* UNIT */}
+                    <td className="py-1.5 px-2">
+                      <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                        className="h-8 text-xs text-center w-full" placeholder={t.newReportUnitEAPh} />
+                    </td>
+                    {/* HOURS USED */}
+                    <td className="py-1.5 px-2">
+                      <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
+                        className="h-8 text-xs text-center tabular-nums w-full" />
+                    </td>
+                    {/* STATUS */}
+                    <td className="py-1.5 px-2.5">
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {/* Operation state dropdown */}
+                        <div style={{ position: "relative" }}>
+                          <select
+                            data-testid={`select-eq-status-${i}`}
+                            value={row.eqStatus}
+                            onChange={(e) => {
+                              const newStatus = e.target.value as "operational" | "partial" | "broken";
+                              setEquipment(equipment.map((r) => {
+                                if (r.id !== row.id) return r;
+                                let tags = r.tags;
+                                if (newStatus === "operational") tags = [];
+                                else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
+                                return { ...r, eqStatus: newStatus, tags };
+                              }));
+                            }}
+                            style={{
+                              border: `1px solid ${eqCfg.border}`,
+                              borderRadius: 7, padding: "5px 28px 5px 9px",
+                              fontSize: 12, background: eqCfg.bg, color: eqCfg.color,
+                              appearance: "none", width: "100%", cursor: "pointer",
+                              fontWeight: 500, outline: "none",
+                            }}>
+                            <option value="operational">{t.newReportEqOperational}</option>
+                            <option value="partial">{t.newReportEqPartial}</option>
+                            <option value="broken">{t.newReportEqBroken}</option>
+                          </select>
+                          <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>
+                        </div>
+                        {/* Action tags */}
+                        {visibleTags.length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {visibleTags.map((tag) => {
+                              const tc = EQ_TAG_CFG[tag];
+                              const active = row.tags.includes(tag);
+                              return (
+                                <button key={tag} type="button"
+                                  data-testid={`btn-eq-tag-${tag}-${i}`}
+                                  onClick={() => setEquipment(equipment.map((r) => {
+                                    if (r.id !== row.id) return r;
+                                    const tags = r.tags.includes(tag) ? r.tags.filter(t => t !== tag) : [...r.tags, tag];
+                                    return { ...r, tags };
+                                  }))}
+                                  style={{
+                                    background: active ? tc.bg : "#f5f5f5",
+                                    border: `1px solid ${active ? tc.border : "#e5e5e5"}`,
+                                    color: active ? tc.color : "#aaa",
+                                    borderRadius: 5, padding: "3px 8px",
+                                    fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+                                    cursor: "pointer",
+                                  }}>
+                                  {eqTagLabel(tag, t)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    {/* NOTES */}
+                    <td className="py-1.5 px-2.5">
+                      <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
+                        onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
+                        className={cellInputCls} placeholder={t.newReportOptional} />
+                    </td>
+                    {/* DELETE */}
+                    <td className="py-1.5 px-1 w-[32px] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DelBtn testId={`btn-remove-eq-${i}`} onClick={() => setEquipment(equipment.filter((r) => r.id !== row.id))} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+        )}
         <AddRow testId="btn-add-equipment" label={t.newReportAddCustom}
           onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])} />
       </Section>

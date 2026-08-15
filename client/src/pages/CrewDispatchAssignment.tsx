@@ -26,6 +26,13 @@ import type { Worker, Project } from "@shared/schema";
 interface JibbleEntry { firstIn: string; lastOut?: string }
 interface JibbleActive { entry: JibbleEntry; worker: { id: number } | null }
 interface Assignment { workerId: number; projectId: number | null; date: string }
+interface UndoState {
+  workerId: number;
+  prevProjectId: number;
+  workerName: string;
+  projectName: string;
+  timerId: ReturnType<typeof setTimeout>;
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function toLocalDateStr(d: Date): string {
@@ -873,6 +880,15 @@ export default function CrewDispatchAssignment() {
   // Worker drag state
   const [activeWorker,  setActiveWorker]  = useState<Worker | null>(null);
 
+  // Undo-unassign state
+  const [undoState, setUndoState] = useState<UndoState | null>(null);
+  // Always-current ref so handleAssign can read undoState without stale closure
+  const undoStateRef = useRef<UndoState | null>(null);
+  useEffect(() => { undoStateRef.current = undoState; }, [undoState]);
+  // Per-worker write queues: serializes all server writes for a given worker so
+  // a slow PUT can never arrive after a later one and overwrite the newer value.
+  const workerWriteQueues = useRef<Map<number, Promise<void>>>(new Map());
+
   // Left-panel search/filter
   const [workerSearch, setWorkerSearch] = useState("");
   const [workerFilter, setWorkerFilter] = useState<"all" | "onsite" | "unassigned">(loadWorkerFilter);
@@ -881,6 +897,13 @@ export default function CrewDispatchAssignment() {
   useEffect(() => {
     try { localStorage.setItem(LS_WORKER_FILTER, workerFilter); } catch {}
   }, [workerFilter]);
+
+  // Cleanup: cancel any pending undo timer when leaving the page
+  useEffect(() => {
+    return () => {
+      setUndoState((prev) => { if (prev) clearTimeout(prev.timerId); return null; });
+    };
+  }, []);
 
   // ── Server prefs: groupOrder ──────────────────────────────────────────────
   const groupOrderServerApplied  = useRef(false);
@@ -1008,7 +1031,11 @@ export default function CrewDispatchAssignment() {
 
   // ── Optimistic assignment state ───────────────────────────────────────────
   const [localOverride, setLocalOverride] = useState<Map<number, number | null>>(new Map());
-  useEffect(() => { setLocalOverride(new Map()); }, [dateStr]);
+  useEffect(() => {
+    setLocalOverride(new Map());
+    // Discard pending undo when navigating to a different date
+    setUndoState((prev) => { if (prev) clearTimeout(prev.timerId); return null; });
+  }, [dateStr]);
 
   const assignMutation = useMutation({
     mutationFn: ({ workerId, projectId }: { workerId: number; projectId: number | null }) =>
@@ -1025,9 +1052,50 @@ export default function CrewDispatchAssignment() {
     },
   });
 
-  function handleAssign(workerId: number, projectId: number | null) {
+  /** Serializes all server writes per worker so a slow PUT can never arrive after a
+   *  newer one and overwrite it.  Also dismisses any pending undo for that worker
+   *  when a new non-null assignment comes in (the user has moved on). */
+  function handleAssign(workerId: number, projectId: number | null): Promise<void> {
     setLocalOverride((prev) => new Map(prev).set(workerId, projectId));
-    assignMutation.mutate({ workerId, projectId });
+
+    // A new explicit assignment invalidates any pending undo for this worker
+    if (projectId !== null) {
+      const current = undoStateRef.current;
+      if (current && current.workerId === workerId) {
+        clearTimeout(current.timerId);
+        undoStateRef.current = null;
+        setUndoState(null);
+      }
+    }
+
+    // Chain this write after any pending write for this worker (FIFO serialization)
+    const prevWrite = workerWriteQueues.current.get(workerId) ?? Promise.resolve();
+    const thisWrite = prevWrite.then(() =>
+      assignMutation.mutateAsync({ workerId, projectId }).then(() => {}, () => {})
+    );
+    workerWriteQueues.current.set(workerId, thisWrite);
+    return thisWrite;
+  }
+
+  /** Unassign a worker and open a 5-second undo window. */
+  function handleUnassign(workerId: number, prevProjectId: number, workerName: string, projectName: string) {
+    // Confirm any existing undo window (previous unassignment is now permanent)
+    setUndoState((prev) => { if (prev) clearTimeout(prev.timerId); return null; });
+    // Perform the unassignment (queued — will serialize with any later restore)
+    handleAssign(workerId, null);
+    // Open the new undo window
+    const timerId = setTimeout(() => setUndoState(null), 5000);
+    setUndoState({ workerId, prevProjectId, workerName, projectName, timerId });
+  }
+
+  /** Restore the previous assignment.  Because handleAssign queues writes per worker,
+   *  this restore is automatically serialized after the preceding unassign PUT. */
+  function handleUndo() {
+    if (!undoState) return;
+    clearTimeout(undoState.timerId);
+    const { workerId, prevProjectId } = undoState;
+    setUndoState(null);
+    handleAssign(workerId, prevProjectId);
   }
 
   function getAssignment(workerId: number): number | null {
@@ -1079,11 +1147,12 @@ export default function CrewDispatchAssignment() {
     if (activeId.startsWith("worker-")) {
       const workerId = parseInt(activeId.replace("worker-", ""), 10);
       if (!over) {
-        // Dropped outside a project — unassign
-        if (getAssignment(workerId) !== null) {
-          handleAssign(workerId, null);
-          const worker = workerList.find((w) => w.id === workerId);
-          toast({ title: `${worker?.fullName ?? "작업자"} 배치 해제` });
+        // Dropped outside a project — unassign with undo
+        const prevProjectId = getAssignment(workerId);
+        if (prevProjectId !== null) {
+          const worker  = workerList.find((w) => w.id === workerId);
+          const project = allProjects.find((p) => p.id === prevProjectId);
+          handleUnassign(workerId, prevProjectId, worker?.fullName ?? "작업자", project?.name ?? "프로젝트");
         }
         return;
       }
@@ -1255,8 +1324,8 @@ export default function CrewDispatchAssignment() {
                         jibble={jibbleMap.get(w.id)}
                         assignedProject={allProjects.find((p) => p.id === assignedId)}
                         onUnassign={assignedId !== null ? () => {
-                          handleAssign(w.id, null);
-                          toast({ title: `${w.fullName} 배치 취소` });
+                          const project = allProjects.find((p) => p.id === assignedId);
+                          handleUnassign(w.id, assignedId, w.fullName, project?.name ?? "프로젝트");
                         } : undefined}
                       />
                     );
@@ -1320,7 +1389,17 @@ export default function CrewDispatchAssignment() {
                                 assignedProjectId={getAssignment(worker.id)}
                                 activeByCustomer={activeByCustomer}
                                 doneProjects={doneProjects}
-                                onAssign={(pid) => handleAssign(worker.id, pid)}
+                                onAssign={(pid) => {
+                                  if (pid === null) {
+                                    const prevId = getAssignment(worker.id);
+                                    if (prevId !== null) {
+                                      const project = allProjects.find((p) => p.id === prevId);
+                                      handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? "프로젝트");
+                                    }
+                                  } else {
+                                    handleAssign(worker.id, pid);
+                                  }
+                                }}
                               />
                             ))}
                           </tbody>
@@ -1353,6 +1432,93 @@ export default function CrewDispatchAssignment() {
         </DragOverlay>
 
       </DndContext>
+
+      {/* ── Undo toast (fixed bottom-center) ── */}
+      {undoState && (
+        <>
+          <style>{`
+            @keyframes _cdUndoSlideUp {
+              from { opacity: 0; transform: translate(-50%, 14px); }
+              to   { opacity: 1; transform: translate(-50%, 0); }
+            }
+            @keyframes _cdUndoBar {
+              from { width: 100%; }
+              to   { width: 0%; }
+            }
+          `}</style>
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              position: "fixed", bottom: 28, left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "13px 12px 16px 16px",
+              borderRadius: 14,
+              background: "#1e293b",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.16)",
+              animation: "_cdUndoSlideUp 0.22s ease-out",
+              minWidth: 280,
+            }}
+          >
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#f1f5f9", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {undoState.workerName}
+                <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 6 }}>→ 배치 해제됨</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {undoState.projectName}
+              </div>
+            </div>
+            {/* Undo button */}
+            <button
+              type="button"
+              onClick={handleUndo}
+              style={{
+                padding: "6px 13px", borderRadius: 8,
+                background: "#3b82f6", color: "#fff",
+                border: "none", fontSize: 12, fontWeight: 700,
+                cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#2563eb"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#3b82f6"; }}
+            >
+              되돌리기
+            </button>
+            {/* Dismiss button */}
+            <button
+              type="button"
+              aria-label="닫기"
+              onClick={() => { clearTimeout(undoState.timerId); setUndoState(null); }}
+              style={{
+                width: 22, height: 22, borderRadius: "50%",
+                background: "rgba(255,255,255,0.07)", border: "none",
+                color: "#64748b", fontSize: 11, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, transition: "color 0.12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#e2e8f0"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "#64748b"; }}
+            >
+              ✕
+            </button>
+            {/* 5-second countdown bar */}
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: 3,
+              borderBottomLeftRadius: 14, borderBottomRightRadius: 14,
+              background: "rgba(255,255,255,0.07)", overflow: "hidden",
+            }}>
+              <div style={{
+                height: "100%", background: "#3b82f6",
+                animation: "_cdUndoBar 5s linear forwards",
+              }} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

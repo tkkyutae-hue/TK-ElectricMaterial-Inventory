@@ -205,6 +205,107 @@ function isWorkerBasedManpower(rows: any[]): boolean {
   return rows.length === 0 || "workerId" in rows[0];
 }
 
+// ─── Section navigator ────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { num: 1, label: "Info",  color: "#3b82f6" },
+  { num: 2, label: "인력",  color: "#8b5cf6" },
+  { num: 3, label: "작업",  color: "#059669" },
+  { num: 4, label: "자재",  color: "#d97706" },
+  { num: 5, label: "장비",  color: "#f97316" },
+  { num: 6, label: "메모",  color: "#64748b" },
+] as const;
+
+function NavIcon({ idx }: { idx: number }) {
+  const cls = "w-3.5 h-3.5";
+  const icons = [
+    <Calendar key={idx} className={cls} />,
+    <Users    key={idx} className={cls} />,
+    <Wrench   key={idx} className={cls} />,
+    <Package  key={idx} className={cls} />,
+    <Truck    key={idx} className={cls} />,
+    <FileText key={idx} className={cls} />,
+  ];
+  return icons[idx] ?? null;
+}
+
+function SectionNavigator({
+  sectionRefs,
+  navRef,
+  activeSection,
+  completionHints,
+}: {
+  sectionRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
+  navRef:      React.RefObject<HTMLDivElement>;
+  activeSection: number;
+  completionHints: boolean[];
+}) {
+  function scrollToSection(idx: number) {
+    const el  = sectionRefs.current[idx];
+    const nav = navRef.current;
+    if (!el) return;
+    const navH = nav ? nav.offsetHeight : 0;
+    const top  = el.getBoundingClientRect().top + window.scrollY - navH - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  }
+
+  return (
+    <div
+      ref={navRef}
+      style={{
+        position: "sticky", top: 0, zIndex: 40,
+        background: "rgba(255,255,255,0.97)",
+        backdropFilter: "blur(8px)",
+        borderBottom: "1px solid #e2e8f0",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+      }}
+    >
+      <div
+        className="no-scrollbar"
+        style={{ display: "flex", overflowX: "auto", gap: 2, padding: "5px 6px" }}
+      >
+        {NAV_ITEMS.map((item, idx) => {
+          const isActive = activeSection === idx;
+          const done     = completionHints[idx];
+          return (
+            <button
+              key={item.num}
+              type="button"
+              onClick={() => scrollToSection(idx)}
+              style={{
+                display: "flex", alignItems: "center", gap: 4,
+                padding: "6px 10px", borderRadius: 8,
+                border: isActive ? "1px solid #e2e8f0" : "1px solid transparent",
+                background: isActive ? "#f1f5f9" : "transparent",
+                cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={e => {
+                if (!isActive) (e.currentTarget as HTMLElement).style.background = "#f8fafc";
+              }}
+              onMouseLeave={e => {
+                if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent";
+              }}
+            >
+              <span style={{ color: isActive ? item.color : "#94a3b8", display: "flex", alignItems: "center" }}>
+                <NavIcon idx={idx} />
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? "#64748b" : "#94a3b8", letterSpacing: "0.04em" }}>
+                §{item.num}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? "#1e293b" : "#64748b" }}>
+                {item.label}
+              </span>
+              {done && (
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", flexShrink: 0, marginLeft: 2 }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Section color palette ────────────────────────────────────────────────────
 const SECTION_ICON_STYLE: Record<number, { bg: string; icon: string }> = {
   1: { bg: "bg-blue-50",    icon: "text-blue-500"    },
@@ -858,6 +959,24 @@ export function NewReportTab({
   const isMobile    = useIsMobile();
   const fd          = initialData?.formData ?? null;
 
+  // ── Section navigator ──
+  const sectionRefs     = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
+  const navRef          = useRef<HTMLDivElement>(null);
+  const [activeSection, setActiveSection] = useState(0);
+  const visibleSections = useRef<boolean[]>([true, false, false, false, false, false]);
+  useEffect(() => {
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        const idx = sectionRefs.current.findIndex(r => r === e.target);
+        if (idx !== -1) visibleSections.current[idx] = e.isIntersecting;
+      }
+      const first = visibleSections.current.findIndex(v => v);
+      if (first !== -1) setActiveSection(first);
+    }, { threshold: 0.05, rootMargin: "-80px 0px -40% 0px" });
+    sectionRefs.current.forEach(el => { if (el) obs.observe(el); });
+    return () => obs.disconnect();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Registry queries ──
@@ -1102,6 +1221,16 @@ export function NewReportTab({
   ) : undefined;
   const taskSummary = tasks.length ? `${tasks.length} task${tasks.length !== 1 ? "s" : ""}` : undefined;
 
+  // Completion hints for the section navigator (true = section has data)
+  const completionHints = [
+    !!preparedBy.trim(),
+    manpower.length > 0,
+    tasks.length > 0,
+    materials.length > 0,
+    equipment.length > 0,
+    !!(generalNotes.trim() || safetyNotes.trim() || inspectorVisitor.trim() || requestFromClient.trim()),
+  ];
+
   const taskChipStyle = (bg: string, border: string, color: string): React.CSSProperties => ({
     borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 600,
     border: `1px solid ${border}`, background: bg, color, display: "inline-flex", alignItems: "center",
@@ -1330,12 +1459,21 @@ export function NewReportTab({
         </div>
       </div>
 
+      {/* ── Section navigator (sticky, always visible) ── */}
+      <SectionNavigator
+        sectionRefs={sectionRefs}
+        navRef={navRef}
+        activeSection={activeSection}
+        completionHints={completionHints}
+      />
+
       {/* ── Sections: locked when submitted (pointer-events + opacity) ── */}
       <div className="space-y-3" style={isSubmitted ? { opacity: 0.72, pointerEvents: "none", userSelect: "none" } : {}}>
 
       {/* ══════════════════════════════════════════════════════
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[0] = el; }}>
       <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}>
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -1520,10 +1658,12 @@ export function NewReportTab({
 
         </div>
       </Section>
+      </div>{/* end §1 */}
 
       {/* ══════════════════════════════════════════════════════
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[1] = el; }}>
       <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}
         headerRight={!isSubmitted ? (
           <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
@@ -1783,10 +1923,12 @@ export function NewReportTab({
           </p>
         )}
       </Section>
+      </div>{/* end §2 */}
 
       {/* ══════════════════════════════════════════════════════
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[2] = el; }}>
       <Section num={3} title={t.newReportWorkTasks} icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
 
         {/* ── Drawing Board ── */}
@@ -2141,10 +2283,12 @@ export function NewReportTab({
           </div>
         )}
       </Section>
+      </div>{/* end §3 */}
 
       {/* ══════════════════════════════════════════════════════
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[3] = el; }}>
       <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}
         headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
@@ -2369,10 +2513,12 @@ export function NewReportTab({
           </p>
         )}
       </Section>
+      </div>{/* end §4 */}
 
       {/* ══════════════════════════════════════════════════════
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[4] = el; }}>
       <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
@@ -2672,10 +2818,12 @@ export function NewReportTab({
         <AddRow testId="btn-add-equipment" label={t.newReportAddCustom}
           onClick={() => setEquipment([...equipment, { id: uid(), name: "", size: "", brand: "", unit: "EA", qty: 1, hours: 0, notes: "", eqStatus: "operational", tags: [] }])} />
       </Section>
+      </div>{/* end §5 */}
 
       {/* ══════════════════════════════════════════════════════
           §6 — Notes / Remarks
       ══════════════════════════════════════════════════════ */}
+      <div ref={el => { sectionRefs.current[5] = el; }}>
       <Section num={6} title={t.newReportNotesRemarks} icon={<FileText className="w-4 h-4" />}
         summary={generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : undefined}
         defaultOpen={false}>
@@ -2726,6 +2874,7 @@ export function NewReportTab({
           </div>
         </div>
       </Section>
+      </div>{/* end §6 */}
 
       </div>{/* end sections lock wrapper */}
 

@@ -26,6 +26,7 @@ import type { Worker, Project } from "@shared/schema";
 interface JibbleEntry { firstIn: string; lastOut?: string }
 interface JibbleActive { entry: JibbleEntry; worker: { id: number } | null }
 interface Assignment { workerId: number; projectId: number | null; date: string }
+interface KoreanAttendanceRow { workerId: number; date: string; present: boolean }
 interface UndoState {
   workerId: number;
   prevProjectId: number;
@@ -37,6 +38,14 @@ interface AssignPayload {
   workerId: number;
   projectId: number | null;
   /** ISO date string captured at call time — used to detect stale-date callbacks. */
+  date: string;
+  /** Monotonic ID that uniquely identifies this write attempt. */
+  opId: string;
+}
+interface AttendancePayload {
+  workerId: number;
+  present: boolean;
+  /** ISO date string captured at call time. */
   date: string;
   /** Monotonic ID that uniquely identifies this write attempt. */
   opId: string;
@@ -191,18 +200,26 @@ function sortProjects(list: Project[]): Project[] {
   });
 }
 
-function workerOnSiteScore(w: Worker, jibbleMap: Map<number, JibbleEntry>): number {
-  if (isKorean(w)) return 2;                    // Korean workers always on-site
+function workerOnSiteScore(
+  w: Worker,
+  jibbleMap: Map<number, JibbleEntry>,
+  koreanPresentFn: (id: number) => boolean = () => true,
+): number {
+  if (isKorean(w)) return koreanPresentFn(w.id) ? 2 : 0;
   const j = jibbleMap.get(w.id);
   return j && !j.lastOut ? 2 : j ? 1 : 0;
 }
 
-function sortWorkers(list: Worker[], jibbleMap: Map<number, JibbleEntry>): Worker[] {
+function sortWorkers(
+  list: Worker[],
+  jibbleMap: Map<number, JibbleEntry>,
+  koreanPresentFn: (id: number) => boolean = () => true,
+): Worker[] {
   return [...list].filter((w) => w.isActive).sort((a, b) => {
     const ra = managerRank(a), rb = managerRank(b);
     if (ra !== rb) return ra - rb;
-    const scoreA = workerOnSiteScore(a, jibbleMap);
-    const scoreB = workerOnSiteScore(b, jibbleMap);
+    const scoreA = workerOnSiteScore(a, jibbleMap, koreanPresentFn);
+    const scoreB = workerOnSiteScore(b, jibbleMap, koreanPresentFn);
     if (scoreA !== scoreB) return scoreB - scoreA;
     return a.fullName.localeCompare(b.fullName);
   });
@@ -258,16 +275,20 @@ function WorkerAvatar({ photoUrl, name, small }: { photoUrl?: string | null; nam
 }
 
 // ─── WorkerRow (small-screen dropdown fallback) ───────────────────────────────
-function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, doneProjects, onAssign }: {
+function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, doneProjects, onAssign, koreanPresent, onAttendanceToggle }: {
   worker: Worker;
   jibble?: JibbleEntry;
   assignedProjectId: number | null;
   activeByCustomer: CustomerGroup[];
   doneProjects: Project[];
   onAssign: (projectId: number | null) => void;
+  /** Only provided for Korean workers */
+  koreanPresent?: boolean;
+  onAttendanceToggle?: (present: boolean) => void;
 }) {
   const [showCompleted, setShowCompleted] = useState(false);
-  const isOnSite  = !!jibble && !jibble.lastOut;
+  const korean    = isKorean(worker);
+  const isOnSite  = korean ? (koreanPresent !== false) : (!!jibble && !jibble.lastOut);
   const checkedIn = !!jibble;
   const assignedDoneProject = doneProjects.find((p) => p.id === assignedProjectId);
 
@@ -293,12 +314,26 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
         </div>
       </td>
       <td className="px-4 py-3 tabular-nums whitespace-nowrap">
-        {checkedIn
-          ? <span className="text-sm text-emerald-600 font-semibold">{fmtTime(jibble!.firstIn)}</span>
-          : <span className="text-sm text-slate-300">—</span>}
+        {korean && onAttendanceToggle ? (
+          <label className="flex items-center gap-1.5 cursor-pointer select-none" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={koreanPresent !== false}
+              onChange={e => onAttendanceToggle(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+            <span className={`text-xs font-medium ${koreanPresent !== false ? "text-emerald-600" : "text-slate-400"}`}>
+              {koreanPresent !== false ? "출근" : "결근"}
+            </span>
+          </label>
+        ) : checkedIn ? (
+          <span className="text-sm text-emerald-600 font-semibold">{fmtTime(jibble!.firstIn)}</span>
+        ) : (
+          <span className="text-sm text-slate-300">—</span>
+        )}
       </td>
       <td className="px-4 py-3 tabular-nums whitespace-nowrap">
-        {jibble?.lastOut
+        {korean ? null : jibble?.lastOut
           ? <span className="text-sm text-slate-500 font-semibold">{fmtTime(jibble.lastOut)}</span>
           : isOnSite
             ? <span className="text-xs text-emerald-500 font-medium">근무 중</span>
@@ -418,15 +453,18 @@ function TradeBadge({ worker, small }: { worker: Worker; small?: boolean }) {
   );
 }
 
-function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
+function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, koreanPresent, onAttendanceToggle }: {
   worker: Worker;
   jibble?: JibbleEntry;
   assignedProject?: Project | null;
   onUnassign?: () => void;
+  /** Only provided for Korean workers */
+  koreanPresent?: boolean;
+  onAttendanceToggle?: (present: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `worker-${worker.id}` });
   const korean    = isKorean(worker);
-  const isOnSite  = korean || (!!jibble && !jibble.lastOut);
+  const isOnSite  = korean ? (koreanPresent !== false) : (!!jibble && !jibble.lastOut);
   const checkedIn = !!jibble;
   return (
     <div
@@ -447,6 +485,24 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign }: {
           <TradeBadge worker={worker} small />
         </div>
       </div>
+      {/* Korean attendance toggle (for Korean workers only) */}
+      {korean && onAttendanceToggle && (
+        <label
+          className="flex items-center gap-1 shrink-0 cursor-pointer select-none"
+          title={koreanPresent !== false ? "출근 중 — 클릭하여 결근 처리" : "결근 — 클릭하여 출근 처리"}
+          onClick={e => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={koreanPresent !== false}
+            onChange={e => onAttendanceToggle(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+          <span className={`text-[10px] font-semibold ${koreanPresent !== false ? "text-emerald-600" : "text-slate-400"}`}>
+            {koreanPresent !== false ? "출근" : "결근"}
+          </span>
+        </label>
+      )}
       {/* Right: assignment badge or unassign button */}
       {assignedProject ? (
         <div className="flex items-center gap-1 shrink-0">
@@ -518,6 +574,7 @@ function ProjectCardView({
   groupOrder,
   onGroupOrderChange,
   isDragActive,
+  koreanPresentFn,
 }: {
   allProjects: Project[];
   workerList: Worker[];
@@ -526,6 +583,7 @@ function ProjectCardView({
   groupOrder: string[];
   onGroupOrderChange: (order: string[]) => void;
   isDragActive?: boolean;
+  koreanPresentFn?: (id: number) => boolean;
 }) {
   const [expandedId,       setExpandedId]      = useState<number | null>(null);
   const [collapsedGroups,  setCollapsedGroups] = useState<Set<string>>(loadCollapsedGroups);
@@ -796,7 +854,9 @@ function ProjectCardView({
                                             <div className="space-y-1.5 pt-1">
                                               {workers.map(({ worker, jibble }) => {
                                                 const korean    = isKorean(worker);
-                                                const isOnSite  = korean || (!!jibble && !jibble.lastOut);
+                                                const isOnSite  = korean
+                                                  ? (koreanPresentFn ? koreanPresentFn(worker.id) : true)
+                                                  : (!!jibble && !jibble.lastOut);
                                                 const checkedIn = !!jibble;
                                                 const tradeBg = tradeInfo(worker)?.bg ?? "transparent";
                                                 return (
@@ -966,11 +1026,14 @@ export default function CrewDispatchAssignment() {
 
   // ── Save status state ──────────────────────────────────────────────────────
   // inFlightCount (state): mirrors inFlightByDate for the CURRENT date only — drives UI
+  // Shared between assignment writes AND Korean attendance writes.
   const [inFlightCount, setInFlightCount] = useState(0);
-  // failedOpsByDate: failures survive date navigation so the retry chip reappears
-  // when the user returns to a date that had a failed save.
+  // failedOpsByDate: assignment failures survive date navigation.
   // Structure: Map<dateStr, Map<opId, AssignPayload>>
   const [failedOpsByDate, setFailedOpsByDate] = useState<Map<string, Map<string, AssignPayload>>>(new Map());
+  // failedAttByDate: attendance failures survive date navigation.
+  // Structure: Map<dateStr, Map<opId, AttendancePayload>>
+  const [failedAttByDate, setFailedAttByDate] = useState<Map<string, Map<string, AttendancePayload>>>(new Map());
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // Always-current ref for dateStr — read inside async mutation callbacks
@@ -993,10 +1056,11 @@ export default function CrewDispatchAssignment() {
 
   // Current-date view of failures — used for save status and retry UI
   const currentFailedOps = failedOpsByDate.get(dateStr) ?? new Map<string, AssignPayload>();
+  const currentFailedAtt = failedAttByDate.get(dateStr) ?? new Map<string, AttendancePayload>();
 
   // Derived — no extra useState lag
   const saveStatus: SaveStatus =
-    currentFailedOps.size > 0 ? "error" :
+    currentFailedOps.size > 0 || currentFailedAtt.size > 0 ? "error" :
     inFlightCount > 0 ? "saving" :
     lastSavedAt !== null ? "saved" : "idle";
 
@@ -1081,13 +1145,22 @@ export default function CrewDispatchAssignment() {
   }
 
   function handleRetry() {
-    if (currentFailedOps.size === 0) return;
-    // Snapshot and clear this date's failures before re-queuing so the status
-    // transitions immediately to "saving" (handleAssign also clears stale entries)
-    const ops = Array.from(currentFailedOps.values());
-    setFailedOpsByDate((prev) => { const next = new Map(prev); next.delete(dateStr); return next; });
-    for (const op of ops) {
-      handleAssign(op.workerId, op.projectId);
+    const hasAssignFailures = currentFailedOps.size > 0;
+    const hasAttFailures    = currentFailedAtt.size > 0;
+    if (!hasAssignFailures && !hasAttFailures) return;
+
+    // Retry assignment failures
+    if (hasAssignFailures) {
+      const ops = Array.from(currentFailedOps.values());
+      setFailedOpsByDate((prev) => { const next = new Map(prev); next.delete(dateStr); return next; });
+      for (const op of ops) handleAssign(op.workerId, op.projectId);
+    }
+
+    // Retry attendance failures
+    if (hasAttFailures) {
+      const atts = Array.from(currentFailedAtt.values());
+      setFailedAttByDate((prev) => { const next = new Map(prev); next.delete(dateStr); return next; });
+      for (const att of atts) handleAttendanceToggle(att.workerId, att.present, false);
     }
   }
 
@@ -1168,20 +1241,47 @@ export default function CrewDispatchAssignment() {
     return { activeByCustomer: ordered.map(([customer, projects]) => ({ customer, projects })), doneProjects: done };
   }, [allProjects, groupOrder]);
 
+  // ── Korean attendance data ────────────────────────────────────────────────
+  const { data: koreanAttendanceData = [] } = useQuery<KoreanAttendanceRow[]>({
+    queryKey: ["/api/crew-dispatch/korean-attendance", dateStr],
+    queryFn: async () => {
+      const r = await fetch(`/api/crew-dispatch/korean-attendance?date=${dateStr}`, { credentials: "include" });
+      if (!r.ok) throw new Error(`attendance fetch failed: ${r.status}`);
+      const data = await r.json();
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  // Persistent server map (null = use default = present)
+  const koreanAttendanceServerMap = useMemo(
+    () => new Map((koreanAttendanceData as KoreanAttendanceRow[]).map((r) => [r.workerId, r.present])),
+    [koreanAttendanceData],
+  );
+
   // ── Optimistic assignment state ───────────────────────────────────────────
   const [localOverride, setLocalOverride] = useState<Map<number, number | null>>(new Map());
+  // Optimistic attendance overrides (cleared on date change)
+  const [localAttOverride, setLocalAttOverride] = useState<Map<number, boolean>>(new Map());
+
+  /** Returns true if the given Korean worker is present on the current date.
+   *  Defaults to true (present) when no server record exists. */
+  function isKoreanPresent(workerId: number): boolean {
+    if (localAttOverride.has(workerId)) return localAttOverride.get(workerId)!;
+    return koreanAttendanceServerMap.get(workerId) ?? true;
+  }
+
   useEffect(() => {
     // Keep dateStrRef in sync so async callbacks can compare dates
     dateStrRef.current = dateStr;
     setLocalOverride(new Map());
+    setLocalAttOverride(new Map());
     // Discard pending undo when navigating to a different date
     setUndoState((prev) => { if (prev) clearTimeout(prev.timerId); return null; });
     // Restore the in-flight count for this date (0 if never visited).
     // Old-date callbacks write to their own inFlightByDate bucket and will not
     // touch this state (adjustInFlight gates on date === dateStrRef.current).
     setInFlightCount(inFlightByDate.current.get(dateStr) ?? 0);
-    // Do NOT clear failedOpsByDate — failures survive navigation and are shown
-    // again when the user returns to the affected date.
+    // Do NOT clear failedOpsByDate / failedAttByDate — failures survive navigation
+    // and are shown again when the user returns to the affected date.
     setLastSavedAt(null);
   }, [dateStr]);
 
@@ -1301,6 +1401,69 @@ export default function CrewDispatchAssignment() {
     return assignmentMap.get(workerId) ?? null;
   }
 
+  // ── Korean attendance mutation ─────────────────────────────────────────────
+  const attendanceMutation = useMutation({
+    mutationFn: ({ workerId, present, date }: AttendancePayload) =>
+      fetch(`/api/crew-dispatch/korean-attendance/${workerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ date, present }),
+      }).then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json(); }),
+
+    onMutate: ({ date }) => {
+      adjustInFlight(date, +1);
+    },
+
+    onSuccess: (_, { date }) => {
+      adjustInFlight(date, -1);
+      qc.invalidateQueries({ queryKey: ["/api/crew-dispatch/korean-attendance", date] });
+      if (date === dateStrRef.current) setLastSavedAt(new Date());
+    },
+
+    onError: (err: any, variables) => {
+      const { workerId, date, opId } = variables;
+      adjustInFlight(date, -1);
+      // Only register a failure if this is still the authoritative op for this worker+date
+      if (opId === latestOpId.current.get(`att:${workerId}:${date}`)) {
+        // Roll back the optimistic override for the current date
+        if (date === dateStrRef.current) {
+          setLocalAttOverride((prev) => { const next = new Map(prev); next.delete(workerId); return next; });
+        }
+        setFailedAttByDate((prev) => {
+          const dateMap = new Map(prev.get(date) ?? new Map<string, AttendancePayload>()).set(opId, variables);
+          return new Map(prev).set(date, dateMap);
+        });
+      }
+      toast({ title: "출근 저장 실패", description: err.message, variant: "destructive" });
+    },
+  });
+
+  /** Toggle Korean worker attendance and persist to server. */
+  function handleAttendanceToggle(workerId: number, present: boolean, clearStale = true): void {
+    setLocalAttOverride((prev) => new Map(prev).set(workerId, present));
+
+    const date = dateStrRef.current;
+    const opId = `op-${++opIdCounter.current}`;
+
+    latestOpId.current.set(`att:${workerId}:${date}`, opId);
+
+    if (clearStale) {
+      // Clear any prior failed att op for the same worker+date
+      setFailedAttByDate((prev) => {
+        const dateMap = prev.get(date);
+        if (!dateMap) return prev;
+        const staleIds = Array.from(dateMap.keys()).filter((id) => dateMap.get(id)?.workerId === workerId);
+        if (staleIds.length === 0) return prev;
+        const newDateMap = new Map(dateMap);
+        staleIds.forEach((id) => newDateMap.delete(id));
+        return new Map(prev).set(date, newDateMap);
+      });
+    }
+
+    attendanceMutation.mutate({ workerId, present, date, opId });
+  }
+
   // ── DnD (single DndContext at page level) ─────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -1376,22 +1539,33 @@ export default function CrewDispatchAssignment() {
 
   // ── Derived values ────────────────────────────────────────────────────────
   const assignedCount = workerList.filter((w) => getAssignment(w.id) !== null).length;
-  const onSiteCount   = workerList.filter((w) => isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })()).length;
+  const onSiteCount   = workerList.filter((w) => {
+    if (isKorean(w)) return isKoreanPresent(w.id);
+    const j = jibbleMap.get(w.id);
+    return !!j && !j.lastOut;
+  }).length;
   const isToday   = dateStr === toLocalDateStr(new Date());
   const isLoading = workersLoading || assignmentsLoading;
 
-  const sortedWorkers = useMemo(() => sortWorkers(workerList, jibbleMap), [workerList, jibbleMap]);
+  const sortedWorkers = useMemo(
+    () => sortWorkers(workerList, jibbleMap, isKoreanPresent),
+    [workerList, jibbleMap, koreanAttendanceServerMap, localAttOverride], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const filteredWorkers = useMemo(() => {
     const q = workerSearch.trim().toLowerCase();
     return sortedWorkers.filter((w) => {
       if (q && !w.fullName.toLowerCase().includes(q) && !(w.trade ?? "").toLowerCase().includes(q)) return false;
-      if (workerFilter === "onsite") { return isKorean(w) || (() => { const j = jibbleMap.get(w.id); return !!j && !j.lastOut; })(); }
+      if (workerFilter === "onsite") {
+        if (isKorean(w)) return isKoreanPresent(w.id);
+        const j = jibbleMap.get(w.id);
+        return !!j && !j.lastOut;
+      }
       if (workerFilter === "unassigned") return getAssignment(w.id) === null;
       // "all" tab: show everyone so assigned workers are visible (with X button) after navigation
       return true;
     });
-  }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sortedWorkers, workerSearch, workerFilter, jibbleMap, localOverride, assignmentMap, localAttOverride, koreanAttendanceServerMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5">
@@ -1524,6 +1698,7 @@ export default function CrewDispatchAssignment() {
                   ) : (
                     filteredWorkers.map((w) => {
                       const assignedId = getAssignment(w.id);
+                      const korean = isKorean(w);
                       return (
                       <DraggableWorkerRow
                         key={w.id}
@@ -1534,6 +1709,8 @@ export default function CrewDispatchAssignment() {
                           const project = allProjects.find((p) => p.id === assignedId);
                           handleUnassign(w.id, assignedId, w.fullName, project?.name ?? "프로젝트");
                         } : undefined}
+                        koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
+                        onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
                       />
                     );
                     })
@@ -1551,6 +1728,7 @@ export default function CrewDispatchAssignment() {
                   groupOrder={groupOrder}
                   onGroupOrderChange={setGroupOrder}
                   isDragActive={isDragActive}
+                  koreanPresentFn={isKoreanPresent}
                 />
               </div>
             </div>
@@ -1588,27 +1766,32 @@ export default function CrewDispatchAssignment() {
                             </tr>
                           </thead>
                           <tbody>
-                            {sortedWorkers.map((worker) => (
-                              <WorkerRow
-                                key={worker.id}
-                                worker={worker}
-                                jibble={jibbleMap.get(worker.id)}
-                                assignedProjectId={getAssignment(worker.id)}
-                                activeByCustomer={activeByCustomer}
-                                doneProjects={doneProjects}
-                                onAssign={(pid) => {
-                                  if (pid === null) {
-                                    const prevId = getAssignment(worker.id);
-                                    if (prevId !== null) {
-                                      const project = allProjects.find((p) => p.id === prevId);
-                                      handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? "프로젝트");
+                            {sortedWorkers.map((worker) => {
+                              const korean = isKorean(worker);
+                              return (
+                                <WorkerRow
+                                  key={worker.id}
+                                  worker={worker}
+                                  jibble={jibbleMap.get(worker.id)}
+                                  assignedProjectId={getAssignment(worker.id)}
+                                  activeByCustomer={activeByCustomer}
+                                  doneProjects={doneProjects}
+                                  onAssign={(pid) => {
+                                    if (pid === null) {
+                                      const prevId = getAssignment(worker.id);
+                                      if (prevId !== null) {
+                                        const project = allProjects.find((p) => p.id === prevId);
+                                        handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? "프로젝트");
+                                      }
+                                    } else {
+                                      handleAssign(worker.id, pid);
                                     }
-                                  } else {
-                                    handleAssign(worker.id, pid);
-                                  }
-                                }}
-                              />
-                            ))}
+                                  }}
+                                  koreanPresent={korean ? isKoreanPresent(worker.id) : undefined}
+                                  onAttendanceToggle={korean ? (present) => handleAttendanceToggle(worker.id, present) : undefined}
+                                />
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -1625,6 +1808,7 @@ export default function CrewDispatchAssignment() {
                   getAssignment={getAssignment}
                   groupOrder={groupOrder}
                   onGroupOrderChange={setGroupOrder}
+                  koreanPresentFn={isKoreanPresent}
                 />
               )}
             </div>

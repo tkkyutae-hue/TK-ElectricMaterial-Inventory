@@ -37,6 +37,8 @@ import {
   type CompletionReportDrawingSection,
   dailyWorkerAssignments,
   type DailyWorkerAssignment,
+  koreanWorkerAttendance,
+  type KoreanWorkerAttendance,
 } from "@shared/schema";
 
 // ── Reel ID Cleanup types ──────────────────────────────────────────────────
@@ -183,6 +185,9 @@ export interface IStorage {
   getAssignmentsByDate(date: string): Promise<DailyWorkerAssignment[]>;
   getCrewAssignmentsForProject(projectId: number, date: string): Promise<{ workerId: number; workerName: string; trade: string | null }[]>;
   upsertAssignment(workerId: number, date: string, projectId: number | null, assignedBy: string | null): Promise<DailyWorkerAssignment>;
+
+  getKoreanAttendanceByDate(date: string): Promise<KoreanWorkerAttendance[]>;
+  upsertKoreanAttendance(workerId: number, date: string, present: boolean, updatedBy: string | null): Promise<KoreanWorkerAttendance>;
 
   getWorkerAttendance(workerId: number): Promise<WorkerAttendance[]>;
   createWorkerAttendance(data: CreateWorkerAttendanceRequest): Promise<WorkerAttendance>;
@@ -3188,6 +3193,25 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: [dailyWorkerAssignments.workerId, dailyWorkerAssignments.date],
         set: { projectId: projectId ?? null, assignedBy, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
+
+  async getKoreanAttendanceByDate(date: string): Promise<KoreanWorkerAttendance[]> {
+    return await db
+      .select()
+      .from(koreanWorkerAttendance)
+      .where(eq(koreanWorkerAttendance.date, date));
+  }
+
+  async upsertKoreanAttendance(workerId: number, date: string, present: boolean, updatedBy: string | null): Promise<KoreanWorkerAttendance> {
+    const [row] = await db
+      .insert(koreanWorkerAttendance)
+      .values({ workerId, date, present, updatedBy })
+      .onConflictDoUpdate({
+        target: [koreanWorkerAttendance.workerId, koreanWorkerAttendance.date],
+        set: { present, updatedBy, updatedAt: new Date() },
       })
       .returning();
     return row;

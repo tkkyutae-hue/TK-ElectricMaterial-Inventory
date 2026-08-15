@@ -5745,6 +5745,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/crew-dispatch/korean-attendance?date=YYYY-MM-DD
+  app.get("/api/crew-dispatch/korean-attendance", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+      const rows = await storage.getKoreanAttendanceByDate(date);
+      res.json(rows);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // PUT /api/crew-dispatch/korean-attendance/:workerId
+  app.put("/api/crew-dispatch/korean-attendance/:workerId", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const workerId = parseInt(req.params.workerId);
+      if (isNaN(workerId)) return res.status(400).json({ message: "Invalid workerId" });
+      const { date, present } = req.body as { date: string; present: boolean };
+      if (!date) return res.status(400).json({ message: "date is required" });
+      if (typeof present !== "boolean") return res.status(400).json({ message: "present must be a boolean" });
+      const userId = getUserId(req);
+      const row = await storage.upsertKoreanAttendance(workerId, date, present, userId);
+      res.json(row);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   // GET /api/jibble/status
   app.get("/api/jibble/status", isAuthenticated, requireManager, async (_req, res) => {
     try {

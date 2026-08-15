@@ -827,3 +827,21 @@ export const insertDailyWorkerAssignmentSchema = createInsertSchema(dailyWorkerA
 
 export type DailyWorkerAssignment = typeof dailyWorkerAssignments.$inferSelect;
 export type CreateDailyWorkerAssignmentRequest = z.infer<typeof insertDailyWorkerAssignmentSchema>;
+
+// ─── Korean Worker Attendance (Crew Dispatch) ─────────────────────────────────
+// Korean workers are salaried and don't use Jibble.  Absence of a row means
+// present=true (the default for salary workers).  Only exceptions (결근/반차)
+// are explicitly stored.
+
+export const koreanWorkerAttendance = pgTable("korean_worker_attendance", {
+  id: serial("id").primaryKey(),
+  workerId: integer("worker_id").notNull().references(() => workers.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  present: boolean("present").notNull().default(true),
+  updatedBy: text("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("kwa_worker_date_uniq").on(t.workerId, t.date),
+]);
+
+export type KoreanWorkerAttendance = typeof koreanWorkerAttendance.$inferSelect;

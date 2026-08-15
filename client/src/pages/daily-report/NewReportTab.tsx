@@ -1984,7 +1984,7 @@ export function NewReportTab({
             </div>
           ) : (
             /* Drawing canvas */
-            <div style={{ position: "relative", height: 340, overflow: "hidden", background: "#f1f5f2" }}>
+            <div style={{ position: "relative", background: "#f1f5f2" }}>
               {drawingFilename.toLowerCase().endsWith(".pdf") ? (
                 <PdfViewer
                   url={drawingUrl!}
@@ -1994,7 +1994,7 @@ export function NewReportTab({
                 />
               ) : (
                 <img src={drawingUrl!} alt="Project drawing"
-                  style={{ width: "100%", height: 340, objectFit: "contain", display: "block", background: "#f1f5f2" }} />
+                  style={{ width: "100%", height: "auto", objectFit: "contain", display: "block", background: "#f1f5f2" }} />
               )}
             </div>
           )}

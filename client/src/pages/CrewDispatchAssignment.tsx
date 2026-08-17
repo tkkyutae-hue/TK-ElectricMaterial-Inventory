@@ -399,6 +399,104 @@ function WorkerRow({ worker, jibble, assignedProjectId, activeByCustomer, donePr
   );
 }
 
+
+// ─── Compact worker item (mobile narrow-column) ───────────────────────────────
+function CompactWorkerItem({ worker, jibble, assignedProjectId, activeByCustomer, doneProjects, onAssign, koreanPresent, onAttendanceToggle }: {
+  worker: Worker;
+  jibble?: JibbleEntry;
+  assignedProjectId: number | null;
+  activeByCustomer: CustomerGroup[];
+  doneProjects: Project[];
+  onAssign: (projectId: number | null) => void;
+  koreanPresent?: boolean;
+  onAttendanceToggle?: (present: boolean) => void;
+}) {
+  const { t } = useLanguage();
+  const [showCompleted, setShowCompleted] = useState(false);
+  const korean    = isKorean(worker);
+  const isOnSite  = korean ? (koreanPresent !== false) : (!!jibble && !jibble.lastOut);
+  const checkedIn = !!jibble;
+  const assignedDoneProject = doneProjects.find((p) => p.id === assignedProjectId);
+
+  function handleValueChange(v: string) {
+    if (v === "__show_completed__") { setShowCompleted((s) => !s); return; }
+    onAssign(v === "__none__" ? null : parseInt(v, 10));
+  }
+
+  return (
+    <div className="px-2 py-2 border-b border-slate-100 last:border-0">
+      {/* Name + status dot */}
+      <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${
+          isOnSite ? "bg-emerald-500" : checkedIn ? "bg-amber-400" : "bg-slate-300"
+        }`} />
+        <span className="text-[11px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</span>
+      </div>
+      {/* Korean attendance */}
+      {korean && onAttendanceToggle && (
+        <label className="flex items-center gap-1 mb-1.5 cursor-pointer select-none" onClick={e => e.stopPropagation()}>
+          <input type="checkbox" checked={koreanPresent !== false}
+            onChange={e => onAttendanceToggle(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+          <span className={`text-[10px] font-medium ${koreanPresent !== false ? "text-emerald-600" : "text-slate-400"}`}>
+            {koreanPresent !== false ? t.cdAttPresent : t.cdAttAbsent}
+          </span>
+        </label>
+      )}
+      {/* Project select */}
+      <Select value={assignedProjectId !== null ? String(assignedProjectId) : "__none__"} onValueChange={handleValueChange}>
+        <SelectTrigger className={`h-7 text-[11px] w-full ${
+          assignedProjectId !== null ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-400"
+        }`}>
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__"><span className="text-slate-400">— {t.cdUnassigned}</span></SelectItem>
+          {activeByCustomer.map(({ customer, projects }) => (
+            <SelectGroup key={customer}>
+              <SelectLabel className="text-[10px] text-slate-500 font-bold uppercase tracking-wider px-2 py-1 bg-slate-50">
+                {customer === "고객사 미지정" ? t.cdNoCustomer : customer}
+              </SelectLabel>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  <div className="flex items-center gap-1.5">
+                    {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
+                    <span>{p.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+          {doneProjects.length > 0 && (
+            <>
+              <SelectSeparator />
+              {assignedDoneProject && !showCompleted && (
+                <SelectItem value={String(assignedDoneProject.id)}>
+                  <div className="flex items-center gap-1.5 opacity-60">
+                    {assignedDoneProject.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{assignedDoneProject.poNumber}</span>}
+                    <span>{assignedDoneProject.name}</span>
+                  </div>
+                </SelectItem>
+              )}
+              {showCompleted && doneProjects.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  <div className="flex items-center gap-1.5 opacity-60">
+                    {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
+                    <span>{p.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+              <SelectItem value="__show_completed__" className="text-slate-400 italic text-xs">
+                {showCompleted ? t.cdCollapseCompleted : t.cdExpandCompleted.replace("{n}", String(doneProjects.length))}
+              </SelectItem>
+            </>
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 // ─── Group accent color ───────────────────────────────────────────────────────
 const GROUP_PALETTE = [
   "#0073EA","#00C875","#A25DDC","#FDBC64","#FF7575",
@@ -1027,8 +1125,7 @@ export default function CrewDispatchAssignment() {
   const qc = useQueryClient();
   const [dateStr,    setDateStr]    = useState<string>(() => toLocalDateStr(new Date()));
   const [groupOrder, setGroupOrder] = useState<string[]>(loadGroupOrder);
-  // Small-screen tab state (lg+ always shows split pane)
-  const [viewMode,   setViewMode]   = useState<"worker" | "project">("worker");
+  // (tab view removed — both panels always shown side-by-side at all breakpoints)
 
   // Worker drag state
   const [activeWorker,  setActiveWorker]  = useState<Worker | null>(null);
@@ -1659,76 +1756,121 @@ export default function CrewDispatchAssignment() {
           </div>
         ) : (
           <>
-            {/* ── lg+ : split pane ── */}
-            <div className="hidden lg:flex gap-0 items-start border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            {/* ── Unified split pane — always side-by-side at all breakpoints ── */}
+            <div className="flex gap-0 items-stretch border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
 
-              {/* Left: worker list */}
-              <div className="w-[300px] xl:w-[340px] shrink-0 flex flex-col border-r border-slate-200">
+              {/* Left: worker panel — narrow on mobile, full on lg+ */}
+              <div className="w-[150px] sm:w-[200px] lg:w-[300px] xl:w-[340px] shrink-0 flex flex-col border-r border-slate-200">
+
                 {/* Panel header */}
-                <div className="px-4 pt-4 pb-3 border-b border-slate-100 bg-slate-50 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.cdPanelTitle.replace("{n}", String(sortedWorkers.length))}</span>
-                    <span className="text-[10px] text-slate-400">{t.cdPanelDragHint}</span>
+                <div className="px-2 lg:px-4 pt-3 lg:pt-4 pb-2 lg:pb-3 border-b border-slate-100 bg-slate-50 space-y-2 lg:space-y-2.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] lg:text-xs font-bold text-slate-500 uppercase tracking-wider leading-tight">
+                      {t.cdPanelTitle.replace("{n}", String(sortedWorkers.length))}
+                    </span>
+                    <span className="hidden lg:inline text-[10px] text-slate-400 shrink-0">{t.cdPanelDragHint}</span>
                   </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder={t.cdWorkerSearch}
-                      value={workerSearch}
-                      onChange={(e) => setWorkerSearch(e.target.value)}
-                      className="w-full h-8 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
-                    />
-                    {workerSearch && (
-                      <button type="button" onClick={() => setWorkerSearch("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-1.5">
-                    {(["all", "onsite", "unassigned"] as const).map((f) => (
-                      <button key={f} type="button" onClick={() => setWorkerFilter(f)}
-                        className={`flex-1 text-xs font-medium py-1 rounded-md border transition-colors ${
-                          workerFilter === f
-                            ? "bg-slate-800 border-slate-800 text-white"
-                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-                        }`}>
-                        {f === "all" ? t.cdFilterAll : f === "onsite" ? t.cdFilterOnSite : t.cdFilterUnassigned}
-                      </button>
-                    ))}
+                  {/* Search + filter: only on lg+ */}
+                  <div className="hidden lg:block space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder={t.cdWorkerSearch}
+                        value={workerSearch}
+                        onChange={(e) => setWorkerSearch(e.target.value)}
+                        className="w-full h-8 pl-9 pr-8 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400"
+                      />
+                      {workerSearch && (
+                        <button type="button" onClick={() => setWorkerSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5">
+                      {(["all", "onsite", "unassigned"] as const).map((f) => (
+                        <button key={f} type="button" onClick={() => setWorkerFilter(f)}
+                          className={`flex-1 text-xs font-medium py-1 rounded-md border transition-colors ${
+                            workerFilter === f
+                              ? "bg-slate-800 border-slate-800 text-white"
+                              : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                          }`}>
+                          {f === "all" ? t.cdFilterAll : f === "onsite" ? t.cdFilterOnSite : t.cdFilterUnassigned}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Worker list */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 420px)" }}>
-                  {filteredWorkers.length === 0 ? (
-                    <p className="text-sm text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
-                  ) : (
-                    filteredWorkers.map((w) => {
-                      const assignedId = getAssignment(w.id);
-                      const korean = isKorean(w);
-                      return (
-                      <DraggableWorkerRow
-                        key={w.id}
-                        worker={w}
-                        jibble={jibbleMap.get(w.id)}
-                        assignedProject={allProjects.find((p) => p.id === assignedId)}
-                        onUnassign={assignedId !== null ? () => {
-                          const project = allProjects.find((p) => p.id === assignedId);
-                          handleUnassign(w.id, assignedId, w.fullName, project?.name ?? t.cdProjectFallback);
-                        } : undefined}
-                        koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
-                        onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
-                      />
-                    );
-                    })
-                  )}
+                <div className="flex-1 overflow-y-auto no-scrollbar min-h-0" style={{ maxHeight: "calc(100vh - 380px)" }}>
+                  {/* lg+: draggable cards with full info */}
+                  <div className="hidden lg:block p-3 space-y-1.5">
+                    {filteredWorkers.length === 0 ? (
+                      <p className="text-sm text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
+                    ) : (
+                      filteredWorkers.map((w) => {
+                        const assignedId = getAssignment(w.id);
+                        const korean = isKorean(w);
+                        return (
+                          <DraggableWorkerRow
+                            key={w.id}
+                            worker={w}
+                            jibble={jibbleMap.get(w.id)}
+                            assignedProject={allProjects.find((p) => p.id === assignedId)}
+                            onUnassign={assignedId !== null ? () => {
+                              const project = allProjects.find((p) => p.id === assignedId);
+                              handleUnassign(w.id, assignedId, w.fullName, project?.name ?? t.cdProjectFallback);
+                            } : undefined}
+                            koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
+                            onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                  {/* < lg: compact items — status dot + name + project select */}
+                  <div className="lg:hidden divide-y divide-slate-100">
+                    {sortedWorkers.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <Users className="w-6 h-6 text-slate-200" />
+                        <p className="text-xs text-slate-400 text-center">{t.cdNoWorkers}</p>
+                      </div>
+                    ) : (
+                      sortedWorkers.map((worker) => {
+                        const korean = isKorean(worker);
+                        return (
+                          <CompactWorkerItem
+                            key={worker.id}
+                            worker={worker}
+                            jibble={jibbleMap.get(worker.id)}
+                            assignedProjectId={getAssignment(worker.id)}
+                            activeByCustomer={activeByCustomer}
+                            doneProjects={doneProjects}
+                            onAssign={(pid) => {
+                              if (pid === null) {
+                                const prevId = getAssignment(worker.id);
+                                if (prevId !== null) {
+                                  const project = allProjects.find((p) => p.id === prevId);
+                                  handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? t.cdProjectFallback);
+                                }
+                              } else {
+                                handleAssign(worker.id, pid);
+                              }
+                            }}
+                            koreanPresent={korean ? isKoreanPresent(worker.id) : undefined}
+                            onAttendanceToggle={korean ? (present) => handleAttendanceToggle(worker.id, present) : undefined}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Right: project cards */}
-              <div className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
+              <div className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-2 lg:p-4" style={{ maxHeight: "calc(100vh - 380px)" }}>
                 <ProjectCardView
                   allProjects={displayedProjects}
                   workerList={workerList}
@@ -1740,86 +1882,6 @@ export default function CrewDispatchAssignment() {
                   koreanPresentFn={isKoreanPresent}
                 />
               </div>
-            </div>
-
-            {/* ── < lg: tab view ── */}
-            <div className="lg:hidden space-y-4">
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 w-fit">
-                {(["worker", "project"] as const).map((mode) => (
-                  <button key={mode} type="button" onClick={() => setViewMode(mode)}
-                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      viewMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    }`}>
-                    {mode === "worker" ? t.cdTabWorker : t.cdTabProject}
-                  </button>
-                ))}
-              </div>
-
-              {viewMode === "worker" && (
-                <Card>
-                  <CardContent className="p-0">
-                    {workerList.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-16 gap-2">
-                        <Users className="w-8 h-8 text-slate-200" />
-                        <p className="text-sm text-slate-400">{t.cdNoWorkers}</p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50">
-                              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColWorker}</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColCheckIn}</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColCheckOut}</th>
-                              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t.cdColProject}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedWorkers.map((worker) => {
-                              const korean = isKorean(worker);
-                              return (
-                                <WorkerRow
-                                  key={worker.id}
-                                  worker={worker}
-                                  jibble={jibbleMap.get(worker.id)}
-                                  assignedProjectId={getAssignment(worker.id)}
-                                  activeByCustomer={activeByCustomer}
-                                  doneProjects={doneProjects}
-                                  onAssign={(pid) => {
-                                    if (pid === null) {
-                                      const prevId = getAssignment(worker.id);
-                                      if (prevId !== null) {
-                                        const project = allProjects.find((p) => p.id === prevId);
-                                        handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? t.cdProjectFallback);
-                                      }
-                                    } else {
-                                      handleAssign(worker.id, pid);
-                                    }
-                                  }}
-                                  koreanPresent={korean ? isKoreanPresent(worker.id) : undefined}
-                                  onAttendanceToggle={korean ? (present) => handleAttendanceToggle(worker.id, present) : undefined}
-                                />
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {viewMode === "project" && (
-                <ProjectCardView
-                  allProjects={displayedProjects}
-                  workerList={workerList}
-                  jibbleMap={jibbleMap}
-                  getAssignment={getAssignment}
-                  groupOrder={groupOrder}
-                  onGroupOrderChange={setGroupOrder}
-                  koreanPresentFn={isKoreanPresent}
-                />
-              )}
             </div>
           </>
         )}

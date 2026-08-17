@@ -3,8 +3,8 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, ChevronDown,
-  Search, ClipboardList, FileText, CheckCircle2, Loader2,
-  BarChart3, Filter, Users,
+  Search, ClipboardList, FileText, Loader2,
+  Filter, Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { Project, Worker } from "@shared/schema";
 import { useLanguage } from "@/hooks/use-language";
 import { useAuth } from "@/hooks/use-auth";
+import { FT } from "@/pages/daily-report/fieldTicketTheme";
 
 // ─── localStorage keys (v2 — new defaults) ────────────────────────────────────
 const LS_HIDDEN   = "voltstock_dr_hidden_statuses_v2";
@@ -46,16 +47,17 @@ function loadCollapsed(): Set<string> {
 // ─── Monday status colors (mirrors Projects.tsx) ──────────────────────────────
 const STATUS_COLOR_MAP: Array<{ keys: string[]; bg: string; text?: string }> = [
   { keys: ["active"],                               bg: "#00C875" },
-  { keys: ["working on it", "in progress"],         bg: "#FDAB3D", text: "#1a1a1a" },
-  { keys: ["on_hold", "on hold"],                   bg: "#FDBC64", text: "#1a1a1a" },
-  { keys: ["quote only"],                           bg: "#C4C4C4", text: "#1a1a1a" },
+  { keys: ["working on it", "in progress"],         bg: "#E8920B" },
+  { keys: ["on_hold", "on hold"],                   bg: "#E09A2F" },
+  { keys: ["quote only"],                           bg: "#8E8B82" },
   { keys: ["stuck"],                                bg: "#E2445C" },
-  { keys: ["start soon"],                           bg: "#00C4F4", text: "#1a1a1a" },
+  { keys: ["start soon"],                           bg: "#0095BD" },
   { keys: ["completed", "done"],                    bg: "#00C875" },
   { keys: ["cancelled", "canceled"],                bg: "#E2445C" },
 ];
 function statusBg(s: string)   { const l = s.toLowerCase(); return STATUS_COLOR_MAP.find(e => e.keys.includes(l))?.bg   ?? "#C4C4C4"; }
-function statusFg(s: string)   { const l = s.toLowerCase(); return STATUS_COLOR_MAP.find(e => e.keys.includes(l))?.text ?? "#ffffff"; }
+// Field-Ticket: status chips are solid fill + white text (mapping logic unchanged)
+function statusFg(_s: string)  { return "#ffffff"; }
 
 // ─── Group palette (mirrors Projects.tsx) ─────────────────────────────────────
 const GROUP_PALETTE = [
@@ -102,26 +104,35 @@ function formatLastDate(date: string | null, noReportsLabel: string): string {
   });
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, accent, iconBg, iconColor, borderColor }: {
-  icon: React.ElementType; label: string; value: string;
-  accent: string; iconBg: string; iconColor: string; borderColor: string;
+// ─── KPI Card (Field-Ticket) ──────────────────────────────────────────────────
+function KpiCard({ label, value, ruleColor, valueColor }: {
+  label: string; value: string; ruleColor: string; valueColor: string;
 }) {
   return (
-    <Card className={`overflow-hidden border ${borderColor}`}>
-      <div className={`h-1 ${accent}`} />
-      <CardContent className="px-5 py-5">
-        <div className="flex items-start gap-4">
-          <div className={`flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ${iconBg}`}>
-            <Icon className={`w-5 h-5 ${iconColor}`} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-semibold">{label}</p>
-            <p className="text-3xl font-bold text-slate-800 leading-tight mt-0.5">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className="min-w-0"
+      style={{
+        backgroundColor: FT.PAPER,
+        border: `1px solid ${FT.RULE}`,
+        borderTop: `3px solid ${ruleColor}`,
+        borderRadius: 6,
+      }}
+    >
+      <div className="px-3 py-2.5">
+        <p
+          className="text-[11px] uppercase tracking-widest font-semibold truncate"
+          style={{ color: FT.TEXT_MUTED }}
+        >
+          {label}
+        </p>
+        <p
+          className="leading-tight mt-0.5"
+          style={{ fontFamily: FT.FONT, fontWeight: 800, fontSize: 25, color: valueColor }}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -135,7 +146,8 @@ function ProjectCard({ project, summary, assignedCount, onOpen }: {
   return (
     <Card
       data-testid={`card-project-${project.id}`}
-      className="hover:shadow-md transition-all duration-150 cursor-pointer group border border-slate-200"
+      className="hover:shadow-md transition-all duration-150 cursor-pointer group"
+      style={{ backgroundColor: FT.PAPER, border: `1px solid ${FT.RULE}` }}
       onClick={onOpen}
     >
       <CardContent className="px-5 py-4 flex gap-4">
@@ -155,13 +167,17 @@ function ProjectCard({ project, summary, assignedCount, onOpen }: {
             )}
             <span
               data-testid={`text-project-name-${project.id}`}
-              className="font-semibold text-slate-800 text-sm leading-tight"
+              className="font-bold leading-tight"
+              style={{ fontSize: 15, color: FT.INK }}
             >
               {project.name}
             </span>
             {/* Crew assignment badge */}
             {assignedCount != null && assignedCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                style={{ backgroundColor: "transparent", color: FT.INK, border: `1px solid ${FT.INK}` }}
+              >
                 <Users className="w-2.5 h-2.5" />
                 {assignedCount}명
               </span>
@@ -221,7 +237,8 @@ function ProjectCard({ project, summary, assignedCount, onOpen }: {
             data-testid={`btn-open-project-${project.id}`}
             variant="outline"
             size="sm"
-            className="gap-1 text-xs group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors"
+            className="gap-1 text-xs transition-colors bg-transparent hover:bg-transparent"
+            style={{ border: `1.5px solid ${FT.INK}`, color: FT.INK, fontFamily: FT.FONT, fontWeight: 700, backgroundColor: "transparent" }}
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
           >
             {t.dailyReportOpen}
@@ -248,19 +265,19 @@ function CustomerGroup({ groupKey, displayName, projects, summaryMap, assignedCo
     <div>
       <button
         type="button"
-        className="w-full flex items-center h-10 bg-slate-50 hover:bg-slate-100 transition-colors border border-slate-200 rounded-lg text-left select-none mb-1"
-        style={{ borderLeftWidth: 4, borderLeftColor: color }}
+        className="w-full flex items-center h-10 transition-colors rounded-lg text-left select-none mb-1"
+        style={{ backgroundColor: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, borderLeftWidth: 4, borderLeftColor: color }}
         onClick={onToggle}
         data-testid={`group-header-${groupKey}`}
       >
         <div className="w-8 flex items-center justify-center flex-shrink-0">
           {collapsed
-            ? <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-            : <ChevronDown  className="w-3.5 h-3.5 text-slate-500" />}
+            ? <ChevronRight className="w-3.5 h-3.5" style={{ color: FT.TEXT_MUTED }} />
+            : <ChevronDown  className="w-3.5 h-3.5" style={{ color: FT.TEXT_MUTED }} />}
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-0 pr-3">
           <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
-          <span className="font-semibold text-[13px] text-slate-800 truncate">
+          <span className="font-semibold text-[13px] truncate" style={{ color: FT.INK }}>
             {isNone ? "고객사 미지정" : displayName}
           </span>
           <span className="text-[11px] text-slate-400 font-medium ml-1 shrink-0">{projects.length}</span>
@@ -480,33 +497,35 @@ export default function DailyReport() {
   const visibleStatusCount = allStatusOptions.filter(s => !hiddenStatuses.has(s.toLowerCase())).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ backgroundColor: FT.PAPER }}>
 
       {/* ── Page header ── */}
       <div>
-        <h1 className="text-3xl font-display font-bold text-slate-900">{t.dailyReportTitle}</h1>
-        <p className="text-slate-500 mt-1">{t.dailyReportSubtitle}</p>
+        <h1
+          className="uppercase"
+          style={{ fontFamily: FT.FONT, fontWeight: 800, fontSize: 25, color: FT.INK, letterSpacing: "0.02em" }}
+        >
+          {t.dailyReportTitle}
+        </h1>
+        <p className="mt-1" style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.dailyReportSubtitle}</p>
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2">
         <KpiCard
-          icon={BarChart3}     label={t.dailyReportTotalProjects}
+          label={t.dailyReportTotalProjects}
           value={String(totalCount)}
-          accent="bg-gradient-to-r from-slate-400 to-slate-500"
-          iconBg="bg-slate-100" iconColor="text-slate-600" borderColor="border-slate-200"
+          ruleColor={FT.INK} valueColor={FT.INK}
         />
         <KpiCard
-          icon={Briefcase}     label={t.dailyReportActiveProjects}
+          label={t.dailyReportActiveProjects}
           value={String(activeCount)}
-          accent="bg-gradient-to-r from-emerald-400 to-green-500"
-          iconBg="bg-emerald-50" iconColor="text-emerald-600" borderColor="border-emerald-200"
+          ruleColor={FT.ACCENT} valueColor={FT.ACCENT}
         />
         <KpiCard
-          icon={CheckCircle2}  label={t.dailyReportCompletedProjects}
+          label={t.dailyReportCompletedProjects}
           value={String(completedCount)}
-          accent="bg-gradient-to-r from-teal-400 to-blue-500"
-          iconBg="bg-teal-50" iconColor="text-teal-600" borderColor="border-teal-200"
+          ruleColor={FT.SUCCESS} valueColor={FT.SUCCESS}
         />
       </div>
 
@@ -543,6 +562,7 @@ export default function DailyReport() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9 text-sm"
+              style={{ backgroundColor: FT.PAPER, border: `1px solid ${FT.RULE}` }}
             />
           </div>
 
@@ -550,11 +570,12 @@ export default function DailyReport() {
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className={`h-9 flex items-center gap-1.5 px-3 rounded-md border text-sm font-medium transition-colors ${
+                className="h-9 flex items-center gap-1.5 px-3 rounded-md text-sm font-medium transition-colors"
+                style={
                   hiddenStatuses.size > 0
-                    ? "border-blue-400 bg-blue-50 text-blue-700"
-                    : "border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
-                }`}
+                    ? { border: `1.5px solid ${FT.INK}`, color: FT.INK, backgroundColor: FT.PAPER_MUTED }
+                    : { border: `1.5px solid ${FT.INK}`, color: FT.TEXT_MUTED, backgroundColor: "transparent" }
+                }
                 data-testid="btn-status-filter"
               >
                 <Filter className="w-3.5 h-3.5" />
@@ -643,13 +664,13 @@ export default function DailyReport() {
             {/* ── 오늘 배치된 프로젝트 ── */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 px-1 mb-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 shrink-0">
-                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                <span className="flex items-center justify-center w-6 h-6 rounded-md shrink-0" style={{ backgroundColor: FT.INK }}>
+                  <Users className="w-3.5 h-3.5" style={{ color: FT.ACCENT }} />
                 </span>
-                <span className="text-sm font-semibold text-blue-700">
+                <span className="text-sm font-semibold" style={{ color: FT.INK }}>
                   {isSelfFilterActive ? "오늘 내 배치 프로젝트" : "오늘 배치된 프로젝트"}
                 </span>
-                <span className="text-xs font-medium text-blue-400 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">{assignedProjects.length}</span>
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: FT.ACCENT, color: "#fff" }}>{assignedProjects.length}</span>
               </div>
               <div className="space-y-2">
                 {assignedProjects.map((p) => (

@@ -56,3 +56,6 @@ GOOGLE_CALLBACK_URL = "https://tkelectric.replit.app/api/auth/google/callback"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 60000
+
+[objectStorage]
+defaultBucketID = "replit-objstore-6018c550-a830-451a-a7d5-021f57194d73"

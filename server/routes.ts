@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { derivedFamily, derivedType, extractSubcategory } from "./storage";
 import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
-import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers } from "../shared/schema";
+import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers, dailyWorkerAssignments } from "../shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import type { Request } from "express";
@@ -220,6 +220,41 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
       const rows = await db.select().from(workers).where(eq(workers.linkedUserId, userId)).limit(1);
       res.json(rows[0] ?? null);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── My assigned project ids (staff scoping) ────────────────────────────────
+  // Returns the distinct projectIds (across all dates) where the current user's
+  // linked worker has been dispatched, or null when the user has no linked worker.
+  // Used to scope Daily Report data for staff accounts.
+  async function getMyAssignedProjectIds(userId: string): Promise<number[] | null> {
+    const rows = await db.select().from(workers).where(eq(workers.linkedUserId, userId)).limit(1);
+    const worker = rows[0];
+    if (!worker) return null;
+    const assignments = await db
+      .select({ projectId: dailyWorkerAssignments.projectId })
+      .from(dailyWorkerAssignments)
+      .where(eq(dailyWorkerAssignments.workerId, worker.id));
+    return Array.from(new Set(assignments.map((a) => a.projectId).filter((id): id is number => id != null)));
+  }
+
+  // Returns true when the current user may touch daily reports of the given project.
+  // Non-staff roles that reach these routes (admin/manager) are always allowed;
+  // staff must have their linked worker dispatched to the project.
+  async function canAccessDailyReportProject(currentUser: any, projectId: number): Promise<boolean> {
+    if (currentUser?.role !== "staff") return true;
+    const myIds = await getMyAssignedProjectIds(currentUser.id);
+    return !!myIds && myIds.includes(projectId);
+  }
+
+  app.get("/api/me/worker-project-ids", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const ids = await getMyAssignedProjectIds(userId);
+      res.json(ids); // null → no linked worker; [] → linked but never assigned
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
@@ -4166,10 +4201,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Daily Reports ─────────────────────────────────────────────────────────
 
-  app.get("/api/daily-reports", isAuthenticated, requireStaff, async (req, res) => {
+  app.get("/api/daily-reports", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const projectId = parseInt(req.query.projectId as string);
       if (isNaN(projectId)) return res.status(400).json({ message: "projectId is required" });
+      // Staff can only read reports for projects their linked worker was dispatched to
+      if (!(await canAccessDailyReportProject(req.currentUser, projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       const reports = await storage.getDailyReports(projectId);
       res.json(reports);
     } catch (err: any) {
@@ -4177,32 +4216,44 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/daily-reports-summary", isAuthenticated, requireStaff, async (_req, res) => {
+  app.get("/api/daily-reports-summary", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
-      const summary = await storage.getDailyReportSummary();
+      let summary = await storage.getDailyReportSummary();
+      // Staff only see summaries for their assigned projects
+      if (req.currentUser?.role === "staff") {
+        const myIds = await getMyAssignedProjectIds(req.currentUser.id);
+        const idSet = new Set(myIds ?? []);
+        summary = summary.filter((s) => idSet.has(s.projectId));
+      }
       res.json(summary);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.get("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req, res) => {
+  app.get("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
       const report = await storage.getDailyReport(id);
       if (!report) return res.status(404).json({ message: "Report not found" });
+      if (!(await canAccessDailyReportProject(req.currentUser, report.projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       res.json(report);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }
   });
 
-  app.post("/api/daily-reports", isAuthenticated, requireStaff, async (req, res) => {
+  app.post("/api/daily-reports", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const { projectId, reportDate, reportNumber, preparedBy, status, formData } = req.body;
       if (!projectId || !reportDate) {
         return res.status(400).json({ message: "projectId and reportDate are required" });
+      }
+      if (!(await canAccessDailyReportProject(req.currentUser, Number(projectId)))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
       }
       const report = await storage.createDailyReport({
         projectId: Number(projectId),
@@ -4219,10 +4270,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req, res) => {
+  app.patch("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
+      const existing = await storage.getDailyReport(id);
+      if (!existing) return res.status(404).json({ message: "Report not found" });
+      if (!(await canAccessDailyReportProject(req.currentUser, existing.projectId))) {
+        return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
+      }
       const { reportDate, reportNumber, preparedBy, status, formData } = req.body;
       const report = await storage.updateDailyReport(id, {
         ...(reportDate !== undefined && { reportDate }),
@@ -5702,10 +5758,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Crew Dispatch ─────────────────────────────────────────────────────────
 
   // GET /api/crew-dispatch/assignments?date=YYYY-MM-DD
-  app.get("/api/crew-dispatch/assignments", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/crew-dispatch/assignments", isAuthenticated, requireStaffRead, async (req: any, res) => {
     try {
       const date = (req.query.date as string) || new Date().toISOString().slice(0, 10);
-      const assignments = await storage.getAssignmentsByDate(date);
+      let assignments = await storage.getAssignmentsByDate(date);
+      // Staff only see their own worker's assignments (enough for self-filtering)
+      if (req.currentUser?.role === "staff") {
+        const rows = await db.select().from(workers).where(eq(workers.linkedUserId, req.currentUser.id)).limit(1);
+        const myWorkerId = rows[0]?.id;
+        assignments = myWorkerId ? assignments.filter((a) => a.workerId === myWorkerId) : [];
+      }
       res.json(assignments);
     } catch (err: any) {
       res.status(500).json({ message: err.message });

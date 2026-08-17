@@ -332,9 +332,15 @@ function HistoryTab({
   const { toast } = useToast();
   const { t, lang } = useLanguage();
 
-  const { data: reports = [], isLoading } = useQuery<any[]>({
+  const { data: reports = [], isLoading, error } = useQuery<any[]>({
     queryKey: ["/api/daily-reports", projectId],
-    queryFn: () => fetch(`/api/daily-reports?projectId=${projectId}`, { credentials: "include" }).then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/daily-reports?projectId=${projectId}`, { credentials: "include" });
+      if (r.status === 403) throw new Error("FORBIDDEN");
+      if (!r.ok) throw new Error(`${r.status}: ${r.statusText}`);
+      return r.json();
+    },
+    retry: (count, err: any) => err?.message !== "FORBIDDEN" && count < 2,
   });
 
   if (isLoading) {
@@ -342,6 +348,22 @@ function HistoryTab({
       <Card>
         <CardContent className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if ((error as any)?.message === "FORBIDDEN") {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
+            <ClipboardList className="w-7 h-7 text-slate-400" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-slate-600">배치되지 않은 프로젝트입니다</p>
+            <p className="text-xs text-slate-400 mt-0.5">본인이 배치된 프로젝트의 일일 보고서만 볼 수 있습니다.</p>
+          </div>
         </CardContent>
       </Card>
     );

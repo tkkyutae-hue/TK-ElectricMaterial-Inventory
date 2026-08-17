@@ -576,7 +576,7 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
       className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all select-none"
     >
       {/* Drag handle area */}
-      <div {...attributes} {...listeners} className="flex items-center gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
+      <div {...attributes} {...listeners} className="flex items-center gap-1.5 lg:gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
         <div className="relative shrink-0">
           <WorkerAvatar photoUrl={worker.photoUrl} name={worker.fullName} small />
           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
@@ -584,14 +584,14 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
           }`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
-          <TradeBadge worker={worker} small />
+          <p className="text-[12px] lg:text-[13px] font-semibold text-slate-800 leading-tight truncate">{worker.fullName}</p>
+          <span className="hidden lg:block"><TradeBadge worker={worker} small /></span>
         </div>
       </div>
-      {/* Korean attendance toggle (for Korean workers only) */}
+      {/* Korean attendance toggle — hidden on narrow mobile column */}
       {korean && onAttendanceToggle && (
         <label
-          className="flex items-center gap-1 shrink-0 cursor-pointer select-none"
+          className="hidden lg:flex items-center gap-1 shrink-0 cursor-pointer select-none"
           title={koreanPresent !== false ? t.cdAttPresentTitle : t.cdAttAbsentTitle}
           onClick={e => e.stopPropagation()}
         >
@@ -606,10 +606,10 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
           </span>
         </label>
       )}
-      {/* Right: assignment badge or unassign button */}
+      {/* Right: unassign X (always) + project name text (lg+ only) */}
       {assignedProject ? (
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 max-w-[80px] truncate leading-tight">
+          <span className="hidden lg:inline text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 max-w-[80px] truncate leading-tight">
             {assignedProject.name}
           </span>
           {onUnassign && (
@@ -624,7 +624,7 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
           )}
         </div>
       ) : (
-        <span className="text-[10px] text-slate-300 shrink-0">{t.cdUnassigned}</span>
+        <span className="hidden lg:inline text-[10px] text-slate-300 shrink-0">{t.cdUnassigned}</span>
       )}
     </div>
   );

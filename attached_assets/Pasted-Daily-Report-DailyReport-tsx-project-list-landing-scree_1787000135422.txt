@@ -1,0 +1,111 @@
+Daily Report (DailyReport.tsx — project list / landing screen) —
+Visual design pass: "field ticket" restyle.
+DESIGN ONLY. NO functionality, data, filtering, or routing changes.
+
+Goal:
+Replace the current generic dashboard look (pastel top-bar stat cards
+stacked full-width, soft icon backgrounds, thin gray labels, Monday-
+style pastel status chips) with the same "field ticket" visual system
+already applied to NewReportTab: warm paper background, ink-charcoal
+text, safety-orange signature accent, TK green for success/active
+counts, bold condensed stamped headers. Every click handler, search/
+filter logic, query, and navigation must stay exactly as-is — this is
+a restyle, not a rebuild.
+
+Files to inspect:
+- client/src/pages/DailyReport.tsx (KpiCard, ProjectCard, CustomerGroup,
+  the page header block, search/filter row, "오늘 배치된 프로젝트" row)
+- If NewReportTab.tsx already has client/src/pages/daily-report/
+  fieldTicketTheme.ts from the earlier pass, import the same tokens
+  from there instead of redefining them.
+
+Do not touch:
+- Search/filter logic, query params, sort/group logic
+- CustomerGroup collapse/expand behavior
+- Navigation (onOpen, back button routing)
+- assignedCount / summary calculation logic
+- DailyReportWorkspace.tsx, NewReportTab.tsx (separate, already scoped
+  in the earlier prompt)
+- server/, shared/schema.ts
+
+Design tokens (reuse from the NewReportTab pass):
+  INK          #1C1C1E
+  PAPER        #F7F5EF   page background (replaces white/slate-50)
+  PAPER_MUTED  #EFEBDF
+  RULE         #D8D3C4   default hairline borders
+  TEXT_MUTED   #6B675C   secondary/label text
+  ACCENT       #E85D04   signature accent — "active" count, "working on
+                         it" / in-progress status chips, primary actions
+  SUCCESS      #3D8B37   "completed" count, "attend"/"submitted" states
+  DANGER       #A3321C   blocked/overdue states (if any appear here)
+
+Required changes:
+
+1. Page header
+   - Title "Daily Report Mode" → Barlow Condensed 800, uppercase,
+     ~24–26px, INK (currently a generic bold sans headline).
+   - Subtitle stays regular weight, TEXT_MUTED, 13px.
+   - Back button and language selector: restyle to INK text/border,
+     drop any default blue link color.
+
+2. KpiCard component (~line 106) — COMPACT LAYOUT CHANGE
+   - Change the 3 stat cards from a stacked full-width column to a
+     3-column grid (`grid-template-columns: repeat(3, 1fr); gap: 8px`)
+     — this is the main fix, they currently take up too much vertical
+     space stacked.
+   - Drop the icon and the pastel `iconBg`/`iconColor` fill entirely —
+     replace with a 3px solid top border in the card's semantic color
+     (Total = INK, Active = ACCENT, Completed = SUCCESS) instead of the
+     current thin `accent` top bar + colored icon chip combo.
+   - Label: 11px, bold, uppercase, TEXT_MUTED, single line (shorten to
+     "Total" / "Active" / "Done" if needed to fit 3-up width).
+   - Value: Barlow Condensed 800, ~24–26px (down from text-3xl), colored
+     to match the card's accent (Active = ACCENT, Completed = SUCCESS,
+     Total = INK).
+   - Card: 1px solid RULE border, 8px radius, padding ~10px 9px,
+     background PAPER or white.
+
+3. ProjectCard component (~line 129)
+   - Card border RULE, background white/PAPER, radius 10px.
+   - PO number stays small monospace, TEXT_MUTED.
+   - Project name: bump to 15–16px, weight 700, INK.
+   - Crew-assigned badge (currently `bg-blue-50 text-blue-700`) →
+     outline style, 1px solid RULE, INK text, no fill.
+   - Monday-style status chip (`statusBg`/`statusFg`) → keep the
+     per-status color logic, but render as solid fill + white text
+     (not the current pastel bg + colored text) using the closest
+     token from the semantic set above when the status maps to
+     in-progress/done/blocked; leave genuinely custom Monday colors
+     (unmapped labels) as solid fills using their existing hex, just
+     drop any pastel/light versions.
+   - Report mini-stats row (Total/Draft/Submitted/Last): keep the
+     small colored dots but recolor draft → ACCENT, submitted →
+     SUCCESS (currently amber/emerald), text stays TEXT_MUTED/INK.
+   - "Open" button: INK 1.5px outline, transparent background,
+     Barlow Condensed bold label, chevron icon — replace the current
+     default `variant="outline"` blue-hover style.
+
+4. Search + filter row
+   - Search input: 1px solid RULE border, 8px radius, PAPER/white
+     background, TEXT_MUTED placeholder.
+   - Filter button: 1.5px solid INK border instead of the current
+     blue-bordered pill.
+
+5. "오늘 배치된 프로젝트" row
+   - Icon + label in INK/ACCENT, count badge solid ACCENT fill white
+     text (replace whatever default badge style is there now).
+
+6. CustomerGroup header (~line 234)
+   - Keep the colored left-border group accent (groupAccentColor) as
+     is — that's meaningful per-customer coding, not decorative.
+     Only update the row's background/border to RULE/PAPER_MUTED
+     instead of slate-50/slate-200, and chevron color to TEXT_MUTED.
+
+Verification:
+- Search, filter, group collapse/expand, and "Open" navigation all
+  work exactly as before.
+- The 3 stat cards sit in one row on mobile width, not stacked.
+- No text below 11px.
+- Status chip colors still map correctly per status value — verify
+  against the existing statusBg/statusFg logic, just check the fill
+  style (solid vs pastel), not the color-per-status mapping itself.

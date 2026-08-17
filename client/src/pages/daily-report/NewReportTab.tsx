@@ -38,6 +38,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { Worker } from "@shared/schema";
 import { PdfViewer } from "./PdfViewer";
+import { FT } from "./fieldTicketTheme";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TASK_STATUS_CFG: Record<string, {
@@ -46,30 +47,31 @@ const TASK_STATUS_CFG: Record<string, {
   accentColor: string;
   dot: string; text: string; rowBg: string; borderColor: string;
 }> = {
-  "not-started": { label: "Not Started", dotColor: "#d0d0d0", badgeBg: "#f5f5f5", badgeBorder: "#e5e5e5", badgeText: "#aaa",    accentColor: "#e0e0e0", dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "",               borderColor: "#e0e0e0" },
-  "in-progress":  { label: "In Progress", dotColor: "#3b82f6", badgeBg: "#eff6ff", badgeBorder: "#bfdbfe", badgeText: "#1d4ed8", accentColor: "#818cf8", dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "",               borderColor: "#818cf8" },
-  "completed":    { label: "Completed",   dotColor: "#22c55e", badgeBg: "#f0fdf4", badgeBorder: "#86efac", badgeText: "#15803d", accentColor: "#22c55e", dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "",               borderColor: "#22c55e" },
-  "delayed":      { label: "Delayed",     dotColor: "#f97316", badgeBg: "#fff7ed", badgeBorder: "#fdba74", badgeText: "#c2410c", accentColor: "#f97316", dot: "bg-orange-500",  text: "text-orange-700",  rowBg: "bg-amber-50/30", borderColor: "#f97316" },
-  "blocked":      { label: "Blocked",     dotColor: "#f43f5e", badgeBg: "#fff1f2", badgeBorder: "#fecdd3", badgeText: "#e11d48", accentColor: "#f43f5e", dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: "#f43f5e" },
+  "not-started": { label: "Not Started", dotColor: FT.RULE,    badgeBg: "transparent", badgeBorder: FT.INK,    badgeText: FT.INK,    accentColor: FT.RULE,   dot: "bg-slate-400",   text: "text-slate-500",   rowBg: "",               borderColor: FT.RULE   },
+  "in-progress":  { label: "In Progress", dotColor: FT.ACCENT,  badgeBg: FT.ACCENT,     badgeBorder: FT.ACCENT, badgeText: "#fff",    accentColor: FT.ACCENT, dot: "bg-blue-500",    text: "text-blue-700",    rowBg: "",               borderColor: FT.ACCENT },
+  "completed":    { label: "Completed",   dotColor: FT.SUCCESS,  badgeBg: FT.SUCCESS,    badgeBorder: FT.SUCCESS,badgeText: "#fff",    accentColor: FT.SUCCESS,dot: "bg-emerald-500", text: "text-emerald-700", rowBg: "",               borderColor: FT.SUCCESS},
+  "delayed":      { label: "Delayed",     dotColor: FT.DANGER,   badgeBg: FT.DANGER,     badgeBorder: FT.DANGER, badgeText: "#fff",    accentColor: FT.DANGER, dot: "bg-orange-500",  text: "text-orange-700",  rowBg: "bg-amber-50/30", borderColor: FT.DANGER },
+  "blocked":      { label: "Blocked",     dotColor: FT.DANGER,   badgeBg: FT.DANGER,     badgeBorder: FT.DANGER, badgeText: "#fff",    accentColor: FT.DANGER, dot: "bg-red-500",     text: "text-red-700",     rowBg: "bg-red-50/30",   borderColor: FT.DANGER },
 };
 
 const TRADE_COLOR_CFG: Record<string, { bg: string; color: string; border: string }> = {
-  "Foreman":     { bg: "#dcfce7", color: "#16a34a", border: "#86efac" },
-  "Helper":      { bg: "#dbeafe", color: "#1d6ecc", border: "#bfdbfe" },
-  "Safety":      { bg: "#fee2e2", color: "#dc2626", border: "#fecaca" },
-  "Apprentice":  { bg: "#fef3c7", color: "#d97706", border: "#fde68a" },
-  "Electrician": { bg: "#ede9fe", color: "#7c3aed", border: "#c4b5fd" },
-  "Supervisor":  { bg: "#ccfbf1", color: "#0d9488", border: "#99f6e4" },
+  "Foreman":     { bg: FT.SUCCESS,  color: "#fff", border: "#2d6b29" },
+  "Helper":      { bg: "#1d4ed8",   color: "#fff", border: "#1741b0" },
+  "Safety":      { bg: FT.DANGER,   color: "#fff", border: "#8a2a17" },
+  "Apprentice":  { bg: "#d97706",   color: "#fff", border: "#b86006" },
+  "Electrician": { bg: "#7c3aed",   color: "#fff", border: "#6d2fd6" },
+  "Supervisor":  { bg: "#0d9488",   color: "#fff", border: "#0b7c75" },
 };
-const DEFAULT_TRADE_COLOR = { bg: "#f3f4f6", color: "#6b7280", border: "#e5e7eb" };
+const DEFAULT_TRADE_COLOR = { bg: FT.TEXT_MUTED, color: "#fff", border: "#57534a" };
 function tradeBadge(trade: string | undefined) {
   if (!trade) return null;
   const t = TRADE_COLOR_CFG[trade] ?? DEFAULT_TRADE_COLOR;
   return (
     <span style={{
-      display: "inline-flex", padding: "1px 7px", borderRadius: 4,
-      fontSize: 9.5, fontWeight: 700, border: `1px solid ${t.border}`,
+      display: "inline-flex", padding: "2px 8px", borderRadius: 3,
+      fontSize: 11, fontWeight: 700, border: `1px solid ${t.border}`,
       background: t.bg, color: t.color, whiteSpace: "nowrap", flexShrink: 0,
+      fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase",
     }}>{trade}</span>
   );
 }
@@ -82,17 +84,17 @@ const ATTENDANCE_STATUSES = [
 const HOURS_COMPUTED = new Set(["ATTEND", "LATE", "EARLY_LEAVE", "WFH", "TRAINING"]);
 
 const STATUS_COLOR_CFG: Record<string, { color: string; bg: string; border: string }> = {
-  "ATTEND":      { color: "#15803d", bg: "#f0fdf4", border: "#86efac" },
-  "PTO":         { color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
-  "SICK":        { color: "#9d174d", bg: "#fdf2f8", border: "#fbcfe8" },
-  "ABSENT":      { color: "#e11d48", bg: "#fff1f2", border: "#fecdd3" },
-  "OFF":         { color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb" },
-  "LATE":        { color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
-  "EARLY_LEAVE": { color: "#c2410c", bg: "#fff7ed", border: "#fed7aa" },
-  "WFH":         { color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe" },
-  "TRAINING":    { color: "#0369a1", bg: "#f0f9ff", border: "#bae6fd" },
-  "SUSPENDED":   { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
-  "TERMINATED":  { color: "#dc2626", bg: "#fff1f2", border: "#fecdd3" },
+  "ATTEND":      { color: "#fff", bg: FT.SUCCESS,      border: "#2d6b29" },
+  "PTO":         { color: "#fff", bg: "#0f766e",        border: "#0d605a" },
+  "SICK":        { color: "#fff", bg: FT.DANGER,        border: "#8a2a17" },
+  "ABSENT":      { color: "#fff", bg: FT.DANGER,        border: "#8a2a17" },
+  "OFF":         { color: "#fff", bg: FT.TEXT_MUTED,    border: "#57534a" },
+  "LATE":        { color: "#fff", bg: FT.ACCENT,        border: "#c44e00" },
+  "EARLY_LEAVE": { color: "#fff", bg: FT.DANGER,        border: "#8a2a17" },
+  "WFH":         { color: "#fff", bg: FT.INK,           border: "#111"    },
+  "TRAINING":    { color: "#fff", bg: "#0369a1",        border: "#025f8f" },
+  "SUSPENDED":   { color: "#fff", bg: "#7c3aed",        border: "#6d2fd6" },
+  "TERMINATED":  { color: "#fff", bg: FT.DANGER,        border: "#8a2a17" },
 };
 
 function tradeIconColor(trade?: string): string {
@@ -104,15 +106,15 @@ function tradeIconColor(trade?: string): string {
 }
 
 const EQ_STATUS_CFG = {
-  operational: { label: "✓  Operational",  border: "#86efac", bg: "#f0fdf4", color: "#15803d" },
-  partial:     { label: "⚠  Partial Issue", border: "#fde68a", bg: "#fffbeb", color: "#b45309" },
-  broken:      { label: "✕  Broken Down",   border: "#fecdd3", bg: "#fff1f2", color: "#e11d48" },
+  operational: { label: "✓  Operational",  border: FT.RULE,   bg: FT.PAPER, color: FT.SUCCESS },
+  partial:     { label: "⚠  Partial Issue", border: FT.ACCENT, bg: FT.PAPER, color: FT.ACCENT  },
+  broken:      { label: "✕  Broken Down",   border: FT.DANGER, bg: FT.PAPER, color: FT.DANGER  },
 } as const;
 
 const EQ_TAG_CFG: Record<string, { bg: string; border: string; color: string; label: string }> = {
-  repair:  { bg: "#fff7ed", border: "#fed7aa", color: "#c2410c", label: "🔧 Repair Requested" },
-  return:  { bg: "#f0f9ff", border: "#bae6fd", color: "#0369a1", label: "↩ Return Scheduled" },
-  pending: { bg: "#faf5ff", border: "#e9d5ff", color: "#7c3aed", label: "⏳ Pending" },
+  repair:  { bg: FT.DANGER,       border: "#8a2a17", color: "#fff",  label: "🔧 Repair Requested" },
+  return:  { bg: FT.INK,          border: "#111",    color: "#fff",  label: "↩ Return Scheduled"  },
+  pending: { bg: FT.TEXT_MUTED,   border: "#57534a", color: "#fff",  label: "⏳ Pending"           },
 };
 
 const EQUIPMENT_PRESETS = [
@@ -254,15 +256,14 @@ function SectionNavigator({
       ref={navRef}
       style={{
         position: "sticky", top: 0, zIndex: 40,
-        background: "rgba(255,255,255,0.97)",
-        backdropFilter: "blur(8px)",
-        borderBottom: "1px solid #e2e8f0",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        background: FT.PAPER_MUTED,
+        borderBottom: `1px solid ${FT.RULE}`,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
       }}
     >
       <div
         className="no-scrollbar"
-        style={{ display: "flex", overflowX: "auto", gap: 2, padding: "5px 6px" }}
+        style={{ display: "flex", overflowX: "auto" }}
       >
         {NAV_ITEMS.map((item, idx) => {
           const isActive = activeSection === idx;
@@ -273,31 +274,42 @@ function SectionNavigator({
               type="button"
               onClick={() => scrollToSection(idx)}
               style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: "6px 10px", borderRadius: 8,
-                border: isActive ? "1px solid #e2e8f0" : "1px solid transparent",
-                background: isActive ? "#f1f5f9" : "transparent",
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "11px 14px",
+                border: "none",
+                background: isActive ? FT.INK : "transparent",
                 cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                transition: "background 0.15s, border-color 0.15s",
+                transition: "background 0.15s",
+                fontFamily: FT.FONT,
               }}
               onMouseEnter={e => {
-                if (!isActive) (e.currentTarget as HTMLElement).style.background = "#f8fafc";
+                if (!isActive) (e.currentTarget as HTMLElement).style.background = "rgba(28,28,30,0.07)";
               }}
               onMouseLeave={e => {
                 if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent";
               }}
             >
-              <span style={{ color: isActive ? item.color : "#94a3b8", display: "flex", alignItems: "center" }}>
-                <NavIcon idx={idx} />
+              <span style={{
+                fontSize: 11, fontWeight: 800,
+                color: isActive ? FT.PAPER : FT.TEXT_MUTED,
+                fontFamily: FT.FONT, letterSpacing: "0.05em",
+              }}>
+                {item.num}
               </span>
-              <span style={{ fontSize: 9, fontWeight: 600, color: isActive ? "#64748b" : "#94a3b8", letterSpacing: "0.04em" }}>
-                §{item.num}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: isActive ? 700 : 500, color: isActive ? "#1e293b" : "#64748b" }}>
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                color: isActive ? FT.PAPER : FT.TEXT_MUTED,
+                fontFamily: FT.FONT, letterSpacing: "0.03em",
+                textTransform: "uppercase",
+              }}>
                 {t[item.labelKey]}
               </span>
               {done && (
-                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", flexShrink: 0, marginLeft: 2 }} />
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: isActive ? FT.PAPER : FT.SUCCESS,
+                  flexShrink: 0,
+                }} />
               )}
             </button>
           );
@@ -307,58 +319,59 @@ function SectionNavigator({
   );
 }
 
-// ─── Section color palette ────────────────────────────────────────────────────
-const SECTION_ICON_STYLE: Record<number, { bg: string; icon: string }> = {
-  1: { bg: "bg-blue-50",    icon: "text-blue-500"    },
-  2: { bg: "bg-violet-50",  icon: "text-violet-500"  },
-  3: { bg: "bg-emerald-50", icon: "text-emerald-600" },
-  4: { bg: "bg-amber-50",   icon: "text-amber-600"   },
-  5: { bg: "bg-orange-50",  icon: "text-orange-500"  },
-  6: { bg: "bg-slate-100",  icon: "text-slate-500"   },
-};
-
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 // overflow-hidden removed so combobox dropdowns are not clipped
 function Section({
-  num, title, icon, defaultOpen = true, summary, alert, headerRight, children,
+  num, title, defaultOpen = true, summary, alert, headerRight, children,
 }: {
-  num: number; title: string; icon: React.ReactNode;
+  num: number; title: string; icon?: React.ReactNode;
   defaultOpen?: boolean; summary?: string; alert?: React.ReactNode;
   headerRight?: React.ReactNode; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const ic = SECTION_ICON_STYLE[num] ?? { bg: "bg-slate-100", icon: "text-slate-500" };
   return (
-    <Card className="shadow-none border border-slate-200">
-      <div className="flex items-center px-5 hover:bg-slate-50/70 transition-colors">
-        <button type="button" data-testid={`section-toggle-${num}`}
-          onClick={() => setOpen((o) => !o)}
-          className="flex-1 flex items-center justify-between py-3 text-left min-w-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold shrink-0">
-              {num}
-            </span>
-            <span className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${ic.bg}`}>
-              <span className={ic.icon}>{icon}</span>
-            </span>
-            <span className="text-sm font-semibold text-slate-800 shrink-0">{title}</span>
-            {!open && summary && (
-              <span className="ml-1 text-[11px] text-slate-400 truncate">{summary}</span>
-            )}
-            {alert && <span className="ml-2 shrink-0">{alert}</span>}
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-3">
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
-          </div>
-        </button>
-        {headerRight && (
-          <div className="flex items-center shrink-0 ml-2">
-            {headerRight}
-          </div>
-        )}
+    <Card style={{ boxShadow: "none", border: `1px solid ${FT.RULE}`, background: FT.PAPER, borderRadius: 10 }}>
+      <div style={{ borderBottom: open ? `3px solid ${FT.ACCENT}` : "none" }}>
+        <div className="flex items-center px-5 transition-colors" style={{ borderRadius: open ? "10px 10px 0 0" : 10 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = FT.PAPER_MUTED; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+          <button type="button" data-testid={`section-toggle-${num}`}
+            onClick={() => setOpen((o) => !o)}
+            className="flex-1 flex items-center justify-between py-3 text-left min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* 30×30 square number badge */}
+              <span style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 30, height: 30, border: `2px solid ${FT.INK}`, borderRadius: 4,
+                fontSize: 15, fontWeight: 800, fontFamily: FT.FONT,
+                color: FT.INK, flexShrink: 0, lineHeight: 1,
+              }}>
+                {num}
+              </span>
+              {/* Title */}
+              <span style={{
+                fontFamily: FT.FONT, fontSize: 17, fontWeight: 800,
+                textTransform: "uppercase", letterSpacing: "0.04em",
+                color: FT.INK, flexShrink: 0,
+              }}>{title}</span>
+              {!open && summary && (
+                <span style={{ marginLeft: 4, fontSize: 12, color: FT.TEXT_MUTED }} className="truncate">{summary}</span>
+              )}
+              {alert && <span className="ml-2 shrink-0">{alert}</span>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: FT.TEXT_MUTED }} />
+            </div>
+          </button>
+          {headerRight && (
+            <div className="flex items-center shrink-0 ml-2">
+              {headerRight}
+            </div>
+          )}
+        </div>
       </div>
       {open && (
-        <CardContent className="pt-0 pb-6 px-5 border-t border-slate-100">
+        <CardContent className="pt-0 pb-6 px-5" style={{ borderTop: "none" }}>
           <div className="pt-4">{children}</div>
         </CardContent>
       )}
@@ -369,7 +382,12 @@ function Section({
 // ─── Field label ──────────────────────────────────────────────────────────────
 function FL({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 select-none">
+    <label style={{
+      display: "block", fontSize: 13, fontWeight: 700,
+      color: FT.TEXT_MUTED, textTransform: "uppercase",
+      letterSpacing: "0.04em", marginBottom: 6, userSelect: "none",
+      fontFamily: FT.FONT,
+    }}>
       {children}
     </label>
   );
@@ -379,13 +397,18 @@ function FL({ children }: { children: React.ReactNode }) {
 function TH({ cols }: { cols: { label: string; cls?: string }[] }) {
   return (
     <thead>
-      <tr className="border-b border-slate-200 bg-slate-50">
+      <tr style={{ borderBottom: `1px solid ${FT.RULE}`, background: FT.PAPER_MUTED }}>
         {cols.map(({ label, cls }) => (
-          <th key={label} className={`py-2 px-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap text-left ${cls ?? ""}`}>
+          <th key={label} className={cls ?? ""} style={{
+            padding: "8px 10px", fontSize: 11, fontWeight: 700,
+            color: FT.TEXT_MUTED, textTransform: "uppercase",
+            letterSpacing: "0.05em", whiteSpace: "nowrap", textAlign: "left",
+            fontFamily: FT.FONT,
+          }}>
             {label}
           </th>
         ))}
-        <th className="w-9 py-2 px-1" />
+        <th style={{ width: 36, padding: "8px 4px" }} />
       </tr>
     </thead>
   );
@@ -395,7 +418,10 @@ function TH({ cols }: { cols: { label: string; cls?: string }[] }) {
 function DelBtn({ onClick, testId }: { onClick: () => void; testId: string }) {
   return (
     <button type="button" data-testid={testId} onClick={onClick}
-      className="flex items-center justify-center w-7 h-7 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+      className="flex items-center justify-center w-8 h-8 rounded-md transition-colors"
+      style={{ color: FT.RULE, background: "transparent" }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = FT.DANGER; (e.currentTarget as HTMLElement).style.background = "#fef2f2"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = FT.RULE; (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
       <Trash2 className="w-3.5 h-3.5" />
     </button>
   );
@@ -404,25 +430,40 @@ function DelBtn({ onClick, testId }: { onClick: () => void; testId: string }) {
 // ─── Add row button ───────────────────────────────────────────────────────────
 function AddRow({ onClick, label, testId }: { onClick: () => void; label: string; testId: string }) {
   return (
-    <Button data-testid={testId} type="button" variant="outline" size="sm"
-      className="mt-3 gap-1.5 text-xs text-slate-500 border-dashed border-slate-300 hover:border-slate-400 hover:text-slate-700"
-      onClick={onClick}>
+    <button data-testid={testId} type="button"
+      onClick={onClick}
+      style={{
+        marginTop: 12, display: "inline-flex", alignItems: "center", gap: 6,
+        padding: "6px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600,
+        border: `1.5px dashed ${FT.RULE}`, background: "transparent",
+        color: FT.TEXT_MUTED, cursor: "pointer", transition: "all 0.15s",
+        fontFamily: FT.FONT, letterSpacing: "0.02em",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = FT.TEXT_MUTED; (e.currentTarget as HTMLElement).style.color = FT.INK; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = FT.RULE; (e.currentTarget as HTMLElement).style.color = FT.TEXT_MUTED; }}>
       <Plus className="w-3.5 h-3.5" /> {label}
-    </Button>
+    </button>
   );
 }
 
 // ─── Read-only cell display ───────────────────────────────────────────────────
 function ROCell({ children, center }: { children: React.ReactNode; center?: boolean }) {
   return (
-    <div className={`h-8 flex items-center px-2.5 text-xs text-slate-500 bg-slate-50 rounded-md border border-slate-200 select-none ${center ? "justify-center font-semibold text-slate-700" : ""}`}>
+    <div style={{
+      height: 32, display: "flex", alignItems: "center",
+      paddingLeft: 10, paddingRight: 10, fontSize: 13,
+      color: center ? FT.INK : FT.TEXT_MUTED,
+      background: FT.PAPER, borderRadius: 6,
+      border: `1px solid ${FT.RULE}`, userSelect: "none",
+      ...(center ? { justifyContent: "center", fontWeight: 700, fontFamily: FT.FONT } : {}),
+    }}>
       {children}
     </div>
   );
 }
 
 // ─── Transparent input (for table cells) ─────────────────────────────────────
-const cellInputCls = "h-8 text-xs border-transparent bg-transparent hover:border-slate-300 hover:bg-white focus:border-blue-300 focus:bg-white transition-colors";
+const cellInputCls = "h-8 text-[13px] border-transparent bg-transparent hover:border-[#D8D3C4] hover:bg-[#F7F5EF] focus:border-[#E85D04] focus:bg-[#F7F5EF] transition-colors";
 
 // ─── Worker Combobox ──────────────────────────────────────────────────────────
 function WorkerCombobox({
@@ -1379,39 +1420,47 @@ export function NewReportTab({
       )}
 
       {/* ── Top action bar ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
+      <div className="rounded-xl px-5 py-3" style={{ background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}` }}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
 
           {/* Left: actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button data-testid="btn-save-draft"
-              variant="outline" size="sm"
-              className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
+            <button data-testid="btn-save-draft"
               disabled={saveMutation.isPending || isSubmitted}
-              onClick={() => saveMutation.mutate("draft")}>
-              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              onClick={() => saveMutation.mutate("draft")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "0 20px", height: 48, borderRadius: 8, fontSize: 13,
+                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
+                textTransform: "uppercase", cursor: (saveMutation.isPending || isSubmitted) ? "not-allowed" : "pointer",
+                border: `2px solid ${FT.INK}`, background: "transparent", color: FT.INK,
+                transition: "all 0.15s", opacity: (saveMutation.isPending || isSubmitted) ? 0.45 : 1,
+              }}
+              onMouseEnter={e => { if (!saveMutation.isPending && !isSubmitted) { (e.currentTarget as HTMLElement).style.background = FT.INK; (e.currentTarget as HTMLElement).style.color = FT.PAPER; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = FT.INK; }}>
+              {saveMutation.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Save style={{ width: 14, height: 14 }} />}
               {t.newReportSaveDraft}
-            </Button>
+            </button>
 
             <button data-testid="btn-submit-report"
               disabled={saveMutation.isPending || isSubmitted || !canSubmit}
               onClick={() => saveMutation.mutate("submitted")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "8px 20px", borderRadius: 8, fontSize: 13,
-                fontWeight: (isSubmitted || canSubmit) ? 600 : 400,
-                transition: "all 0.15s",
+                padding: "0 24px", height: 48, borderRadius: 8, fontSize: 14,
+                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
+                textTransform: "uppercase", transition: "all 0.15s",
                 cursor: (!canSubmit && !isSubmitted) ? "not-allowed" : "pointer",
-                border: (isSubmitted || canSubmit) ? "1px solid #059669" : "1px solid #e5e7eb",
-                background: isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6",
-                color: (isSubmitted || canSubmit) ? "#ffffff" : "#d1d5db",
-                boxShadow: (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none",
+                border: (isSubmitted || canSubmit) ? `1px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`,
+                background: (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE,
+                color: (isSubmitted || canSubmit) ? "#ffffff" : FT.TEXT_MUTED,
+                boxShadow: (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none",
                 opacity: 1,
               }}
-              onMouseEnter={e => { if (canSubmit || isSubmitted) { e.currentTarget.style.background = "#059669"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(16,185,129,0.4)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6"; e.currentTarget.style.boxShadow = (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none"; }}
-              onMouseDown={e => { if (canSubmit || isSubmitted) e.currentTarget.style.transform = "scale(0.98)"; }}
-              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+              onMouseEnter={e => { if (canSubmit || isSubmitted) { (e.currentTarget as HTMLElement).style.background = "#c44e00"; (e.currentTarget as HTMLElement).style.boxShadow = "0 3px 12px rgba(232,93,4,0.45)"; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE; (e.currentTarget as HTMLElement).style.boxShadow = (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none"; }}
+              onMouseDown={e => { if (canSubmit || isSubmitted) (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
+              onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
               {saveMutation.isPending
                 ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
                 : isSubmitted
@@ -1438,21 +1487,21 @@ export function NewReportTab({
           {/* Right: status */}
           <div className="flex items-center gap-3">
             {submitHelper && (
-              <span className="text-[11px] text-slate-400 italic">{submitHelper}</span>
+              <span style={{ fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{submitHelper}</span>
             )}
-            <div className="w-px h-5 bg-slate-200" />
+            <div style={{ width: 1, height: 20, background: FT.RULE }} />
             <div className="flex flex-col items-end">
-              <Badge variant="outline" className={
-                isSubmitted
-                  ? "text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0.5 px-2.5"
-                  : savedStatus === "draft"
-                  ? "text-[11px] bg-amber-50 text-amber-700 border-amber-200 py-0.5 px-2.5"
-                  : "text-[11px] text-slate-400 border-slate-200 bg-white py-0.5 px-2.5"
-              }>
+              <span style={{
+                fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.04em",
+                textTransform: "uppercase", padding: "2px 10px", borderRadius: 4,
+                background: isSubmitted ? FT.SUCCESS : savedStatus === "draft" ? FT.ACCENT : "transparent",
+                color: (isSubmitted || savedStatus === "draft") ? "#fff" : FT.TEXT_MUTED,
+                border: (isSubmitted || savedStatus === "draft") ? "none" : `1px solid ${FT.RULE}`,
+              }}>
                 {isSubmitted ? t.newReportSubmittedTag : savedStatus === "draft" ? t.newReportDraft : t.newReportUnsaved}
-              </Badge>
+              </span>
               {lastSaved && (
-                <span className="text-[10px] text-slate-400 mt-0.5">{t.newReportLastSaved} {fmtTime(lastSaved)}</span>
+                <span style={{ fontSize: 12, color: FT.TEXT_MUTED, marginTop: 2 }}>{t.newReportLastSaved} {fmtTime(lastSaved)}</span>
               )}
             </div>
           </div>
@@ -1668,7 +1717,8 @@ export function NewReportTab({
       <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}
         headerRight={!isSubmitted ? (
           <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
-            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1 whitespace-nowrap transition-colors"
+            style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 5, background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, color: FT.INK }}
             title={t.newReportCrewImportTitle}>
             <Users className="w-3 h-3" /> {t.newReportCrewImportBtn}
           </button>
@@ -1680,14 +1730,14 @@ export function NewReportTab({
             /* ── Mobile: stacked worker cards ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-manpower">
               {manpower.length === 0 && (
-                <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoWorkers}</div>
+                <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{t.newReportNoWorkers}</div>
               )}
               {manpower.map((row, i) => {
                 const takenIds    = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
                 const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                 const sc = STATUS_COLOR_CFG[row.attendanceStatus] ?? { color: "#374151", bg: "#f9fafb", border: "#e5e7eb" };
                 return (
-                  <div key={row.id} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 12px 10px", background: "#fff", display: "flex", flexDirection: "column", gap: 9 }}>
+                  <div key={row.id} style={{ border: `1.5px solid ${FT.INK}`, borderRadius: 10, padding: "12px 12px 10px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 9 }}>
                     {/* Row 1: Worker + Delete */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1705,7 +1755,8 @@ export function NewReportTab({
                           setManpower(manpower.map((r) => r.id === row.id ? { ...r, attendanceStatus: v, hoursWorked: hrs } : r));
                         }}>
                         <SelectTrigger data-testid={`select-mp-status-${i}`} className="h-9"
-                          style={{ minWidth: 110, padding: "5px 28px 5px 10px", fontSize: 12, fontWeight: 600,
+                          style={{ minWidth: 120, padding: "5px 28px 5px 10px", fontSize: 13, fontWeight: 700,
+                            fontFamily: FT.FONT, letterSpacing: "0.02em", textTransform: "uppercase",
                             color: sc.color, background: sc.bg, border: `1px solid ${sc.border}` }}>
                           <SelectValue />
                         </SelectTrigger>
@@ -1717,8 +1768,8 @@ export function NewReportTab({
                       </Select>
                       {hoursActive && (
                         <div style={{ marginLeft: "auto", display: "flex", alignItems: "baseline", gap: 4 }}>
-                          <span style={{ fontSize: 10, color: "#94a3b8" }}>{t.newReportColHrs}</span>
-                          <span style={{ fontSize: 18, fontWeight: 800, color: "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{row.hoursWorked.toFixed(1)}</span>
+                          <span style={{ fontSize: 11, color: FT.TEXT_MUTED, fontFamily: FT.FONT, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t.newReportColHrs}</span>
+                          <span style={{ fontSize: 22, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>{row.hoursWorked.toFixed(1)}</span>
                         </div>
                       )}
                     </div>
@@ -1780,7 +1831,7 @@ export function NewReportTab({
                   const takenIds    = new Set(manpower.filter((r) => r.id !== row.id).map((r) => r.workerId));
                   const hoursActive = HOURS_COMPUTED.has(row.attendanceStatus);
                   return (
-                    <tr key={row.id} className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40">
+                    <tr key={row.id} className="last:border-0 group" style={{ borderBottom: `1px solid ${FT.RULE}` }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = FT.PAPER_MUTED; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; }}>
                       {/* Worker Name */}
                       <td className="py-1.5 px-2.5">
                         <WorkerCombobox row={row} allWorkers={activeWorkers} takenIds={takenIds}
@@ -1876,30 +1927,30 @@ export function NewReportTab({
             }}>
               {/* Left: label, Present, Exceptions */}
               <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#3d5c42", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: FT.INK, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: FT.FONT }}>
                   {t.newReportMpSummary}
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, marginRight: 0, borderRight: "1px solid #c8d9cc" }}>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>{t.newReportMpPresent}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>{presentCount}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, marginRight: 0, borderRight: `1px solid ${FT.RULE}` }}>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpPresent}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{presentCount}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>{t.newReportMpExceptions}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: exceptionsCount > 0 ? "#d97706" : "#94a3b8", fontVariantNumeric: "tabular-nums" }}>{exceptionsCount}</span>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED }}>{t.newReportMpExceptions}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT }}>{exceptionsCount}</span>
                 </div>
               </div>
               {/* Right: Total Work Hrs, Issues */}
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                  <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>{t.newReportMpTotalHrs}</span>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: exceptionsCount > 0 ? "#d97706" : "#16a34a", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: "nowrap" }}>{t.newReportMpTotalHrs}</span>
+                  <span style={{ fontSize: 22, fontWeight: 800, color: exceptionsCount > 0 ? FT.ACCENT : FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>
                     {totalManhours.toFixed(1)}
                   </span>
                 </div>
                 {exceptionsCount === 0 ? (
-                  <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{t.newReportMpIssuesNone}</span>
+                  <span style={{ fontSize: 13, color: FT.TEXT_MUTED, whiteSpace: "nowrap" }}>{t.newReportMpIssuesNone}</span>
                 ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, background: "#fef3c7", border: "1px solid #fde68a", fontSize: 10, fontWeight: 600, color: "#b45309", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 4, background: FT.ACCENT, fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", fontFamily: FT.FONT, letterSpacing: "0.03em" }}>
                     ⚠ {exceptionsCount} {t.newReportMpFlagged}
                   </span>
                 )}
@@ -2124,8 +2175,8 @@ export function NewReportTab({
 
                       {/* Col B: 작업사진 — 2×2 photo grid with per-photo Work Description / Memo */}
                       <div style={{ padding: isMobile ? "0 0 12px 0" : "0 16px 0 0", borderRight: isMobile ? "none" : "1px solid #f5f5f5", borderBottom: isMobile ? "1px solid #f5f5f5" : "none" }}>
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-                          {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: "#818cf8", marginLeft: 4 }}>({row.photoFiles.length})</span>}
+                        <p style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                          {t.newReportWorkPhotos}{row.photoFiles.length > 0 && <span style={{ color: FT.ACCENT, marginLeft: 4 }}>({row.photoFiles.length})</span>}
                         </p>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                           {([[0, 1], [2, 3]] as [number, number][]).map(([a, b]) => {
@@ -2170,16 +2221,16 @@ export function NewReportTab({
                                       <button key={slotIdx} type="button"
                                         onClick={() => { setPhotoTaskId(row.id); photoInputRef.current?.click(); }}
                                         style={{
-                                          border: "1.5px dashed #e0e0e0", borderRadius: 10,
+                                          border: `1.5px dashed ${FT.RULE}`, borderRadius: 10,
                                           aspectRatio: "1", display: "flex", flexDirection: "column",
                                           alignItems: "center", justifyContent: "center",
-                                          background: "#fafafa", cursor: "pointer",
+                                          background: FT.PAPER, cursor: "pointer",
                                           transition: "border-color 0.15s, background 0.15s",
                                         }}
-                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#818cf8"; (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
-                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#e0e0e0"; (e.currentTarget as HTMLElement).style.background = "#fafafa"; }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
-                                        <span style={{ fontSize: 11, color: "#ccc" }}>{t.newReportAddPhoto}</span>
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = FT.ACCENT; (e.currentTarget as HTMLElement).style.background = FT.PAPER_MUTED; }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = FT.RULE; (e.currentTarget as HTMLElement).style.background = FT.PAPER; }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth="1.5" style={{ marginBottom: 4 }}><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+                                        <span style={{ fontSize: 11, color: FT.TEXT_MUTED }}>{t.newReportAddPhoto}</span>
                                       </button>
                                     );
                                   })}
@@ -2192,7 +2243,7 @@ export function NewReportTab({
                                       if (!photo) return <div key={slotIdx} />;
                                       return (
                                         <div key={slotIdx} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoWorkDesc}</p>
+                                          <p style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, color: FT.TEXT_MUTED, letterSpacing: "0.04em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoWorkDesc}</p>
                                           <input
                                             type="text"
                                             placeholder={t.newReportPhotoWorkDescPh}
@@ -2200,14 +2251,14 @@ export function NewReportTab({
                                             onChange={e => setTasks(tasks.map(r => r.id === row.id
                                               ? { ...r, photoFiles: r.photoFiles.map((pf, i) => i === slotIdx ? { ...pf, workDescription: e.target.value } : pf) } : r))}
                                             style={{
-                                              border: "1px solid #ebebeb", borderRadius: 6, padding: "4px 8px",
-                                              fontSize: 11, width: "100%", background: "#fff", outline: "none",
+                                              border: `1px solid ${FT.RULE}`, borderRadius: 6, padding: "4px 8px",
+                                              fontSize: 13, width: "100%", background: FT.PAPER, outline: "none",
                                               transition: "border-color 0.15s",
                                             }}
-                                            onFocus={e => (e.currentTarget.style.borderColor = "#818cf8")}
-                                            onBlur={e => (e.currentTarget.style.borderColor = "#ebebeb")}
+                                            onFocus={e => (e.currentTarget.style.borderColor = FT.ACCENT)}
+                                            onBlur={e => (e.currentTarget.style.borderColor = FT.RULE)}
                                           />
-                                          <p style={{ fontSize: 8.5, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoMemo}</p>
+                                          <p style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, color: FT.TEXT_MUTED, letterSpacing: "0.04em", textTransform: "uppercase", margin: 0 }}>{t.newReportPhotoMemo}</p>
                                           <textarea
                                             placeholder={t.newReportPhotoMemoPh}
                                             value={photo.memo}
@@ -2236,7 +2287,7 @@ export function NewReportTab({
                       {/* Col C: Notes */}
                       <div style={{ paddingLeft: 16 }}>
                         {/* Notes */}
-                        <p style={{ fontSize: 9, color: "#ccc", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportNotes}</p>
+                        <p style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 6 }}>{t.newReportNotes}</p>
                         <Textarea value={row.detailNotes}
                           onChange={e => setTasks(tasks.map(r => r.id === row.id ? { ...r, detailNotes: e.target.value } : r))}
                           placeholder={t.newReportTaskNotesPh}
@@ -2292,7 +2343,8 @@ export function NewReportTab({
       <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}
         headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
-            className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1 whitespace-nowrap transition-colors"
+            style={{ fontSize: 11, fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 5, background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, color: FT.INK }}
             title={t.newReportScopeImportTitle}>
             <Package className="w-3 h-3" /> {t.newReportScopeImportBtn}
           </button>
@@ -2301,7 +2353,7 @@ export function NewReportTab({
           /* ── Mobile: material cards ── */
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-materials">
             {materials.length === 0 && (
-              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoMaterials}</div>
+              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{t.newReportNoMaterials}</div>
             )}
             {materials.map((row, i) => {
               const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
@@ -2309,7 +2361,7 @@ export function NewReportTab({
               const isExtra = row.scopeItemId === null && row.description.trim() !== "";
               return (
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: isExtra ? "1px solid #fde68a" : "1px solid #e8e8e8", borderLeft: isExtra ? "3px solid #f59e0b" : "1px solid #e8e8e8", borderRadius: 10, padding: "12px 12px 10px", background: isExtra ? "rgba(255,251,235,0.5)" : "#fff", display: "flex", flexDirection: "column", gap: 10 }}>
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 10, padding: "12px 12px 10px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 10 }}>
                   {/* Row 1: Photo + Name/badges + Delete */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     <div style={{ flexShrink: 0 }}>
@@ -2337,7 +2389,7 @@ export function NewReportTab({
                           <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px" }}>{t.newReportInv}</span>
                         )}
                         {isExtra && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px" }}>{t.newReportMaterialExtraLabel}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "1px 6px", fontFamily: FT.FONT, letterSpacing: "0.02em" }}>{t.newReportMaterialExtraLabel}</span>
                         )}
                       </div>
                     </div>
@@ -2349,7 +2401,7 @@ export function NewReportTab({
                   </div>
                   {/* Row 2: Spec */}
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportSpec}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSpec}</div>
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder="—"
@@ -2358,14 +2410,14 @@ export function NewReportTab({
                   {/* Row 3: Qty + Unit */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 8, alignItems: "end" }}>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColQty}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColQty}</div>
                       <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
                         onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
                         onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
                         className="h-10 text-sm text-center tabular-nums" />
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColUnit}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColUnit}</div>
                       {row.inventoryItemId ? (
                         <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#666", border: "1px solid #f0f0f0", borderRadius: 7 }}>
                           <span data-testid={`input-mat-unit-${i}`}>{row.unit || "EA"}</span>
@@ -2395,7 +2447,7 @@ export function NewReportTab({
               <col style={{ width: 32 }} />
             </colgroup>
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr style={{ borderBottom: `1px solid ${FT.RULE}`, background: FT.PAPER_MUTED }}>
                 <th className="py-2 px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap select-none" style={{ position: "relative" }}>
                   {t.newReportPhoto}
                   <div onMouseDown={startMatColDrag("photo")} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 6, cursor: "col-resize" }} />
@@ -2419,8 +2471,8 @@ export function NewReportTab({
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 return (
                   <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                    className="border-b border-slate-100 last:border-0 group hover:bg-slate-50/40"
-                    style={isExtra ? { borderLeft: "3px solid #f59e0b", background: "rgba(255,251,235,0.5)" } : undefined}>
+                    className="border-b last:border-0 group"
+                    style={{ borderColor: FT.RULE, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : undefined }}>
                     {/* PHOTO column */}
                     <td className="py-1.5 px-0.5 text-center">
                       {imgUrl ? (
@@ -2455,7 +2507,7 @@ export function NewReportTab({
                           <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>{t.newReportInv}</span>
                         )}
                         {isExtra && (
-                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fff7ed", border: "1px solid #fcd34d", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>{t.newReportMaterialExtraLabel}</span>
+                          <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "1px 6px", whiteSpace: "nowrap", fontFamily: FT.FONT, letterSpacing: "0.02em" }}>{t.newReportMaterialExtraLabel}</span>
                         )}
                       </div>
                     </td>
@@ -2542,12 +2594,12 @@ export function NewReportTab({
           /* ── Mobile: stacked equipment cards ── */
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 4px" }} data-testid="table-equipment">
             {equipment.length === 0 && (
-              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 12, color: "#ccc", fontStyle: "italic" }}>{t.newReportNoEquipment}</div>
+              <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{t.newReportNoEquipment}</div>
             )}
             {equipment.map((row, i) => {
               const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
-              const cardBorderColor = row.eqStatus === "broken" ? "#fecdd3" : row.eqStatus === "partial" ? "#fde68a" : "#e5e7eb";
-              const cardBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : "#fff";
+              const cardBorderColor = row.eqStatus === "broken" ? FT.DANGER : row.eqStatus === "partial" ? FT.ACCENT : FT.RULE;
+              const cardBg = FT.PAPER;
               const visibleTags = row.eqStatus === "broken"
                 ? ["repair", "return"]
                 : row.eqStatus === "partial"
@@ -2559,7 +2611,7 @@ export function NewReportTab({
                   {/* Row 1: Name + Status badge + Delete */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColName}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColName}</div>
                       <Input data-testid={`input-eq-name-${i}`} value={row.name}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, name: e.target.value } : r))}
                         className="h-9 text-sm w-full" placeholder={t.newReportEqNamePh} />
@@ -2571,13 +2623,13 @@ export function NewReportTab({
                   {/* Row 2: Size + Brand */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportSize}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSize}</div>
                       <Input data-testid={`input-eq-size-${i}`} value={row.size}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, size: e.target.value } : r))}
                         className="h-9 text-sm text-center w-full" placeholder={t.newReportSizePh} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportBrand}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportBrand}</div>
                       <Input data-testid={`input-eq-brand-${i}`} value={row.brand}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
                         className="h-9 text-sm w-full" placeholder={t.newReportEqBrandPh} />
@@ -2586,19 +2638,19 @@ export function NewReportTab({
                   {/* Row 3: Qty + Unit + Hours */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 1fr", gap: 8 }}>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColQty}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColQty}</div>
                       <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, qty: Number(e.target.value) } : r))}
                         className="h-9 text-sm text-center tabular-nums w-full" />
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColUnit}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColUnit}</div>
                       <Input data-testid={`input-eq-unit-${i}`} value={row.unit}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
                         className="h-9 text-sm text-center w-full" placeholder={t.newReportUnitEAPh} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportEqColHours}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColHours}</div>
                       <Input data-testid={`input-eq-hours-${i}`} type="number" min={0} step={0.5} value={row.hours}
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
                         className="h-9 text-sm text-center tabular-nums w-full" />
@@ -2606,7 +2658,7 @@ export function NewReportTab({
                   </div>
                   {/* Row 4: Status select + action tags */}
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportStatus}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportStatus}</div>
                     <div style={{ position: "relative", marginBottom: visibleTags.length > 0 ? 8 : 0 }}>
                       <select
                         data-testid={`select-eq-status-${i}`}
@@ -2664,7 +2716,7 @@ export function NewReportTab({
                   </div>
                   {/* Row 5: Notes */}
                   <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{t.newReportColNotes}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColNotes}</div>
                     <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
                       className="h-9 text-sm w-full" placeholder={t.newReportOptional} />
@@ -2693,14 +2745,14 @@ export function NewReportTab({
               )}
               {equipment.map((row, i) => {
                 const eqCfg = EQ_STATUS_CFG[row.eqStatus] ?? EQ_STATUS_CFG.operational;
-                const rowBg = row.eqStatus === "broken" ? "#fff8f8" : row.eqStatus === "partial" ? "#fffdf4" : undefined;
+                const rowBg = undefined;
                 const visibleTags = row.eqStatus === "broken"
                   ? ["repair", "return"]
                   : row.eqStatus === "partial"
                   ? ["repair", "return", "pending"]
                   : [];
                 return (
-                  <tr key={row.id} className="border-b border-slate-100 last:border-0 group" style={rowBg ? { background: rowBg } : undefined}>
+                  <tr key={row.id} className="last:border-0 group" style={{ borderBottom: `1px solid ${FT.RULE}` }}>
                     {/* SIZE */}
                     <td className="py-1.5 px-2.5">
                       <Input data-testid={`input-eq-size-${i}`} value={row.size}
@@ -2879,35 +2931,44 @@ export function NewReportTab({
       </div>{/* end sections lock wrapper */}
 
       {/* ── Bottom action bar ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3">
+      <div className="rounded-xl px-5 py-3" style={{ background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}` }}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <Button data-testid="btn-save-draft-bottom" variant="outline" size="sm"
-              className="gap-2 h-9 text-slate-600 border-slate-300 hover:bg-slate-50"
+            <button data-testid="btn-save-draft-bottom"
               disabled={saveMutation.isPending || isSubmitted}
-              onClick={() => saveMutation.mutate("draft")}>
-              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              onClick={() => saveMutation.mutate("draft")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "0 20px", height: 48, borderRadius: 8, fontSize: 13,
+                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
+                textTransform: "uppercase", cursor: (saveMutation.isPending || isSubmitted) ? "not-allowed" : "pointer",
+                border: `2px solid ${FT.INK}`, background: "transparent", color: FT.INK,
+                transition: "all 0.15s", opacity: (saveMutation.isPending || isSubmitted) ? 0.45 : 1,
+              }}
+              onMouseEnter={e => { if (!saveMutation.isPending && !isSubmitted) { (e.currentTarget as HTMLElement).style.background = FT.INK; (e.currentTarget as HTMLElement).style.color = FT.PAPER; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = FT.INK; }}>
+              {saveMutation.isPending ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Save style={{ width: 14, height: 14 }} />}
               {t.newReportSaveDraft}
-            </Button>
+            </button>
             <button data-testid="btn-submit-report-bottom"
               disabled={saveMutation.isPending || isSubmitted || !canSubmit}
               onClick={() => saveMutation.mutate("submitted")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "8px 20px", borderRadius: 8, fontSize: 13,
-                fontWeight: (isSubmitted || canSubmit) ? 600 : 400,
-                transition: "all 0.15s",
+                padding: "0 24px", height: 48, borderRadius: 8, fontSize: 14,
+                fontWeight: 700, fontFamily: FT.FONT, letterSpacing: "0.03em",
+                textTransform: "uppercase", transition: "all 0.15s",
                 cursor: (!canSubmit && !isSubmitted) ? "not-allowed" : "pointer",
-                border: (isSubmitted || canSubmit) ? "1px solid #059669" : "1px solid #e5e7eb",
-                background: isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6",
-                color: (isSubmitted || canSubmit) ? "#ffffff" : "#d1d5db",
-                boxShadow: (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none",
+                border: (isSubmitted || canSubmit) ? `1px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`,
+                background: (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE,
+                color: (isSubmitted || canSubmit) ? "#ffffff" : FT.TEXT_MUTED,
+                boxShadow: (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none",
                 opacity: 1,
               }}
-              onMouseEnter={e => { if (canSubmit || isSubmitted) { e.currentTarget.style.background = "#059669"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(16,185,129,0.4)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = isSubmitted ? "#059669" : canSubmit ? "#10b981" : "#f3f4f6"; e.currentTarget.style.boxShadow = (canSubmit || isSubmitted) ? "0 1px 4px rgba(16,185,129,0.3)" : "none"; }}
-              onMouseDown={e => { if (canSubmit || isSubmitted) e.currentTarget.style.transform = "scale(0.98)"; }}
-              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+              onMouseEnter={e => { if (canSubmit || isSubmitted) { (e.currentTarget as HTMLElement).style.background = "#c44e00"; (e.currentTarget as HTMLElement).style.boxShadow = "0 3px 12px rgba(232,93,4,0.45)"; } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = (isSubmitted || canSubmit) ? FT.ACCENT : FT.RULE; (e.currentTarget as HTMLElement).style.boxShadow = (canSubmit || isSubmitted) ? `0 2px 8px rgba(232,93,4,0.3)` : "none"; }}
+              onMouseDown={e => { if (canSubmit || isSubmitted) (e.currentTarget as HTMLElement).style.transform = "scale(0.98)"; }}
+              onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
               {saveMutation.isPending
                 ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
                 : isSubmitted

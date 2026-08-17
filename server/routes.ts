@@ -88,6 +88,8 @@ const requireManager     = (req: any, res: any, next: any) => requireRole(["admi
 const requireManagerRead = (req: any, res: any, next: any) => requireRole(["admin", "manager", "manager_viewer"], req, res, next);
 // Field operations (movements, transactions, drafts)
 const requireStaff       = (req: any, res: any, next: any) => requireRole(["admin", "manager", "staff"], req, res, next);
+// Daily Report read access — manager_viewer (read-only) + staff (field workers) both need project/crew data
+const requireStaffRead   = (req: any, res: any, next: any) => requireRole(["admin", "manager", "manager_viewer", "staff"], req, res, next);
 
 // ─── Route param helpers ──────────────────────────────────────────────────────
 function parseIntParam(val: any, name: string, res: any): number | null {
@@ -500,11 +502,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Projects ───────────────────────────────────────────────────────────────
-  app.get("/api/projects", isAuthenticated, requireManagerRead, async (_req, res) => {
+  app.get("/api/projects", isAuthenticated, requireStaffRead, async (_req, res) => {
     res.json(await storage.getProjects());
   });
 
-  app.get("/api/projects/:id", isAuthenticated, requireManagerRead, async (req, res) => {
+  app.get("/api/projects/:id", isAuthenticated, requireStaffRead, async (req, res) => {
     const data = await storage.getProject(Number(req.params.id));
     if (!data) return res.status(404).json({ message: "Not found" });
     res.json(data);
@@ -4164,7 +4166,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Daily Reports ─────────────────────────────────────────────────────────
 
-  app.get("/api/daily-reports", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/daily-reports", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const projectId = parseInt(req.query.projectId as string);
       if (isNaN(projectId)) return res.status(400).json({ message: "projectId is required" });
@@ -4175,7 +4177,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/daily-reports-summary", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/daily-reports-summary", isAuthenticated, requireStaff, async (_req, res) => {
     try {
       const summary = await storage.getDailyReportSummary();
       res.json(summary);
@@ -4184,7 +4186,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/daily-reports/:id", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
@@ -4196,7 +4198,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post("/api/daily-reports", isAuthenticated, requireManager, async (req, res) => {
+  app.post("/api/daily-reports", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const { projectId, reportDate, reportNumber, preparedBy, status, formData } = req.body;
       if (!projectId || !reportDate) {
@@ -4217,7 +4219,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.patch("/api/daily-reports/:id", isAuthenticated, requireManager, async (req, res) => {
+  app.patch("/api/daily-reports/:id", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Invalid report ID" });
@@ -4249,7 +4251,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Workers ─────────────────────────────────────────────────────────────────
 
-  app.get("/api/workers", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/workers", isAuthenticated, requireStaff, async (_req, res) => {
     res.json(await storage.getWorkers());
   });
 
@@ -4351,7 +4353,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ─── Project Scope Items ─────────────────────────────────────────────────────
 
-  app.get("/api/projects/:id/progress", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/projects/:id/progress", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
@@ -4363,7 +4365,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // ─── Project crew assignments (for daily report pre-population) ─────────────
-  app.get("/api/projects/:id/crew-assignments", isAuthenticated, requireManagerRead, async (req, res) => {
+  app.get("/api/projects/:id/crew-assignments", isAuthenticated, requireStaffRead, async (req, res) => {
     try {
       const projectId = parseIntParam(req.params.id, "id", res);
       if (projectId === null) return;
@@ -4393,7 +4395,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.get("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
+  app.get("/api/projects/:id/scope-items", isAuthenticated, requireStaff, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
@@ -6105,7 +6107,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // GET /api/jibble/active — currently punched-in workers (with local worker info)
-  app.get("/api/jibble/active", isAuthenticated, requireManager, async (_req, res) => {
+  app.get("/api/jibble/active", isAuthenticated, requireStaff, async (_req, res) => {
     try {
       const cacheRaw = await storage.getAppSetting("jibble_active_cache");
       const entries = JSON.parse(cacheRaw ?? "[]");

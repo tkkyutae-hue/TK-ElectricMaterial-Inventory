@@ -123,21 +123,21 @@ function DailyReportRouter() {
 
 function CrewDispatchRouter() {
   return (
-    <ManagerGuard>
+    <CrewDispatchGuard>
       <DailyReportLayout backTo="/home" backLabel="Home">
         <CrewDispatch />
       </DailyReportLayout>
-    </ManagerGuard>
+    </CrewDispatchGuard>
   );
 }
 
 function CrewDispatchAssignmentRouter() {
   return (
-    <ManagerGuard>
+    <CrewDispatchGuard>
       <DailyReportLayout backTo="/crew-dispatch" backLabel="Crew Dispatch">
         <CrewDispatchAssignment />
       </DailyReportLayout>
-    </ManagerGuard>
+    </CrewDispatchGuard>
   );
 }
 
@@ -151,7 +151,7 @@ function DailyReportWorkspaceRouter() {
   );
 }
 
-// Allows admin + manager into Daily Report; staff/viewer/manager_viewer are redirected to /home
+// Allows admin + manager + staff into Daily Report; viewer/manager_viewer are redirected to /home
 function ManagerGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, canAccessDailyReport } = useAuth();
 
@@ -165,6 +165,23 @@ function ManagerGuard({ children }: { children: React.ReactNode }) {
 
   if (!user) return <Redirect to="/login" />;
   if (!canAccessDailyReport) return <Redirect to="/home" />;
+  return <>{children}</>;
+}
+
+// Allows admin + manager only into Crew Dispatch; staff/viewer/manager_viewer are redirected to /home
+function CrewDispatchGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, isManagerOrAbove } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-700" />
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (!isManagerOrAbove) return <Redirect to="/home" />;
   return <>{children}</>;
 }
 

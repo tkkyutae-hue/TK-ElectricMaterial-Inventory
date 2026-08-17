@@ -37,8 +37,8 @@ export function useAuth() {
     isAdminRole: role === "admin",
     // Admin Mode access — admin + manager + manager_viewer (read-only for manager_viewer)
     canAccessAdminMode: role === "admin" || role === "manager" || role === "manager_viewer",
-    // Daily Report access — admin + manager only (manager_viewer excluded)
-    canAccessDailyReport: role === "admin" || role === "manager",
+    // Daily Report access — admin + manager + staff (manager_viewer excluded)
+    canAccessDailyReport: role === "admin" || role === "manager" || role === "staff",
     // Read-only admin mode (no edit/add/delete buttons shown)
     isManagerViewer: role === "manager_viewer",
     // Can perform field movements — staff, manager, admin (not viewer or manager_viewer)

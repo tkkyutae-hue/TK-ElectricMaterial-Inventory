@@ -1,0 +1,124 @@
+Daily Report (NewReportTab) — Visual design pass: "field ticket" restyle.
+DESIGN ONLY. NO functionality, data, or logic changes.
+
+Goal:
+Replace the current soft pastel admin-dashboard look (tiny gray labels,
+pastel-50 section washes, thin light borders) with a "field ticket"
+visual identity: warm paper background, ink-charcoal text, one safety-
+orange signature accent, TK green for success/completed state, bold
+condensed stamped section headers, solid-fill status chips instead of
+pastel badges, and bigger touch targets. Every field, calculation,
+validation, save/submit flow, auto-populate (Scope Items / Crew
+Dispatch import), and combobox behavior must stay pixel-for-pixel
+identical in function — this is a restyle, not a rebuild.
+
+Files to inspect:
+- client/src/pages/daily-report/NewReportTab.tsx (all restyling happens
+  here — Section, SectionNavigator, FL, TH, DelBtn, AddRow, ROCell,
+  TASK_STATUS_CFG, TRADE_COLOR_CFG, STATUS_COLOR_CFG, and the action
+  bar at the bottom)
+- If it keeps the diff cleaner, add a small new file
+  client/src/pages/daily-report/fieldTicketTheme.ts exporting the
+  color/font constants below, and import from there.
+
+Do not touch:
+- Any useState/useEffect/useMutation/useQuery logic
+- Auto-populate logic from Scope Items or Crew Dispatch
+- Validation rules, submit/save handlers, API calls, report locking
+  when isSubmitted
+- DailyReportWorkspace.tsx, PdfViewer.tsx, drawing board upload logic
+- Crew Dispatch Assignment page (separate, out of scope)
+- server/, shared/schema.ts
+- Field order, which fields are shown/hidden, any copy/label text
+  content (only size/weight/color changes, not wording)
+
+Design tokens to introduce:
+  INK          #1C1C1E   primary text / borders on emphasis elements
+  PAPER        #F7F5EF   page / card background (replaces white/slate-50)
+  PAPER_MUTED  #EFEBDF   nav bar + bottom action bar background
+  RULE         #D8D3C4   default hairline borders (replaces slate-200)
+  TEXT_MUTED   #6B675C   secondary/label text (replaces slate-400/#ccc/#bbb)
+  ACCENT       #E85D04   signature accent — active nav state, section
+                         rule, "in progress" status, primary CTA
+  SUCCESS      #3D8B37   "completed" / "attend" / "operational" status
+  DANGER       #A3321C   "blocked" / "delayed" / "broken" status
+
+Status color mapping (apply everywhere a status pill/badge exists —
+TASK_STATUS_CFG, STATUS_COLOR_CFG, equipment eqStatus, attendance
+status — replace pastel bg+colored-text badges with solid fill +
+white text):
+  not-started      → outline only, INK text, no fill
+  in-progress / attend / operational → solid ACCENT or SUCCESS fill
+    (attend/operational = SUCCESS, in-progress = ACCENT), white text
+  completed         → solid SUCCESS fill, white text
+  delayed / blocked / broken → solid DANGER fill, white text
+
+Required changes:
+
+1. Typography
+   - Import 'Barlow Condensed' (weights 600/700/800) — check if it's
+     already loaded elsewhere in the app (it's used in Field Mode)
+     before adding a duplicate font import.
+   - Use Barlow Condensed, bold, uppercase, letter-spacing 0.03–0.04em
+     for: section titles, section number badges, nav segment labels,
+     big numeric readouts (hours worked, quantities), button labels.
+   - Raise all other text: labels currently 9–11px → minimum 13px;
+     primary field values currently 12–13px → 15–16px. Nothing on the
+     page should render below 11px.
+   - Numeric "read at a glance" values (hoursWorked, qty) get
+     font-variant-numeric: tabular-nums, Barlow Condensed, ~20–24px.
+
+2. Section header (Section component, ~line 322)
+   - Replace the small circle number badge with a 30×30px square
+     badge: 2px solid INK border, Barlow Condensed bold number inside.
+   - Replace the colored icon-chip background (bg-blue-50 etc.) with a
+     plain 3px solid ACCENT rule directly under the header row.
+   - Section title: Barlow Condensed 800, uppercase, 17–18px, INK.
+
+3. Section navigator (SectionNavigator, ~line 231)
+   - Replace the small pill/icon buttons with a segmented stepper:
+     active segment = solid INK background + PAPER text; inactive
+     segments = TEXT_MUTED number + label, no border, no pill shape.
+   - Increase each segment's height so it's a real touch target
+     (current padding is 6px 10px — too small).
+
+4. Status chips/badges — everywhere (TASK_STATUS_CFG badgeBg/badgeBorder/
+   badgeText, STATUS_COLOR_CFG, attendance status Select trigger colors,
+   equipment eqStatus tags) — replace pastel background + tinted text
+   with the solid-fill mapping above. Keep the text label inside the
+   chip (don't rely on color alone).
+
+5. Cards/rows (mobile manpower cards, material cards, equipment rows)
+   - Background PAPER or white, 1px solid RULE border, 10px radius.
+   - The manpower worker card gets a heavier 1.5–2px solid INK border
+     (it's the "primary" card on that section).
+   - Materials rows added outside Scope Items (scopeItemId === null,
+     currently the amber "EXTRA" style) — keep a left 3px ACCENT
+     stripe + a small ACCENT-outlined "Extra" tag, drop the amber
+     wash background.
+
+6. Buttons / action bar
+   - Bottom action bar background PAPER_MUTED, border-top RULE.
+   - "Submit" — solid ACCENT fill, white Barlow Condensed bold label,
+     48–50px height, 10px radius.
+   - "Save Draft" — INK 2px outline, transparent background, same
+     height.
+   - "Add row" / "Add photo" ghost buttons — dashed RULE/TEXT_MUTED
+     border, no fill.
+
+7. Desktop (non-mobile) table view — keep the table structure exactly
+   as-is (do not switch it to cards); only update its colors/fonts to
+   the same token set so desktop and mobile feel like one system.
+
+8. Background — replace white/slate-50 page and section backgrounds
+   with PAPER (#F7F5EF).
+
+Verification:
+- Creating, editing, saving a draft, and submitting a report all work
+  exactly as before — no behavior change.
+- No text anywhere renders below 11px; primary field values are
+  ≥15px.
+- Every status chip still shows a text label, not color alone.
+- Desktop table view and mobile card view both reflect the new tokens.
+- No new dependencies beyond the Barlow Condensed font (skip if
+  already loaded app-wide).

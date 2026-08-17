@@ -932,7 +932,7 @@ function ProjectCardView({
                                   }`}
                                   onClick={() => { if (!isDragActive) setExpandedId(isExpanded ? null : p.id); }}
                                 >
-                                    <CardContent className="px-3 py-3 relative">
+                                    <CardContent className="px-3 py-3 relative overflow-hidden">
                                       {/* Drop hint overlay */}
                                       {isDragActive && isOver && (
                                         <div className="absolute inset-0 rounded-lg bg-blue-50/70 flex items-center justify-center z-10 pointer-events-none">
@@ -940,12 +940,12 @@ function ProjectCardView({
                                         </div>
                                       )}
                                       {/* Row 1: PO# · Status badge · Worker count · Chevron */}
-                                      <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                                      <div className="flex items-center gap-1 mb-1.5 w-full min-w-0 overflow-hidden">
                                         {p.poNumber && (
-                                          <span className="text-[10px] font-mono text-slate-400 shrink-0 truncate max-w-[80px]">{p.poNumber}</span>
+                                          <span className="text-[10px] font-mono text-slate-400 shrink truncate min-w-0 max-w-[72px]">{p.poNumber}</span>
                                         )}
                                         <span
-                                          className="text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0"
+                                          className="text-[10px] font-bold px-1.5 py-0.5 rounded truncate shrink min-w-0 max-w-[90px]"
                                           style={{ backgroundColor: sc.bg, color: sc.text }}
                                         >
                                           {cardStatusLabel(p)}

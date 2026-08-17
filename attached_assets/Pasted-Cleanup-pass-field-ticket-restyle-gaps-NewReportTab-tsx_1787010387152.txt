@@ -1,0 +1,80 @@
+Cleanup pass — field ticket restyle gaps
+(NewReportTab.tsx + DailyReport.tsx)
+DESIGN ONLY. Fixes to the previous two restyle passes — no new
+functionality, no logic changes.
+
+Files to inspect:
+- client/src/pages/DailyReport.tsx
+- client/src/pages/daily-report/NewReportTab.tsx
+- client/src/lib/i18n.ts (only the label strings mentioned in #1, if
+  a translation needs shortening — do not touch any other string)
+
+Do not touch:
+- Any state/query/mutation logic, validation, save/submit flow
+- CustomerGroup collapse logic, search/filter logic
+- Anything not explicitly listed below
+
+Fixes required:
+
+1. [DailyReport.tsx] KPI stat card labels truncate in the compact
+   3-column layout — visible in the Spanish locale as "PROYECTOS..."
+   on all three cards, making them indistinguishable without reading
+   the number/border color. Fix by either:
+   (a) reducing label font to 10px with tighter letter-spacing and
+       allowing 2-line wrap (`white-space: normal; line-height:1.2`)
+       instead of single-line truncation, or
+   (b) shortening the es/other long locale strings for these three
+       specific KPI labels only (check i18n.ts keys used by
+       dailyReportTotalProjects / dailyReportActiveProjects /
+       dailyReportCompletedProjects).
+   Pick whichever keeps all three labels fully readable at the
+   current card width — don't widen the cards back out.
+
+2. [DailyReport.tsx] "Lista de proyectos" section icon and the
+   CustomerGroup header row — still on the old blue/lavender pastel
+   background. Update to PAPER_MUTED (#EFEBDF) background / RULE
+   (#D8D3C4) border for the group header, and INK/TEXT_MUTED for the
+   icon — same as the rest of the DailyReport.tsx pass. Leave the
+   per-customer left-border accent color as-is (that's meaningful
+   grouping, not decorative).
+
+3. [NewReportTab.tsx] General Info section — the three info rows
+   (project location / owner-manager / PO number) are still on old
+   pastel backgrounds (light blue / light purple / light yellow with
+   colored icons). Restyle to match the rest of the section: white/
+   PAPER card, 1px solid RULE border, INK text, TEXT_MUTED icon (no
+   colored fill background).
+
+4. [NewReportTab.tsx] Tasks section — drawing upload dropzone is
+   still purple/violet pastel (background + icon), clashing with the
+   rest of the page. Restyle to the same dashed ghost style already
+   used for "Add photo": 1.5px dashed RULE border, transparent
+   background, TEXT_MUTED icon/text, no purple anywhere.
+
+5. [NewReportTab.tsx] "+ Subir plano" button — currently a solid
+   green outline button. Change to the same plain dashed ghost style
+   as other "Add" buttons (dashed RULE border, TEXT_MUTED text, no
+   color fill) — it shouldn't look like a status/success action.
+
+6. [NewReportTab.tsx] Personnel section "RESUMEN" summary box —
+   currently a light green pastel wash. Change the box background to
+   PAPER_MUTED or white with a RULE border (no color wash); keep the
+   individual numbers (Horas totales, etc.) in their semantic color
+   (SUCCESS green) but don't tint the whole box.
+
+7. [NewReportTab.tsx] Personnel cards — the "HRS" value is currently
+   rendered in green (matching the ATTEND chip). Change it to ACCENT
+   orange (#E85D04) — HRS is a neutral read-at-a-glance number, not a
+   status, and should use the same treatment as other big numeric
+   readouts (Manpower hours on the desktop table, quantities in
+   Materials).
+
+Verification:
+- Re-screenshot DailyReport.tsx in the Spanish locale — all three KPI
+  labels fully readable, no truncation.
+- No pastel (light blue/purple/yellow/green) backgrounds remain
+  anywhere in NewReportTab.tsx or DailyReport.tsx except where
+  explicitly kept (per-customer group accent border).
+- HRS numbers render in ACCENT orange, not green.
+- No functional regression — General Info fields, drawing upload,
+  personnel summary calculations all behave exactly as before.

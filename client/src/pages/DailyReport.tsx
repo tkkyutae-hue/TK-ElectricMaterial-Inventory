@@ -120,7 +120,7 @@ function KpiCard({ label, value, ruleColor, valueColor }: {
     >
       <div className="px-3 py-2.5">
         <p
-          className="text-[11px] uppercase tracking-widest font-semibold truncate"
+          className="text-[10px] uppercase tracking-tight font-semibold leading-tight"
           style={{ color: FT.TEXT_MUTED }}
         >
           {label}
@@ -562,8 +562,8 @@ export default function DailyReport() {
         {/* Section header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50">
-              <Briefcase className="w-4 h-4 text-blue-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: FT.PAPER_MUTED }}>
+              <Briefcase className="w-4 h-4" style={{ color: FT.TEXT_MUTED }} />
             </div>
             <div>
               <h2 className="text-base font-semibold text-slate-800 leading-tight">{t.dailyReportProjectList}</h2>
@@ -704,7 +704,7 @@ export default function DailyReport() {
                   <Users className="w-3.5 h-3.5" style={{ color: FT.ACCENT }} />
                 </span>
                 <span className="text-sm font-semibold" style={{ color: FT.INK }}>
-                  {isSelfFilterActive ? "오늘 내 배치 프로젝트" : "오늘 배치된 프로젝트"}
+                  {isSelfFilterActive ? t.dailyReportMyProjects : t.dailyReportTodayProjects}
                 </span>
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: FT.ACCENT, color: "#fff" }}>{assignedProjects.length}</span>
               </div>
@@ -727,15 +727,18 @@ export default function DailyReport() {
                 <button
                   type="button"
                   onClick={() => setOthersCollapsed((v) => !v)}
-                  className="w-full flex items-center h-9 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-left select-none"
+                  className="w-full flex items-center h-9 px-3 rounded-lg text-left select-none transition-colors"
+                  style={{ border: `1px solid ${FT.RULE}`, backgroundColor: FT.PAPER_MUTED }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = FT.RULE; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = FT.PAPER_MUTED; }}
                 >
                   <div className="w-5 flex items-center justify-center flex-shrink-0 mr-2">
                     {othersCollapsed
-                      ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                      : <ChevronDown  className="w-3.5 h-3.5 text-slate-400" />}
+                      ? <ChevronRight className="w-3.5 h-3.5" style={{ color: FT.TEXT_MUTED }} />
+                      : <ChevronDown  className="w-3.5 h-3.5" style={{ color: FT.TEXT_MUTED }} />}
                   </div>
-                  <span className="text-xs font-medium text-slate-500">다른 프로젝트</span>
-                  <span className="text-xs text-slate-400 ml-1.5 font-medium">{otherProjects.length}개</span>
+                  <span className="text-xs font-medium" style={{ color: FT.INK }}>{t.dailyReportOtherProjects}</span>
+                  <span className="text-xs ml-1.5 font-medium" style={{ color: FT.TEXT_MUTED }}>{otherProjects.length}</span>
                 </button>
 
                 {!othersCollapsed && (

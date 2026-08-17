@@ -1644,39 +1644,39 @@ export function NewReportTab({
           </div>
 
           {/* ROW 3 — Auto-filled strip */}
-          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", border: "1px solid #e8eaff", borderRadius: 10, background: "#f8faff", overflow: "hidden" }}>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : "1px solid #eef0ff", borderBottom: isMobile ? "1px solid #eef0ff" : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", border: `1px solid ${FT.RULE}`, borderRadius: 10, background: FT.PAPER, overflow: "hidden" }}>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, borderBottom: isMobile ? `1px solid ${FT.RULE}` : "none" }}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportProjectLocation}</div>
-                <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportProjectLocation}</div>
+                <div data-testid="field-project-location" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.jobLocation || "—"}</div>
               </div>
             </div>
-            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : "1px solid #eef0ff", borderBottom: isMobile ? "1px solid #eef0ff" : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2}>
+            <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, borderRight: isMobile ? "none" : `1px solid ${FT.RULE}`, borderBottom: isMobile ? `1px solid ${FT.RULE}` : "none" }}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportOwnerManager}</div>
-                <div data-testid="field-project-owner" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.ownerName || "—"}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportOwnerManager}</div>
+                <div data-testid="field-project-owner" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.ownerName || "—"}</div>
               </div>
             </div>
             <div style={{ flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 7, background: "#fefce8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth={2}>
+              <div style={{ width: 30, height: 30, borderRadius: 7, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={FT.TEXT_MUTED} strokeWidth={2}>
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 3 }}>{t.newReportPONumber}</div>
-                <div data-testid="field-project-po" style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.poNumber || "—"}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 3, fontFamily: FT.FONT }}>{t.newReportPONumber}</div>
+                <div data-testid="field-project-po" style={{ fontSize: 14, fontWeight: 600, color: FT.INK, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{project?.poNumber || "—"}</div>
               </div>
             </div>
           </div>
@@ -1769,7 +1769,7 @@ export function NewReportTab({
                       {hoursActive && (
                         <div style={{ marginLeft: "auto", display: "flex", alignItems: "baseline", gap: 4 }}>
                           <span style={{ fontSize: 11, color: FT.TEXT_MUTED, fontFamily: FT.FONT, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t.newReportColHrs}</span>
-                          <span style={{ fontSize: 22, fontWeight: 800, color: FT.SUCCESS, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>{row.hoursWorked.toFixed(1)}</span>
+                          <span style={{ fontSize: 22, fontWeight: 800, color: FT.ACCENT, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>{row.hoursWorked.toFixed(1)}</span>
                         </div>
                       )}
                     </div>
@@ -1922,7 +1922,7 @@ export function NewReportTab({
           {/* Summary bar — full-width flex div, not a table row */}
           {manpower.length > 0 && (
             <div data-testid="manpower-summary-bar" style={{
-              borderTop: "2px solid #d0dbd2", background: "#eef2ef",
+              borderTop: `1px solid ${FT.RULE}`, background: FT.PAPER_MUTED,
               padding: "9px 14px", display: "flex", alignItems: "center",
             }}>
               {/* Left: label, Present, Exceptions */}
@@ -2004,7 +2004,7 @@ export function NewReportTab({
               </>
             ) : (
               <button type="button" onClick={() => drawingInputRef.current?.click()}
-                style={{ fontSize: 10.5, padding: "3px 9px", border: "1px solid #4ade80", borderRadius: 5, background: "white", color: "#16a34a", cursor: "pointer", fontWeight: 600 }}>
+                style={{ fontSize: 11, padding: "3px 9px", border: `1.5px dashed ${FT.RULE}`, borderRadius: 5, background: "transparent", color: FT.TEXT_MUTED, cursor: "pointer", fontWeight: 700, fontFamily: FT.FONT }}>
                 {t.newReportUploadDrawing}
               </button>
             )}
@@ -2013,24 +2013,24 @@ export function NewReportTab({
           {/* Body */}
           {!drawingUrl ? (
             /* Empty upload area */
-            <div style={{ padding: "18px 18px 14px", background: "#f8faf9" }}
+            <div style={{ padding: "18px 18px 14px", background: "transparent" }}
               onClick={() => drawingInputRef.current?.click()}>
               <div style={{
-                border: "2px dashed #c8d9cb", borderRadius: 8, minHeight: 110,
+                border: `1.5px dashed ${FT.RULE}`, borderRadius: 8, minHeight: 110,
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: 6, cursor: "pointer", padding: 20,
               }}>
                 <span style={{ fontSize: 32, lineHeight: 1 }}>📐</span>
-                <p style={{ fontSize: 11, color: "#9db8a2", textAlign: "center" }}>{t.newReportUploadHint1}</p>
-                <p style={{ fontSize: 9.5, color: "#b8cebe", textAlign: "center" }}>{t.newReportUploadHint2}</p>
+                <p style={{ fontSize: 11, color: FT.TEXT_MUTED, textAlign: "center" }}>{t.newReportUploadHint1}</p>
+                <p style={{ fontSize: 11, color: FT.TEXT_MUTED, textAlign: "center" }}>{t.newReportUploadHint2}</p>
               </div>
             </div>
           ) : drawingCollapsed ? (
             /* Collapsed summary bar */
-            <div style={{ padding: "7px 14px", background: "#f8faf9", display: "flex", alignItems: "center", gap: 8, fontSize: 10.5, color: "#6b8a70" }}>
+            <div style={{ padding: "7px 14px", background: FT.PAPER_MUTED, borderTop: `1px solid ${FT.RULE}`, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: FT.TEXT_MUTED }}>
               <span style={{ flex: 1 }}>{drawingFilename}</span>
               <button type="button" onClick={() => setDrawingCollapsed(false)}
-                style={{ fontSize: 10.5, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                style={{ fontSize: 11, color: FT.TEXT_MUTED, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 {t.newReportExpandDrawing}
               </button>
             </div>

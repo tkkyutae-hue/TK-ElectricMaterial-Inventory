@@ -1776,6 +1776,9 @@ const en = {
   dailyReportLast:                  "Last",
   dailyReportNoReports:             "No reports",
   dailyReportOpen:                  "Open",
+  dailyReportTodayProjects:         "Today's Projects",
+  dailyReportMyProjects:            "My Projects",
+  dailyReportOtherProjects:         "Other Projects",
 
   // ── Project Operations (Crew Dispatch) mode ──────────────────────────────
   crewDispatchPageSubtitle:    "Set today's worker assignments or write daily reports.",
@@ -4321,6 +4324,9 @@ const ko: Translations = {
   dailyReportLast:                  "최근",
   dailyReportNoReports:             "보고서 없음",
   dailyReportOpen:                  "열기",
+  dailyReportTodayProjects:         "오늘 배치된 프로젝트",
+  dailyReportMyProjects:            "오늘 내 배치 프로젝트",
+  dailyReportOtherProjects:         "다른 프로젝트",
 
   // ── 프로젝트 운영 (Crew Dispatch) 모드 ──────────────────────────────────
   crewDispatchPageSubtitle:    "오늘의 작업자 배치를 설정하거나 일일 보고서를 작성하세요.",
@@ -6942,6 +6948,9 @@ const es: Translations = {
   dailyReportLast:                  "Último",
   dailyReportNoReports:             "Sin reportes",
   dailyReportOpen:                  "Abrir",
+  dailyReportTodayProjects:         "Proyectos de hoy",
+  dailyReportMyProjects:            "Mis proyectos",
+  dailyReportOtherProjects:         "Otros proyectos",
 
   // ── Operaciones de Proyecto (Crew Dispatch) ───────────────────────────────
   crewDispatchPageSubtitle:    "Configure las asignaciones de trabajadores o escriba reportes diarios.",

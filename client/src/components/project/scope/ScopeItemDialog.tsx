@@ -30,6 +30,12 @@ export function ScopeItemDialog({
   const qc = useQueryClient();
 
   const { data: allInventoryItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+  const { data: availableSections = [] } = useQuery<string[]>({
+    queryKey: ["/api/projects", projectId, "scope-sections"],
+    queryFn: () => fetch(`/api/projects/${projectId}/scope-sections`, { credentials: "include" }).then(r => r.json()),
+    enabled: open,
+  });
+
   const [invSearch, setInvSearch] = useState("");
   const [invOpen, setInvOpen] = useState(false);
   const [linkedInvId, setLinkedInvId] = useState<number | null>(null);
@@ -40,7 +46,7 @@ export function ScopeItemDialog({
   const form = useForm<ScopeItemFormData>({
     resolver: zodResolver(scopeItemSchema),
     defaultValues: {
-      itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
+      itemName: "", unit: "", estimatedQty: "", section: "", category: "", remarks: "",
       isActive: true, linkedInventoryItemId: null,
       scopeType: "primary", progressCountingMode: "exact",
     },
@@ -56,6 +62,7 @@ export function ScopeItemDialog({
           itemName: item.itemName ?? "",
           unit: item.unit ?? "",
           estimatedQty: item.estimatedQty ? String(item.estimatedQty) : "",
+          section: (item as any).section ?? "",
           category: item.category ?? "",
           remarks: item.remarks ?? "",
           isActive: item.isActive ?? true,
@@ -67,7 +74,7 @@ export function ScopeItemDialog({
         setLinkedInvId(null);
         setInvSearch("");
         form.reset({
-          itemName: "", unit: "", estimatedQty: "", category: "", remarks: "",
+          itemName: "", unit: "", estimatedQty: "", section: "", category: "", remarks: "",
           isActive: true, linkedInventoryItemId: null,
           scopeType: "primary", progressCountingMode: "exact",
         });
@@ -82,6 +89,7 @@ export function ScopeItemDialog({
         : apiRequest("POST", `/api/projects/${projectId}/scope-items`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+      qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-sections"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       toast({ title: isEdit ? t.projScopeUpdatedToast : t.projScopeAddedToast });
       onClose();
@@ -125,6 +133,31 @@ export function ScopeItemDialog({
                 </FormItem>
               )} />
             </div>
+
+            {/* Section (work-plan) field */}
+            <FormField control={form.control} name="section" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-indigo-700">
+                  공종 / Section <span className="text-slate-400 font-normal">{t.projScopeFldOptional}</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="e.g. Power Distribution Plan, Lighting Plan…"
+                    {...field}
+                    list="dlg-section-list"
+                    className="border-indigo-200 focus:border-indigo-400"
+                    data-testid="input-scope-section"
+                  />
+                </FormControl>
+                {availableSections.length > 0 && (
+                  <datalist id="dlg-section-list">
+                    {availableSections.map(s => <option key={s} value={s} />)}
+                  </datalist>
+                )}
+                <FormMessage />
+              </FormItem>
+            )} />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="category" render={({ field }) => (
                 <FormItem>

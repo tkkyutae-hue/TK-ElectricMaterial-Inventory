@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
-  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles, Package,
+  Plus, Save, CheckCircle2, Boxes, LayoutList, Hash, ChevronDown, Trash2, Sparkles, Layers,
 } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -92,12 +92,22 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     document.addEventListener("mouseup", onUp);
   }, [colWidths]);
 
+  // ── Section collapse state ──
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  function toggleSection(sec: string) {
+    setCollapsedSections(prev => { const next = new Set(prev); if (next.has(sec)) next.delete(sec); else next.add(sec); return next; });
+  }
+
   // ── Data ──
   const { data: scopeItems = [], isLoading } = useQuery<ProjectScopeItem[]>({
     queryKey: ["/api/projects", projectId, "scope-items"],
     queryFn: () => fetch(`/api/projects/${projectId}/scope-items`, { credentials: "include" }).then(r => r.json()),
   });
   const { data: allInvItems = [] } = useQuery<any[]>({ queryKey: ["/api/items"] });
+  const { data: availableSections = [] } = useQuery<string[]>({
+    queryKey: ["/api/projects", projectId, "scope-sections"],
+    queryFn: () => fetch(`/api/projects/${projectId}/scope-sections`, { credentials: "include" }).then(r => r.json()),
+  });
 
   // ── Reorder mutation ──
   const reorderMutation = useMutation({
@@ -142,24 +152,42 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     return ordered;
   }, [scopeItems, localOrder]);
 
-  // ── Grouped / ordered category data (preserves sortedScopeItems order) ──
-  const grouped = useMemo(() => {
+  // ── Helper: group a flat item list by display-category ──
+  function groupByCategory(items: ProjectScopeItem[]) {
     const map = new Map<string, ProjectScopeItem[]>();
-    for (const item of sortedScopeItems) {
+    for (const item of items) {
       const cat = resolveDisplayCategory(item.category, item.itemName);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(item);
     }
-    // Preserve sortedScopeItems order within each group (no re-sort)
     const result: { cat: string; items: ProjectScopeItem[] }[] = [];
     for (const cat of CATEGORY_ORDER) { if (map.has(cat)) result.push({ cat, items: map.get(cat)! }); }
     map.forEach((items, cat) => { if (!CATEGORY_ORDER.includes(cat)) result.push({ cat, items }); });
     return result;
-  }, [sortedScopeItems]);
+  }
+
+  // ── Grouped / ordered category data (preserves sortedScopeItems order) ──
+  const grouped = useMemo(() => groupByCategory(sortedScopeItems), [sortedScopeItems]);
 
   // ── Split into materials vs equipment groups ──
   const materialGroups = grouped.filter(g => MATERIAL_CATS.has(g.cat));
   const equipmentGroups = grouped.filter(g => !MATERIAL_CATS.has(g.cat));
+
+  // ── Section grouping ──
+  const UNCLASSIFIED_KEY = "__unclassified__";
+  const sectionedGroups = useMemo(() => {
+    const map = new Map<string, ProjectScopeItem[]>();
+    for (const item of sortedScopeItems) {
+      const sec = (item as any).section || UNCLASSIFIED_KEY;
+      if (!map.has(sec)) map.set(sec, []);
+      map.get(sec)!.push(item);
+    }
+    const result: { section: string; items: ProjectScopeItem[] }[] = [];
+    map.forEach((items, sec) => { if (sec !== UNCLASSIFIED_KEY) result.push({ section: sec, items }); });
+    if (map.has(UNCLASSIFIED_KEY)) result.push({ section: UNCLASSIFIED_KEY, items: map.get(UNCLASSIFIED_KEY)! });
+    return result;
+  }, [sortedScopeItems]);
+  const hasSections = sectionedGroups.some(g => g.section !== UNCLASSIFIED_KEY);
 
   const materialTotalItems = materialGroups.reduce((s, g) => s + g.items.length, 0);
   const materialTotalQty = materialGroups.reduce(
@@ -182,19 +210,37 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const activeId = active.id as number;
     const overId   = over.id as number;
 
-    const isMaterialActive = materialItemIds.includes(activeId);
-    const isMaterialOver   = materialItemIds.includes(overId);
+    if (hasSections) {
+      // In section mode: block cross-section drops
+      const activeSec = sectionedGroups.find(g => g.items.some(i => i.id === activeId))?.section;
+      const overSec   = sectionedGroups.find(g => g.items.some(i => i.id === overId))?.section;
+      if (activeSec !== overSec) return;
 
-    // Block cross Materials ↔ Equipment drops
-    if (isMaterialActive !== isMaterialOver) return;
-
-    // Within Equipment: block cross-category drops
-    if (!isMaterialActive) {
-      const activeCat = equipmentGroups.find(g => g.items.some(i => i.id === activeId));
-      const overCat   = equipmentGroups.find(g => g.items.some(i => i.id === overId));
-      if (!activeCat || !overCat || activeCat.cat !== overCat.cat) return;
+      // Within a section, also block cross-category equipment drops
+      const secItems = sectionedGroups.find(g => g.section === activeSec)?.items ?? [];
+      const secGrouped = groupByCategory(secItems);
+      const secEquip = secGrouped.filter(g => !MATERIAL_CATS.has(g.cat));
+      const secMatIds = secGrouped.filter(g => MATERIAL_CATS.has(g.cat)).flatMap(g => g.items.map(i => i.id));
+      const isMatActive = secMatIds.includes(activeId);
+      const isMatOver   = secMatIds.includes(overId);
+      if (isMatActive !== isMatOver) return;
+      if (!isMatActive) {
+        const ac = secEquip.find(g => g.items.some(i => i.id === activeId));
+        const oc = secEquip.find(g => g.items.some(i => i.id === overId));
+        if (!ac || !oc || ac.cat !== oc.cat) return;
+      }
+    } else {
+      const isMaterialActive = materialItemIds.includes(activeId);
+      const isMaterialOver   = materialItemIds.includes(overId);
+      // Block cross Materials ↔ Equipment drops
+      if (isMaterialActive !== isMaterialOver) return;
+      // Within Equipment: block cross-category drops
+      if (!isMaterialActive) {
+        const activeCat = equipmentGroups.find(g => g.items.some(i => i.id === activeId));
+        const overCat   = equipmentGroups.find(g => g.items.some(i => i.id === overId));
+        if (!activeCat || !overCat || activeCat.cat !== overCat.cat) return;
+      }
     }
-    // Within Materials: allow cross-category (renders as a flat list)
 
     const currentGlobalOrder = sortedScopeItems.map(i => i.id);
     const activeIdx = currentGlobalOrder.indexOf(activeId);
@@ -204,7 +250,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const newGlobalOrder = arrayMove(currentGlobalOrder, activeIdx, overIdx);
     setLocalOrder(newGlobalOrder);
     reorderMutation.mutate(newGlobalOrder);
-  }, [sortedScopeItems, materialItemIds, equipmentGroups, reorderMutation]);
+  }, [sortedScopeItems, materialItemIds, equipmentGroups, sectionedGroups, hasSections, reorderMutation]);
 
   // ── Async action cluster ──
   const {
@@ -226,7 +272,14 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
   function selectAllVisible() {
-    const visibleIds = grouped.flatMap(g => collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id));
+    let visibleIds: number[];
+    if (hasSections) {
+      visibleIds = sectionedGroups.flatMap(({ section, items }) =>
+        collapsedSections.has(section) ? [] : items.map(i => i.id)
+      );
+    } else {
+      visibleIds = grouped.flatMap(g => collapsedCats.has(g.cat) ? [] : g.items.map(i => i.id));
+    }
     setSelectedIds(new Set(visibleIds));
   }
 
@@ -337,6 +390,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
               {pendingRows.map((row, i) => (
                 <InlineScopeRow
                   key={row.localId} row={row} invItems={allInvItems}
+                  sections={availableSections}
                   onChange={updated => updateRow(row.localId, updated)}
                   onRemove={() => removeRow(row.localId)} rowIndex={i}
                 />
@@ -438,105 +492,159 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                   </tr>
                 </thead>
 
-                {/* ── Materials super-header + rows ── */}
-                {materialGroups.length > 0 && (
+                {/* ── Section-grouped view OR classic materials/equipment view ── */}
+                {hasSections ? (
+                  /* ── Section view: one indigo header per section, items below ── */
                   <>
-                    <tbody>
-                      <tr>
-                        <td colSpan={7} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
-                          <button
-                            type="button"
-                            onClick={() => setMaterialsCollapsed(c => !c)}
-                            style={{ background: "#64748b0d" }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
-                            data-testid="scope-cat-toggle-materials"
-                          >
-                            <div
-                              style={{ background: "#f1f5f9", width: 28, height: 28, color: "#64748b" }}
-                              className="rounded-md flex items-center justify-center shrink-0"
-                            >
-                              <Package className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold leading-tight text-slate-600">Materials</p>
-                              <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
-                                {materialGroups.map(g => g.cat).join(" · ")}
-                              </p>
-                            </div>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap bg-slate-200/70 text-slate-500">
-                              {materialTotalItems} item{materialTotalItems !== 1 ? "s" : ""}
-                            </span>
-                            <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right text-slate-500">
-                              {materialTotalQty.toLocaleString()}
-                            </span>
-                            <ChevronDown
-                              className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200 ${materialsCollapsed ? "-rotate-90" : ""}`}
-                            />
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-
-                    {/* Single SortableContext for all material items (flat list, cross-category OK) */}
-                    {!materialsCollapsed && (
-                      <SortableContext items={materialItemIds} strategy={verticalListSortingStrategy}>
-                        {materialGroups.map(({ cat, items }, gi) => {
-                          const offset = materialGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
-                          return (
-                            <ScopeCategorySection
-                              key={cat}
-                              cat={cat}
-                              items={items}
-                              allInvItems={allInvItems}
-                              hideHeader={true}
-                              isCollapsed={false}
-                              onToggle={() => {}}
-                              selectedIds={selectedIds}
-                              dragDisabled={isAdding}
-                              startIndex={offset + 1}
-                              onEdit={setDialogItem}
-                              onDelete={setDeleteTarget}
-                              onDuplicate={duplicateItem}
-                              onSelect={toggleSelectItem}
-                            />
-                          );
-                        })}
+                    {sectionedGroups.map(({ section, items: secItems }) => {
+                      const isSectionCollapsed = collapsedSections.has(section);
+                      const isUnclassified = section === UNCLASSIFIED_KEY;
+                      const displayName = isUnclassified ? "미분류 / Unclassified" : section;
+                      const accentColor = isUnclassified ? "#94a3b8" : "#6366f1";
+                      const bgColor = isUnclassified ? "#94a3b80d" : "#6366f10d";
+                      const secGrouped = groupByCategory(secItems);
+                      const secMatGroups = secGrouped.filter(g => MATERIAL_CATS.has(g.cat));
+                      const secEquipGroups = secGrouped.filter(g => !MATERIAL_CATS.has(g.cat));
+                      const secMatIds = secMatGroups.flatMap(g => g.items.map(i => i.id));
+                      return (
+                        <React.Fragment key={section}>
+                          {/* Section header — its own <tbody> so ScopeCategorySection's <tbody> are valid siblings */}
+                          <tbody>
+                            <tr>
+                              <td colSpan={8} style={{ padding: 0, borderLeft: `4px solid ${accentColor}` }}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSection(section)}
+                                  style={{ background: bgColor }}
+                                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
+                                  data-testid={`scope-section-toggle-${section}`}
+                                >
+                                  <Layers className="w-4 h-4 shrink-0" style={{ color: accentColor }} />
+                                  <span className="font-bold text-sm" style={{ color: accentColor }}>{displayName}</span>
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-500">
+                                    {secItems.length} item{secItems.length !== 1 ? "s" : ""}
+                                  </span>
+                                  <ChevronDown className={`w-4 h-4 shrink-0 ml-auto text-slate-400 transition-transform duration-200 ${isSectionCollapsed ? "-rotate-90" : ""}`} />
+                                </button>
+                              </td>
+                            </tr>
+                          </tbody>
+                          {/* Section category rows — ScopeCategorySection renders its own <tbody> as table siblings */}
+                          {!isSectionCollapsed && (
+                            <>
+                              {/* Materials within this section */}
+                              {secMatGroups.length > 0 && (
+                                <SortableContext items={secMatIds} strategy={verticalListSortingStrategy}>
+                                  {secMatGroups.map(({ cat, items: catItems }, gi) => {
+                                    const offset = secMatGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
+                                    return (
+                                      <ScopeCategorySection
+                                        key={`${section}__${cat}`}
+                                        cat={cat} items={catItems} allInvItems={allInvItems}
+                                        hideHeader={false}
+                                        isCollapsed={collapsedCats.has(`${section}__${cat}`)}
+                                        onToggle={() => toggleCat(`${section}__${cat}`)}
+                                        selectedIds={selectedIds} dragDisabled={isAdding}
+                                        startIndex={offset + 1}
+                                        onEdit={setDialogItem} onDelete={setDeleteTarget}
+                                        onDuplicate={duplicateItem} onSelect={toggleSelectItem}
+                                      />
+                                    );
+                                  })}
+                                </SortableContext>
+                              )}
+                              {/* Equipment within this section */}
+                              {secEquipGroups.map(({ cat, items: catItems }) => (
+                                <SortableContext key={`${section}__${cat}`} items={catItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                  <ScopeCategorySection
+                                    cat={cat} items={catItems} allInvItems={allInvItems}
+                                    hideHeader={false}
+                                    isCollapsed={collapsedCats.has(`${section}__${cat}`)}
+                                    onToggle={() => toggleCat(`${section}__${cat}`)}
+                                    selectedIds={selectedIds} dragDisabled={isAdding}
+                                    startIndex={1}
+                                    onEdit={setDialogItem} onDelete={setDeleteTarget}
+                                    onDuplicate={duplicateItem} onSelect={toggleSelectItem}
+                                  />
+                                </SortableContext>
+                              ))}
+                            </>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </>
+                ) : (
+                  /* ── Classic materials / equipment view ── */
+                  <>
+                    {materialGroups.length > 0 && (
+                      <>
+                        <tbody>
+                          <tr>
+                            <td colSpan={7} style={{ padding: 0, borderLeft: "4px solid #64748b" }}>
+                              <button
+                                type="button"
+                                onClick={() => setMaterialsCollapsed(c => !c)}
+                                style={{ background: "#64748b0d" }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:brightness-95 transition-all"
+                                data-testid="scope-cat-toggle-materials"
+                              >
+                                <div style={{ background: "#f1f5f9", width: 28, height: 28, color: "#64748b" }} className="rounded-md flex items-center justify-center shrink-0">
+                                  <Layers className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold leading-tight text-slate-600">Materials</p>
+                                  <p className="text-[9px] text-slate-400 leading-tight mt-0.5">{materialGroups.map(g => g.cat).join(" · ")}</p>
+                                </div>
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap bg-slate-200/70 text-slate-500">
+                                  {materialTotalItems} item{materialTotalItems !== 1 ? "s" : ""}
+                                </span>
+                                <span className="font-mono text-xs font-bold tabular-nums shrink-0 w-16 text-right text-slate-500">
+                                  {materialTotalQty.toLocaleString()}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200 ${materialsCollapsed ? "-rotate-90" : ""}`} />
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                        {!materialsCollapsed && (
+                          <SortableContext items={materialItemIds} strategy={verticalListSortingStrategy}>
+                            {materialGroups.map(({ cat, items }, gi) => {
+                              const offset = materialGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
+                              return (
+                                <ScopeCategorySection
+                                  key={cat} cat={cat} items={items} allInvItems={allInvItems}
+                                  hideHeader={true} isCollapsed={false} onToggle={() => {}}
+                                  selectedIds={selectedIds} dragDisabled={isAdding}
+                                  startIndex={offset + 1}
+                                  onEdit={setDialogItem} onDelete={setDeleteTarget}
+                                  onDuplicate={duplicateItem} onSelect={toggleSelectItem}
+                                />
+                              );
+                            })}
+                          </SortableContext>
+                        )}
+                        {equipmentGroups.length > 0 && (
+                          <tbody><tr><td colSpan={7} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr></tbody>
+                        )}
+                      </>
+                    )}
+                    {equipmentGroups.map(({ cat, items }) => (
+                      <SortableContext key={cat} items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                        <ScopeCategorySection
+                          cat={cat} items={items} allInvItems={allInvItems}
+                          hideHeader={false}
+                          isCollapsed={collapsedCats.has(cat)}
+                          onToggle={() => toggleCat(cat)}
+                          selectedIds={selectedIds} dragDisabled={isAdding}
+                          startIndex={1}
+                          onEdit={setDialogItem} onDelete={setDeleteTarget}
+                          onDuplicate={duplicateItem} onSelect={toggleSelectItem}
+                        />
                       </SortableContext>
-                    )}
-
-                    {/* Spacer between Materials block and Equipment */}
-                    {equipmentGroups.length > 0 && (
-                      <tbody>
-                        <tr><td colSpan={7} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
-                      </tbody>
-                    )}
+                    ))}
                   </>
                 )}
-
-                {/* ── Equipment groups (each in its own SortableContext, numbered 1…N per category) ── */}
-                {equipmentGroups.map(({ cat, items }) => (
-                  <SortableContext
-                    key={cat}
-                    items={items.map(i => i.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <ScopeCategorySection
-                      cat={cat}
-                      items={items}
-                      allInvItems={allInvItems}
-                      hideHeader={false}
-                      isCollapsed={collapsedCats.has(cat)}
-                      onToggle={() => toggleCat(cat)}
-                      selectedIds={selectedIds}
-                      dragDisabled={isAdding}
-                      startIndex={1}
-                      onEdit={setDialogItem}
-                      onDelete={setDeleteTarget}
-                      onDuplicate={duplicateItem}
-                      onSelect={toggleSelectItem}
-                    />
-                  </SortableContext>
-                ))}
               </table>
             </div>
           </DndContext>

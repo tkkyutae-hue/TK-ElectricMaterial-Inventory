@@ -32,6 +32,7 @@ export function useScopeActions({
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+    qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-sections"] });
     qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
   }
 
@@ -58,6 +59,7 @@ export function useScopeActions({
         apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
           itemName: row.itemName.trim(), unit: row.unit.trim(),
           estimatedQty: row.estimatedQty,
+          section: row.section.trim() || null,
           category: row.category.trim() || null,
           remarks: row.remarks.trim() || null,
           linkedInventoryItemId: row.linkedInventoryItemId,
@@ -82,6 +84,7 @@ export function useScopeActions({
         apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
           itemName: row.itemName.trim(), unit: row.unit.trim(),
           estimatedQty: row.estimatedQty || "0",
+          section: (row as any).section?.trim() || null,
           category: row.category || null, scopeType: row.scopeType, isActive: true,
         })
       ));
@@ -99,7 +102,9 @@ export function useScopeActions({
     try {
       await apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
         itemName: `${item.itemName} (Copy)`, unit: item.unit,
-        estimatedQty: String(item.estimatedQty), category: item.category ?? null,
+        estimatedQty: String(item.estimatedQty),
+        section: (item as any).section ?? null,
+        category: item.category ?? null,
         remarks: item.remarks ?? null, linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,
         scopeType: (item as any).scopeType ?? "primary", isActive: item.isActive,
       });
@@ -125,6 +130,7 @@ export function useScopeActions({
               apiRequest("POST", `/api/projects/${projectId}/scope-items`, {
                 itemName: item.itemName, unit: item.unit,
                 estimatedQty: String(item.estimatedQty),
+                section: (item as any).section ?? null,
                 category: item.category ?? null,
                 remarks: item.remarks ?? null,
                 linkedInventoryItemId: (item as any).linkedInventoryItemId ?? null,

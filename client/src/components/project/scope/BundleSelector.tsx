@@ -250,6 +250,7 @@ export function BundleSelector({
         itemName: match ? match.name : it.itemName,
         unit: match ? (match.unitOfMeasure || it.unit) : it.unit,
         estimatedQty: "",
+        section: "",
         category: it.category,
         scopeType: it.scopeType,
         checked: true,

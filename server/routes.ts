@@ -4378,6 +4378,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Scope-item section list (for autocomplete) ────────────────────────────
+  app.get("/api/projects/:id/scope-sections", isAuthenticated, requireManager, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
+      const items = await storage.getScopeItems(projectId);
+      const sections = [...new Set(
+        items.map(i => (i as any).section as string | null | undefined).filter(Boolean)
+      )] as string[];
+      res.json(sections);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   app.get("/api/projects/:id/scope-items", isAuthenticated, requireManager, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);

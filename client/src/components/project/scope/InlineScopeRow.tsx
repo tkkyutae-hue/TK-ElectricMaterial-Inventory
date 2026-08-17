@@ -6,13 +6,14 @@ import { type PendingRow, COMMON_UNITS, flexMatch } from "../types";
 import { CATEGORY_ORDER } from "../categoryConfig";
 
 export function InlineScopeRow({
-  row, invItems, onChange, onRemove, rowIndex,
+  row, invItems, onChange, onRemove, rowIndex, sections = [],
 }: {
   row: PendingRow;
   invItems: any[];
   onChange: (updated: PendingRow) => void;
   onRemove: () => void;
   rowIndex: number;
+  sections?: string[];
 }) {
   const { t } = useLanguage();
   const [invSearch, setInvSearch] = useState(
@@ -116,6 +117,24 @@ export function InlineScopeRow({
             className="h-8 text-sm"
             data-testid={`inline-scope-qty-${rowIndex}`}
           />
+        </div>
+
+        {/* Section (work-plan) */}
+        <div className="w-36 space-y-1 shrink-0">
+          <label className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">공종 / Section</label>
+          <Input
+            value={row.section}
+            placeholder="e.g. Power Plan"
+            onChange={e => onChange({ ...row, section: e.target.value })}
+            className="h-8 text-sm border-indigo-200 focus:border-indigo-400"
+            list={`section-list-${rowIndex}`}
+            data-testid={`inline-scope-section-${rowIndex}`}
+          />
+          {sections.length > 0 && (
+            <datalist id={`section-list-${rowIndex}`}>
+              {sections.map(s => <option key={s} value={s} />)}
+            </datalist>
+          )}
         </div>
 
         {/* Category */}

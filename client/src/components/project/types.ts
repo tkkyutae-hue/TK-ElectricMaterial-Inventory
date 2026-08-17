@@ -33,6 +33,7 @@ export const scopeItemSchema = z.object({
   itemName:              z.string().min(1, "Item name is required"),
   unit:                  z.string().min(1, "Unit is required"),
   estimatedQty:          z.string().min(1, "Qty is required"),
+  section:               z.string().optional(),
   category:              z.string().optional(),
   remarks:               z.string().optional(),
   isActive:              z.boolean().default(true),
@@ -65,6 +66,7 @@ export type PendingRow = {
   itemName: string;
   unit: string;
   estimatedQty: string;
+  section: string;
   category: string;
   linkedInventoryItemId: number | null;
   remarks: string;
@@ -76,6 +78,7 @@ export type BundleRow = {
   itemName: string;
   unit: string;
   estimatedQty: string;
+  section: string;
   category: string;
   scopeType: "primary" | "support";
   checked: boolean;
@@ -86,7 +89,7 @@ export function newBundleRow(): BundleRow {
   return {
     localId: Math.random().toString(36).slice(2),
     itemName: "", unit: "EA", estimatedQty: "",
-    category: "Other", scopeType: "primary",
+    section: "", category: "Other", scopeType: "primary",
     checked: true, linkedInventoryItemId: null,
   };
 }
@@ -95,7 +98,7 @@ export function newPendingRow(): PendingRow {
   return {
     localId: Math.random().toString(36).slice(2),
     itemName: "", unit: "", estimatedQty: "",
-    category: "", linkedInventoryItemId: null, remarks: "",
+    section: "", category: "", linkedInventoryItemId: null, remarks: "",
     scopeType: "primary",
   };
 }

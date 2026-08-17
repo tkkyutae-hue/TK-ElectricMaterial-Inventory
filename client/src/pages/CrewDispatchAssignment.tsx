@@ -932,25 +932,44 @@ function ProjectCardView({
                                   }`}
                                   onClick={() => { if (!isDragActive) setExpandedId(isExpanded ? null : p.id); }}
                                 >
-                                  <CardContent className="px-5 py-4 flex gap-4 relative">
-                                    {/* Drop hint overlay */}
-                                    {isDragActive && isOver && (
-                                      <div className="absolute inset-0 rounded-lg bg-blue-50/70 flex items-center justify-center z-10 pointer-events-none">
-                                        <span className="text-sm font-bold text-blue-600">{t.cdDropHereHint}</span>
+                                    <CardContent className="px-3 py-3 relative">
+                                      {/* Drop hint overlay */}
+                                      {isDragActive && isOver && (
+                                        <div className="absolute inset-0 rounded-lg bg-blue-50/70 flex items-center justify-center z-10 pointer-events-none">
+                                          <span className="text-sm font-bold text-blue-600">{t.cdDropHereHint}</span>
+                                        </div>
+                                      )}
+                                      {/* Row 1: PO# · Status badge · Worker count · Chevron */}
+                                      <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+                                        {p.poNumber && (
+                                          <span className="text-[10px] font-mono text-slate-400 shrink-0 truncate max-w-[80px]">{p.poNumber}</span>
+                                        )}
+                                        <span
+                                          className="text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0"
+                                          style={{ backgroundColor: sc.bg, color: sc.text }}
+                                        >
+                                          {cardStatusLabel(p)}
+                                        </span>
+                                        <span className="flex-1" />
+                                        <span className={`flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                          workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
+                                        }`}>
+                                          <Users className="w-3 h-3" />{workers.length}{t.cdPersonUnit}
+                                        </span>
+                                        {isExpanded
+                                          ? <ChevronUp   className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                          : <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
                                       </div>
-                                    )}
-                                    {/* Main content */}
-                                    <div className="flex-1 min-w-0 space-y-1.5">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        {p.poNumber && <span className="text-xs font-mono text-slate-400 shrink-0">{p.poNumber}</span>}
-                                        <span className="font-semibold text-slate-800 text-sm leading-tight">{p.name}</span>
-                                      </div>
+                                      {/* Row 2: Project name — max 2 lines */}
+                                      <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 mb-1">{p.name}</p>
+                                      {/* Row 3: Location */}
                                       {p.jobLocation && (
                                         <div className="flex items-center gap-1 text-xs text-slate-500">
                                           <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
-                                          <span>{p.jobLocation}</span>
+                                          <span className="truncate">{p.jobLocation}</span>
                                         </div>
                                       )}
+                                      {/* Expanded: assigned worker list */}
                                       {isExpanded && (
                                         <div className="mt-2 pt-2 border-t border-slate-100">
                                           {workers.length === 0 ? (
@@ -1004,25 +1023,7 @@ function ProjectCardView({
                                           )}
                                         </div>
                                       )}
-                                    </div>
-                                    {/* Right: status chip + worker count + expand */}
-                                    <div className="shrink-0 flex flex-col items-end justify-start gap-1.5 pl-2 pt-0.5 min-w-[88px]">
-                                      <span
-                                        className="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap text-right"
-                                        style={{ backgroundColor: sc.bg, color: sc.text }}
-                                      >
-                                        {cardStatusLabel(p)}
-                                      </span>
-                                      <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
-                                        workers.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-400"
-                                      }`}>
-                                        <Users className="w-3 h-3" />{workers.length}{t.cdPersonUnit}
-                                      </span>
-                                      {isExpanded
-                                        ? <ChevronUp   className="w-4 h-4 text-slate-400" />
-                                        : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                                    </div>
-                                  </CardContent>
+                                    </CardContent>
                                 </Card>
                               )}
                             </DroppableProjectCard>

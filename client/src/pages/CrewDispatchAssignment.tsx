@@ -573,7 +573,11 @@ function DraggableWorkerRow({ worker, jibble, assignedProject, onUnassign, korea
     <div
       ref={setNodeRef}
       style={{ opacity: isDragging ? 0.35 : 1 }}
-      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all select-none"
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all select-none ${
+        assignedProject
+          ? "border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-sm"
+          : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
+      }`}
     >
       {/* Drag handle area */}
       <div {...attributes} {...listeners} className="flex items-center gap-1.5 lg:gap-2.5 flex-1 min-w-0 cursor-grab active:cursor-grabbing touch-none">
@@ -1772,6 +1776,19 @@ export default function CrewDispatchAssignment() {
                     <span className="hidden lg:inline text-[10px] text-slate-400 shrink-0">{t.cdPanelDragHint}</span>
                   </div>
                   {/* Search + filter: only on lg+ */}
+                  {/* Mobile-only compact 2-tab filter: all / 미배치만 */}
+                  <div className="flex lg:hidden gap-1">
+                    {(["all", "unassigned"] as const).map((f) => (
+                      <button key={f} type="button" onClick={() => setWorkerFilter(f as "all" | "onsite" | "unassigned")}
+                        className={`flex-1 text-[10px] font-semibold py-1 rounded border transition-colors ${
+                          workerFilter === f
+                            ? "bg-slate-800 border-slate-800 text-white"
+                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                        }`}>
+                        {f === "all" ? t.cdFilterAll : t.cdFilterUnassigned}
+                      </button>
+                    ))}
+                  </div>
                   <div className="hidden lg:block space-y-2">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />

@@ -1803,69 +1803,30 @@ export default function CrewDispatchAssignment() {
                   </div>
                 </div>
 
-                {/* Worker list */}
-                <div className="flex-1 overflow-y-auto no-scrollbar min-h-0" style={{ maxHeight: "calc(100vh - 380px)" }}>
-                  {/* lg+: draggable cards with full info */}
-                  <div className="hidden lg:block p-3 space-y-1.5">
-                    {filteredWorkers.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
-                    ) : (
-                      filteredWorkers.map((w) => {
-                        const assignedId = getAssignment(w.id);
-                        const korean = isKorean(w);
-                        return (
-                          <DraggableWorkerRow
-                            key={w.id}
-                            worker={w}
-                            jibble={jibbleMap.get(w.id)}
-                            assignedProject={allProjects.find((p) => p.id === assignedId)}
-                            onUnassign={assignedId !== null ? () => {
-                              const project = allProjects.find((p) => p.id === assignedId);
-                              handleUnassign(w.id, assignedId, w.fullName, project?.name ?? t.cdProjectFallback);
-                            } : undefined}
-                            koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
-                            onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
-                  {/* < lg: compact items — status dot + name + project select */}
-                  <div className="lg:hidden divide-y divide-slate-100">
-                    {sortedWorkers.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 gap-2">
-                        <Users className="w-6 h-6 text-slate-200" />
-                        <p className="text-xs text-slate-400 text-center">{t.cdNoWorkers}</p>
-                      </div>
-                    ) : (
-                      sortedWorkers.map((worker) => {
-                        const korean = isKorean(worker);
-                        return (
-                          <CompactWorkerItem
-                            key={worker.id}
-                            worker={worker}
-                            jibble={jibbleMap.get(worker.id)}
-                            assignedProjectId={getAssignment(worker.id)}
-                            activeByCustomer={activeByCustomer}
-                            doneProjects={doneProjects}
-                            onAssign={(pid) => {
-                              if (pid === null) {
-                                const prevId = getAssignment(worker.id);
-                                if (prevId !== null) {
-                                  const project = allProjects.find((p) => p.id === prevId);
-                                  handleUnassign(worker.id, prevId, worker.fullName, project?.name ?? t.cdProjectFallback);
-                                }
-                              } else {
-                                handleAssign(worker.id, pid);
-                              }
-                            }}
-                            koreanPresent={korean ? isKoreanPresent(worker.id) : undefined}
-                            onAttendanceToggle={korean ? (present) => handleAttendanceToggle(worker.id, present) : undefined}
-                          />
-                        );
-                      })
-                    )}
-                  </div>
+                {/* Worker list — draggable cards on all screen sizes */}
+                <div className="flex-1 overflow-y-auto no-scrollbar min-h-0 p-2 lg:p-3 space-y-1.5" style={{ maxHeight: "calc(100vh - 380px)" }}>
+                  {filteredWorkers.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-10">{t.cdNoWorkersFiltered}</p>
+                  ) : (
+                    filteredWorkers.map((w) => {
+                      const assignedId = getAssignment(w.id);
+                      const korean = isKorean(w);
+                      return (
+                        <DraggableWorkerRow
+                          key={w.id}
+                          worker={w}
+                          jibble={jibbleMap.get(w.id)}
+                          assignedProject={allProjects.find((p) => p.id === assignedId)}
+                          onUnassign={assignedId !== null ? () => {
+                            const project = allProjects.find((p) => p.id === assignedId);
+                            handleUnassign(w.id, assignedId, w.fullName, project?.name ?? t.cdProjectFallback);
+                          } : undefined}
+                          koreanPresent={korean ? isKoreanPresent(w.id) : undefined}
+                          onAttendanceToggle={korean ? (present) => handleAttendanceToggle(w.id, present) : undefined}
+                        />
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

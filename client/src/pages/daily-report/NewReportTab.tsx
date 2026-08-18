@@ -196,7 +196,7 @@ interface ManpowerRow {
   attendanceStatus: string; startTime: string; endTime: string;
   hoursWorked: number; notes: string;
 }
-interface MaterialRow  { id: number; description: string; spec: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null }
+interface MaterialRow  { id: number; description: string; spec: string; unit: string; qty: number; notes: string; inventoryItemId: number | null; scopeItemId: number | null; section?: string | null }
 interface EquipmentRow {
   id: number; name: string; size: string; brand: string;
   unit: string; qty: number; hours: number; notes: string;
@@ -1136,7 +1136,7 @@ export function NewReportTab({
         .filter((s: any) => s.isActive)
         .map((s: any) => ({
           id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
-          inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
+          inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id, section: s.section ?? null,
         }));
     });
   }, [scopeItems, reportId]);
@@ -1234,7 +1234,7 @@ export function NewReportTab({
       .filter((s: any) => !existingScopeIds.has(s.id))
       .map((s: any) => ({
         id: uid(), description: s.itemName, spec: s.remarks ?? "", unit: s.unit ?? "EA", qty: 0, notes: "",
-        inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id,
+        inventoryItemId: s.linkedInventoryItemId ?? null, scopeItemId: s.id, section: s.section ?? null,
       }));
     if (!newRows.length) { toast({ title: t.newReportToastScopeAlready, description: t.newReportToastScopeAlreadyDesc }); return; }
     setMaterials(prev => [...prev, ...newRows]);
@@ -2530,11 +2530,26 @@ export function NewReportTab({
             {materials.length === 0 && (
               <div style={{ textAlign: "center", padding: "28px 0", fontSize: 13, color: FT.TEXT_MUTED, fontStyle: "italic" }}>{t.newReportNoMaterials}</div>
             )}
-            {materials.map((row, i) => {
-              const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
-              const imgUrl: string = linkedItem?.imageUrl ?? "";
-              const isExtra = row.scopeItemId === null && row.description.trim() !== "";
-              return (
+            {(() => {
+              const mobileNodes: React.ReactNode[] = [];
+              let lastMobileSection: string | null | undefined = undefined;
+              materials.forEach((row, i) => {
+                const sec = row.section ?? null;
+                if (sec !== lastMobileSection) {
+                  lastMobileSection = sec;
+                  if (sec) {
+                    mobileNodes.push(
+                      <div key={`sec-${sec}`}
+                        style={{ padding: "5px 10px 3px", background: "#f1f5f9", borderRadius: 6, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {sec}
+                      </div>
+                    );
+                  }
+                }
+                const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
+                const imgUrl: string = linkedItem?.imageUrl ?? "";
+                const isExtra = row.scopeItemId === null && row.description.trim() !== "";
+                mobileNodes.push(
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
                   style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 10, padding: "12px 12px 10px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 10 }}>
                   {/* Row 1: Photo + Name/badges + Delete */}
@@ -2606,8 +2621,10 @@ export function NewReportTab({
                     </div>}
                   </div>
                 </div>
-              );
-            })}
+                );
+              });
+              return mobileNodes;
+            })()}
           </div>
         ) : (
           /* ── Desktop: original table ── */
@@ -2640,11 +2657,27 @@ export function NewReportTab({
               {materials.length === 0 && (
                 <tr><td colSpan={6} className="py-7 text-center text-xs text-slate-300 italic">{t.newReportNoMaterials}</td></tr>
               )}
-              {materials.map((row, i) => {
-                const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
-                const imgUrl: string = linkedItem?.imageUrl ?? "";
-                const isExtra = row.scopeItemId === null && row.description.trim() !== "";
-                return (
+              {(() => {
+                const deskRows: React.ReactNode[] = [];
+                let lastDeskSection: string | null | undefined = undefined;
+                materials.forEach((row, i) => {
+                  const sec = row.section ?? null;
+                  if (sec !== lastDeskSection) {
+                    lastDeskSection = sec;
+                    if (sec) {
+                      deskRows.push(
+                        <tr key={`sec-${sec}`} style={{ background: "#f8fafc" }}>
+                          <td colSpan={6} style={{ padding: "5px 8px 3px", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: `1px solid ${FT.RULE}` }}>
+                            {sec}
+                          </td>
+                        </tr>
+                      );
+                    }
+                  }
+                  const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
+                  const imgUrl: string = linkedItem?.imageUrl ?? "";
+                  const isExtra = row.scopeItemId === null && row.description.trim() !== "";
+                  deskRows.push(
                   <tr key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
                     className="border-b last:border-0 group"
                     style={{ borderColor: FT.RULE, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : undefined }}>
@@ -2722,8 +2755,10 @@ export function NewReportTab({
                       </button>
                     </td>
                   </tr>
-                );
-              })}
+                  );
+                });
+                return deskRows;
+              })()}
             </tbody>
           </table>
           </div>

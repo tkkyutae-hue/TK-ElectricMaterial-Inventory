@@ -309,7 +309,7 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
             <h3 className="font-semibold text-slate-900 text-sm">{t.projScopeTableTitle}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{t.projScopeTableSubtitle}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{hasSections ? t.projScopeTableSubtitleSections : t.projScopeTableSubtitle}</p>
           </div>
           <div className="relative flex items-center gap-2">
             <Button size="sm" variant="outline"

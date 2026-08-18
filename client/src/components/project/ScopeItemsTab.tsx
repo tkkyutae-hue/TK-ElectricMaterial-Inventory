@@ -20,6 +20,7 @@ import { ScopeExtractDialog } from "./scope/ScopeExtractDialog";
 import { ScopeDeleteDialog, UndoSnackbar } from "./scope/ScopeDeleteDialog";
 import { InlineScopeRow } from "./scope/InlineScopeRow";
 import { ScopeCategorySection } from "./scope/ScopeCategorySection";
+import { SortableScopeItemRow } from "./scope/ScopeItemRow";
 import { useScopeActions } from "./scope/useScopeActions";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useLanguage } from "@/hooks/use-language";
@@ -211,24 +212,10 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
     const overId   = over.id as number;
 
     if (hasSections) {
-      // In section mode: block cross-section drops
+      // In section mode: only block cross-section drops; within a section items move freely
       const activeSec = sectionedGroups.find(g => g.items.some(i => i.id === activeId))?.section;
       const overSec   = sectionedGroups.find(g => g.items.some(i => i.id === overId))?.section;
       if (activeSec !== overSec) return;
-
-      // Within a section, also block cross-category equipment drops
-      const secItems = sectionedGroups.find(g => g.section === activeSec)?.items ?? [];
-      const secGrouped = groupByCategory(secItems);
-      const secEquip = secGrouped.filter(g => !MATERIAL_CATS.has(g.cat));
-      const secMatIds = secGrouped.filter(g => MATERIAL_CATS.has(g.cat)).flatMap(g => g.items.map(i => i.id));
-      const isMatActive = secMatIds.includes(activeId);
-      const isMatOver   = secMatIds.includes(overId);
-      if (isMatActive !== isMatOver) return;
-      if (!isMatActive) {
-        const ac = secEquip.find(g => g.items.some(i => i.id === activeId));
-        const oc = secEquip.find(g => g.items.some(i => i.id === overId));
-        if (!ac || !oc || ac.cat !== oc.cat) return;
-      }
     } else {
       const isMaterialActive = materialItemIds.includes(activeId);
       const isMaterialOver   = materialItemIds.includes(overId);
@@ -502,13 +489,10 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                       const displayName = isUnclassified ? "미분류 / Unclassified" : section;
                       const accentColor = isUnclassified ? "#94a3b8" : "#6366f1";
                       const bgColor = isUnclassified ? "#94a3b80d" : "#6366f10d";
-                      const secGrouped = groupByCategory(secItems);
-                      const secMatGroups = secGrouped.filter(g => MATERIAL_CATS.has(g.cat));
-                      const secEquipGroups = secGrouped.filter(g => !MATERIAL_CATS.has(g.cat));
-                      const secMatIds = secMatGroups.flatMap(g => g.items.map(i => i.id));
+                      const secItemIds = secItems.map(i => i.id);
                       return (
                         <React.Fragment key={section}>
-                          {/* Section header — its own <tbody> so ScopeCategorySection's <tbody> are valid siblings */}
+                          {/* Section header */}
                           <tbody>
                             <tr>
                               <td colSpan={8} style={{ padding: 0, borderLeft: `4px solid ${accentColor}` }}>
@@ -529,46 +513,29 @@ export function ScopeItemsTab({ projectId }: { projectId: number }) {
                               </td>
                             </tr>
                           </tbody>
-                          {/* Section category rows — ScopeCategorySection renders its own <tbody> as table siblings */}
+                          {/* Flat item rows in BOQ document order (sortOrder) — no category sub-headers */}
                           {!isSectionCollapsed && (
-                            <>
-                              {/* Materials within this section */}
-                              {secMatGroups.length > 0 && (
-                                <SortableContext items={secMatIds} strategy={verticalListSortingStrategy}>
-                                  {secMatGroups.map(({ cat, items: catItems }, gi) => {
-                                    const offset = secMatGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0);
-                                    return (
-                                      <ScopeCategorySection
-                                        key={`${section}__${cat}`}
-                                        cat={cat} items={catItems} allInvItems={allInvItems}
-                                        hideHeader={false}
-                                        isCollapsed={collapsedCats.has(`${section}__${cat}`)}
-                                        onToggle={() => toggleCat(`${section}__${cat}`)}
-                                        selectedIds={selectedIds} dragDisabled={isAdding}
-                                        startIndex={offset + 1}
-                                        onEdit={setDialogItem} onDelete={setDeleteTarget}
-                                        onDuplicate={duplicateItem} onSelect={toggleSelectItem}
-                                      />
-                                    );
-                                  })}
-                                </SortableContext>
-                              )}
-                              {/* Equipment within this section */}
-                              {secEquipGroups.map(({ cat, items: catItems }) => (
-                                <SortableContext key={`${section}__${cat}`} items={catItems.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                                  <ScopeCategorySection
-                                    cat={cat} items={catItems} allInvItems={allInvItems}
-                                    hideHeader={false}
-                                    isCollapsed={collapsedCats.has(`${section}__${cat}`)}
-                                    onToggle={() => toggleCat(`${section}__${cat}`)}
-                                    selectedIds={selectedIds} dragDisabled={isAdding}
-                                    startIndex={1}
-                                    onEdit={setDialogItem} onDelete={setDeleteTarget}
-                                    onDuplicate={duplicateItem} onSelect={toggleSelectItem}
+                            <SortableContext items={secItemIds} strategy={verticalListSortingStrategy}>
+                              <tbody>
+                                {secItems.map((item, idx) => (
+                                  <SortableScopeItemRow
+                                    key={item.id}
+                                    item={item}
+                                    allInvItems={allInvItems}
+                                    accentColor={accentColor}
+                                    isSelected={selectedIds.has(item.id)}
+                                    dragDisabled={isAdding}
+                                    rowNumber={idx + 1}
+                                    onEdit={() => setDialogItem(item)}
+                                    onDelete={() => setDeleteTarget(item)}
+                                    onDuplicate={() => duplicateItem(item)}
+                                    onSelect={() => toggleSelectItem(item.id)}
                                   />
-                                </SortableContext>
-                              ))}
-                            </>
+                                ))}
+                                {/* Section spacer */}
+                                <tr><td colSpan={8} style={{ height: 4, background: "#f8fafc", padding: 0 }} /></tr>
+                              </tbody>
+                            </SortableContext>
                           )}
                         </React.Fragment>
                       );

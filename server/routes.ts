@@ -4524,12 +4524,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
-      // Duplicate check: same project + itemName + unit
+      // Duplicate check: same project + itemName + unit + remarks(spec)
+      // Including remarks ensures items with the same name/unit but different specs
+      // (e.g. CONNECTION AND TERMINATION EA #350Kcmil vs AWG#1) are treated as distinct.
       // If a duplicate exists and the request carries section/sortOrder, patch those fields rather than rejecting.
       const existing = await storage.getScopeItems(projectId);
       const dup = existing.find(
         (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
              && s.unit.trim().toLowerCase() === String(req.body.unit ?? "").trim().toLowerCase()
+             && (s.remarks ?? "").trim().toLowerCase() === String(req.body.remarks ?? "").trim().toLowerCase()
       );
       if (dup) {
         const incomingSection   = req.body.section   ?? null;

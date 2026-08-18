@@ -1,0 +1,45 @@
+Context briefing — read only, do NOT write any code yet.
+
+Background:
+TK Electric quotations (BOQ) are organized into discipline sections —
+e.g. "POWER DISTRIBUTION PLAN", "GROUNDING PLAN", "MECHANICAL POWER
+PLAN", "LIGHTING PLAN", "RECEPTACLE PLAN", "RENTAL EQUIPMENT" — each
+with a numbered list of material line items under it.
+
+When a project starts, someone uploads that quotation into this app's
+Scope Item AI extraction (client/src/components/project/scope/
+ScopeExtractDialog.tsx → server/routes.ts POST /api/projects/:id/
+scope-items/extract-from-file). Those Scope Items later auto-populate
+the Materials section of the project's Daily Reports.
+
+Down the line, we need to be able to export a project's progress —
+scope items + daily-logged quantities — back out in the SAME shape as
+the original BOQ: section header, then its items underneath, in the
+original order. Right now the extraction only assigns a generic
+material-type `category` (Conduit, Cable/Wire, Grounding, Equipment,
+etc.) and has no idea which BOQ section an item came from, so that
+section grouping is currently lost the moment an item is extracted.
+
+The database already has columns for this (`section` and `sortOrder`
+on `project_scope_items` in shared/schema.ts) — they're just never
+populated, because neither the AI extraction prompt nor the review UI
+nor the save request currently touch them.
+
+Files to read:
+- server/routes.ts — POST /api/projects/:id/scope-items/extract-from-file
+  (~line 4534), the Gemini systemPrompt and JSON schema it requests
+- client/src/components/project/scope/ScopeExtractDialog.tsx —
+  ExtractedItem/RowState interface (~line 16), the review table
+  (~line 397–440), the save mutation (~line 601–616)
+- shared/schema.ts — projectScopeItems (~line 442)
+
+What I need from you right now:
+Read those files and reply with your understanding of (a) how
+extraction currently flows from upload → Gemini → review table →
+saved scope item, and (b) exactly where `section` (the BOQ header
+text) and `sortOrder` (document position) would need to be added at
+each of those steps to close the gap described above.
+
+Do not write or change any code in this message — just confirm your
+understanding of the current flow and the plan. I'll follow up with
+the exact implementation spec once you've confirmed.

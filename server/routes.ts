@@ -4738,12 +4738,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "A row is a SKIP ROW if it is a subtotal, total, grand-total, blank, or summary row — do NOT extract these and do NOT treat them as section headers.\n\n" +
 
           "SECTION TRACKING RULE (critical):\n" +
-          "- Process the document strictly top-to-bottom, page by page.\n" +
+          "- Process the document strictly top-to-bottom, page by page in order.\n" +
           "- Maintain a 'current section' variable, starting as null.\n" +
           "- When you encounter a SECTION HEADER row: update current section to that header text. Do NOT add it to the output array.\n" +
+          "- PAGE BOUNDARY RULE: A section header carries over across page breaks. When a new page begins with line items and NO section header row at the top, the section from the previous page is still active — do NOT reset or change the current section at a page boundary.\n" +
           "- When you encounter a LINE ITEM row: assign the current section value to it, regardless of the item's name or content. " +
-          "  Even if the same item name (e.g. 'CONNECTION AND TERMINATION') appears in multiple sections, each occurrence gets the section that was most recently set above it in the document — never reassign based on content.\n" +
+          "Even if the same item name (e.g. 'CONNECTION AND TERMINATION') appears in multiple sections, each occurrence gets the section that was most recently set above it in the document — never reassign based on content.\n" +
           "- If no section header has appeared before the first line item, section is null.\n\n" +
+
+          "COMPLETENESS RULE (critical — do not skip rows):\n" +
+          "- Every line item row that has a qty value MUST appear in the output. Do not merge, deduplicate, or omit any row.\n" +
+          "- The same item name may appear multiple times in one section with different specs (e.g. 'CONNECTION AND TERMINATION' with '#350 Kcmil', 'AWG#1/0', 'AWG#1', 'AWG#4', 'AWG#6', 'AWG#8'). Each occurrence is a separate row in the output — N rows in the document = N objects in the JSON.\n\n" +
 
           "Return ONLY valid JSON — an array of objects with these keys:\n" +
           "  itemName (string — the description/품명),\n" +

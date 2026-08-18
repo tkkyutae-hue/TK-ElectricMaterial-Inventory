@@ -4763,39 +4763,78 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const { GoogleGenAI } = await import("@google/genai");
         const genAI = new GoogleGenAI({ apiKey });
 
-        const parts: any[] = [];
-        if (pageImages.length > 0) {
-          for (const img of pageImages) {
-            parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+        // ── Chunked Gemini extraction ─────────────────────────────────────────
+        // Flash models have a hard output-token cap (~8 192 tokens) regardless of
+        // the maxOutputTokens config value.  Sending 8 dense BOQ pages in one call
+        // needs ~15 000 output tokens → silent truncation → last sections (e.g.
+        // CONNECTION AND TERMINATION) are dropped.  Fix: split into chunks of ≤4
+        // pages, call Gemini once per chunk, carry section context forward.
+        const EXTRACT_CHUNK = 4;
+
+        async function runGeminiChunk(
+          imgs: Array<{ base64: string; mimeType: string }>,
+          txt: string | null,
+          sectionCtx: string | null,
+          sortBase: number,
+        ): Promise<any[]> {
+          const cp: any[] = [];
+          if (imgs.length > 0) {
+            for (const img of imgs) cp.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+            const ctxNote = sectionCtx
+              ? `\n\nCONTINUATION: These pages follow a previous set already processed. The last active section was "${sectionCtx}". Apply PAGE BOUNDARY RULE immediately — the section carries over; do NOT reset it.`
+              : "";
+            const sortNote = sortBase > 0 ? ` Start sortOrder at ${sortBase + 1}.` : "";
+            cp.push({
+              text: systemPrompt + ctxNote + "\n\n" + (
+                imgs.length > 1
+                  ? `These are ${imgs.length} pages from the same document. Extract ALL scope/BOQ line items across all pages. Return as JSON array.${sortNote}`
+                  : `Extract all scope/BOQ line items from this page. Return as JSON array.${sortNote}`
+              ),
+            });
+          } else if (txt) {
+            cp.push({ text: systemPrompt + `\n\nExtract all scope/BOQ line items from this spreadsheet data:\n\n${txt}\n\nReturn as JSON array.` });
           }
-          parts.push({
-            text: systemPrompt + "\n\n" + (
-              pageImages.length > 1
-                ? `These are ${pageImages.length} pages from the same document. Extract ALL scope/BOQ line items across all pages. Return as JSON array.`
-                : "Extract all scope/BOQ line items from this document. Return as JSON array."
-            ),
+
+          const result = await genAI.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: [{ parts: cp }],
+            config: { temperature: 0.1, maxOutputTokens: 16384, responseMimeType: "application/json" },
           });
-        } else {
-          parts.push({
-            text: systemPrompt + `\n\nExtract all scope/BOQ line items from this spreadsheet data:\n\n${textContent}\n\nReturn as JSON array.`,
-          });
+          const chunkRaw = result.text ?? "[]";
+          const fr = (result as any)?.candidates?.[0]?.finishReason;
+          const chunkCleaned = chunkRaw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+          let chunkItems: any[];
+          try { chunkItems = JSON.parse(chunkCleaned); if (!Array.isArray(chunkItems)) chunkItems = []; }
+          catch { chunkItems = []; }
+          const candT = chunkItems.filter((x: any) => /connection.*term/i.test(x.itemName ?? "")).length;
+          console.log(`[extract] chunk pages=${imgs.length} finishReason=${fr} items=${chunkItems.length} C&T=${candT}`);
+          if (fr === "MAX_TOKENS") console.warn("[extract] WARNING: chunk still hit MAX_TOKENS — items may be missing in this chunk.");
+          return chunkItems;
         }
 
-        let raw: string;
+        let items: any[] = [];
         try {
-          const geminiResult = await genAI.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: [{ parts }],
-            config: { temperature: 0.1, maxOutputTokens: 65536, responseMimeType: "application/json" },
-          });
-          raw = geminiResult.text ?? "[]";
-          // Detect output-token truncation
-          const finishReason = (geminiResult as any)?.candidates?.[0]?.finishReason;
-          const diagItemCount = (() => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a.length : "parse_err"; } catch { return "parse_err"; } })();
-          const diagCandT = (() => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a.filter((x: any) => /connection.*term/i.test(x.itemName ?? "")).length : 0; } catch { return -1; } })();
-          console.log(`[extract] finishReason=${finishReason} rawLen=${raw.length} totalItems=${diagItemCount} connectionAndTerminationRows=${diagCandT}`);
-          if (finishReason === "MAX_TOKENS") {
-            console.warn("[extract] WARNING: output truncated at MAX_TOKENS — some BOQ items may be missing. Reduce page range or split extraction.");
+          if (pageImages.length > 0) {
+            let lastSection: string | null = null;
+            let sortBase = 0;
+            for (let ci = 0; ci < pageImages.length; ci += EXTRACT_CHUNK) {
+              const chunk = pageImages.slice(ci, ci + EXTRACT_CHUNK);
+              const chunkItems = await runGeminiChunk(chunk, null, lastSection, sortBase);
+              // Offset sortOrder so it is globally sequential across chunks
+              chunkItems.forEach((item: any) => {
+                if (typeof item.sortOrder === "number") item.sortOrder = sortBase + item.sortOrder;
+              });
+              if (chunkItems.length > 0) {
+                const last = chunkItems[chunkItems.length - 1];
+                if (last?.section) lastSection = last.section;
+                const maxOrd = Math.max(...chunkItems.map((x: any) => typeof x.sortOrder === "number" ? x.sortOrder : 0));
+                sortBase = Math.max(sortBase, maxOrd);
+              }
+              items.push(...chunkItems);
+            }
+          } else {
+            // Spreadsheet — text is compact, single call is fine
+            items = await runGeminiChunk([], textContent, null, 0);
           }
         } catch (aiErr: any) {
           console.error("[extract] Gemini error:", aiErr);
@@ -4807,16 +4846,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             userMsg = "Gemini API 할당량이 초과됐습니다. 잠시 후 다시 시도해 주세요.";
           }
           return res.status(502).json({ message: userMsg });
-        }
-
-        // Strip markdown fences if present
-        const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-        let items: any[];
-        try {
-          items = JSON.parse(cleaned);
-          if (!Array.isArray(items)) items = [];
-        } catch {
-          items = [];
         }
 
         // Server-side fuzzy inventory matching (AI no longer does this)

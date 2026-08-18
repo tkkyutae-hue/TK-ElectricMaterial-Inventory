@@ -2483,6 +2483,10 @@ const en = {
   cdTradeHelper:           "Helper",
   // ── NewReportTab: nav & photo labels ──────────────────────────────────────
   newReportNavInfo:            "Info",
+  newReportQuickModeBtn:       "⚡ Quick",
+  newReportFullViewBtn:        "Full View",
+  newReportStepNext:           "Next",
+  newReportStepPrev:           "Back",
   newReportNavManpower:        "Manpower",
   newReportNavTasks:           "Tasks",
   newReportNavMaterials:       "Materials",
@@ -5037,6 +5041,10 @@ const ko: Translations = {
   cdTradeHelper:           "Helper",
   // ── NewReportTab: nav & photo labels ──────────────────────────────────────
   newReportNavInfo:            "정보",
+  newReportQuickModeBtn:       "⚡ 빠른",
+  newReportFullViewBtn:        "전체 보기",
+  newReportStepNext:           "다음",
+  newReportStepPrev:           "이전",
   newReportNavManpower:        "인력",
   newReportNavTasks:           "작업",
   newReportNavMaterials:       "자재",
@@ -7590,6 +7598,10 @@ const es: Translations = {
   cdTradeHelper:           "Helper",
   // ── NewReportTab: nav & photo labels ──────────────────────────────────────
   newReportNavInfo:            "Info",
+  newReportQuickModeBtn:       "⚡ Rápido",
+  newReportFullViewBtn:        "Vista completa",
+  newReportStepNext:           "Siguiente",
+  newReportStepPrev:           "Atrás",
   newReportNavManpower:        "Personal",
   newReportNavTasks:           "Tareas",
   newReportNavMaterials:       "Materiales",

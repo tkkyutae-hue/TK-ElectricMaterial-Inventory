@@ -1021,6 +1021,20 @@ export function NewReportTab({
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCopyConfirm,   setShowCopyConfirm]   = useState(false);
+  const [quickMode, setQuickMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("dr-quick-mode") === "true"; } catch { return false; }
+  });
+  const [quickStep, setQuickStep] = useState(0);
+  const QUICK_TOTAL = 6;
+
+  function toggleQuickMode() {
+    setQuickMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem("dr-quick-mode", String(next)); } catch {}
+      if (next) setQuickStep(0);
+      return next;
+    });
+  }
 
   // ── Registry queries ──
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
@@ -1613,13 +1627,38 @@ export function NewReportTab({
         </div>
       </div>
 
-      {/* ── Section navigator (sticky, always visible) ── */}
-      <SectionNavigator
-        sectionRefs={sectionRefs}
-        navRef={navRef}
-        activeSection={activeSection}
-        completionHints={completionHints}
-      />
+      {/* ── Quick mode toggle (mobile only) ── */}
+      {isMobile && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+          <button type="button" onClick={toggleQuickMode}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: FT.FONT, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${quickMode ? FT.ACCENT : FT.RULE}`, background: quickMode ? FT.ACCENT : "transparent", color: quickMode ? "#fff" : FT.TEXT_MUTED, cursor: "pointer" }}>
+            {quickMode ? t.newReportFullViewBtn : t.newReportQuickModeBtn}
+          </button>
+        </div>
+      )}
+      {/* ── Section navigator / Quick step indicator ── */}
+      {quickMode && isMobile ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, borderRadius: 10, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "inline-flex", width: 28, height: 28, borderRadius: 7, alignItems: "center", justifyContent: "center", background: NAV_ITEMS[quickStep].color, color: "#fff" }}>
+              <NavIcon idx={quickStep} />
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: FT.INK, fontFamily: FT.FONT }}>
+              {t[NAV_ITEMS[quickStep].labelKey]}
+            </span>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: FT.TEXT_MUTED, fontFamily: FT.FONT, fontVariantNumeric: "tabular-nums" }}>
+            {quickStep + 1} / {QUICK_TOTAL}
+          </span>
+        </div>
+      ) : (
+        <SectionNavigator
+          sectionRefs={sectionRefs}
+          navRef={navRef}
+          activeSection={activeSection}
+          completionHints={completionHints}
+        />
+      )}
 
       {/* ── Sections: locked when submitted (pointer-events + opacity) ── */}
       <div className="space-y-3" style={isSubmitted ? { opacity: 0.72, pointerEvents: "none", userSelect: "none" } : {}}>
@@ -1627,7 +1666,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[0] = el; }}>
+      <div ref={el => { sectionRefs.current[0] = el; }} style={quickMode && isMobile && quickStep !== 0 ? { display: "none" } : undefined}>
       <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}
         headerRight={!reportId && prevReport ? (
           <button type="button" onClick={handleCopyPrevious}
@@ -1847,7 +1886,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §2 — Manpower
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[1] = el; }}>
+      <div ref={el => { sectionRefs.current[1] = el; }} style={quickMode && isMobile && quickStep !== 1 ? { display: "none" } : undefined}>
       <Section num={2} title={t.newReportManpower} icon={<Users className="w-4 h-4" />} summary={mpSummary}
         headerRight={!isSubmitted ? (
           <button type="button" onClick={e => { e.stopPropagation(); importCrewDispatch(); }}
@@ -1900,7 +1939,7 @@ export function NewReportTab({
                           ))}
                         </SelectContent>
                       </Select>
-                      {hoursActive && (
+                      {hoursActive && !(quickMode && isMobile) && (
                         <div style={{ marginLeft: "auto", display: "flex", alignItems: "baseline", gap: 4 }}>
                           <span style={{ fontSize: 11, color: FT.TEXT_MUTED, fontFamily: FT.FONT, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t.newReportColHrs}</span>
                           <span style={{ fontSize: 22, fontWeight: 800, color: FT.ACCENT, fontVariantNumeric: "tabular-nums", lineHeight: 1, fontFamily: FT.FONT }}>{row.hoursWorked.toFixed(1)}</span>
@@ -1908,7 +1947,7 @@ export function NewReportTab({
                       )}
                     </div>
                     {/* Row 3: Start + End (only when time matters) */}
-                    {hoursActive && (
+                    {hoursActive && !(quickMode && isMobile) && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {(["start", "end"] as const).map((which) => {
                           const val = which === "start" ? row.startTime : row.endTime;
@@ -1936,10 +1975,12 @@ export function NewReportTab({
                       </div>
                     )}
                     {/* Row 4: Notes */}
+                    {!(quickMode && isMobile) && (
                     <Input data-testid={`input-mp-notes-${i}`} value={row.notes}
                       onChange={(e) => setManpower(manpower.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
                       className={cellInputCls} placeholder={t.newReportOptional}
                       style={{ fontSize: 13, color: row.notes ? "#1a1a1a" : "#bbb" }} />
+                    )}
                   </div>
                 );
               })}
@@ -2114,7 +2155,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §3 — Work Tasks
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[2] = el; }}>
+      <div ref={el => { sectionRefs.current[2] = el; }} style={quickMode && isMobile && quickStep !== 2 ? { display: "none" } : undefined}>
       <Section num={3} title={t.newReportWorkTasks} icon={<FileText className="w-4 h-4" />} summary={taskSummary} headerRight={taskStatusChips}>
 
         {/* ── Drawing Board ── */}
@@ -2303,7 +2344,7 @@ export function NewReportTab({
                 )}
 
                 {/* ── Detail panel ── */}
-                {row.expanded && (
+                {row.expanded && !(quickMode && isMobile) && (
                   <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 0.9fr", gap: 0 }}>
 
@@ -2473,7 +2514,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §4 — Materials
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[3] = el; }}>
+      <div ref={el => { sectionRefs.current[3] = el; }} style={quickMode && isMobile && quickStep !== 3 ? { display: "none" } : undefined}>
       <Section num={4} title={t.newReportMaterials} icon={<Package className="w-4 h-4" />} summary={matSummary} defaultOpen={false}
         headerRight={!isSubmitted && scopeItems.filter((s: any) => s.isActive).length > 0 ? (
           <button type="button" onClick={e => { e.stopPropagation(); importScopeItems(); }}
@@ -2534,15 +2575,15 @@ export function NewReportTab({
                     </button>
                   </div>
                   {/* Row 2: Spec */}
-                  <div>
+                  {!(quickMode && isMobile) && <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSpec}</div>
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder="—"
                       style={{ width: "100%", fontSize: 13, border: "1px solid #e8e8e8", borderRadius: 7, padding: "6px 10px", background: "#fff", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
-                  </div>
+                  </div>}
                   {/* Row 3: Qty + Unit */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 8, alignItems: "end" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: quickMode && isMobile ? "1fr" : "1fr 72px", gap: 8, alignItems: "end" }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColQty}</div>
                       <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
@@ -2550,7 +2591,7 @@ export function NewReportTab({
                         onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
                         className="h-10 text-sm text-center tabular-nums" />
                     </div>
-                    <div>
+                    {!(quickMode && isMobile) && <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColUnit}</div>
                       {row.inventoryItemId ? (
                         <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#666", border: "1px solid #f0f0f0", borderRadius: 7 }}>
@@ -2562,7 +2603,7 @@ export function NewReportTab({
                           placeholder={t.newReportUnitEAPh}
                           style={{ width: "100%", height: 40, fontSize: 14, fontWeight: 700, textAlign: "center", border: "1px solid #e8e8e8", borderRadius: 7, background: "#fff", outline: "none", color: "#666" }} />
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
               );
@@ -2704,7 +2745,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §5 — Equipment
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[4] = el; }}>
+      <div ref={el => { sectionRefs.current[4] = el; }} style={quickMode && isMobile && quickStep !== 4 ? { display: "none" } : undefined}>
       <Section num={5} title={t.newReportEquipment} icon={<Truck className="w-4 h-4" />} summary={eqSummary} alert={eqAlert} defaultOpen={false}>
 
         {/* Quick-add preset buttons */}
@@ -2755,7 +2796,7 @@ export function NewReportTab({
                     </div>
                   </div>
                   {/* Row 2: Size + Brand */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {!(quickMode && isMobile) && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSize}</div>
                       <Input data-testid={`input-eq-size-${i}`} value={row.size}
@@ -2768,9 +2809,9 @@ export function NewReportTab({
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, brand: e.target.value } : r))}
                         className="h-9 text-sm w-full" placeholder={t.newReportEqBrandPh} />
                     </div>
-                  </div>
+                  </div>}
                   {/* Row 3: Qty + Unit + Hours */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 1fr", gap: 8 }}>
+                  {!(quickMode && isMobile) && <div style={{ display: "grid", gridTemplateColumns: "1fr 72px 1fr", gap: 8 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportEqColQty}</div>
                       <Input data-testid={`input-eq-qty-${i}`} type="number" min={0} value={row.qty}
@@ -2789,7 +2830,7 @@ export function NewReportTab({
                         onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, hours: Number(e.target.value) } : r))}
                         className="h-9 text-sm text-center tabular-nums w-full" />
                     </div>
-                  </div>
+                  </div>}
                   {/* Row 4: Status select + action tags */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportStatus}</div>
@@ -2820,7 +2861,7 @@ export function NewReportTab({
                       </select>
                       <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 11, pointerEvents: "none" }}>▾</span>
                     </div>
-                    {visibleTags.length > 0 && (
+                    {!(quickMode && isMobile) && visibleTags.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {visibleTags.map((tag) => {
                           const tc = EQ_TAG_CFG[tag];
@@ -2849,12 +2890,12 @@ export function NewReportTab({
                     )}
                   </div>
                   {/* Row 5: Notes */}
-                  <div>
+                  {!(quickMode && isMobile) && <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColNotes}</div>
                     <Input data-testid={`input-eq-notes-${i}`} value={row.notes}
                       onChange={(e) => setEquipment(equipment.map((r) => r.id === row.id ? { ...r, notes: e.target.value } : r))}
                       className="h-9 text-sm w-full" placeholder={t.newReportOptional} />
-                  </div>
+                  </div>}
                 </div>
               );
             })}
@@ -3009,7 +3050,7 @@ export function NewReportTab({
       {/* ══════════════════════════════════════════════════════
           §6 — Notes / Remarks
       ══════════════════════════════════════════════════════ */}
-      <div ref={el => { sectionRefs.current[5] = el; }}>
+      <div ref={el => { sectionRefs.current[5] = el; }} style={quickMode && isMobile && quickStep !== 5 ? { display: "none" } : undefined}>
       <Section num={6} title={t.newReportNotesRemarks} icon={<FileText className="w-4 h-4" />}
         summary={generalNotes.trim() ? generalNotes.trim().slice(0, 44) + (generalNotes.length > 44 ? "…" : "") : undefined}
         defaultOpen={false}>
@@ -3061,6 +3102,30 @@ export function NewReportTab({
         </div>
       </Section>
       </div>{/* end §6 */}
+
+      {/* ── Quick mode prev / next navigation ── */}
+      {quickMode && isMobile && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 8 }}>
+          <button type="button" disabled={quickStep === 0}
+            onClick={() => setQuickStep(s => Math.max(0, s - 1))}
+            style={{ flex: 1, height: 46, borderRadius: 10, border: `1.5px solid ${quickStep === 0 ? "#e5e5e5" : FT.RULE}`, background: "transparent", fontSize: 14, fontWeight: 700, color: quickStep === 0 ? "#ccc" : FT.INK, cursor: quickStep === 0 ? "default" : "pointer", fontFamily: FT.FONT, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            ← {t.newReportStepPrev}
+          </button>
+          {quickStep < QUICK_TOTAL - 1 ? (
+            <button type="button"
+              onClick={() => setQuickStep(s => Math.min(QUICK_TOTAL - 1, s + 1))}
+              style={{ flex: 1, height: 46, borderRadius: 10, border: "none", background: FT.ACCENT, fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: FT.FONT, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              {t.newReportStepNext} →
+            </button>
+          ) : (
+            <button type="button" disabled={saveMutation.isPending || isSubmitted}
+              onClick={() => saveMutation.mutate("draft")}
+              style={{ flex: 1, height: 46, borderRadius: 10, border: "none", background: FT.ACCENT, fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: FT.FONT, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: saveMutation.isPending || isSubmitted ? 0.6 : 1 }}>
+              {t.newReportSaveDraft}
+            </button>
+          )}
+        </div>
+      )}
 
       </div>{/* end sections lock wrapper */}
 

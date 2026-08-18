@@ -697,6 +697,7 @@ export function ScopeExtractDialog({
   const isSaving = saveMutation.isPending;
   const matchedCount = rows.filter((r) => r.inventoryItemId !== null).length;
   const isPdf = file?.type === "application/pdf";
+  const isExcel = file?.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   const showPagePicker = isPdf && totalPages > 1 && !checkingPages;
 
   return (
@@ -753,12 +754,15 @@ export function ScopeExtractDialog({
                 >
                   {isExtracting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI 분석 중…
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {isExcel ? "가져오는 중…" : "AI 분석 중…"}
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {showPagePicker ? `${fromPage}~${toPage}p AI 추출` : "AI 추출"}
+                      {!isExcel && <Sparkles className="w-4 h-4 mr-2" />}
+                      {isExcel
+                        ? "가져오기"
+                        : showPagePicker ? `${fromPage}~${toPage}p AI 추출` : "AI 추출"}
                     </>
                   )}
                 </Button>
@@ -769,10 +773,12 @@ export function ScopeExtractDialog({
           {/* ── Result step ── */}
           {step === "result" && (
             <>
-              <div className="flex items-center gap-2 text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <div className="flex items-center gap-2 text-xs text-slate-500 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>
-                  AI가 {rows.length}개 항목을 추출했습니다.
+                  {isExcel
+                    ? <>{rows.length}개 항목을 가져왔습니다.</>
+                    : <>AI가 {rows.length}개 항목을 추출했습니다.</>}
                   {matchedCount > 0 && (
                     <> · <span className="text-emerald-600 font-medium">{matchedCount}개</span>가 인벤토리와 자동 매칭됐습니다. 인벤토리 열에서 수정할 수 있습니다.</>
                   )}

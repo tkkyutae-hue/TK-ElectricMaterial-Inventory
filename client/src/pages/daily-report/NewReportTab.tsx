@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1020,6 +1020,7 @@ export function NewReportTab({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCopyConfirm,   setShowCopyConfirm]   = useState(false);
 
   // ── Registry queries ──
   const { data: workers = [] }        = useQuery<Worker[]>({ queryKey: ["/api/workers"] });
@@ -1173,6 +1174,44 @@ export function NewReportTab({
     toast({ title: t.newReportToastCrewAdded.replace("{n}", String(newRows.length)) });
   }
 
+  function applyCopyFromPrevious() {
+    if (!prevReport) return;
+    const pfd = prevReport.formData ?? {};
+    setTasks((pfd.tasks ?? []).map((taskRow: any) => ({
+      ...taskRow,
+      id: uid(),
+      status: "not-started",
+      photoFiles: [],
+      drawingFiles: [],
+      expanded: false,
+      detailNotes: taskRow.detailNotes ?? "",
+    })));
+    setMaterials((pfd.materials ?? []).map((m: any) => ({
+      inventoryItemId: null, scopeItemId: null, spec: "", ...m,
+      id: uid(), qty: 0,
+    })));
+    setEquipment((pfd.equipment ?? []).map((e: any) => ({ ...e, id: uid() })));
+    if (pfd.generalNotes)       setGeneralNotes(pfd.generalNotes);
+    if (pfd.safetyNotes)        setSafetyNotes(pfd.safetyNotes);
+    if (pfd.inspectorVisitor)   setInspectorVisitor(pfd.inspectorVisitor);
+    if (pfd.requestFromClient)  setRequestFromClient(pfd.requestFromClient);
+    if (pfd.drawingNo)          setDrawingNo(pfd.drawingNo);
+    if (pfd.drawingDescription) setDrawingDescription(pfd.drawingDescription);
+    const taskCount = (pfd.tasks ?? []).length;
+    const matCount  = (pfd.materials ?? []).length;
+    toast({ title: t.newReportCopyPrevToast.replace("{tasks}", String(taskCount)).replace("{mats}", String(matCount)) });
+  }
+
+  function handleCopyPrevious() {
+    const formIsEmpty = tasks.length === 0 && materials.length === 0 && equipment.length === 0
+      && !generalNotes.trim() && !safetyNotes.trim();
+    if (formIsEmpty) {
+      applyCopyFromPrevious();
+    } else {
+      setShowCopyConfirm(true);
+    }
+  }
+
   function importScopeItems() {
     const active = scopeItems.filter((s: any) => s.isActive);
     if (!active.length) return;
@@ -1262,6 +1301,15 @@ export function NewReportTab({
   // ── Save state ──
   const [savedStatus, setSavedStatus] = useState<string | null>(initialData?.status ?? null);
   const [lastSaved,   setLastSaved]   = useState<Date | null>(null);
+
+  // ── Most recent previous report (for "Copy Previous" feature) ──
+  const prevReport = useMemo(() => {
+    if (reportId || existingReports.length === 0) return null;
+    const sorted = [...existingReports].sort((a, b) =>
+      (b.reportDate ?? "").localeCompare(a.reportDate ?? "")
+    );
+    return sorted[0] ?? null;
+  }, [existingReports, reportId]);
 
   // ── Computed ──
   const totalWorkers    = manpower.length;
@@ -1412,6 +1460,36 @@ export function NewReportTab({
   return (
     <div className="space-y-3">
 
+      {/* ── Copy-previous confirmation modal ── */}
+      {showCopyConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div style={{ background: FT.PAPER, borderRadius: 16, border: `1px solid ${FT.RULE}`, padding: 24, maxWidth: 360, width: "calc(100% - 32px)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: FT.PAPER_MUTED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={FT.ACCENT} strokeWidth={2.5}>
+                  <path d="M20 9H11a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-9a2 2 0 00-2-2z"/>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: FT.INK, fontFamily: FT.FONT, margin: 0 }}>{t.newReportCopyPrevConfirmTitle}</p>
+                <p style={{ fontSize: 12, color: FT.TEXT_MUTED, marginTop: 2 }}>{t.newReportCopyPrevConfirmDesc}</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setShowCopyConfirm(false)}
+                style={{ padding: "6px 16px", borderRadius: 7, border: `1px solid ${FT.RULE}`, background: "transparent", fontSize: 13, fontWeight: 600, color: FT.TEXT_MUTED, cursor: "pointer", fontFamily: FT.FONT }}>
+                {t.newReportCopyPrevCancel}
+              </button>
+              <button type="button" onClick={() => { setShowCopyConfirm(false); applyCopyFromPrevious(); }}
+                style={{ padding: "6px 16px", borderRadius: 7, border: "none", background: FT.ACCENT, fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: FT.FONT }}>
+                {t.newReportCopyPrevConfirm}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Delete confirmation modal ── */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -1550,7 +1628,21 @@ export function NewReportTab({
           §1 — General Info
       ══════════════════════════════════════════════════════ */}
       <div ref={el => { sectionRefs.current[0] = el; }}>
-      <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}>
+      <Section num={1} title={t.newReportGeneralInfo} icon={<Calendar className="w-4 h-4" />}
+        headerRight={!reportId && prevReport ? (
+          <button type="button" onClick={handleCopyPrevious}
+            style={{ fontSize: 11, fontFamily: FT.FONT, fontWeight: 700, letterSpacing: "0.04em",
+              padding: "3px 10px", border: `1.5px dashed ${FT.RULE}`, borderRadius: 6,
+              background: "transparent", color: FT.TEXT_MUTED, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 5, textTransform: "uppercase",
+              whiteSpace: "nowrap" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M20 9H11a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-9a2 2 0 00-2-2z"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            {t.newReportCopyPrevBtn}
+          </button>
+        ) : undefined}>
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}

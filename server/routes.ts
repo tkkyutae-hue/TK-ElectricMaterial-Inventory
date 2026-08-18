@@ -4716,11 +4716,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const systemPrompt =
           "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
           "You may receive multiple pages — extract ALL line items across all pages. " +
-          "Return ONLY valid JSON — an array of objects with keys: " +
-          "itemName (string — the description/품명, e.g. 'POWER DISTRIBUTION PANEL'), " +
-          "spec (string or null — the specification/규격, e.g. 'Main 400AF 480/277V, 3P3W, 400Amp Main Circuit Breaker, Indoor'), " +
+          "\n\nDOCUMENT STRUCTURE RULES:" +
+          "\n- BOQ documents contain SECTION HEADER rows (e.g. 'POWER DISTRIBUTION PLAN', 'GROUNDING PLAN', 'LIGHTING PLAN') — these are visually distinct (colored/bold background, no qty/unit/price). They are NOT line items; use them only to track the current section name." +
+          "\n- LINE ITEM rows have a description, spec, qty, unit, and pricing. These ARE the items to extract." +
+          "\n- SUB TOTAL / TOTAL rows are NOT line items — skip them." +
+          "\n- Read the document top-to-bottom. When you encounter a section header, update the current section name. Assign that section name to every following line item until the next header." +
+          "\n- If the document has no section headers at all, set section to null for all items." +
+          "\n\nReturn ONLY valid JSON — an array of objects with these keys: " +
+          "itemName (string — the description/품명), " +
+          "spec (string or null — the specification/규격), " +
           "qty (number), unit (string), " +
-          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment). " +
+          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
+          "section (string or null — the BOQ section header this item belongs to, e.g. 'POWER DISTRIBUTION PLAN'; null if no section headers exist), " +
+          "sortOrder (number — 1-based integer reflecting this item's position in the document counting only line items, never resets between sections). " +
           "No markdown, no explanation — just the JSON array.";
 
         const { GoogleGenAI } = await import("@google/genai");

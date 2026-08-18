@@ -15,6 +15,8 @@ interface ExtractedItem {
   unit: string;
   category: string;
   remarks: string | null;
+  section: string | null;
+  sortOrder: number | null;
   inventoryItemId: number | null;
   inventoryItemName: string | null;
 }
@@ -368,6 +370,7 @@ function ResultTable({
                   )}
                 </button>
               </th>
+              <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-32">섹션</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">품목명</th>
               <th className="text-left px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">규격 / Spec</th>
               <th className="text-right px-3 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wide w-20">수량</th>
@@ -392,6 +395,15 @@ function ResultTable({
                       <Square className="w-4 h-4" />
                     )}
                   </button>
+                </td>
+                <td className="px-3 py-2 w-32">
+                  {row.section ? (
+                    <span className="inline-block max-w-[120px] truncate text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5" title={row.section}>
+                      {row.section}
+                    </span>
+                  ) : (
+                    <span className="text-slate-300 text-xs">—</span>
+                  )}
                 </td>
                 <td className="px-3 py-2 min-w-[160px]">
                   <textarea
@@ -614,6 +626,8 @@ export function ScopeExtractDialog({
               estimatedQty: String(row.qty ?? 0),
               category: row.category || "Other",
               remarks: row.remarks || null,
+              section: row.section || null,
+              sortOrder: row.sortOrder ?? null,
               linkedInventoryItemId: row.inventoryItemId ?? null,
             }),
           }).then(async (r) => {

@@ -640,16 +640,18 @@ export function ScopeExtractDialog({
           }),
         ),
       );
-      const saved = results.filter((r) => r.status === "fulfilled" && !(r.value as any)?.skipped).length;
-      const skipped = results.filter((r) => r.status === "fulfilled" && (r.value as any)?.skipped).length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-      return { saved, skipped, failed };
+      const saved          = results.filter((r) => r.status === "fulfilled" && !(r.value as any)?.skipped && !(r.value as any)?.sectionUpdated).length;
+      const sectionUpdated = results.filter((r) => r.status === "fulfilled" && !!(r.value as any)?.sectionUpdated).length;
+      const skipped        = results.filter((r) => r.status === "fulfilled" && !!(r.value as any)?.skipped).length;
+      const failed         = results.filter((r) => r.status === "rejected").length;
+      return { saved, sectionUpdated, skipped, failed };
     },
-    onSuccess: ({ saved, skipped, failed }) => {
+    onSuccess: ({ saved, sectionUpdated, skipped, failed }) => {
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
       qc.invalidateQueries({ queryKey: ["/api/projects", projectId, "progress"] });
       const parts: string[] = [];
       if (saved > 0) parts.push(`${saved}개 추가됨`);
+      if (sectionUpdated > 0) parts.push(`${sectionUpdated}개 섹션 업데이트됨`);
       if (skipped > 0) parts.push(`${skipped}개 중복 건너뜀`);
       if (failed > 0) parts.push(`${failed}개 실패`);
       toast({

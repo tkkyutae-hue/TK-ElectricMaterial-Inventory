@@ -4525,12 +4525,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
       // Duplicate check: same project + itemName + unit
+      // If a duplicate exists and the request carries section/sortOrder, patch those fields rather than rejecting.
       const existing = await storage.getScopeItems(projectId);
       const dup = existing.find(
         (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
              && s.unit.trim().toLowerCase() === String(req.body.unit ?? "").trim().toLowerCase()
       );
-      if (dup) return res.status(409).json({ message: `A scope item "${req.body.itemName} / ${req.body.unit}" already exists for this project.` });
+      if (dup) {
+        const incomingSection   = req.body.section   ?? null;
+        const incomingSortOrder = req.body.sortOrder  ?? null;
+        const hasNewSectionData = incomingSection !== null || incomingSortOrder !== null;
+        if (hasNewSectionData) {
+          const updated = await storage.updateScopeItem(dup.id, {
+            section:   incomingSection,
+            sortOrder: incomingSortOrder,
+          });
+          return res.json({ ...updated, sectionUpdated: true });
+        }
+        return res.status(409).json({ message: `A scope item "${req.body.itemName} / ${req.body.unit}" already exists for this project.` });
+      }
       const item = await storage.createScopeItem({ ...req.body, projectId });
       res.json(item);
     } catch (err: any) {

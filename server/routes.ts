@@ -4786,10 +4786,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const geminiResult = await genAI.models.generateContent({
             model: "gemini-3.5-flash",
             contents: [{ parts }],
-            config: { temperature: 0.1, maxOutputTokens: 16000, responseMimeType: "application/json" },
+            config: { temperature: 0.1, maxOutputTokens: 65536, responseMimeType: "application/json" },
           });
           raw = geminiResult.text ?? "[]";
-          console.log("[extract] Gemini raw (first 500):", raw.slice(0, 500));
+          // Detect output-token truncation
+          const finishReason = (geminiResult as any)?.candidates?.[0]?.finishReason;
+          const diagItemCount = (() => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a.length : "parse_err"; } catch { return "parse_err"; } })();
+          const diagCandT = (() => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a.filter((x: any) => /connection.*term/i.test(x.itemName ?? "")).length : 0; } catch { return -1; } })();
+          console.log(`[extract] finishReason=${finishReason} rawLen=${raw.length} totalItems=${diagItemCount} connectionAndTerminationRows=${diagCandT}`);
+          if (finishReason === "MAX_TOKENS") {
+            console.warn("[extract] WARNING: output truncated at MAX_TOKENS — some BOQ items may be missing. Reduce page range or split extraction.");
+          }
         } catch (aiErr: any) {
           console.error("[extract] Gemini error:", aiErr);
           let userMsg = "AI 추출 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";

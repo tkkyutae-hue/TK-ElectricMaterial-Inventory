@@ -663,47 +663,65 @@ function ProgressTab({ projectId }: { projectId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {scopeItems.map((scope: any) => {
-                  const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)) || 0, pct: 0 };
-                  const estQty = parseFloat(String(scope.estimatedQty)) || 0;
-                  return (
-                    <tr
-                      key={scope.id}
-                      data-testid={`row-progress-summary-${scope.id}`}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="py-2.5 px-4 text-sm text-slate-700">
-                        {scope.itemName}
-                        {scope.category && <span className="ml-1.5 text-[10px] text-slate-400">({scope.category})</span>}
-                      </td>
-                      <td className="py-2.5 px-4 text-xs text-slate-500 font-mono">{scope.unit}</td>
-                      <td className="py-2.5 px-4 text-sm text-slate-500 tabular-nums">{estQty.toLocaleString()}</td>
-                      <td className="py-2.5 px-4 text-sm font-semibold text-slate-700 tabular-nums">
-                        {p.cumulative > 0 ? (
-                          <span className="text-emerald-700">{p.cumulative.toLocaleString()}</span>
-                        ) : (
-                          <span className="text-slate-300">0</span>
-                        )}
-                      </td>
-                      <td className={`py-2.5 px-4 text-sm tabular-nums ${p.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-600"}`}>
-                        {p.remaining.toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <div className="flex items-center gap-2 min-w-[100px]">
-                          <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${pctBarColor(p.pct)}`}
-                              style={{ width: `${Math.min(100, p.pct)}%` }}
-                            />
+                {(() => {
+                  const rows: React.ReactNode[] = [];
+                  let lastSection: string | null = undefined as any;
+                  for (const scope of scopeItems) {
+                    const section = scope.section ?? null;
+                    if (section !== lastSection) {
+                      lastSection = section;
+                      if (section) {
+                        rows.push(
+                          <tr key={`section-${section}`} className="bg-slate-100 border-b border-slate-200">
+                            <td colSpan={6} className="py-1.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                              {section}
+                            </td>
+                          </tr>
+                        );
+                      }
+                    }
+                    const p = progress[scope.id] ?? { cumulative: 0, remaining: parseFloat(String(scope.estimatedQty)) || 0, pct: 0 };
+                    const estQty = parseFloat(String(scope.estimatedQty)) || 0;
+                    rows.push(
+                      <tr
+                        key={scope.id}
+                        data-testid={`row-progress-summary-${scope.id}`}
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="py-2.5 px-4 text-sm text-slate-700">
+                          {scope.itemName}
+                          {scope.category && <span className="ml-1.5 text-[10px] text-slate-400">({scope.category})</span>}
+                        </td>
+                        <td className="py-2.5 px-4 text-xs text-slate-500 font-mono">{scope.unit}</td>
+                        <td className="py-2.5 px-4 text-sm text-slate-500 tabular-nums">{estQty.toLocaleString()}</td>
+                        <td className="py-2.5 px-4 text-sm font-semibold text-slate-700 tabular-nums">
+                          {p.cumulative > 0 ? (
+                            <span className="text-emerald-700">{p.cumulative.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-slate-300">0</span>
+                          )}
+                        </td>
+                        <td className={`py-2.5 px-4 text-sm tabular-nums ${p.remaining === 0 ? "text-emerald-600 font-semibold" : "text-slate-600"}`}>
+                          {p.remaining.toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <div className="flex items-center gap-2 min-w-[100px]">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${pctBarColor(p.pct)}`}
+                                style={{ width: `${Math.min(100, p.pct)}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-semibold w-9 shrink-0 text-right tabular-nums ${p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-blue-600" : "text-slate-400"}`}>
+                              {p.pct.toFixed(0)}%
+                            </span>
                           </div>
-                          <span className={`text-xs font-semibold w-9 shrink-0 text-right tabular-nums ${p.pct >= 100 ? "text-emerald-600" : p.pct > 0 ? "text-blue-600" : "text-slate-400"}`}>
-                            {p.pct.toFixed(0)}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return rows;
+                })()}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 bg-slate-50">

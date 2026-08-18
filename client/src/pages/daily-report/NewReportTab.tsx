@@ -1021,8 +1021,9 @@ export function NewReportTab({
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCopyConfirm,   setShowCopyConfirm]   = useState(false);
+  // Mobile defaults to quick mode; only explicit "false" in localStorage turns it off.
   const [quickMode, setQuickMode] = useState<boolean>(() => {
-    try { return localStorage.getItem("dr-quick-mode") === "true"; } catch { return false; }
+    try { return localStorage.getItem("dr-quick-mode") !== "false"; } catch { return true; }
   });
   const [quickStep, setQuickStep] = useState(0);
   const QUICK_TOTAL = 6;
@@ -1684,15 +1685,7 @@ export function NewReportTab({
         </div>
       </div>
 
-      {/* ── Quick mode toggle (mobile only) ── */}
-      {isMobile && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-          <button type="button" onClick={toggleQuickMode}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: FT.FONT, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${quickMode ? FT.ACCENT : FT.RULE}`, background: quickMode ? FT.ACCENT : "transparent", color: quickMode ? "#fff" : FT.TEXT_MUTED, cursor: "pointer" }}>
-            {quickMode ? t.newReportFullViewBtn : t.newReportQuickModeBtn}
-          </button>
-        </div>
-      )}
+      {/* Quick mode toggle removed — mobile always uses quick mode by default */}
       {/* ── Section navigator / Quick step indicator ── */}
       {quickMode && isMobile ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: FT.PAPER_MUTED, border: `1px solid ${FT.RULE}`, borderRadius: 10, marginBottom: 4 }}>
@@ -1741,13 +1734,13 @@ export function NewReportTab({
         ) : undefined}>
         <div style={{ padding: isMobile ? "16px 12px" : "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* ROW 1 — Report No | Shift | Weather+Temp | Date */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
+          {/* ROW 1 — Report No | Shift | Date (mobile: 3-col; desktop: Report No | Shift | Weather+Temp | Date) */}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "72px 1fr 1fr" : "72px 130px 1fr 148px", gap: 10, alignItems: "end" }}>
 
             {/* Col 1: Report No */}
             <div>
               <FL>{t.newReportReportNo}</FL>
-              <div style={{ width: isMobile ? "100%" : 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
+              <div style={{ width: 72, height: 36, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", textAlign: "center", background: "#f9fafb", color: "#374151", fontFamily: "monospace" }}>
                 {reportNumber || <span style={{ fontSize: 11, color: "#d1d5db", fontWeight: 400, fontStyle: "italic", fontFamily: "sans-serif" }}>auto…</span>}
               </div>
             </div>
@@ -1763,49 +1756,58 @@ export function NewReportTab({
               </select>
             </div>
 
-            {/* Col 3: Weather + Temperature combined — full row on mobile */}
-            {!isMobile && (
-            <div>
-              <FL>{t.newReportWeatherTemp}</FL>
-              <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
-                <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
-                  style={{ flex: 1, border: "none", padding: "0 10px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
-                  <option value="clear">{t.newReportWClear}</option>
-                  <option value="partly-cloudy">{t.newReportWPartlyCloudy}</option>
-                  <option value="overcast">{t.newReportWOvercast}</option>
-                  <option value="rain">{t.newReportWRain}</option>
-                  <option value="wind">{t.newReportWWind}</option>
-                  <option value="heat">{t.newReportWHeat}</option>
-                </select>
-                <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px 0 8px", flexShrink: 0 }}>
-                  <span style={{ color: "#f87171", fontSize: 10, fontWeight: 700 }}>H</span>
-                  <input data-testid="input-temp-high" type="number" value={temperatureHigh} onChange={e => setTemperatureHigh(e.target.value)}
-                    style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
-                  <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
-                  <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
-                    style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
-                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: weatherAutoState === "idle" || weatherAutoState === "failed" ? 6 : 4 }}>°F</span>
-                  {weatherAutoState === "loading" && (
-                    <span style={{ fontSize: 9, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.02em", paddingRight: 4, display: "flex", alignItems: "center", gap: 2, whiteSpace: "nowrap" }}>
-                      <svg style={{ animation: "spin 1s linear infinite", width: 10, height: 10 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    </span>
-                  )}
-                  {weatherAutoState === "auto" && (
-                    <span style={{ fontSize: 9, color: FT.ACCENT, fontWeight: 700, letterSpacing: "0.04em", paddingRight: 6, whiteSpace: "nowrap" }}>AUTO</span>
-                  )}
+            {/* Col 3 mobile: Report Date — Col 3 desktop: Weather+Temp */}
+            {isMobile ? (
+              <div>
+                <FL>{t.newReportReportDate}</FL>
+                <input data-testid="input-report-date" type="date" value={reportDate}
+                  onChange={e => setReportDate(e.target.value)}
+                  style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
+              </div>
+            ) : (
+              <div>
+                <FL>{t.newReportWeatherTemp}</FL>
+                <div style={{ display: "flex", border: "1px solid #d1d5db", borderRadius: 8, overflow: "hidden", height: 36, background: "#fff" }}>
+                  <select data-testid="select-weather" value={weather} onChange={e => setWeather(e.target.value)}
+                    style={{ flex: 1, border: "none", padding: "0 10px", fontSize: 13, color: "#111", background: "transparent", outline: "none", cursor: "pointer" }}>
+                    <option value="clear">{t.newReportWClear}</option>
+                    <option value="partly-cloudy">{t.newReportWPartlyCloudy}</option>
+                    <option value="overcast">{t.newReportWOvercast}</option>
+                    <option value="rain">{t.newReportWRain}</option>
+                    <option value="wind">{t.newReportWWind}</option>
+                    <option value="heat">{t.newReportWHeat}</option>
+                  </select>
+                  <div style={{ width: 1, background: "#e8e8e8", margin: "6px 0", flexShrink: 0 }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px 0 8px", flexShrink: 0 }}>
+                    <span style={{ color: "#f87171", fontSize: 10, fontWeight: 700 }}>H</span>
+                    <input data-testid="input-temp-high" type="number" value={temperatureHigh} onChange={e => setTemperatureHigh(e.target.value)}
+                      style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                    <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
+                    <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
+                      style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
+                    <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: weatherAutoState === "idle" || weatherAutoState === "failed" ? 6 : 4 }}>°F</span>
+                    {weatherAutoState === "loading" && (
+                      <span style={{ fontSize: 9, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.02em", paddingRight: 4, display: "flex", alignItems: "center", gap: 2, whiteSpace: "nowrap" }}>
+                        <svg style={{ animation: "spin 1s linear infinite", width: 10, height: 10 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      </span>
+                    )}
+                    {weatherAutoState === "auto" && (
+                      <span style={{ fontSize: 9, color: FT.ACCENT, fontWeight: 700, letterSpacing: "0.04em", paddingRight: 6, whiteSpace: "nowrap" }}>AUTO</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
             )}
 
-            {/* Col 4: Report Date */}
-            <div>
-              <FL>{t.newReportReportDate}</FL>
-              <input data-testid="input-report-date" type="date" value={reportDate}
-                onChange={e => setReportDate(e.target.value)}
-                style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
-            </div>
+            {/* Col 4 desktop only: Report Date */}
+            {!isMobile && (
+              <div>
+                <FL>{t.newReportReportDate}</FL>
+                <input data-testid="input-report-date" type="date" value={reportDate}
+                  onChange={e => setReportDate(e.target.value)}
+                  style={{ width: "100%", height: 36, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, color: "#111", background: "#fff", outline: "none" }} />
+              </div>
+            )}
           </div>
 
           {/* ROW 1b — Weather + Temperature on mobile (full row) */}

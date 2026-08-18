@@ -4305,6 +4305,64 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── Weather proxy (Open-Meteo — free, no API key required) ─────────────────
+  // GET /api/geocode?q=<location text>
+  app.get("/api/geocode", isAuthenticated, async (req, res) => {
+    const q = String(req.query.q ?? "").trim();
+    if (!q) return res.status(400).json({ message: "q is required" });
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return res.status(503).json({ message: "Geocoding service unavailable" });
+      const data = await r.json() as any;
+      const result = data.results?.[0];
+      if (!result) return res.status(404).json({ message: "Location not found" });
+      res.json({ lat: result.latitude, lng: result.longitude, name: result.name, country: result.country_code });
+    } catch {
+      res.status(503).json({ message: "Geocoding request failed" });
+    }
+  });
+
+  // GET /api/weather?lat=&lng=&date=YYYY-MM-DD
+  // Returns { temperatureHigh: number (°F), temperatureLow: number (°F), weather: string }
+  app.get("/api/weather", isAuthenticated, async (req, res) => {
+    const lat  = Number(req.query.lat);
+    const lng  = Number(req.query.lng);
+    const date = String(req.query.date ?? "").trim();
+    if (isNaN(lat) || isNaN(lng) || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: "lat, lng, and date (YYYY-MM-DD) are required" });
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+        `&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max` +
+        `&timezone=auto&start_date=${date}&end_date=${date}&wind_speed_unit=mph`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return res.status(503).json({ message: "Weather service unavailable" });
+      const data = await r.json() as any;
+      const daily = data.daily;
+      if (!daily?.time?.[0]) return res.status(404).json({ message: "No weather data for this date" });
+
+      const cToF = (c: number) => Math.round(c * 9 / 5 + 32);
+      const highF    = cToF(daily.temperature_2m_max[0]);
+      const lowF     = cToF(daily.temperature_2m_min[0]);
+      const wcode    = daily.weathercode[0] as number;
+      const windMph  = daily.windspeed_10m_max[0] as number;
+
+      // Map WMO weather code + conditions → app weather values
+      let weather: string;
+      if (highF >= 95)        weather = "heat";
+      else if (windMph >= 25) weather = "wind";
+      else if (wcode === 0)   weather = "clear";
+      else if (wcode <= 2)    weather = "partly-cloudy";
+      else if (wcode <= 48)   weather = "overcast";
+      else                    weather = "rain";
+
+      res.json({ temperatureHigh: highF, temperatureLow: lowF, weather });
+    } catch {
+      res.status(503).json({ message: "Weather request failed" });
+    }
+  });
+
   // ─── Workers ─────────────────────────────────────────────────────────────────
 
   app.get("/api/workers", isAuthenticated, requireStaff, async (_req, res) => {

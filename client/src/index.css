@@ -133,6 +133,11 @@ input[type="number"] {
   appearance: textfield !important;
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 @keyframes selectFlash {
   0%   { background-color: #dcfce7; }
   60%  { background-color: #dcfce7; }

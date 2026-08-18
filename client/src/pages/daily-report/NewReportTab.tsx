@@ -1054,6 +1054,7 @@ export function NewReportTab({
   const [temperature,     setTemperature]     = useState<string>(fd?.temperature     ?? "72");
   const [temperatureHigh, setTemperatureHigh] = useState<string>(fd?.temperatureHigh ?? fd?.temperature ?? "72");
   const [temperatureLow,  setTemperatureLow]  = useState<string>(fd?.temperatureLow  ?? "62");
+  const [weatherAutoState, setWeatherAutoState] = useState<"idle" | "loading" | "auto" | "failed">("idle");
   const [projectManager,      setProjectManager]      = useState<string>(fd?.projectManager      ?? "");
   const [projectManagerId,    setProjectManagerId]    = useState<number | null>(fd?.projectManagerId    ?? null);
   const [projectManagerTrade, setProjectManagerTrade] = useState<string>(fd?.projectManagerTrade ?? "");
@@ -1124,6 +1125,31 @@ export function NewReportTab({
         }));
     });
   }, [scopeItems, reportId]);
+
+  // ── Weather auto-fill (Open-Meteo, new reports only) ──
+  const weatherAutoApplied = useRef(false);
+  useEffect(() => {
+    // Only auto-fill for new reports (no initialData) and when project location is known
+    if (reportId || weatherAutoApplied.current || !project?.jobLocation || !reportDate) return;
+    weatherAutoApplied.current = true;
+    setWeatherAutoState("loading");
+    (async () => {
+      try {
+        const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(project.jobLocation)}`, { credentials: "include" });
+        if (!geoRes.ok) { setWeatherAutoState("failed"); return; }
+        const { lat, lng } = await geoRes.json();
+        const wxRes = await fetch(`/api/weather?lat=${lat}&lng=${lng}&date=${reportDate}`, { credentials: "include" });
+        if (!wxRes.ok) { setWeatherAutoState("failed"); return; }
+        const { temperatureHigh: high, temperatureLow: low, weather: wx } = await wxRes.json();
+        setTemperatureHigh(String(high));
+        setTemperatureLow(String(low));
+        setWeather(wx);
+        setWeatherAutoState("auto");
+      } catch {
+        setWeatherAutoState("failed");
+      }
+    })();
+  }, [project?.jobLocation, reportDate, reportId]);
 
   // ── Manual import helpers ──
   function importCrewDispatch() {
@@ -1571,7 +1597,15 @@ export function NewReportTab({
                   <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
                   <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
                     style={{ width: 40, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
-                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: 6 }}>°F</span>
+                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: weatherAutoState === "idle" || weatherAutoState === "failed" ? 6 : 4 }}>°F</span>
+                  {weatherAutoState === "loading" && (
+                    <span style={{ fontSize: 9, color: "#9ca3af", fontWeight: 600, letterSpacing: "0.02em", paddingRight: 4, display: "flex", alignItems: "center", gap: 2, whiteSpace: "nowrap" }}>
+                      <svg style={{ animation: "spin 1s linear infinite", width: 10, height: 10 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    </span>
+                  )}
+                  {weatherAutoState === "auto" && (
+                    <span style={{ fontSize: 9, color: FT.ACCENT, fontWeight: 700, letterSpacing: "0.04em", paddingRight: 6, whiteSpace: "nowrap" }}>AUTO</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1608,7 +1642,15 @@ export function NewReportTab({
                   <span style={{ color: "#60a5fa", fontSize: 10, fontWeight: 700 }}>L</span>
                   <input data-testid="input-temp-low" type="number" value={temperatureLow} onChange={e => setTemperatureLow(e.target.value)}
                     style={{ width: 36, textAlign: "center", border: "none", outline: "none", fontSize: 13, background: "transparent", color: "#111" }} />
-                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: 4 }}>°F</span>
+                  <span style={{ color: "#9ca3af", fontSize: 11, paddingRight: weatherAutoState === "idle" || weatherAutoState === "failed" ? 4 : 2 }}>°F</span>
+                  {weatherAutoState === "loading" && (
+                    <span style={{ fontSize: 9, color: "#9ca3af", fontWeight: 600, paddingRight: 4, display: "flex", alignItems: "center" }}>
+                      <svg style={{ animation: "spin 1s linear infinite", width: 10, height: 10 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    </span>
+                  )}
+                  {weatherAutoState === "auto" && (
+                    <span style={{ fontSize: 9, color: FT.ACCENT, fontWeight: 700, letterSpacing: "0.04em", paddingRight: 4, whiteSpace: "nowrap" }}>AUTO</span>
+                  )}
                 </div>
               </div>
             </div>

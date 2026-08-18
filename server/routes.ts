@@ -4728,20 +4728,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // ── Build Gemini prompt ──────────────────────────────────────────────
         const systemPrompt =
           "You are an assistant that extracts scope items from construction/electrical quote documents (BOQ, 견적서). " +
-          "You may receive multiple pages — extract ALL line items across all pages. " +
-          "\n\nDOCUMENT STRUCTURE RULES:" +
-          "\n- BOQ documents contain SECTION HEADER rows (e.g. 'POWER DISTRIBUTION PLAN', 'GROUNDING PLAN', 'LIGHTING PLAN') — these are visually distinct (colored/bold background, no qty/unit/price). They are NOT line items; use them only to track the current section name." +
-          "\n- LINE ITEM rows have a description, spec, qty, unit, and pricing. These ARE the items to extract." +
-          "\n- SUB TOTAL / TOTAL rows are NOT line items — skip them." +
-          "\n- Read the document top-to-bottom. When you encounter a section header, update the current section name. Assign that section name to every following line item until the next header." +
-          "\n- If the document has no section headers at all, set section to null for all items." +
-          "\n\nReturn ONLY valid JSON — an array of objects with these keys: " +
-          "itemName (string — the description/품명), " +
-          "spec (string or null — the specification/규격), " +
-          "qty (number), unit (string), " +
-          "category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment), " +
-          "section (string or null — the BOQ section header this item belongs to, e.g. 'POWER DISTRIBUTION PLAN'; null if no section headers exist), " +
-          "sortOrder (number — 1-based integer reflecting this item's position in the document counting only line items, never resets between sections). " +
+          "You may receive multiple pages — extract ALL line items across ALL pages in document order.\n\n" +
+
+          "HOW TO IDENTIFY ROW TYPES:\n" +
+          "A row is a SECTION HEADER if it meets this primary test: it contains NO numeric quantity, NO unit, and NO price/amount values, AND its text reads as a work-scope or discipline label (e.g. 'POWER DISTRIBUTION PLAN', 'Grounding Plan', 'LIGHTING PLAN', 'Receptacle Plan', '전등 계획', 'RENTAL EQUIPMENT', or any similar descriptor). " +
+          "For PDF/image inputs, a colored or bold row background is a helpful additional signal, but visual formatting is NOT required — rely on the structural test first. " +
+          "For spreadsheet (Excel) inputs you will receive plain text with no color information; apply the structural test only.\n" +
+          "A row is a LINE ITEM if it has a description AND at least a quantity or unit column filled in.\n" +
+          "A row is a SKIP ROW if it is a subtotal, total, grand-total, blank, or summary row — do NOT extract these and do NOT treat them as section headers.\n\n" +
+
+          "SECTION TRACKING RULE (critical):\n" +
+          "- Process the document strictly top-to-bottom, page by page.\n" +
+          "- Maintain a 'current section' variable, starting as null.\n" +
+          "- When you encounter a SECTION HEADER row: update current section to that header text. Do NOT add it to the output array.\n" +
+          "- When you encounter a LINE ITEM row: assign the current section value to it, regardless of the item's name or content. " +
+          "  Even if the same item name (e.g. 'CONNECTION AND TERMINATION') appears in multiple sections, each occurrence gets the section that was most recently set above it in the document — never reassign based on content.\n" +
+          "- If no section header has appeared before the first line item, section is null.\n\n" +
+
+          "Return ONLY valid JSON — an array of objects with these keys:\n" +
+          "  itemName (string — the description/품명),\n" +
+          "  spec (string or null — the specification/규격),\n" +
+          "  qty (number),\n" +
+          "  unit (string),\n" +
+          "  category (MUST be exactly one of: Conduit, Fittings & Connectors, Cable Tray, Cable / Wire, Grounding, Boxes, Devices, Equipment),\n" +
+          "  section (string or null — the SECTION HEADER text most recently seen above this item; null only if no header appeared before it),\n" +
+          "  sortOrder (number — 1-based sequential integer across ALL line items in the entire document; never resets between sections; skip rows do not count).\n\n" +
           "No markdown, no explanation — just the JSON array.";
 
         const { GoogleGenAI } = await import("@google/genai");

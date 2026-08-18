@@ -2550,68 +2550,63 @@ export function NewReportTab({
                 const imgUrl: string = linkedItem?.imageUrl ?? "";
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 mobileNodes.push(
-                /* ── Compact single-row card ── */
+                /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "7px 8px", background: FT.PAPER, display: "flex", alignItems: "center", gap: 8 }}>
-                  {/* Photo */}
-                  <div style={{ flexShrink: 0 }}>
-                    {imgUrl ? (
-                      <img src={imgUrl} alt=""
-                        style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
-                        onError={e => { e.currentTarget.style.display = "none"; }} />
-                    ) : (
-                      <ThumbPlaceholder size={32} />
-                    )}
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "7px 8px 6px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 4 }}>
+                  {/* Row 1: Photo + Name + Delete */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ flexShrink: 0 }}>
+                      {imgUrl ? (
+                        <img src={imgUrl} alt=""
+                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
+                          onError={e => { e.currentTarget.style.display = "none"; }} />
+                      ) : (
+                        <ThumbPlaceholder size={32} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
+                      <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                        onChange={(p) => {
+                          let patch: Partial<MaterialRow> = { ...p };
+                          if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                            const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                            if (matched) patch.scopeItemId = matched.id;
+                            flashRow(i);
+                          }
+                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                        }} />
+                    </div>
+                    <button type="button" data-testid={`btn-remove-mat-${i}`}
+                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                      style={{ width: 22, height: 22, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
-                  {/* Name + spec + badges */}
-                  <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
-                    <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                      onChange={(p) => {
-                        let patch: Partial<MaterialRow> = { ...p };
-                        if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                          const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                          if (matched) patch.scopeItemId = matched.id;
-                          flashRow(i);
-                        }
-                        setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                      }} />
-                    {/* Spec as secondary line */}
+                  {/* Row 2: Spec (indented to align with name) + Badges + Qty + Unit */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 40 }}>
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder={t.newReportSpec}
-                      style={{ width: "100%", fontSize: 11, border: "none", background: "transparent", outline: "none", color: row.spec ? "#6b7280" : "#d1d5db", marginTop: 1, padding: 0 }} />
-                    {/* Badges */}
-                    {(row.inventoryItemId || isExtra) && (
-                      <div style={{ display: "flex", gap: 3, marginTop: 2, flexWrap: "wrap" }}>
-                        {row.inventoryItemId && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "0px 4px" }}>{t.newReportInv}</span>
-                        )}
-                        {isExtra && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT }}>{t.newReportMaterialExtraLabel}</span>
-                        )}
-                      </div>
+                      style={{ flex: 1, fontSize: 11, border: "none", background: "transparent", outline: "none", color: row.spec ? "#6b7280" : "#d1d5db", padding: 0, minWidth: 0 }} />
+                    {row.inventoryItemId && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "0px 4px", flexShrink: 0 }}>{t.newReportInv}</span>
+                    )}
+                    {isExtra && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT, flexShrink: 0 }}>{t.newReportMaterialExtraLabel}</span>
+                    )}
+                    <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                      onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                      style={{ width: 52, height: 32, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 6, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
+                    {row.inventoryItemId ? (
+                      <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 22 }}>{row.unit || "EA"}</span>
+                    ) : (
+                      <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                        placeholder="EA"
+                        style={{ width: 30, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
                     )}
                   </div>
-                  {/* Qty input */}
-                  <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                    onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                    onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
-                    style={{ width: 56, height: 36, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 7, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
-                  {/* Unit */}
-                  {row.inventoryItemId ? (
-                    <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 24, textAlign: "center" }}>{row.unit || "EA"}</span>
-                  ) : (
-                    <input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                      placeholder="EA"
-                      style={{ width: 36, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
-                  )}
-                  {/* Delete */}
-                  <button type="button" data-testid={`btn-remove-mat-${i}`}
-                    onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                    style={{ width: 26, height: 26, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
                 </div>
                 );
               });

@@ -2550,76 +2550,68 @@ export function NewReportTab({
                 const imgUrl: string = linkedItem?.imageUrl ?? "";
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 mobileNodes.push(
+                /* ── Compact single-row card ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
-                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 10, padding: "12px 12px 10px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {/* Row 1: Photo + Name/badges + Delete */}
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{ flexShrink: 0 }}>
-                      {imgUrl ? (
-                        <img src={imgUrl} alt=""
-                          style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
-                          onError={e => { e.currentTarget.style.display = "none"; }} />
-                      ) : (
-                        <ThumbPlaceholder size={44} />
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
-                      <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
-                        onChange={(p) => {
-                          let patch: Partial<MaterialRow> = { ...p };
-                          if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
-                            const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
-                            if (matched) patch.scopeItemId = matched.id;
-                            flashRow(i);
-                          }
-                          setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
-                        }} />
-                      <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
-                        {row.inventoryItemId && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "1px 5px" }}>{t.newReportInv}</span>
-                        )}
-                        {isExtra && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "1px 6px", fontFamily: FT.FONT, letterSpacing: "0.02em" }}>{t.newReportMaterialExtraLabel}</span>
-                        )}
-                      </div>
-                    </div>
-                    <button type="button" data-testid={`btn-remove-mat-${i}`}
-                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                      style={{ width: 30, height: 30, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+                  style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "7px 8px", background: FT.PAPER, display: "flex", alignItems: "center", gap: 8 }}>
+                  {/* Photo */}
+                  <div style={{ flexShrink: 0 }}>
+                    {imgUrl ? (
+                      <img src={imgUrl} alt=""
+                        style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
+                        onError={e => { e.currentTarget.style.display = "none"; }} />
+                    ) : (
+                      <ThumbPlaceholder size={32} />
+                    )}
                   </div>
-                  {/* Row 2: Spec */}
-                  {!(quickMode && isMobile) && <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportSpec}</div>
+                  {/* Name + spec + badges */}
+                  <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
+                    <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
+                      onChange={(p) => {
+                        let patch: Partial<MaterialRow> = { ...p };
+                        if (p.inventoryItemId !== undefined && p.inventoryItemId !== null) {
+                          const matched = scopeItems.find((s: any) => s.linkedInventoryItemId === p.inventoryItemId);
+                          if (matched) patch.scopeItemId = matched.id;
+                          flashRow(i);
+                        }
+                        setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
+                      }} />
+                    {/* Spec as secondary line */}
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
-                      placeholder="—"
-                      style={{ width: "100%", fontSize: 13, border: "1px solid #e8e8e8", borderRadius: 7, padding: "6px 10px", background: "#fff", outline: "none", color: row.spec ? "#374151" : "#ccc" }} />
-                  </div>}
-                  {/* Row 3: Qty + Unit */}
-                  <div style={{ display: "grid", gridTemplateColumns: quickMode && isMobile ? "1fr" : "1fr 72px", gap: 8, alignItems: "end" }}>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColQty}</div>
-                      <Input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
-                        onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
-                        onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
-                        className="h-10 text-sm text-center tabular-nums" />
-                    </div>
-                    {!(quickMode && isMobile) && <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportColUnit}</div>
-                      {row.inventoryItemId ? (
-                        <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#666", border: "1px solid #f0f0f0", borderRadius: 7 }}>
-                          <span data-testid={`input-mat-unit-${i}`}>{row.unit || "EA"}</span>
-                        </div>
-                      ) : (
-                        <input data-testid={`input-mat-unit-${i}`} value={row.unit}
-                          onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
-                          placeholder={t.newReportUnitEAPh}
-                          style={{ width: "100%", height: 40, fontSize: 14, fontWeight: 700, textAlign: "center", border: "1px solid #e8e8e8", borderRadius: 7, background: "#fff", outline: "none", color: "#666" }} />
-                      )}
-                    </div>}
+                      placeholder={t.newReportSpec}
+                      style={{ width: "100%", fontSize: 11, border: "none", background: "transparent", outline: "none", color: row.spec ? "#6b7280" : "#d1d5db", marginTop: 1, padding: 0 }} />
+                    {/* Badges */}
+                    {(row.inventoryItemId || isExtra) && (
+                      <div style={{ display: "flex", gap: 3, marginTop: 2, flexWrap: "wrap" }}>
+                        {row.inventoryItemId && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "#2e7d32", background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 4, padding: "0px 4px" }}>{t.newReportInv}</span>
+                        )}
+                        {isExtra && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: FT.ACCENT, background: "transparent", border: `1px solid ${FT.ACCENT}`, borderRadius: 3, padding: "0px 4px", fontFamily: FT.FONT }}>{t.newReportMaterialExtraLabel}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  {/* Qty input */}
+                  <input data-testid={`input-mat-qty-${i}`} type="number" min={0} value={row.qty}
+                    onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, qty: Math.max(0, Number(e.target.value)) } : r))}
+                    onInput={(e) => { const v = (e.target as HTMLInputElement); if (Number(v.value) < 0) v.value = "0"; }}
+                    style={{ width: 56, height: 36, fontSize: 14, fontWeight: 600, textAlign: "center", border: `1px solid ${FT.RULE}`, borderRadius: 7, background: "#fff", outline: "none", color: "#374151", flexShrink: 0 }} />
+                  {/* Unit */}
+                  {row.inventoryItemId ? (
+                    <span data-testid={`input-mat-unit-${i}`} style={{ fontSize: 12, fontWeight: 700, color: "#666", flexShrink: 0, minWidth: 24, textAlign: "center" }}>{row.unit || "EA"}</span>
+                  ) : (
+                    <input data-testid={`input-mat-unit-${i}`} value={row.unit}
+                      onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                      placeholder="EA"
+                      style={{ width: 36, fontSize: 12, fontWeight: 700, textAlign: "center", border: "none", background: "transparent", outline: "none", color: "#666", flexShrink: 0 }} />
+                  )}
+                  {/* Delete */}
+                  <button type="button" data-testid={`btn-remove-mat-${i}`}
+                    onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                    style={{ width: 26, height: 26, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
                 </div>
                 );
               });

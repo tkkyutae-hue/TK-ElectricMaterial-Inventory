@@ -6,7 +6,7 @@ import { classifyInventoryItem } from "../shared/classifyItem";
 import { classifyReel, resolveReelMode } from "../shared/reelEligibility";
 import { insertItemSchema, type Item, type CreateRmsExportHistory, type CreateRmsExportHistoryItem, completionReportPhotos, projects, dailyReports, projectScopeItems, workers, dailyWorkerAssignments } from "../shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql as drizzleSql } from "drizzle-orm";
 import type { Request } from "express";
 import type { User } from "@shared/models/auth";
 
@@ -4279,7 +4279,41 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!(await canAccessDailyReportProject(req.currentUser, existing.projectId))) {
         return res.status(403).json({ message: "배치되지 않은 프로젝트입니다" });
       }
+
+      // Prevent non-admin users from removing scope-linked material rows.
+      // Only admins may delete scope-linked rows; managers and staff may not.
+      // Guards against API-level removal even when the UI hides the delete button.
+      // Uses occurrence counts (not unique IDs) so removing one of two rows
+      // sharing the same scopeItemId is also detected.
       const { reportDate, reportNumber, preparedBy, status, formData } = req.body;
+      const isAdmin = req.currentUser?.role === "admin";
+      if (!isAdmin && formData?.materials) {
+        const prevMaterials: any[] = (existing.formData as any)?.materials ?? [];
+
+        // Count how many times each scopeItemId appears in the saved report
+        const prevCounts = new Map<number, number>();
+        for (const m of prevMaterials) {
+          if (m.scopeItemId != null) {
+            prevCounts.set(m.scopeItemId, (prevCounts.get(m.scopeItemId) ?? 0) + 1);
+          }
+        }
+
+        // Count occurrences in the incoming update
+        const newCounts = new Map<number, number>();
+        for (const m of (formData.materials as any[])) {
+          if (m.scopeItemId != null) {
+            newCounts.set(m.scopeItemId, (newCounts.get(m.scopeItemId) ?? 0) + 1);
+          }
+        }
+
+        // Reject if any scope-linked row (including duplicates) was removed
+        for (const [sid, prevCount] of prevCounts) {
+          if ((newCounts.get(sid) ?? 0) < prevCount) {
+            return res.status(403).json({ message: "Scope-linked materials can only be removed by admin." });
+          }
+        }
+      }
+
       const report = await storage.updateDailyReport(id, {
         ...(reportDate !== undefined && { reportDate }),
         ...(reportNumber !== undefined && { reportNumber }),
@@ -4524,30 +4558,46 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) return res.status(400).json({ message: "Invalid project ID" });
-      // Duplicate check: same project + itemName + unit + remarks(spec)
-      // Including remarks ensures items with the same name/unit but different specs
-      // (e.g. CONNECTION AND TERMINATION EA #350Kcmil vs AWG#1) are treated as distinct.
-      // If a duplicate exists and the request carries section/sortOrder, patch those fields rather than rejecting.
-      const existing = await storage.getScopeItems(projectId);
-      const dup = existing.find(
-        (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
-             && s.unit.trim().toLowerCase() === String(req.body.unit ?? "").trim().toLowerCase()
-             && (s.remarks ?? "").trim().toLowerCase() === String(req.body.remarks ?? "").trim().toLowerCase()
-      );
-      if (dup) {
-        const incomingSection   = req.body.section   ?? null;
-        const incomingSortOrder = req.body.sortOrder  ?? null;
-        const hasNewSectionData = incomingSection !== null || incomingSortOrder !== null;
-        if (hasNewSectionData) {
-          const updated = await storage.updateScopeItem(dup.id, {
-            section:   incomingSection,
-            sortOrder: incomingSortOrder,
-          });
-          return res.json({ ...updated, sectionUpdated: true });
+
+      // Atomic upsert: advisory lock serializes concurrent inserts for the same project,
+      // preventing a read-then-insert race that would create duplicate scope items.
+      const item = await db.transaction(async (tx) => {
+        await tx.execute(drizzleSql`SELECT pg_advisory_xact_lock(hashtext(${"scope-items:" + projectId}))`);
+
+        const existing = await tx
+          .select()
+          .from(projectScopeItems)
+          .where(eq(projectScopeItems.projectId, projectId));
+
+        const dup = existing.find(
+          (s) => s.itemName.trim().toLowerCase() === String(req.body.itemName ?? "").trim().toLowerCase()
+               && s.unit.trim().toLowerCase()     === String(req.body.unit    ?? "").trim().toLowerCase()
+               && (s.remarks ?? "").trim().toLowerCase() === String(req.body.remarks ?? "").trim().toLowerCase()
+        );
+
+        if (dup) {
+          const incomingSection   = req.body.section   ?? null;
+          const incomingSortOrder = req.body.sortOrder  ?? null;
+          const hasNewSectionData = incomingSection !== null || incomingSortOrder !== null;
+          if (hasNewSectionData) {
+            const [updated] = await tx
+              .update(projectScopeItems)
+              .set({ section: incomingSection, sortOrder: incomingSortOrder, updatedAt: new Date() })
+              .where(eq(projectScopeItems.id, dup.id))
+              .returning();
+            return { ...updated, sectionUpdated: true };
+          }
+          // Return the existing item so callers always get a usable scope item ID.
+          return { ...dup, alreadyExisted: true };
         }
-        return res.status(409).json({ message: `A scope item "${req.body.itemName} / ${req.body.unit}" already exists for this project.` });
-      }
-      const item = await storage.createScopeItem({ ...req.body, projectId });
+
+        const [created] = await tx
+          .insert(projectScopeItems)
+          .values({ ...req.body, projectId })
+          .returning();
+        return created;
+      });
+
       res.json(item);
     } catch (err: any) {
       res.status(400).json({ message: err.message });

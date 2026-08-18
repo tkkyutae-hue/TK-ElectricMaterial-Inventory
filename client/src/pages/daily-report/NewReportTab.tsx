@@ -997,7 +997,7 @@ export function NewReportTab({
   const { toast }   = useToast();
   const { t }       = useLanguage();
   const queryClient = useQueryClient();
-  const { isManagerOrAbove } = useAuth();
+  const { isManagerOrAbove, isAdminRole } = useAuth();
   const isMobile    = useIsMobile();
   const fd          = initialData?.formData ?? null;
 
@@ -1425,11 +1425,68 @@ export function NewReportTab({
   // ── Mutation ──
   const saveMutation = useMutation({
     mutationFn: async (status: "draft" | "submitted") => {
+      // ── Register extra materials as scope items (manager/admin only) ──
+      // Staff cannot POST /api/projects/:id/scope-items (requireManager), so we skip for them.
+      // The server endpoint is now a transactional upsert: it always returns the item (200),
+      // never 409, so concurrent same-key submissions resolve to the same scope item ID.
+      let updatedMaterials = [...materials];
+      if (isManagerOrAbove && projectId) {
+        const extraToRegister = materials.filter(r => r.scopeItemId === null && r.description.trim() !== "");
+        if (extraToRegister.length > 0) {
+          // Coalesce identical extras (same description+unit+spec) — send only one POST per
+          // unique combination, then assign the returned ID to all matching rows.
+          const seen = new Map<string, number>(); // dedup key → returned scopeItemId
+          const deduped = Array.from(
+            new Map(
+              extraToRegister.map(r => [
+                `${r.description.trim().toLowerCase()}|${(r.unit || "EA").trim().toLowerCase()}|${(r.spec ?? "").trim().toLowerCase()}`,
+                r,
+              ])
+            ).values()
+          );
+
+          await Promise.allSettled(
+            deduped.map(async (row) => {
+              const key = `${row.description.trim().toLowerCase()}|${(row.unit || "EA").trim().toLowerCase()}|${(row.spec ?? "").trim().toLowerCase()}`;
+              try {
+                const res = await fetch(`/api/projects/${projectId}/scope-items`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    itemName: row.description,
+                    unit: row.unit || "EA",
+                    remarks: row.spec || null,
+                  }),
+                });
+                if (res.ok) {
+                  const returned = await res.json();
+                  seen.set(key, returned.id);
+                }
+              } catch {
+                // network error — leave scopeItemId as null, retry on next save
+              }
+            })
+          );
+
+          // Assign the returned IDs to all matching rows (including duplicates)
+          updatedMaterials = updatedMaterials.map(r => {
+            if (r.scopeItemId !== null) return r;
+            const key = `${r.description.trim().toLowerCase()}|${(r.unit || "EA").trim().toLowerCase()}|${(r.spec ?? "").trim().toLowerCase()}`;
+            const newId = seen.get(key);
+            return newId !== undefined ? { ...r, scopeItemId: newId } : r;
+          });
+
+          // Persist new scopeItemIds into React state so subsequent saves don't re-register
+          setMaterials(updatedMaterials);
+          queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "scope-items"] });
+        }
+      }
       const body = {
         projectId, reportDate,
         reportNumber: reportNumber || null,
         preparedBy:   preparedBy   || null,
-        status, formData: buildFormData(),
+        status, formData: { ...buildFormData(), materials: updatedMaterials },
       };
       if (reportId) return apiRequest("PATCH", `/api/daily-reports/${reportId}`, body);
       return apiRequest("POST", "/api/daily-reports", body);
@@ -2540,30 +2597,19 @@ export function NewReportTab({
                   if (sec) {
                     mobileNodes.push(
                       <div key={`sec-${sec}`}
-                        style={{ padding: "5px 10px 3px", background: "#f1f5f9", borderRadius: 6, fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        style={{ padding: "7px 12px", background: FT.INK, borderRadius: 6, fontSize: 12, fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>
                         {sec}
                       </div>
                     );
                   }
                 }
-                const linkedItem = row.inventoryItemId ? inventoryItems.find((it: any) => it.id === row.inventoryItemId) : null;
-                const imgUrl: string = linkedItem?.imageUrl ?? "";
                 const isExtra = row.scopeItemId === null && row.description.trim() !== "";
                 mobileNodes.push(
                 /* ── 2-row compact card: name full-width top, spec+qty+unit bottom ── */
                 <div key={row.id} ref={(el) => { matRowRefs.current[i] = el; }}
                   style={{ border: `1px solid ${FT.RULE}`, borderLeft: isExtra ? `3px solid ${FT.ACCENT}` : `1px solid ${FT.RULE}`, borderRadius: 8, padding: "7px 8px 6px", background: FT.PAPER, display: "flex", flexDirection: "column", gap: 4 }}>
-                  {/* Row 1: Photo + Name + Delete */}
+                  {/* Row 1: Name + Delete (photo removed) */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ flexShrink: 0 }}>
-                      {imgUrl ? (
-                        <img src={imgUrl} alt=""
-                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: "cover", border: "1px solid #e8e8e8", display: "block" }}
-                          onError={e => { e.currentTarget.style.display = "none"; }} />
-                      ) : (
-                        <ThumbPlaceholder size={32} />
-                      )}
-                    </div>
                     <div style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
                       <MaterialSearch row={row} inventoryItems={inventoryItems} testId={`input-mat-desc-${i}`}
                         onChange={(p) => {
@@ -2576,14 +2622,17 @@ export function NewReportTab({
                           setMaterials(materials.map((r) => r.id === row.id ? { ...r, ...patch } : r));
                         }} />
                     </div>
-                    <button type="button" data-testid={`btn-remove-mat-${i}`}
-                      onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
-                      style={{ width: 22, height: 22, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
+                    {/* Only extra materials are deletable by all users; scope items require admin */}
+                    {(isExtra || isAdminRole) && (
+                      <button type="button" data-testid={`btn-remove-mat-${i}`}
+                        onClick={() => setMaterials(materials.filter((r) => r.id !== row.id))}
+                        style={{ width: 22, height: 22, borderRadius: "50%", background: "#fee2e2", border: "1px solid #fecaca", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", flexShrink: 0 }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    )}
                   </div>
-                  {/* Row 2: Spec (indented to align with name) + Badges + Qty + Unit */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 40 }}>
+                  {/* Row 2: Spec + Badges + Qty + Unit */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 0 }}>
                     <input data-testid={`input-mat-spec-${i}`} value={row.spec}
                       onChange={(e) => setMaterials(materials.map((r) => r.id === row.id ? { ...r, spec: e.target.value } : r))}
                       placeholder={t.newReportSpec}

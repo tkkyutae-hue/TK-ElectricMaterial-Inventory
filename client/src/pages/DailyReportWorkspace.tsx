@@ -220,7 +220,22 @@ async function exportReportToExcel(report: any, project: any, t: any, lang: stri
   // ── Materials ──────────────────────────────────────────────────────────────
   addSectionHeader(t.excelMaterials);
   addColHeader([t.excelColMaterial, t.excelColSizeSpec, t.excelColUnit, t.excelColQty, t.excelColNotes]);
+  const MAT_GROUP_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
+  let lastMatSection: string | null | undefined = undefined;
   (fd.materials ?? []).forEach((r: any) => {
+    const sec: string | null = r.section ?? null;
+    if (sec !== lastMatSection) {
+      lastMatSection = sec;
+      if (sec) {
+        const secRow = ws.addRow([sec]);
+        secRow.height = 18;
+        const secCell = secRow.getCell(1);
+        secCell.fill = MAT_GROUP_FILL;
+        secCell.font = { bold: true, size: 10, color: { argb: "FF1F3A5F" } };
+        secCell.alignment = { vertical: "middle" };
+        ws.mergeCells(`A${secRow.number}:H${secRow.number}`);
+      }
+    }
     addDataRow([r.description ?? "", r.spec ?? r.remarks ?? "", r.unit ?? "", Number(r.qty ?? 0), r.notes ?? ""]);
   });
 

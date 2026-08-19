@@ -3318,34 +3318,37 @@ export function NewReportTab({
                         className="h-9 text-sm text-center tabular-nums w-full" />
                     </div>
                   </div>}
-                  {/* Row 4: Status select + action tags */}
+                  {/* Row 4: Status toggle buttons + action tags */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: FT.TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: FT.FONT }}>{t.newReportStatus}</div>
-                    <div style={{ position: "relative", marginBottom: visibleTags.length > 0 ? 8 : 0 }}>
-                      <select
-                        data-testid={`select-eq-status-${i}`}
-                        value={equipmentStatus}
-                        onChange={(e) => {
-                          const newStatus = e.target.value as "operational" | "broken";
-                          setEquipment(equipment.map((r) => {
-                            if (r.id !== row.id) return r;
-                            let tags = r.tags;
-                            if (newStatus === "operational") tags = [];
-                            else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
-                            return { ...r, eqStatus: newStatus, tags };
-                          }));
-                        }}
-                        style={{
-                          border: `1px solid ${eqCfg.border}`,
-                          borderRadius: 7, padding: "7px 28px 7px 10px",
-                          fontSize: 13, background: eqCfg.bg, color: eqCfg.color,
-                          appearance: "none", width: "100%", cursor: "pointer",
-                          fontWeight: 600, outline: "none",
-                        }}>
-                        <option value="operational">{t.newReportEqOperational}</option>
-                        <option value="broken">{t.newReportEqBroken}</option>
-                      </select>
-                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 11, pointerEvents: "none" }}>▾</span>
+                    <div style={{ display: "flex", gap: 6, marginBottom: visibleTags.length > 0 ? 8 : 0 }}>
+                      {(["operational", "broken"] as const).map((sv) => {
+                        const active = equipmentStatus === sv;
+                        const cfg = sv === "operational"
+                          ? { border: "#10b981", bg: "#f0fdf4", color: "#15803d", label: t.newReportEqOperational }
+                          : { border: "#ef4444", bg: "#fef2f2", color: "#dc2626", label: t.newReportEqBroken };
+                        return (
+                          <button key={sv} type="button"
+                            data-testid={`select-eq-status-${sv}-${i}`}
+                            onClick={() => setEquipment(equipment.map((r) => {
+                              if (r.id !== row.id) return r;
+                              let tags = r.tags;
+                              if (sv === "operational") tags = [];
+                              else if (!tags.includes("repair")) tags = ["repair", ...tags];
+                              return { ...r, eqStatus: sv, tags };
+                            }))}
+                            style={{
+                              flex: 1, border: `1px solid ${active ? cfg.border : "#e5e7eb"}`,
+                              borderRadius: 7, padding: "7px 6px",
+                              fontSize: 12, background: active ? cfg.bg : "#f9fafb",
+                              color: active ? cfg.color : "#9ca3af",
+                              cursor: "pointer", fontWeight: 600, outline: "none",
+                              transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                            }}>
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
                     </div>
                     {!(quickMode && isMobile) && visibleTags.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -3450,32 +3453,36 @@ export function NewReportTab({
                     {/* STATUS */}
                     <td className="py-1.5 px-2.5">
                       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                        {/* Operation state dropdown */}
-                        <div style={{ position: "relative" }}>
-                          <select
-                            data-testid={`select-eq-status-${i}`}
-                            value={equipmentStatus}
-                            onChange={(e) => {
-                              const newStatus = e.target.value as "operational" | "broken";
-                              setEquipment(equipment.map((r) => {
-                                if (r.id !== row.id) return r;
-                                let tags = r.tags;
-                                if (newStatus === "operational") tags = [];
-                                else if (newStatus === "broken" && !tags.includes("repair")) tags = ["repair", ...tags];
-                                return { ...r, eqStatus: newStatus, tags };
-                              }));
-                            }}
-                            style={{
-                              border: `1px solid ${eqCfg.border}`,
-                              borderRadius: 7, padding: "5px 28px 5px 9px",
-                              fontSize: 12, background: eqCfg.bg, color: eqCfg.color,
-                              appearance: "none", width: "100%", cursor: "pointer",
-                              fontWeight: 500, outline: "none",
-                            }}>
-                            <option value="operational">{t.newReportEqOperational}</option>
-                            <option value="broken">{t.newReportEqBroken}</option>
-                          </select>
-                          <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#aaa", fontSize: 10, pointerEvents: "none" }}>▾</span>
+                        {/* Operation state toggle */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {(["operational", "broken"] as const).map((sv) => {
+                            const active = equipmentStatus === sv;
+                            const cfg = sv === "operational"
+                              ? { border: "#10b981", bg: "#f0fdf4", color: "#15803d", label: t.newReportEqOperational }
+                              : { border: "#ef4444", bg: "#fef2f2", color: "#dc2626", label: t.newReportEqBroken };
+                            return (
+                              <button key={sv} type="button"
+                                data-testid={`select-eq-status-${sv}-${i}`}
+                                onClick={() => setEquipment(equipment.map((r) => {
+                                  if (r.id !== row.id) return r;
+                                  let tags = r.tags;
+                                  if (sv === "operational") tags = [];
+                                  else if (!tags.includes("repair")) tags = ["repair", ...tags];
+                                  return { ...r, eqStatus: sv, tags };
+                                }))}
+                                style={{
+                                  border: `1px solid ${active ? cfg.border : "#e5e7eb"}`,
+                                  borderRadius: 6, padding: "4px 6px",
+                                  fontSize: 11, background: active ? cfg.bg : "#f9fafb",
+                                  color: active ? cfg.color : "#9ca3af",
+                                  cursor: "pointer", fontWeight: 600, outline: "none",
+                                  textAlign: "left", whiteSpace: "nowrap",
+                                  transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                                }}>
+                                {cfg.label}
+                              </button>
+                            );
+                          })}
                         </div>
                         {/* Action tags */}
                         {visibleTags.length > 0 && (

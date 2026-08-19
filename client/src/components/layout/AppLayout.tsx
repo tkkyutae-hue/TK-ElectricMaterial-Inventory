@@ -52,6 +52,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     locale,
     { weekday: "short", month: "long", day: "numeric", year: "numeric" },
   );
+  const headerDateShort = now.toLocaleDateString(
+    locale,
+    { weekday: "short", month: "short", day: "numeric" },
+  );
   const headerTime = now.toLocaleTimeString(
     locale,
     { hour: "numeric", minute: "2-digit", hour12: true },
@@ -206,8 +210,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </button>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-[68px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="mode-header h-[68px] bg-gradient-to-r from-brand-50 via-white to-brand-50/50 border-b border-border border-t-[3px] border-t-brand-600 flex items-center justify-between px-3 sm:px-5 z-10 flex-shrink-0 shadow-[0_1px_0_rgba(22,163,74,0.12)]">
+          <div className="mode-header-brand flex items-center gap-3 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="-ml-2 text-slate-600 md:hidden">
@@ -221,20 +225,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <TkElectricBrand
               compact
               className="inventory-header-brand"
-              textClassName="hidden sm:block"
+              textClassName="block"
               detail={
-                <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
-                  <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
-                  <span className="text-slate-400 font-normal">·</span>
-                  <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
-                  <span className="text-slate-400 font-normal">·</span>
-                  <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
-                </span>
+                <>
+                  <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                    <Shield className="w-2.5 h-2.5 flex-shrink-0" /> {t.adminModeChip}
+                    <span className="text-slate-400 font-normal">·</span>
+                    <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
+                    <span className="text-slate-400 font-normal">·</span>
+                    <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
+                  </span>
+                  <span className="tk-header-detail flex sm:hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                    <Shield className="w-2.5 h-2.5 flex-shrink-0" />
+                    <span>{t.adminModeChip}</span>
+                    <span className="text-slate-400 font-normal">·</span>
+                    <span className="tk-header-detail-date text-slate-500">{headerDateShort}</span>
+                    <span className="text-slate-400 font-normal">·</span>
+                    <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
+                  </span>
+                </>
               }
             />
           </div>
 
-          <div className="flex items-center gap-1.5 ml-3 pl-1.5 pr-1.5 py-1 rounded-[14px] border border-brand-200 bg-white/80 shadow-sm">
+          <div className="mode-header-controls flex items-center gap-1.5 ml-3 pl-1.5 pr-1.5 py-1 rounded-[14px] border border-brand-200 bg-white/80 shadow-sm">
             {location !== "/" && (
               <Button
                 variant="ghost"

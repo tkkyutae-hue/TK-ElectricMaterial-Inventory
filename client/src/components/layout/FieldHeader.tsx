@@ -25,12 +25,12 @@ export function FieldHeader() {
   const dateStr = now.toLocaleDateString(locale, {
     weekday: "short", year: "numeric", month: "long", day: "numeric",
   });
-  const dateStrShort = now.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const dateStrShort = now.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
   const timeStr = now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true });
 
   return (
     <header
-      className="px-3 sm:px-5"
+      className="mode-header px-3 sm:px-5"
       style={{
         position: "relative", zIndex: 50, flexShrink: 0,
          minHeight: 68,
@@ -44,13 +44,13 @@ export function FieldHeader() {
       }}
     >
       {/* Left side */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="mode-header-brand" style={{ display: "flex", alignItems: "center", gap: 12 }}>
 
         <TkElectricBrand
           compact
           textColor={F.text}
           className="field-header-brand"
-          textClassName="hidden sm:block"
+          textClassName="block"
           detail={
             <>
               <span
@@ -77,6 +77,8 @@ export function FieldHeader() {
                 <span>{t.inventoryMode}</span>
                 <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
                 <span className="tk-header-detail-date" style={{ color: F.textDim }}>{dateStrShort}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date" style={{ color: F.textDim }}>{timeStr}</span>
               </span>
             </>
           }
@@ -84,7 +86,7 @@ export function FieldHeader() {
       </div>
 
       {/* Right side */}
-      <div style={{
+      <div className="mode-header-controls" style={{
         display: "flex", alignItems: "center", gap: 6,
         padding: 4,
         background: F.surface,

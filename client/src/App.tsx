@@ -90,12 +90,16 @@ function DailyReportLayout({
     locale,
     { weekday: "short", month: "long", day: "numeric", year: "numeric" },
   );
+  const headerDateShort = now.toLocaleDateString(
+    locale,
+    { weekday: "short", month: "short", day: "numeric" },
+  );
   const headerTime = now.toLocaleTimeString(locale, {
     hour: "numeric", minute: "2-digit", hour12: true,
   });
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column" }}>
-      <header style={{
+      <header className="mode-header" style={{
         height: 68,
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
         padding: "10px clamp(12px, 3vw, 28px)",
@@ -104,22 +108,32 @@ function DailyReportLayout({
         borderTop: "3px solid #16803a",
         boxShadow: "0 1px 0 rgba(22,163,74,0.12)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+        <div className="mode-header-brand" style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
           <TkElectricBrand
             compact
-            textClassName="hidden sm:block"
+            textClassName="block"
             detail={
-              <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
-                <span>●</span> {t.projectOpsMode}
-                <span className="text-slate-400 font-normal">·</span>
-                <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
-                <span className="text-slate-400 font-normal">·</span>
-                <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
-              </span>
+              <>
+                <span className="tk-header-detail hidden sm:flex text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                  <span>●</span> {t.projectOpsMode}
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerDate}</span>
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
+                </span>
+                <span className="tk-header-detail flex sm:hidden text-amber-600 mt-1 items-center gap-1 whitespace-nowrap">
+                  <span>●</span>
+                  <span>{t.projectOpsMode}</span>
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerDateShort}</span>
+                  <span className="text-slate-400 font-normal">·</span>
+                  <span className="tk-header-detail-date text-slate-500">{headerTime}</span>
+                </span>
+              </>
             }
           />
         </div>
-        <div style={{
+        <div className="mode-header-controls" style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: 4, background: "#ffffff",
           border: "1px solid #b7dfc2", borderRadius: 14,

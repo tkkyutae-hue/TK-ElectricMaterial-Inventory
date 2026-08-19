@@ -265,6 +265,11 @@ export default function Home() {
     month: "long",
     day: "numeric",
   });
+  const headerDateShort = now.toLocaleDateString(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
   const headerTime = now.toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
@@ -315,7 +320,7 @@ export default function Home() {
       <div style={gridStyle} />
 
       {/* Header */}
-      <header style={{
+      <header className="mode-header" style={{
         position: "relative", zIndex: 50,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         minHeight: 68,
@@ -329,29 +334,37 @@ export default function Home() {
       }}>
         <TkElectricBrand
           compact
+          className="mode-header-brand"
           textColor={F.text}
           detail={
-            <span
-              className="tk-header-detail flex items-center gap-1.5 mt-1 whitespace-nowrap"
-              style={{
-                color: F.textMuted,
-              }}
-            >
-              <span style={{ color: F.accent }}>●</span>
-              <span>{t.modeSelect}</span>
-              <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-              <span className="tk-header-detail-date">
-                {headerDate}
+            <>
+              <span
+                className="tk-header-detail hidden sm:flex items-center gap-1.5 mt-1 whitespace-nowrap"
+                style={{ color: F.textMuted }}
+              >
+                <span style={{ color: F.accent }}>●</span>
+                <span>{t.modeSelect}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date">{headerDate}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date">{headerTime}</span>
               </span>
-              <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
-              <span className="tk-header-detail-date">
-                {headerTime}
+              <span
+                className="tk-header-detail flex sm:hidden items-center gap-1 mt-1 whitespace-nowrap"
+                style={{ color: F.textMuted }}
+              >
+                <span style={{ color: F.accent }}>●</span>
+                <span>{t.modeSelect}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date">{headerDateShort}</span>
+                <span style={{ color: F.textDim, fontWeight: 400 }}>·</span>
+                <span className="tk-header-detail-date">{headerTime}</span>
               </span>
-            </span>
+            </>
           }
         />
 
-        <div style={{
+        <div className="mode-header-controls" style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",
           gap: 6, flexWrap: "wrap", padding: 4,
           background: F.surface,

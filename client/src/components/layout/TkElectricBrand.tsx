@@ -25,10 +25,9 @@ export function TkElectricBrand({
         className="w-auto object-contain flex-shrink-0"
         style={{
           height: compact ? 32 : 38,
-          imageRendering: "crisp-edges",
         }}
       />
-      <div className="min-w-0 leading-none">
+      <div className="flex-1 min-w-0 leading-none">
         <p
           className={`m-0 whitespace-nowrap ${textClassName}`}
           style={{

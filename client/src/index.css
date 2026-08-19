@@ -191,6 +191,53 @@ input[type="number"] {
   letter-spacing: 0.4px;
 }
 
+@media (max-width: 639px) {
+  .mode-header {
+    height: auto !important;
+    min-height: 104px !important;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 8px;
+    padding: 8px 12px !important;
+  }
+
+  .mode-header-brand {
+    flex: 0 0 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .mode-header-controls {
+    flex: 0 0 auto;
+    max-width: 100%;
+    margin-left: auto !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .mode-header .tk-header-detail {
+    font-size: 9px;
+    letter-spacing: 0.35px;
+    white-space: normal !important;
+    flex-wrap: wrap;
+    row-gap: 1px;
+  }
+
+  .mode-header .tk-header-detail > span {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 340px) {
+  .mode-header-brand {
+    gap: 8px !important;
+  }
+
+  .mode-header .tk-header-detail {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+}
+
 
 /* Field filter pill-bar entry animation */
 @keyframes filterFadeDown {

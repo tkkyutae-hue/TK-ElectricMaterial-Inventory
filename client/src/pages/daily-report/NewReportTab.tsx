@@ -991,7 +991,7 @@ export function NewReportTab({
   projectId, reportId, initialData, onSaved, forceEdit = false,
 }: {
   projectId: number; reportId?: number | null; initialData?: any;
-  onSaved?: (id: number, status: string) => void;
+  onSaved?: (id: number, status: string, savedReport?: any) => void;
   forceEdit?: boolean;
 }) {
   const { toast }   = useToast();
@@ -1505,7 +1505,12 @@ export function NewReportTab({
           ? t.newReportReportSubmittedDesc
           : t.newReportDraftSavedDesc,
       });
-      onSaved?.(saved.id, status);
+      // Pass the complete saved report back to the workspace.  A new report
+      // changes the workspace from "new" to "edit" after this callback, which
+      // remounts this component.  Keeping the server's formData here prevents
+      // photos (and their per-photo descriptions/memos) from disappearing from
+      // the form immediately after the first draft save.
+      onSaved?.(saved.id, status, saved);
     },
     onError: (err: any) => {
       toast({ title: t.newReportSaveFailed, description: err.message, variant: "destructive" });

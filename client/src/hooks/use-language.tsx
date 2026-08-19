@@ -108,7 +108,7 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
             (e.currentTarget as HTMLButtonElement).style.borderColor = triggerBorder;
           }}
         >
-          <span>{current.code.toUpperCase()}</span>
+          <span>{current.label}</span>
           <ChevronDown
             style={{ width: 11, height: 11, color: chevronColor, flexShrink: 0 }}
             aria-hidden="true"
@@ -149,11 +149,10 @@ export function LanguageSwitcher({ theme = "dark", compact = false }: SwitcherPr
                   flex: 1,
                   fontFamily: "'Barlow Condensed', sans-serif",
                   fontSize: 12,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
                 }}
               >
-                {l.code.toUpperCase()}
+                {l.label}
               </span>
               {isActive && (
                 <Check style={{ width: 14, height: 14, color: itemActiveColor }} />

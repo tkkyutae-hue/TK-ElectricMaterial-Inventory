@@ -192,10 +192,10 @@ function forEachWorksheetRow(
 ): void {
   for (const row of worksheetXml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/gi)) {
     const cells = new Map<number, string>();
-    for (const cell of row[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/gi)) {
+    for (const cell of row[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/gi)) {
       const reference = attribute(cell[1], "r");
       const column = reference ? columnNumber(reference) : null;
-      if (column !== null) cells.set(column, cellText(cell[2], cell[1], sharedStrings));
+      if (column !== null) cells.set(column, cellText(cell[2] ?? "", cell[1], sharedStrings));
     }
     if (onRow(cells) === false) return;
   }

@@ -2403,7 +2403,7 @@ export function NewReportTab({
                 )}
 
                 {/* ── Detail panel ── */}
-                {row.expanded && !(quickMode && isMobile) && (
+                {row.expanded && (
                   <div style={{ background: "#f8faf9", borderTop: "1px solid #e2e8e4", padding: 16, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 }}>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 0.9fr", gap: 0 }}>
 

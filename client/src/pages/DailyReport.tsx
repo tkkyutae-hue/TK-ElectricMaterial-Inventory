@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase, MapPin, Calendar, ChevronRight, ChevronDown,
   Search, ClipboardList, FileText, Loader2,
-  Filter, Users,
+  Filter, Users, AlertCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -337,25 +337,25 @@ export default function DailyReport() {
 
   // Today's crew dispatch assignments — used to surface assigned projects at the top
   const todayStr = useMemo(() => todayDateStr(), []);
-  const { data: crewAssignments = [] } = useQuery<CrewAssignment[]>({
+  const { data: crewAssignments = [], isLoading: crewAssignmentsLoading } = useQuery<CrewAssignment[]>({
     queryKey: ["/api/crew-dispatch/assignments", todayStr],
     queryFn: async () => {
       const res = await fetch(`/api/crew-dispatch/assignments?date=${todayStr}`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
   });
 
   // Worker record linked to the current user (if any) — used to filter assigned projects for non-admin users
-  const { data: linkedWorker = null } = useQuery<Worker | null>({
+  const { data: linkedWorker = null, isLoading: linkedWorkerLoading } = useQuery<Worker | null>({
     queryKey: ["/api/me/worker"],
     queryFn: async () => {
       const res = await fetch("/api/me/worker", { credentials: "include" });
       if (!res.ok) return null;
       return res.json();
     },
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 30_000,
   });
 
   // projectId → number of assigned workers today
@@ -399,7 +399,7 @@ export default function DailyReport() {
       return res.json();
     },
     enabled: isStaff,
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 30_000,
   });
 
   const summaryMap = useMemo(
@@ -427,6 +427,11 @@ export default function DailyReport() {
     () => (isStaff ? new Set(staffProjectIds ?? []) : null),
     [isStaff, staffProjectIds],
   );
+  const staffNeedsWorkerLink = isStaff && !linkedWorkerLoading && linkedWorker === null;
+  const staffHasNoTodayAssignment = isStaff
+    && !crewAssignmentsLoading
+    && linkedWorker !== null
+    && myWorkerProjectIds?.size === 0;
 
   const filtered = useMemo(() => allProjects.filter((p) => {
     if (staffIdSet && !staffIdSet.has(p.id)) return false;
@@ -663,11 +668,31 @@ export default function DailyReport() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-100">
-                <Briefcase className="w-7 h-7 text-slate-400" />
+                {staffNeedsWorkerLink
+                  ? <AlertCircle className="w-7 h-7 text-amber-500" />
+                  : <Briefcase className="w-7 h-7 text-slate-400" />}
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsYet}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportNoProjectsHint}</p>
+                {staffNeedsWorkerLink ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">작업자 계정 연결이 필요합니다</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      관리자에게 작업자 관리에서 현재 로그인 계정을 본인 작업자 정보에 연결해 달라고 요청하세요.
+                    </p>
+                  </>
+                ) : staffHasNoTodayAssignment ? (
+                  <>
+                    <p className="text-sm font-medium text-amber-800">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">{t.dailyReportNoProjectsYet}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportNoProjectsHint}</p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -679,7 +704,23 @@ export default function DailyReport() {
                 <FileText className="w-7 h-7 text-slate-400" />
               </div>
               <div className="text-center">
-                {isStaff && staffIdSet !== null && staffIdSet.size === 0 && !staffIdsLoading ? (
+                {staffNeedsWorkerLink ? (
+                  <>
+                    <p className="text-sm font-medium text-slate-600">작업자 계정 연결이 필요합니다</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      관리자에게 작업자 관리에서 현재 로그인 계정을 본인 작업자 정보에 연결해 달라고 요청하세요.
+                    </p>
+                  </>
+                ) : staffHasNoTodayAssignment ? (
+                  <>
+                    <p className="text-sm font-medium text-amber-800">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-3">{t.dailyReportNoProjectsFound}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{t.dailyReportTryAdjusting}</p>
+                  </>
+                ) : isStaff && staffIdSet !== null && staffIdSet.size === 0 && !staffIdsLoading ? (
                   <>
                     <p className="text-sm font-medium text-slate-600">배치된 프로젝트가 없습니다</p>
                     <p className="text-xs text-slate-400 mt-0.5">프로젝트에 배치되면 여기에 표시됩니다. 계정이 작업자와 연결되지 않았다면 관리자에게 문의하세요.</p>
@@ -765,20 +806,35 @@ export default function DailyReport() {
 
         ) : (
           // No assigned projects — show all groups as before
-          <div className="space-y-1">
-            {allGroups.map(([key, { displayName, projects }]) => (
-              <CustomerGroup
-                key={key}
-                groupKey={key}
-                displayName={displayName}
-                projects={projects}
-                summaryMap={summaryMap}
-                assignedCountMap={assignedCountMap}
-                collapsed={collapsedGroups.has(key)}
-                onToggle={() => toggleGroup(key)}
-                onOpen={(id) => navigate(`/daily-report/${id}`)}
-              />
-            ))}
+          <div className="space-y-3">
+            {staffHasNoTodayAssignment && (
+              <Card data-testid="notice-staff-no-today-assignment" style={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d" }}>
+                <CardContent className="flex items-start gap-3 px-4 py-3">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">오늘 배정된 프로젝트가 없습니다</p>
+                    <p className="text-xs text-amber-800 mt-0.5">
+                      Crew Dispatch에서 오늘 프로젝트에 배정되면 이 목록에 자동으로 표시됩니다.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <div className="space-y-1">
+              {allGroups.map(([key, { displayName, projects }]) => (
+                <CustomerGroup
+                  key={key}
+                  groupKey={key}
+                  displayName={displayName}
+                  projects={projects}
+                  summaryMap={summaryMap}
+                  assignedCountMap={assignedCountMap}
+                  collapsed={collapsedGroups.has(key)}
+                  onToggle={() => toggleGroup(key)}
+                  onOpen={(id) => navigate(`/daily-report/${id}`)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

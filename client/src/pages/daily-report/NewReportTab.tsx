@@ -160,6 +160,10 @@ function calcHours(start: string, end: string, status: string): number {
   return Math.max(0, Math.round((gross - 1) * 10) / 10);
 }
 
+function mobilePunchRange(status: string, start: string, end: string): string {
+  return HOURS_COMPUTED.has(status) && start && end ? `${start} → ${end}` : "—";
+}
+
 // Convert ISO timestamp → "HH:MM" in local time (for Jibble punch-in/out)
 function tsToHHMM(ts: string | undefined): string | null {
   if (!ts) return null;
@@ -2196,16 +2200,39 @@ export function NewReportTab({
                       </div>
                       <DelBtn testId={`btn-remove-mp-${i}`} onClick={() => setManpower(manpower.filter((r) => r.id !== row.id))} />
                     </div>
-                    {(row.trade || hoursActive) && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, padding: "0 2px" }}>
-                        {row.trade && <span style={{ minWidth: 0 }} title={row.trade}>{tradeBadge(row.trade)}</span>}
-                        {hoursActive && (
-                          <span data-testid={`mp-quick-hours-${i}`} style={{ marginLeft: "auto", flexShrink: 0, fontSize: 13, fontWeight: 800, color: quickMode ? FT.ACCENT : FT.TEXT_MUTED, fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT, whiteSpace: "nowrap" }}>
-                            {quickMode ? `${row.hoursWorked.toFixed(1)}h` : row.hoursWorked.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {/* Compact detail row: rank | punch range | total hours.
+                        Keep this visible in both Quick Mode and regular mobile mode. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, padding: "0 2px" }}>
+                      {row.trade && (
+                        <span style={{ minWidth: 0, maxWidth: "40%", overflow: "hidden" }} title={row.trade}>
+                          {tradeBadge(row.trade)}
+                        </span>
+                      )}
+                      <span
+                        data-testid={`mp-mobile-punch-time-${i}`}
+                        style={{
+                          minWidth: 0, flex: "1 1 auto", overflow: "hidden",
+                          textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          fontSize: 12, fontWeight: 650,
+                          color: hoursActive ? FT.TEXT_MUTED : "#a8a29e",
+                          fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
+                        }}
+                        aria-label={hoursActive ? "Punch in and out time" : "No working hours"}
+                      >
+                        {mobilePunchRange(row.attendanceStatus, row.startTime, row.endTime)}
+                      </span>
+                      <span
+                        data-testid={`mp-quick-hours-${i}`}
+                        style={{
+                          flexShrink: 0, fontSize: 13, fontWeight: 800,
+                          color: hoursActive ? FT.ACCENT : "#a8a29e",
+                          fontVariantNumeric: "tabular-nums", fontFamily: FT.FONT,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {hoursActive && row.startTime && row.endTime ? `${row.hoursWorked.toFixed(1)}h` : "—"}
+                      </span>
+                    </div>
                     {/* Detail rows remain available outside Quick Mode */}
                     {hoursActive && !(quickMode && isMobile) && (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
